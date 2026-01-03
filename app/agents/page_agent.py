@@ -823,19 +823,13 @@ class PageAgent:
         if session:
             context_usage = await context_manager.get_context_usage(session_id)
             if context_usage:
-                percentage = (context_usage.context_tokens_used / context_usage.context_limit * 100) if context_usage.context_limit > 0 else 0
-                warning = None
-                if percentage > 80:
-                    warning = "approaching_limit"
-                if percentage >= 95:
-                    warning = "at_limit"
-
+                # ContextUsage model uses 'used' and 'limit' fields
                 context_usage_info = ContextUsageInfo(
-                    used=context_usage.context_tokens_used,
-                    limit=context_usage.context_limit,
-                    percentage=round(percentage, 1),
-                    turnsInContext=session.turn_count,
-                    warning=warning
+                    used=context_usage.used,
+                    limit=context_usage.limit,
+                    percentage=context_usage.percentage,
+                    turnsInContext=context_usage.turns_in_context,
+                    warning=context_usage.warning
                 )
 
         return token_usage_summary, context_usage_info
