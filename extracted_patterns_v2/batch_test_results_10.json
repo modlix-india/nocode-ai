@@ -1,0 +1,102 @@
+[
+  {
+    "pattern_id": "07aed9ab30ab",
+    "pattern_name": "Grid",
+    "pattern_type": "component_tree",
+    "component_count": 5,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6633,
+    "errors": []
+  },
+  {
+    "pattern_id": "75645a202208",
+    "pattern_name": "Zip Popover",
+    "pattern_type": "component_tree",
+    "component_count": 18,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 9673,
+    "errors": []
+  },
+  {
+    "pattern_id": "d89633a48d0c",
+    "pattern_name": "SectionInvest",
+    "pattern_type": "component_tree",
+    "component_count": 38,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 16558,
+    "errors": []
+  },
+  {
+    "pattern_id": "6bc8e4c2c721",
+    "pattern_name": "Grid",
+    "pattern_type": "component_tree",
+    "component_count": 7,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5563,
+    "errors": []
+  },
+  {
+    "pattern_id": "567d7e92dd11",
+    "pattern_name": "Grid",
+    "pattern_type": "component_tree",
+    "component_count": 7,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6682,
+    "errors": []
+  },
+  {
+    "pattern_id": "82297aee8f12",
+    "pattern_name": "lets talk Grid",
+    "pattern_type": "component_tree",
+    "component_count": 25,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6068,
+    "errors": []
+  },
+  {
+    "pattern_id": "2aefdb14dfae",
+    "pattern_name": "topGrid",
+    "pattern_type": "component_tree",
+    "component_count": 32,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 8152,
+    "errors": []
+  },
+  {
+    "pattern_id": "bd821a55d2b6",
+    "pattern_name": "Section 4",
+    "pattern_type": "component_tree",
+    "component_count": 33,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5881,
+    "errors": []
+  },
+  {
+    "pattern_id": "3db06855c7b2",
+    "pattern_name": "forminnergrid",
+    "pattern_type": "component_tree",
+    "component_count": 6,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 4889,
+    "errors": []
+  },
+  {
+    "pattern_id": "782e32c83347",
+    "pattern_name": "Heading Grid",
+    "pattern_type": "component_tree",
+    "component_count": 3,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 4598,
+    "errors": []
+  }
+]

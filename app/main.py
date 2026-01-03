@@ -18,7 +18,7 @@ from app.services.eureka import register_with_eureka, deregister_from_eureka
 from app.services.redis_client import get_redis_client, close_redis
 from app.rag.engine import initialize_rag_engine
 from app.agents.page_agent import PageAgent
-from app.api.routes import health, agent, query
+from app.api.routes import health, agent, query, function
 from app.middleware.rate_limiter import RateLimitMiddleware, RequestDeduplicationMiddleware
 
 # Configure logging
@@ -66,12 +66,35 @@ async def lifespan(app: FastAPI):
             logger.info("Redis connection established")
         else:
             logger.warning("Redis connection failed - rate limiting and caching disabled")
-    
-    # 5. Initialize Page Agent
+
+    # 5. Initialize AI Tracking Database (if configured)
+    if settings.AI_TRACKING_ENABLED:
+        logger.info("Initializing AI tracking database...")
+        try:
+            from app.db.connection import init_db_pool
+            from app.db.migrations import run_migrations
+            await init_db_pool()
+            await run_migrations()
+            logger.info("AI tracking database initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize AI tracking database: {e}")
+            logger.warning("AI tracking will be disabled")
+            settings.AI_TRACKING_ENABLED = False
+
+    # 6. Initialize Page Agent
     logger.info("Initializing Page Agent...")
     page_agent = PageAgent()
     agent.set_page_agent(page_agent)
-    
+
+    # 7. Initialize Website Extractor (for website import feature)
+    logger.info("Initializing Website Extractor (Playwright)...")
+    try:
+        from app.services.website_extractor import get_website_extractor
+        extractor = get_website_extractor()
+        logger.info("Website Extractor initialized (browser will start on first use)")
+    except Exception as e:
+        logger.warning(f"Website Extractor initialization deferred: {e}")
+
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
     logger.info("=" * 60)
@@ -81,6 +104,24 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down...")
     await close_redis()
+
+    # Close Website Extractor (browser)
+    try:
+        from app.services.website_extractor import get_website_extractor
+        extractor = get_website_extractor()
+        await extractor.close()
+        logger.info("Website Extractor closed")
+    except Exception as e:
+        logger.error(f"Error closing website extractor: {e}")
+
+    # Close AI tracking database connection
+    if settings.AI_TRACKING_ENABLED:
+        try:
+            from app.db.connection import close_db_pool
+            await close_db_pool()
+        except Exception as e:
+            logger.error(f"Error closing database pool: {e}")
+
     await deregister_from_eureka()
     logger.info("Shutdown complete")
 
@@ -144,6 +185,7 @@ API_PREFIX = "/api/ai"
 app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 app.include_router(agent.router, prefix=f"{API_PREFIX}/agent", tags=["Agents"])
 app.include_router(query.router, prefix=f"{API_PREFIX}/query", tags=["Query"])
+app.include_router(function.router, prefix=f"{API_PREFIX}/function", tags=["Function"])
 
 
 # Root health check (for direct container health checks)
@@ -164,6 +206,10 @@ async def root():
             "health": "/api/ai/health",
             "page_generation": "/api/ai/agent/page",
             "page_generation_sync": "/api/ai/agent/page/sync",
+            "website_import": "/api/ai/agent/import",
+            "website_import_stream": "/api/ai/agent/import/stream",
+            "function_explain": "/api/ai/function/explain",
+            "function_modify": "/api/ai/function/modify",
             "query": "/api/ai/query",
             "docs": "/api/ai/docs"
         }
@@ -180,6 +226,8 @@ async def api_root():
             "health": "/api/ai/health",
             "page_generation": "/api/ai/agent/page",
             "page_generation_sync": "/api/ai/agent/page/sync",
+            "website_import": "/api/ai/agent/import",
+            "website_import_stream": "/api/ai/agent/import/stream",
             "query": "/api/ai/query"
         }
     }

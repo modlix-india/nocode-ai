@@ -18,7 +18,7 @@ class ComponentAnalyzerAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__("ComponentAnalyzer", model=settings.CLAUDE_HAIKU)
+        super().__init__("ComponentAnalyzer", model_tier="fast")
     
     def get_system_prompt(self) -> str:
         return """You are a Component Analyzer for the Nocode UI system.
@@ -64,17 +64,45 @@ List ALL components needed with their types and purposes:
 }
 ```
 
-## Available Component Types
-- Grid: For layout containers
+## Available Component Types (USE ONLY THESE - NO OTHER TYPES EXIST)
+- Grid: For layout containers (use this for any container/wrapper/section)
 - Text: For displaying text content
 - Button: For actions (has label property)
 - TextBox: For text/password input
 - Checkbox: For boolean inputs
 - Dropdown: For selection lists
 - RadioButton: For single selection
-- Image: For displaying images
+- Image: For displaying images (use EMPTY src "" for placeholders in import mode)
 - Icon: For icons (Font Awesome, Material)
 - Link: For navigation links
+
+## CRITICAL: INVALID COMPONENT TYPES
+**NEVER USE THESE - THEY DO NOT EXIST:**
+- Box (USE Grid INSTEAD)
+- Div (USE Grid INSTEAD)
+- Container (USE Grid INSTEAD)
+- Section (USE Grid INSTEAD)
+- Card (USE Grid INSTEAD)
+- Flex (USE Grid INSTEAD)
+- Row (USE Grid INSTEAD)
+- Column (USE Grid INSTEAD)
+- Wrapper (USE Grid INSTEAD)
+- Header (USE Grid INSTEAD)
+- Footer (USE Grid INSTEAD)
+- Nav (USE Grid INSTEAD)
+- Span (USE Text INSTEAD)
+- Paragraph (USE Text INSTEAD)
+- Label (USE Text INSTEAD)
+- Heading (USE Text INSTEAD)
+- H1/H2/H3/H4/H5/H6 (USE Text with textContainer property INSTEAD)
+- Input (USE TextBox INSTEAD)
+- Anchor (USE Button or Link INSTEAD)
+
+## Image Components in Import Mode
+When importing from a website (importMode=true or placeholderImages=true), create Image components with:
+- src: EMPTY string "" (placeholder - actual images will be added later)
+- alt: Preserve alt text from original if available
+- Preserve width/height in styleProperties if known
 
 ## Rules
 1. Analyze the user request and layout structure
@@ -92,6 +120,14 @@ List ALL components needed with their types and purposes:
             "04-property-system",
             "22-component-reference"
         ]
+    
+    def get_rag_query(self, user_request: str) -> str:
+        """Custom RAG query to retrieve valid component types list."""
+        return (
+            "What UI component types are available? "
+            "Valid types: Grid, Text, Button, TextBox, Image, Icon, Checkbox, Dropdown, RadioButton, Link. "
+            + user_request
+        )
 
 
 class ComponentGeneratorAgent(BaseAgent):
@@ -103,7 +139,7 @@ class ComponentGeneratorAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__("ComponentGenerator", model=settings.CLAUDE_SONNET)
+        super().__init__("ComponentGenerator", model_tier="balanced")
     
     def get_system_prompt(self) -> str:
         return """You are a Component Generator for the Nocode UI system.
@@ -206,6 +242,22 @@ Output components as a FLAT map, NOT nested.
 }
 ```
 
+### Image (Placeholder for Import Mode)
+```json
+{
+  "type": "Image",
+  "properties": {
+    "src": { "value": "" },
+    "alt": { "value": "Image description" }
+  }
+}
+```
+
+**IMPORTANT for Import Mode:** When `importMode` or `placeholderImages` is true in context:
+- Create Image components with EMPTY src: `{"value": ""}`
+- Preserve alt text if available from the analysis
+- The actual images will be added later
+
 ## Output Format
 ```json
 {
@@ -214,25 +266,42 @@ Output components as a FLAT map, NOT nested.
     "componentKey1": {
       "key": "componentKey1",
       "type": "Button",
-      "properties": { ... },
-      "children": { "childKey": true }
+      "parent": "parentContainerKey",
+      "properties": { ... }
     },
     "componentKey2": {
       "key": "componentKey2",
       "type": "TextBox",
+      "parent": "formContainer",
       "properties": { ... }
+    },
+    "formContainer": {
+      "key": "formContainer",
+      "type": "Grid",
+      "parent": "pageRoot",
+      "properties": {},
+      "children": { "componentKey2": true }
     }
   }
 }
 ```
 
+## CRITICAL: Parent-Child Relationships
+- **EVERY component MUST have a "parent" field** specifying which container it belongs to
+- The parent must be an existing Grid container (from Layout agent or a new one you create)
+- If you create a new Grid container, also specify ITS parent
+- Root level containers should have "parent": "pageRoot"
+
 ## Rules
 1. ALL components in a FLAT map - NO nested children objects
-2. Children are `{ "childKey": true }` references
-3. Use exact component type names: Grid, Button, Text, TextBox, Icon, Image
-4. Set meaningful labels and placeholders
-5. Configure bindingPath for form inputs
-6. DO NOT add detailed styles - Styles agent handles those
+2. **EVERY component MUST have a "parent" field** (except pageRoot)
+3. If a Grid has children, list them: `"children": { "childKey": true }`
+4. Use ONLY valid component types: Grid, Button, Text, TextBox, Icon, Image, Checkbox, Dropdown, RadioButton, Link
+5. NEVER use "Box", "Container", "Div", "Section", "Card" - use Grid instead
+6. NEVER use "Span", "Paragraph", "Label", "H1", "H2" etc. - use Text instead
+7. Set meaningful labels and placeholders
+8. Configure bindingPath for form inputs
+9. DO NOT add detailed styles - Styles agent handles those
 """
     
     def get_relevant_docs(self) -> List[str]:
@@ -245,15 +314,55 @@ Output components as a FLAT map, NOT nested.
             "22-component-reference"
         ]
     
+    def get_rag_query(self, user_request: str) -> str:
+        """
+        Custom RAG query that specifically asks about valid component types.
+        This helps retrieve the component reference documentation.
+        """
+        return (
+            "What are all the valid component types available? "
+            "List Grid, Text, Button, TextBox, Image, Icon, Checkbox, Dropdown, RadioButton, Link components. "
+            "What properties do these components have? " + user_request
+        )
+    
     def _build_messages(self, input: AgentInput, rag_context: str) -> List[Dict]:
         """Override to include component analysis in generator context"""
         
         # Get the component analysis from previous outputs
         component_analysis = input.previous_outputs.get("component_analysis", {})
         
+        # Check if this is import mode with extracted text content
+        is_import_mode = input.context.get("importMode", False) or input.context.get("mode") == "import"
+        text_content = input.context.get("textContent", [])
+        use_exact_content = input.context.get("useExactContent", False)
+        
+        # Format extracted text if available
+        extracted_text_section = ""
+        if is_import_mode and text_content and use_exact_content:
+            text_lines = []
+            for item in text_content[:40]:  # Limit for token efficiency
+                el_type = item.get("type", "UNKNOWN")
+                text = item.get("text", "")[:150]
+                if text:
+                    text_lines.append(f'- {el_type}: "{text}"')
+            
+            if text_lines:
+                extracted_text_section = f"""
+## CRITICAL: EXACT TEXT CONTENT TO USE
+
+You MUST use these exact text strings from the original website.
+Do NOT make up placeholder text - use these verbatim:
+
+{chr(10).join(text_lines)}
+
+For Text components, set the "text" property to the EXACT string above.
+For Button components, set the "label" property to the EXACT button text above.
+"""
+        
         user_content = f"""
 ## User Request
 {input.user_request}
+{extracted_text_section}
 
 ## Components to Generate (from analysis)
 ```json
@@ -275,6 +384,7 @@ Output components as a FLAT map, NOT nested.
 
 ## Your Task
 Generate ALL the component definitions listed in the analysis.
+{"Use the EXACT TEXT from the extracted content above for all Text and Button components." if is_import_mode else ""}
 Output valid JSON only, wrapped in ```json code blocks.
 Include a brief "reasoning" field explaining your decisions.
 """
@@ -295,7 +405,7 @@ class ComponentAgent(BaseAgent):
     BATCH_SIZE = 10  # Max components per generation call
     
     def __init__(self):
-        super().__init__("Component", model=settings.CLAUDE_SONNET)
+        super().__init__("Component", model_tier="balanced")
         self.analyzer = ComponentAnalyzerAgent()
         self.generator = ComponentGeneratorAgent()
     

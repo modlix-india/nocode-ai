@@ -1,0 +1,2378 @@
+[
+  {
+    "id": "9bbabf51a58b",
+    "type": "calculator",
+    "name": "topuploan",
+    "description": "Calculator 3 state bindings",
+    "source_page": "./definitions/site defs/fincityskvxysxhbnyignp_FIN/Page/topuploan.json",
+    "semantic_tags": [
+      "stateful",
+      "calculator",
+      "interactive",
+      "visual",
+      "list"
+    ],
+    "component_count": 47,
+    "event_count": 1,
+    "has_api_calls": false,
+    "has_conditional_logic": true,
+    "complexity_score": 6.1,
+    "definition": {
+      "rootComponent": "5S5laKQOt48lDdEvaNq3vm",
+      "componentDefinition": {
+        "5S5laKQOt48lDdEvaNq3vm": {
+          "key": "5S5laKQOt48lDdEvaNq3vm",
+          "name": "PageGrid",
+          "type": "Grid",
+          "styleProperties": {
+            "7tC3qvopMmxvwyk088zCIV": {
+              "resolutions": {
+                "ALL": {
+                  "backgroundColor": {
+                    "value": "#fff"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "4ui7zs5KE1Z3IuxH5XXuiM": true,
+            "4R5PbMc1b1M0gyoMfNODEJ": true,
+            "601XDAtcu7fAtIe2pz0i6s": true,
+            "7uAjIHr0sz320fT9pIfQOz": true
+          }
+        },
+        "4ui7zs5KE1Z3IuxH5XXuiM": {
+          "key": "4ui7zs5KE1Z3IuxH5XXuiM",
+          "name": "Section 1",
+          "type": "Grid",
+          "styleProperties": {
+            "5AC6INfZJIpxdg8BgxWGMW": {
+              "resolutions": {
+                "ALL": {
+                  "paddingTop": {
+                    "value": "41px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "2bWepPXSMVm7VBC4Mv6ppD": true,
+            "3US0MxTlOWxK2TTSXEy2UJ": true
+          },
+          "displayOrder": 1
+        },
+        "4R5PbMc1b1M0gyoMfNODEJ": {
+          "key": "4R5PbMc1b1M0gyoMfNODEJ",
+          "name": "Section 2",
+          "type": "Grid",
+          "override": false,
+          "children": {
+            "4KxZFCUNek4nb0FsnxndJD": true,
+            "3DuPy1lmUIeWcT7BawJwcP": true,
+            "35otIDiSnQFN23BFNikHy9": true,
+            "pr7iC6dQbKYsz2jewSO8B": true,
+            "6A4kPcaB7y0zuDBwb7syBY": true,
+            "1H6agdIlpNnWbdl7YWzDon": true,
+            "77o6K1UnzWoLgjLIeQWMDx": true
+          },
+          "displayOrder": 2
+        },
+        "601XDAtcu7fAtIe2pz0i6s": {
+          "key": "601XDAtcu7fAtIe2pz0i6s",
+          "name": "Section 3",
+          "type": "Grid",
+          "styleProperties": {
+            "1UTRLKafx8werNf4BXeQKJ": {
+              "resolutions": {
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "width": {
+                    "value": "100%"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "4oe47sux07BJuYbHWiBXxd": true,
+            "101xHpccFYqC7SiDGX7J5A": true,
+            "6dSMKsOYAp4NgFP3Z8WmRk": true,
+            "27dKaMctBUAbDEwqHn3OJk": true
+          },
+          "displayOrder": 3
+        },
+        "2bWepPXSMVm7VBC4Mv6ppD": {
+          "key": "2bWepPXSMVm7VBC4Mv6ppD",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "3oHC2Ezq0pVpQSpTJDzwGN": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "paddingLeft": {
+                    "value": "50px"
+                  },
+                  "paddingRight": {
+                    "value": "50px"
+                  },
+                  "marginTop": {
+                    "value": "61px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "flexDirection": {
+                    "value": "row"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "2zXKFcZrNxijRCPzVDJ0Mp": true,
+            "FQzTZdkSrxmKVJRWzBz6l": true
+          },
+          "displayOrder": 1
+        },
+        "3US0MxTlOWxK2TTSXEy2UJ": {
+          "key": "3US0MxTlOWxK2TTSXEy2UJ",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "367d2dQ1lRZNieItlfOt2J": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "justifyContent": {
+                    "value": "space-between"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "flexDirection": {
+                    "value": "column"
+                  },
+                  "justifyContent": {
+                    "value": "space-between"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "1bTX64yXAEqAOycgrC7lW7": true,
+            "5XojYgoiAoLXqOjk9zDlBI": true
+          },
+          "displayOrder": 1
+        },
+        "4KxZFCUNek4nb0FsnxndJD": {
+          "key": "4KxZFCUNek4nb0FsnxndJD",
+          "name": "Type of Employment",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "What is a Top-Up Loan?"
+            },
+            "textContainer": {
+              "value": "H2"
+            }
+          },
+          "styleProperties": {
+            "4EPWcyd8FJXnF80RGcfTSl": {
+              "resolutions": {
+                "ALL": {
+                  "color": {
+                    "value": "#064E55",
+                    "backupExpression": "Theme.backgroundColorSix"
+                  },
+                  "text-fontFamily": {
+                    "value": "Noto Sans"
+                  },
+                  "text-fontStyle": {
+                    "value": "italic"
+                  },
+                  "text-fontWeight": {
+                    "value": "600"
+                  },
+                  "marginLeft": {
+                    "value": "45px"
+                  },
+                  "marginTop": {
+                    "value": "15px"
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "fontSize": {
+                    "value": "25px"
+                  },
+                  "lineHeight": {
+                    "value": "40px"
+                  },
+                  "width": {
+                    "value": "40%"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "35px"
+                  },
+                  "fontSize": {
+                    "value": "32px"
+                  },
+                  "width": {
+                    "value": "100%"
+                  }
+                },
+                "MOBILE_POTRAIT_SCREEN_ONLY": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "36px"
+                  },
+                  "fontSize": {
+                    "value": "30px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "lineHeight": {
+                    "value": "40px"
+                  },
+                  "width": {
+                    "value": "60%"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "3DuPy1lmUIeWcT7BawJwcP": {
+          "key": "3DuPy1lmUIeWcT7BawJwcP",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Although considerably simpler in process, it\u2019s not always guaranteed that an existing lender will approve your top-up application. Your chances are determined by factors such as your income, repayment capacity and other financial obligations."
+            }
+          },
+          "styleProperties": {
+            "5EciLD9ySE2tA9HNB25qjl": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "Open sans"
+                  },
+                  "textAlign": {
+                    "value": "left"
+                  },
+                  "lineHeight": {
+                    "value": "25px"
+                  },
+                  "paddingLeft": {
+                    "value": "48px"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "paddingRight": {
+                    "value": "40px"
+                  },
+                  "paddingTop": {
+                    "value": "13px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "29px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 3
+        },
+        "35otIDiSnQFN23BFNikHy9": {
+          "key": "35otIDiSnQFN23BFNikHy9",
+          "name": "Type of Employment",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "When to Opt for a Top-Up Loan?"
+            },
+            "textContainer": {
+              "value": "H2"
+            }
+          },
+          "styleProperties": {
+            "4EPWcyd8FJXnF80RGcfTSl": {
+              "resolutions": {
+                "ALL": {
+                  "color": {
+                    "value": "#064E55",
+                    "backupExpression": "Theme.backgroundColorSix"
+                  },
+                  "text-fontFamily": {
+                    "value": "Noto Sans"
+                  },
+                  "text-fontStyle": {
+                    "value": "italic"
+                  },
+                  "text-fontWeight": {
+                    "value": "600"
+                  },
+                  "marginLeft": {
+                    "value": "45px"
+                  },
+                  "marginTop": {
+                    "value": "15px"
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "fontSize": {
+                    "value": "25px"
+                  },
+                  "lineHeight": {
+                    "value": "40px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "fontSize": {
+                    "value": "32px"
+                  }
+                },
+                "MOBILE_POTRAIT_SCREEN_ONLY": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "36px"
+                  },
+                  "fontSize": {
+                    "value": "30px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "lineHeight": {
+                    "value": "40px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 4
+        },
+        "pr7iC6dQbKYsz2jewSO8B": {
+          "key": "pr7iC6dQbKYsz2jewSO8B",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "If you\u2019re wondering in what situation you should for a Top-Up Loan, here are some reasonable ones:"
+            }
+          },
+          "styleProperties": {
+            "5EciLD9ySE2tA9HNB25qjl": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "Open sans"
+                  },
+                  "textAlign": {
+                    "value": "left"
+                  },
+                  "lineHeight": {
+                    "value": "25px"
+                  },
+                  "paddingLeft": {
+                    "value": "54px"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "paddingRight": {
+                    "value": "40px"
+                  },
+                  "paddingTop": {
+                    "value": "10px"
+                  },
+                  "paddingBottom": {
+                    "value": "10px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "25px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 5
+        },
+        "6A4kPcaB7y0zuDBwb7syBY": {
+          "key": "6A4kPcaB7y0zuDBwb7syBY",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Note : If you find yourself in a situation where you need the extra funds but the lender offering you the primary loan does not entertain a top-up, you can always use the Balance Transfer feature to transfer the current loan and request that additional top-up that you wish to. Fincity can help you choose one with the lowest interest rate and assist you along the way to ensure maximum savings."
+            }
+          },
+          "styleProperties": {
+            "5EciLD9ySE2tA9HNB25qjl": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "Open sans"
+                  },
+                  "textAlign": {
+                    "value": "left"
+                  },
+                  "lineHeight": {
+                    "value": "25px"
+                  },
+                  "paddingLeft": {
+                    "value": "54px"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "paddingRight": {
+                    "value": "40px"
+                  },
+                  "paddingTop": {
+                    "value": "10px"
+                  },
+                  "paddingBottom": {
+                    "value": "10px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "18px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 7
+        },
+        "4oe47sux07BJuYbHWiBXxd": {
+          "key": "4oe47sux07BJuYbHWiBXxd",
+          "name": "Type of Employment",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Advantages of Top-Up Loans"
+            },
+            "textContainer": {
+              "value": "H2"
+            }
+          },
+          "styleProperties": {
+            "4EPWcyd8FJXnF80RGcfTSl": {
+              "resolutions": {
+                "ALL": {
+                  "color": {
+                    "value": "#064E55",
+                    "backupExpression": "Theme.backgroundColorSix"
+                  },
+                  "text-fontFamily": {
+                    "value": "Noto Sans"
+                  },
+                  "text-fontStyle": {
+                    "value": "italic"
+                  },
+                  "text-fontWeight": {
+                    "value": "600"
+                  },
+                  "marginLeft": {
+                    "value": "48px"
+                  },
+                  "marginTop": {
+                    "value": "15px"
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "fontSize": {
+                    "value": "25px"
+                  },
+                  "lineHeight": {
+                    "value": "40px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "fontSize": {
+                    "value": "32px"
+                  }
+                },
+                "MOBILE_POTRAIT_SCREEN_ONLY": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "36px"
+                  },
+                  "fontSize": {
+                    "value": "30px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "lineHeight": {
+                    "value": "40px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "101xHpccFYqC7SiDGX7J5A": {
+          "key": "101xHpccFYqC7SiDGX7J5A",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "There are numerous reasons why people prefer topping up a certain amount to an existing loan compared to going for a fresh loan from scratch. Here are the most prominent ones:"
+            }
+          },
+          "styleProperties": {
+            "5EciLD9ySE2tA9HNB25qjl": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "Open sans"
+                  },
+                  "textAlign": {
+                    "value": "left"
+                  },
+                  "lineHeight": {
+                    "value": "25px"
+                  },
+                  "paddingLeft": {
+                    "value": "45px"
+                  },
+                  "fontSize": {
+                    "value": "16px"
+                  },
+                  "paddingRight": {
+                    "value": "40px"
+                  },
+                  "paddingTop": {
+                    "value": "0px"
+                  },
+                  "paddingBottom": {
+                    "value": "10px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "35px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 2
+        },
+        "6dSMKsOYAp4NgFP3Z8WmRk": {
+          "key": "6dSMKsOYAp4NgFP3Z8WmRk",
+          "name": "Grid",
+          "type": "Grid",
+          "properties": {
+            "layout": {
+              "value": "ROWLAYOUT"
+            }
+          },
+          "styleProperties": {
+            "2vB6WLuURnZXT5YlB414QI": {
+              "resolutions": {
+                "ALL": {
+                  "paddingBottom": {
+                    "value": "38px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "7Kdb3zOPErgAIBu4xlpyZy": true
+          },
+          "displayOrder": 3
+        },
+        "2zXKFcZrNxijRCPzVDJ0Mp": {
+          "key": "2zXKFcZrNxijRCPzVDJ0Mp",
+          "name": "Home Loan",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Top Up Loan"
+            }
+          },
+          "styleProperties": {
+            "5FKT6rPvk1CwUCGUm0zrQd": {
+              "resolutions": {
+                "ALL": {
+                  "text-fontFamily": {
+                    "value": "Verdana"
+                  },
+                  "marginTop": {
+                    "value": "29px"
+                  },
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "marginRight": {
+                    "value": "29px"
+                  },
+                  "fontSize": {
+                    "value": "14px"
+                  },
+                  "color": {
+                    "value": "#A0A3A3"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 2
+        },
+        "FQzTZdkSrxmKVJRWzBz6l": {
+          "key": "FQzTZdkSrxmKVJRWzBz6l",
+          "name": "Grid",
+          "type": "Grid",
+          "properties": {
+            "layout": {
+              "value": "ROWLAYOUT"
+            },
+            "linkPath": {
+              "value": "/home"
+            }
+          },
+          "override": false,
+          "children": {
+            "21DT35s4w4lF93eTM1h7d0": true,
+            "2vneuvC8kjYuAnobJUyPmg": true
+          },
+          "displayOrder": 1
+        },
+        "1bTX64yXAEqAOycgrC7lW7": {
+          "key": "1bTX64yXAEqAOycgrC7lW7",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "4e5XZpiBE18cpKuIgcYMAS": {
+              "resolutions": {
+                "ALL": {
+                  "marginLeft": {
+                    "value": "16px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingBottom": {
+                    "value": "12px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "7ekGVqoQ75D58YGbqysOrc": true,
+            "1eCIog2cU2gAMGJ6Nskxgc": true
+          }
+        },
+        "5XojYgoiAoLXqOjk9zDlBI": {
+          "key": "5XojYgoiAoLXqOjk9zDlBI",
+          "name": "Grid",
+          "type": "Grid",
+          "override": false,
+          "children": {
+            "XHWaYjlrwPJdAVUDc1CuO": true
+          }
+        },
+        "7Kdb3zOPErgAIBu4xlpyZy": {
+          "key": "7Kdb3zOPErgAIBu4xlpyZy",
+          "name": "repeator",
+          "type": "ArrayRepeater",
+          "override": false,
+          "children": {
+            "44BMhw4RkXopSH411ysrXg": true
+          },
+          "displayOrder": 1,
+          "bindingPath": {
+            "type": "VALUE",
+            "value": "Page.benefit"
+          }
+        },
+        "21DT35s4w4lF93eTM1h7d0": {
+          "key": "21DT35s4w4lF93eTM1h7d0",
+          "name": "Fincity",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Fincity"
+            }
+          },
+          "styleProperties": {
+            "5FKT6rPvk1CwUCGUm0zrQd": {
+              "resolutions": {
+                "ALL": {
+                  "text-fontFamily": {
+                    "value": "Verdana"
+                  },
+                  "marginTop": {
+                    "value": "29px"
+                  },
+                  "marginLeft": {
+                    "value": "16px"
+                  },
+                  "marginRight": {
+                    "value": "0px"
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "fontSize": {
+                    "value": "14px"
+                  },
+                  "color:hover": {
+                    "value": "#00ACB8"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "2vneuvC8kjYuAnobJUyPmg": {
+          "key": "2vneuvC8kjYuAnobJUyPmg",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": ">"
+            }
+          },
+          "styleProperties": {
+            "5FKT6rPvk1CwUCGUm0zrQd": {
+              "resolutions": {
+                "ALL": {
+                  "text-fontFamily": {
+                    "value": "Verdana"
+                  },
+                  "marginTop": {
+                    "value": "29px"
+                  },
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "marginRight": {
+                    "value": "0px"
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "fontSize": {
+                    "value": "14px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "7ekGVqoQ75D58YGbqysOrc": {
+          "key": "7ekGVqoQ75D58YGbqysOrc",
+          "name": "Type of Employment",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "What is it & Why You Should Opt for a 2nd Mortgage Loan!"
+            },
+            "textContainer": {
+              "value": "H2"
+            }
+          },
+          "styleProperties": {
+            "4EPWcyd8FJXnF80RGcfTSl": {
+              "resolutions": {
+                "ALL": {
+                  "color": {
+                    "value": "#064E55",
+                    "backupExpression": "Theme.backgroundColorSix"
+                  },
+                  "text-fontFamily": {
+                    "value": "Noto Sans"
+                  },
+                  "text-fontStyle": {
+                    "value": "italic"
+                  },
+                  "text-fontWeight": {
+                    "value": "600"
+                  },
+                  "marginLeft": {
+                    "value": "45px"
+                  },
+                  "marginTop": {
+                    "value": "15px"
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "fontSize": {
+                    "value": "36px"
+                  },
+                  "lineHeight": {
+                    "value": "40px"
+                  },
+                  "paddingTop": {
+                    "value": "12px"
+                  },
+                  "paddingBottom": {
+                    "value": "12px"
+                  },
+                  "width": {
+                    "value": "70%"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "35px"
+                  },
+                  "fontSize": {
+                    "value": "32px"
+                  },
+                  "width": {
+                    "value": "100%"
+                  }
+                },
+                "MOBILE_POTRAIT_SCREEN_ONLY": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "36px"
+                  },
+                  "fontSize": {
+                    "value": "30px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "lineHeight": {
+                    "value": "40px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "1eCIog2cU2gAMGJ6Nskxgc": {
+          "key": "1eCIog2cU2gAMGJ6Nskxgc",
+          "name": "Emi calculator",
+          "type": "Button",
+          "properties": {
+            "label": {
+              "value": "I want a Top-Up Loan "
+            },
+            "rightIcon": {
+              "value": "fa-solid fa-arrow-right"
+            },
+            "linkPath": {
+              "value": "https://app.fincity.com/"
+            }
+          },
+          "styleProperties": {
+            "5Ud4myq2YTT5yYwQ9UPYOD": {
+              "resolutions": {
+                "ALL": {
+                  "width": {
+                    "value": "250px"
+                  },
+                  "height": {
+                    "value": "50px"
+                  },
+                  "color": {
+                    "value": "#fff"
+                  },
+                  "borderTopWidth": {
+                    "value": "10px"
+                  },
+                  "borderRightWidth": {
+                    "value": "10px"
+                  },
+                  "borderBottomWidth": {
+                    "value": "10px"
+                  },
+                  "borderLeftWidth": {
+                    "value": "10px"
+                  },
+                  "backgroundColor": {
+                    "value": "#FD8023"
+                  },
+                  "paddingRight": {
+                    "value": "0px"
+                  },
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "letterSpacing": {
+                    "value": "0px"
+                  },
+                  "rightIcon-marginLeft": {
+                    "value": "25px"
+                  },
+                  "rightIcon-marginRight": {
+                    "value": "25px"
+                  },
+                  "rightIcon-paddingLeft": {
+                    "value": "0px"
+                  },
+                  "rightIcon-paddingRight": {
+                    "value": "0px"
+                  },
+                  "color:hover": {
+                    "value": "#fff"
+                  },
+                  "marginTop": {
+                    "value": "19px"
+                  },
+                  "marginBottom": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "0px"
+                  },
+                  "marginLeft": {
+                    "value": "48px"
+                  },
+                  "paddingTop": {
+                    "value": "0px"
+                  },
+                  "backgroundColor:hover": {
+                    "value": "#00ACB8"
+                  },
+                  "boxShadow:hover": {
+                    "value": "0px -0px 7px 0px rgba(46, 17, 17, 0.52)"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "57px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginTop": {
+                    "value": "16px"
+                  },
+                  "marginBottom": {
+                    "value": "24px"
+                  },
+                  "paddingTop": {
+                    "value": "0px"
+                  },
+                  "paddingBottom": {
+                    "value": "0px"
+                  },
+                  "marginLeft": {
+                    "value": "18px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 3
+        },
+        "XHWaYjlrwPJdAVUDc1CuO": {
+          "key": "XHWaYjlrwPJdAVUDc1CuO",
+          "name": "image",
+          "type": "Image",
+          "properties": {
+            "src": {
+              "value": "api/files/static/file/FIN/fincity/Group-24826.svg"
+            },
+            "alt": {
+              "value": "Placeholder image"
+            }
+          },
+          "styleProperties": {
+            "65Rg4vjwkRUJwEpKGJC5hF": {
+              "resolutions": {
+                "ALL": {
+                  "height": {
+                    "value": "300px"
+                  },
+                  "paddingRight": {
+                    "value": "0px"
+                  },
+                  "paddingTop": {
+                    "value": "0px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingRight": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "150px"
+                  },
+                  "paddingTop": {
+                    "value": "0px"
+                  },
+                  "height": {
+                    "value": "290px"
+                  },
+                  "paddingBottom": {
+                    "value": "0px"
+                  },
+                  "marginTop": {
+                    "value": "27px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingRight": {
+                    "value": "0px"
+                  },
+                  "height": {
+                    "value": "300px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 0
+        },
+        "44BMhw4RkXopSH411ysrXg": {
+          "key": "44BMhw4RkXopSH411ysrXg",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "3zI4flWXzb509ccwGRfYyy": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "width": {
+                    "value": "100%"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "flexDirection": {
+                    "value": "column"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "1SqpMcLQkBXUIspZwN6wsm": true,
+            "3nDX1Wy62Ilf5fGF5kr1fp": true
+          },
+          "displayOrder": 0
+        },
+        "1SqpMcLQkBXUIspZwN6wsm": {
+          "key": "1SqpMcLQkBXUIspZwN6wsm",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "5dk0wfHrqWKGQuhgL0ZO4y": {
+              "resolutions": {
+                "ALL": {
+                  "width": {
+                    "value": "70%"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "width": {
+                    "value": "100%"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "6DGmm3iI7Bq9wPRnnJTWcB": true
+          },
+          "displayOrder": 2
+        },
+        "3nDX1Wy62Ilf5fGF5kr1fp": {
+          "key": "3nDX1Wy62Ilf5fGF5kr1fp",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "2sGDn4bHDP8udtjL7jRW48": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "marginTop": {
+                    "value": "9px"
+                  },
+                  "marginLeft": {
+                    "value": "54px"
+                  },
+                  "width": {
+                    "value": "30%"
+                  },
+                  "paddingTop": {
+                    "value": "13px"
+                  },
+                  "paddingBottom": {
+                    "value": "13px"
+                  },
+                  "paddingLeft": {
+                    "value": "13px"
+                  },
+                  "paddingRight": {
+                    "value": "13px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "39px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "16px"
+                  },
+                  "width": {
+                    "value": "90%"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "43r67w9GACN9N4GUFwu8Qu": true,
+            "2PQ4t4T59sU1EjyaYskrHs": true
+          },
+          "displayOrder": 1
+        },
+        "6DGmm3iI7Bq9wPRnnJTWcB": {
+          "key": "6DGmm3iI7Bq9wPRnnJTWcB",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Parent.description"
+              }
+            }
+          },
+          "styleProperties": {
+            "4KvjNIrUPlsdDDuWzqEvmt": {
+              "resolutions": {
+                "ALL": {
+                  "paddingLeft": {
+                    "value": "14px"
+                  },
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "fontWeight": {
+                    "value": "500"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  },
+                  "paddingTop": {
+                    "value": "17px"
+                  },
+                  "text-lineHeight": {
+                    "value": "31px"
+                  },
+                  "paddingBottom": {
+                    "value": "14px"
+                  },
+                  "paddingRight": {
+                    "value": "14px"
+                  },
+                  "color": {
+                    "value": "#8597A8"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "28px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 0
+        },
+        "43r67w9GACN9N4GUFwu8Qu": {
+          "key": "43r67w9GACN9N4GUFwu8Qu",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Parent.benefit"
+              }
+            }
+          },
+          "styleProperties": {
+            "7xRoiiTCwiKxxFVvPvRs1I": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  },
+                  "text-fontSize": {
+                    "value": "16px"
+                  },
+                  "color": {
+                    "value": "#8597A8"
+                  },
+                  "text-color": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Theme.backgroundColorSix"
+                    }
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "paddingTop": {
+                    "value": "2px"
+                  },
+                  "text-lineHeight": {
+                    "value": "20px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "lineHeight": {
+                    "value": "23px"
+                  },
+                  "marginTop": {
+                    "value": "6px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 2
+        },
+        "2PQ4t4T59sU1EjyaYskrHs": {
+          "key": "2PQ4t4T59sU1EjyaYskrHs",
+          "name": "Icon",
+          "type": "Icon",
+          "properties": {
+            "icon": {
+              "value": "fa-solid fa-circle-check"
+            }
+          },
+          "styleProperties": {
+            "39OmDOfvC294ueL61BSEmk": {
+              "resolutions": {
+                "ALL": {
+                  "color": {
+                    "value": "#545454"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingTop": {
+                    "value": "16px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "1H6agdIlpNnWbdl7YWzDon": {
+          "key": "1H6agdIlpNnWbdl7YWzDon",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "An additional loan taken over and above the primary loan applied is called a top-up loan. This is generally possible if you have an existing relationship with a bank/financial company you are already servicing a loan with and only after a certain amount of time has passed since the primary loan was given to you. If your current loan lender refuses to offer you a top-up, you also have the option to transfer your current loan balance to another lender (that offers you a lower interest rate for the same loan) and seek a top-up with them. Top-ups generally come with less documentation, low interest rates and nominal processing charges. Fincity\u2019s expert advisors highly recommend going for a top-up to an existing loan than going for a fresh business or personal loan because of its obvious benefits such as considerable saving on interest, higher disbursal limit and the fact that the monthly charges will be added to your existing EMI for the primary loan, making repayment less of a headache."
+            }
+          },
+          "styleProperties": {
+            "5EciLD9ySE2tA9HNB25qjl": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "Open sans"
+                  },
+                  "textAlign": {
+                    "value": "left"
+                  },
+                  "lineHeight": {
+                    "value": "25px"
+                  },
+                  "paddingLeft": {
+                    "value": "48px"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "paddingRight": {
+                    "value": "40px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "29px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 2
+        },
+        "77o6K1UnzWoLgjLIeQWMDx": {
+          "key": "77o6K1UnzWoLgjLIeQWMDx",
+          "name": "Grid",
+          "type": "Grid",
+          "properties": {
+            "layout": {
+              "value": "ROWLAYOUT"
+            }
+          },
+          "styleProperties": {
+            "2vB6WLuURnZXT5YlB414QI": {
+              "resolutions": {
+                "ALL": {
+                  "paddingBottom": {
+                    "value": "0px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "21rjXZQFjLPOMsSR9eGsFl": true
+          },
+          "displayOrder": 6
+        },
+        "21rjXZQFjLPOMsSR9eGsFl": {
+          "key": "21rjXZQFjLPOMsSR9eGsFl",
+          "name": "repeator",
+          "type": "ArrayRepeater",
+          "override": false,
+          "children": {
+            "31g1INeHj3dbAb68zgTTOC": true
+          },
+          "displayOrder": 1,
+          "bindingPath": {
+            "type": "VALUE",
+            "value": "Page.stepsofhome"
+          }
+        },
+        "31g1INeHj3dbAb68zgTTOC": {
+          "key": "31g1INeHj3dbAb68zgTTOC",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "3zI4flWXzb509ccwGRfYyy": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "width": {
+                    "value": "100%"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "flexDirection": {
+                    "value": "column"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "6xOXDO3ceYmscYoVQQSR18": true,
+            "4ECs29emFbjF3IoVOqYCu": true
+          },
+          "displayOrder": 0
+        },
+        "6xOXDO3ceYmscYoVQQSR18": {
+          "key": "6xOXDO3ceYmscYoVQQSR18",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "5dk0wfHrqWKGQuhgL0ZO4y": {
+              "resolutions": {
+                "ALL": {
+                  "width": {
+                    "value": "70%"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "width": {
+                    "value": "100%"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "7E4bC8pUHbJVX1zRdoWsPm": true
+          },
+          "displayOrder": 2
+        },
+        "4ECs29emFbjF3IoVOqYCu": {
+          "key": "4ECs29emFbjF3IoVOqYCu",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "2sGDn4bHDP8udtjL7jRW48": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "marginTop": {
+                    "value": "9px"
+                  },
+                  "marginLeft": {
+                    "value": "54px"
+                  },
+                  "width": {
+                    "value": "30%"
+                  },
+                  "paddingTop": {
+                    "value": "13px"
+                  },
+                  "paddingBottom": {
+                    "value": "13px"
+                  },
+                  "paddingLeft": {
+                    "value": "13px"
+                  },
+                  "paddingRight": {
+                    "value": "0px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "39px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "16px"
+                  },
+                  "width": {
+                    "value": "90%"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "pfn1OEdEd55zVhayWZL2c": true,
+            "2FFjZiuS54XRnHwtsOUD2z": true
+          },
+          "displayOrder": 1
+        },
+        "7E4bC8pUHbJVX1zRdoWsPm": {
+          "key": "7E4bC8pUHbJVX1zRdoWsPm",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Parent.description"
+              }
+            }
+          },
+          "styleProperties": {
+            "4KvjNIrUPlsdDDuWzqEvmt": {
+              "resolutions": {
+                "ALL": {
+                  "paddingLeft": {
+                    "value": "14px"
+                  },
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "fontWeight": {
+                    "value": "500"
+                  },
+                  "fontSize": {
+                    "value": "15px"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  },
+                  "paddingTop": {
+                    "value": "17px"
+                  },
+                  "text-lineHeight": {
+                    "value": "31px"
+                  },
+                  "paddingBottom": {
+                    "value": "14px"
+                  },
+                  "paddingRight": {
+                    "value": "14px"
+                  },
+                  "color": {
+                    "value": "#8597A8"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "28px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 0
+        },
+        "pfn1OEdEd55zVhayWZL2c": {
+          "key": "pfn1OEdEd55zVhayWZL2c",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Parent.loanType"
+              }
+            }
+          },
+          "styleProperties": {
+            "7xRoiiTCwiKxxFVvPvRs1I": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  },
+                  "text-fontSize": {
+                    "value": "16px"
+                  },
+                  "color": {
+                    "value": "#8597A8"
+                  },
+                  "text-color": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Theme.backgroundColorSix"
+                    }
+                  },
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "paddingTop": {
+                    "value": "2px"
+                  },
+                  "text-lineHeight": {
+                    "value": "20px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "fontWeight": {
+                    "value": "bold"
+                  },
+                  "lineHeight": {
+                    "value": "23px"
+                  },
+                  "marginTop": {
+                    "value": "6px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 2
+        },
+        "2FFjZiuS54XRnHwtsOUD2z": {
+          "key": "2FFjZiuS54XRnHwtsOUD2z",
+          "name": "Icon",
+          "type": "Icon",
+          "properties": {
+            "icon": {
+              "value": "fa-solid fa-circle-check"
+            }
+          },
+          "styleProperties": {
+            "39OmDOfvC294ueL61BSEmk": {
+              "resolutions": {
+                "ALL": {
+                  "color": {
+                    "value": "#545454"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingTop": {
+                    "value": "16px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "27dKaMctBUAbDEwqHn3OJk": {
+          "key": "27dKaMctBUAbDEwqHn3OJk",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "5LKVu64fwcfVV2bCBc3NPQ": {
+              "resolutions": {
+                "ALL": {
+                  "width": {
+                    "value": "90%"
+                  },
+                  "backgroundColor": {
+                    "value": "#e5f9f7"
+                  },
+                  "paddingLeft": {
+                    "value": "17px"
+                  },
+                  "marginLeft": {
+                    "value": "66px"
+                  },
+                  "marginTop": {
+                    "value": "11px"
+                  },
+                  "marginBottom": {
+                    "value": "11px"
+                  },
+                  "paddingTop": {
+                    "value": "17px"
+                  },
+                  "paddingBottom": {
+                    "value": "17px"
+                  },
+                  "paddingRight": {
+                    "value": "17px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "width": {
+                    "value": "95%"
+                  },
+                  "marginLeft": {
+                    "value": "12px"
+                  },
+                  "paddingTop": {
+                    "value": "17px"
+                  },
+                  "paddingBottom": {
+                    "value": "17px"
+                  },
+                  "paddingLeft": {
+                    "value": "0px"
+                  },
+                  "paddingRight": {
+                    "value": "17px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "2Zyc9tZc9AVtzX7ne5swmG": true
+          },
+          "displayOrder": 7
+        },
+        "2Zyc9tZc9AVtzX7ne5swmG": {
+          "key": "2Zyc9tZc9AVtzX7ne5swmG",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Whether you\u2019re contemplating opting for a Top-Up on an existing loan with a current lender or going for a Loan Balance Transfer with a new lender, you can always seek unbiased financial advice from Fincity\u2019s experts - your Home Loan guards committed to make sure you get access to the best loans with the best interest rates and benefits."
+            }
+          },
+          "styleProperties": {
+            "5EciLD9ySE2tA9HNB25qjl": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "Open sans"
+                  },
+                  "textAlign": {
+                    "value": "left"
+                  },
+                  "lineHeight": {
+                    "value": "25px"
+                  },
+                  "paddingLeft": {
+                    "value": "12px"
+                  },
+                  "fontSize": {
+                    "value": "16px"
+                  },
+                  "paddingRight": {
+                    "value": "40px"
+                  },
+                  "color": {
+                    "value": "#1bacb9"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "17px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 0
+        },
+        "7uAjIHr0sz320fT9pIfQOz": {
+          "key": "7uAjIHr0sz320fT9pIfQOz",
+          "name": "Section 3",
+          "type": "Grid",
+          "styleProperties": {
+            "1mfo1F7DtH5ZvT5A7AoT3u": {
+              "resolutions": {
+                "ALL": {
+                  "backgroundColor": {
+                    "value": "#102B43"
+                  },
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "flexDirection": {
+                    "value": "column"
+                  },
+                  "justifyContent": {
+                    "value": "center"
+                  },
+                  "alignContent": {
+                    "value": "center"
+                  },
+                  "alignItems": {
+                    "value": "center"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "position": {
+                    "value": "static"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "5Vouhigj7XPUX5Aee43tqz": true,
+            "2SLDM182XkMKFYAAa9kKOB": true,
+            "1N0V7JLxaEOJ38Pw5tXKJ1": true
+          },
+          "displayOrder": 4
+        },
+        "5Vouhigj7XPUX5Aee43tqz": {
+          "key": "5Vouhigj7XPUX5Aee43tqz",
+          "name": "image",
+          "type": "Image",
+          "properties": {
+            "src": {
+              "value": "api/files/static/file/FIN/fincity/home-loan-meter-11.svg"
+            },
+            "alt": {
+              "value": "Placeholder image"
+            }
+          },
+          "styleProperties": {
+            "1kmZ4LyxNtvVb0DC6iqa5": {
+              "resolutions": {
+                "ALL": {
+                  "width": {
+                    "value": "200px"
+                  },
+                  "paddingBottom": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "57px"
+                  },
+                  "paddingRight": {
+                    "value": "11px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "0px"
+                  },
+                  "paddingTop": {
+                    "value": "9px"
+                  },
+                  "paddingBottom": {
+                    "value": "0px"
+                  },
+                  "paddingRight": {
+                    "value": "0px"
+                  },
+                  "width": {
+                    "value": "200px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingTop": {
+                    "value": "24px"
+                  },
+                  "paddingBottom": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "0px"
+                  },
+                  "paddingRight": {
+                    "value": "0px"
+                  },
+                  "width": {
+                    "value": "250px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "2SLDM182XkMKFYAAa9kKOB": {
+          "key": "2SLDM182XkMKFYAAa9kKOB",
+          "name": "Grid",
+          "type": "Grid",
+          "styleProperties": {
+            "5WL0XInwHO8a9pXClp5ZYA": {
+              "resolutions": {
+                "ALL": {
+                  "display": {
+                    "value": "flex"
+                  },
+                  "flexDirection": {
+                    "value": "row"
+                  },
+                  "paddingTop": {
+                    "value": "57px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingTop": {
+                    "value": "0px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "textAlign": {
+                    "value": "center"
+                  },
+                  "flexDirection": {
+                    "value": "column"
+                  },
+                  "fontSize": {
+                    "value": "0px"
+                  },
+                  "paddingLeft": {
+                    "value": "15px"
+                  },
+                  "paddingRight": {
+                    "value": "15px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "children": {
+            "4xQUqmHUnI3huN7ZSxeUd6": true,
+            "2NkUZPRvqehkeQ8fT8X6v7": true
+          },
+          "displayOrder": 2
+        },
+        "1N0V7JLxaEOJ38Pw5tXKJ1": {
+          "key": "1N0V7JLxaEOJ38Pw5tXKJ1",
+          "name": "button",
+          "type": "Button",
+          "properties": {
+            "label": {
+              "value": "Sign up"
+            },
+            "leftIcon": {
+              "value": "fa-solid fa-house"
+            }
+          },
+          "styleProperties": {
+            "4qzZYSTAYlfqQ9yUXCupC7": {
+              "resolutions": {
+                "ALL": {
+                  "rightIcon-fontSize": {
+                    "value": "20px"
+                  },
+                  "width": {
+                    "value": "160px"
+                  },
+                  "height": {
+                    "value": "50px"
+                  },
+                  "borderTopLeftRadius": {
+                    "value": "10px"
+                  },
+                  "borderTopRightRadius": {
+                    "value": "10px"
+                  },
+                  "borderBottomLeftRadius": {
+                    "value": "10px"
+                  },
+                  "borderBottomRightRadius": {
+                    "value": "10px"
+                  },
+                  "paddingTop": {
+                    "value": "4px"
+                  },
+                  "marginTop": {
+                    "value": "55px"
+                  },
+                  "backgroundColor": {
+                    "value": "#00ACB8"
+                  },
+                  "backgroundColor:hover": {
+                    "value": "#FD8023"
+                  },
+                  "color:hover": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Theme.backgroundColorSeven"
+                    }
+                  },
+                  "paddingLeft": {
+                    "value": "0px"
+                  },
+                  "marginLeft": {
+                    "value": "67px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "marginLeft": {
+                    "value": "0px"
+                  },
+                  "marginTop": {
+                    "value": "0px"
+                  },
+                  "paddingTop": {
+                    "value": "0px"
+                  },
+                  "paddingBottom": {
+                    "value": "0px"
+                  },
+                  "marginBottom": {
+                    "value": "18px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "width": {
+                    "value": "150px"
+                  },
+                  "marginBottom": {
+                    "value": "17px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 3
+        },
+        "4xQUqmHUnI3huN7ZSxeUd6": {
+          "key": "4xQUqmHUnI3huN7ZSxeUd6",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Check Now"
+            }
+          },
+          "styleProperties": {
+            "63HIrbkEkHBx0uRwe8dgeW": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "fontStyle": {
+                    "value": "italic"
+                  },
+                  "fontSize": {
+                    "value": "20px"
+                  },
+                  "fontWeight": {
+                    "value": "500"
+                  },
+                  "lineHeight": {
+                    "value": "32px"
+                  },
+                  "color": {
+                    "value": "#FD8023"
+                  },
+                  "paddingLeft": {
+                    "value": "9px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingTop": {
+                    "value": "4px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "position": {
+                    "value": "static"
+                  },
+                  "text-position": {
+                    "value": "static"
+                  },
+                  "text-left": {
+                    "value": "100px"
+                  },
+                  "text-top": {
+                    "value": "39px"
+                  },
+                  "fontSize": {
+                    "value": "20px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        },
+        "2NkUZPRvqehkeQ8fT8X6v7": {
+          "key": "2NkUZPRvqehkeQ8fT8X6v7",
+          "name": "Text",
+          "type": "Text",
+          "properties": {
+            "text": {
+              "value": "Get Your Free Credit Report with Monthly Updates"
+            }
+          },
+          "styleProperties": {
+            "63HIrbkEkHBx0uRwe8dgeW": {
+              "resolutions": {
+                "ALL": {
+                  "fontFamily": {
+                    "value": "open sans"
+                  },
+                  "color": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Theme.backgroundColorSeven"
+                    }
+                  },
+                  "fontStyle": {
+                    "value": "italic"
+                  },
+                  "fontSize": {
+                    "value": "20px"
+                  },
+                  "fontWeight": {
+                    "value": "500"
+                  },
+                  "lineHeight": {
+                    "value": "32px"
+                  },
+                  "paddingLeft": {
+                    "value": "100px"
+                  }
+                },
+                "TABLET_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingTop": {
+                    "value": "5px"
+                  },
+                  "paddingBottom": {
+                    "value": "5px"
+                  }
+                },
+                "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+                  "paddingLeft": {
+                    "value": "0px"
+                  },
+                  "paddingRight": {
+                    "value": "0px"
+                  }
+                }
+              }
+            }
+          },
+          "override": false,
+          "displayOrder": 1
+        }
+      },
+      "eventFunctions": {
+        "4zfodUAiWaRwzJyrf4cst7": {
+          "name": "data",
+          "steps": {
+            "setStore2": {
+              "statementName": "setStore2",
+              "name": "SetStore",
+              "namespace": "UIEngine",
+              "position": {
+                "left": "922.5416660308838",
+                "top": 103.01041412353516
+              },
+              "parameterMap": {
+                "value": {
+                  "1dsOPCBncSTEKTarpyA74t": {
+                    "key": "1dsOPCBncSTEKTarpyA74t",
+                    "type": "VALUE",
+                    "expression": "",
+                    "order": 1,
+                    "value": [
+                      {
+                        "document": "Passport-size photographs"
+                      },
+                      {
+                        "document": "Completed application form for transfer issued by the financial institution."
+                      },
+                      {
+                        "document": "Latest three months\u2019 Salary Slips indicating break-up of Gross salary that is the Basic Pay, House rent and Net Salary after deductions, if any."
+                      },
+                      {
+                        "document": "Six months\u2019 bank statement reflecting salary credits updated within 15 days before you apply for the loan."
+                      },
+                      {
+                        "document": "Identity Proof (Any One): Pan Card, Passport, Driving License or Voter ID card or employee identity card (as identity proof and signature proof in case of government employees)."
+                      },
+                      {
+                        "document": "Address Proof"
+                      },
+                      {
+                        "document": "Proof of Age (Any 1): 10th or 12th Marks Cards, PAN Card or Voters ID Card."
+                      },
+                      {
+                        "document": "For self-employed professionals or business persons: Documents proving the existence of their business (for businesspersons) Academic qualifications (for professionals) Financial statements."
+                      },
+                      {
+                        "document": "Bank statements from the account from where the home loan EMIs were deducted in the last 12 months."
+                      },
+                      {
+                        "document": "The Loan statement copy and complete set of documents relating to the property that is currently in possession of the present lender."
+                      }
+                    ]
+                  }
+                },
+                "path": {
+                  "2eqG5cNSqgEW4SlBrJ2kXS": {
+                    "key": "2eqG5cNSqgEW4SlBrJ2kXS",
+                    "type": "VALUE",
+                    "expression": "",
+                    "order": 1,
+                    "value": "Page.document"
+                  }
+                }
+              }
+            },
+            "setStore1": {
+              "statementName": "setStore1",
+              "name": "SetStore",
+              "namespace": "UIEngine",
+              "position": {
+                "left": "520.33332824707030",
+                "top": 85.13540649414062
+              },
+              "parameterMap": {
+                "value": {
+                  "3IQOzYskaNswjGNtTvqNMc": {
+                    "key": "3IQOzYskaNswjGNtTvqNMc",
+                    "type": "VALUE",
+                    "expression": "",
+                    "order": 1,
+                    "value": [
+                      {
+                        "loanType": "Extension to an Existing Loan",
+                        "description": "If you have a primary home loan with a lender, you can apply for a top-up over that to finance other needs such as furnishing and fixtures. Besides this, you can also use this additional fund for your medical expenses, family vacation or even to pay off your credit card debt(s)"
+                      },
+                      {
+                        "loanType": "Consolidate Debt",
+                        "description": "Remember that multiple loans have a negative effect on your credit score. Therefore taking a loan under the same primary loan and consolidating debts is an advantage. It helps lower your expense towards interest and also makes payments easier."
+                      },
+                      {
+                        "loanType": "Other Financial Needs",
+                        "description": "There are multiple reasons you may need urgent funds for. With minimal processing fee and quick disbursal, this is an ideal way to meet your financial needs sooner, be it for wedding expenses, education fees and unforeseen emergencies."
+                      }
+                    ]
+                  }
+                },
+                "path": {
+                  "69OeCXOWcKRUTZgNsHp5ir": {
+                    "key": "69OeCXOWcKRUTZgNsHp5ir",
+                    "type": "VALUE",
+                    "expression": "",
+                    "order": 1,
+                    "value": "Page.stepsofhome"
+                  }
+                }
+              }
+            },
+            "setStore": {
+              "statementName": "setStore",
+              "name": "SetStore",
+              "namespace": "UIEngine",
+              "position": {
+                "left": 183.3333282470703,
+                "top": 120.13540649414062
+              },
+              "parameterMap": {
+                "value": {
+                  "7aZkYFhwFCcBzHAZ7mXWFt": {
+                    "key": "7aZkYFhwFCcBzHAZ7mXWFt",
+                    "type": "VALUE",
+                    "expression": "",
+                    "order": 1,
+                    "value": [
+                      {
+                        "benefit": "Minimum Documentation",
+                        "description": "Since the lender already has a pre-existing relationship with the borrower and is aware of their credit and repayment history, the documentation process while availing a Top-Up loan is generally less stringent. However, the documents necessary might vary a little based on the lender you opt for."
+                      },
+                      {
+                        "benefit": "No Collateral Needed",
+                        "description": "For a Top-Up loan, you do not need to provide collateral as security to the lender and, in most cases, you don\u2019t even need a guarantor. This makes the process much faster than taking a new loan."
+                      },
+                      {
+                        "benefit": "Competitive Interest Rates",
+                        "description": "Lenders offer Top-Ups at lower interest rates than other kinds of unsecured loans. It is smarter to go for a Top-Up on an existing loan if you have one. Plus, the lender may also offer you the option of choosing between a fixed and floating interest rate."
+                      },
+                      {
+                        "benefit": "Long Tenure",
+                        "description": "The loan tenure for a Top-Up can be longer than that of a personal loan but cannot exceed the outstanding tenure of the primary loan. However, it depends on various factors such as your repayment capability, applied loan amount, and current outstanding amount."
+                      },
+                      {
+                        "benefit": "Quick Processing",
+                        "description": "The existing relationship with the lender helps speed up the process of sanction and disbursal of the funds, making it easier to avail than a personal loan."
+                      },
+                      {
+                        "benefit": "Balance Transfer",
+                        "description": "Certain banks offer additional benefits like a Top-Up loan on Loan Balance transfer. This makes it easy for you to avail of an additional loan even if your current lender doesn\u2019t approve your application for one."
+                      },
+                      {
+                        "benefit": "Easier Payment with Consolidated EMI",
+                        "description": "Consolidating your loans can help remove the additional burden of paying off loans individually and even reduces the chances of forgetting and missing EMI payments. Most banks and financial companies allow borrowers to repay the original and Top-Up loans in a consolidated Equated Monthly Instalment (EMI). It also brings down your overall interest cost."
+                      }
+                    ]
+                  }
+                },
+                "path": {
+                  "1sva9iDiWQ0Yfd4Up03VtR": {
+                    "key": "1sva9iDiWQ0Yfd4Up03VtR",
+                    "type": "VALUE",
+                    "expression": "",
+                    "order": 1,
+                    "value": "Page.benefit"
+                  }
+                }
+              }
+            }
+          },
+          "namespace": ""
+        }
+      },
+      "state_paths": [
+        "Page.stepsofhome",
+        "Page.benefit",
+        "Page.document"
+      ],
+      "api_endpoints": []
+    }
+  }
+]

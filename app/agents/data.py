@@ -14,7 +14,7 @@ class DataAgent(BaseAgent):
     
     def __init__(self):
         # Use Haiku for simpler data binding generation
-        super().__init__("Data", model=settings.CLAUDE_HAIKU)
+        super().__init__("Data", model_tier="fast")
     
     def get_system_prompt(self) -> str:
         return """You are a Data Agent for the Nocode UI system.

@@ -1,0 +1,17 @@
+{
+  "total_patterns": 58,
+  "pages_processed": 212,
+  "by_type": {
+    "calculator": 1,
+    "generic": 11,
+    "navigation": 9,
+    "data_list": 8,
+    "login_form": 6,
+    "modal_confirm": 5,
+    "data_table": 6,
+    "crud_form": 12
+  },
+  "patterns_with_api": 39,
+  "patterns_with_conditions": 42,
+  "avg_complexity": 8.824137931034482
+}

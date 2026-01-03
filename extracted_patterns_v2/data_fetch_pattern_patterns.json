@@ -1,0 +1,465 @@
+[
+  {
+    "id": "a98d6b42b2fc",
+    "type": "data_fetch_pattern",
+    "name": "Data Fetch: send_footer_form",
+    "description": "Fetches data and stores result with error handling",
+    "semantic_tags": [
+      "data-fetch",
+      "api",
+      "async",
+      "error-handling"
+    ],
+    "semantic_category": "data-fetch",
+    "definition": {
+      "name": "send_footer_form",
+      "namespace": "",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "linkPath": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "/thankyou"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.sendData.output.data": false,
+            "Steps.executeJSFunction.output.result": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "msg": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Steps.sendData.error.data"
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.userformfooter.requireOtp"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.callTrack"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.executeJSFunction.output.result": true
+          }
+        },
+        "executeJSFunction": {
+          "statementName": "executeJSFunction",
+          "name": "ExecuteJSFunction",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "name": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "window.dataLayer.push"
+              }
+            },
+            "params": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Page.callTrack"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.setStore2.output": false,
+            "Steps.setStore5_Copy_2.output": true
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.userformfooter.projectId"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": 22,
+                "expression": "Store.urlDetails.queryParameters.utm_campaign??''"
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.sendDataRes",
+                "expression": "Page.sendDataRes"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Steps.sendData.output.data.opportunity"
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.callTrack"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": {
+                  "event": "lead_conversion",
+                  "form_name": "shriram hebbal enquiry form",
+                  "form_id": "FooterForm",
+                  "gtm.uniqueEventId": 10,
+                  "userId": "",
+                  "email": "",
+                  "phone": ""
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.sendData.output.data": false,
+            "Steps.setStore4.output": true
+          }
+        },
+        "setStore5": {
+          "statementName": "setStore5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.callTrack.userId"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Page.sendDataRes.code"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.setStore2.output": true
+          }
+        },
+        "setStore5_Copy_1": {
+          "statementName": "setStore5_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.callTrack.email"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Page.sendDataRes.email"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.setStore5.output": true
+          }
+        },
+        "setStore5_Copy_2": {
+          "statementName": "setStore5_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.callTrack.phone"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Page.sendDataRes.phoneNumber"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.setStore5_Copy_1.output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "parameterMap": {
+            "condition": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Steps.endsWith.output.result = true"
+              }
+            }
+          }
+        },
+        "endsWith": {
+          "statementName": "endsWith",
+          "name": "StartsWith",
+          "namespace": "System.String",
+          "parameterMap": {
+            "string": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Steps.forEachLoop.iteration.each[0]"
+              }
+            },
+            "searchString": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "utm_"
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "parameterMap": {
+            "source": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Steps.objectEntries.output.value"
+              }
+            }
+          }
+        },
+        "objectEntries": {
+          "statementName": "objectEntries",
+          "name": "ObjectEntries",
+          "namespace": "System.Object",
+          "parameterMap": {
+            "source": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Store.urlDetails.queryParameters"
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "url": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "https://api-dcrm.fincity.com/open/opportunity"
+              }
+            },
+            "method": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Page.userformfooter"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.setStore.output": true,
+            "Steps.setStore_Copy_1.output": true,
+            "Steps.setStore1.output": true,
+            "Steps.forEachLoop.output": true
+          }
+        },
+        "setStore5_Copy_3": {
+          "statementName": "setStore5_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "'Page.userformfooter.metadata.{{Steps.forEachLoop.iteration.each[0]}}'"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Steps.forEachLoop.iteration.each[1]"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps.if.true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "p1": {
+                "key": "p1",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.userformfooter.campaignCode"
+              }
+            },
+            "value": {
+              "p1": {
+                "key": "p1",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Store.urlDetails.queryParameters.utm_campaign_old??''"
+              }
+            }
+          }
+        }
+      }
+    },
+    "source_page": "home",
+    "source_app": "shriramhebbalone",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 18,
+    "style_property_count": 0,
+    "quality_score": 0.85,
+    "semantic_hash": ""
+  }
+]

@@ -1,0 +1,222 @@
+[
+  {
+    "pattern_id": "642d4f425642",
+    "pattern_name": "formData",
+    "pattern_type": "data_table",
+    "component_count": 30,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 7315,
+    "errors": []
+  },
+  {
+    "pattern_id": "fc874d5c7f94",
+    "pattern_name": "tableTest",
+    "pattern_type": "data_table",
+    "component_count": 23,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5685,
+    "errors": []
+  },
+  {
+    "pattern_id": "c2b97ad296d4",
+    "pattern_name": "storagetable",
+    "pattern_type": "data_table",
+    "component_count": 25,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 4281,
+    "errors": []
+  },
+  {
+    "pattern_id": "bee874123f76",
+    "pattern_name": "onboarding",
+    "pattern_type": "navigation",
+    "component_count": 44,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 7862,
+    "errors": []
+  },
+  {
+    "pattern_id": "ed5528bcef1d",
+    "pattern_name": "TestPage2",
+    "pattern_type": "navigation",
+    "component_count": 9,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5350,
+    "errors": []
+  },
+  {
+    "pattern_id": "361f2d35a44b",
+    "pattern_name": "notFound",
+    "pattern_type": "navigation",
+    "component_count": 7,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 15095,
+    "errors": []
+  },
+  {
+    "pattern_id": "c29951be0628",
+    "pattern_name": "editSection",
+    "pattern_type": "modal_confirm",
+    "component_count": 15,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6417,
+    "errors": []
+  },
+  {
+    "pattern_id": "97b11f931ca5",
+    "pattern_name": "helpAndSupport",
+    "pattern_type": "modal_confirm",
+    "component_count": 19,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 15209,
+    "errors": []
+  },
+  {
+    "pattern_id": "447113505f1b",
+    "pattern_name": "editPage",
+    "pattern_type": "modal_confirm",
+    "component_count": 17,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 9542,
+    "errors": []
+  },
+  {
+    "pattern_id": "04714429288e",
+    "pattern_name": "loginPageTwo",
+    "pattern_type": "login_form",
+    "component_count": 20,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5911,
+    "errors": []
+  },
+  {
+    "pattern_id": "04714429288e",
+    "pattern_name": "loginPage",
+    "pattern_type": "login_form",
+    "component_count": 20,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5977,
+    "errors": []
+  },
+  {
+    "pattern_id": "d7a6604d9821",
+    "pattern_name": "login",
+    "pattern_type": "login_form",
+    "component_count": 29,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 7463,
+    "errors": []
+  },
+  {
+    "pattern_id": "3040ae23c8d1",
+    "pattern_name": "editTheme",
+    "pattern_type": "crud_form",
+    "component_count": 7,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6102,
+    "errors": []
+  },
+  {
+    "pattern_id": "54efcffe1c33",
+    "pattern_name": "assignOrRemovePackageFromClien",
+    "pattern_type": "crud_form",
+    "component_count": 11,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 9356,
+    "errors": []
+  },
+  {
+    "pattern_id": "b8227c6738df",
+    "pattern_name": "userInfo",
+    "pattern_type": "crud_form",
+    "component_count": 6,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 8437,
+    "errors": []
+  },
+  {
+    "pattern_id": "9bbabf51a58b",
+    "pattern_name": "topuploan",
+    "pattern_type": "calculator",
+    "component_count": 47,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6551,
+    "errors": []
+  },
+  {
+    "pattern_id": "8778d3f0ec48",
+    "pattern_name": "leadConfiguration",
+    "pattern_type": "data_list",
+    "component_count": 19,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6002,
+    "errors": []
+  },
+  {
+    "pattern_id": "dac0b354b1da",
+    "pattern_name": "editProfile",
+    "pattern_type": "data_list",
+    "component_count": 32,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 10223,
+    "errors": []
+  },
+  {
+    "pattern_id": "60c19a263ae4",
+    "pattern_name": "fonts",
+    "pattern_type": "data_list",
+    "component_count": 15,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5490,
+    "errors": []
+  },
+  {
+    "pattern_id": "7eadfd2ce3a5",
+    "pattern_name": "blogEdit",
+    "pattern_type": "generic",
+    "component_count": 23,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5519,
+    "errors": []
+  },
+  {
+    "pattern_id": "36f0b62fd748",
+    "pattern_name": "newdropdown",
+    "pattern_type": "generic",
+    "component_count": 4,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 9459,
+    "errors": []
+  },
+  {
+    "pattern_id": "d7527ee766de",
+    "pattern_name": "resources",
+    "pattern_type": "generic",
+    "component_count": 12,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 4361,
+    "errors": []
+  }
+]

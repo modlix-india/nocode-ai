@@ -18,7 +18,7 @@ class LayoutAnalyzerAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__("LayoutAnalyzer", model=settings.CLAUDE_HAIKU)
+        super().__init__("LayoutAnalyzer", model_tier="fast")
     
     def get_system_prompt(self) -> str:
         return """You are a Layout Analyzer for the Nocode UI system.
@@ -87,10 +87,14 @@ class LayoutGeneratorAgent(BaseAgent):
     
     Uses Sonnet for detailed layout generation.
     Takes the analysis and generates actual layout Grid components.
+    
+    Supports batching for large layouts to avoid token limits.
     """
     
+    BATCH_SIZE = 8  # Max sections per generation call
+    
     def __init__(self):
-        super().__init__("LayoutGenerator", model=settings.CLAUDE_SONNET)
+        super().__init__("LayoutGenerator", model_tier="balanced")
     
     def get_system_prompt(self) -> str:
         return """You are a Layout Generator for the Nocode UI system.
@@ -245,7 +249,7 @@ class LayoutAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__("Layout", model=settings.CLAUDE_SONNET)
+        super().__init__("Layout", model_tier="balanced")
         self.analyzer = LayoutAnalyzerAgent()
         self.generator = LayoutGeneratorAgent()
     
@@ -279,27 +283,38 @@ class LayoutAgent(BaseAgent):
             
             logger.info(f"Layout analysis: {layout_plan.get('layout_plan', {}).get('sections', [])}")
             
-            # Phase 2: Generate with Sonnet
+            # Phase 2: Generate with Sonnet (in batches if needed)
             if progress:
                 await progress.agent_thinking(
                     "Layout", 
                     "Generating layout structure (Phase 2)..."
                 )
             
-            gen_input = AgentInput(
-                user_request=input.user_request,
-                context=input.context,
-                previous_outputs={"layout_plan": layout_plan}
-            )
+            layout_plan_data = layout_plan.get("layout_plan", {})
+            sections = layout_plan_data.get("sections", [])
             
-            gen_result = await self.generator.execute(gen_input, progress)
-            
-            return AgentOutput(
-                agent_name="Layout",
-                success=gen_result.success,
-                result=gen_result.result,
-                reasoning=f"Analyzed layout, generated {len(gen_result.result.get('componentDefinition', {}))} sections"
-            )
+            # Check if we need batching
+            if len(sections) <= self.generator.BATCH_SIZE:
+                # Single batch - generate all at once
+                gen_input = AgentInput(
+                    user_request=input.user_request,
+                    context=input.context,
+                    previous_outputs={"layout_plan": layout_plan}
+                )
+                
+                gen_result = await self.generator.execute(gen_input, progress)
+                
+                return AgentOutput(
+                    agent_name="Layout",
+                    success=gen_result.success,
+                    result=gen_result.result,
+                    reasoning=f"Analyzed layout, generated {len(gen_result.result.get('componentDefinition', {}))} sections"
+                )
+            else:
+                # Multiple batches
+                return await self._generate_in_batches(
+                    sections, layout_plan, input, progress
+                )
             
         except Exception as e:
             logger.error(f"Layout agent error: {e}")
@@ -308,4 +323,73 @@ class LayoutAgent(BaseAgent):
                 success=False,
                 result={},
                 errors=[str(e)]
+            )
+    
+    async def _generate_in_batches(
+        self,
+        sections: List[Dict],
+        full_layout_plan: Dict,
+        input: AgentInput,
+        progress: Optional[ProgressCallback]
+    ) -> AgentOutput:
+        """Generate layout in batches to avoid token limits"""
+        
+        batches = [
+            sections[i:i+self.generator.BATCH_SIZE] 
+            for i in range(0, len(sections), self.generator.BATCH_SIZE)
+        ]
+        
+        logger.info(f"Generating {len(sections)} layout sections in {len(batches)} batches")
+        
+        all_components = {}
+        root_component = None
+        
+        for i, batch in enumerate(batches):
+            if progress:
+                await progress.agent_thinking(
+                    "Layout",
+                    f"Generating batch {i+1}/{len(batches)} ({len(batch)} sections)..."
+                )
+            
+            # Create layout plan for just this batch
+            batch_layout_plan = {
+                "reasoning": full_layout_plan.get("reasoning", ""),
+                "layout_plan": {
+                    "rootKey": full_layout_plan.get("layout_plan", {}).get("rootKey", "pageRoot"),
+                    "sections": batch,
+                    "responsive_notes": full_layout_plan.get("layout_plan", {}).get("responsive_notes", "")
+                },
+                "_batch_info": f"Batch {i+1}/{len(batches)}"
+            }
+            
+            gen_input = AgentInput(
+                user_request=input.user_request,
+                context=input.context,
+                previous_outputs={"layout_plan": batch_layout_plan}
+            )
+            
+            gen_result = await self.generator.execute(gen_input, progress)
+            
+            if gen_result.success and gen_result.result:
+                # Merge batch results
+                batch_components = gen_result.result.get("componentDefinition", {})
+                all_components.update(batch_components)
+                
+                # Keep root component from first batch
+                if i == 0:
+                    root_component = gen_result.result.get("rootComponent")
+            else:
+                logger.warning(f"Layout batch {i+1} generation failed: {gen_result.errors}")
+        
+        # Build final result
+        result = {
+            "rootComponent": root_component or "pageRoot",
+            "componentDefinition": all_components
+        }
+        
+        return AgentOutput(
+            agent_name="Layout",
+            success=True,
+            result=result,
+            reasoning=f"Generated {len(all_components)} layout sections in {len(batches)} batches"
             )

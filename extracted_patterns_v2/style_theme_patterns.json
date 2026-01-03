@@ -1,0 +1,746 @@
+[
+  {
+    "id": "23dcfb312ad3",
+    "type": "style_theme",
+    "name": "Light Theme Pattern",
+    "description": "Color scheme used in 13 components",
+    "semantic_tags": [
+      "style",
+      "theme",
+      "light",
+      "colors"
+    ],
+    "semantic_category": "style",
+    "definition": {
+      "colors": {
+        "color": "#fff"
+      },
+      "exampleUsages": [
+        {
+          "component": "3S2tslAv7u5BYtES7JlGzg",
+          "type": "Text",
+          "style": {
+            "fontFamily": {
+              "value": "Montserrat"
+            },
+            "fontSize": {
+              "value": "12px"
+            },
+            "textAlign": {
+              "value": "left"
+            },
+            "color": {
+              "value": "#fff"
+            }
+          }
+        },
+        {
+          "component": "4nzsqe2kZ43laffUncGt50",
+          "type": "Text",
+          "style": {
+            "fontFamily": {
+              "value": "Montserrat"
+            },
+            "fontSize": {
+              "value": "12px"
+            },
+            "textAlign": {
+              "value": "left"
+            },
+            "color": {
+              "value": "#fff"
+            }
+          }
+        },
+        {
+          "component": "1N79gppDkf5eGfsiPzb1Kd",
+          "type": "Text",
+          "style": {
+            "fontFamily": {
+              "value": "Montserrat"
+            },
+            "fontSize": {
+              "value": "12px"
+            },
+            "textAlign": {
+              "value": "left"
+            },
+            "color": {
+              "value": "#fff"
+            }
+          }
+        }
+      ],
+      "usageCount": 13
+    },
+    "source_page": "officespace",
+    "source_app": "shriramhebbalone",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 0,
+    "style_property_count": 0,
+    "quality_score": 0.9,
+    "semantic_hash": ""
+  },
+  {
+    "id": "97dd91f1fede",
+    "type": "style_theme",
+    "name": "Light Theme Pattern",
+    "description": "Color scheme used in 4 components",
+    "semantic_tags": [
+      "style",
+      "theme",
+      "light",
+      "colors"
+    ],
+    "semantic_category": "style",
+    "definition": {
+      "colors": {
+        "backgroundColor": "#F6F9FC"
+      },
+      "exampleUsages": [
+        {
+          "component": "35zd7pLe2gg1ZK4ovsILnc",
+          "type": "Grid",
+          "style": {
+            "backgroundColor": {
+              "value": "#F6F9FC"
+            },
+            "borderTopLeftRadius": {
+              "value": "0.694vw"
+            },
+            "borderTopRightRadius": {
+              "value": "0.694vw"
+            },
+            "borderBottomLeftRadius": {
+              "value": "0.694vw"
+            },
+            "borderBottomRightRadius": {
+              "value": "0.694vw"
+            },
+            "paddingTop": {
+              "value": "1.736vw"
+            },
+            "paddingLeft": {
+              "value": "1.736vw"
+            },
+            "paddingRight": {
+              "value": "4.167vw"
+            },
+            "overflowY": {
+              "value": "scroll"
+            }
+          }
+        },
+        {
+          "component": "5pa4dpkGDG4qsuz3pqT7eZ",
+          "type": "Grid",
+          "style": {
+            "backgroundColor": {
+              "value": "#F6F9FC"
+            },
+            "borderTopLeftRadius": {
+              "value": "0.694vw"
+            },
+            "borderTopRightRadius": {
+              "value": "0.694vw"
+            },
+            "borderBottomLeftRadius": {
+              "value": "0.694vw"
+            },
+            "borderBottomRightRadius": {
+              "value": "0.694vw"
+            },
+            "paddingTop": {
+              "value": "1.736vw"
+            },
+            "paddingLeft": {
+              "value": "1.736vw"
+            },
+            "paddingRight": {
+              "value": "4.167vw"
+            },
+            "overflowY": {
+              "value": "scroll"
+            }
+          }
+        },
+        {
+          "component": "3RfwvzwLUQleHKWnRYHCok",
+          "type": "Grid",
+          "style": {
+            "backgroundColor": {
+              "value": "#F6F9FC"
+            },
+            "borderTopLeftRadius": {
+              "value": "0.694vw"
+            },
+            "borderTopRightRadius": {
+              "value": "0.694vw"
+            },
+            "borderBottomLeftRadius": {
+              "value": "0.694vw"
+            },
+            "borderBottomRightRadius": {
+              "value": "0.694vw"
+            },
+            "paddingTop": {
+              "value": "1.736vw"
+            },
+            "paddingLeft": {
+              "value": "1.736vw"
+            },
+            "paddingRight": {
+              "value": "4.167vw"
+            },
+            "overflowY": {
+              "value": "scroll"
+            }
+          }
+        }
+      ],
+      "usageCount": 4
+    },
+    "source_page": "privacypolicy",
+    "source_app": "shriramhebbalone",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 0,
+    "style_property_count": 0,
+    "quality_score": 0.9,
+    "semantic_hash": ""
+  },
+  {
+    "id": "279d0a8d73c2",
+    "type": "style_theme",
+    "name": "Light Theme Pattern",
+    "description": "Color scheme used in 13 components",
+    "semantic_tags": [
+      "style",
+      "theme",
+      "light",
+      "colors"
+    ],
+    "semantic_category": "style",
+    "definition": {
+      "colors": {
+        "color": "#fff"
+      },
+      "exampleUsages": [
+        {
+          "component": "3S2tslAv7u5BYtES7JlGzg",
+          "type": "Text",
+          "style": {
+            "fontFamily": {
+              "value": "Montserrat"
+            },
+            "fontSize": {
+              "value": "12px"
+            },
+            "textAlign": {
+              "value": "left"
+            },
+            "color": {
+              "value": "#fff"
+            }
+          }
+        },
+        {
+          "component": "1N79gppDkf5eGfsiPzb1Kd",
+          "type": "Text",
+          "style": {
+            "fontFamily": {
+              "value": "Montserrat"
+            },
+            "fontSize": {
+              "value": "12px"
+            },
+            "textAlign": {
+              "value": "left"
+            },
+            "color": {
+              "value": "#fff"
+            }
+          }
+        },
+        {
+          "component": "6au8dCDk5rKpNKD8CNLzlG",
+          "type": "Text",
+          "style": {
+            "fontSize": {
+              "value": "14px"
+            },
+            "fontFamily": {
+              "value": "Montserrat"
+            },
+            "color": {
+              "value": "#fff"
+            }
+          }
+        }
+      ],
+      "usageCount": 13
+    },
+    "source_page": "home",
+    "source_app": "shriramhebbalone",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 0,
+    "style_property_count": 0,
+    "quality_score": 0.9,
+    "semantic_hash": ""
+  },
+  {
+    "id": "f90383296883",
+    "type": "style_theme",
+    "name": "Dark Theme Pattern",
+    "description": "Color scheme used in 14 components",
+    "semantic_tags": [
+      "style",
+      "theme",
+      "dark",
+      "colors"
+    ],
+    "semantic_category": "style",
+    "definition": {
+      "colors": {
+        "backgroundColor": "#1F3C3D"
+      },
+      "exampleUsages": [
+        {
+          "component": "Fku2QZUU2NEnOIsi3iCGW",
+          "type": "Grid",
+          "style": {
+            "position": {
+              "value": "absolute"
+            },
+            "width": {
+              "value": "100%"
+            },
+            "top": {
+              "value": "101%"
+            },
+            "backgroundColor": {
+              "value": "#1F3C3D"
+            },
+            "paddingTop": {
+              "value": "24px"
+            },
+            "paddingBottom": {
+              "value": "24px"
+            },
+            "left": {
+              "value": "0px"
+            },
+            "paddingLeft": {
+              "value": "117px"
+            },
+            "paddingRight": {
+              "value": "117px"
+            },
+            "gap": {
+              "value": "0"
+            },
+            "display": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Page.openDropdown ? 'flex' : 'none'"
+              }
+            },
+            "zIndex": {
+              "value": "1"
+            }
+          }
+        },
+        {
+          "component": "GX1L0IzonyK4Ho5vBRVUO",
+          "type": "Grid",
+          "style": {
+            "position": {
+              "value": "absolute"
+            },
+            "width": {
+              "value": "100%"
+            },
+            "top": {
+              "value": "101%"
+            },
+            "backgroundColor": {
+              "value": "#1F3C3D"
+            },
+            "paddingTop": {
+              "value": "24px"
+            },
+            "paddingBottom": {
+              "value": "70px"
+            },
+            "left": {
+              "value": "0px"
+            },
+            "paddingLeft": {
+              "value": "117px"
+            },
+            "paddingRight": {
+              "value": "117px"
+            },
+            "gap": {
+              "value": "0"
+            },
+            "display": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Page.openDropdown ? 'flex' : 'none'"
+              }
+            },
+            "zIndex": {
+              "value": "1"
+            }
+          }
+        },
+        {
+          "component": "7LRF2ISkXOlKKswvTFFpLB",
+          "type": "Button",
+          "style": {
+            "backgroundColor": {
+              "value": "#1F3C3D"
+            },
+            "height": {
+              "value": "50px"
+            },
+            "paddingLeft": {
+              "value": "10px"
+            },
+            "paddingRight": {
+              "value": "10px"
+            },
+            "marginLeft": {
+              "value": "10px"
+            },
+            "color:hover": {
+              "value": "#fff"
+            },
+            "color:focus": {
+              "value": "#fff"
+            },
+            "width": {
+              "value": "49%"
+            },
+            "fontSize": {
+              "value": "16px"
+            }
+          }
+        }
+      ],
+      "usageCount": 14
+    },
+    "source_page": "commercial",
+    "source_app": "fincityskvxysxhbnyignp",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 0,
+    "style_property_count": 0,
+    "quality_score": 0.9,
+    "semantic_hash": ""
+  },
+  {
+    "id": "58245b55f5be",
+    "type": "style_theme",
+    "name": "Light Theme Pattern",
+    "description": "Color scheme used in 8 components",
+    "semantic_tags": [
+      "style",
+      "theme",
+      "light",
+      "colors"
+    ],
+    "semantic_category": "style",
+    "definition": {
+      "colors": {
+        "backgroundColor": "#FAF8F4"
+      },
+      "exampleUsages": [
+        {
+          "component": "7a8gpLsIO5EWtDpJ1FC1zl",
+          "type": "Grid",
+          "style": {
+            "paddingTop": {
+              "value": "120px"
+            },
+            "paddingLeft": {
+              "value": "110px"
+            },
+            "paddingRight": {
+              "value": "110px"
+            },
+            "backgroundColor": {
+              "value": "#FAF8F4"
+            },
+            "alignItems": {
+              "value": "flex-start"
+            },
+            "paddingBottom": {
+              "value": "25px"
+            },
+            "gap": {
+              "value": "10px"
+            },
+            "boxShadow": {
+              "value": "0px 3px 6px rgba(163, 163, 163, 0.1607843137)"
+            },
+            "zIndex": {
+              "value": "2"
+            }
+          }
+        },
+        {
+          "component": "35Sw7muj5mHSC3aC7bSlHp",
+          "type": "Grid",
+          "style": {
+            "paddingLeft": {
+              "value": "110px"
+            },
+            "paddingRight": {
+              "value": "110px"
+            },
+            "backgroundColor": {
+              "value": "#FAF8F4"
+            },
+            "paddingTop": {
+              "value": "45px"
+            }
+          }
+        },
+        {
+          "component": "7LRrjrrbRJNrReeGH8yn3m",
+          "type": "Grid",
+          "style": {
+            "backgroundColor": {
+              "value": "#FAF8F4"
+            },
+            "position": {
+              "value": "absolute"
+            },
+            "right": {
+              "value": "0px"
+            },
+            "top": {
+              "value": "100%"
+            },
+            "paddingLeft": {
+              "value": "20px"
+            },
+            "paddingRight": {
+              "value": "20px"
+            },
+            "borderTopLeftRadius": {
+              "value": "3px"
+            },
+            "borderBottomLeftRadius": {
+              "value": "3px"
+            },
+            "minWidth": {
+              "value": "270px"
+            },
+            "transform": {
+              "location": {
+                "type": "EXPRESSION",
+                "expression": "Page.openNavbar ? 'translateX(0)' : 'translateX(100%)'"
+              }
+            },
+            "transitionDuration": {
+              "value": "1s"
+            },
+            "transitionProperty": {
+              "value": "transform"
+            }
+          }
+        }
+      ],
+      "usageCount": 8
+    },
+    "source_page": "propertylisting",
+    "source_app": "fincityskvxysxhbnyignp",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 0,
+    "style_property_count": 0,
+    "quality_score": 0.9,
+    "semantic_hash": ""
+  },
+  {
+    "id": "c6c2551c7995",
+    "type": "style_theme",
+    "name": "Light Theme Pattern",
+    "description": "Color scheme used in 2 components",
+    "semantic_tags": [
+      "style",
+      "theme",
+      "light",
+      "colors"
+    ],
+    "semantic_category": "style",
+    "definition": {
+      "colors": {
+        "backgroundColor": "#fff"
+      },
+      "exampleUsages": [
+        {
+          "component": "ALNVGww0neZDMs8BhcT1L",
+          "type": "Grid",
+          "style": {
+            "paddingBottom": {
+              "value": "16px"
+            },
+            "paddingTop": {
+              "value": "16px"
+            },
+            "paddingLeft": {
+              "value": "16px"
+            },
+            "paddingRight": {
+              "value": "16px"
+            },
+            "backgroundColor": {
+              "value": "#fff"
+            },
+            "borderBottomLeftRadius": {
+              "value": "36px"
+            },
+            "borderBottomRightRadius": {
+              "value": "36px"
+            },
+            "boxShadow": {
+              "value": "7px 7px 7px #00000033"
+            },
+            "position": {
+              "value": "fixed"
+            },
+            "width": {
+              "value": "100%"
+            },
+            "top": {
+              "value": "0"
+            },
+            "zIndex": {
+              "value": "3"
+            },
+            "justifyContent": {
+              "value": "space-between"
+            }
+          }
+        },
+        {
+          "component": "60NdJ8bDN86Hj8XftBAQs3",
+          "type": "Grid",
+          "style": {
+            "borderTopLeftRadius": {
+              "value": "24px"
+            },
+            "borderTopRightRadius": {
+              "value": "24px"
+            },
+            "borderBottomLeftRadius": {
+              "value": "24px"
+            },
+            "borderBottomRightRadius": {
+              "value": "24px"
+            },
+            "borderTopColor": {
+              "value": "#e5e5e5"
+            },
+            "borderRightColor": {
+              "value": "#e5e5e5"
+            },
+            "borderBottomColor": {
+              "value": "#e5e5e5"
+            },
+            "borderLeftColor": {
+              "value": "#e5e5e5"
+            },
+            "label-fontFamily": {
+              "value": "Sarabun"
+            },
+            "label-fontSize": {
+              "value": "16px"
+            },
+            "height": {
+              "value": "40px"
+            },
+            "label-color": {
+              "value": "#ccc"
+            },
+            "label-fontWeight": {
+              "value": "400"
+            },
+            "borderTopStyle": {
+              "value": "solid"
+            },
+            "borderRightStyle": {
+              "value": "solid"
+            },
+            "borderBottomStyle": {
+              "value": "solid"
+            },
+            "borderLeftStyle": {
+              "value": "solid"
+            },
+            "borderTopWidth": {
+              "value": "1px"
+            },
+            "borderRightWidth": {
+              "value": "1px"
+            },
+            "borderBottomWidth": {
+              "value": "1px"
+            },
+            "borderLeftWidth": {
+              "value": "1px"
+            },
+            "backgroundColor": {
+              "value": "#fff"
+            },
+            "width": {
+              "value": "100%"
+            },
+            "paddingLeft": {
+              "value": "5px"
+            }
+          }
+        }
+      ],
+      "usageCount": 2
+    },
+    "source_page": "officespace",
+    "source_app": "shriramhebbalone",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 0,
+    "style_property_count": 0,
+    "quality_score": 0.7,
+    "semantic_hash": ""
+  }
+]

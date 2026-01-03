@@ -1,6 +1,5 @@
 """RAG query engine setup"""
 import logging
-from llama_index.llms.anthropic import Anthropic
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core import VectorStoreIndex, Settings as LlamaSettings
 import chromadb
@@ -15,8 +14,44 @@ _index = None
 _initialized = False
 
 
+def _configure_llm():
+    """
+    Configure the LLM based on the LLM_PROVIDER setting.
+    
+    Supports:
+    - Anthropic (Claude): claude-sonnet-4, claude-haiku-4-5
+    - OpenAI (GPT): gpt-4o, gpt-4o-mini
+    """
+    if settings.LLM_PROVIDER.lower() == "openai":
+        # Use OpenAI
+        if not settings.OPENAI_API_KEY:
+            logger.warning("OPENAI_API_KEY not set - LLM calls will fail")
+            return
+        
+        from llama_index.llms.openai import OpenAI
+        LlamaSettings.llm = OpenAI(
+            model=settings.OPENAI_MODEL_BALANCED,
+            api_key=settings.OPENAI_API_KEY,
+            max_tokens=8192
+        )
+        logger.info(f"Configured OpenAI LLM: {settings.OPENAI_MODEL_BALANCED}")
+    else:
+        # Use Anthropic (default)
+        if not settings.ANTHROPIC_API_KEY:
+            logger.warning("ANTHROPIC_API_KEY not set - LLM calls will fail")
+            return
+        
+        from llama_index.llms.anthropic import Anthropic
+        LlamaSettings.llm = Anthropic(
+            model=settings.CLAUDE_SONNET,
+            api_key=settings.ANTHROPIC_API_KEY,
+            max_tokens=8192
+        )
+        logger.info(f"Configured Anthropic LLM: {settings.CLAUDE_SONNET}")
+
+
 async def initialize_rag_engine():
-    """Initialize the RAG engine with Claude and ChromaDB"""
+    """Initialize the RAG engine with the configured LLM and ChromaDB"""
     global _query_engine, _index, _initialized
     
     if _initialized:
@@ -25,16 +60,8 @@ async def initialize_rag_engine():
     
     logger.info("Initializing RAG engine...")
     
-    # Configure LLM (Claude only)
-    if settings.ANTHROPIC_API_KEY:
-        LlamaSettings.llm = Anthropic(
-            model=settings.CLAUDE_MODEL,
-            api_key=settings.ANTHROPIC_API_KEY,
-            max_tokens=8192
-        )
-        logger.info(f"Configured Claude LLM: {settings.CLAUDE_MODEL}")
-    else:
-        logger.warning("ANTHROPIC_API_KEY not set - LLM calls will fail")
+    # Configure LLM based on provider setting
+    _configure_llm()
     
     # Configure embedding model (switchable)
     try:

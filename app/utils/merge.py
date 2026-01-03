@@ -114,27 +114,132 @@ def merge_agent_outputs(
                     changed.append(key)
         logger.info(f"[Merge Summary] Components with style changes: {changed}")
     
+    # Normalize all components - ensure they have required fields
+    _normalize_components(merged.get("componentDefinition", {}))
+    
+    # Apply import mode styles to root component if available
+    import_styles = outputs.get("_import_styles", {})
+    if import_styles:
+        _apply_import_root_styles(merged, import_styles)
+    
     return merged
+
+
+def _apply_import_root_styles(merged: Dict[str, Any], import_styles: Dict[str, Any]):
+    """
+    Apply exact CSS values to the root component in import mode.
+    
+    This ensures the root container has the correct background color and base styles
+    from the original website.
+    """
+    root_key = merged.get("rootComponent")
+    if not root_key:
+        return
+    
+    component_def = merged.get("componentDefinition", {})
+    root_comp = component_def.get(root_key)
+    if not root_comp:
+        return
+    
+    # Get exact styles from import
+    bg_color = import_styles.get("backgroundColor", "")
+    text_color = import_styles.get("textColor", "")
+    font_family = import_styles.get("fontFamily", "")
+    theme = import_styles.get("theme", "light")
+    
+    if not bg_color and not text_color:
+        return
+    
+    logger.info(f"Applying import root styles: theme={theme}, bg={bg_color}, text={text_color}")
+    
+    # Ensure styleProperties exists
+    if "styleProperties" not in root_comp:
+        root_comp["styleProperties"] = {}
+    
+    if "rootStyle" not in root_comp["styleProperties"]:
+        root_comp["styleProperties"]["rootStyle"] = {"resolutions": {"ALL": {}}}
+    
+    if "resolutions" not in root_comp["styleProperties"]["rootStyle"]:
+        root_comp["styleProperties"]["rootStyle"]["resolutions"] = {"ALL": {}}
+    
+    if "ALL" not in root_comp["styleProperties"]["rootStyle"]["resolutions"]:
+        root_comp["styleProperties"]["rootStyle"]["resolutions"]["ALL"] = {}
+    
+    all_styles = root_comp["styleProperties"]["rootStyle"]["resolutions"]["ALL"]
+    
+    # Apply exact values from import (override any existing)
+    if bg_color:
+        all_styles["backgroundColor"] = {"value": bg_color}
+    if text_color:
+        all_styles["color"] = {"value": text_color}
+    if font_family:
+        all_styles["fontFamily"] = {"value": font_family}
+    
+    # Ensure full viewport coverage
+    all_styles["minHeight"] = {"value": "100vh"}
+    all_styles["margin"] = {"value": "0"}
+    
+    logger.info(f"Root component '{root_key}' styled with: bg={bg_color}, text={text_color}")
+
+
+def _normalize_components(component_def: Dict[str, Any]):
+    """
+    Normalize all component definitions to ensure they have required fields.
+    
+    - Ensures each component has a 'name' field (uses 'key' if missing)
+    - Ensures each component has a 'key' field matching its dictionary key
+    """
+    for key, comp in component_def.items():
+        if not isinstance(comp, dict):
+            continue
+        
+        # Ensure 'key' field exists and matches the dictionary key
+        if "key" not in comp or comp["key"] != key:
+            comp["key"] = key
+        
+        # Ensure 'name' field exists (use key as fallback)
+        if "name" not in comp or not comp["name"]:
+            comp["name"] = key
+            logger.debug(f"Added missing 'name' to component: {key}")
 
 
 def _merge_components(
     component_def: Dict[str, Any],
     components: Dict[str, Any]
 ):
-    """Merge component definitions into the flat componentDefinition map"""
+    """Merge component definitions into the flat componentDefinition map.
+
+    Also handles 'parent' field: if a component specifies a parent,
+    we add it to that parent's children automatically AND remove it from
+    any previous parent.
+
+    Children strategy:
+    - When AI specifies children for an existing component, REPLACE them entirely
+    - When a child moves to a new parent, remove it from the old parent
+    """
     if not isinstance(components, dict):
         logger.warning(f"components is not a dict: {type(components)}")
         return
-    
+
+    # Track parent-child relationships to apply after all components are added
+    parent_child_pairs: list = []
+
     for key, comp in components.items():
         if not isinstance(comp, dict):
             logger.warning(f"Component {key} is not a dict: {type(comp)}")
             continue
-        
+
+        # Check for parent relationship before merging
+        parent_key = comp.pop("parent", None) if "parent" in comp else None
+        if parent_key:
+            parent_child_pairs.append((parent_key, key))
+
         if key not in component_def:
+            # New component - add it directly
             component_def[key] = deepcopy(comp)
+            logger.debug(f"Added new component: {key}")
         else:
-            # Merge properties
+            # Existing component - merge properties
             if "name" in comp:
                 component_def[key]["name"] = comp["name"]
             if "type" in comp:
@@ -143,8 +248,51 @@ def _merge_components(
                 component_def[key]["properties"] = component_def[key].get("properties", {})
                 _deep_merge(component_def[key]["properties"], comp["properties"])
             if "children" in comp:
-                component_def[key]["children"] = component_def[key].get("children", {})
-                component_def[key]["children"].update(comp["children"])
+                # REPLACE children when AI specifies them
+                old_children = list(component_def[key].get("children", {}).keys())
+                new_children = list(comp["children"].keys())
+                component_def[key]["children"] = deepcopy(comp["children"])
+                logger.info(f"Replaced children of {key}: old={old_children}, new={new_children}")
+
+    # Apply parent-child relationships
+    for parent_key, child_key in parent_child_pairs:
+        # First, remove child from any existing parent (cleanup old relationship)
+        _remove_child_from_all_parents(component_def, child_key, exclude_parent=parent_key)
+
+        # Then add to new parent
+        if parent_key in component_def:
+            if "children" not in component_def[parent_key]:
+                component_def[parent_key]["children"] = {}
+            component_def[parent_key]["children"][child_key] = True
+            logger.debug(f"Added {child_key} as child of {parent_key}")
+        else:
+            logger.warning(f"Parent component '{parent_key}' not found for child '{child_key}'")
+
+
+def _remove_child_from_all_parents(
+    component_def: Dict[str, Any],
+    child_key: str,
+    exclude_parent: Optional[str] = None
+):
+    """Remove a child key from all parent components' children dict.
+
+    This is used when a component moves to a new parent - we need to
+    remove it from its old parent(s) to avoid orphan references.
+
+    Args:
+        component_def: The flat component definition dict
+        child_key: The key of the child to remove
+        exclude_parent: Don't remove from this parent (the new parent)
+    """
+    for comp_key, comp in component_def.items():
+        if comp_key == exclude_parent:
+            continue
+        if not isinstance(comp, dict):
+            continue
+        children = comp.get("children", {})
+        if child_key in children:
+            del children[child_key]
+            logger.info(f"Removed {child_key} from old parent {comp_key}")
 
 
 def _apply_bindings(
@@ -189,7 +337,14 @@ def _apply_events(
     component_def: Dict[str, Any],
     component_events: Dict[str, Any]
 ):
-    """Apply event handlers to components in flat componentDefinition"""
+    """
+    Apply event handlers to components in flat componentDefinition.
+    
+    Ensures onClick and other event properties follow the format:
+    "onClick": {"value": "eventFunctionKey"}
+    
+    If handlers is an array, takes the first element.
+    """
     if not isinstance(component_events, dict):
         logger.warning(f"component_events is not a dict: {type(component_events)}")
         return
@@ -207,7 +362,43 @@ def _apply_events(
         comp["properties"] = comp.get("properties", {})
         
         for event_name, handlers in events.items():
-            comp["properties"][event_name] = {"value": handlers}
+            # Extract event function key from handlers
+            # Handlers can be:
+            # - A string: "eventFunctionKey"
+            # - An array: ["eventFunctionKey"] or ["event1", "event2"]
+            # - Already in format: {"value": "eventFunctionKey"}
+            
+            event_key = None
+            
+            if isinstance(handlers, str):
+                # Direct string
+                event_key = handlers
+            elif isinstance(handlers, list):
+                # Array - take first element
+                if len(handlers) > 0:
+                    event_key = str(handlers[0])
+                else:
+                    logger.warning(f"Empty handlers array for {key}.{event_name}")
+                    continue
+            elif isinstance(handlers, dict):
+                # Already in format - check if it has "value"
+                if "value" in handlers:
+                    value = handlers["value"]
+                    if isinstance(value, str):
+                        event_key = value
+                    elif isinstance(value, list) and len(value) > 0:
+                        event_key = str(value[0])
+                    else:
+                        event_key = str(value)
+                else:
+                    logger.warning(f"Handlers dict for {key}.{event_name} missing 'value' key")
+                    continue
+            else:
+                # Convert to string
+                event_key = str(handlers)
+            
+            # Set the event property in the correct format
+            comp["properties"][event_name] = {"value": event_key}
 
 
 def _apply_styles(
@@ -318,11 +509,18 @@ def _get_property_group(component_name: str) -> Optional[str]:
 
 
 def _deep_merge(target: Dict, source: Any):
-    """Deep merge source into target"""
+    """Deep merge source into target.
+
+    This function recursively merges dictionaries, preserving existing values
+    and adding new ones. Used for merging properties, styles, etc.
+
+    Note: Children merging is handled explicitly in _merge_components with
+    the _replaceChildren flag for explicit control.
+    """
     if not isinstance(source, dict):
         logger.warning(f"Cannot merge non-dict source: {type(source)}")
         return
-    
+
     for key, value in source.items():
         if key in target and isinstance(target[key], dict) and isinstance(value, dict):
             _deep_merge(target[key], value)

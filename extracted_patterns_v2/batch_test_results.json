@@ -1,0 +1,32 @@
+[
+  {
+    "pattern_id": "0f19045e5bd2",
+    "pattern_name": "Questions",
+    "pattern_type": "component_tree",
+    "component_count": 6,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 6448,
+    "errors": []
+  },
+  {
+    "pattern_id": "e3d7db3bc0dd",
+    "pattern_name": "Section9 Grid",
+    "pattern_type": "component_tree",
+    "component_count": 23,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 5525,
+    "errors": []
+  },
+  {
+    "pattern_id": "782e32c83347",
+    "pattern_name": "Heading Grid",
+    "pattern_type": "component_tree",
+    "component_count": 3,
+    "success": true,
+    "status_code": 200,
+    "time_ms": 8680,
+    "errors": []
+  }
+]

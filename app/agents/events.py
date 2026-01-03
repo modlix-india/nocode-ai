@@ -1,4 +1,4 @@
-"""Events Agent - Two-Phase: Analyze (Haiku) + Generate (Sonnet)"""
+"""Events Agent - Two-Phase: Analyze (Haiku) + Generate JS (Sonnet) + Convert to KIRun"""
 from typing import List, Dict, Any, Optional
 from app.agents.base import BaseAgent, AgentInput, AgentOutput
 from app.config import settings
@@ -18,12 +18,18 @@ class EventsAnalyzerAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__("EventsAnalyzer", model=settings.CLAUDE_HAIKU)
+        super().__init__("EventsAnalyzer", model_tier="fast")
     
     def get_system_prompt(self) -> str:
         return """You are an Events Analyzer for the Nocode UI system.
 
 Your job is to ANALYZE what event functions are needed, NOT generate them.
+
+You will receive:
+1. The user's request
+2. The component definitions from the Layout and Component agents
+
+Look at the components to identify all interactive elements that need events.
 
 ## Output Format
 
@@ -74,10 +80,12 @@ List ALL events needed with their purpose:
 
 3. List ALL events exhaustively - don't group them
 
+4. **Look at the components from previous agents** to identify buttons, forms, inputs
+
 ## Rules
-1. Analyze the user request and component structure
+1. Analyze the user request AND the component structure from previous outputs
 2. Identify ALL interactive components (buttons, inputs, forms)
-3. List each event function needed
+3. List each event function needed with the correct component key
 4. Include store paths that events will modify
 """
     
@@ -86,171 +94,220 @@ List ALL events needed with their purpose:
             "00-critical-rules",
             "07-event-system",
             "08-functions-and-actions",
+            "23-javascript-event-guide",
             "22-component-reference"
         ]
+    
+    def _build_messages(self, input: AgentInput, rag_context: str) -> List[Dict]:
+        """Override to explicitly include component information"""
+        
+        # Get layout and component outputs from previous agents
+        layout_output = input.previous_outputs.get("layout", {})
+        component_output = input.previous_outputs.get("component", {})
+        
+        # Combine components from both outputs
+        all_components = {}
+        if "componentDefinition" in layout_output:
+            all_components.update(layout_output["componentDefinition"])
+        if "components" in component_output:
+            all_components.update(component_output["components"])
+        
+        # Extract interactive components for easier analysis
+        interactive_components = []
+        for key, comp in all_components.items():
+            comp_type = comp.get("type", "")
+            if comp_type in ["Button", "TextBox", "Dropdown", "Checkbox", "RadioButton", "Link", "Icon"]:
+                interactive_components.append({
+                    "key": key,
+                    "type": comp_type,
+                    "label": comp.get("properties", {}).get("label", {}).get("value", ""),
+                    "text": comp.get("properties", {}).get("text", {}).get("value", "")
+                })
+        
+        user_content = f"""
+## User Request
+{input.user_request}
+
+## All Components (from Layout + Component agents)
+```json
+{json.dumps(all_components, indent=2)}
+```
+
+## Interactive Components (need events)
+```json
+{json.dumps(interactive_components, indent=2)}
+```
+
+## Existing Page Context
+```json
+{json.dumps(input.context.get("existingPage", {}), indent=2) if input.context.get("existingPage") else "No existing page"}
+```
+
+## Relevant Documentation
+{rag_context if rag_context else "No additional documentation available."}
+
+## Your Task
+Analyze all the components above and list ALL events needed.
+For EACH button, input, or interactive component, specify what event function it needs.
+Output valid JSON only, wrapped in ```json code blocks.
+"""
+        
+        return [{"role": "user", "content": user_content}]
 
 
 class EventsGeneratorAgent(BaseAgent):
     """
-    Phase 2: Generates event function definitions.
+    Phase 2: Generates event functions as JavaScript code.
     
-    Uses Sonnet for complex event generation.
-    Takes the analysis and generates actual event functions.
+    Uses Sonnet to generate JavaScript (which LLMs are good at).
+    The JavaScript is then converted to KIRun by the JS2KIRun converter.
     """
     
     def __init__(self):
-        super().__init__("EventsGenerator", model=settings.CLAUDE_SONNET)
+        super().__init__("EventsGenerator", model_tier="balanced")
     
     def get_system_prompt(self) -> str:
         return """You are an Events Generator for the Nocode UI system.
 
-You receive a list of events to generate. Create the actual event function definitions.
-
-## Event Function Structure
-
-Event functions use KIRun format with steps. Each step has `parameterMap` with nested parameters:
-
-```json
-{
-  "eventFunctions": {
-    "onButtonClick": {
-      "name": "onButtonClick",
-      "steps": {
-        "updateStore": {
-          "statementName": "updateStore",
-          "name": "SetStore",
-          "namespace": "UIEngine",
-          "parameterMap": {
-            "path": {
-              "one": {
-                "key": "one",
-                "type": "VALUE",
-                "value": "Page.counter",
-                "order": 1
-              }
-            },
-            "value": {
-              "one": {
-                "key": "one",
-                "type": "EXPRESSION",
-                "expression": "Page.counter + 1",
-                "order": 1
-              }
-            }
-          },
-          "position": { "left": 100, "top": 100 }
-        }
-      }
-    }
-  },
-  "componentEvents": {
-    "myButton": {
-      "onClick": ["onButtonClick"]
-    }
-  }
-}
-```
-
-## Parameter Types
-- `"type": "VALUE"` - Static value
-- `"type": "EXPRESSION"` - Dynamic expression using paths like `Page.counter`
-
-## parameterMap Structure
-
-EVERY parameter must have this nested structure:
-```json
-{
-  "parameterName": {
-    "one": {
-      "key": "one",
-      "type": "VALUE" or "EXPRESSION",
-      "value": "..." or "expression": "...",
-      "order": 1
-    }
-  }
-}
-```
-
-## SetStore Function (Most Important)
-
-Use SetStore to update state:
-```json
-{
-  "statementName": "setDisplay",
-  "name": "SetStore",
-  "namespace": "UIEngine",
-  "parameterMap": {
-    "path": {
-      "one": { "key": "one", "type": "VALUE", "value": "Page.display", "order": 1 }
-    },
-    "value": {
-      "one": { "key": "one", "type": "VALUE", "value": "Hello", "order": 1 }
-    }
-  }
-}
-```
-
-## Navigate Function
-
-```json
-{
-  "statementName": "navigate",
-  "name": "Navigate",
-  "namespace": "UIEngine",
-  "parameterMap": {
-    "linkPath": {
-      "one": { "key": "one", "type": "VALUE", "value": "/home", "order": 1 }
-    }
-  }
-}
-```
-
-## Dependent Statements (Chaining)
-
-To run steps in sequence, use `dependentStatements`:
-```json
-{
-  "step2": {
-    "statementName": "step2",
-    "name": "SetStore",
-    "namespace": "UIEngine",
-    "dependentStatements": ["step1"],
-    "parameterMap": { ... }
-  }
-}
-```
+Generate JavaScript code for each event function. The code will be automatically converted to KIRun format.
 
 ## Output Format
 
 ```json
 {
-  "reasoning": "Explanation of implementation",
+  "reasoning": "Brief explanation of implementation",
   "eventFunctions": {
-    "eventName": { ... }
+    "appendDigit5": "Page.display = Page.display + '5';",
+    "onClear": "Page.display = '0';",
+    "calculateResult": "Page.result = Page.operand1 + Page.operand2;",
+    "onLogin": "fetch('/api/login', { method: 'POST', body: Page.formData }); Page.loggedIn = Steps.sendData1.output.success;"
   },
   "componentEvents": {
-    "componentKey": {
-      "onClick": ["eventName"]
-    }
+    "btn5": { "onClick": ["appendDigit5"] },
+    "clearBtn": { "onClick": ["onClear"] }
   }
 }
 ```
 
-## Rules
-1. Generate ALL events from the provided list
-2. Use proper parameterMap structure with nested keys
-3. Use EXPRESSION type for dynamic values
-4. Chain steps with dependentStatements for sequential execution
-5. Map events to components using componentEvents
-6. Component onClick property is `{ "value": "eventFunctionKey" }`
+## JavaScript Rules (CRITICAL - Follow These Exactly)
+
+### 1. NO Local Variables
+All state must use Page.* or Store.* paths. Never use const, let, or var.
+
+```javascript
+// WRONG
+const total = 0;
+total = total + 1;
+
+// CORRECT  
+Page.total = 0;
+Page.total = Page.total + 1;
+```
+
+### 2. Store Paths
+Use these prefixes for data access:
+- `Page.*` - Page-scoped state
+- `Store.*` - Global application state
+- `Steps.*` - Results from previous steps (API calls)
+
+### 3. Simple Assignments
+```javascript
+Page.counter = 0;
+Page.display = Page.display + "5";
+Page.isActive = !Page.isActive;
+Page.total = Page.price * Page.quantity;
+```
+
+### 4. String Concatenation
+```javascript
+Page.display = Page.display + "5";
+Page.message = Page.firstName + " " + Page.lastName;
+```
+
+### 5. API Calls
+```javascript
+// GET request
+fetch("/api/users");
+Page.users = Steps.fetchData1.output.data;
+
+// POST request
+fetch("/api/login", { method: "POST", body: Page.credentials });
+Page.result = Steps.sendData1.output.data;
+```
+
+### 6. Navigation
+```javascript
+navigate("/dashboard");
+navigate("/users/" + Page.userId);
+```
+
+### 7. Conditionals
+```javascript
+if (Page.isLoggedIn) {
+  navigate("/dashboard");
+} else {
+  navigate("/login");
+}
+```
+
+### 8. Show Messages
+```javascript
+alert("Success!");
+showMessage("Error occurred", "ERROR");
+```
+
+## Examples for Common Patterns
+
+### Calculator Digit Button
+```javascript
+Page.display = Page.display + "5";
+```
+
+### Calculator Clear
+```javascript
+Page.display = "0";
+Page.operand1 = 0;
+Page.operator = "";
+```
+
+### Toggle Boolean
+```javascript
+Page.isVisible = !Page.isVisible;
+```
+
+### Form Submit
+```javascript
+fetch("/api/submit", { method: "POST", body: Page.formData });
+if (Steps.sendData1.output.success) {
+  Page.success = true;
+  navigate("/success");
+} else {
+  Page.error = Steps.sendData1.output.message;
+}
+```
+
+### Increment Counter
+```javascript
+Page.counter = Page.counter + 1;
+```
+
+## What NOT to Do
+
+- NO local variables (const, let, var)
+- NO arrow functions
+- NO destructuring
+- NO Promise.all
+- NO complex async patterns
+- NO closures
+
+Keep each event function simple and focused on a single action.
 """
     
     def get_relevant_docs(self) -> List[str]:
         return [
             "00-critical-rules",
             "07-event-system",
-            "08-functions-and-actions",
-            "21-kirun-system-functions",
+            "23-javascript-event-guide",
             "15-examples-and-patterns",
             "22-component-reference"
         ]
@@ -279,11 +336,60 @@ To run steps in sequence, use `dependentStatements`:
 {rag_context if rag_context else "No additional documentation available."}
 
 ## Your Task
-Generate ALL the event functions listed in the analysis.
+Generate JavaScript code for ALL the event functions listed in the analysis.
+Each event function should be a JavaScript string that follows the rules above.
 Output valid JSON only, wrapped in ```json code blocks.
 """
         
         return [{"role": "user", "content": user_content}]
+    
+    def _post_process_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert JavaScript event functions to KIRun format"""
+        try:
+            from app.services.js2kirun.converter import EventFunctionConverter
+            
+            event_functions = result.get("eventFunctions", {})
+            converted_functions = {}
+            conversion_errors = []
+            
+            converter = EventFunctionConverter()
+            
+            for event_name, js_code in event_functions.items():
+                if isinstance(js_code, str):
+                    # It's JavaScript - convert to KIRun
+                    try:
+                        kirun_def = converter.convert(js_code, event_name)
+                        converted_functions[event_name] = kirun_def
+                        logger.debug(f"Converted event '{event_name}' from JS to KIRun")
+                    except Exception as e:
+                        logger.warning(f"Failed to convert event '{event_name}': {e}")
+                        conversion_errors.append(f"{event_name}: {str(e)}")
+                        # Keep original if conversion fails
+                        converted_functions[event_name] = {
+                            "name": event_name,
+                            "steps": {},
+                            "_conversion_error": str(e),
+                            "_original_js": js_code
+                        }
+                elif isinstance(js_code, dict):
+                    # Already in KIRun format (unlikely but handle it)
+                    converted_functions[event_name] = js_code
+                else:
+                    logger.warning(f"Unexpected type for event '{event_name}': {type(js_code)}")
+            
+            result["eventFunctions"] = converted_functions
+            
+            if conversion_errors:
+                result["_conversion_warnings"] = conversion_errors
+            
+            return result
+            
+        except ImportError as e:
+            logger.error(f"JS2KIRun converter not available: {e}")
+            return result
+        except Exception as e:
+            logger.error(f"Error in post-processing: {e}")
+            return result
 
 
 class EventsAgent(BaseAgent):
@@ -291,15 +397,16 @@ class EventsAgent(BaseAgent):
     Two-Phase Events Agent: Analyze then Generate.
     
     Phase 1 (Haiku): Analyze what events are needed
-    Phase 2 (Sonnet): Generate the event functions in batches
+    Phase 2 (Sonnet): Generate JavaScript event functions
+    Phase 3: Convert JavaScript to KIRun format
     
-    This is a facade that orchestrates the two phases.
+    This is a facade that orchestrates the phases.
     """
     
     BATCH_SIZE = 10  # Max events per generation call
     
     def __init__(self):
-        super().__init__("Events", model=settings.CLAUDE_SONNET)
+        super().__init__("Events", model_tier="balanced")
         self.analyzer = EventsAnalyzerAgent()
         self.generator = EventsGeneratorAgent()
     
@@ -315,7 +422,7 @@ class EventsAgent(BaseAgent):
         input: AgentInput,
         progress: Optional[ProgressCallback] = None
     ) -> AgentOutput:
-        """Execute two-phase event generation"""
+        """Execute two-phase event generation with JS-to-KIRun conversion"""
         try:
             # Phase 1: Analyze with Haiku
             if progress:
@@ -343,11 +450,11 @@ class EventsAgent(BaseAgent):
                     reasoning="No events required for this request"
                 )
             
-            # Phase 2: Generate with Sonnet (in batches if needed)
+            # Phase 2: Generate JavaScript with Sonnet (in batches if needed)
             if progress:
                 await progress.agent_thinking(
                     "Events", 
-                    f"Generating {len(events_needed)} event functions (Phase 2)..."
+                    f"Generating {len(events_needed)} event functions as JavaScript..."
                 )
             
             if len(events_needed) <= self.BATCH_SIZE:
@@ -360,12 +467,24 @@ class EventsAgent(BaseAgent):
                 
                 gen_result = await self.generator.execute(gen_input, progress)
                 
-                return AgentOutput(
-                    agent_name="Events",
-                    success=gen_result.success,
-                    result=gen_result.result,
-                    reasoning=f"Analyzed {len(events_needed)} events, generated in single batch"
-                )
+                if gen_result.success:
+                    # Phase 3: Convert JavaScript to KIRun
+                    if progress:
+                        await progress.agent_thinking(
+                            "Events",
+                            "Converting JavaScript to KIRun format..."
+                        )
+                    
+                    converted_result = self.generator._post_process_result(gen_result.result)
+                    
+                    return AgentOutput(
+                        agent_name="Events",
+                        success=True,
+                        result=converted_result,
+                        reasoning=f"Generated {len(events_needed)} events as JS, converted to KIRun"
+                    )
+                else:
+                    return gen_result
             else:
                 # Multiple batches
                 return await self._generate_in_batches(
@@ -424,9 +543,18 @@ class EventsAgent(BaseAgent):
             gen_result = await self.generator.execute(gen_input, progress)
             
             if gen_result.success and gen_result.result:
+                # Convert JavaScript to KIRun
+                if progress:
+                    await progress.agent_thinking(
+                        "Events",
+                        f"Converting batch {i+1} to KIRun..."
+                    )
+                
+                converted_result = self.generator._post_process_result(gen_result.result)
+                
                 # Merge batch results
-                batch_functions = gen_result.result.get("eventFunctions", {})
-                batch_events = gen_result.result.get("componentEvents", {})
+                batch_functions = converted_result.get("eventFunctions", {})
+                batch_events = converted_result.get("componentEvents", {})
                 
                 all_event_functions.update(batch_functions)
                 
@@ -451,5 +579,5 @@ class EventsAgent(BaseAgent):
                 "eventFunctions": all_event_functions,
                 "componentEvents": all_component_events
             },
-            reasoning=f"Generated {len(all_event_functions)} events in {len(batches)} batches"
+            reasoning=f"Generated {len(all_event_functions)} events in {len(batches)} batches, converted to KIRun"
         )

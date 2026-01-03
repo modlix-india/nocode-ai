@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.security.url
     SECURITY_SERVICE_URL: str = "http://localhost:8080"
     
+    # Files Service (for image uploads)
+    # Can be overridden by config server: ai.files.url
+    FILES_SERVICE_URL: str = "http://localhost:8000"
+    
     # Redis (from config server: redis.url)
     # Used for rate limiting, request caching, and deduplication
     REDIS_URL: str = ""
@@ -46,19 +50,37 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 10  # Requests per minute per user
     RATE_LIMIT_PER_HOUR: int = 100  # Requests per hour per user
+
+    # MySQL Database for AI Tracking
+    # Can be overridden by config server: ai.db.*
+    MYSQL_URL: str = ""  # JDBC URL: jdbc:mysql://localhost:3306/ai?serverTimezone=UTC
+    MYSQL_USERNAME: str = "root"
+    MYSQL_PASSWORD: str = ""
+    AI_TRACKING_ENABLED: bool = False  # Auto-enabled when MYSQL_URL is configured
+
+    # Context limits for conversation tracking
+    CONTEXT_LIMIT_DEFAULT: int = 184000  # Default context limit (200K - 16K reserved for output)
     
-    # AI APIs
+    # LLM Provider Selection
+    # Options: "anthropic" or "openai"
+    # Can be overridden by config server: ai.llm.provider
+    LLM_PROVIDER: str = "anthropic"
+    
+    # Anthropic Settings
     # Can be overridden by config server: ai.secrets.anthropicAPIKey
     ANTHROPIC_API_KEY: str = ""
+    CLAUDE_HAIKU: str = "claude-haiku-4-5-20251001"      # Fast model for analysis
+    CLAUDE_SONNET: str = "claude-opus-4-5-20251101"      # Balanced model for generation
     
-    # Multi-Model Strategy:
-    # - HAIKU: Fast, cheap - for analysis, planning, simple tasks (styles, animations)
-    # - SONNET: Balanced - for complex generation (components, events, review)
-    CLAUDE_HAIKU: str = "claude-haiku-4-5-20251101"
-    CLAUDE_SONNET: str = "claude-sonnet-4-20250514"
+    # OpenAI Settings
+    # Can be overridden by config server: ai.secrets.openaiAPIKey
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL_FAST: str = "gpt-4o-mini"    # Equivalent to Claude Haiku
+    OPENAI_MODEL_BALANCED: str = "gpt-4o"      # Equivalent to Claude Sonnet
     
-    # Anthropic Prompt Caching
+    # Prompt Caching (Anthropic-only feature)
     # Reduces token usage by ~90% for repeated system prompts
+    # Automatically disabled when using OpenAI
     PROMPT_CACHING_ENABLED: bool = True
     
     # Legacy - kept for backward compatibility
@@ -75,6 +97,12 @@ class Settings(BaseSettings):
     APP_DEFINITIONS_PATH: str = "./definitions/app defs"
     SITE_DEFINITIONS_PATH: str = "./definitions/site defs"
     
+    # Website Import Settings
+    WEBSITE_IMPORT_TIMEOUT: int = 30  # Timeout for website HTML fetching (seconds)
+    SCREENSHOT_TIMEOUT: int = 60  # Timeout for screenshot capture (seconds)
+    MAX_HTML_SIZE_MB: int = 10  # Maximum HTML size to process (MB)
+    PLACEHOLDER_IMAGE_PATH: str = "api/files/static/file/SYSTEM/appbuilder/sample.svg"  # Default placeholder image
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -86,7 +114,10 @@ class Settings(BaseSettings):
         
         Config server provides:
         - ai.security.url -> SECURITY_SERVICE_URL
+        - ai.files.url -> FILES_SERVICE_URL
         - ai.secrets.anthropicAPIKey -> ANTHROPIC_API_KEY
+        - ai.secrets.openaiAPIKey -> OPENAI_API_KEY
+        - ai.llm.provider -> LLM_PROVIDER
         - redis.url -> REDIS_URL
         """
         if not config:
@@ -96,7 +127,10 @@ class Settings(BaseSettings):
         # Format: (nested_keys_tuple) -> attribute_name
         mappings = {
             ("security", "url"): "SECURITY_SERVICE_URL",
+            ("files", "url"): "FILES_SERVICE_URL",
             ("secrets", "anthropicAPIKey"): "ANTHROPIC_API_KEY",
+            ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
+            ("llm", "provider"): "LLM_PROVIDER",
         }
         
         for keys, attr in mappings.items():
@@ -113,14 +147,33 @@ class Settings(BaseSettings):
             except (KeyError, TypeError):
                 pass
         
-        # Special handling for Redis URL (top-level in config)
-        # Config structure: redis: { url: "redis://..." }
+        # Special handling for Redis URL
+        # Priority: 1) ai.redis.url (ai-specific config), 2) redis.url (shared config)
         try:
+            # First try ai-specific redis config
             redis_url = config.get("redis", {}).get("url")
+            if not redis_url:
+                # Fall back to top-level redis config (shared across services)
+                # This is fetched separately from config server
+                pass
+
             if redis_url and not os.getenv("REDIS_URL"):
                 self.REDIS_URL = redis_url
                 self.REDIS_ENABLED = True
                 logger.info("Applied config server value for REDIS_URL")
+        except (KeyError, TypeError, AttributeError):
+            pass
+
+        # Special handling for AI database config (under "db" key like other services)
+        # Config structure: ai.db: { url: "jdbc:mysql://...", username: "...", password: "..." }
+        try:
+            db_config = config.get("db", {})
+            if db_config.get("url") and not os.getenv("MYSQL_URL"):
+                self.MYSQL_URL = db_config.get("url", "")
+                self.MYSQL_USERNAME = db_config.get("username", "root")
+                self.MYSQL_PASSWORD = db_config.get("password", "")
+                self.AI_TRACKING_ENABLED = True
+                logger.info("Applied config server values for AI database")
         except (KeyError, TypeError, AttributeError):
             pass
 
@@ -144,9 +197,19 @@ async def initialize_settings():
     # Log final configuration (mask sensitive values)
     logger.info(f"Service: {settings.SERVICE_NAME}")
     logger.info(f"Port: {settings.SERVICE_PORT}")
+    logger.info(f"LLM Provider: {settings.LLM_PROVIDER.upper()}")
     logger.info(f"Security URL: {settings.SECURITY_SERVICE_URL}")
-    logger.info(f"Anthropic API Key: {'*' * 20 + settings.ANTHROPIC_API_KEY[-8:] if settings.ANTHROPIC_API_KEY else 'NOT SET'}")
+    logger.info(f"Files URL: {settings.FILES_SERVICE_URL}")
+    
+    if settings.LLM_PROVIDER == "anthropic":
+        logger.info(f"Anthropic API Key: {'*' * 20 + settings.ANTHROPIC_API_KEY[-8:] if settings.ANTHROPIC_API_KEY else 'NOT SET'}")
+        logger.info(f"Models: Haiku={settings.CLAUDE_HAIKU}, Sonnet={settings.CLAUDE_SONNET}")
+        logger.info(f"Prompt Caching: {'ENABLED' if settings.PROMPT_CACHING_ENABLED else 'DISABLED'}")
+    else:
+        logger.info(f"OpenAI API Key: {'*' * 20 + settings.OPENAI_API_KEY[-8:] if settings.OPENAI_API_KEY else 'NOT SET'}")
+        logger.info(f"Models: Fast={settings.OPENAI_MODEL_FAST}, Balanced={settings.OPENAI_MODEL_BALANCED}")
+    
     logger.info(f"Embedding Model: {settings.LOCAL_EMBEDDING_MODEL}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")
-    logger.info(f"Prompt Caching: {'ENABLED' if settings.PROMPT_CACHING_ENABLED else 'DISABLED'}")
     logger.info(f"Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min, {settings.RATE_LIMIT_PER_HOUR}/hour")
+    logger.info(f"AI Tracking: {'ENABLED - ' + settings.MYSQL_URL[:50] + '...' if settings.AI_TRACKING_ENABLED else 'DISABLED'}")

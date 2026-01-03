@@ -14,7 +14,7 @@ class AnimationAgent(BaseAgent):
     
     def __init__(self):
         # Use Haiku for simpler animation generation
-        super().__init__("Animation", model=settings.CLAUDE_HAIKU)
+        super().__init__("Animation", model_tier="fast")
     
     def get_system_prompt(self) -> str:
         return """You are an Animation Agent for the Nocode UI system.
@@ -27,9 +27,10 @@ Your responsibility is to add animations and micro-interactions:
 - Scroll animations
 - Modal transitions
 
-## Animation Properties Structure
+## CRITICAL: USE "rootStyle" AS THE STYLE ID
 
-Animation styles follow the same structure as regular styles using `resolutions` with pseudo-state suffixes.
+**IMPORTANT:** Always use "rootStyle" as the style ID. This merges with existing styles from the Styles agent.
+Multiple style IDs will overwrite each other!
 
 ### Output Format:
 ```json
@@ -37,7 +38,7 @@ Animation styles follow the same structure as regular styles using `resolutions`
   "reasoning": "Explanation of animation choices",
   "componentAnimations": {
     "<componentKey>": {
-      "<styleId>": {
+      "rootStyle": {
         "resolutions": {
           "ALL": {
             "animation": { "value": "fadeInDown 0.5s ease-out" },
@@ -66,35 +67,48 @@ Animation styles follow the same structure as regular styles using `resolutions`
 ### Example - Button with hover and active states:
 ```json
 {
-  "abc123": {
-    "resolutions": {
-      "ALL": {
-        "transition": { "value": "all 0.2s ease" },
-        "transform:hover": { "value": "scale(1.02)" },
-        "boxShadow:hover": { "value": "0 8px 16px rgba(0,0,0,0.1)" },
-        "transform:active": { "value": "scale(0.98)" }
+  "componentAnimations": {
+    "myButton": {
+      "rootStyle": {
+        "resolutions": {
+          "ALL": {
+            "transition": { "value": "all 0.2s ease" },
+            "transform:hover": { "value": "scale(1.02)" },
+            "boxShadow:hover": { "value": "0 8px 16px rgba(0,0,0,0.1)" },
+            "transform:active": { "value": "scale(0.98)" }
+          }
+        }
       }
     }
   }
 }
 ```
 
-### Example - Staggered list animation:
+### Example - Staggered list animation (using animation-delay):
+Use animationDelay to stagger elements, NOT different styleIds:
 ```json
 {
-  "item1Style": {
-    "resolutions": {
-      "ALL": {
-        "animation": { "value": "fadeInUp 0.4s ease-out" },
-        "animationFillMode": { "value": "both" }
+  "componentAnimations": {
+    "listItem1": {
+      "rootStyle": {
+        "resolutions": {
+          "ALL": {
+            "animation": { "value": "fadeInUp 0.4s ease-out" },
+            "animationDelay": { "value": "0s" },
+            "animationFillMode": { "value": "both" }
+          }
+        }
       }
-    }
-  },
-  "item2Style": {
-    "resolutions": {
-      "ALL": {
-        "animation": { "value": "fadeInUp 0.4s ease-out 0.1s" },
-        "animationFillMode": { "value": "both" }
+    },
+    "listItem2": {
+      "rootStyle": {
+        "resolutions": {
+          "ALL": {
+            "animation": { "value": "fadeInUp 0.4s ease-out" },
+            "animationDelay": { "value": "0.1s" },
+            "animationFillMode": { "value": "both" }
+          }
+        }
       }
     }
   }
@@ -104,7 +118,7 @@ Animation styles follow the same structure as regular styles using `resolutions`
 ## Animation Guidelines
 1. Keep animations subtle and purposeful (200-500ms)
 2. Use ease-out for entering elements, ease-in for exiting
-3. Stagger animations with animation-delay for sequential effects
+3. Use animationDelay for staggered effects
 4. Always add transitions for hover/focus/active states
 5. Consider reduced-motion preferences
 
@@ -114,11 +128,24 @@ Animation styles follow the same structure as regular styles using `resolutions`
 - Scale on hover: transform:hover with scale(1.02)
 - Button press: transform:active with scale(0.98)
 
+## Import Mode - CSS Animation Analysis
+When importing from a website (context contains `websiteCssAnimations` or `suggestedAnimations`):
+1. Analyze the CSS @keyframes found in the original website
+2. Convert CSS animations to Nocode animation format
+3. Apply suggested animations from the website analysis
+4. Preserve the visual feel of the original site's animations
+
+### CSS to Nocode Animation Mapping:
+- CSS `animation: fadeIn 0.5s ease` → Nocode `{ "animation": { "value": "fadeIn 0.5s ease" } }`
+- CSS `transition: all 0.3s` → Nocode `{ "transition": { "value": "all 0.3s" } }`
+- CSS `:hover { transform: scale(1.05) }` → Nocode `{ "transform:hover": { "value": "scale(1.05)" } }`
+
 ## Rules
 1. Don't overdo animations - less is more
 2. Ensure animations enhance, not distract
-3. Use staggered delays for list items
-4. Generate unique style IDs for each component
+3. Use animationDelay for staggered effects, NOT different styleIds
+4. **ALWAYS use "rootStyle" as the style ID** - this is critical!
+5. In import mode, match the animation style of the original website
 """
     
     def get_relevant_docs(self) -> List[str]:

@@ -1,0 +1,371 @@
+[
+  {
+    "id": "900c365cadc8",
+    "type": "auth_pattern",
+    "name": "Authentication: loginFunction",
+    "description": "Login authentication with validation",
+    "semantic_tags": [
+      "authentication",
+      "login",
+      "security"
+    ],
+    "semantic_category": "authentication",
+    "definition": {
+      "event": {
+        "name": "loginFunction",
+        "namespace": "",
+        "steps": {
+          "wait": {
+            "statementName": "wait",
+            "name": "Wait",
+            "namespace": "System",
+            "parameterMap": {
+              "millis": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": 5000
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.setStore.output": true
+            }
+          },
+          "setStore": {
+            "statementName": "setStore",
+            "name": "SetStore",
+            "namespace": "UIEngine",
+            "parameterMap": {
+              "path": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "Page.signInError"
+                }
+              },
+              "value": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "true"
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.login.error": false,
+              "Steps.if.true": true
+            }
+          },
+          "setStore1": {
+            "statementName": "setStore1",
+            "name": "SetStore",
+            "namespace": "UIEngine",
+            "parameterMap": {
+              "path": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "Page.signInError"
+                }
+              },
+              "value": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": false
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.wait.output": true
+            }
+          },
+          "if": {
+            "statementName": "if",
+            "name": "If",
+            "namespace": "System",
+            "parameterMap": {
+              "condition": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Steps.login.error.status >= 400"
+                }
+              }
+            }
+          },
+          "if1": {
+            "statementName": "if1",
+            "name": "If",
+            "namespace": "System",
+            "parameterMap": {
+              "condition": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Store.urlDetails.queryParameters.sessionId"
+                }
+              }
+            }
+          },
+          "wait_Copy_1": {
+            "statementName": "wait_Copy_1",
+            "name": "Wait",
+            "namespace": "System",
+            "parameterMap": {
+              "millis": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": 5000
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.setStore.output": false,
+              "Steps.setStore_Copy_1.output": true
+            }
+          },
+          "setStore_Copy_1": {
+            "statementName": "setStore_Copy_1",
+            "name": "SetStore",
+            "namespace": "UIEngine",
+            "parameterMap": {
+              "path": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "Page.signInError"
+                }
+              },
+              "value": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "true"
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.login.error": false,
+              "Steps.if_Copy_1.true": true
+            }
+          },
+          "setStore1_Copy_1": {
+            "statementName": "setStore1_Copy_1",
+            "name": "SetStore",
+            "namespace": "UIEngine",
+            "parameterMap": {
+              "path": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "Page.signInError"
+                }
+              },
+              "value": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": false
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.wait.output": false,
+              "Steps.wait_Copy_1.output": true
+            }
+          },
+          "if_Copy_1": {
+            "statementName": "if_Copy_1",
+            "name": "If",
+            "namespace": "System",
+            "parameterMap": {
+              "condition": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Steps.login1.error.status >= 400"
+                }
+              }
+            }
+          },
+          "print": {
+            "statementName": "print",
+            "name": "Print",
+            "namespace": "System",
+            "parameterMap": {
+              "values": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "Social Login"
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.if1.true": true
+            }
+          },
+          "login": {
+            "statementName": "login",
+            "name": "Login",
+            "namespace": "Authzump.sso",
+            "parameterMap": {
+              "userName": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Steps.trim.output.result"
+                }
+              },
+              "password": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Page.user.password"
+                }
+              },
+              "rememberMe": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "value": false,
+                  "expression": "true"
+                }
+              },
+              "identifierType": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "value": "EMAIL_ID",
+                  "expression": "Page.user.identifierType"
+                }
+              },
+              "userId": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Page.user.userId"
+                }
+              }
+            }
+          },
+          "login1": {
+            "statementName": "login1",
+            "name": "SocialLogin",
+            "namespace": "Authzump.sso",
+            "parameterMap": {
+              "socialRegisterState": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "value": "",
+                  "expression": "Store.urlDetails.queryParameters.sessionId"
+                }
+              },
+              "rememberMe": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": true
+                }
+              },
+              "userName": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Store.urlDetails.queryParameters.emailId"
+                }
+              },
+              "identifierType": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "EMAIL_ID"
+                }
+              },
+              "userId": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Page.user.userId"
+                }
+              },
+              "appCode": {
+                "p1": {
+                  "key": "p1",
+                  "type": "VALUE",
+                  "order": 1,
+                  "value": "marketingai"
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.if1.true": true,
+              "Steps.print.output": true
+            }
+          },
+          "trim": {
+            "statementName": "trim",
+            "name": "Trim",
+            "namespace": "System.String",
+            "parameterMap": {
+              "string": {
+                "p1": {
+                  "key": "p1",
+                  "type": "EXPRESSION",
+                  "order": 1,
+                  "expression": "Page.user.emailId"
+                }
+              }
+            },
+            "dependentStatements": {
+              "Steps.if1.false": true
+            }
+          }
+        },
+        "validationCheck": "__COMPONENT_KEY__"
+      },
+      "formComponents": {},
+      "hasValidation": true
+    },
+    "source_page": "loginPage",
+    "source_app": "sitezump",
+    "source_component_key": null,
+    "required_store_paths": [],
+    "produced_store_paths": [],
+    "referenced_events": [],
+    "referenced_components": [],
+    "component_count": 0,
+    "event_step_count": 13,
+    "style_property_count": 0,
+    "quality_score": 0.9,
+    "semantic_hash": ""
+  }
+]

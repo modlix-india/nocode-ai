@@ -15,11 +15,18 @@ slowapi==0.1.9
 redis==5.2.1
 aioredis==2.0.1
 
+# MySQL for AI tracking (session management, token usage)
+aiomysql==0.2.0
+
 # LlamaIndex Core
 llama-index-core==0.12.10
 llama-index-llms-anthropic==0.6.6
+llama-index-llms-openai==0.3.14
 llama-index-vector-stores-chroma==0.4.1
 llama-index-readers-file==0.4.3
+
+# LLM SDKs
+openai==1.58.1
 
 # Embeddings - FastEmbed (lightweight ONNX-based, no PyTorch needed)
 # Much smaller than sentence-transformers, uses ~200MB RAM vs 2GB+
@@ -31,6 +38,14 @@ chromadb==0.5.23
 
 # Eureka Client
 py-eureka-client==0.11.10
+
+# JavaScript Parser (for JS-to-KIRun conversion)
+esprima>=4.0.1
+
+# Website Import - HTML parsing and browser automation
+beautifulsoup4==4.12.3
+lxml==5.3.0
+playwright==1.48.0
 
 # Utilities
 python-dotenv==1.0.1

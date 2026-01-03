@@ -68,20 +68,27 @@ class ConfigServerClient:
                 # }
                 
                 config = {}
+                shared_redis_config = {}  # Temporary storage for shared redis config
+
                 for prop_source in data.get("propertySources", []):
                     source = prop_source.get("source", {})
                     for key, value in source.items():
-                        # Get ai.* properties (service-specific)
+                        # Get ai.* properties (service-specific) - these take priority
                         if key.startswith("ai."):
                             # Convert "ai.security.url" to nested dict
                             parts = key.split(".")
                             self._set_nested(config, parts[1:], value)
-                        # Also get redis.* properties (shared infrastructure)
+                        # Collect shared redis.* properties (will be used as fallback)
                         elif key.startswith("redis."):
-                            # Convert "redis.url" to nested dict under "redis" key
+                            # Store shared redis config separately
                             parts = key.split(".")
-                            self._set_nested(config, parts, value)
-                
+                            self._set_nested(shared_redis_config, parts, value)
+
+                # Apply shared redis config only if ai.redis is not set
+                if "redis" not in config and "redis" in shared_redis_config:
+                    config["redis"] = shared_redis_config["redis"]
+                    logger.info("Using shared redis config (ai.redis not found)")
+
                 self._config = config
                 logger.info(f"Loaded config from server: {list(config.keys())}")
                 return config
