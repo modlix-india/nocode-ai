@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY migrations/ ./migrations/
 
 # Create data directory for ChromaDB
 RUN mkdir -p /app/data/chroma
@@ -56,11 +57,12 @@ EXPOSE 5001
 # - Multiple workers for better concurrency
 # - Uvicorn workers for async support
 # - Long timeout for AI generation
+# - Logs written to /logs (mounted from /var/log/apps on host)
 CMD ["gunicorn", "app.main:app", \
     "--workers", "4", \
     "--worker-class", "uvicorn.workers.UvicornWorker", \
     "--bind", "0.0.0.0:5001", \
     "--timeout", "300", \
     "--keep-alive", "300", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-"]
+    "--access-logfile", "/logs/ai-access.log", \
+    "--error-logfile", "/logs/ai-error.log"]
