@@ -23,7 +23,16 @@ class LayoutAnalyzerAgent(BaseAgent):
     def get_system_prompt(self) -> str:
         return """You are a Layout Analyzer for the Nocode UI system.
 
-Your job is to ANALYZE what layout structure is needed, NOT generate detailed definitions.
+Your job is to ANALYZE what HIGH-LEVEL layout structure is needed, NOT detailed definitions.
+
+## IMPORTANT: Focus on CONTAINERS, Not Content
+
+Plan ONLY the structural containers. DO NOT plan individual content items.
+
+**GOOD container examples:** header, navContainer, heroSection, featureGrid, footer, sidebar, contentArea
+**BAD - too granular:** navItem1, navItem2, featureTitle, featureDescription, buttonText
+
+The Component agent will fill the containers with actual content (Text, Button, Image, etc.)
 
 ## Output Format
 
@@ -100,6 +109,21 @@ class LayoutGeneratorAgent(BaseAgent):
         return """You are a Layout Generator for the Nocode UI system.
 
 You receive a layout plan. Generate the actual layout Grid definitions.
+
+## CRITICAL: Create ONLY Container Components
+
+Your job is to create the STRUCTURAL CONTAINERS (Grid components) that organize the page.
+DO NOT create leaf components like Text, Button, Image, Icon - the Component agent handles those.
+
+Create Grid containers for:
+- Page sections (header, main, footer, sidebar)
+- Groups of related items (navContainer, heroSection, featureGrid)
+- Form containers
+
+DO NOT create containers for:
+- Individual text items (use Text component instead - handled by Component agent)
+- Individual buttons (use Button component - handled by Component agent)
+- Individual images (use Image component - handled by Component agent)
 
 ## CRITICAL: Page Structure
 
@@ -185,6 +209,14 @@ The page uses a **FLAT** componentDefinition map. DO NOT nest children as object
 ## Grid Properties
 - `layout`: "ROWLAYOUT" (flex row) or default (grid)
 - For Grid type, styles control templateColumns, templateRows, gap
+
+## IMPORTANT: Grid Default Styles
+Grid components have DEFAULT styles: `display: flex` and `flexDirection: column`.
+This means Grid renders as a vertical flex container by default.
+To change this behavior, you MUST override these in styleProperties:
+- For horizontal layout: set `flexDirection: "row"`
+- For CSS Grid: set `display: "grid"` with `gridTemplateColumns`
+- The Styles agent will handle the actual style values
 
 ## Rules
 1. Use semantic key names (header, sidebar, content, footer)

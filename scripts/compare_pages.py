@@ -37,6 +37,13 @@ async def take_screenshots(original_url: str, cloned_url: str, output_dir: Path)
                 await page.goto(original_url, wait_until="networkidle", timeout=30000)
                 await page.wait_for_timeout(2000)  # Wait for animations
 
+                # Scroll to bottom and wait to trigger lazy loading
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await page.wait_for_timeout(3000)  # Wait for lazy-loaded content
+                # Scroll back to top
+                await page.evaluate("window.scrollTo(0, 0)")
+                await page.wait_for_timeout(500)  # Let layout settle
+
                 original_path = output_dir / f"original_{name}.png"
                 await page.screenshot(path=str(original_path), full_page=True)
                 print(f"  Saved: {original_path}")
@@ -53,6 +60,13 @@ async def take_screenshots(original_url: str, cloned_url: str, output_dir: Path)
             try:
                 await page.goto(cloned_url, wait_until="networkidle", timeout=30000)
                 await page.wait_for_timeout(2000)
+
+                # Scroll to bottom and wait to trigger lazy loading
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await page.wait_for_timeout(3000)  # Wait for lazy-loaded content
+                # Scroll back to top
+                await page.evaluate("window.scrollTo(0, 0)")
+                await page.wait_for_timeout(500)  # Let layout settle
 
                 cloned_path = output_dir / f"cloned_{name}.png"
                 await page.screenshot(path=str(cloned_path), full_page=True)

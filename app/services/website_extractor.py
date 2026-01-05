@@ -174,6 +174,13 @@ class WebsiteExtractor:
                     
                     # Take screenshot only at desktop size
                     if viewport_name == "desktop":
+                        # Scroll to bottom and wait to trigger lazy loading
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        await asyncio.sleep(3)  # Wait for lazy-loaded content
+                        # Scroll back to top
+                        await page.evaluate("window.scrollTo(0, 0)")
+                        await asyncio.sleep(0.5)  # Let layout settle after scroll
+
                         screenshot_bytes = await page.screenshot(full_page=True, type='png')
                         screenshot = base64.b64encode(screenshot_bytes).decode('utf-8')
                         logger.info(f"Screenshot captured ({len(screenshot_bytes)} bytes)")

@@ -18,7 +18,7 @@ def merge_agent_outputs(
 ) -> Dict[str, Any]:
     """
     Merge outputs from all specialist agents into a single page definition.
-    
+
     Priority order for conflicts:
     1. Layout (structure is foundational)
     2. Component (component choices)
@@ -26,16 +26,37 @@ def merge_agent_outputs(
     4. Events (event handlers)
     5. Styles (visual styling)
     6. Animation (animations layer on top)
-    
+
     Args:
         outputs: Dict mapping agent name to their output
         existing_page: Optional existing page to merge into
-    
+
     Returns:
         Merged page definition
     """
+    logger.info(f"[merge_agent_outputs] Called with outputs keys: {list(outputs.keys())}")
+
+    # Log what each agent output contains
+    for agent_name, agent_output in outputs.items():
+        if isinstance(agent_output, dict):
+            logger.info(f"[merge_agent_outputs] {agent_name} output keys: {list(agent_output.keys())}")
+            if "componentDefinition" in agent_output:
+                comp_def = agent_output["componentDefinition"]
+                types = {}
+                for k, v in comp_def.items():
+                    t = v.get("type", "Unknown") if isinstance(v, dict) else "Invalid"
+                    types[t] = types.get(t, 0) + 1
+                logger.info(f"[merge_agent_outputs] {agent_name} componentDefinition types: {types}")
+            if "components" in agent_output:
+                comps = agent_output["components"]
+                types = {}
+                for k, v in comps.items():
+                    t = v.get("type", "Unknown") if isinstance(v, dict) else "Invalid"
+                    types[t] = types.get(t, 0) + 1
+                logger.info(f"[merge_agent_outputs] {agent_name} components types: {types}")
+
     merged = {}
-    
+
     # Start with existing page if modifying
     if existing_page:
         merged = deepcopy(existing_page)
@@ -116,12 +137,20 @@ def merge_agent_outputs(
     
     # Normalize all components - ensure they have required fields
     _normalize_components(merged.get("componentDefinition", {}))
-    
+
     # Apply import mode styles to root component if available
     import_styles = outputs.get("_import_styles", {})
     if import_styles:
         _apply_import_root_styles(merged, import_styles)
-    
+
+    # Final summary log
+    final_comp_def = merged.get("componentDefinition", {})
+    final_types = {}
+    for k, v in final_comp_def.items():
+        t = v.get("type", "Unknown") if isinstance(v, dict) else "Invalid"
+        final_types[t] = final_types.get(t, 0) + 1
+    logger.info(f"[merge_agent_outputs] FINAL merged componentDefinition: {len(final_comp_def)} components, types: {final_types}")
+
     return merged
 
 
@@ -217,9 +246,20 @@ def _merge_components(
     - When AI specifies children for an existing component, REPLACE them entirely
     - When a child moves to a new parent, remove it from the old parent
     """
+    logger.info(f"[_merge_components] Called with {len(components) if isinstance(components, dict) else 0} components to merge")
+    logger.info(f"[_merge_components] Existing componentDefinition has {len(component_def)} components")
+
     if not isinstance(components, dict):
         logger.warning(f"components is not a dict: {type(components)}")
         return
+
+    # Log the types of components being merged
+    types_to_merge = {}
+    for key, comp in components.items():
+        if isinstance(comp, dict):
+            t = comp.get("type", "Unknown")
+            types_to_merge[t] = types_to_merge.get(t, 0) + 1
+    logger.info(f"[_merge_components] Component types to merge: {types_to_merge}")
 
     # Track parent-child relationships to apply after all components are added
     parent_child_pairs: list = []
@@ -407,7 +447,7 @@ def _apply_styles(
 ):
     """
     Apply styles to components in flat componentDefinition.
-    
+
     The style structure uses resolutions for responsive design:
     {
         "<componentKey>": {
@@ -422,6 +462,10 @@ def _apply_styles(
             }
         }
     }
+
+    IMPORTANT: When modifying existing components, we merge into the EXISTING
+    style key rather than adding a new "rootStyle" key. This preserves the
+    original style key structure.
     """
     logger.info(f"[_apply_styles] Called with {len(component_styles) if isinstance(component_styles, dict) else 0} style targets")
     if isinstance(component_styles, dict):
@@ -430,28 +474,54 @@ def _apply_styles(
     if not isinstance(component_styles, dict):
         logger.warning(f"component_styles is not a dict: {type(component_styles)}")
         return
-    
+
     for key, styles in component_styles.items():
         if key not in component_def:
             logger.warning(f"Styles for unknown component: {key}")
             continue
-        
+
         if not isinstance(styles, dict):
             logger.warning(f"Styles for {key} is not a dict: {type(styles)}")
             continue
-        
+
         comp = component_def[key]
-        
+
         # Check if it's the new format (has resolution-style entries)
         if _is_new_style_format(styles):
             # New format: styles is a dict of styleId -> { resolutions: {...} }
             comp["styleProperties"] = comp.get("styleProperties", {})
-            logger.info(f"Merging new-format styles for {key}: {list(styles.keys())}")
-            before_styles = str(comp.get("styleProperties", {}))[:200]
-            _deep_merge(comp["styleProperties"], styles)
+            existing_style_props = comp["styleProperties"]
+
+            # Find existing style keys that have resolutions
+            existing_style_keys = [
+                k for k in existing_style_props.keys()
+                if isinstance(existing_style_props.get(k), dict)
+                and "resolutions" in existing_style_props.get(k, {})
+            ]
+
+            logger.info(f"Merging new-format styles for {key}: new keys={list(styles.keys())}, existing keys={existing_style_keys}")
+
+            for new_style_id, new_style_data in styles.items():
+                if not isinstance(new_style_data, dict) or "resolutions" not in new_style_data:
+                    continue
+
+                # If we have an existing style key and the new key is "rootStyle",
+                # merge into the existing key instead of creating a duplicate
+                if existing_style_keys and new_style_id == "rootStyle":
+                    target_key = existing_style_keys[0]
+                    logger.info(f"  Merging 'rootStyle' into existing key '{target_key}' for {key}")
+                    _deep_merge(existing_style_props[target_key], new_style_data)
+                else:
+                    # No existing key or not "rootStyle" - add/merge as-is
+                    if new_style_id in existing_style_props:
+                        logger.info(f"  Merging into existing style key '{new_style_id}' for {key}")
+                        _deep_merge(existing_style_props[new_style_id], new_style_data)
+                    else:
+                        logger.info(f"  Adding new style key '{new_style_id}' for {key}")
+                        existing_style_props[new_style_id] = deepcopy(new_style_data)
+
             after_styles = str(comp.get("styleProperties", {}))[:200]
-            logger.info(f"  Before: {before_styles}")
-            logger.info(f"  After: {after_styles}")
+            logger.info(f"  After merge: {after_styles}")
         else:
             # Legacy format: has "styleProperties" and "stylePropertiesWithPseudoStates"
             if "styleProperties" in styles:
@@ -459,7 +529,7 @@ def _apply_styles(
                 sp = styles["styleProperties"]
                 if isinstance(sp, dict):
                     _deep_merge(comp["styleProperties"], sp)
-            
+
             if "stylePropertiesWithPseudoStates" in styles:
                 comp["stylePropertiesWithPseudoStates"] = comp.get("stylePropertiesWithPseudoStates", {})
                 spps = styles["stylePropertiesWithPseudoStates"]

@@ -150,13 +150,49 @@ Reference theme variables for consistency using bindings:
 - `{ "location": "Theme.colorPrimary" }` instead of hardcoded colors
 - Common theme paths: colorPrimary, colorSecondary, colorBackground, colorSurface, colorText
 
+## CRITICAL: Grid Default Styles - MUST OVERRIDE
+
+**Grid components have DEFAULT styles that MUST be overridden:**
+- `display: flex`
+- `flexDirection: column`
+
+This means ALL Grid components render as vertical flex containers by default.
+You MUST explicitly set these properties to achieve different layouts:
+
+### For horizontal layouts (rows):
+```json
+{
+  "display": { "value": "flex" },
+  "flexDirection": { "value": "row" },
+  "alignItems": { "value": "center" }
+}
+```
+
+### For CSS Grid layouts:
+```json
+{
+  "display": { "value": "grid" },
+  "gridTemplateColumns": { "value": "1fr 1fr 1fr" },
+  "gap": { "value": "16px" }
+}
+```
+
+### For vertical layouts (default behavior, but be explicit):
+```json
+{
+  "display": { "value": "flex" },
+  "flexDirection": { "value": "column" }
+}
+```
+
 ## IMPORT MODE: Override Default Styles
 
 When `importMode=true` in context, you MUST override default component styles.
 Components have default styles that will interfere. Always set these explicitly:
 
 ### For Grid containers:
-- `display`, `flexDirection`, `alignItems`, `justifyContent`
+- **ALWAYS set `display` and `flexDirection`** - Grid defaults to `display: flex` and `flexDirection: column`
+- `alignItems`, `justifyContent`
 - `padding`, `margin`, `gap`
 - `backgroundColor`, `borderRadius`, `boxShadow`
 - Reset: `border: "none"`, `outline: "none"`
@@ -218,31 +254,46 @@ Components have default styles that will interfere. Always set these explicitly:
                 f"{batch_info}: IMPORTANT - Only generate styles for these specific components: {', '.join(batch_components)}. Do NOT style any other components."
             )
         
-        # Check for inspired-by mode (has styleHints with overrideTheme)
+        # Check for inspired-by mode (has styleHints from reference website)
         style_hints = input.context.get("styleHints", {})
-        is_inspired_mode = style_hints.get("overrideTheme", False)
-        
-        # Handle inspired-by mode with explicit light/dark theme
-        if is_inspired_mode and not is_import_mode:
+        has_style_hints = bool(style_hints) and "referenceUrl" in style_hints
+
+        # Handle inspired-by mode with extracted colors from reference
+        if has_style_hints and not is_import_mode:
             theme = style_hints.get("theme", "light")
             bg_color = style_hints.get("backgroundColor", "#ffffff")
             text_color = style_hints.get("textColor", "#1a1a1a")
-            
+
+            # Get extracted colors from reference website
+            extracted_colors = style_hints.get("extractedColors", [])
+            color_palette = style_hints.get("colorPalette", [])
+
+            # Build color list for the prompt
+            bg_colors = [c["value"] for c in extracted_colors if c.get("property") == "backgroundColor"][:5]
+            txt_colors = [c["value"] for c in extracted_colors if c.get("property") == "color"][:5]
+
             inspired_instructions = f"""
-## INSPIRED-BY MODE: Use Clean {theme.upper()} Theme
+## INSPIRED-BY MODE: Match Reference Color Scheme
 
-### Theme Settings:
-- Background Color: {bg_color}
-- Text Color: {text_color}
-- Theme: {theme.upper()}
+### EXTRACTED COLORS FROM REFERENCE WEBSITE:
+- Primary Background: {bg_color}
+- Primary Text Color: {text_color}
+- Background Colors Found: {', '.join(bg_colors) if bg_colors else 'Use primary background'}
+- Text Colors Found: {', '.join(txt_colors) if txt_colors else 'Use primary text color'}
+- Color Palette: {', '.join(color_palette[:8]) if color_palette else 'Use extracted colors above'}
 
-### IMPORTANT:
-- Use a CLEAN {theme} color scheme
+### CRITICAL - USE THESE EXACT COLORS:
 - The root component (pageRoot) MUST have backgroundColor: "{bg_color}"
-- Default text color should be {text_color}
-- Sections can have accent colors, but avoid making everything dark
-- Use good contrast between text and backgrounds
-- Hero sections can have colored backgrounds but ensure text is readable
+- Default text color should be "{text_color}"
+- Use the extracted background colors for sections/cards
+- Use the extracted text colors for headings and body text
+- Maintain the same visual feel as the reference
+
+### Style Guidelines:
+- Match the color scheme exactly from the reference
+- Use similar spacing and typography proportions
+- Ensure good contrast between text and backgrounds
+- Apply hover states with slightly adjusted colors from the palette
 """
             additional_instructions.append(inspired_instructions)
         
