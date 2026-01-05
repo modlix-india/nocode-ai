@@ -5,7 +5,7 @@ on:
     branches:
       - oci-stage
     paths:
-      - 'nocode-ai/**'
+      - '**'
       - '.github/workflows/ai-stage-ci.yml'
 
   workflow_dispatch:
@@ -29,8 +29,7 @@ jobs:
             -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" \
             --password-stdin
 
-      - working-directory: nocode-ai
-        run: |
+      - run: |
           docker build -t $OCIR_REPO:${{ github.sha }} \
                        -t $OCIR_REPO:latest \
                        .
