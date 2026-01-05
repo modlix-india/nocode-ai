@@ -23,21 +23,72 @@ class ComponentAnalyzerAgent(BaseAgent):
     def get_system_prompt(self) -> str:
         return """You are a Component Analyzer for the Nocode UI system.
 
-Your job is to ANALYZE what components are needed, NOT generate them in detail.
+Your job is to ANALYZE what LEAF components (actual content) are needed to fill the layout containers.
+
+## CRITICAL: Layout Agent Creates Containers, You Create Content
+
+The Layout agent has already created Grid containers for the page structure.
+YOUR JOB is to identify the LEAF COMPONENTS that go INSIDE those containers:
+- Text components for headings, paragraphs, labels
+- Button components for actions, CTAs
+- Image components for images and logos
+- Icon components for icons
+- TextBox components for form inputs
+- Link components for navigation links
+
+## IMPORTANT: Do NOT Create More Grid Containers
+
+The layout containers are ALREADY created. You should ONLY create:
+- Text (for any text content: headings, paragraphs, labels, etc.)
+- Button (for clickable actions)
+- Image (for images and logos)
+- Icon (for icons)
+- TextBox, Checkbox, Dropdown, RadioButton (for form inputs)
+- Link (for navigation)
+
+Do NOT create additional Grid containers unless absolutely necessary for grouping form fields.
 
 ## Output Format
 
-List ALL components needed with their types and purposes:
+List ALL LEAF components needed with their types and purposes.
+The Layout agent has already created containers like "header", "heroSection", "loginForm", etc.
+You ONLY need to list the content that goes INSIDE those containers:
 
 ```json
 {
-  "reasoning": "Brief explanation of component requirements",
+  "reasoning": "Brief explanation - list ONLY leaf content, not containers",
   "components_needed": [
     {
-      "key": "loginForm",
-      "type": "Grid",
-      "purpose": "Container for login form elements",
-      "parent": "pageRoot"
+      "key": "logoImage",
+      "type": "Image",
+      "purpose": "Company logo in header",
+      "parent": "header"
+    },
+    {
+      "key": "navLink1",
+      "type": "Link",
+      "purpose": "Navigation link - Home",
+      "parent": "navContainer"
+    },
+    {
+      "key": "heroTitle",
+      "type": "Text",
+      "purpose": "Main hero heading",
+      "parent": "heroSection",
+      "properties_hint": "text content"
+    },
+    {
+      "key": "heroDescription",
+      "type": "Text",
+      "purpose": "Hero description paragraph",
+      "parent": "heroSection"
+    },
+    {
+      "key": "ctaButton",
+      "type": "Button",
+      "purpose": "Call to action button",
+      "parent": "heroSection",
+      "properties_hint": "label, onClick event"
     },
     {
       "key": "emailInput",
@@ -45,36 +96,27 @@ List ALL components needed with their types and purposes:
       "purpose": "Email input field",
       "parent": "loginForm",
       "properties_hint": "label, placeholder, bindingPath"
-    },
-    {
-      "key": "passwordInput",
-      "type": "TextBox",
-      "purpose": "Password input field with type=password",
-      "parent": "loginForm",
-      "properties_hint": "label, type, bindingPath"
-    },
-    {
-      "key": "submitButton",
-      "type": "Button",
-      "purpose": "Submit the login form",
-      "parent": "loginForm",
-      "properties_hint": "label, onClick event"
     }
   ]
 }
 ```
 
-## Available Component Types (USE ONLY THESE - NO OTHER TYPES EXIST)
-- Grid: For layout containers (use this for any container/wrapper/section)
-- Text: For displaying text content
-- Button: For actions (has label property)
-- TextBox: For text/password input
-- Checkbox: For boolean inputs
-- Dropdown: For selection lists
-- RadioButton: For single selection
-- Image: For displaying images (use EMPTY src "" for placeholders in import mode)
-- Icon: For icons (Font Awesome, Material)
-- Link: For navigation links
+**NOTICE:** The example above has NO Grid components - only Text, Button, Image, Link, TextBox.
+The containers (header, navContainer, heroSection, loginForm) were created by the Layout agent.
+
+## Available Component Types for LEAF CONTENT (what YOU should create)
+- **Text**: For ALL text content (headings, paragraphs, labels, descriptions)
+- **Button**: For clickable actions and CTAs
+- **Image**: For images and logos (use EMPTY src "" for placeholders)
+- **Icon**: For icons (Font Awesome, Material)
+- **Link**: For navigation links
+- **TextBox**: For text/password input fields
+- **Checkbox**: For boolean inputs
+- **Dropdown**: For selection lists
+- **RadioButton**: For single selection from options
+
+## Grid - ONLY for Layout Agent
+- Grid: Created by Layout agent for containers. **DO NOT create Grid components** - they already exist!
 
 ## CRITICAL: INVALID COMPONENT TYPES
 **NEVER USE THESE - THEY DO NOT EXIST:**
@@ -129,6 +171,55 @@ When importing from a website (importMode=true or placeholderImages=true), creat
             + user_request
         )
 
+    def _build_messages(self, input: AgentInput, rag_context: str) -> List[Dict]:
+        """Override to include layout structure for the analyzer to understand containers."""
+
+        # Get the layout structure from previous outputs
+        layout_output = input.previous_outputs.get("layout", {})
+        layout_containers = layout_output.get("componentDefinition", {})
+
+        logger.info(f"[ComponentAnalyzer] Layout output keys: {list(layout_output.keys())}")
+        logger.info(f"[ComponentAnalyzer] Found {len(layout_containers)} containers from Layout agent")
+
+        # Extract just the container names and their hierarchy for clarity
+        container_summary = []
+        for key, comp in layout_containers.items():
+            children = list(comp.get("children", {}).keys())
+            container_summary.append({
+                "key": key,
+                "type": comp.get("type", "Grid"),
+                "children_slots": children if children else "needs content"
+            })
+
+        user_content = f"""
+## User Request
+{input.user_request}
+
+## Layout Structure (containers already created by Layout agent)
+The Layout agent has created these Grid containers. You need to identify what LEAF COMPONENTS go inside them:
+
+```json
+{json.dumps(container_summary, indent=2) if container_summary else "No layout provided - analyze the request to determine structure"}
+```
+
+## Existing Page Context
+```json
+{json.dumps(input.context.get("existingPage", {}), indent=2) if input.context.get("existingPage") else "No existing page"}
+```
+
+## Relevant Documentation
+{rag_context if rag_context else "No additional documentation available."}
+
+## Your Task
+Analyze the layout containers above and identify ALL LEAF COMPONENTS (Text, Button, Image, Icon, etc.) needed.
+For each container that has "children_slots": "needs content", determine what content components should go inside.
+DO NOT create more Grid containers - those are already handled.
+
+Output valid JSON only, wrapped in ```json code blocks.
+"""
+
+        return [{"role": "user", "content": user_content}]
+
 
 class ComponentGeneratorAgent(BaseAgent):
     """
@@ -144,7 +235,19 @@ class ComponentGeneratorAgent(BaseAgent):
     def get_system_prompt(self) -> str:
         return """You are a Component Generator for the Nocode UI system.
 
-You receive a list of components to generate. Create the actual component definitions.
+You receive a list of LEAF COMPONENTS to generate. Create the actual component definitions.
+
+## CRITICAL: Focus on LEAF Components, NOT Containers
+
+The Layout agent has ALREADY created the Grid containers. Your job is to create the CONTENT components:
+- Text components for all text (headings, paragraphs, labels)
+- Button components for actions
+- Image components for images
+- Icon components for icons
+- TextBox, Checkbox, Dropdown, RadioButton for form inputs
+- Link for navigation links
+
+**DO NOT create Grid containers unless explicitly listed in the analysis.**
 
 ## CRITICAL: Flat componentDefinition
 
@@ -437,8 +540,14 @@ class ComponentAgent(BaseAgent):
             
             component_analysis = analysis_result.result
             components_needed = component_analysis.get("components_needed", [])
-            
+
+            # Log details about what was analyzed
+            component_types = {}
+            for comp in components_needed:
+                comp_type = comp.get("type", "Unknown")
+                component_types[comp_type] = component_types.get(comp_type, 0) + 1
             logger.info(f"Component analysis found {len(components_needed)} components needed")
+            logger.info(f"[ComponentAgent] Component types breakdown: {component_types}")
             
             if not components_needed:
                 # No components needed
