@@ -23,9 +23,13 @@ class HtmlToNocodeConverter:
         """
         Directly convert VisualElement tree to Nocode componentDefinition.
         No LLM involved - pure 1:1 mapping of elements to components.
+        Also includes page-level classes for @keyframes animations.
         """
         component_def = {}
         root_children = {}
+
+        # Extract keyframes for page classes property
+        page_classes = self._convert_keyframes_to_classes(visual_data.keyframes) if hasattr(visual_data, 'keyframes') else {}
 
         root_key = "pageRoot"
         component_def[root_key] = {
@@ -141,8 +145,19 @@ class HtmlToNocodeConverter:
         for idx, elem in enumerate(visual_data.elements):
             convert_element(elem, root_children, idx)
 
-        logger.info(f"Converted {len(component_def)} components, {len(images_converted)} images")
-        return {"rootComponent": root_key, "componentDefinition": component_def}
+        logger.info(f"Converted {len(component_def)} components, {len(images_converted)} images, {len(page_classes)} keyframes")
+
+        result = {
+            "rootComponent": root_key,
+            "componentDefinition": component_def,
+            "properties": {}
+        }
+
+        # Add keyframes as page classes inside properties
+        if page_classes:
+            result["properties"]["classes"] = page_classes
+
+        return result
 
     def _tag_to_component_type(self, tag: str, has_children: bool = False, children_are_text_only: bool = True) -> str:
         """Map HTML tag to Nocode component type."""
@@ -265,7 +280,117 @@ class HtmlToNocodeConverter:
         style_key = self._generate_style_key(elem.id)
         if resolutions:
             style_props[style_key] = {"resolutions": resolutions}
+
+        # Build pseudo-state styles (hover, focus, active, visited)
+        pseudo_style_props = self._build_pseudo_styles(elem, comp_type)
+        style_props.update(pseudo_style_props)
+
         return style_props
+
+    def _build_pseudo_styles(self, elem, comp_type: str) -> Dict[str, Any]:
+        """Build pseudo-state styles (hover, focus, etc.) from extracted CSS."""
+        pseudo_props = {}
+
+        # Map CSS pseudo-states to Nocode pseudo-state names
+        PSEUDO_STATE_MAP = {
+            "hover": "hover",
+            "focus": "focus",
+            "focus-visible": "focus",  # Map focus-visible to focus
+            "active": "active",
+            "visited": "visited",
+        }
+
+        # Components that support each pseudo-state
+        COMPONENT_PSEUDO_SUPPORT = {
+            "Button": ["hover", "focus", "active"],
+            "Link": ["hover", "visited"],
+            "TextBox": ["focus"],
+            "TextArea": ["focus"],
+            "Dropdown": ["focus"],
+            "Grid": ["hover", "focus"],  # Grid can support hover/focus for clickable containers
+            "Image": ["hover"],
+        }
+
+        supported_states = COMPONENT_PSEUDO_SUPPORT.get(comp_type, [])
+        if not supported_states:
+            return {}
+
+        pseudo_styles = getattr(elem, 'pseudo_styles', {}) or {}
+        if not pseudo_styles:
+            return {}
+
+        elem_id_short = elem.id[:30] if elem.id else 'unknown'
+
+        for css_pseudo, styles in pseudo_styles.items():
+            if not styles:
+                continue
+
+            nocode_pseudo = PSEUDO_STATE_MAP.get(css_pseudo)
+            if not nocode_pseudo or nocode_pseudo not in supported_states:
+                continue
+
+            # Build styles for this pseudo-state
+            pseudo_resolution_styles = {}
+            for prop, value in styles.items():
+                if not value:
+                    continue
+                nocode_prop = self._css_to_nocode_prop(prop)
+                processed = self._process_css_value(value)
+                if processed:
+                    pseudo_resolution_styles[nocode_prop] = {"value": processed}
+
+            if pseudo_resolution_styles:
+                # Generate a unique key for this pseudo-state style
+                pseudo_style_key = self._generate_style_key(f"{elem.id}_{nocode_pseudo}")
+                pseudo_props[pseudo_style_key] = {
+                    "pseudoState": nocode_pseudo,
+                    "resolutions": {"ALL": pseudo_resolution_styles}
+                }
+                logger.info(f"[PseudoStyles] Added {nocode_pseudo} styles for {elem_id_short}: {list(pseudo_resolution_styles.keys())[:5]}")
+
+        return pseudo_props
+
+    def _convert_keyframes_to_classes(self, keyframes: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+        """
+        Convert extracted keyframes to Nocode page classes format.
+
+        The keyframes from extraction are already in the correct format:
+        {"animationName": {"selector": "@keyframes name", "style": "0% {...} 100% {...}"}}
+
+        This method validates and passes them through, filtering out invalid entries.
+        Each class entry needs a unique key identifier.
+        """
+        if not keyframes:
+            return {}
+
+        classes = {}
+        for name, keyframe_data in keyframes.items():
+            if not isinstance(keyframe_data, dict):
+                continue
+
+            selector = keyframe_data.get("selector", "")
+            style = keyframe_data.get("style", "")
+
+            # Validate the keyframe has required fields
+            if not selector or not style:
+                logger.warning(f"[Keyframes] Skipping invalid keyframe '{name}': missing selector or style")
+                continue
+
+            # Ensure selector is a valid @keyframes declaration
+            if not selector.startswith("@keyframes"):
+                selector = f"@keyframes {name}"
+
+            # Generate a unique key for this class entry
+            class_key = self._generate_style_key(f"keyframes_{name}")
+
+            classes[class_key] = {
+                "key": class_key,
+                "selector": selector,
+                "style": style
+            }
+            logger.info(f"[Keyframes] Added keyframe '{name}' with key '{class_key}' to page classes")
+
+        return classes
 
     def _build_diff_styles_for_type(self, base: Dict, current: Dict, comp_type: str, container_props: set, image_props: set) -> Dict[str, Any]:
         """Build diff styles with proper prefix handling.

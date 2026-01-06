@@ -73,23 +73,26 @@ class ImageInfo:
 class VisualElement:
     """
     An element extracted with its computed styles at each viewport.
-    
+
     Styles are stored per viewport and later merged into Nocode resolution format.
     """
     id: str
     tag: str
     text: str = ""
     image_url: str = ""
-    
+
     # Computed styles per viewport: {"desktop": {...}, "tablet": {...}, "mobile": {...}}
     styles: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    
+
+    # Pseudo-state styles (hover, focus, etc.): {"hover": {...}, "focus": {...}}
+    pseudo_styles: Dict[str, Dict[str, str]] = field(default_factory=dict)
+
     # Bounding box per viewport: {"desktop": {x, y, width, height}, ...}
     bounds: Dict[str, Dict[str, float]] = field(default_factory=dict)
-    
+
     # Child elements
     children: List['VisualElement'] = field(default_factory=list)
-    
+
     # Additional attributes (href, src, etc.)
     attributes: Dict[str, str] = field(default_factory=dict)
 
@@ -99,18 +102,22 @@ class VisualData:
     """Complete visual extraction data from a website"""
     url: str
     title: str = ""
-    
+
     # Screenshot at desktop viewport (base64)
     screenshot: str = ""
-    
+
     # Root element with all children
     elements: List[VisualElement] = field(default_factory=list)
-    
+
     # All images found (for uploading)
     images: List[ImageInfo] = field(default_factory=list)
-    
+
     # Root styles at each viewport
     root_styles: Dict[str, Dict[str, str]] = field(default_factory=dict)
+
+    # CSS keyframes for animations (Nocode page classes format)
+    # Format: {"animationName": {"selector": "@keyframes name", "style": "0% {...} 100% {...}"}}
+    keyframes: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
 
 class WebsiteExtractor:
@@ -199,16 +206,20 @@ class WebsiteExtractor:
                 
                 # Extract all images
                 images = self._extract_images(viewport_data.get("desktop", {}), url)
-                
-                logger.info(f"Extraction complete: {len(elements)} elements, {len(images)} images")
-                
+
+                # Extract keyframes (only need from desktop viewport)
+                keyframes = viewport_data.get("desktop", {}).get("keyframes", {})
+
+                logger.info(f"Extraction complete: {len(elements)} elements, {len(images)} images, {len(keyframes)} keyframes")
+
                 return VisualData(
                     url=url,
                     title=title,
                     screenshot=screenshot,
                     elements=elements,
                     images=images,
-                    root_styles=root_styles
+                    root_styles=root_styles,
+                    keyframes=keyframes
                 )
                 
             finally:
@@ -564,7 +575,164 @@ class WebsiteExtractor:
 
                 return styles;
             };
-            
+
+            // Extract pseudo-state styles (hover, focus, active) from CSS rules
+            const getPseudoStyles = (el) => {
+                const pseudoStyles = {};
+                const PSEUDO_STATES = [':hover', ':focus', ':active', ':visited', ':focus-visible'];
+
+                try {
+                    const sheets = document.styleSheets;
+                    for (let i = 0; i < sheets.length; i++) {
+                        try {
+                            const rules = sheets[i].cssRules || sheets[i].rules;
+                            if (!rules) continue;
+
+                            for (let j = 0; j < rules.length; j++) {
+                                const rule = rules[j];
+                                if (rule.type !== CSSRule.STYLE_RULE) continue;
+
+                                const selector = rule.selectorText;
+                                if (!selector) continue;
+
+                                // Check each pseudo-state
+                                for (const pseudo of PSEUDO_STATES) {
+                                    if (!selector.includes(pseudo)) continue;
+
+                                    // Try to match the element with the base selector
+                                    const baseSelector = selector.replace(new RegExp(pseudo + '(?![\\w-])', 'g'), '');
+                                    try {
+                                        if (!el.matches(baseSelector)) continue;
+                                    } catch (e) {
+                                        continue; // Invalid selector after removing pseudo
+                                    }
+
+                                    // Extract the styles from this rule
+                                    const pseudoName = pseudo.replace(':', '');
+                                    if (!pseudoStyles[pseudoName]) {
+                                        pseudoStyles[pseudoName] = {};
+                                    }
+
+                                    const ruleStyle = rule.style;
+                                    for (let k = 0; k < ruleStyle.length; k++) {
+                                        const prop = ruleStyle[k];
+                                        // Skip CSS variables and vendor prefixes
+                                        if (prop.startsWith('--') || prop.startsWith('-webkit-') ||
+                                            prop.startsWith('-moz-') || prop.startsWith('-ms-')) continue;
+
+                                        let value = ruleStyle.getPropertyValue(prop);
+                                        if (!value || value === 'initial' || value === 'inherit') continue;
+
+                                        // Resolve CSS variables
+                                        if (value.includes('var(')) {
+                                            const computed = window.getComputedStyle(el);
+                                            // Can't directly get pseudo-state computed value, skip var() values
+                                            continue;
+                                        }
+
+                                        const camelProp = prop.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+                                        pseudoStyles[pseudoName][camelProp] = value;
+                                    }
+                                }
+                            }
+                        } catch (sheetErr) {
+                            // Cross-origin stylesheet, skip
+                        }
+                    }
+                } catch (e) {
+                    // Fallback if CSS rules access fails
+                }
+
+                return pseudoStyles;
+            };
+
+            // Extract CSS animations and transitions from an element
+            const getAnimationStyles = (el) => {
+                const animations = {};
+                const computed = window.getComputedStyle(el);
+
+                // Extract animation properties
+                const animationName = computed.animationName;
+                if (animationName && animationName !== 'none') {
+                    animations.animationName = animationName;
+                    animations.animationDuration = computed.animationDuration;
+                    animations.animationTimingFunction = computed.animationTimingFunction;
+                    animations.animationDelay = computed.animationDelay;
+                    animations.animationIterationCount = computed.animationIterationCount;
+                    animations.animationDirection = computed.animationDirection;
+                    animations.animationFillMode = computed.animationFillMode;
+                    animations.animationPlayState = computed.animationPlayState;
+                }
+
+                // Extract transition properties (for hover/interaction effects)
+                const transitionProperty = computed.transitionProperty;
+                if (transitionProperty && transitionProperty !== 'none' && transitionProperty !== 'all') {
+                    // Only capture meaningful transitions (not default 'all 0s ease 0s')
+                    const transitionDuration = computed.transitionDuration;
+                    if (transitionDuration && transitionDuration !== '0s') {
+                        animations.transitionProperty = transitionProperty;
+                        animations.transitionDuration = transitionDuration;
+                        animations.transitionTimingFunction = computed.transitionTimingFunction;
+                        animations.transitionDelay = computed.transitionDelay;
+                    }
+                }
+
+                return Object.keys(animations).length > 0 ? animations : null;
+            };
+
+            // Extract all @keyframes rules from stylesheets
+            // Returns them in Nocode page classes format
+            const extractKeyframes = () => {
+                const keyframes = {};
+
+                try {
+                    const sheets = document.styleSheets;
+                    for (let i = 0; i < sheets.length; i++) {
+                        try {
+                            const rules = sheets[i].cssRules || sheets[i].rules;
+                            if (!rules) continue;
+
+                            for (let j = 0; j < rules.length; j++) {
+                                const rule = rules[j];
+                                // CSSKeyframesRule type is 7
+                                if (rule.type === CSSRule.KEYFRAMES_RULE || rule.type === 7) {
+                                    const name = rule.name;
+
+                                    // Build the keyframes content as CSS text
+                                    let styleContent = '';
+                                    for (let k = 0; k < rule.cssRules.length; k++) {
+                                        const keyframe = rule.cssRules[k];
+                                        const keyText = keyframe.keyText;
+                                        let frameStyles = '';
+
+                                        for (let l = 0; l < keyframe.style.length; l++) {
+                                            const prop = keyframe.style[l];
+                                            const value = keyframe.style.getPropertyValue(prop);
+                                            if (value) {
+                                                frameStyles += `    ${prop}: ${value};\n`;
+                                            }
+                                        }
+
+                                        styleContent += `${keyText} {\n${frameStyles}  }\n  `;
+                                    }
+
+                                    keyframes[name] = {
+                                        selector: `@keyframes ${name}`,
+                                        style: styleContent.trim()
+                                    };
+                                }
+                            }
+                        } catch (sheetErr) {
+                            // Cross-origin stylesheet, skip
+                        }
+                    }
+                } catch (e) {
+                    // Error accessing stylesheets
+                }
+
+                return keyframes;
+            };
+
             // Get bounding rect
             const getBounds = (el) => {
                 const rect = el.getBoundingClientRect();
@@ -636,11 +804,19 @@ class WebsiteExtractor:
                     text = text.trim().substring(0, 500);
                 }
 
+                // Only extract pseudo styles for interactive elements
+                const INTERACTIVE_TAGS = ['a', 'button', 'input', 'select', 'textarea'];
+                const hasPseudo = INTERACTIVE_TAGS.includes(tag) ||
+                    el.getAttribute('role') === 'button' ||
+                    el.getAttribute('tabindex') !== null;
+
                 const data = {
                     id: generateDeterministicId(el),
                     tag: tag,
                     text: text,
                     styles: getSpecifiedStyles(el),
+                    pseudoStyles: hasPseudo ? getPseudoStyles(el) : {},
+                    animationStyles: getAnimationStyles(el),
                     bounds: getBounds(el),
                     attributes: {},
                     children: []
@@ -854,9 +1030,13 @@ class WebsiteExtractor:
             // Sort by Y position (top to bottom)
             elements.sort((a, b) => (a.bounds?.y || 0) - (b.bounds?.y || 0));
             
+            // Also extract keyframes for page-level animation definitions
+            const keyframes = extractKeyframes();
+
             return {
                 rootStyles: rootStyles,
-                elements: elements
+                elements: elements,
+                keyframes: keyframes
             };
         }''')
     
@@ -903,6 +1083,9 @@ class WebsiteExtractor:
                     t_diffs = [k for k in tablet_styles if tablet_styles.get(k) != desktop_styles.get(k)]
                     logger.info(f"[Merge] Tablet style diffs: {t_diffs[:5] if t_diffs else 'NONE'}")
 
+            # Merge pseudo styles - use desktop as primary (pseudo styles don't typically change per viewport)
+            pseudo_styles = desktop_elem.get("pseudoStyles", {})
+
             element = VisualElement(
                 id=elem_id,
                 tag=desktop_elem.get("tag", "div"),
@@ -913,6 +1096,7 @@ class WebsiteExtractor:
                     "tablet": tablet_styles,
                     "mobile": mobile_styles
                 },
+                pseudo_styles=pseudo_styles,
                 bounds={
                     "desktop": desktop_elem.get("bounds", {}),
                     "tablet": tablet_elem.get("bounds", {}) if tablet_elem else {},
