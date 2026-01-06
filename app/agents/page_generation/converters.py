@@ -23,9 +23,13 @@ class HtmlToNocodeConverter:
         """
         Directly convert VisualElement tree to Nocode componentDefinition.
         No LLM involved - pure 1:1 mapping of elements to components.
+        Also includes page-level classes for @keyframes animations.
         """
         component_def = {}
         root_children = {}
+
+        # Extract keyframes for page classes property
+        page_classes = self._convert_keyframes_to_classes(visual_data.keyframes) if hasattr(visual_data, 'keyframes') else {}
 
         root_key = "pageRoot"
         component_def[root_key] = {
@@ -82,7 +86,7 @@ class HtmlToNocodeConverter:
             if comp_type == "Text":
                 properties["text"] = {"value": elem.text or ""}
             elif comp_type == "Button":
-                properties["label"] = {"value": elem.text or "Button"}
+                properties["label"] = {"value": elem.text.strip() if elem.text else ""}
                 properties["designType"] = {"value": "_text"}
                 properties["colorScheme"] = {"value": "_secondary"}
             elif comp_type == "Link":
@@ -141,8 +145,19 @@ class HtmlToNocodeConverter:
         for idx, elem in enumerate(visual_data.elements):
             convert_element(elem, root_children, idx)
 
-        logger.info(f"Converted {len(component_def)} components, {len(images_converted)} images")
-        return {"rootComponent": root_key, "componentDefinition": component_def}
+        logger.info(f"Converted {len(component_def)} components, {len(images_converted)} images, {len(page_classes)} keyframes")
+
+        result = {
+            "rootComponent": root_key,
+            "componentDefinition": component_def,
+            "properties": {}
+        }
+
+        # Add keyframes as page classes inside properties
+        if page_classes:
+            result["properties"]["classes"] = page_classes
+
+        return result
 
     def _tag_to_component_type(self, tag: str, has_children: bool = False, children_are_text_only: bool = True) -> str:
         """Map HTML tag to Nocode component type."""
@@ -150,6 +165,9 @@ class HtmlToNocodeConverter:
         if tag_lower == "a" and has_children:
             return "Grid"
         if tag_lower == "button" and has_children and not children_are_text_only:
+            return "Grid"
+        # li with complex children (links, images, etc.) should be a Grid container
+        if tag_lower == "li" and has_children and not children_are_text_only:
             return "Grid"
 
         tag_map = {
@@ -171,6 +189,20 @@ class HtmlToNocodeConverter:
         desktop = elem.styles.get("desktop", {})
         tablet = elem.styles.get("tablet", {})
         mobile = elem.styles.get("mobile", {})
+
+        # Debug logging for responsive styles - use INFO level for visibility
+        elem_id_short = elem.id[:30] if elem.id else 'unknown'
+        logger.info(f"[StylesBuild] Element {elem_id_short} ({comp_type}): desktop={len(desktop)}, tablet={len(tablet)}, mobile={len(mobile)}")
+
+        # Check if tablet/mobile differ from desktop
+        if tablet:
+            tablet_diffs = [k for k in tablet if tablet.get(k) != desktop.get(k)]
+            if tablet_diffs:
+                logger.info(f"[StylesBuild]   Tablet differs: {tablet_diffs[:5]}")
+        if mobile:
+            mobile_diffs = [k for k in mobile if mobile.get(k) != desktop.get(k)]
+            if mobile_diffs:
+                logger.info(f"[StylesBuild]   Mobile differs: {mobile_diffs[:5]}")
 
         CONTAINER_PROPS = {
             "position", "top", "right", "bottom", "left", "zIndex",
@@ -221,24 +253,162 @@ class HtmlToNocodeConverter:
 
         resolutions = {"ALL": root_styles} if root_styles else {}
 
+        # Build tablet diff: compare tablet against desktop
         tablet_diff = self._build_diff_styles_for_type(desktop, tablet, comp_type, CONTAINER_PROPS, IMAGE_ELEMENT_PROPS)
         if tablet_diff:
             resolutions["TABLET_LANDSCAPE_SCREEN_SMALL"] = tablet_diff
+            logger.info(f"[Responsive] Added TABLET styles for {elem_id_short}: {list(tablet_diff.keys())}")
+        elif tablet:
+            # Log why no diff was found even though tablet styles exist
+            raw_diffs = [k for k in tablet if tablet.get(k) != desktop.get(k)]
+            if raw_diffs:
+                logger.info(f"[Responsive] Tablet raw diffs exist but filtered out for {elem_id_short}: {raw_diffs[:3]}")
 
-        mobile_diff = self._build_diff_styles_for_type(desktop, mobile, comp_type, CONTAINER_PROPS, IMAGE_ELEMENT_PROPS)
+        # Build mobile diff: compare mobile against the effective styles (desktop + tablet overrides)
+        # This ensures mobile captures changes from tablet, not just from desktop
+        effective_tablet = {**desktop, **tablet}
+        mobile_diff = self._build_diff_styles_for_type(effective_tablet, mobile, comp_type, CONTAINER_PROPS, IMAGE_ELEMENT_PROPS)
         if mobile_diff:
             resolutions["MOBILE_LANDSCAPE_SCREEN_SMALL"] = mobile_diff
+            logger.info(f"[Responsive] Added MOBILE styles for {elem_id_short}: {list(mobile_diff.keys())}")
+        elif mobile:
+            # Log why no diff was found even though mobile styles exist
+            raw_diffs = [k for k in mobile if mobile.get(k) != effective_tablet.get(k)]
+            if raw_diffs:
+                logger.info(f"[Responsive] Mobile raw diffs exist but filtered out for {elem_id_short}: {raw_diffs[:3]}")
 
         style_key = self._generate_style_key(elem.id)
         if resolutions:
             style_props[style_key] = {"resolutions": resolutions}
+
+        # Build pseudo-state styles (hover, focus, active, visited)
+        pseudo_style_props = self._build_pseudo_styles(elem, comp_type)
+        style_props.update(pseudo_style_props)
+
         return style_props
 
+    def _build_pseudo_styles(self, elem, comp_type: str) -> Dict[str, Any]:
+        """Build pseudo-state styles (hover, focus, etc.) from extracted CSS."""
+        pseudo_props = {}
+
+        # Map CSS pseudo-states to Nocode pseudo-state names
+        PSEUDO_STATE_MAP = {
+            "hover": "hover",
+            "focus": "focus",
+            "focus-visible": "focus",  # Map focus-visible to focus
+            "active": "active",
+            "visited": "visited",
+        }
+
+        # Components that support each pseudo-state
+        COMPONENT_PSEUDO_SUPPORT = {
+            "Button": ["hover", "focus", "active"],
+            "Link": ["hover", "visited"],
+            "TextBox": ["focus"],
+            "TextArea": ["focus"],
+            "Dropdown": ["focus"],
+            "Grid": ["hover", "focus"],  # Grid can support hover/focus for clickable containers
+            "Image": ["hover"],
+        }
+
+        supported_states = COMPONENT_PSEUDO_SUPPORT.get(comp_type, [])
+        if not supported_states:
+            return {}
+
+        pseudo_styles = getattr(elem, 'pseudo_styles', {}) or {}
+        if not pseudo_styles:
+            return {}
+
+        elem_id_short = elem.id[:30] if elem.id else 'unknown'
+
+        for css_pseudo, styles in pseudo_styles.items():
+            if not styles:
+                continue
+
+            nocode_pseudo = PSEUDO_STATE_MAP.get(css_pseudo)
+            if not nocode_pseudo or nocode_pseudo not in supported_states:
+                continue
+
+            # Build styles for this pseudo-state
+            pseudo_resolution_styles = {}
+            for prop, value in styles.items():
+                if not value:
+                    continue
+                nocode_prop = self._css_to_nocode_prop(prop)
+                processed = self._process_css_value(value)
+                if processed:
+                    pseudo_resolution_styles[nocode_prop] = {"value": processed}
+
+            if pseudo_resolution_styles:
+                # Generate a unique key for this pseudo-state style
+                pseudo_style_key = self._generate_style_key(f"{elem.id}_{nocode_pseudo}")
+                pseudo_props[pseudo_style_key] = {
+                    "pseudoState": nocode_pseudo,
+                    "resolutions": {"ALL": pseudo_resolution_styles}
+                }
+                logger.info(f"[PseudoStyles] Added {nocode_pseudo} styles for {elem_id_short}: {list(pseudo_resolution_styles.keys())[:5]}")
+
+        return pseudo_props
+
+    def _convert_keyframes_to_classes(self, keyframes: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+        """
+        Convert extracted keyframes to Nocode page classes format.
+
+        The keyframes from extraction are already in the correct format:
+        {"animationName": {"selector": "@keyframes name", "style": "0% {...} 100% {...}"}}
+
+        This method validates and passes them through, filtering out invalid entries.
+        Each class entry needs a unique key identifier.
+        """
+        if not keyframes:
+            return {}
+
+        classes = {}
+        for name, keyframe_data in keyframes.items():
+            if not isinstance(keyframe_data, dict):
+                continue
+
+            selector = keyframe_data.get("selector", "")
+            style = keyframe_data.get("style", "")
+
+            # Validate the keyframe has required fields
+            if not selector or not style:
+                logger.warning(f"[Keyframes] Skipping invalid keyframe '{name}': missing selector or style")
+                continue
+
+            # Ensure selector is a valid @keyframes declaration
+            if not selector.startswith("@keyframes"):
+                selector = f"@keyframes {name}"
+
+            # Generate a unique key for this class entry
+            class_key = self._generate_style_key(f"keyframes_{name}")
+
+            classes[class_key] = {
+                "key": class_key,
+                "selector": selector,
+                "style": style
+            }
+            logger.info(f"[Keyframes] Added keyframe '{name}' with key '{class_key}' to page classes")
+
+        return classes
+
     def _build_diff_styles_for_type(self, base: Dict, current: Dict, comp_type: str, container_props: set, image_props: set) -> Dict[str, Any]:
-        """Build diff styles with proper prefix handling."""
+        """Build diff styles with proper prefix handling.
+
+        Compares current viewport styles against base and returns only the differences.
+        Also includes properties that exist in current but not in base.
+        """
         diff_styles = {}
+
+        # Get all properties from current viewport
         for prop, value in current.items():
-            if value and value != base.get(prop):
+            if not value:
+                continue
+
+            base_value = base.get(prop)
+
+            # Include if: value exists AND (base doesn't have it OR values differ)
+            if value != base_value:
                 nocode_prop = self._css_to_nocode_prop(prop)
                 processed = self._process_css_value(value)
                 if processed and processed.lower() not in {"initial", "inherit", "unset"}:
@@ -248,6 +418,7 @@ class HtmlToNocodeConverter:
                         continue
                     else:
                         diff_styles[nocode_prop] = {"value": processed}
+
         return diff_styles
 
     def _generate_style_key(self, element_id: str) -> str:
@@ -261,6 +432,8 @@ class HtmlToNocodeConverter:
         """Create Nocode styleProperties with responsive resolutions."""
         resolutions = {}
         desktop_styles = viewport_styles.get("desktop", {})
+        tablet_styles = viewport_styles.get("tablet", {})
+        mobile_styles = viewport_styles.get("mobile", {})
         all_styles = {}
 
         if default_styles:
@@ -276,30 +449,30 @@ class HtmlToNocodeConverter:
 
         resolutions["ALL"] = all_styles
 
-        tablet_styles = viewport_styles.get("tablet", {})
-        tablet_resolutions = {}
-        for prop, value in tablet_styles.items():
-            if value and value != desktop_styles.get(prop) and prop != "theme":
-                nocode_prop = self._css_to_nocode_prop(prop)
-                processed = self._process_css_value(value)
-                if processed:
-                    tablet_resolutions[nocode_prop] = {"value": processed}
+        # Build tablet diff: compare against desktop
+        tablet_resolutions = self._build_viewport_diff(desktop_styles, tablet_styles)
         if tablet_resolutions:
             resolutions["TABLET_LANDSCAPE_SCREEN_SMALL"] = tablet_resolutions
 
-        mobile_styles = viewport_styles.get("mobile", {})
-        mobile_resolutions = {}
-        for prop, value in mobile_styles.items():
-            if value and value != desktop_styles.get(prop) and prop != "theme":
-                nocode_prop = self._css_to_nocode_prop(prop)
-                processed = self._process_css_value(value)
-                if processed:
-                    mobile_resolutions[nocode_prop] = {"value": processed}
+        # Build mobile diff: compare against effective styles (desktop + tablet overrides)
+        effective_tablet = {**desktop_styles, **tablet_styles}
+        mobile_resolutions = self._build_viewport_diff(effective_tablet, mobile_styles)
         if mobile_resolutions:
             resolutions["MOBILE_LANDSCAPE_SCREEN_SMALL"] = mobile_resolutions
 
         style_key = self._generate_style_key("pageRoot")
         return {style_key: {"resolutions": resolutions}}
+
+    def _build_viewport_diff(self, base_styles: Dict, current_styles: Dict) -> Dict[str, Any]:
+        """Build diff between two viewport style dictionaries."""
+        diff = {}
+        for prop, value in current_styles.items():
+            if value and value != base_styles.get(prop) and prop != "theme":
+                nocode_prop = self._css_to_nocode_prop(prop)
+                processed = self._process_css_value(value)
+                if processed:
+                    diff[nocode_prop] = {"value": processed}
+        return diff
 
     def _css_to_nocode_prop(self, css_prop: str) -> str:
         return css_prop
