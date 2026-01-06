@@ -257,6 +257,7 @@ class InspiredByModeExecutor:
             "structure": [],
             "backgroundColor": "#ffffff",
             "textColor": "#1a1a1a",
+            "isDarkTheme": False,
         }
 
         if not visual_data or not visual_data.elements:
@@ -291,18 +292,77 @@ class InspiredByModeExecutor:
                             "property": color_prop,
                         })
 
-        # Extract root background and text colors
+        # Extract root background and text colors from viewport-based root_styles
         root_styles = visual_data.root_styles.get("desktop", {})
         if "backgroundColor" in root_styles:
             result["backgroundColor"] = root_styles["backgroundColor"]
         if "color" in root_styles:
             result["textColor"] = root_styles["color"]
 
+        # Auto-detect dark theme from background color
+        bg_color = result["backgroundColor"]
+        result["isDarkTheme"] = self._is_dark_color(bg_color)
+
+        # If root didn't have background, check first few elements for dark backgrounds
+        if not result["isDarkTheme"] and result["colors"]:
+            bg_colors = [c["value"] for c in result["colors"] if c["property"] == "backgroundColor"]
+            dark_bg_count = sum(1 for c in bg_colors[:5] if self._is_dark_color(c))
+            if dark_bg_count >= 2:  # If multiple dark backgrounds found
+                result["isDarkTheme"] = True
+                # Use the first dark background as the primary
+                for c in bg_colors:
+                    if self._is_dark_color(c):
+                        result["backgroundColor"] = c
+                        break
+
+        logger.info(f"[ExtractContent] Background: {result['backgroundColor']}, isDark: {result['isDarkTheme']}")
+
         # Limit results to avoid token bloat
         result["texts"] = result["texts"][:30]
         result["colors"] = result["colors"][:20]
 
         return result
+
+    def _is_dark_color(self, color: str) -> bool:
+        """
+        Determine if a color is dark based on luminance.
+        Returns True if the color is dark (would need light text on it).
+        """
+        if not color:
+            return False
+
+        try:
+            # Handle hex colors
+            if color.startswith("#"):
+                hex_color = color.lstrip("#")
+                if len(hex_color) == 3:
+                    hex_color = "".join(c * 2 for c in hex_color)
+                if len(hex_color) == 6:
+                    r = int(hex_color[0:2], 16)
+                    g = int(hex_color[2:4], 16)
+                    b = int(hex_color[4:6], 16)
+                else:
+                    return False
+
+            # Handle rgb/rgba colors
+            elif color.startswith("rgb"):
+                import re
+                match = re.match(r'rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)', color)
+                if match:
+                    r, g, b = int(match.group(1)), int(match.group(2)), int(match.group(3))
+                else:
+                    return False
+            else:
+                return False
+
+            # Calculate relative luminance (simplified)
+            # Dark colors have low luminance
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+            return luminance < 0.5  # Threshold for dark
+
+        except Exception as e:
+            logger.debug(f"Could not parse color '{color}': {e}")
+            return False
 
     def _build_content_summary(self, extracted_content: Dict[str, Any]) -> str:
         """Build a summary of extracted content for the LLM prompt."""
@@ -349,8 +409,14 @@ class InspiredByModeExecutor:
 
         bg = extracted_content.get("backgroundColor", "#ffffff")
         text = extracted_content.get("textColor", "#1a1a1a")
+        is_dark = extracted_content.get("isDarkTheme", False)
+
+        lines.append(f"THEME: {'DARK' if is_dark else 'LIGHT'}")
         lines.append(f"PRIMARY BACKGROUND: {bg}")
         lines.append(f"PRIMARY TEXT COLOR: {text}")
+
+        if is_dark:
+            lines.append("IMPORTANT: This is a DARK theme website. Use dark backgrounds and light text colors.")
 
         return "\n".join(lines)
 
@@ -380,36 +446,30 @@ class InspiredByModeExecutor:
                 visual_data = await extractor.extract(source_url)
                 screenshot_base64 = visual_data.screenshot if visual_data else None
 
-                user_wants_dark = self.detector.wants_dark_theme(request.instruction)
                 extracted_colors = self.detector.extract_color_palette(visual_data) if visual_data else []
 
                 # Extract text content and structure from the source page
                 extracted_content = self._extract_page_content(visual_data) if visual_data else {}
                 logger.info(f"[InspiredByMode] Extracted content: {len(extracted_content.get('texts', []))} texts, {len(extracted_content.get('colors', []))} colors")
 
-                if not user_wants_dark:
-                    style_hints = {
-                        "referenceUrl": source_url,
-                        "hasScreenshot": screenshot_base64 is not None,
-                        "rootStyles": visual_data.root_styles if visual_data else {},
-                        "colorPalette": extracted_colors,
-                        "extractedColors": extracted_content.get("colors", []),
-                        "theme": "light",
-                        "backgroundColor": extracted_content.get("backgroundColor", "#ffffff"),
-                        "textColor": extracted_content.get("textColor", "#1a1a1a"),
-                        "overrideTheme": False  # Use actual extracted colors
-                    }
-                else:
-                    style_hints = {
-                        "referenceUrl": source_url,
-                        "hasScreenshot": screenshot_base64 is not None,
-                        "rootStyles": visual_data.root_styles if visual_data else {},
-                        "colorPalette": extracted_colors,
-                        "extractedColors": extracted_content.get("colors", []),
-                        "theme": "dark",
-                        "backgroundColor": extracted_content.get("backgroundColor", "#1a1a1a"),
-                        "textColor": extracted_content.get("textColor", "#ffffff"),
-                    }
+                # Use auto-detected theme from source website, or user's explicit preference
+                user_wants_dark = self.detector.wants_dark_theme(request.instruction)
+                source_is_dark = extracted_content.get("isDarkTheme", False)
+                use_dark_theme = user_wants_dark or source_is_dark
+
+                logger.info(f"[InspiredByMode] Theme detection: user_wants_dark={user_wants_dark}, source_is_dark={source_is_dark}, using_dark={use_dark_theme}")
+
+                # Build style hints with the detected/extracted colors
+                style_hints = {
+                    "referenceUrl": source_url,
+                    "hasScreenshot": screenshot_base64 is not None,
+                    "rootStyles": visual_data.root_styles if visual_data else {},
+                    "colorPalette": extracted_colors,
+                    "extractedColors": extracted_content.get("colors", []),
+                    "theme": "dark" if use_dark_theme else "light",
+                    "backgroundColor": extracted_content.get("backgroundColor", "#1a1a1a" if use_dark_theme else "#ffffff"),
+                    "textColor": extracted_content.get("textColor", "#ffffff" if use_dark_theme else "#1a1a1a"),
+                }
 
                 await emit('status', "Reference captured. Generating your page with similar style...")
 
