@@ -82,7 +82,7 @@ class HtmlToNocodeConverter:
             if comp_type == "Text":
                 properties["text"] = {"value": elem.text or ""}
             elif comp_type == "Button":
-                properties["label"] = {"value": elem.text or "Button"}
+                properties["label"] = {"value": elem.text.strip() if elem.text else ""}
                 properties["designType"] = {"value": "_text"}
                 properties["colorScheme"] = {"value": "_secondary"}
             elif comp_type == "Link":
@@ -151,6 +151,9 @@ class HtmlToNocodeConverter:
             return "Grid"
         if tag_lower == "button" and has_children and not children_are_text_only:
             return "Grid"
+        # li with complex children (links, images, etc.) should be a Grid container
+        if tag_lower == "li" and has_children and not children_are_text_only:
+            return "Grid"
 
         tag_map = {
             "h1": "Text", "h2": "Text", "h3": "Text", "h4": "Text", "h5": "Text", "h6": "Text",
@@ -171,6 +174,20 @@ class HtmlToNocodeConverter:
         desktop = elem.styles.get("desktop", {})
         tablet = elem.styles.get("tablet", {})
         mobile = elem.styles.get("mobile", {})
+
+        # Debug logging for responsive styles - use INFO level for visibility
+        elem_id_short = elem.id[:30] if elem.id else 'unknown'
+        logger.info(f"[StylesBuild] Element {elem_id_short} ({comp_type}): desktop={len(desktop)}, tablet={len(tablet)}, mobile={len(mobile)}")
+
+        # Check if tablet/mobile differ from desktop
+        if tablet:
+            tablet_diffs = [k for k in tablet if tablet.get(k) != desktop.get(k)]
+            if tablet_diffs:
+                logger.info(f"[StylesBuild]   Tablet differs: {tablet_diffs[:5]}")
+        if mobile:
+            mobile_diffs = [k for k in mobile if mobile.get(k) != desktop.get(k)]
+            if mobile_diffs:
+                logger.info(f"[StylesBuild]   Mobile differs: {mobile_diffs[:5]}")
 
         CONTAINER_PROPS = {
             "position", "top", "right", "bottom", "left", "zIndex",
@@ -221,13 +238,29 @@ class HtmlToNocodeConverter:
 
         resolutions = {"ALL": root_styles} if root_styles else {}
 
+        # Build tablet diff: compare tablet against desktop
         tablet_diff = self._build_diff_styles_for_type(desktop, tablet, comp_type, CONTAINER_PROPS, IMAGE_ELEMENT_PROPS)
         if tablet_diff:
             resolutions["TABLET_LANDSCAPE_SCREEN_SMALL"] = tablet_diff
+            logger.info(f"[Responsive] Added TABLET styles for {elem_id_short}: {list(tablet_diff.keys())}")
+        elif tablet:
+            # Log why no diff was found even though tablet styles exist
+            raw_diffs = [k for k in tablet if tablet.get(k) != desktop.get(k)]
+            if raw_diffs:
+                logger.info(f"[Responsive] Tablet raw diffs exist but filtered out for {elem_id_short}: {raw_diffs[:3]}")
 
-        mobile_diff = self._build_diff_styles_for_type(desktop, mobile, comp_type, CONTAINER_PROPS, IMAGE_ELEMENT_PROPS)
+        # Build mobile diff: compare mobile against the effective styles (desktop + tablet overrides)
+        # This ensures mobile captures changes from tablet, not just from desktop
+        effective_tablet = {**desktop, **tablet}
+        mobile_diff = self._build_diff_styles_for_type(effective_tablet, mobile, comp_type, CONTAINER_PROPS, IMAGE_ELEMENT_PROPS)
         if mobile_diff:
             resolutions["MOBILE_LANDSCAPE_SCREEN_SMALL"] = mobile_diff
+            logger.info(f"[Responsive] Added MOBILE styles for {elem_id_short}: {list(mobile_diff.keys())}")
+        elif mobile:
+            # Log why no diff was found even though mobile styles exist
+            raw_diffs = [k for k in mobile if mobile.get(k) != effective_tablet.get(k)]
+            if raw_diffs:
+                logger.info(f"[Responsive] Mobile raw diffs exist but filtered out for {elem_id_short}: {raw_diffs[:3]}")
 
         style_key = self._generate_style_key(elem.id)
         if resolutions:
@@ -235,10 +268,22 @@ class HtmlToNocodeConverter:
         return style_props
 
     def _build_diff_styles_for_type(self, base: Dict, current: Dict, comp_type: str, container_props: set, image_props: set) -> Dict[str, Any]:
-        """Build diff styles with proper prefix handling."""
+        """Build diff styles with proper prefix handling.
+
+        Compares current viewport styles against base and returns only the differences.
+        Also includes properties that exist in current but not in base.
+        """
         diff_styles = {}
+
+        # Get all properties from current viewport
         for prop, value in current.items():
-            if value and value != base.get(prop):
+            if not value:
+                continue
+
+            base_value = base.get(prop)
+
+            # Include if: value exists AND (base doesn't have it OR values differ)
+            if value != base_value:
                 nocode_prop = self._css_to_nocode_prop(prop)
                 processed = self._process_css_value(value)
                 if processed and processed.lower() not in {"initial", "inherit", "unset"}:
@@ -248,6 +293,7 @@ class HtmlToNocodeConverter:
                         continue
                     else:
                         diff_styles[nocode_prop] = {"value": processed}
+
         return diff_styles
 
     def _generate_style_key(self, element_id: str) -> str:
@@ -261,6 +307,8 @@ class HtmlToNocodeConverter:
         """Create Nocode styleProperties with responsive resolutions."""
         resolutions = {}
         desktop_styles = viewport_styles.get("desktop", {})
+        tablet_styles = viewport_styles.get("tablet", {})
+        mobile_styles = viewport_styles.get("mobile", {})
         all_styles = {}
 
         if default_styles:
@@ -276,30 +324,30 @@ class HtmlToNocodeConverter:
 
         resolutions["ALL"] = all_styles
 
-        tablet_styles = viewport_styles.get("tablet", {})
-        tablet_resolutions = {}
-        for prop, value in tablet_styles.items():
-            if value and value != desktop_styles.get(prop) and prop != "theme":
-                nocode_prop = self._css_to_nocode_prop(prop)
-                processed = self._process_css_value(value)
-                if processed:
-                    tablet_resolutions[nocode_prop] = {"value": processed}
+        # Build tablet diff: compare against desktop
+        tablet_resolutions = self._build_viewport_diff(desktop_styles, tablet_styles)
         if tablet_resolutions:
             resolutions["TABLET_LANDSCAPE_SCREEN_SMALL"] = tablet_resolutions
 
-        mobile_styles = viewport_styles.get("mobile", {})
-        mobile_resolutions = {}
-        for prop, value in mobile_styles.items():
-            if value and value != desktop_styles.get(prop) and prop != "theme":
-                nocode_prop = self._css_to_nocode_prop(prop)
-                processed = self._process_css_value(value)
-                if processed:
-                    mobile_resolutions[nocode_prop] = {"value": processed}
+        # Build mobile diff: compare against effective styles (desktop + tablet overrides)
+        effective_tablet = {**desktop_styles, **tablet_styles}
+        mobile_resolutions = self._build_viewport_diff(effective_tablet, mobile_styles)
         if mobile_resolutions:
             resolutions["MOBILE_LANDSCAPE_SCREEN_SMALL"] = mobile_resolutions
 
         style_key = self._generate_style_key("pageRoot")
         return {style_key: {"resolutions": resolutions}}
+
+    def _build_viewport_diff(self, base_styles: Dict, current_styles: Dict) -> Dict[str, Any]:
+        """Build diff between two viewport style dictionaries."""
+        diff = {}
+        for prop, value in current_styles.items():
+            if value and value != base_styles.get(prop) and prop != "theme":
+                nocode_prop = self._css_to_nocode_prop(prop)
+                processed = self._process_css_value(value)
+                if processed:
+                    diff[nocode_prop] = {"value": processed}
+        return diff
 
     def _css_to_nocode_prop(self, css_prop: str) -> str:
         return css_prop
