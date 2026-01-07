@@ -3,7 +3,7 @@ name: ai-prod-ci
 on:
   push:
     branches:
-      - oci-prod
+      - oci-production
     paths:
       - '**'
       - '.github/workflows/ai-prod-ci.yml'
