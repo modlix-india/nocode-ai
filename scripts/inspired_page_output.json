@@ -1,0 +1,5890 @@
+{
+  "componentDefinition": {
+    "pageRoot": {
+      "key": "pageRoot",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "header": true,
+        "heroSection": true,
+        "featuresSection": true,
+        "showcaseSection": true,
+        "testimonialsSection": true,
+        "ctaSection": true,
+        "footer": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "fontFamily": {
+                "value": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "pageRoot"
+    },
+    "header": {
+      "key": "header",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "logoContainer": true,
+        "navContainer": true,
+        "headerCtaContainer": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "padding": {
+                "value": "16px 40px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderBottom": {
+                "value": "1px solid #f0f0f0"
+              },
+              "position": {
+                "value": "sticky"
+              },
+              "top": {
+                "value": "0"
+              },
+              "zIndex": {
+                "value": "100"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "12px 16px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "14px 28px"
+              }
+            }
+          }
+        }
+      },
+      "name": "header"
+    },
+    "logoContainer": {
+      "key": "logoContainer",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "logo": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "8px"
+              },
+              "minWidth": {
+                "value": "120px"
+              }
+            }
+          }
+        }
+      },
+      "name": "logoContainer"
+    },
+    "navContainer": {
+      "key": "navContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "navLink_Features": true,
+        "navLink_Showcase": true,
+        "navLink_Testimonials": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "32px"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "name": "navContainer"
+    },
+    "headerCtaContainer": {
+      "key": "headerCtaContainer",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "headerCTA": true
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "12px"
+              },
+              "minWidth": {
+                "value": "140px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "minWidth": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "name": "headerCtaContainer"
+    },
+    "heroSection": {
+      "key": "heroSection",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "heroContent": true,
+        "heroVisual": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "padding": {
+                "value": "80px 40px"
+              },
+              "gap": {
+                "value": "60px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "minHeight": {
+                "value": "600px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "padding": {
+                "value": "40px 16px"
+              },
+              "gap": {
+                "value": "32px"
+              },
+              "minHeight": {
+                "value": "auto"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "60px 28px"
+              },
+              "gap": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroSection"
+    },
+    "heroContent": {
+      "key": "heroContent",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "heroTitle": true,
+        "heroSubtitle": true,
+        "heroCTAPrimary": true,
+        "heroCTASecondary": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "24px"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "maxWidth": {
+                "value": "600px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "maxWidth": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroContent"
+    },
+    "heroVisual": {
+      "key": "heroVisual",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "heroImage": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "minHeight": {
+                "value": "400px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "minHeight": {
+                "value": "280px"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroVisual"
+    },
+    "featuresSection": {
+      "key": "featuresSection",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "featuresSectionHeader": true,
+        "featuresGrid": true
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "padding": {
+                "value": "64px 24px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "gap": {
+                "value": "48px"
+              },
+              "maxWidth": {
+                "value": "1280px"
+              },
+              "margin": {
+                "value": "0 auto"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "40px 16px"
+              },
+              "gap": {
+                "value": "32px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "56px 32px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featuresSection"
+    },
+    "featuresSectionHeader": {
+      "key": "featuresSectionHeader",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "featuresSectionTitle": true,
+        "featuresSectionDesc": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featuresSectionHeader"
+    },
+    "featuresGrid": {
+      "key": "featuresGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "featureCard1": true,
+        "featureCard2": true,
+        "featureCard3": true,
+        "featureCard4": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "grid"
+              },
+              "gridTemplateColumns": {
+                "value": "repeat(4, 1fr)"
+              },
+              "gap": {
+                "value": "24px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "gridTemplateColumns": {
+                "value": "1fr"
+              },
+              "gap": {
+                "value": "16px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "gridTemplateColumns": {
+                "value": "repeat(2, 1fr)"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN": {
+              "gridTemplateColumns": {
+                "value": "repeat(4, 1fr)"
+              },
+              "gap": {
+                "value": "24px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featuresGrid"
+    },
+    "featureCard1": {
+      "key": "featureCard1",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "featureIcon1": true,
+        "featureTitle1": true,
+        "featureDesc1": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "padding": {
+                "value": "32px 24px"
+              },
+              "backgroundColor": {
+                "value": "#f9fafb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#f3f4f6"
+              },
+              "borderColor:hover": {
+                "value": "#d1d5db"
+              },
+              "transform:hover": {
+                "value": "translateY(-8px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 15px 35px rgba(0, 0, 0, 0.12)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.2s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px 16px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureCard1"
+    },
+    "featureCard2": {
+      "key": "featureCard2",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "featureIcon2": true,
+        "featureTitle2": true,
+        "featureDesc2": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "padding": {
+                "value": "32px 24px"
+              },
+              "backgroundColor": {
+                "value": "#f9fafb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#f3f4f6"
+              },
+              "borderColor:hover": {
+                "value": "#d1d5db"
+              },
+              "transform:hover": {
+                "value": "translateY(-8px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 15px 35px rgba(0, 0, 0, 0.12)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.3s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px 16px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureCard2"
+    },
+    "featureCard3": {
+      "key": "featureCard3",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "featureIcon3": true,
+        "featureTitle3": true,
+        "featureDesc3": true
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "padding": {
+                "value": "32px 24px"
+              },
+              "backgroundColor": {
+                "value": "#f9fafb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#f3f4f6"
+              },
+              "borderColor:hover": {
+                "value": "#d1d5db"
+              },
+              "transform:hover": {
+                "value": "translateY(-8px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 15px 35px rgba(0, 0, 0, 0.12)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.4s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px 16px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureCard3"
+    },
+    "featureCard4": {
+      "key": "featureCard4",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "featureIcon4": true,
+        "featureTitle4": true,
+        "featureDesc4": true
+      },
+      "displayOrder": 3,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "padding": {
+                "value": "32px 24px"
+              },
+              "backgroundColor": {
+                "value": "#f9fafb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#f3f4f6"
+              },
+              "borderColor:hover": {
+                "value": "#d1d5db"
+              },
+              "transform:hover": {
+                "value": "translateY(-8px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 15px 35px rgba(0, 0, 0, 0.12)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.5s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px 16px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureCard4"
+    },
+    "showcaseSection": {
+      "key": "showcaseSection",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "showcaseBlock1": true,
+        "showcaseBlock2": true,
+        "showcaseBlock3": true
+      },
+      "displayOrder": 3,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "padding": {
+                "value": "64px 24px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "gap": {
+                "value": "64px"
+              },
+              "maxWidth": {
+                "value": "1280px"
+              },
+              "margin": {
+                "value": "0 auto"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "40px 16px"
+              },
+              "gap": {
+                "value": "40px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "56px 32px"
+              },
+              "gap": {
+                "value": "56px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseSection"
+    },
+    "showcaseBlock1": {
+      "key": "showcaseBlock1",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "showcaseContent1": true,
+        "showcaseImage1": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "48px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "animation": {
+                "value": "fadeIn 0.6s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "32px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseBlock1"
+    },
+    "showcaseContent1": {
+      "key": "showcaseContent1",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "showcaseTitle1": true,
+        "showcaseDesc1": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "20px"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "minWidth": {
+                "value": "0"
+              },
+              "animation": {
+                "value": "fadeInLeft 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.1s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseContent1"
+    },
+    "showcaseImage1": {
+      "key": "showcaseImage1",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "showcaseImg1": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "minHeight": {
+                "value": "400px"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "backgroundColor": {
+                "value": "#f3f4f6"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "animation": {
+                "value": "fadeInRight 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.2s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              },
+              "transition": {
+                "value": "transform 0.4s ease"
+              },
+              "transform:hover": {
+                "value": "scale(1.02)"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "minHeight": {
+                "value": "280px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "minHeight": {
+                "value": "350px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseImage1"
+    },
+    "showcaseBlock2": {
+      "key": "showcaseBlock2",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "showcaseImage2": true,
+        "showcaseContent2": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row-reverse"
+              },
+              "gap": {
+                "value": "48px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "animation": {
+                "value": "fadeIn 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.3s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "32px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseBlock2"
+    },
+    "showcaseImage2": {
+      "key": "showcaseImage2",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "showcaseImg2": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "50%"
+              },
+              "height": {
+                "value": "auto"
+              },
+              "objectFit": {
+                "value": "cover"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "boxShadow": {
+                "value": "0 10px 30px rgba(0, 0, 0, 0.1)"
+              },
+              "animation": {
+                "value": "fadeInLeft 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.5s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              },
+              "transition": {
+                "value": "transform 0.4s ease"
+              },
+              "transform:hover": {
+                "value": "scale(1.02)"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "marginBottom": {
+                "value": "32px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "marginBottom": {
+                "value": "24px"
+              },
+              "borderRadius": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseImage2"
+    },
+    "showcaseContent2": {
+      "key": "showcaseContent2",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "showcaseTitle2": true,
+        "showcaseDesc2": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "50%"
+              },
+              "padding": {
+                "value": "40px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "animation": {
+                "value": "fadeInRight 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.4s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "padding": {
+                "value": "24px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "padding": {
+                "value": "16px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseContent2"
+    },
+    "showcaseBlock3": {
+      "key": "showcaseBlock3",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "showcaseContent3": true
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "gap": {
+                "value": "48px"
+              },
+              "padding": {
+                "value": "60px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.6s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN": {
+              "gap": {
+                "value": "32px"
+              },
+              "padding": {
+                "value": "40px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "24px"
+              },
+              "padding": {
+                "value": "32px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "padding": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseBlock3"
+    },
+    "showcaseContent3": {
+      "key": "showcaseContent3",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "showcaseTitle3": true,
+        "showcaseDesc3": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "50%"
+              },
+              "padding": {
+                "value": "40px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "16px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "padding": {
+                "value": "24px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "padding": {
+                "value": "16px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseContent3"
+    },
+    "showcaseImage3": {
+      "key": "showcaseImage3",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": ""
+        },
+        "alt": {
+          "value": "Reports Feature"
+        }
+      },
+      "children": {
+        "showcaseImage3": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "borderRadius": {
+                "value": "12px"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "boxShadow": {
+                "value": "0 4px 6px rgba(0, 0, 0, 0.07)"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseImage3"
+    },
+    "testimonialsSection": {
+      "key": "testimonialsSection",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "testimonialsSectionHeader": true,
+        "testimonialsGrid": true
+      },
+      "displayOrder": 4,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "padding": {
+                "value": "80px 60px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "gap": {
+                "value": "48px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN": {
+              "padding": {
+                "value": "60px 40px"
+              },
+              "gap": {
+                "value": "40px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "48px 32px"
+              },
+              "gap": {
+                "value": "32px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "32px 20px"
+              },
+              "gap": {
+                "value": "24px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialsSection"
+    },
+    "testimonialsSectionHeader": {
+      "key": "testimonialsSectionHeader",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "testimonialsSectionTitle": true,
+        "testimonialsSectionDesc": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "maxWidth": {
+                "value": "600px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialsSectionHeader"
+    },
+    "testimonialsGrid": {
+      "key": "testimonialsGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "testimonialCard1": true,
+        "testimonialCard2": true,
+        "testimonialCard3": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "gap": {
+                "value": "24px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "stretch"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialsGrid"
+    },
+    "testimonialCard1": {
+      "key": "testimonialCard1",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "testimonialQuote1": true,
+        "testimonialAuthor1": true,
+        "testimonialRole1": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "minWidth": {
+                "value": "320px"
+              },
+              "padding": {
+                "value": "32px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "boxShadow": {
+                "value": "0 4px 12px rgba(0, 0, 0, 0.06)"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "boxShadow:hover": {
+                "value": "0 16px 32px rgba(0, 0, 0, 0.15)"
+              },
+              "transform:hover": {
+                "value": "translateY(-6px)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.2s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialCard1"
+    },
+    "testimonialCard2": {
+      "key": "testimonialCard2",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "testimonialQuote2": true,
+        "testimonialAuthor2": true,
+        "testimonialRole2": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "minWidth": {
+                "value": "320px"
+              },
+              "padding": {
+                "value": "32px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "boxShadow": {
+                "value": "0 4px 12px rgba(0, 0, 0, 0.06)"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "boxShadow:hover": {
+                "value": "0 16px 32px rgba(0, 0, 0, 0.15)"
+              },
+              "transform:hover": {
+                "value": "translateY(-6px)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.3s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialCard2"
+    },
+    "testimonialCard3": {
+      "key": "testimonialCard3",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "testimonialQuote3": true,
+        "testimonialAuthor3": true,
+        "testimonialRole3": true
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "minWidth": {
+                "value": "320px"
+              },
+              "padding": {
+                "value": "32px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "border": {
+                "value": "1px solid #e5e7eb"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "boxShadow": {
+                "value": "0 4px 12px rgba(0, 0, 0, 0.06)"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "boxShadow:hover": {
+                "value": "0 16px 32px rgba(0, 0, 0, 0.15)"
+              },
+              "transform:hover": {
+                "value": "translateY(-6px)"
+              },
+              "animation": {
+                "value": "fadeInUp 0.5s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.4s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "24px"
+              },
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialCard3"
+    },
+    "ctaSection": {
+      "key": "ctaSection",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "ctaContent": true
+      },
+      "displayOrder": 5,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "padding": {
+                "value": "80px 60px"
+              },
+              "backgroundColor": {
+                "value": "#0f172a"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "24px"
+              },
+              "animation": {
+                "value": "fadeIn 0.6s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN": {
+              "padding": {
+                "value": "60px 40px"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "48px 32px"
+              },
+              "gap": {
+                "value": "16px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "40px 20px"
+              },
+              "gap": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "name": "ctaSection"
+    },
+    "ctaContent": {
+      "key": "ctaContent",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "ctaTitle": true,
+        "ctaDescription": true,
+        "ctaButton": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "maxWidth": {
+                "value": "700px"
+              },
+              "gap": {
+                "value": "24px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "name": "ctaContent"
+    },
+    "footer": {
+      "key": "footer",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "footerMain": true,
+        "footerBottom": true
+      },
+      "displayOrder": 6,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "backgroundColor": {
+                "value": "#f8f8f8"
+              },
+              "borderTop": {
+                "value": "1px solid #e5e5e5"
+              },
+              "padding": {
+                "value": "48px 24px"
+              },
+              "gap": {
+                "value": "32px"
+              },
+              "animation": {
+                "value": "fadeIn 0.5s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "32px 16px"
+              },
+              "gap": {
+                "value": "24px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footer"
+    },
+    "footerMain": {
+      "key": "footerMain",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "footerBrand": true,
+        "footerColumn1": true,
+        "footerColumn2": true,
+        "footerColumn3": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "gap": {
+                "value": "48px"
+              },
+              "maxWidth": {
+                "value": "1200px"
+              },
+              "margin": {
+                "value": "0 auto"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "32px"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "gap": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerMain"
+    },
+    "footerBrand": {
+      "key": "footerBrand",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "footerLogo": true,
+        "footerBrandDesc": true
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "12px"
+              },
+              "minWidth": {
+                "value": "280px"
+              },
+              "flex": {
+                "value": "0 0 auto"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "minWidth": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerBrand"
+    },
+    "footerColumn1": {
+      "key": "footerColumn1",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "footerCol1Title": true,
+        "footerCol1Link1": true,
+        "footerCol1Link2": true,
+        "footerCol1Link3": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "12px"
+              },
+              "flex": {
+                "value": "1 1 auto"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flex": {
+                "value": "1 1 100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerColumn1"
+    },
+    "footerColumn2": {
+      "key": "footerColumn2",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "footerCol2Title": true,
+        "footerCol2Link1": true,
+        "footerCol2Link2": true,
+        "footerCol2Link3": true
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "12px"
+              },
+              "flex": {
+                "value": "1 1 auto"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flex": {
+                "value": "1 1 100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerColumn2"
+    },
+    "footerColumn3": {
+      "key": "footerColumn3",
+      "type": "Grid",
+      "properties": {},
+      "children": {
+        "footerCol3Title": true,
+        "footerCol3Link1": true,
+        "footerCol3Link2": true,
+        "footerCol3Link3": true
+      },
+      "displayOrder": 3,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "12px"
+              },
+              "flex": {
+                "value": "1 1 auto"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flex": {
+                "value": "1 1 100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerColumn3"
+    },
+    "footerBottom": {
+      "key": "footerBottom",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "children": {
+        "footerCopyright": true,
+        "footerPrivacyLink": true,
+        "footerTermsLink": true
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "24px"
+              },
+              "borderTop": {
+                "value": "1px solid #e5e5e5"
+              },
+              "gap": {
+                "value": "16px"
+              },
+              "maxWidth": {
+                "value": "1200px"
+              },
+              "margin": {
+                "value": "0 auto"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "12px"
+              },
+              "paddingTop": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerBottom"
+    },
+    "logo": {
+      "key": "logo",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": ""
+        },
+        "alt": {
+          "value": "Nexus Logo"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "120px"
+              },
+              "height": {
+                "value": "auto"
+              },
+              "objectFit": {
+                "value": "contain"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "width": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "name": "logo"
+    },
+    "navLink_Features": {
+      "key": "navLink_Features",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Features"
+        },
+        "href": {
+          "value": "#features"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#4B5563"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "padding": {
+                "value": "8px 12px"
+              },
+              "borderRadius": {
+                "value": "4px"
+              },
+              "transition": {
+                "value": "all 0.2s ease"
+              },
+              "color:hover": {
+                "value": "#4F46E5"
+              },
+              "backgroundColor:hover": {
+                "value": "#F3F4F6"
+              },
+              "color:focus": {
+                "value": "#4F46E5"
+              },
+              "outline:focus": {
+                "value": "2px solid #4F46E5"
+              },
+              "outlineOffset:focus": {
+                "value": "2px"
+              },
+              "transform:hover": {
+                "value": "translateY(-1px)"
+              }
+            }
+          }
+        }
+      },
+      "name": "navLink_Features"
+    },
+    "navLink_Showcase": {
+      "key": "navLink_Showcase",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Showcase"
+        },
+        "href": {
+          "value": "#showcase"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#4B5563"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "padding": {
+                "value": "8px 12px"
+              },
+              "borderRadius": {
+                "value": "4px"
+              },
+              "transition": {
+                "value": "all 0.2s ease"
+              },
+              "color:hover": {
+                "value": "#4F46E5"
+              },
+              "backgroundColor:hover": {
+                "value": "#F3F4F6"
+              },
+              "color:focus": {
+                "value": "#4F46E5"
+              },
+              "outline:focus": {
+                "value": "2px solid #4F46E5"
+              },
+              "outlineOffset:focus": {
+                "value": "2px"
+              },
+              "transform:hover": {
+                "value": "translateY(-1px)"
+              }
+            }
+          }
+        }
+      },
+      "name": "navLink_Showcase"
+    },
+    "navLink_Testimonials": {
+      "key": "navLink_Testimonials",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Testimonials"
+        },
+        "href": {
+          "value": "#testimonials"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#4B5563"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "padding": {
+                "value": "8px 12px"
+              },
+              "borderRadius": {
+                "value": "4px"
+              },
+              "transition": {
+                "value": "all 0.2s ease"
+              },
+              "color:hover": {
+                "value": "#4F46E5"
+              },
+              "backgroundColor:hover": {
+                "value": "#F3F4F6"
+              },
+              "color:focus": {
+                "value": "#4F46E5"
+              },
+              "outline:focus": {
+                "value": "2px solid #4F46E5"
+              },
+              "outlineOffset:focus": {
+                "value": "2px"
+              },
+              "transform:hover": {
+                "value": "translateY(-1px)"
+              }
+            }
+          }
+        }
+      },
+      "name": "navLink_Testimonials"
+    },
+    "headerCTA": {
+      "key": "headerCTA",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Get Started"
+        },
+        "onClick": {
+          "value": "onHeaderCTAClick"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#4F46E5"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "padding": {
+                "value": "10px 24px"
+              },
+              "borderRadius": {
+                "value": "6px"
+              },
+              "border": {
+                "value": "none"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "all 0.2s ease"
+              },
+              "backgroundColor:hover": {
+                "value": "#4338CA"
+              },
+              "transform:hover": {
+                "value": "translateY(-2px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 6px 16px rgba(79, 70, 229, 0.35)"
+              },
+              "backgroundColor:active": {
+                "value": "#3730A3"
+              },
+              "transform:active": {
+                "value": "translateY(0)"
+              },
+              "outline:focus": {
+                "value": "2px solid #818cf8"
+              },
+              "outlineOffset:focus": {
+                "value": "2px"
+              },
+              "opacity:disabled": {
+                "value": "0.6"
+              },
+              "cursor:disabled": {
+                "value": "not-allowed"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "8px 16px"
+              },
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "name": "headerCTA"
+    },
+    "heroTitle": {
+      "key": "heroTitle",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Build stunning digital experiences without limits"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "56px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "lineHeight": {
+                "value": "1.1"
+              },
+              "marginBottom": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "animation": {
+                "value": "fadeInDown 0.6s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN": {
+              "fontSize": {
+                "value": "48px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "42px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN": {
+              "fontSize": {
+                "value": "36px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "marginBottom": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroTitle"
+    },
+    "heroSubtitle": {
+      "key": "heroSubtitle",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Transform your ideas into reality with our intuitive platform. Create, collaborate, and launch faster than ever before."
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#6B7280"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "marginBottom": {
+                "value": "32px"
+              },
+              "maxWidth": {
+                "value": "500px"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.1s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "24px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "15px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroSubtitle"
+    },
+    "heroCTAPrimary": {
+      "key": "heroCTAPrimary",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Start Free Trial"
+        },
+        "onClick": {
+          "value": "onHeroCTAPrimaryClick"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#4F46E5"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "fontSize": {
+                "value": "15px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "padding": {
+                "value": "14px 32px"
+              },
+              "borderRadius": {
+                "value": "8px"
+              },
+              "border": {
+                "value": "none"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "transform 0.3s ease, box-shadow 0.3s ease"
+              },
+              "backgroundColor:hover": {
+                "value": "#4338CA"
+              },
+              "transform:hover": {
+                "value": "translateY(-4px) scale(1.02)"
+              },
+              "boxShadow:hover": {
+                "value": "0 12px 28px rgba(79, 70, 229, 0.35)"
+              },
+              "backgroundColor:active": {
+                "value": "#3730A3"
+              },
+              "transform:active": {
+                "value": "translateY(-1px) scale(0.98)"
+              },
+              "outline:focus": {
+                "value": "2px solid #818cf8"
+              },
+              "outlineOffset:focus": {
+                "value": "3px"
+              },
+              "opacity:disabled": {
+                "value": "0.6"
+              },
+              "cursor:disabled": {
+                "value": "not-allowed"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.2s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "12px 24px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroCTAPrimary"
+    },
+    "heroCTASecondary": {
+      "key": "heroCTASecondary",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Watch Demo"
+        },
+        "onClick": {
+          "value": "onHeroCTASecondaryClick"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#4F46E5"
+              },
+              "fontSize": {
+                "value": "15px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "padding": {
+                "value": "14px 32px"
+              },
+              "borderRadius": {
+                "value": "8px"
+              },
+              "border": {
+                "value": "2px solid #4F46E5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "backgroundColor:hover": {
+                "value": "#F3F4F6"
+              },
+              "transform:hover": {
+                "value": "translateY(-3px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 10px 20px rgba(79, 70, 229, 0.25)"
+              },
+              "borderColor:hover": {
+                "value": "#4338CA"
+              },
+              "color:hover": {
+                "value": "#4338CA"
+              },
+              "backgroundColor:active": {
+                "value": "#E5E7EB"
+              },
+              "transform:active": {
+                "value": "translateY(0)"
+              },
+              "outline:focus": {
+                "value": "2px solid #818cf8"
+              },
+              "outlineOffset:focus": {
+                "value": "3px"
+              },
+              "opacity:disabled": {
+                "value": "0.6"
+              },
+              "cursor:disabled": {
+                "value": "not-allowed"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.2s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "12px 24px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroCTASecondary"
+    },
+    "heroImage": {
+      "key": "heroImage",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": ""
+        },
+        "alt": {
+          "value": "Nexus Platform Dashboard Preview"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "auto"
+              },
+              "borderRadius": {
+                "value": "12px"
+              },
+              "objectFit": {
+                "value": "cover"
+              },
+              "boxShadow": {
+                "value": "0 20px 40px rgba(0, 0, 0, 0.1)"
+              },
+              "border": {
+                "value": "1px solid #E5E7EB"
+              },
+              "animation": {
+                "value": "fadeInRight 0.7s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              },
+              "transition": {
+                "value": "transform 0.4s ease, box-shadow 0.4s ease"
+              },
+              "transform:hover": {
+                "value": "translateY(-8px)"
+              },
+              "boxShadow:hover": {
+                "value": "0 25px 50px rgba(0, 0, 0, 0.15)"
+              }
+            }
+          }
+        }
+      },
+      "name": "heroImage"
+    },
+    "featuresSectionTitle": {
+      "key": "featuresSectionTitle",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Powerful Features Built for Scale"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "letterSpacing": {
+                "value": "-0.01em"
+              },
+              "animation": {
+                "value": "fadeInDown 0.6s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "28px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featuresSectionTitle"
+    },
+    "featuresSectionDesc": {
+      "key": "featuresSectionDesc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Everything you need to build, deploy, and grow your digital products with confidence and speed."
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#6B7280"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "maxWidth": {
+                "value": "600px"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "0"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.1s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featuresSectionDesc"
+    },
+    "featureIcon1": {
+      "key": "featureIcon1",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-bolt"
+        },
+        "onMouseEnter": {
+          "value": "onFeatureIcon1Hover"
+        },
+        "onMouseLeave": {
+          "value": "onFeatureIcon1Leave"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "48px"
+              },
+              "color": {
+                "value": "#6366f1"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "transform:hover": {
+                "value": "scale(1.2) rotate(5deg)"
+              },
+              "filter:hover": {
+                "value": "drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4))"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureIcon1"
+    },
+    "featureTitle1": {
+      "key": "featureTitle1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Lightning Fast"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureTitle1"
+    },
+    "featureDesc1": {
+      "key": "featureDesc1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Optimized performance with sub-second load times and intelligent caching for seamless user experiences."
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureDesc1"
+    },
+    "featureIcon2": {
+      "key": "featureIcon2",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-shield-halved"
+        },
+        "onMouseEnter": {
+          "value": "onFeatureIcon2Hover"
+        },
+        "onMouseLeave": {
+          "value": "onFeatureIcon2Leave"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "48px"
+              },
+              "color": {
+                "value": "#6366f1"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "transform:hover": {
+                "value": "scale(1.2) rotate(5deg)"
+              },
+              "filter:hover": {
+                "value": "drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4))"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureIcon2"
+    },
+    "featureTitle2": {
+      "key": "featureTitle2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Enterprise Security"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureTitle2"
+    },
+    "featureDesc2": {
+      "key": "featureDesc2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Bank-grade encryption and SOC 2 compliance keep your data protected around the clock."
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureDesc2"
+    },
+    "featureIcon3": {
+      "key": "featureIcon3",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-plug"
+        },
+        "onMouseEnter": {
+          "value": "onFeatureIcon3Hover"
+        },
+        "onMouseLeave": {
+          "value": "onFeatureIcon3Leave"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "48px"
+              },
+              "color": {
+                "value": "#6366f1"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "transform:hover": {
+                "value": "scale(1.2) rotate(5deg)"
+              },
+              "filter:hover": {
+                "value": "drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4))"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureIcon3"
+    },
+    "featureTitle3": {
+      "key": "featureTitle3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Seamless Integrations"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureTitle3"
+    },
+    "featureDesc3": {
+      "key": "featureDesc3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Customize every aspect of your workflow with our flexible configuration options and modular architecture."
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureDesc3"
+    },
+    "featureIcon4": {
+      "key": "featureIcon4",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-chart-line"
+        },
+        "onMouseEnter": {
+          "value": "onFeatureIcon4Hover"
+        },
+        "onMouseLeave": {
+          "value": "onFeatureIcon4Leave"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "48px"
+              },
+              "color": {
+                "value": "#6366f1"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "transform:hover": {
+                "value": "scale(1.2) rotate(5deg)"
+              },
+              "filter:hover": {
+                "value": "drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4))"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureIcon4"
+    },
+    "featureTitle4": {
+      "key": "featureTitle4",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Advanced Analytics"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureTitle4"
+    },
+    "featureDesc4": {
+      "key": "featureDesc4",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Gain actionable insights with comprehensive dashboards, real-time metrics, and predictive analysis tools."
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "featureDesc4"
+    },
+    "showcaseTitle1": {
+      "key": "showcaseTitle1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Streamlined Workflow Automation"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "28px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseTitle1"
+    },
+    "showcaseDesc1": {
+      "key": "showcaseDesc1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Eliminate repetitive tasks and focus on what matters most. Our intelligent automation engine learns from your patterns and suggests optimizations that save hours every week. Connect your favorite tools and watch productivity soar."
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "color": {
+                "value": "#4b5563"
+              },
+              "marginBottom": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseDesc1"
+    },
+    "showcaseImg1": {
+      "key": "showcaseImg1",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": ""
+        },
+        "alt": {
+          "value": "Workflow automation dashboard showing connected integrations and task automation"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "borderRadius": {
+                "value": "12px"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "boxShadow": {
+                "value": "0 4px 6px rgba(0, 0, 0, 0.07)"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseImg1"
+    },
+    "showcaseTitle2": {
+      "key": "showcaseTitle2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Real-time Collaboration"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "28px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseTitle2"
+    },
+    "showcaseDesc2": {
+      "key": "showcaseDesc2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Break down silos and bring your team together. Share ideas, provide feedback, and iterate in real-time with built-in collaboration tools. See changes instantly and keep everyone aligned on goals and progress."
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "color": {
+                "value": "#4b5563"
+              },
+              "marginBottom": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseDesc2"
+    },
+    "showcaseImg2": {
+      "key": "showcaseImg2",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": ""
+        },
+        "alt": {
+          "value": "Team collaboration interface with real-time editing and comments"
+        }
+      },
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "borderRadius": {
+                "value": "12px"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "boxShadow": {
+                "value": "0 4px 6px rgba(0, 0, 0, 0.07)"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseImg2"
+    },
+    "showcaseTitle3": {
+      "key": "showcaseTitle3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Comprehensive Reports"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "28px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseTitle3"
+    },
+    "showcaseDesc3": {
+      "key": "showcaseDesc3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Generate detailed analytics reports with just a few clicks. Track performance metrics, identify trends, and share insights with your team through customizable dashboards and automated report scheduling."
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "color": {
+                "value": "#4b5563"
+              },
+              "marginBottom": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "showcaseDesc3"
+    },
+    "testimonialsSectionTitle": {
+      "key": "testimonialsSectionTitle",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "What Our Users Say"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "44px"
+              },
+              "fontWeight": {
+                "value": "800"
+              },
+              "lineHeight": {
+                "value": "1.1"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "letterSpacing": {
+                "value": "-0.8px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "animation": {
+                "value": "fadeInDown 0.6s ease-out"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialsSectionTitle"
+    },
+    "testimonialsSectionDesc": {
+      "key": "testimonialsSectionDesc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Join thousands of satisfied customers who have transformed their workflow with our platform."
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "color": {
+                "value": "#6b7280"
+              },
+              "marginBottom": {
+                "value": "48px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "maxWidth": {
+                "value": "600px"
+              },
+              "margin": {
+                "value": "0 auto 48px auto"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.1s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialsSectionDesc"
+    },
+    "testimonialQuote1": {
+      "key": "testimonialQuote1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\"This platform has completely revolutionized how we manage our projects. The intuitive interface and powerful features have saved us countless hours every week.\""
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.7"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialQuote1"
+    },
+    "testimonialAuthor1": {
+      "key": "testimonialAuthor1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Sarah Mitchell"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "margin": {
+                "value": "16px 0 4px 0"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "-0.3px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "margin": {
+                "value": "12px 0 4px 0"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialAuthor1"
+    },
+    "testimonialRole1": {
+      "key": "testimonialRole1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Product Manager at TechFlow"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "margin": {
+                "value": "0"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialRole1"
+    },
+    "testimonialQuote2": {
+      "key": "testimonialQuote2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\"The analytics capabilities are incredible. We've gained insights that were previously impossible to obtain, helping us make data-driven decisions with confidence.\""
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "fontStyle": {
+                "value": "italic"
+              },
+              "margin": {
+                "value": "0 0 24px 0"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "letterSpacing": {
+                "value": "-0.2px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "margin": {
+                "value": "0 0 16px 0"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialQuote2"
+    },
+    "testimonialAuthor2": {
+      "key": "testimonialAuthor2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "James Rodriguez"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "margin": {
+                "value": "16px 0 4px 0"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "-0.3px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "margin": {
+                "value": "12px 0 4px 0"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialAuthor2"
+    },
+    "testimonialRole2": {
+      "key": "testimonialRole2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Product Manager at TechFlow"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "margin": {
+                "value": "0"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialRole2"
+    },
+    "testimonialQuote3": {
+      "key": "testimonialQuote3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\"The analytics dashboard alone has saved us countless hours. We can now make data-driven decisions in real-time instead of waiting for weekly reports.\""
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "fontStyle": {
+                "value": "italic"
+              },
+              "margin": {
+                "value": "0 0 24px 0"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "letterSpacing": {
+                "value": "-0.2px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "margin": {
+                "value": "0 0 16px 0"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialQuote3"
+    },
+    "testimonialAuthor3": {
+      "key": "testimonialAuthor3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "David Kim"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "margin": {
+                "value": "16px 0 4px 0"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "-0.3px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "margin": {
+                "value": "12px 0 4px 0"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialAuthor3"
+    },
+    "testimonialRole3": {
+      "key": "testimonialRole3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Data Analyst at InsightCorp"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "margin": {
+                "value": "0"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "name": "testimonialRole3"
+    },
+    "ctaTitle": {
+      "key": "ctaTitle",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Ready to Transform Your Workflow?"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "48px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "margin": {
+                "value": "0 0 16px 0"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "letterSpacing": {
+                "value": "-0.5px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "animation": {
+                "value": "fadeInDown 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.1s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "40px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "margin": {
+                "value": "0 0 12px 0"
+              }
+            }
+          }
+        }
+      },
+      "name": "ctaTitle"
+    },
+    "ctaDescription": {
+      "key": "ctaDescription",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Join thousands of teams already using our platform to streamline their operations and boost productivity. Start your free 14-day trial today."
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#4a4a4a"
+              },
+              "margin": {
+                "value": "0 0 32px 0"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "letterSpacing": {
+                "value": "-0.2px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "maxWidth": {
+                "value": "600px"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.2s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "margin": {
+                "value": "0 0 28px 0"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "margin": {
+                "value": "0 0 24px 0"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              }
+            }
+          }
+        }
+      },
+      "name": "ctaDescription"
+    },
+    "ctaButton": {
+      "key": "ctaButton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Start Your Free Trial"
+        },
+        "onClick": {
+          "value": "onCTAButtonClick"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#4F46E5"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "padding": {
+                "value": "16px 40px"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "borderRadius": {
+                "value": "8px"
+              },
+              "border": {
+                "value": "none"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "all 0.3s ease"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "boxShadow": {
+                "value": "0 4px 12px rgba(79, 70, 229, 0.3)"
+              },
+              "backgroundColor:hover": {
+                "value": "#4338CA"
+              },
+              "transform:hover": {
+                "value": "translateY(-4px) scale(1.02)"
+              },
+              "boxShadow:hover": {
+                "value": "0 14px 32px rgba(79, 70, 229, 0.4)"
+              },
+              "outline:focus": {
+                "value": "2px solid #818cf8"
+              },
+              "outline-offset:focus": {
+                "value": "2px"
+              },
+              "opacity:disabled": {
+                "value": "0.6"
+              },
+              "cursor:disabled": {
+                "value": "not-allowed"
+              },
+              "animation": {
+                "value": "fadeInUp 0.6s ease-out"
+              },
+              "animationDelay": {
+                "value": "0.3s"
+              },
+              "animationFillMode": {
+                "value": "both"
+              },
+              "transform:active": {
+                "value": "translateY(-1px) scale(0.98)"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "14px 36px"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "padding": {
+                "value": "12px 32px"
+              },
+              "fontSize": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "name": "ctaButton"
+    },
+    "footerLogo": {
+      "key": "footerLogo",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": ""
+        },
+        "alt": {
+          "value": "Nexus Logo"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "140px"
+              },
+              "height": {
+                "value": "auto"
+              },
+              "margin": {
+                "value": "0 0 12px 0"
+              },
+              "border": {
+                "value": "none"
+              },
+              "objectFit": {
+                "value": "contain"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "width": {
+                "value": "120px"
+              },
+              "margin": {
+                "value": "0 0 8px 0"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerLogo"
+    },
+    "footerBrandDesc": {
+      "key": "footerBrandDesc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Empowering teams to work smarter with intelligent automation and seamless collaboration tools."
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "lineHeight": {
+                "value": "1.6"
+              },
+              "marginTop": {
+                "value": "8px"
+              },
+              "maxWidth": {
+                "value": "280px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginTop": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerBrandDesc"
+    },
+    "footerCol1Title": {
+      "key": "footerCol1Title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Product"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "15px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol1Title"
+    },
+    "footerCol1Link1": {
+      "key": "footerCol1Link1",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Features"
+        },
+        "url": {
+          "value": "#features"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol1Link1"
+    },
+    "footerCol1Link2": {
+      "key": "footerCol1Link2",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Pricing"
+        },
+        "url": {
+          "value": "#pricing"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol1Link2"
+    },
+    "footerCol1Link3": {
+      "key": "footerCol1Link3",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Security"
+        },
+        "url": {
+          "value": "#security"
+        }
+      },
+      "displayOrder": 3,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol1Link3"
+    },
+    "footerCol2Title": {
+      "key": "footerCol2Title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Company"
+        },
+        "textContainer": {
+          "value": "h4"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "15px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol2Title"
+    },
+    "footerCol2Link1": {
+      "key": "footerCol2Link1",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "About Us"
+        },
+        "url": {
+          "value": "#about"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol2Link1"
+    },
+    "footerCol2Link2": {
+      "key": "footerCol2Link2",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Blog"
+        },
+        "url": {
+          "value": "#blog"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol2Link2"
+    },
+    "footerCol2Link3": {
+      "key": "footerCol2Link3",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Careers"
+        },
+        "url": {
+          "value": "#careers"
+        }
+      },
+      "displayOrder": 3,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol2Link3"
+    },
+    "footerCol3Title": {
+      "key": "footerCol3Title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Resources"
+        },
+        "textContainer": {
+          "value": "h4"
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1a1a1a"
+              },
+              "marginBottom": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "1.4"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "15px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol3Title"
+    },
+    "footerCol3Link1": {
+      "key": "footerCol3Link1",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Documentation"
+        },
+        "url": {
+          "value": "#docs"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol3Link1"
+    },
+    "footerCol3Link2": {
+      "key": "footerCol3Link2",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Support"
+        },
+        "url": {
+          "value": "#support"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#666666"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "1.5"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "color:hover": {
+                "value": "#1a1a1a"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol3Link2"
+    },
+    "footerCol3Link3": {
+      "key": "footerCol3Link3",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Contact"
+        },
+        "href": {
+          "value": "/contact"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#666666"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              },
+              "color:hover": {
+                "value": "#4F46E5"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCol3Link3"
+    },
+    "footerCopyright": {
+      "key": "footerCopyright",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\u00a9 2024 Nexus. All rights reserved."
+        }
+      },
+      "displayOrder": 0,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#999999"
+              },
+              "fontSize": {
+                "value": "13px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "margin": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerCopyright"
+    },
+    "footerPrivacyLink": {
+      "key": "footerPrivacyLink",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Privacy Policy"
+        },
+        "href": {
+          "value": "/privacy"
+        }
+      },
+      "displayOrder": 1,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#666666"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              },
+              "color:hover": {
+                "value": "#4F46E5"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerPrivacyLink"
+    },
+    "footerTermsLink": {
+      "key": "footerTermsLink",
+      "type": "Link",
+      "properties": {
+        "text": {
+          "value": "Terms of Service"
+        },
+        "href": {
+          "value": "/terms"
+        }
+      },
+      "displayOrder": 2,
+      "styleProperties": {
+        "rootStyle": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#666666"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "textDecoration": {
+                "value": "none"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "transition": {
+                "value": "color 0.2s ease"
+              },
+              "color:hover": {
+                "value": "#4F46E5"
+              }
+            }
+          }
+        }
+      },
+      "name": "footerTermsLink"
+    }
+  },
+  "rootComponent": "pageRoot",
+  "properties": {
+    "storeInitialization": {
+      "Page.featureIcon1Hovered": false,
+      "Page.featureIcon2Hovered": false,
+      "Page.featureIcon3Hovered": false,
+      "Page.featureIcon4Hovered": false
+    }
+  },
+  "eventFunctions": {
+    "onHeaderCTAClick": {
+      "name": "onHeaderCTAClick",
+      "namespace": "",
+      "steps": {
+        "navigate1": {
+          "statementName": "navigate1",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "linkPath": {
+              "FhMeSSARve": {
+                "key": "FhMeSSARve",
+                "order": 1,
+                "type": "VALUE",
+                "value": "/signup"
+              }
+            }
+          }
+        }
+      }
+    },
+    "onHeroCTAPrimaryClick": {
+      "name": "onHeroCTAPrimaryClick",
+      "namespace": "",
+      "steps": {
+        "navigate1": {
+          "statementName": "navigate1",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "linkPath": {
+              "ERcgqXKziB": {
+                "key": "ERcgqXKziB",
+                "order": 1,
+                "type": "VALUE",
+                "value": "/signup?plan=free-trial"
+              }
+            }
+          }
+        }
+      }
+    },
+    "onHeroCTASecondaryClick": {
+      "name": "onHeroCTASecondaryClick",
+      "namespace": "",
+      "steps": {
+        "navigate1": {
+          "statementName": "navigate1",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "linkPath": {
+              "sd8hTymbqL": {
+                "key": "sd8hTymbqL",
+                "order": 1,
+                "type": "VALUE",
+                "value": "/demo"
+              }
+            }
+          }
+        }
+      }
+    },
+    "onCTAButtonClick": {
+      "name": "onCTAButtonClick",
+      "namespace": "",
+      "steps": {
+        "navigate1": {
+          "statementName": "navigate1",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "linkPath": {
+              "Sq1hlLzENi": {
+                "key": "Sq1hlLzENi",
+                "order": 1,
+                "type": "VALUE",
+                "value": "/signup?plan=free-trial"
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon1Hover": {
+      "name": "onFeatureIcon1Hover",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "158VO7MemE": {
+                "key": "DhwpJxng2v",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon1Hovered"
+              }
+            },
+            "value": {
+              "kPQl7RWXvX": {
+                "key": "kPQl7RWXvX",
+                "order": 1,
+                "type": "VALUE",
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon1Leave": {
+      "name": "onFeatureIcon1Leave",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "LOr2RXq9Lt": {
+                "key": "4iXEmruif9",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon1Hovered"
+              }
+            },
+            "value": {
+              "LYMI7E2rL6": {
+                "key": "LYMI7E2rL6",
+                "order": 1,
+                "type": "VALUE",
+                "value": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon2Hover": {
+      "name": "onFeatureIcon2Hover",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "KfRInjiEiG": {
+                "key": "18jMWoqEGD",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon2Hovered"
+              }
+            },
+            "value": {
+              "h7Ph17TbxJ": {
+                "key": "h7Ph17TbxJ",
+                "order": 1,
+                "type": "VALUE",
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon2Leave": {
+      "name": "onFeatureIcon2Leave",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "7FgHHQInsb": {
+                "key": "OIKNpoBQLX",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon2Hovered"
+              }
+            },
+            "value": {
+              "GAYnhXMEkT": {
+                "key": "GAYnhXMEkT",
+                "order": 1,
+                "type": "VALUE",
+                "value": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon3Hover": {
+      "name": "onFeatureIcon3Hover",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "XVhwDpnRkF": {
+                "key": "G0O8XKfe9l",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon3Hovered"
+              }
+            },
+            "value": {
+              "xoR37qVoEh": {
+                "key": "xoR37qVoEh",
+                "order": 1,
+                "type": "VALUE",
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon3Leave": {
+      "name": "onFeatureIcon3Leave",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "rNRQNQNj7R": {
+                "key": "toXt9W9YDD",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon3Hovered"
+              }
+            },
+            "value": {
+              "viMuBZLckv": {
+                "key": "viMuBZLckv",
+                "order": 1,
+                "type": "VALUE",
+                "value": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon4Hover": {
+      "name": "onFeatureIcon4Hover",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "SB1KY2krji": {
+                "key": "JRpmh3HcJG",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon4Hovered"
+              }
+            },
+            "value": {
+              "bxmgbwvmIa": {
+                "key": "bxmgbwvmIa",
+                "order": 1,
+                "type": "VALUE",
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "onFeatureIcon4Leave": {
+      "name": "onFeatureIcon4Leave",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "ZGTnF4bu7M": {
+                "key": "zRyynhgSCn",
+                "order": 1,
+                "type": "VALUE",
+                "value": "Page.featureIcon4Hovered"
+              }
+            },
+            "value": {
+              "QpT0TzIV2B": {
+                "key": "QpT0TzIV2B",
+                "order": 1,
+                "type": "VALUE",
+                "value": false
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "cssStyles": "\n@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }\n@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }\n@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }\n@keyframes fadeInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }\n@keyframes fadeInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }"
+}

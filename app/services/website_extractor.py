@@ -73,23 +73,26 @@ class ImageInfo:
 class VisualElement:
     """
     An element extracted with its computed styles at each viewport.
-    
+
     Styles are stored per viewport and later merged into Nocode resolution format.
     """
     id: str
     tag: str
     text: str = ""
     image_url: str = ""
-    
+
     # Computed styles per viewport: {"desktop": {...}, "tablet": {...}, "mobile": {...}}
     styles: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    
+
+    # Pseudo-state styles (hover, focus, etc.): {"hover": {...}, "focus": {...}}
+    pseudo_styles: Dict[str, Dict[str, str]] = field(default_factory=dict)
+
     # Bounding box per viewport: {"desktop": {x, y, width, height}, ...}
     bounds: Dict[str, Dict[str, float]] = field(default_factory=dict)
-    
+
     # Child elements
     children: List['VisualElement'] = field(default_factory=list)
-    
+
     # Additional attributes (href, src, etc.)
     attributes: Dict[str, str] = field(default_factory=dict)
 
@@ -99,18 +102,22 @@ class VisualData:
     """Complete visual extraction data from a website"""
     url: str
     title: str = ""
-    
+
     # Screenshot at desktop viewport (base64)
     screenshot: str = ""
-    
+
     # Root element with all children
     elements: List[VisualElement] = field(default_factory=list)
-    
+
     # All images found (for uploading)
     images: List[ImageInfo] = field(default_factory=list)
-    
+
     # Root styles at each viewport
     root_styles: Dict[str, Dict[str, str]] = field(default_factory=dict)
+
+    # CSS keyframes for animations (Nocode page classes format)
+    # Format: {"animationName": {"selector": "@keyframes name", "style": "0% {...} 100% {...}"}}
+    keyframes: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
 
 class WebsiteExtractor:
@@ -174,6 +181,13 @@ class WebsiteExtractor:
                     
                     # Take screenshot only at desktop size
                     if viewport_name == "desktop":
+                        # Scroll to bottom and wait to trigger lazy loading
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        await asyncio.sleep(3)  # Wait for lazy-loaded content
+                        # Scroll back to top
+                        await page.evaluate("window.scrollTo(0, 0)")
+                        await asyncio.sleep(0.5)  # Let layout settle after scroll
+
                         screenshot_bytes = await page.screenshot(full_page=True, type='png')
                         screenshot = base64.b64encode(screenshot_bytes).decode('utf-8')
                         logger.info(f"Screenshot captured ({len(screenshot_bytes)} bytes)")
@@ -192,16 +206,20 @@ class WebsiteExtractor:
                 
                 # Extract all images
                 images = self._extract_images(viewport_data.get("desktop", {}), url)
-                
-                logger.info(f"Extraction complete: {len(elements)} elements, {len(images)} images")
-                
+
+                # Extract keyframes (only need from desktop viewport)
+                keyframes = viewport_data.get("desktop", {}).get("keyframes", {})
+
+                logger.info(f"Extraction complete: {len(elements)} elements, {len(images)} images, {len(keyframes)} keyframes")
+
                 return VisualData(
                     url=url,
                     title=title,
                     screenshot=screenshot,
                     elements=elements,
                     images=images,
-                    root_styles=root_styles
+                    root_styles=root_styles,
+                    keyframes=keyframes
                 )
                 
             finally:
@@ -477,11 +495,23 @@ class WebsiteExtractor:
                         continue;
                     }
 
-                    // For dimensions and position offsets, capture non-auto values
+                    // For dimensions (width/height), ONLY capture if explicitly specified in CSS/inline
+                    // Don't capture computed pixel values - they cause fixed layout issues
                     if (prop === 'width' || prop === 'height' ||
                         prop === 'min-width' || prop === 'max-width' ||
-                        prop === 'min-height' || prop === 'max-height' ||
-                        prop === 'top' || prop === 'right' || prop === 'bottom' || prop === 'left') {
+                        prop === 'min-height' || prop === 'max-height') {
+                        // Only include if this property was already found in specifiedProps
+                        // (from inline styles or CSS rules) - skip computed-only values
+                        if (specifiedProps.has(prop)) {
+                            if (computedValue !== 'auto' && computedValue !== 'none') {
+                                styles[camelProp] = computedValue;
+                            }
+                        }
+                        continue;
+                    }
+
+                    // For position offsets (top/right/bottom/left), capture non-auto values
+                    if (prop === 'top' || prop === 'right' || prop === 'bottom' || prop === 'left') {
                         if (computedValue !== 'auto' && computedValue !== 'none' && computedValue !== '0px') {
                             styles[camelProp] = computedValue;
                         }
@@ -545,7 +575,164 @@ class WebsiteExtractor:
 
                 return styles;
             };
-            
+
+            // Extract pseudo-state styles (hover, focus, active) from CSS rules
+            const getPseudoStyles = (el) => {
+                const pseudoStyles = {};
+                const PSEUDO_STATES = [':hover', ':focus', ':active', ':visited', ':focus-visible'];
+
+                try {
+                    const sheets = document.styleSheets;
+                    for (let i = 0; i < sheets.length; i++) {
+                        try {
+                            const rules = sheets[i].cssRules || sheets[i].rules;
+                            if (!rules) continue;
+
+                            for (let j = 0; j < rules.length; j++) {
+                                const rule = rules[j];
+                                if (rule.type !== CSSRule.STYLE_RULE) continue;
+
+                                const selector = rule.selectorText;
+                                if (!selector) continue;
+
+                                // Check each pseudo-state
+                                for (const pseudo of PSEUDO_STATES) {
+                                    if (!selector.includes(pseudo)) continue;
+
+                                    // Try to match the element with the base selector
+                                    const baseSelector = selector.replace(new RegExp(pseudo + '(?![\\w-])', 'g'), '');
+                                    try {
+                                        if (!el.matches(baseSelector)) continue;
+                                    } catch (e) {
+                                        continue; // Invalid selector after removing pseudo
+                                    }
+
+                                    // Extract the styles from this rule
+                                    const pseudoName = pseudo.replace(':', '');
+                                    if (!pseudoStyles[pseudoName]) {
+                                        pseudoStyles[pseudoName] = {};
+                                    }
+
+                                    const ruleStyle = rule.style;
+                                    for (let k = 0; k < ruleStyle.length; k++) {
+                                        const prop = ruleStyle[k];
+                                        // Skip CSS variables and vendor prefixes
+                                        if (prop.startsWith('--') || prop.startsWith('-webkit-') ||
+                                            prop.startsWith('-moz-') || prop.startsWith('-ms-')) continue;
+
+                                        let value = ruleStyle.getPropertyValue(prop);
+                                        if (!value || value === 'initial' || value === 'inherit') continue;
+
+                                        // Resolve CSS variables
+                                        if (value.includes('var(')) {
+                                            const computed = window.getComputedStyle(el);
+                                            // Can't directly get pseudo-state computed value, skip var() values
+                                            continue;
+                                        }
+
+                                        const camelProp = prop.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+                                        pseudoStyles[pseudoName][camelProp] = value;
+                                    }
+                                }
+                            }
+                        } catch (sheetErr) {
+                            // Cross-origin stylesheet, skip
+                        }
+                    }
+                } catch (e) {
+                    // Fallback if CSS rules access fails
+                }
+
+                return pseudoStyles;
+            };
+
+            // Extract CSS animations and transitions from an element
+            const getAnimationStyles = (el) => {
+                const animations = {};
+                const computed = window.getComputedStyle(el);
+
+                // Extract animation properties
+                const animationName = computed.animationName;
+                if (animationName && animationName !== 'none') {
+                    animations.animationName = animationName;
+                    animations.animationDuration = computed.animationDuration;
+                    animations.animationTimingFunction = computed.animationTimingFunction;
+                    animations.animationDelay = computed.animationDelay;
+                    animations.animationIterationCount = computed.animationIterationCount;
+                    animations.animationDirection = computed.animationDirection;
+                    animations.animationFillMode = computed.animationFillMode;
+                    animations.animationPlayState = computed.animationPlayState;
+                }
+
+                // Extract transition properties (for hover/interaction effects)
+                const transitionProperty = computed.transitionProperty;
+                if (transitionProperty && transitionProperty !== 'none' && transitionProperty !== 'all') {
+                    // Only capture meaningful transitions (not default 'all 0s ease 0s')
+                    const transitionDuration = computed.transitionDuration;
+                    if (transitionDuration && transitionDuration !== '0s') {
+                        animations.transitionProperty = transitionProperty;
+                        animations.transitionDuration = transitionDuration;
+                        animations.transitionTimingFunction = computed.transitionTimingFunction;
+                        animations.transitionDelay = computed.transitionDelay;
+                    }
+                }
+
+                return Object.keys(animations).length > 0 ? animations : null;
+            };
+
+            // Extract all @keyframes rules from stylesheets
+            // Returns them in Nocode page classes format
+            const extractKeyframes = () => {
+                const keyframes = {};
+
+                try {
+                    const sheets = document.styleSheets;
+                    for (let i = 0; i < sheets.length; i++) {
+                        try {
+                            const rules = sheets[i].cssRules || sheets[i].rules;
+                            if (!rules) continue;
+
+                            for (let j = 0; j < rules.length; j++) {
+                                const rule = rules[j];
+                                // CSSKeyframesRule type is 7
+                                if (rule.type === CSSRule.KEYFRAMES_RULE || rule.type === 7) {
+                                    const name = rule.name;
+
+                                    // Build the keyframes content as CSS text
+                                    let styleContent = '';
+                                    for (let k = 0; k < rule.cssRules.length; k++) {
+                                        const keyframe = rule.cssRules[k];
+                                        const keyText = keyframe.keyText;
+                                        let frameStyles = '';
+
+                                        for (let l = 0; l < keyframe.style.length; l++) {
+                                            const prop = keyframe.style[l];
+                                            const value = keyframe.style.getPropertyValue(prop);
+                                            if (value) {
+                                                frameStyles += `    ${prop}: ${value};\n`;
+                                            }
+                                        }
+
+                                        styleContent += `${keyText} {\n${frameStyles}  }\n  `;
+                                    }
+
+                                    keyframes[name] = {
+                                        selector: `@keyframes ${name}`,
+                                        style: styleContent.trim()
+                                    };
+                                }
+                            }
+                        } catch (sheetErr) {
+                            // Cross-origin stylesheet, skip
+                        }
+                    }
+                } catch (e) {
+                    // Error accessing stylesheets
+                }
+
+                return keyframes;
+            };
+
             // Get bounding rect
             const getBounds = (el) => {
                 const rect = el.getBoundingClientRect();
@@ -557,22 +744,51 @@ class WebsiteExtractor:
                 };
             };
             
+            // Generate a deterministic ID based on element's DOM path
+            // This ensures the same element gets the same ID across viewports
+            const generateDeterministicId = (el) => {
+                if (el.id) return el.id;
+
+                // Build a path from body to this element
+                const pathParts = [];
+                let current = el;
+                while (current && current !== document.body && current.parentElement) {
+                    const parent = current.parentElement;
+                    const siblings = Array.from(parent.children);
+                    const index = siblings.indexOf(current);
+                    const tag = current.tagName.toLowerCase();
+                    pathParts.unshift(`${tag}[${index}]`);
+                    current = parent;
+                }
+
+                // Create a hash from the path
+                const pathStr = pathParts.join('/');
+                let hash = 0;
+                for (let i = 0; i < pathStr.length; i++) {
+                    const char = pathStr.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // Convert to 32bit integer
+                }
+
+                return `elem_${Math.abs(hash).toString(36)}`;
+            };
+
             // Extract element recursively - NO DEPTH LIMIT
             const extractElement = (el, depth = 0) => {
                 if (!isVisible(el)) return null;
-                
+
                 const tag = el.tagName.toLowerCase();
-                
+
                 // Skip only truly non-content elements (keep SVG for icons)
                 if (['script', 'style', 'link', 'meta', 'noscript'].includes(tag)) {
                     return null;
                 }
-                
+
                 // Get text content
                 let text = '';
                 // For interactive elements and headings, get ALL inner text
                 const useInnerText = ['a', 'button', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'label'].includes(tag);
-                
+
                 if (useInnerText) {
                     // Get ALL inner text (from all nested elements)
                     text = el.innerText || el.textContent || '';
@@ -587,12 +803,20 @@ class WebsiteExtractor:
                     }
                     text = text.trim().substring(0, 500);
                 }
-                
+
+                // Only extract pseudo styles for interactive elements
+                const INTERACTIVE_TAGS = ['a', 'button', 'input', 'select', 'textarea'];
+                const hasPseudo = INTERACTIVE_TAGS.includes(tag) ||
+                    el.getAttribute('role') === 'button' ||
+                    el.getAttribute('tabindex') !== null;
+
                 const data = {
-                    id: el.id || `elem_${Math.random().toString(36).substr(2, 9)}`,
+                    id: generateDeterministicId(el),
                     tag: tag,
                     text: text,
                     styles: getSpecifiedStyles(el),
+                    pseudoStyles: hasPseudo ? getPseudoStyles(el) : {},
+                    animationStyles: getAnimationStyles(el),
                     bounds: getBounds(el),
                     attributes: {},
                     children: []
@@ -806,9 +1030,13 @@ class WebsiteExtractor:
             // Sort by Y position (top to bottom)
             elements.sort((a, b) => (a.bounds?.y || 0) - (b.bounds?.y || 0));
             
+            // Also extract keyframes for page-level animation definitions
+            const keyframes = extractKeyframes();
+
             return {
                 rootStyles: rootStyles,
-                elements: elements
+                elements: elements,
+                keyframes: keyframes
             };
         }''')
     
@@ -842,16 +1070,33 @@ class WebsiteExtractor:
             decoded_image_url = decode_nextjs_image_url(raw_image_url, base_url) if raw_image_url else ""
             
             # Create VisualElement with styles from each viewport
+            # If tablet/mobile element not found, use desktop styles as fallback
+            # This ensures responsive styles still work even with imperfect matching
+            desktop_styles = desktop_elem.get("styles", {})
+            tablet_styles = tablet_elem.get("styles", {}) if tablet_elem else {}
+            mobile_styles = mobile_elem.get("styles", {}) if mobile_elem else {}
+
+            # Log matching results for first few elements
+            if len(desktop_elements) > 0 and desktop_elem == desktop_elements[0]:
+                logger.info(f"[Merge] First element match: tablet_found={tablet_elem is not None}, mobile_found={mobile_elem is not None}")
+                if tablet_elem:
+                    t_diffs = [k for k in tablet_styles if tablet_styles.get(k) != desktop_styles.get(k)]
+                    logger.info(f"[Merge] Tablet style diffs: {t_diffs[:5] if t_diffs else 'NONE'}")
+
+            # Merge pseudo styles - use desktop as primary (pseudo styles don't typically change per viewport)
+            pseudo_styles = desktop_elem.get("pseudoStyles", {})
+
             element = VisualElement(
                 id=elem_id,
                 tag=desktop_elem.get("tag", "div"),
                 text=desktop_elem.get("text", ""),
                 image_url=decoded_image_url,
                 styles={
-                    "desktop": desktop_elem.get("styles", {}),
-                    "tablet": tablet_elem.get("styles", {}) if tablet_elem else {},
-                    "mobile": mobile_elem.get("styles", {}) if mobile_elem else {}
+                    "desktop": desktop_styles,
+                    "tablet": tablet_styles,
+                    "mobile": mobile_styles
                 },
+                pseudo_styles=pseudo_styles,
                 bounds={
                     "desktop": desktop_elem.get("bounds", {}),
                     "tablet": tablet_elem.get("bounds", {}) if tablet_elem else {},
@@ -874,12 +1119,24 @@ class WebsiteExtractor:
         # Get tablet and mobile element lists
         tablet_elements = tablet_data.get("elements", [])
         mobile_elements = mobile_data.get("elements", [])
-        
+
         # Merge ALL top-level elements - NO DUPLICATE FILTERING
         # Sort by Y position (top to bottom)
         desktop_elements.sort(key=lambda e: e.get("bounds", {}).get("y", 0))
-        
+
         logger.info(f"Processing {len(desktop_elements)} elements (no filtering)")
+
+        # Debug: Log sample of style differences across viewports
+        if desktop_elements and tablet_elements:
+            sample_desktop = desktop_elements[0] if desktop_elements else {}
+            sample_tablet = tablet_elements[0] if tablet_elements else {}
+            d_styles = sample_desktop.get("styles", {})
+            t_styles = sample_tablet.get("styles", {})
+            diff_props = [k for k in set(list(d_styles.keys()) + list(t_styles.keys()))
+                         if d_styles.get(k) != t_styles.get(k)]
+            logger.info(f"[Viewport Debug] First element style diff count: {len(diff_props)}")
+            if diff_props[:3]:
+                logger.info(f"[Viewport Debug] Sample diffs: {diff_props[:3]}")
         
         merged = []
         for desktop_elem in desktop_elements:
@@ -888,31 +1145,41 @@ class WebsiteExtractor:
         return merged
     
     def _find_matching_element(
-        self, 
-        target: Dict, 
+        self,
+        target: Dict,
         candidates: List[Dict]
     ) -> Optional[Dict]:
         """Find the matching element in another viewport by id, tag, and text similarity."""
         target_id = target.get("id", "")
         target_tag = target.get("tag", "")
         target_text = target.get("text", "")[:50]
-        
-        # First try exact id match
+        target_bounds = target.get("bounds", {})
+
+        # First try exact id match (most reliable)
         for candidate in candidates:
             if candidate.get("id") == target_id and target_id:
                 return candidate
-        
-        # Then try tag + text match
+
+        # Then try tag + text match (good for unique text content)
         for candidate in candidates:
-            if (candidate.get("tag") == target_tag and 
-                candidate.get("text", "")[:50] == target_text):
+            if (candidate.get("tag") == target_tag and
+                candidate.get("text", "")[:50] == target_text and target_text):
                 return candidate
-        
-        # Fall back to just tag match
+
+        # Then try tag + similar position (for elements without unique text)
+        # This helps match elements that moved due to responsive layout
+        for candidate in candidates:
+            if candidate.get("tag") == target_tag:
+                cand_bounds = candidate.get("bounds", {})
+                # Check if X position is similar (within 50px) - Y will differ due to reflow
+                if abs(cand_bounds.get("x", 0) - target_bounds.get("x", 0)) < 50:
+                    return candidate
+
+        # Fall back to just tag match (last resort)
         for candidate in candidates:
             if candidate.get("tag") == target_tag:
                 return candidate
-        
+
         return None
     
     def _extract_root_styles(

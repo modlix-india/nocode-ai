@@ -1,9 +1,12 @@
-name: ai-dev-ci
+name: ai-prod-ci
 
 on:
   push:
     branches:
-      - oci-development
+      - oci-prod
+    paths:
+      - '**'
+      - '.github/workflows/ai-prod-ci.yml'
 
   workflow_dispatch:
 
@@ -13,7 +16,7 @@ jobs:
 
     env:
       OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
-      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-ai-server
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-ai-server
 
     outputs:
       image_tag: ${{ github.sha }}
@@ -39,5 +42,5 @@ jobs:
 
     steps:
       - run: |
-          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy ai-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-ai-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
+          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.PROD_SERVER_IP }} \
+            "bash /home/opc/scripts/keepup.sh deploy ai-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-ai-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
