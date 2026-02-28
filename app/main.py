@@ -1,7 +1,7 @@
 """
 Nocode AI Service - FastAPI Application
 
-Multi-agent page generation with RAG support.
+Agentic AI service for building no-code applications through conversation.
 Integrates with nocode-saas via Eureka service discovery and Config Server.
 """
 import os
@@ -17,8 +17,7 @@ from app.config import settings, initialize_settings
 from app.services.eureka import register_with_eureka, deregister_from_eureka
 from app.services.redis_client import get_redis_client, close_redis
 from app.rag.engine import initialize_rag_engine
-from app.agents.page_agent import PageAgent
-from app.api.routes import health, agent, query, function
+from app.api.routes import health, query
 from app.middleware.rate_limiter import RateLimitMiddleware, RequestDeduplicationMiddleware
 
 # Configure logging
@@ -33,31 +32,31 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Application lifespan handler.
-    
+
     Startup:
     1. Fetch config from Config Server
     2. Register with Eureka
     3. Initialize RAG engine
-    4. Initialize Page Agent
-    
+    4. Initialize AppBuilder Agent
+
     Shutdown:
-    - Deregister from Eureka
+    - Close connections and deregister from Eureka
     """
     logger.info("=" * 60)
     logger.info("Starting Nocode AI Service")
     logger.info("=" * 60)
-    
+
     # 1. Initialize settings from Config Server
     logger.info("Fetching configuration from Config Server...")
     await initialize_settings()
-    
+
     # 2. Register with Eureka
     await register_with_eureka()
-    
+
     # 3. Initialize RAG engine
     logger.info("Initializing RAG engine...")
     await initialize_rag_engine()
-    
+
     # 4. Initialize Redis (if configured)
     if settings.REDIS_ENABLED:
         logger.info("Initializing Redis connection...")
@@ -81,38 +80,49 @@ async def lifespan(app: FastAPI):
             logger.warning("AI tracking will be disabled")
             settings.AI_TRACKING_ENABLED = False
 
-    # 6. Initialize Page Agent
-    logger.info("Initializing Page Agent...")
-    page_agent = PageAgent()
-    agent.set_page_agent(page_agent)
-
-    # 7. Initialize Website Extractor (for website import feature)
-    logger.info("Initializing Website Extractor (Playwright)...")
+    # 6. Initialize AppBuilder Agent (agentic system)
+    logger.info("Initializing AppBuilder Agent...")
     try:
-        from app.services.website_extractor import get_website_extractor
-        extractor = get_website_extractor()
-        logger.info("Website Extractor initialized (browser will start on first use)")
+        from app.agents.appbuilder.context import build_appbuilder_context
+        from app.agents.appbuilder.agent import AppBuilderAgent
+        from app.agents.appbuilder.catalog import ComponentCatalog
+        from app.agents.appbuilder.tools.registry import ALL_TOOLS
+        from app.agents.appbuilder.router import set_appbuilder_agent
+
+        appbuilder_context = build_appbuilder_context(settings.AICONTEXT_PATH)
+        await appbuilder_context.load()
+
+        catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
+        await catalog.load()
+
+        appbuilder_agent = AppBuilderAgent(
+            context_builder=appbuilder_context,
+            tools=ALL_TOOLS,
+            catalog=catalog,
+        )
+        set_appbuilder_agent(appbuilder_agent)
+        logger.info(f"AppBuilder Agent initialized with {len(ALL_TOOLS)} tools, {len(catalog.get_all_types())} component types")
     except Exception as e:
-        logger.warning(f"Website Extractor initialization deferred: {e}")
+        logger.error(f"Failed to initialize AppBuilder Agent: {e}")
+        logger.warning("AppBuilder Agent will be unavailable")
 
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
     logger.info("=" * 60)
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down...")
-    await close_redis()
 
-    # Close Website Extractor (browser)
+    # Close SaasClient (HTTP connection pool)
     try:
-        from app.services.website_extractor import get_website_extractor
-        extractor = get_website_extractor()
-        await extractor.close()
-        logger.info("Website Extractor closed")
+        from app.agents.appbuilder.tools._shared import close_saas_client
+        await close_saas_client()
     except Exception as e:
-        logger.error(f"Error closing website extractor: {e}")
+        logger.error(f"Error closing SaasClient: {e}")
+
+    await close_redis()
 
     # Close AI tracking database connection
     if settings.AI_TRACKING_ENABLED:
@@ -130,33 +140,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Nocode AI Service",
     description="""
-Multi-agent AI service for generating nocode page definitions.
+Agentic AI service for building no-code applications through conversation.
 
 ## Features
 
-- **Page Agent**: Orchestrates 7 specialized sub-agents to generate pages
-- **SSE Streaming**: Real-time progress updates during generation
+- **AppBuilder Agent**: Single agent with 61+ tools for building entire applications
+- **SSE Streaming**: Real-time text + tool call progress via Server-Sent Events
 - **RAG System**: Retrieval-augmented generation using documentation and examples
-- **Create/Modify/Enhance**: Support for new pages and modifications
-- **Config Server Integration**: Centralized configuration management
-
-## Agents
-
-| Agent | Responsibility |
-|-------|---------------|
-| Layout | Grid structure, responsive breakpoints |
-| Component | Component selection and properties |
-| Events | Event handlers and interactions |
-| Styles | Visual styling and theming |
-| Animation | Animations and transitions |
-| Data | Data binding and store management |
-| Review | Validation and quality improvement |
+- **Component Catalog**: Dynamic component metadata from UI source files
 
 ## Authentication
 
 All endpoints require Bearer token authentication via the security service.
 """,
-    version="0.1.0",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/api/ai/docs",
     redoc_url="/api/ai/redoc",
@@ -183,9 +180,11 @@ API_PREFIX = "/api/ai"
 
 # Include routers with /api/ai prefix to match gateway routing
 app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
-app.include_router(agent.router, prefix=f"{API_PREFIX}/agent", tags=["Agents"])
 app.include_router(query.router, prefix=f"{API_PREFIX}/query", tags=["Query"])
-app.include_router(function.router, prefix=f"{API_PREFIX}/function", tags=["Function"])
+
+# AppBuilder agent router
+from app.agents.appbuilder.router import router as appbuilder_router
+app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
 
 # Root health check (for direct container health checks)
@@ -200,16 +199,11 @@ async def root():
     """Root endpoint"""
     return {
         "service": "Nocode AI Service",
-        "version": "0.1.0",
+        "version": "2.0.0",
         "port": settings.SERVICE_PORT,
         "endpoints": {
             "health": "/api/ai/health",
-            "page_generation": "/api/ai/agent/page",
-            "page_generation_sync": "/api/ai/agent/page/sync",
-            "website_import": "/api/ai/agent/import",
-            "website_import_stream": "/api/ai/agent/import/stream",
-            "function_explain": "/api/ai/function/explain",
-            "function_modify": "/api/ai/function/modify",
+            "appbuilder_chat": "/api/ai/appbuilder/chat",
             "query": "/api/ai/query",
             "docs": "/api/ai/docs"
         }
@@ -221,13 +215,10 @@ async def api_root():
     """API root endpoint"""
     return {
         "service": "Nocode AI Service",
-        "version": "0.1.0",
+        "version": "2.0.0",
         "endpoints": {
             "health": "/api/ai/health",
-            "page_generation": "/api/ai/agent/page",
-            "page_generation_sync": "/api/ai/agent/page/sync",
-            "website_import": "/api/ai/agent/import",
-            "website_import_stream": "/api/ai/agent/import/stream",
+            "appbuilder_chat": "/api/ai/appbuilder/chat",
             "query": "/api/ai/query"
         }
     }

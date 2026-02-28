@@ -102,6 +102,17 @@ class Settings(BaseSettings):
     SCREENSHOT_TIMEOUT: int = 60  # Timeout for screenshot capture (seconds)
     MAX_HTML_SIZE_MB: int = 10  # Maximum HTML size to process (MB)
     PLACEHOLDER_IMAGE_PATH: str = "api/files/static/file/SYSTEM/appbuilder/sample.svg"  # Default placeholder image
+
+    # Gateway URL (nocode-saas API gateway)
+    # All agent tool calls route through this gateway
+    # Can be overridden by config server: ai.gateway.url
+    GATEWAY_URL: str = "http://localhost:8080"
+
+    # Agent Settings
+    AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
+    MAX_AGENT_TURNS: int = 50  # Max tool-use loop iterations per request
+    AGENT_MAX_TOKENS: int = 16384  # Max tokens per LLM response
+    COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
         env_file = ".env"
@@ -131,6 +142,7 @@ class Settings(BaseSettings):
             ("secrets", "anthropicAPIKey"): "ANTHROPIC_API_KEY",
             ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
+            ("gateway", "url"): "GATEWAY_URL",
         }
         
         for keys, attr in mappings.items():
@@ -213,3 +225,5 @@ async def initialize_settings():
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")
     logger.info(f"Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min, {settings.RATE_LIMIT_PER_HOUR}/hour")
     logger.info(f"AI Tracking: {'ENABLED - ' + settings.MYSQL_URL[:50] + '...' if settings.AI_TRACKING_ENABLED else 'DISABLED'}")
+    logger.info(f"Gateway URL: {settings.GATEWAY_URL}")
+    logger.info(f"Agent: model_tier={settings.AGENT_MODEL_TIER}, max_turns={settings.MAX_AGENT_TURNS}, max_tokens={settings.AGENT_MAX_TOKENS}")
