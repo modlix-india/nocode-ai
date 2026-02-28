@@ -37,45 +37,86 @@ class ChatRequest(BaseModel):
     app_code: Optional[str] = None
 
 
+def _extract_token(request: Request) -> str:
+    """Extract auth token from Authorization header or cookie fallback."""
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header:
+        return auth_header
+    cookie_token = request.cookies.get("token", "")
+    if cookie_token:
+        return f"Bearer {cookie_token}"
+    return ""
+
+
+def _extract_forwarded_headers(request: Request) -> tuple[str, str]:
+    """Extract X-Forwarded-Host/Port from request (set by gateway/proxy)."""
+    host = request.headers.get(
+        "X-Forwarded-Host", request.url.hostname or "localhost"
+    )
+    port = request.headers.get(
+        "X-Forwarded-Port", str(request.url.port or 80)
+    )
+    # Handle comma-separated port (matching Java behavior)
+    if "," in port:
+        port = port.split(",")[0]
+    return host, port
+
+
+async def _authenticate(request: Request, auth_header: str, client_code: str, app_code: str) -> AuthContext:
+    """Validate token via security service and build AuthContext.
+
+    Raises HTTPException on auth failure.
+    """
+    from app.services.security import get_context_authentication
+
+    ctx_auth = await get_context_authentication(
+        request=request,
+        authorization=auth_header,
+        client_code=client_code,
+        app_code=app_code,
+    )
+    if not ctx_auth.isAuthenticated:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    forwarded_host, forwarded_port = _extract_forwarded_headers(request)
+
+    return AuthContext(
+        token=auth_header,
+        client_code=client_code,
+        client_id=ctx_auth.user.clientId if ctx_auth.user else 0,
+        user_id=ctx_auth.user.id if ctx_auth.user else 0,
+        app_code=ctx_auth.verifiedAppCode or app_code,
+        forwarded_host=forwarded_host,
+        forwarded_port=forwarded_port,
+    )
+
+
 @router.post("/chat")
 async def chat(request: Request, body: ChatRequest):
     """Stream an appbuilder agent response as SSE.
 
-    Authenticates via Bearer token, creates/resumes a session,
-    runs the agentic loop, and streams events to the client.
+    Authenticates via Bearer token (or cookie fallback),
+    creates/resumes a session, and streams agent responses as SSE.
     """
     if _agent is None:
         raise HTTPException(status_code=503, detail="AppBuilder agent not initialized")
 
-    # Extract auth from headers
-    auth_header = request.headers.get("Authorization", "")
+    auth_header = _extract_token(request)
     client_code = request.headers.get("clientCode", "")
     app_code = body.app_code or request.headers.get("appCode", "")
 
     if not auth_header:
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
+        raise HTTPException(status_code=401, detail="Missing Authorization header or token cookie")
     if not client_code:
         raise HTTPException(status_code=400, detail="Missing clientCode header")
 
-    # Validate token via security service
     try:
-        from app.services.security import validate_token
-        user_info = await validate_token(auth_header)
-        if not user_info:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        auth = await _authenticate(request, auth_header, client_code, app_code)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Token validation failed: {e}")
         raise HTTPException(status_code=401, detail="Token validation failed")
-
-    auth = AuthContext(
-        token=auth_header,
-        client_code=client_code,
-        client_id=user_info.get("clientId", 0),
-        user_id=user_info.get("userId", 0),
-        app_code=app_code,
-    )
 
     # Create/resume session
     session = BaseSession(agent_name="appbuilder")

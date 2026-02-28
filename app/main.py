@@ -86,6 +86,7 @@ async def lifespan(app: FastAPI):
         from app.agents.appbuilder.context import build_appbuilder_context
         from app.agents.appbuilder.agent import AppBuilderAgent
         from app.agents.appbuilder.catalog import ComponentCatalog
+        from app.agents.appbuilder.api_catalog import ApiCatalog
         from app.agents.appbuilder.tools.registry import ALL_TOOLS
         from app.agents.appbuilder.router import set_appbuilder_agent
 
@@ -95,10 +96,14 @@ async def lifespan(app: FastAPI):
         catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
         await catalog.load()
 
+        api_catalog = ApiCatalog()
+        await api_catalog.load()
+
         appbuilder_agent = AppBuilderAgent(
             context_builder=appbuilder_context,
             tools=ALL_TOOLS,
             catalog=catalog,
+            api_catalog=api_catalog,
         )
         set_appbuilder_agent(appbuilder_agent)
         logger.info(f"AppBuilder Agent initialized with {len(ALL_TOOLS)} tools, {len(catalog.get_all_types())} component types")

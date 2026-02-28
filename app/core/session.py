@@ -39,11 +39,19 @@ class AuthContext:
     client_id: int
     user_id: int
     app_code: str
+    forwarded_host: str = "localhost"
+    forwarded_port: str = "80"
 
     def to_headers(self) -> dict[str, str]:
-        """Build HTTP headers for forwarding to Gateway APIs."""
+        """Build HTTP headers for forwarding to Gateway APIs.
+
+        Returns all 5 headers required by backend services
+        (matches Java IFeignSecurityService Feign interface).
+        """
         return {
             "Authorization": f"Bearer {self.token}" if not self.token.startswith("Bearer") else self.token,
+            "X-Forwarded-Host": self.forwarded_host,
+            "X-Forwarded-Port": self.forwarded_port,
             "clientCode": self.client_code,
             "appCode": self.app_code,
         }

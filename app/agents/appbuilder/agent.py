@@ -3,6 +3,7 @@
 Extends BaseAgent with:
 - AppBuilder-specific tools (pages, components, events, styles, entities)
 - Component catalog integration (when available)
+- API catalog integration (when available)
 - System prompt from aicontext/ documentation
 """
 
@@ -27,15 +28,19 @@ class AppBuilderAgent(BaseAgent):
         context_builder: BaseContext,
         tools: list | None = None,
         catalog: Any = None,
+        api_catalog: Any = None,
     ) -> None:
         """
         Args:
             context_builder: BaseContext loaded with aicontext docs.
             tools: List of ToolDefinitions. Defaults to empty (populated by registry).
             catalog: ComponentCatalog instance (optional).
+            api_catalog: ApiCatalog instance (optional).
         """
         self._catalog = catalog
         self._catalog_context = catalog.to_prompt_context() if catalog else ""
+        self._api_catalog = api_catalog
+        self._api_catalog_context = api_catalog.to_prompt_context() if api_catalog else ""
 
         super().__init__(
             name="appbuilder",
@@ -49,7 +54,8 @@ class AppBuilderAgent(BaseAgent):
     def build_dynamic_context(self, session: BaseSession) -> str:
         """Build per-request dynamic context.
 
-        Includes: auth info, component catalog, and any session-specific state.
+        Includes: auth info, component catalog, API catalog,
+        and any session-specific state.
         """
         parts: list[str] = []
 
@@ -62,6 +68,9 @@ class AppBuilderAgent(BaseAgent):
 
         if self._catalog_context:
             parts.append(self._catalog_context)
+
+        if self._api_catalog_context:
+            parts.append(self._api_catalog_context)
 
         return "\n\n".join(parts)
 
