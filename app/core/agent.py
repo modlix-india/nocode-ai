@@ -75,6 +75,7 @@ class BaseAgent:
         user_message: str,
         session: BaseSession,
         event_stream: AgentEventStream,
+        image_blocks: list[dict[str, Any]] | None = None,
     ) -> None:
         """Execute the agentic loop for a single user turn.
 
@@ -91,9 +92,10 @@ class BaseAgent:
             user_message: The user's input text.
             session: Active session with auth context and message history.
             event_stream: SSE stream to emit events to the client.
+            image_blocks: Optional image content blocks (Anthropic format) to include with the message.
         """
         try:
-            await self._run_loop(user_message, session, event_stream)
+            await self._run_loop(user_message, session, event_stream, image_blocks)
         except Exception as e:
             logger.exception(f"Agent {self.name} error")
             await event_stream.emit_error(f"Agent error: {type(e).__name__}: {e}")
@@ -107,6 +109,7 @@ class BaseAgent:
         user_message: str,
         session: BaseSession,
         event_stream: AgentEventStream,
+        image_blocks: list[dict[str, Any]] | None = None,
     ) -> None:
         """Internal agentic loop implementation."""
         provider = get_llm_provider()
@@ -117,11 +120,13 @@ class BaseAgent:
             dynamic_context=dynamic_context,
         )
 
-        # Append user message to conversation
-        session.append_user_message(user_message)
+        # Append user message to conversation (with optional images)
+        session.append_user_message(user_message, image_blocks)
 
         turn = 0
         assistant_text_parts: list[str] = []
+        # Collects one record per tool call for training/audit storage
+        tool_call_log: list[dict[str, Any]] = []
 
         while turn < self.max_turns:
             turn += 1
@@ -147,18 +152,10 @@ class BaseAgent:
             session.accumulate_usage(usage)
             await session.record_token_usage(usage, request_id, response["model"])
 
-            # Process content blocks
-            tool_use_blocks = []
-
-            for block in content_blocks:
-                if block["type"] == "text":
-                    text = block["text"]
-                    if text:
-                        assistant_text_parts.append(text)
-                        await event_stream.emit_text(text)
-
-                elif block["type"] == "tool_use":
-                    tool_use_blocks.append(block)
+            # Split text blocks (stream) from tool_use blocks (execute)
+            tool_use_blocks = await self._process_content_blocks(
+                content_blocks, assistant_text_parts, event_stream
+            )
 
             # Save assistant message to conversation history
             session.append_assistant_message(content_blocks)
@@ -167,28 +164,14 @@ class BaseAgent:
             if stop_reason != "tool_use" or not tool_use_blocks:
                 break
 
-            # Execute tools and collect results
+            # Execute each tool block, stream result, collect logs
             tool_result_blocks = []
-
             for tool_block in tool_use_blocks:
-                tool_name = tool_block["name"]
-                tool_input = tool_block["input"]
-                tool_use_id = tool_block["id"]
-
-                await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id)
-
-                result = await self._execute_tool(tool_name, tool_input, session)
-
-                await event_stream.emit_tool_result(
-                    tool_name, result.success, result.to_tool_result_content(), tool_use_id
+                result_block, log_entry = await self._run_tool_block(
+                    tool_block, session, event_stream
                 )
-
-                tool_result_blocks.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_use_id,
-                    "content": result.to_tool_result_content(),
-                    "is_error": not result.success,
-                })
+                tool_result_blocks.append(result_block)
+                tool_call_log.append(log_entry)
 
             # Append tool results to conversation
             session.append_tool_results(tool_result_blocks)
@@ -200,15 +183,73 @@ class BaseAgent:
                 "Please continue the conversation to proceed.]"
             )
 
-        # Persist the turn summary
+        # Persist the turn summary, tool call log, and context
         assistant_summary = " ".join(assistant_text_parts)[:2000] if assistant_text_parts else ""
-        await session.persist_turn(user_message, assistant_summary)
+        await session.persist_turn(user_message, assistant_summary, tool_call_log or None)
+        await session.save_context()
 
         # Emit done
         await event_stream.emit_done(
             session_id=session.session_id,
             usage=session.total_usage,
         )
+
+    async def _process_content_blocks(
+        self,
+        content_blocks: list[dict[str, Any]],
+        assistant_text_parts: list[str],
+        event_stream: AgentEventStream,
+    ) -> list[dict[str, Any]]:
+        """Stream text blocks and collect tool_use blocks from an LLM response."""
+        tool_use_blocks = []
+        for block in content_blocks:
+            if block["type"] == "text":
+                text = block["text"]
+                if text:
+                    assistant_text_parts.append(text)
+                    await event_stream.emit_text(text)
+            elif block["type"] == "tool_use":
+                tool_use_blocks.append(block)
+        return tool_use_blocks
+
+    async def _run_tool_block(
+        self,
+        tool_block: dict[str, Any],
+        session: BaseSession,
+        event_stream: AgentEventStream,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Execute one tool_use block, emit SSE events, and return (result_block, log_entry)."""
+        tool_name = tool_block["name"]
+        tool_input = tool_block["input"]
+        tool_use_id = tool_block["id"]
+
+        await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id)
+
+        result = await self._execute_tool(tool_name, tool_input, session)
+        tool_content = result.to_tool_result_content()
+
+        # Use a short display summary for the SSE event — the UI only
+        # shows 80 chars anyway and very large payloads (e.g. full page
+        # trees) can fragment SSE lines and stall the spinner.
+        display_summary = result.summary or result.error or tool_content
+        if len(display_summary) > 200:
+            display_summary = display_summary[:200] + "…"
+
+        await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
+
+        result_block = {
+            "type": "tool_result",
+            "tool_use_id": tool_use_id,
+            "content": tool_content,
+            "is_error": not result.success,
+        }
+        log_entry = {
+            "tool": tool_name,
+            "input": tool_input,
+            "success": result.success,
+            "summary": (result.summary or result.error or "")[:500],
+        }
+        return result_block, log_entry
 
     async def _execute_tool(
         self,

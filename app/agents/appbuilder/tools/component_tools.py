@@ -40,6 +40,8 @@ async def _add_component_execute(params: dict[str, Any], context: dict[str, Any]
     style_properties = params.get("style_properties", {})
     display_order = params.get("display_order", 0)
 
+    binding_paths = params.get("binding_paths", {})
+
     page_data, error = await fetch_page_by_name(client, page_name, app_code, headers)
     if error:
         return ToolResult(success=False, error=error)
@@ -61,7 +63,7 @@ async def _add_component_execute(params: dict[str, Any], context: dict[str, Any]
         )
 
     # Create the component
-    comp_def[component_key] = {
+    new_comp: dict[str, Any] = {
         "key": component_key,
         "type": component_type,
         "name": component_key,
@@ -71,12 +73,19 @@ async def _add_component_execute(params: dict[str, Any], context: dict[str, Any]
         "styleProperties": style_properties if style_properties else {},
     }
 
+    # Set binding paths at top level (not inside properties)
+    for bp_key, bp_value in binding_paths.items():
+        new_comp[bp_key] = bp_value
+
+    comp_def[component_key] = new_comp
+
     # Add to parent's children
     parent = comp_def[parent_key]
     parent.setdefault("children", {})[component_key] = True
 
     # Save
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -92,18 +101,45 @@ async def _add_component_execute(params: dict[str, Any], context: dict[str, Any]
 add_component = ToolDefinition(
     name="add_component",
     description=(
-        "Add a new component to a page. The component is added to the flat "
-        "componentDefinition map and registered as a child of parent_key. "
-        "Use the component catalog in the system prompt to know valid types and properties."
+        "Add a single new component to a page. "
+        "If you need to add or modify MULTIPLE components in one task, use batch_update_page "
+        "instead — it fetches and saves the page only once. "
+        "Use the component catalog in the system prompt to know valid types and properties. "
+        "IMPORTANT: Many components require binding_paths for two-way data binding. "
+        "Binding paths live at the TOP LEVEL of the component definition (not inside properties). "
+        "Format: {\"bindingPath\": {\"type\": \"VALUE\", \"value\": \"Page.someStore.field\"}}. "
+        "Components requiring binding paths:\n"
+        "- Popup: bindingPath = boolean toggle (Page.isPopupOpen), controls open/close state\n"
+        "- TextBox/TextArea: bindingPath = string value path (Page.form.fieldName)\n"
+        "- Dropdown: bindingPath = selected value path\n"
+        "- CheckBox: bindingPath = boolean path\n"
+        "- ToggleButton: bindingPath = boolean path\n"
+        "- ArrayRepeater: bindingPath = array data path (Store.items)\n"
+        "- Table: bindingPath = array data path\n"
+        "- PhoneNumber: bindingPath = number, bindingPath2 = country code, bindingPath3 = dial code\n"
+        "- Gallery/Carousel: bindingPath = toggle visibility\n"
+        "- Stepper: bindingPath = current step value\n"
+        "- Tabs: bindingPath = active tab value\n"
+        "Use VALUE type for direct store paths, EXPRESSION type for computed paths."
     ),
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
         ToolParameter(name="parent_key", type="string", description="Key of the parent component (e.g. 'root')."),
         ToolParameter(name="component_key", type="string", description="Unique key for the new component (e.g. 'emailField', 'submitBtn')."),
-        ToolParameter(name="type", type="string", description="Component type (e.g. 'Grid', 'Button', 'TextBox', 'Text', 'Image')."),
+        ToolParameter(name="type", type="string", description="Component type (e.g. 'Grid', 'Button', 'TextBox', 'Popup', 'ArrayRepeater')."),
         ToolParameter(name="properties", type="object", description="Component properties as key-value pairs.", required=False),
-        ToolParameter(name="style_properties", type="object", description="Style properties in responsive format: {screenSize: {pseudoState: {cssProp: value}}}.", required=False),
+        ToolParameter(name="style_properties", type="object", description="Style properties in responsive format.", required=False),
+        ToolParameter(
+            name="binding_paths", type="object", required=False,
+            description=(
+                "Binding paths for two-way data binding. Keys: bindingPath, bindingPath2 ... bindingPath10. "
+                "Each value is a DataLocation: {\"type\": \"VALUE\", \"value\": \"Page.store.path\"} "
+                "or {\"type\": \"EXPRESSION\", \"expression\": \"some.expression\"}. "
+                "Example: {\"bindingPath\": {\"type\": \"VALUE\", \"value\": \"Page.isModalOpen\"}}"
+            ),
+        ),
         ToolParameter(name="display_order", type="integer", description="Display order among siblings (default 0).", required=False),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_add_component_execute,
@@ -151,10 +187,18 @@ async def _update_component_execute(params: dict[str, Any], context: dict[str, A
         comp["displayOrder"] = display_order
         updated_fields.append(f"displayOrder={display_order}")
 
+    # Set binding paths at top level (not inside properties)
+    binding_paths = params.get("binding_paths")
+    if binding_paths:
+        for bp_key, bp_value in binding_paths.items():
+            comp[bp_key] = bp_value
+        updated_fields.append(f"bindingPaths: {list(binding_paths.keys())}")
+
     if not updated_fields:
         return ToolResult(success=True, summary=f"No changes to '{component_key}'.")
 
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -167,16 +211,27 @@ async def _update_component_execute(params: dict[str, Any], context: dict[str, A
 update_component = ToolDefinition(
     name="update_component",
     description=(
-        "Update an existing component's properties, styles, or display order. "
-        "Properties and styles are merged (partial update) — you only need to "
-        "specify the fields you want to change."
+        "Update a single existing component's properties, styles, binding paths, or display order. "
+        "Properties and styles are merged (partial update). "
+        "Use binding_paths to set/update data binding (e.g. the store path a TextBox writes to). "
+        "If you need to update MULTIPLE components, use batch_update_page instead."
     ),
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
         ToolParameter(name="component_key", type="string", description="Key of the component to update."),
         ToolParameter(name="properties", type="object", description="Properties to merge (partial update).", required=False),
         ToolParameter(name="style_properties", type="object", description="Style properties to merge.", required=False),
+        ToolParameter(
+            name="binding_paths", type="object", required=False,
+            description=(
+                "Binding paths to set at the component's top level. "
+                "Keys: bindingPath, bindingPath2, ... bindingPath10. "
+                "Each value: {\"type\": \"VALUE\", \"value\": \"Page.store.path\"} "
+                "or {\"type\": \"EXPRESSION\", \"expression\": \"expr\"}."
+            ),
+        ),
         ToolParameter(name="display_order", type="integer", description="New display order.", required=False),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_update_component_execute,
@@ -264,7 +319,8 @@ async def _remove_component_execute(params: dict[str, Any], context: dict[str, A
         if component_key in children:
             del children[component_key]
 
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -282,6 +338,7 @@ remove_component = ToolDefinition(
         ToolParameter(name="page_name", type="string", description="Name of the page."),
         ToolParameter(name="component_key", type="string", description="Key of the component to remove."),
         ToolParameter(name="recursive", type="boolean", description="Also remove all children (default true).", required=False),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_remove_component_execute,
@@ -322,7 +379,8 @@ async def _move_component_execute(params: dict[str, Any], context: dict[str, Any
     if display_order is not None:
         comp_def[component_key]["displayOrder"] = display_order
 
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -340,6 +398,7 @@ move_component = ToolDefinition(
         ToolParameter(name="component_key", type="string", description="Key of the component to move."),
         ToolParameter(name="new_parent_key", type="string", description="Key of the new parent component."),
         ToolParameter(name="display_order", type="integer", description="New display order in the new parent.", required=False),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_move_component_execute,

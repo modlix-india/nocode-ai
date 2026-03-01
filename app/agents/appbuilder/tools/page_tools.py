@@ -31,17 +31,18 @@ def _get_client_and_headers(context: dict[str, Any]) -> tuple[SaasClient, dict[s
 # ── list_pages ──────────────────────────────────────────────────
 
 async def _list_pages_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    client, headers = _get_client_and_headers(context)
-    app_code = params.get("app_code", context.get("app_code", ""))
+    from app.agents.appbuilder.tools._shared import require_app_code
 
-    result = await client.post(
-        f"{API_PREFIX}/query",
+    client, headers = _get_client_and_headers(context)
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
+
+    result = await client.get(
+        API_PREFIX,
         headers=headers,
-        json={
-            "page": 0,
-            "size": 100,
-            "condition": {"k": "appCode", "v": app_code},
-        },
+        params={"page": 0, "size": 1000, "appCode": app_code},
     )
 
     if not result.success:
@@ -57,10 +58,11 @@ async def _list_pages_execute(params: dict[str, Any], context: dict[str, Any]) -
         page_id = page.get("id", "?")
         root = page.get("rootComponent", "")
         comp_count = len(comp_def)
-        summary_lines.append(f"- {name} (id={page_id}, root={root}, components={comp_count})")
+        version = page.get("version", "?")
+        summary_lines.append(f"- {name} (id={page_id}, root={root}, components={comp_count}, v{version})")
 
-    summary = f"Found {len(pages)} pages in app '{app_code}':\n" + "\n".join(summary_lines)
-    return ToolResult(success=True, data={"pages": [{"name": p.get("name"), "id": p.get("id")} for p in pages]}, summary=summary)
+    summary = f"Found {len(pages)} pages:\n" + "\n".join(summary_lines)
+    return ToolResult(success=True, data={"pages": [{"name": p.get("name"), "id": p.get("id"), "version": p.get("version")} for p in pages]}, summary=summary)
 
 
 list_pages = ToolDefinition(
@@ -76,14 +78,24 @@ list_pages = ToolDefinition(
 # ── create_page ─────────────────────────────────────────────────
 
 async def _create_page_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    from app.agents.appbuilder.tools._shared import validate_name, require_app_code
+
     client, headers = _get_client_and_headers(context)
-    app_code = params.get("app_code", context.get("app_code", ""))
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
     page_name = params["page_name"]
+
+    err = validate_name(page_name)
+    if err:
+        return err
+
     title = params.get("title", page_name)
 
     # Create page with a root Grid component
     root_key = "root"
-    page_data = {
+    page_data: dict[str, Any] = {
         "name": page_name,
         "appCode": app_code,
         "clientCode": context.get("client_code", ""),
@@ -104,6 +116,9 @@ async def _create_page_execute(params: dict[str, Any], context: dict[str, Any]) 
         "properties": {},
         "translations": {},
     }
+    if params.get("description"):
+        page_data["description"] = params["description"]
+    page_data["message"] = params["message"]
 
     result = await client.post(API_PREFIX, headers=headers, json=page_data)
 
@@ -124,8 +139,10 @@ create_page = ToolDefinition(
     name="create_page",
     description="Create a new page with an empty root Grid layout. Returns the page ID.",
     parameters=[
-        ToolParameter(name="page_name", type="string", description="Name for the new page (e.g. 'loginPage', 'dashboard')."),
+        ToolParameter(name="page_name", type="string", description="Name for the new page (letters only, e.g. 'loginPage', 'dashboard')."),
         ToolParameter(name="title", type="string", description="Human-readable page title.", required=False),
+        ToolParameter(name="description", type="string", description="Page description.", required=False),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code. Uses session app if not specified.", required=False),
     ],
     execute=_create_page_execute,
@@ -148,7 +165,7 @@ async def _delete_page_execute(params: dict[str, Any], context: dict[str, Any]) 
 
 delete_page = ToolDefinition(
     name="delete_page",
-    description="Delete a page by its ID.",
+    description="Delete a page by its ID. If the page is inherited (owned by another client), this removes your override and resets to the inherited version.",
     parameters=[
         ToolParameter(name="page_id", type="string", description="The page ID to delete."),
     ],
@@ -159,9 +176,14 @@ delete_page = ToolDefinition(
 # ── read_page_structure ─────────────────────────────────────────
 
 async def _read_page_structure_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    from app.agents.appbuilder.tools._shared import require_app_code
+
     client, headers = _get_client_and_headers(context)
     page_name = params["page_name"]
-    app_code = params.get("app_code", context.get("app_code", ""))
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
 
     page_data, error = await fetch_page_by_name(client, page_name, app_code, headers)
     if error:
@@ -197,9 +219,14 @@ read_page_structure = ToolDefinition(
 # ── read_page_properties ────────────────────────────────────────
 
 async def _read_page_properties_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    from app.agents.appbuilder.tools._shared import require_app_code
+
     client, headers = _get_client_and_headers(context)
     page_name = params["page_name"]
-    app_code = params.get("app_code", context.get("app_code", ""))
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
 
     page_data, error = await fetch_page_by_name(client, page_name, app_code, headers)
     if error:
@@ -210,6 +237,7 @@ async def _read_page_properties_execute(params: dict[str, Any], context: dict[st
         "id": page_data.get("id"),
         "name": page_data.get("name"),
         "title": page_data.get("title"),
+        "description": page_data.get("description"),
         "rootComponent": page_data.get("rootComponent"),
         "properties": page_data.get("properties", {}),
         "translations": page_data.get("translations", {}),
@@ -226,7 +254,7 @@ async def _read_page_properties_execute(params: dict[str, Any], context: dict[st
 
 read_page_properties = ToolDefinition(
     name="read_page_properties",
-    description="Read page-level properties (title, translations, permissions, storeInitialization). Does NOT read components — use read_page_structure for that.",
+    description="Read page-level properties (title, description, translations, permissions, version). Does NOT read components — use read_page_structure for that.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
@@ -238,9 +266,14 @@ read_page_properties = ToolDefinition(
 # ── update_page_properties ──────────────────────────────────────
 
 async def _update_page_properties_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    from app.agents.appbuilder.tools._shared import require_app_code
+
     client, headers = _get_client_and_headers(context)
     page_name = params["page_name"]
-    app_code = params.get("app_code", context.get("app_code", ""))
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
     updates = params.get("properties", {})
 
     page_data, error = await fetch_page_by_name(client, page_name, app_code, headers)
@@ -256,7 +289,9 @@ async def _update_page_properties_execute(params: dict[str, Any], context: dict[
         elif key == "properties":
             page_data.setdefault("properties", {}).update(value)
 
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -276,6 +311,7 @@ update_page_properties = ToolDefinition(
             type="object",
             description="Properties to update. Keys can be: title, permission, description, translations, properties.",
         ),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_update_page_properties_execute,

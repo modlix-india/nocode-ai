@@ -60,10 +60,11 @@ class AppBuilderAgent(BaseAgent):
         parts: list[str] = []
 
         if session.auth:
+            app_code = session.context.get("app_code") or session.auth.app_code
             parts.append(
                 f"Current session:\n"
                 f"- Client: {session.auth.client_code}\n"
-                f"- App: {session.auth.app_code}\n"
+                f"- App: {app_code}\n"
             )
 
         if self._catalog_context:
@@ -81,6 +82,7 @@ class AppBuilderAgent(BaseAgent):
         """
         ctx = super().build_tool_context(session)
         if session.auth:
-            ctx["app_code"] = session.auth.app_code
+            ctx["app_code"] = session.context.get("app_code") or session.auth.app_code
             ctx["client_code"] = session.auth.client_code
+        ctx["session_context"] = session.context
         return ctx

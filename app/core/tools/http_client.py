@@ -25,6 +25,16 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 30.0  # seconds
 
+_SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie"}
+
+
+def _redact_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Return a copy of headers with sensitive values redacted for logging."""
+    return {
+        k: ("***" if k.lower() in _SENSITIVE_HEADERS else v)
+        for k, v in headers.items()
+    }
+
 
 class SaasClient:
     """Async HTTP client for the nocode-saas Gateway.
@@ -38,7 +48,7 @@ class SaasClient:
         self.timeout = timeout
         self._client: httpx.AsyncClient | None = None
 
-    async def _get_client(self) -> httpx.AsyncClient:
+    def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 base_url=self.gateway_url,
@@ -113,8 +123,10 @@ class SaasClient:
         params: dict[str, Any] | None = None,
     ) -> ToolResult:
         """Execute an HTTP request and return a structured ToolResult."""
-        client = await self._get_client()
+        client = self._get_client()
         url = path if path.startswith("/") else f"/{path}"
+
+        logger.info(f"→ {method} {self.gateway_url}{url}")
 
         try:
             response = await client.request(
@@ -125,8 +137,12 @@ class SaasClient:
                 params=params,
             )
 
+            logger.info(f"← {method} {url} → {response.status_code}")
+
             if response.status_code >= 400:
-                return self._error_result(response)
+                error_result = self._error_result(response)
+                logger.warning(f"  ERROR: {error_result.error}")
+                return error_result
 
             # Parse response body
             data = None
@@ -144,19 +160,19 @@ class SaasClient:
             )
 
         except httpx.TimeoutException:
-            logger.warning(f"Timeout: {method} {url}")
+            logger.warning(f"← TIMEOUT: {method} {url} (after {self.timeout}s)")
             return ToolResult(
                 success=False,
                 error=f"Request timed out after {self.timeout}s: {method} {url}",
             )
         except httpx.ConnectError:
-            logger.error(f"Connection failed: {method} {url}")
+            logger.error(f"← CONNECT_ERROR: {method} {url} (gateway: {self.gateway_url})")
             return ToolResult(
                 success=False,
                 error=f"Cannot connect to gateway at {self.gateway_url}. Is nocode-saas running?",
             )
         except Exception as e:
-            logger.exception(f"Unexpected error: {method} {url}")
+            logger.exception(f"← EXCEPTION: {method} {url}")
             return ToolResult(
                 success=False,
                 error=f"Unexpected error: {type(e).__name__}: {e}",

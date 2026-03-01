@@ -30,26 +30,22 @@ async def fetch_page_by_name(
     app_code: str,
     headers: dict[str, str],
 ) -> tuple[dict[str, Any] | None, str]:
-    """Fetch a page by name and appCode.
+    """Fetch a full page by name and appCode.
 
-    Uses the query endpoint to find a page by name.
+    The list endpoint returns lightweight objects without componentDefinition.
+    We first list to find the page ID, then fetch the full page by ID.
 
     Returns:
         Tuple of (page_dict, error_message). On success error is empty.
     """
-    # Use the query endpoint to filter by name
-    result = await client.post(
-        f"{API_PREFIX}/query",
+    if not app_code:
+        return None, "No appCode set. Use list_applications first to determine the appCode."
+
+    # Step 1: find the page ID via the list endpoint
+    result = await client.get(
+        API_PREFIX,
         headers=headers,
-        json={
-            "page": 0,
-            "size": 1,
-            "condition": {
-                "lhs": {"k": "name", "v": page_name},
-                "c": "AND",
-                "rhs": {"k": "appCode", "v": app_code},
-            },
-        },
+        params={"page": 0, "size": 1, "appCode": app_code, "name": page_name},
     )
 
     if not result.success:
@@ -58,9 +54,14 @@ async def fetch_page_by_name(
     data = result.data
     content = data.get("content", []) if isinstance(data, dict) else []
     if not content:
-        return None, f"Page '{page_name}' not found in app '{app_code}'"
+        return None, f"Page '{page_name}' not found"
 
-    return content[0], ""
+    page_id = content[0].get("id")
+    if not page_id:
+        return None, f"Page '{page_name}' has no ID"
+
+    # Step 2: fetch the full page definition by ID
+    return await fetch_page_by_id(client, page_id, headers)
 
 
 async def fetch_page_by_id(
@@ -86,24 +87,19 @@ async def save_page(
     page_id: str,
     page_data: dict[str, Any],
     headers: dict[str, str],
+    user_client_code: str = "",
 ) -> ToolResult:
     """Save a modified page back to the server.
 
-    Uses PUT with the full page object. Version is checked server-side.
+    If the page belongs to a different client, strips ``id`` and POSTs
+    to create an override.  Otherwise, PUTs the full page object.
+    Version is checked server-side.
 
     Returns:
         ToolResult indicating success or failure.
     """
-    result = await client.put(
-        f"{API_PREFIX}/{page_id}",
-        headers=headers,
-        json=page_data,
-    )
-
-    if not result.success:
-        return ToolResult(success=False, error=f"Failed to save page: {result.error}")
-
-    return ToolResult(success=True, data=result.data)
+    from app.agents.appbuilder.tools._shared import save_entity
+    return await save_entity(client, API_PREFIX, page_id, page_data, headers, user_client_code)
 
 
 def build_component_tree(page_data: dict[str, Any]) -> str:

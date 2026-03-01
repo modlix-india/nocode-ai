@@ -23,24 +23,29 @@ def _get_client_and_headers(context: dict[str, Any]) -> tuple[SaasClient, dict[s
 async def _generic_list(
     api_path: str, entity_name: str, params: dict[str, Any], context: dict[str, Any],
 ) -> ToolResult:
-    client, headers = _get_client_and_headers(context)
-    app_code = params.get("app_code", context.get("app_code", ""))
+    from app.agents.appbuilder.tools._shared import require_app_code
 
-    result = await client.post(
-        f"{api_path}/query",
+    client, headers = _get_client_and_headers(context)
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
+
+    result = await client.get(
+        api_path,
         headers=headers,
-        json={"page": 0, "size": 100, "condition": {"k": "appCode", "v": app_code}},
+        params={"page": 0, "size": 1000, "appCode": app_code},
     )
     if not result.success:
         return ToolResult(success=False, error=f"Failed to list {entity_name}s: {result.error}")
 
     data = result.data
     items = data.get("content", []) if isinstance(data, dict) else []
-    lines = [f"- {i.get('name', '?')} (id={i.get('id', '?')})" for i in items]
+    lines = [f"- {i.get('name', '?')} (id={i.get('id', '?')}, v{i.get('version', '?')})" for i in items]
 
     return ToolResult(
         success=True,
-        data=[{"name": i.get("name"), "id": i.get("id")} for i in items],
+        data=[{"name": i.get("name"), "id": i.get("id"), "version": i.get("version")} for i in items],
         summary=f"Found {len(items)} {entity_name}(s):\n" + "\n".join(lines),
     )
 
@@ -48,15 +53,30 @@ async def _generic_list(
 async def _generic_create(
     api_path: str, entity_name: str, params: dict[str, Any], context: dict[str, Any],
 ) -> ToolResult:
-    client, headers = _get_client_and_headers(context)
-    app_code = params.get("app_code", context.get("app_code", ""))
+    from app.agents.appbuilder.tools._shared import validate_name, require_app_code
 
-    body = {
-        "name": params["name"],
+    client, headers = _get_client_and_headers(context)
+    app_code = params.get("app_code") or context.get("app_code", "")
+    if not app_code:
+        _, err = require_app_code(context)
+        return err
+    name = params["name"]
+
+    err = validate_name(name)
+    if err:
+        return err
+
+    body: dict[str, Any] = {
+        "name": name,
         "appCode": app_code,
         "clientCode": context.get("client_code", ""),
         "definition": params.get("definition", {}),
     }
+    if params.get("title"):
+        body["title"] = params["title"]
+    if params.get("description"):
+        body["description"] = params["description"]
+    body["message"] = params["message"]
 
     result = await client.post(api_path, headers=headers, json=body)
     if not result.success:
@@ -64,7 +84,7 @@ async def _generic_create(
 
     created = result.data
     entity_id = created.get("id", "?") if isinstance(created, dict) else "?"
-    return ToolResult(success=True, summary=f"Created {entity_name} '{params['name']}' (id={entity_id}).")
+    return ToolResult(success=True, summary=f"Created {entity_name} '{name}' (id={entity_id}).")
 
 
 async def _generic_read(
@@ -98,10 +118,16 @@ async def _generic_update(
         entity_data["definition"] = params["definition"]
     if params.get("name"):
         entity_data["name"] = params["name"]
+    if params.get("title"):
+        entity_data["title"] = params["title"]
+    if params.get("description"):
+        entity_data["description"] = params["description"]
+    entity_data["message"] = params["message"]
 
-    result = await client.put(f"{api_path}/{entity_id}", headers=headers, json=entity_data)
+    from app.agents.appbuilder.tools._shared import save_entity
+    result = await save_entity(client, api_path, entity_id, entity_data, headers, context.get("client_code", ""))
     if not result.success:
-        return ToolResult(success=False, error=f"Failed to update {entity_name}: {result.error}")
+        return result
 
     return ToolResult(success=True, summary=f"Updated {entity_name} (id={entity_id}).")
 
@@ -154,8 +180,11 @@ def _make_crud_tools(
             name=f"create_{entity_name}",
             description=f"Create a new {description_prefix}.",
             parameters=[
-                ToolParameter(name="name", type="string", description=f"{entity_name.title()} name."),
+                ToolParameter(name="name", type="string", description=f"{entity_name.title()} name (letters only)."),
                 ToolParameter(name="definition", type="object", description=f"{entity_name.title()} definition.", required=False),
+                ToolParameter(name="title", type="string", description=f"{entity_name.title()} title.", required=False),
+                ToolParameter(name="description", type="string", description=f"{entity_name.title()} description.", required=False),
+                ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
                 ToolParameter(name="app_code", type="string", description="Application code.", required=False),
             ],
             execute=create_exec,
@@ -171,14 +200,17 @@ def _make_crud_tools(
             description=f"Update a {description_prefix}.",
             parameters=[
                 ToolParameter(name="id", type="string", description=f"{entity_name.title()} ID."),
-                ToolParameter(name="name", type="string", description=f"New name.", required=False),
-                ToolParameter(name="definition", type="object", description=f"New definition.", required=False),
+                ToolParameter(name="name", type="string", description="New name.", required=False),
+                ToolParameter(name="definition", type="object", description="New definition.", required=False),
+                ToolParameter(name="title", type="string", description=f"{entity_name.title()} title.", required=False),
+                ToolParameter(name="description", type="string", description=f"{entity_name.title()} description.", required=False),
+                ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
             ],
             execute=update_exec,
         ),
         ToolDefinition(
             name=f"delete_{entity_name}",
-            description=f"Delete a {description_prefix}.",
+            description=f"Delete a {description_prefix}. If the object is inherited (owned by another client), this removes your override and resets to the inherited version.",
             parameters=[ToolParameter(name="id", type="string", description=f"{entity_name.title()} ID.")],
             execute=delete_exec,
         ),

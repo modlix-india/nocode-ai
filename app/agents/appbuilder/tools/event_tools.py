@@ -42,7 +42,8 @@ async def _write_event_function_execute(params: dict[str, Any], context: dict[st
     event_functions = page_data.setdefault("eventFunctions", {})
     event_functions[function_name] = definition
 
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -81,6 +82,7 @@ write_event_function = ToolDefinition(
                 "events (object mapping event names to event definitions)."
             ),
         ),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_write_event_function_execute,
@@ -183,7 +185,8 @@ async def _delete_event_function_execute(params: dict[str, Any], context: dict[s
 
     del event_functions[function_name]
 
-    save_result = await save_page(client, page_data["id"], page_data, headers)
+    page_data["message"] = params["message"]
+    save_result = await save_page(client, page_data["id"], page_data, headers, context.get("client_code", ""))
     if not save_result.success:
         return save_result
 
@@ -199,6 +202,7 @@ delete_event_function = ToolDefinition(
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
         ToolParameter(name="function_name", type="string", description="Name of the event function to delete."),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),
     ],
     execute=_delete_event_function_execute,
