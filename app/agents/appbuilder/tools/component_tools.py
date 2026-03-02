@@ -128,8 +128,36 @@ add_component = ToolDefinition(
         ToolParameter(name="parent_key", type="string", description="Key of the parent component (e.g. 'root')."),
         ToolParameter(name="component_key", type="string", description="Unique key for the new component (e.g. 'emailField', 'submitBtn')."),
         ToolParameter(name="type", type="string", description="Component type (e.g. 'Grid', 'Button', 'TextBox', 'Popup', 'ArrayRepeater')."),
-        ToolParameter(name="properties", type="object", description="Component properties as key-value pairs.", required=False),
-        ToolParameter(name="style_properties", type="object", description="Style properties in responsive format.", required=False),
+        ToolParameter(
+            name="properties", type="object", required=False,
+            description=(
+                "Component properties. EVERY value MUST be a DataLocation object, NEVER a bare string/number. "
+                "For static values use: {\"text\": {\"type\": \"VALUE\", \"value\": \"Hello\"}, "
+                "\"textContainer\": {\"type\": \"VALUE\", \"value\": \"SPAN\"}}. "
+                "For dynamic/expression values use: {\"text\": {\"type\": \"EXPRESSION\", "
+                "\"expression\": \"Store.user.name\"}}. "
+                "WRONG: {\"text\": \"Hello\"} or {\"text\": {\"value\": \"Hello\"}} — "
+                "bare values and missing type field will NOT work."
+            ),
+        ),
+        ToolParameter(
+            name="style_properties", type="object", required=False,
+            description=(
+                "Style properties in responsive format. Structure: "
+                "{\"<uniqueStyleKey>\": {\"resolutions\": {\"ALL\": {\"<key>\": {\"type\": \"VALUE\", \"value\": \"<val>\"}}}}}. "
+                "Key format: '<subComponent>-<cssProp>:<pseudoState>' where subComponent and pseudoState are optional. "
+                "Examples: 'backgroundColor' (main comp), 'comp-label-color' (label sub-component), "
+                "'backgroundColor:hover' (hover state), 'comp-icon-color:hover' (icon hover). "
+                "CSS props MUST be camelCase (paddingLeft, marginTop, fontSize), NEVER shorthand (padding, margin) "
+                "or kebab-case (padding-left). "
+                "Each value MUST be a DataLocation with type field. "
+                "Example: {\"s1\": {\"resolutions\": {\"ALL\": {\"paddingLeft\": {\"type\": \"VALUE\", \"value\": \"12px\"}, "
+                "\"backgroundColor\": {\"type\": \"VALUE\", \"value\": \"#4F46E5\"}}}}}. "
+                "Dynamic: {\"color\": {\"type\": \"EXPRESSION\", \"expression\": \"Theme.primaryColor\"}}. "
+                "WRONG: {\"padding\": ...} (shorthand), {\"padding-left\": ...} (kebab-case), "
+                "{\"paddingLeft\": {\"value\": \"12px\"}} (missing type)."
+            ),
+        ),
         ToolParameter(
             name="binding_paths", type="object", required=False,
             description=(
@@ -221,8 +249,26 @@ update_component = ToolDefinition(
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
         ToolParameter(name="component_key", type="string", description="Key of the component to update."),
-        ToolParameter(name="properties", type="object", description="Properties to merge (partial update).", required=False),
-        ToolParameter(name="style_properties", type="object", description="Style properties to merge.", required=False),
+        ToolParameter(
+            name="properties", type="object", required=False,
+            description=(
+                "Properties to merge (partial update). EVERY value MUST be a DataLocation object. "
+                "Static: {\"label\": {\"type\": \"VALUE\", \"value\": \"New Label\"}}. "
+                "Dynamic: {\"text\": {\"type\": \"EXPRESSION\", \"expression\": \"Store.name\"}}. "
+                "WRONG: {\"label\": \"New Label\"} or {\"label\": {\"value\": \"New Label\"}} — "
+                "bare values and missing type field will NOT work."
+            ),
+        ),
+        ToolParameter(
+            name="style_properties", type="object", required=False,
+            description=(
+                "Style properties to merge. Structure: "
+                "{\"<styleKey>\": {\"resolutions\": {\"ALL\": {\"<key>\": {\"type\": \"VALUE\", \"value\": \"<val>\"}}}}}. "
+                "Key format: '<subComponent>-<cssProp>:<pseudoState>' (subComponent/pseudoState optional). "
+                "CSS props MUST be camelCase (paddingLeft, marginTop), NEVER shorthand (padding) or kebab-case (padding-left). "
+                "Each value MUST be a DataLocation with type field."
+            ),
+        ),
         ToolParameter(
             name="binding_paths", type="object", required=False,
             description=(
