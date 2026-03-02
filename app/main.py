@@ -90,25 +90,34 @@ async def lifespan(app: FastAPI):
         from app.agents.appbuilder.tools.registry import ALL_TOOLS
         from app.agents.appbuilder.router import set_appbuilder_agent
 
+        logger.info("Loading appbuilder context from %s ...", settings.AICONTEXT_PATH)
         appbuilder_context = build_appbuilder_context(settings.AICONTEXT_PATH)
         await appbuilder_context.load()
+        logger.info("Appbuilder context loaded")
 
+        logger.info("Loading component catalog (URL=%s) ...", settings.COMPONENT_CATALOG_URL or "(fallback)")
         catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
         await catalog.load()
+        logger.info("Component catalog loaded: %d types", len(catalog.get_all_types()))
 
+        logger.info("Loading API catalog ...")
         api_catalog = ApiCatalog()
         await api_catalog.load()
+        logger.info("API catalog loaded")
 
+        logger.info("Creating AppBuilderAgent (provider=%s, model_tier=%s, max_turns=%d) ...",
+                     settings.APPBUILDER_PROVIDER, settings.AGENT_MODEL_TIER, settings.MAX_AGENT_TURNS)
         appbuilder_agent = AppBuilderAgent(
             context_builder=appbuilder_context,
             tools=ALL_TOOLS,
             catalog=catalog,
             api_catalog=api_catalog,
+            provider=settings.APPBUILDER_PROVIDER,
         )
         set_appbuilder_agent(appbuilder_agent)
         logger.info(f"AppBuilder Agent initialized with {len(ALL_TOOLS)} tools, {len(catalog.get_all_types())} component types")
     except Exception as e:
-        logger.error(f"Failed to initialize AppBuilder Agent: {e}")
+        logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
 
     logger.info("=" * 60)

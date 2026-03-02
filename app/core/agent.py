@@ -59,6 +59,7 @@ class BaseAgent:
         model_tier: str = "balanced",
         max_turns: int = 50,
         max_tokens: int = 16384,
+        provider: str | None = None,
     ) -> None:
         self.name = name
         self.tools = {t.name: t for t in tools}
@@ -66,6 +67,7 @@ class BaseAgent:
         self.model_tier = model_tier
         self.max_turns = max_turns
         self.max_tokens = max_tokens
+        self._provider_name = provider
 
         # Pre-compute Anthropic tool schemas
         self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
@@ -95,10 +97,14 @@ class BaseAgent:
             image_blocks: Optional image content blocks (Anthropic format) to include with the message.
         """
         try:
+            logger.info("Agent '%s' run: session=%s, provider=%s, images=%s",
+                       self.name, session.session_id, self._provider_name or "(default)",
+                       len(image_blocks) if image_blocks else 0)
             await self._run_loop(user_message, session, event_stream, image_blocks)
         except Exception as e:
-            logger.exception(f"Agent {self.name} error")
+            logger.exception("Agent '%s' error in session %s", self.name, session.session_id)
             await event_stream.emit_error(f"Agent error: {type(e).__name__}: {e}")
+            await session.complete()
             await event_stream.emit_done(
                 session_id=session.session_id,
                 usage=session.total_usage,
@@ -112,16 +118,22 @@ class BaseAgent:
         image_blocks: list[dict[str, Any]] | None = None,
     ) -> None:
         """Internal agentic loop implementation."""
-        provider = get_llm_provider()
+        provider = get_llm_provider(self._provider_name)
+        logger.info("Provider resolved: %s (class=%s)", self._provider_name, type(provider).__name__)
+
+        # Mark session as processing so UI can detect in-progress state on refresh
+        await session.set_processing()
 
         # Build system prompt
         dynamic_context = self.build_dynamic_context(session)
         system_prompt = self.context_builder.build_system_prompt(
             dynamic_context=dynamic_context,
         )
+        logger.info("System prompt built: %d chars", len(system_prompt))
 
         # Append user message to conversation (with optional images)
         session.append_user_message(user_message, image_blocks)
+        logger.info("Message history: %d messages", len(session.get_messages()))
 
         turn = 0
         assistant_text_parts: list[str] = []
@@ -133,6 +145,8 @@ class BaseAgent:
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
             # Call LLM with tools
+            logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
+                       turn, self.max_turns, self.model_tier, self.max_tokens, len(self._anthropic_tools))
             start_time = time.monotonic()
             response = await provider.create_completion_with_tools(
                 system_prompt=system_prompt,
@@ -142,6 +156,8 @@ class BaseAgent:
                 max_tokens=self.max_tokens,
             )
             latency_ms = int((time.monotonic() - start_time) * 1000)
+            logger.info("Turn %d: LLM responded in %dms, stop_reason=%s, model=%s",
+                       turn, latency_ms, response.get("stop_reason"), response.get("model"))
 
             content_blocks = response["content"]
             usage = response["usage"]
@@ -176,6 +192,12 @@ class BaseAgent:
             # Append tool results to conversation
             session.append_tool_results(tool_result_blocks)
 
+            # Persist incremental progress so data is not lost on disconnect
+            partial_summary = " ".join(assistant_text_parts) if assistant_text_parts else ""
+            await session.persist_turn_incremental(
+                user_message, partial_summary, tool_call_log
+            )
+
         else:
             # Exhausted max_turns
             await event_stream.emit_text(
@@ -184,11 +206,12 @@ class BaseAgent:
             )
 
         # Persist the turn summary, tool call log, and context
-        assistant_summary = " ".join(assistant_text_parts)[:2000] if assistant_text_parts else ""
+        assistant_summary = " ".join(assistant_text_parts) if assistant_text_parts else ""
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None)
         await session.save_context()
 
-        # Emit done
+        # Mark session as completed and emit done
+        await session.complete()
         await event_stream.emit_done(
             session_id=session.session_id,
             usage=session.total_usage,
@@ -223,7 +246,10 @@ class BaseAgent:
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
 
-        await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id)
+        tool = self.tools.get(tool_name)
+        display_name = tool.get_display_name() if tool else tool_name
+
+        await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
         result = await self._execute_tool(tool_name, tool_input, session)
         tool_content = result.to_tool_result_content()
@@ -245,9 +271,10 @@ class BaseAgent:
         }
         log_entry = {
             "tool": tool_name,
+            "display_name": display_name,
             "input": tool_input,
             "success": result.success,
-            "summary": (result.summary or result.error or "")[:500],
+            "summary": result.summary or result.error or "",
         }
         return result_block, log_entry
 

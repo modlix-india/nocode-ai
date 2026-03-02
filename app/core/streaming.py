@@ -81,7 +81,9 @@ class AgentEventStream:
             data={"text": text},
         ))
 
-    async def emit_tool_start(self, tool_name: str, tool_input: dict[str, Any], tool_use_id: str = "") -> None:
+    async def emit_tool_start(
+        self, tool_name: str, tool_input: dict[str, Any], tool_use_id: str = "", display_name: str = ""
+    ) -> None:
         """Emit when a tool call begins."""
         await self._queue.put(AgentEvent(
             event=AgentEventType.TOOL_START,
@@ -89,6 +91,7 @@ class AgentEventStream:
                 "tool_name": tool_name,
                 "tool_input": tool_input,
                 "tool_use_id": tool_use_id,
+                "display_name": display_name,
             },
         ))
 

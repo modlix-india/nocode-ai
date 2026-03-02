@@ -7,12 +7,12 @@ Agentic AI service for building no-code applications using Claude with 60+ speci
 | | |
 |---|---|
 | **Framework** | FastAPI (async), Python 3.9+ |
-| **LLM** | Claude (Anthropic) — with OpenAI fallback |
+| **LLM** | Per-agent: Anthropic (Claude) or OpenAI — configurable per agent |
 | **Architecture** | Single-agent, multi-tool loop (Claude Code-style) |
 | **Tools** | 60+ tools — pages, components, events, styles, functions, entities, versions |
 | **Streaming** | Server-Sent Events (SSE) for real-time output |
 | **RAG** | ChromaDB + FastEmbed (local embeddings, no API key needed) |
-| **Session Tracking** | MySQL (aiomysql) — conversations, token usage, tool calls |
+| **Session Tracking** | MySQL (aiomysql) — conversations, token usage, tool calls, incremental persistence |
 | **Rate Limiting** | Redis (optional, graceful degradation) |
 | **Service Discovery** | Eureka + Spring Cloud Config integration |
 | **Prompt Caching** | ~90% token savings on repeated system prompts (Anthropic) |
@@ -113,12 +113,12 @@ nocode-ai/
 │   │   ├── router.py            #   Chat + session endpoints
 │   │   ├── AGENT.md             #   Agent specification
 │   │   └── tools/               #   60+ tool implementations
-│   ├── services/                # LLM, Eureka, Config, Security, Sessions, Redis
+│   ├── services/                # LLM (per-agent), Eureka, Config, Security, Sessions, Redis
 │   ├── api/                     # Routes + request models
 │   ├── rag/                     # ChromaDB + FastEmbed
 │   ├── db/                      # MySQL models, connections, migrations
 │   └── middleware/              # Rate limiting
-├── migrations/                  # SQL migrations (V1–V5)
+├── migrations/                  # SQL migrations (V1–V7)
 ├── scripts/                     # start-local.sh, start-production.sh
 ├── data/chroma/                 # Vector store (gitignored)
 ├── docs/                        # Documentation
@@ -132,7 +132,8 @@ nocode-ai/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` |
+| `LLM_PROVIDER` | `anthropic` | Global default: `anthropic` or `openai` |
+| `APPBUILDER_PROVIDER` | `anthropic` | Per-agent override for AppBuilder |
 | `ANTHROPIC_API_KEY` | — | Required for Anthropic provider |
 | `AGENT_MODEL_TIER` | `balanced` | `fast` (Haiku) or `balanced` (Sonnet) |
 | `MAX_AGENT_TURNS` | `50` | Max tool-use iterations |

@@ -94,6 +94,8 @@ class ToolDefinition:
 
     Attributes:
         name: Unique tool name (snake_case, e.g. "add_component").
+        display_name: Human-friendly name for UI display (e.g. "Add Component").
+            Auto-generated from name if not provided.
         description: Human-readable description shown to the LLM.
         parameters: List of ToolParameter definitions.
         execute: Async function that runs the tool.
@@ -101,8 +103,15 @@ class ToolDefinition:
 
     name: str
     description: str
+    display_name: str = ""
     parameters: list[ToolParameter] = field(default_factory=list)
     execute: Optional[ToolExecuteFunc] = None
+
+    def get_display_name(self) -> str:
+        """Return display_name, falling back to title-cased name."""
+        if self.display_name:
+            return self.display_name
+        return self.name.replace("_", " ").title()
 
     def to_anthropic_tool(self) -> dict[str, Any]:
         """Convert to Anthropic tool-use API format.

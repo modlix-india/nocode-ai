@@ -115,6 +115,57 @@ class ContextManager:
             logger.error(f"Failed to add turn: {e}")
             return None
 
+    async def upsert_turn(
+        self,
+        session_id: str,
+        request_id: str,
+        turn_number: int,
+        user_instruction: str,
+        assistant_summary: Optional[str] = None,
+        tool_calls_json: Optional[str] = None,
+    ) -> None:
+        """Insert or update a turn for incremental persistence.
+
+        Uses INSERT ... ON DUPLICATE KEY UPDATE so that partial progress
+        during a tool-use loop can be saved after each cycle.
+        Requires a UNIQUE index on (SESSION_ID, TURN_NUMBER).
+        """
+        if not is_pool_available():
+            return
+
+        input_tokens_used = (
+            estimate_tokens(user_instruction) +
+            estimate_tokens(assistant_summary or "")
+        )
+
+        try:
+            async with get_connection() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(
+                        """
+                        INSERT INTO ai_session_history (
+                            SESSION_ID, REQUEST_ID, TURN_NUMBER,
+                            USER_INSTRUCTION, ASSISTANT_SUMMARY, TOOL_CALLS_JSON,
+                            INPUT_TOKENS_USED
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            ASSISTANT_SUMMARY = VALUES(ASSISTANT_SUMMARY),
+                            TOOL_CALLS_JSON = VALUES(TOOL_CALLS_JSON),
+                            INPUT_TOKENS_USED = VALUES(INPUT_TOKENS_USED)
+                        """,
+                        (
+                            session_id,
+                            request_id,
+                            turn_number,
+                            user_instruction,
+                            assistant_summary,
+                            tool_calls_json,
+                            input_tokens_used,
+                        )
+                    )
+        except Exception as e:
+            logger.error(f"Failed to upsert turn: {e}")
+
     async def get_history(
         self,
         session_id: str,
@@ -154,7 +205,8 @@ class ContextManager:
                             """
                             SELECT * FROM (
                                 SELECT ID, SESSION_ID, REQUEST_ID, TURN_NUMBER,
-                                       USER_INSTRUCTION, ASSISTANT_SUMMARY, PAGE_SNAPSHOT,
+                                       USER_INSTRUCTION, ASSISTANT_SUMMARY,
+                                       TOOL_CALLS_JSON, PAGE_SNAPSHOT,
                                        INPUT_TOKENS_USED, CREATED_AT
                                 FROM ai_session_history
                                 WHERE SESSION_ID = %s
@@ -169,7 +221,8 @@ class ContextManager:
                         await cursor.execute(
                             """
                             SELECT ID, SESSION_ID, REQUEST_ID, TURN_NUMBER,
-                                   USER_INSTRUCTION, ASSISTANT_SUMMARY, PAGE_SNAPSHOT,
+                                   USER_INSTRUCTION, ASSISTANT_SUMMARY,
+                                   TOOL_CALLS_JSON, PAGE_SNAPSHOT,
                                    INPUT_TOKENS_USED, CREATED_AT
                             FROM ai_session_history
                             WHERE SESSION_ID = %s
@@ -352,7 +405,14 @@ class ContextManager:
             return 0
 
     def _row_to_history(self, row: tuple) -> AiSessionHistory:
-        """Convert database row to AiSessionHistory model."""
+        """Convert database row to AiSessionHistory model.
+
+        Column order from SELECT:
+        0: ID, 1: SESSION_ID, 2: REQUEST_ID, 3: TURN_NUMBER,
+        4: USER_INSTRUCTION, 5: ASSISTANT_SUMMARY,
+        6: TOOL_CALLS_JSON, 7: PAGE_SNAPSHOT,
+        8: INPUT_TOKENS_USED, 9: CREATED_AT
+        """
         return AiSessionHistory(
             id=row[0],
             session_id=row[1],
@@ -360,9 +420,10 @@ class ContextManager:
             turn_number=row[3],
             user_instruction=row[4],
             assistant_summary=row[5],
-            page_snapshot=row[6],
-            input_tokens_used=row[7] or 0,
-            created_at=row[8],
+            tool_calls_json=row[6],
+            page_snapshot=row[7],
+            input_tokens_used=row[8] or 0,
+            created_at=row[9],
         )
 
 

@@ -67,6 +67,7 @@ async def _list_pages_execute(params: dict[str, Any], context: dict[str, Any]) -
 
 list_pages = ToolDefinition(
     name="list_pages",
+    display_name="List Pages",
     description="List all pages in an application. Returns page names, IDs, and component counts.",
     parameters=[
         ToolParameter(name="app_code", type="string", description="Application code to list pages for.", required=False),
@@ -137,6 +138,7 @@ async def _create_page_execute(params: dict[str, Any], context: dict[str, Any]) 
 
 create_page = ToolDefinition(
     name="create_page",
+    display_name="Create Page",
     description="Create a new page with an empty root Grid layout. Returns the page ID.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name for the new page (letters only, e.g. 'loginPage', 'dashboard')."),
@@ -165,6 +167,7 @@ async def _delete_page_execute(params: dict[str, Any], context: dict[str, Any]) 
 
 delete_page = ToolDefinition(
     name="delete_page",
+    display_name="Delete Page",
     description="Delete a page by its ID. If the page is inherited (owned by another client), this removes your override and resets to the inherited version.",
     parameters=[
         ToolParameter(name="page_id", type="string", description="The page ID to delete."),
@@ -203,6 +206,7 @@ async def _read_page_structure_execute(params: dict[str, Any], context: dict[str
 
 read_page_structure = ToolDefinition(
     name="read_page_structure",
+    display_name="Read Page Structure",
     description=(
         "Read a page's component tree structure. Returns a human-readable tree "
         "showing component keys, types, and hierarchy. Does NOT return full properties — "
@@ -233,17 +237,23 @@ async def _read_page_properties_execute(params: dict[str, Any], context: dict[st
         return ToolResult(success=False, error=error)
 
     import json
+    page_props = page_data.get("properties", {})
     props = {
         "id": page_data.get("id"),
         "name": page_data.get("name"),
-        "title": page_data.get("title"),
         "description": page_data.get("description"),
         "rootComponent": page_data.get("rootComponent"),
-        "properties": page_data.get("properties", {}),
+        "properties": page_props,
         "translations": page_data.get("translations", {}),
         "permission": page_data.get("permission"),
         "version": page_data.get("version"),
     }
+    # Surface the page title from properties.title.name for clarity
+    title_obj = page_props.get("title", {})
+    title_name = title_obj.get("name", {})
+    if isinstance(title_name, dict):
+        props["_pageTitle"] = title_name.get("value") or title_name.get("location", {}).get("expression", "")
+
 
     return ToolResult(
         success=True,
@@ -254,6 +264,7 @@ async def _read_page_properties_execute(params: dict[str, Any], context: dict[st
 
 read_page_properties = ToolDefinition(
     name="read_page_properties",
+    display_name="Read Page Properties",
     description="Read page-level properties (title, description, translations, permissions, version). Does NOT read components — use read_page_structure for that.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
@@ -280,9 +291,19 @@ async def _update_page_properties_execute(params: dict[str, Any], context: dict[
     if error:
         return ToolResult(success=False, error=error)
 
-    # Merge updates into page-level properties
+    # Merge updates into page data
     for key, value in updates.items():
-        if key in ("title", "permission", "description"):
+        if key == "title":
+            # Page title lives in properties.title.name — NOT the top-level "title" field.
+            # Accepts: a plain string (wrapped as {value: str}), or a full location object.
+            page_props = page_data.setdefault("properties", {})
+            title_obj = page_props.setdefault("title", {})
+            if isinstance(value, str):
+                title_obj["name"] = {"value": value}
+            elif isinstance(value, dict):
+                # Allow passing the full title object (e.g. {name: {value: "..."}, append: {value: false}})
+                title_obj.update(value)
+        elif key in ("permission", "description"):
             page_data[key] = value
         elif key == "translations":
             page_data.setdefault("translations", {}).update(value)
@@ -303,13 +324,21 @@ async def _update_page_properties_execute(params: dict[str, Any], context: dict[
 
 update_page_properties = ToolDefinition(
     name="update_page_properties",
-    description="Update page-level properties like title, translations, permissions.",
+    display_name="Update Page Properties",
+    description=(
+        "Update page-level properties. For title: pass a string (e.g. {\"title\": \"My Page\"}) "
+        "or a full object (e.g. {\"title\": {\"name\": {\"value\": \"My Page\"}, \"append\": {\"value\": false}}}). "
+        "The title is stored in properties.title.name, NOT the top-level title field."
+    ),
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page to update."),
         ToolParameter(
             name="properties",
             type="object",
-            description="Properties to update. Keys can be: title, permission, description, translations, properties.",
+            description=(
+                "Properties to update. Keys: title (string or {name: {value: str}, append: {value: bool}}), "
+                "permission, description, translations, properties (nested page properties like onLoadEvent, seo, classes)."
+            ),
         ),
         ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
         ToolParameter(name="app_code", type="string", description="Application code.", required=False),

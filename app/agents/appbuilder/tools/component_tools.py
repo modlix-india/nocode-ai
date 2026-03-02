@@ -100,6 +100,7 @@ async def _add_component_execute(params: dict[str, Any], context: dict[str, Any]
 
 add_component = ToolDefinition(
     name="add_component",
+    display_name="Add Component",
     description=(
         "Add a single new component to a page. "
         "If you need to add or modify MULTIPLE components in one task, use batch_update_page "
@@ -210,6 +211,7 @@ async def _update_component_execute(params: dict[str, Any], context: dict[str, A
 
 update_component = ToolDefinition(
     name="update_component",
+    display_name="Update Component",
     description=(
         "Update a single existing component's properties, styles, binding paths, or display order. "
         "Properties and styles are merged (partial update). "
@@ -269,6 +271,7 @@ async def _read_component_execute(params: dict[str, Any], context: dict[str, Any
 
 read_component = ToolDefinition(
     name="read_component",
+    display_name="Read Component",
     description="Read a single component's full definition including properties, styles, and children.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
@@ -333,6 +336,7 @@ async def _remove_component_execute(params: dict[str, Any], context: dict[str, A
 
 remove_component = ToolDefinition(
     name="remove_component",
+    display_name="Remove Component",
     description="Remove a component from a page. By default also removes all descendants (recursive=true).",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
@@ -392,6 +396,7 @@ async def _move_component_execute(params: dict[str, Any], context: dict[str, Any
 
 move_component = ToolDefinition(
     name="move_component",
+    display_name="Move Component",
     description="Move a component to a different parent or change its display order.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),

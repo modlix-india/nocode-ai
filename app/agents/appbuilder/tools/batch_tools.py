@@ -186,6 +186,7 @@ async def _batch_update_page_execute(params: dict[str, Any], context: dict[str, 
 
 batch_update_page = ToolDefinition(
     name="batch_update_page",
+    display_name="Batch Update Page",
     description=(
         "Apply multiple component operations to a page in a single fetch+save. "
         "PREFER this over calling add_component/update_component/remove_component/move_component "

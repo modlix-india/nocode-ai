@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     OPENAI_MODEL_FAST: str = "gpt-4o-mini"    # Equivalent to Claude Haiku
     OPENAI_MODEL_BALANCED: str = "gpt-4o"      # Equivalent to Claude Sonnet
     
+    # Google Settings
+    # Can be overridden by config server: ai.secrets.googleAPIKey
+    # Used for Google AI services (e.g. image generation)
+    GOOGLE_API_KEY: str = ""
+
     # Prompt Caching (Anthropic-only feature)
     # Reduces token usage by ~90% for repeated system prompts
     # Automatically disabled when using OpenAI
@@ -103,6 +108,10 @@ class Settings(BaseSettings):
     MAX_HTML_SIZE_MB: int = 10  # Maximum HTML size to process (MB)
     PLACEHOLDER_IMAGE_PATH: str = "api/files/static/file/SYSTEM/appbuilder/sample.svg"  # Default placeholder image
 
+    # Image Upload Settings
+    MAX_IMAGE_BASE64_MB: float = 4.5  # Max base64 size before compression (Anthropic limit is 5MB)
+    IMAGE_MAX_DIMENSION: int = 1568  # Max pixels on longest side (Anthropic recommendation)
+
     # Gateway URL (nocode-saas API gateway)
     # All agent tool calls route through this gateway
     # Can be overridden by config server: ai.gateway.url
@@ -112,6 +121,9 @@ class Settings(BaseSettings):
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
     MAX_AGENT_TURNS: int = 50  # Max tool-use loop iterations per request
     AGENT_MAX_TOKENS: int = 16384  # Max tokens per LLM response
+
+    # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
+    APPBUILDER_PROVIDER: str = "anthropic"  # AppBuilder always uses Anthropic
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
@@ -128,6 +140,7 @@ class Settings(BaseSettings):
         - ai.files.url -> FILES_SERVICE_URL
         - ai.secrets.anthropicAPIKey -> ANTHROPIC_API_KEY
         - ai.secrets.openaiAPIKey -> OPENAI_API_KEY
+        - ai.secrets.googleAPIKey -> GOOGLE_API_KEY
         - ai.llm.provider -> LLM_PROVIDER
         - redis.url -> REDIS_URL
         """
@@ -141,6 +154,7 @@ class Settings(BaseSettings):
             ("files", "url"): "FILES_SERVICE_URL",
             ("secrets", "anthropicAPIKey"): "ANTHROPIC_API_KEY",
             ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
+            ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
         }
@@ -221,6 +235,7 @@ async def initialize_settings():
         logger.info(f"OpenAI API Key: {'*' * 20 + settings.OPENAI_API_KEY[-8:] if settings.OPENAI_API_KEY else 'NOT SET'}")
         logger.info(f"Models: Fast={settings.OPENAI_MODEL_FAST}, Balanced={settings.OPENAI_MODEL_BALANCED}")
     
+    logger.info(f"Google API Key: {'*' * 20 + settings.GOOGLE_API_KEY[-8:] if settings.GOOGLE_API_KEY else 'NOT SET'}")
     logger.info(f"Embedding Model: {settings.LOCAL_EMBEDDING_MODEL}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")
     logger.info(f"Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min, {settings.RATE_LIMIT_PER_HOUR}/hour")

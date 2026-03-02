@@ -29,6 +29,7 @@ class AppBuilderAgent(BaseAgent):
         tools: list | None = None,
         catalog: Any = None,
         api_catalog: Any = None,
+        provider: str = "anthropic",
     ) -> None:
         """
         Args:
@@ -36,6 +37,7 @@ class AppBuilderAgent(BaseAgent):
             tools: List of ToolDefinitions. Defaults to empty (populated by registry).
             catalog: ComponentCatalog instance (optional).
             api_catalog: ApiCatalog instance (optional).
+            provider: LLM provider name ("anthropic" or "openai"). Defaults to Anthropic.
         """
         self._catalog = catalog
         self._catalog_context = catalog.to_prompt_context() if catalog else ""
@@ -49,6 +51,7 @@ class AppBuilderAgent(BaseAgent):
             model_tier=settings.AGENT_MODEL_TIER,
             max_turns=settings.MAX_AGENT_TURNS,
             max_tokens=settings.AGENT_MAX_TOKENS,
+            provider=provider,
         )
 
     def build_dynamic_context(self, session: BaseSession) -> str:

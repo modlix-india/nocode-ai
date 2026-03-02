@@ -235,6 +235,74 @@ class BaseSession:
         except Exception as e:
             logger.warning(f"Failed to record token usage: {e}")
 
+    async def complete(self) -> None:
+        """Mark session as COMPLETED in the database.
+
+        Best-effort — failures are logged but don't stop the agent.
+        """
+        if not self.auth:
+            return
+
+        try:
+            from app.services.session_manager import get_session_manager
+            await get_session_manager().complete_session(
+                self.session_id, self.auth.user_id if self.auth else None
+            )
+        except Exception as e:
+            logger.warning(f"Failed to complete session: {e}")
+
+    async def set_processing(self) -> None:
+        """Mark session as PROCESSING in the database.
+
+        Called at the start of the agent loop so the UI can detect
+        an in-progress request after a page refresh.
+        Best-effort — failures are logged but don't stop the agent.
+        """
+        if not self.auth:
+            return
+
+        try:
+            from app.services.session_manager import get_session_manager
+            await get_session_manager().set_session_processing(
+                self.session_id, self.auth.user_id if self.auth else None
+            )
+        except Exception as e:
+            logger.warning(f"Failed to set session processing: {e}")
+
+    async def persist_turn_incremental(
+        self,
+        user_text: str,
+        assistant_summary: str,
+        tool_calls: list[dict[str, Any]] | None = None,
+    ) -> None:
+        """Upsert the current turn state for incremental saves.
+
+        Called after each LLM + tool cycle so partial progress survives
+        disconnects. Uses INSERT ... ON DUPLICATE KEY UPDATE.
+        Best-effort — failures are logged but don't stop the agent.
+        """
+        if not self.auth:
+            return
+
+        tool_calls_json: str | None = None
+        if tool_calls:
+            tool_calls_json = json.dumps(tool_calls)
+
+        try:
+            from app.services.context_manager import get_context_manager
+            context_manager = get_context_manager()
+            request_id = uuid.uuid4().hex[:8]
+            await context_manager.upsert_turn(
+                session_id=self.session_id,
+                request_id=request_id,
+                turn_number=self._turn_count + 1,
+                user_instruction=user_text,
+                assistant_summary=assistant_summary,
+                tool_calls_json=tool_calls_json,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to persist incremental turn: {e}")
+
     async def save_context(self) -> None:
         """Persist the current context dict to the database.
 

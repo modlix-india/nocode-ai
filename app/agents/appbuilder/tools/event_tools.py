@@ -59,6 +59,7 @@ async def _write_event_function_execute(params: dict[str, Any], context: dict[st
 
 write_event_function = ToolDefinition(
     name="write_event_function",
+    display_name="Write Event Function",
     description=(
         "Write an event function to a page. Event functions are triggered by component events "
         "(onClick, onChange, etc.) and define a sequence of steps using KIRun functions. "
@@ -120,6 +121,7 @@ async def _read_event_function_execute(params: dict[str, Any], context: dict[str
 
 read_event_function = ToolDefinition(
     name="read_event_function",
+    display_name="Read Event Function",
     description="Read an event function's full definition from a page.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
@@ -158,6 +160,7 @@ async def _list_event_functions_execute(params: dict[str, Any], context: dict[st
 
 list_event_functions = ToolDefinition(
     name="list_event_functions",
+    display_name="List Event Functions",
     description="List all event functions on a page with their step counts.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
@@ -198,6 +201,7 @@ async def _delete_event_function_execute(params: dict[str, Any], context: dict[s
 
 delete_event_function = ToolDefinition(
     name="delete_event_function",
+    display_name="Delete Event Function",
     description="Delete an event function from a page.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),

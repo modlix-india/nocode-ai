@@ -2,11 +2,17 @@
 
 Applications are managed through the Multi service (/api/multi/application),
 listed/read through UI service (/api/ui/applications).
+
+Lookup flow:
+1. list_applications (security service) → get appCode
+2. list_ui_applications (UI service, filter by appCode) → get UI app definition ID
+3. read_application (UI service, by ID) → get full app definition
 """
 
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult, ToolParameter
@@ -61,6 +67,7 @@ async def _create_application_execute(params: dict[str, Any], context: dict[str,
 
 create_application = ToolDefinition(
     name="create_application",
+    display_name="Create Application",
     description="Create a new application. Returns the created application details.",
     parameters=[
         ToolParameter(name="app_name", type="string", description="Display name for the application."),
@@ -126,11 +133,60 @@ async def _list_applications_execute(params: dict[str, Any], context: dict[str, 
 
 list_applications = ToolDefinition(
     name="list_applications",
+    display_name="List Applications",
     description="Search for applications by name or code. Searches both appName and appCode fields. IMPORTANT: Always call this first to confirm the exact appCode before using any other tool (pages, styles, functions, etc.).",
     parameters=[
         ToolParameter(name="app_code", type="string", description="Search term — matches against both appName and appCode.", required=False),
     ],
     execute=_list_applications_execute,
+)
+
+
+# ── list_ui_applications ────────────────────────────────────────
+
+async def _list_ui_applications_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    client, headers = _get_client_and_headers(context)
+    app_code = params["app_code"]
+
+    result = await client.get(
+        "/api/ui/applications",
+        headers={**headers, "appCode": app_code},
+        params={"page": 0, "size": 100, "appCode": app_code},
+    )
+
+    if not result.success:
+        return ToolResult(success=False, error=f"Failed to list UI applications: {result.error}")
+
+    data = result.data
+    apps = data.get("content", []) if isinstance(data, dict) else []
+    lines = []
+    for app in apps:
+        name = app.get("name", "?")
+        app_id = app.get("id", "?")
+        version = app.get("version", "?")
+        lines.append(f"- {name} (id={app_id}, version={version})")
+
+    summary = f"Found {len(apps)} UI application definition(s) for appCode '{app_code}':\n" + "\n".join(lines)
+    return ToolResult(
+        success=True,
+        data=[{"name": a.get("name"), "id": a.get("id"), "appCode": a.get("appCode"), "version": a.get("version")} for a in apps],
+        summary=summary,
+    )
+
+
+list_ui_applications = ToolDefinition(
+    name="list_ui_applications",
+    display_name="List UI App Definitions",
+    description=(
+        "List UI application definitions for a given appCode. Returns the UI application IDs "
+        "(MongoDB ObjectIds) needed by read_application and update_application. "
+        "IMPORTANT: The ID from list_applications (security service) is NOT the same as the UI app ID. "
+        "Always call this after list_applications to get the correct UI application ID."
+    ),
+    parameters=[
+        ToolParameter(name="app_code", type="string", description="Application code (from list_applications)."),
+    ],
+    execute=_list_ui_applications_execute,
 )
 
 
@@ -156,9 +212,15 @@ async def _read_application_execute(params: dict[str, Any], context: dict[str, A
 
 read_application = ToolDefinition(
     name="read_application",
-    description="Read an application's full definition by its ID. Returns properties including named pages (defaultPage, loginPage, shellPage, forbiddenPage, notFoundPage, etc.), themes, styles, and other app-level settings. Use this after list_applications to understand the app structure before modifying pages.",
+    display_name="Read Application",
+    description=(
+        "Read an application's full definition by its UI application ID. "
+        "Returns properties including named pages (defaultPage, loginPage, shellPage, "
+        "forbiddenPage, notFoundPage, etc.), themes, styles, fontPacks, and other app-level settings. "
+        "IMPORTANT: Use the ID from list_ui_applications (NOT from list_applications — those are different IDs)."
+    ),
     parameters=[
-        ToolParameter(name="application_id", type="string", description="Application ID (from list_applications)."),
+        ToolParameter(name="application_id", type="string", description="UI application ID (from list_ui_applications)."),
     ],
     execute=_read_application_execute,
 )
@@ -193,6 +255,7 @@ async def _update_application_execute(params: dict[str, Any], context: dict[str,
 
 update_application = ToolDefinition(
     name="update_application",
+    display_name="Update Application",
     description="Update an application's properties (title, description, themes, styles, etc.).",
     parameters=[
         ToolParameter(name="application_id", type="string", description="Application ID."),
@@ -221,6 +284,7 @@ async def _delete_application_execute(params: dict[str, Any], context: dict[str,
 
 delete_application = ToolDefinition(
     name="delete_application",
+    display_name="Delete Application",
     description="Delete an application by its app code. This is destructive and cannot be undone.",
     parameters=[
         ToolParameter(name="app_code", type="string", description="Application code to delete."),
@@ -229,12 +293,103 @@ delete_application = ToolDefinition(
 )
 
 
+# ── add_font_pack ──────────────────────────────────────────────
+
+
+def _build_google_fonts_html(font_name: str, weights: str) -> str:
+    """Build the Google Fonts HTML link tags for a font family.
+
+    Args:
+        font_name: Font family name (e.g. "Inter", "Open Sans").
+        weights: Semicolon-separated weights (e.g. "300;400;500;600;700").
+    """
+    # Google Fonts URL uses + for spaces
+    url_name = font_name.replace(" ", "+")
+    return (
+        '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+        f'<link href="https://fonts.googleapis.com/css2?family={url_name}:wght@{weights}&display=swap" rel="stylesheet">'
+    )
+
+
+async def _add_font_pack_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    client, headers = _get_client_and_headers(context)
+    application_id = params["application_id"]
+    font_name = params["font_name"]
+    weights = params.get("weights", "300;400;500;600;700")
+
+    # Fetch current application
+    current = await client.get(f"/api/ui/applications/{application_id}", headers=headers)
+    if not current.success:
+        return ToolResult(success=False, error=f"Failed to read application: {current.error}")
+
+    app_data = current.data
+    props = app_data.setdefault("properties", {})
+    font_packs = props.setdefault("fontPacks", {})
+
+    # Check if this font is already added
+    for pack in font_packs.values():
+        if pack.get("name", "").lower() == font_name.lower():
+            return ToolResult(
+                success=True,
+                summary=f"Font '{font_name}' is already in the application's fontPacks.",
+            )
+
+    # Generate a short UUID key and build the HTML
+    pack_key = uuid.uuid4().hex[:12]
+    font_html = _build_google_fonts_html(font_name, weights)
+
+    font_packs[pack_key] = {
+        "name": font_name,
+        "code": font_html,
+    }
+
+    app_data["message"] = params["message"]
+
+    from app.agents.appbuilder.tools._shared import save_entity
+    result = await save_entity(
+        client, "/api/ui/applications", application_id, app_data, headers,
+        context.get("client_code", ""),
+    )
+    if not result.success:
+        return result
+
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Added font pack '{font_name}' (weights: {weights}) to the application. "
+            f"The font family '{font_name}' can now be used in theme variables and component styles."
+        ),
+    )
+
+
+add_font_pack = ToolDefinition(
+    name="add_font_pack",
+    display_name="Add Font Pack",
+    description=(
+        "Add a Google Fonts font pack to an application. This injects the required "
+        "<link> tags into the application's fontPacks so the font loads at runtime. "
+        "After adding, the font family can be used in theme fontFamily variables or "
+        "component style properties. Example fonts: 'Inter', 'Roboto', 'Open Sans', 'Poppins'."
+    ),
+    parameters=[
+        ToolParameter(name="application_id", type="string", description="UI application ID (from list_ui_applications)."),
+        ToolParameter(name="font_name", type="string", description="Google Font family name (e.g. 'Inter', 'Roboto', 'Open Sans')."),
+        ToolParameter(name="weights", type="string", description="Semicolon-separated font weights to include.", required=False),
+        ToolParameter(name="message", type="string", description="Commit message (10–15 words) describing what was changed."),
+    ],
+    execute=_add_font_pack_execute,
+)
+
+
 # ── Export ───────────────────────────────────────────────────────
 
 APPLICATION_TOOLS: list[ToolDefinition] = [
     create_application,
     list_applications,
+    list_ui_applications,
     read_application,
     update_application,
+    add_font_pack,
     delete_application,
 ]

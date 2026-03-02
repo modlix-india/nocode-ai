@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 class SessionStatus(str, Enum):
     """Session status enum matching database ENUM."""
     ACTIVE = "ACTIVE"
+    PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     EXPIRED = "EXPIRED"
 
@@ -158,6 +159,7 @@ class AiSessionHistory(BaseModel):
     turn_number: int
     user_instruction: str
     assistant_summary: Optional[str] = None
+    tool_calls_json: Optional[str] = None
     page_snapshot: Optional[str] = None
     input_tokens_used: int = 0
     created_at: Optional[datetime] = None

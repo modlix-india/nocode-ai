@@ -424,6 +424,28 @@ class SessionManager:
             logger.error(f"Failed to increment turn count: {e}")
             return 0
 
+    async def set_session_processing(self, session_id: str, user_id: Optional[int] = None) -> bool:
+        """Mark a session as currently being processed by the agent."""
+        if not is_pool_available():
+            return False
+
+        try:
+            async with get_connection() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(
+                        """
+                        UPDATE ai_tracking_sessions
+                        SET STATUS = %s, UPDATED_BY = %s
+                        WHERE SESSION_ID = %s
+                        """,
+                        (SessionStatus.PROCESSING.value, user_id, session_id)
+                    )
+                    return cursor.rowcount > 0
+
+        except Exception as e:
+            logger.error(f"Failed to set session processing: {e}")
+            return False
+
     async def complete_session(self, session_id: str, user_id: Optional[int] = None) -> bool:
         """Mark a session as completed."""
         if not is_pool_available():

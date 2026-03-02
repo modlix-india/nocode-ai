@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 LLM Provider abstraction for supporting multiple LLM backends.
 
@@ -494,43 +496,45 @@ class OpenAIProvider(LLMProvider):
         }
 
 
-# Singleton provider instance
-_provider: Optional[LLMProvider] = None
+# Per-provider cache: multiple providers can coexist (e.g. Anthropic for AppBuilder,
+# OpenAI for a future Ad Builder agent).
+_providers: dict[str, LLMProvider] = {}
 
 
-def get_llm_provider() -> LLMProvider:
+def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
     """
-    Get the configured LLM provider.
-    
-    Uses LLM_PROVIDER setting to determine which provider to use.
-    Caches the provider instance for reuse.
-    
+    Get an LLM provider by name, with per-provider caching.
+
+    Args:
+        provider_name: "anthropic" or "openai".  If None, falls back to
+                       the global ``settings.LLM_PROVIDER`` default.
+
     Returns:
-        LLMProvider instance (AnthropicProvider or OpenAIProvider)
+        Cached LLMProvider instance.
     """
-    global _provider
-    
-    if _provider is not None:
-        return _provider
-    
     from app.config import settings
-    
-    if settings.LLM_PROVIDER.lower() == "openai":
+
+    name = (provider_name or settings.LLM_PROVIDER).lower()
+
+    if name in _providers:
+        return _providers[name]
+
+    if name == "openai":
         if not settings.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
-        _provider = OpenAIProvider()
-        logger.info(f"Using OpenAI provider with models: {settings.OPENAI_MODEL_FAST}, {settings.OPENAI_MODEL_BALANCED}")
+            raise ValueError("OPENAI_API_KEY is required when using the openai provider")
+        _providers[name] = OpenAIProvider()
+        logger.info(f"Initialized OpenAI provider with models: {settings.OPENAI_MODEL_FAST}, {settings.OPENAI_MODEL_BALANCED}")
     else:
         if not settings.ANTHROPIC_API_KEY:
-            raise ValueError("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
-        _provider = AnthropicProvider()
-        logger.info(f"Using Anthropic provider with models: {settings.CLAUDE_HAIKU}, {settings.CLAUDE_SONNET}")
-    
-    return _provider
+            raise ValueError("ANTHROPIC_API_KEY is required when using the anthropic provider")
+        _providers[name] = AnthropicProvider()
+        logger.info(f"Initialized Anthropic provider with models: {settings.CLAUDE_HAIKU}, {settings.CLAUDE_SONNET}")
+
+    return _providers[name]
 
 
 def reset_provider():
-    """Reset the provider singleton (useful for testing)"""
-    global _provider
-    _provider = None
+    """Reset all cached providers (useful for testing)."""
+    global _providers
+    _providers = {}
 

@@ -120,7 +120,7 @@ nocode-ai/
 │   │           ├── entity_tools.py     # Connection, workflow, template
 │   │           └── version_tools.py    # Version control tools
 │   ├── services/                       # Shared services
-│   │   ├── llm_provider.py            # Anthropic/OpenAI abstraction
+│   │   ├── llm_provider.py            # Per-agent LLM provider (Anthropic/OpenAI)
 │   │   ├── eureka.py                  # Service discovery
 │   │   ├── config_server.py           # Spring Cloud Config client
 │   │   ├── security.py                # Token validation
@@ -188,7 +188,7 @@ Large objects (pages can be 30K+ JSON) are **never exposed to the agent**. Inste
 |-------|----------|---------|
 | `BaseAgent` | `app/core/agent.py` | Core tool-use loop, streaming, tool execution |
 | `AppBuilderAgent` | `app/agents/appbuilder/agent.py` | Extends BaseAgent with app-building context |
-| `ToolDefinition` | `app/core/tools/base.py` | Tool schema: name, description, params, execute fn |
+| `ToolDefinition` | `app/core/tools/base.py` | Tool schema: name, display_name, description, params, execute fn |
 | `ToolResult` | `app/core/tools/base.py` | Tool output: success, data, summary, error |
 | `SaasClient` | `app/core/tools/http_client.py` | Shared httpx client for backend API calls |
 | `Settings` | `app/config.py` | All configuration via pydantic-settings |
@@ -222,6 +222,7 @@ async def execute_my_tool(params: dict, context: dict) -> ToolResult:
 
 my_tool = ToolDefinition(
     name="my_tool",
+    display_name="My Tool",
     description="Does something useful. Use this when you need to ...",
     parameters=[
         ToolParameter(name="name", type="string", description="The name", required=True),
@@ -247,6 +248,7 @@ ALL_TOOLS: list[ToolDefinition] = [
 ### 3. Tool Guidelines
 
 - **Tool names**: Use `snake_case` (e.g., `add_component`, `read_page_structure`)
+- **Display names**: Provide a human-friendly `display_name` (e.g., `"Add Component"`) — shown in the UI
 - **Descriptions**: Write for the LLM — explain *when* and *why* to use the tool
 - **Parameters**: Be explicit about types, enums, and defaults
 - **Return ToolResult**: Always return `ToolResult`, never raise exceptions
@@ -274,22 +276,28 @@ app/agents/databuilder/
 
 ### 2. Extend BaseAgent
 
+Each agent can specify its own LLM provider via the `provider` parameter (defaults to the global `LLM_PROVIDER` setting):
+
 ```python
 # app/agents/databuilder/agent.py
 from app.core.agent import BaseAgent
+from app.config import settings
 
 class DataBuilderAgent(BaseAgent):
-    def __init__(self):
+    def __init__(self, provider: str = "anthropic"):
         super().__init__(
             name="databuilder",
             tools=ALL_TOOLS,
-            system_prompt=load_system_prompt(),
+            context_builder=load_context(),
+            provider=provider,  # "anthropic" or "openai" — per-agent choice
         )
 
-    async def build_dynamic_context(self, session, auth_context) -> str:
+    def build_dynamic_context(self, session) -> str:
         """Return per-request context appended to the system prompt."""
-        return f"Current database: {auth_context.get('db_name', 'default')}"
+        return f"Current database: {session.context.get('db_name', 'default')}"
 ```
+
+The `provider` parameter controls which LLM backend is used for that agent's tool-use loop. Multiple agents can use different providers simultaneously (e.g., AppBuilder uses Anthropic while AdBuilder uses OpenAI).
 
 ### 3. Create a Router
 
@@ -408,7 +416,9 @@ migrations/
 ├── V2__Add_Object_And_Agent_Name.sql
 ├── V3__Add_Session_Title.sql
 ├── V4__Add_Session_Context.sql
-└── V5__Add_Turn_Tool_Calls.sql
+├── V5__Add_Turn_Tool_Calls.sql
+├── V6__Add_Processing_Status.sql
+└── V7__Unique_Session_Turn.sql
 ```
 
 ### Adding a Migration
@@ -421,9 +431,9 @@ migrations/
 
 | Table | Purpose |
 |-------|---------|
-| `ai_tracking_sessions` | Session metadata, token totals, status |
+| `ai_tracking_sessions` | Session metadata, token totals, status (ACTIVE/PROCESSING/COMPLETED/EXPIRED) |
 | `ai_token_usage` | Per-request token tracking |
-| `ai_session_history` | Turn-by-turn conversation log |
+| `ai_session_history` | Turn-by-turn conversation log (with tool_calls_json, incremental upsert) |
 
 ---
 
@@ -441,7 +451,8 @@ Configuration is managed via `app/config.py` using `pydantic-settings`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | `anthropic` | LLM provider (`anthropic` or `openai`) |
+| `LLM_PROVIDER` | `anthropic` | Global default LLM provider (`anthropic` or `openai`) |
+| `APPBUILDER_PROVIDER` | `anthropic` | Per-agent override for AppBuilder |
 | `AGENT_MODEL_TIER` | `balanced` | Model tier (`fast` = Haiku, `balanced` = Sonnet) |
 | `MAX_AGENT_TURNS` | `50` | Max tool-use iterations per request |
 | `AGENT_MAX_TOKENS` | `16384` | Max tokens per LLM response |

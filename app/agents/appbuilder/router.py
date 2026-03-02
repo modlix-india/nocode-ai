@@ -170,9 +170,15 @@ async def _authenticate_chat_request(request: Request, body: ChatRequest) -> Aut
 async def chat(request: Request, body: ChatRequest):
     """Stream an appbuilder agent response as SSE."""
     if _agent is None:
+        logger.error("Chat request rejected: AppBuilder agent is None (not initialized)")
         raise HTTPException(status_code=503, detail="AppBuilder agent not initialized")
 
+    logger.info("Chat request: session=%s, app=%s, attachments=%d, message_len=%d",
+                body.session_id or "(new)", body.app_code or "(none)",
+                len(body.attachments) if body.attachments else 0, len(body.message))
+
     auth = await _authenticate_chat_request(request, body)
+    logger.info("Authenticated: user=%d, client=%s", auth.user_id, auth.client_code)
 
     # Create/resume session
     session = BaseSession(agent_name="appbuilder")
@@ -182,6 +188,7 @@ async def chat(request: Request, body: ChatRequest):
         session.context["app_code"] = body.app_code
 
     await session.get_or_create(body.session_id, auth)
+    logger.info("Session ready: %s", session.session_id)
 
     # Auto-set title on new sessions from first message
     if not body.session_id:
@@ -191,21 +198,39 @@ async def chat(request: Request, body: ChatRequest):
                 session.session_id, title, auth.user_id
             )
 
-    # Convert attachments to Anthropic image content blocks
-    image_blocks = _build_image_blocks(body.attachments) if body.attachments else None
+    # Convert attachments to image content blocks using the agent's provider
+    image_blocks = None
+    if body.attachments:
+        provider_name = _agent._provider_name if _agent else None
+        logger.info("Processing %d attachment(s) with provider=%s",
+                    len(body.attachments), provider_name or "(default)")
+        image_blocks = _build_image_blocks(body.attachments, provider_name)
+        logger.info("Image blocks built: %d", len(image_blocks) if image_blocks else 0)
 
     return _stream_agent_response(body.message, session, image_blocks)
 
 
-def _build_image_blocks(attachments: List[ChatAttachment]) -> list[dict] | None:
-    """Convert chat attachments to Anthropic image content blocks."""
-    from app.services.llm_provider import get_llm_provider
+def _build_image_blocks(attachments: List[ChatAttachment], provider_name: str | None = None) -> list[dict] | None:
+    """Convert chat attachments to image content blocks using the agent's provider.
 
-    provider = get_llm_provider()
+    Images are compressed if they exceed the API size limit (5MB for Anthropic).
+    """
+    from app.services.llm_provider import get_llm_provider
+    from app.utils.image import compress_image_base64
+
+    provider = get_llm_provider(provider_name)
     blocks = []
-    for att in attachments:
+    for i, att in enumerate(attachments):
         if att.data and att.type == "image":
-            blocks.append(provider.format_image_content(att.data, att.mime_type))
+            original_size = len(att.data)
+            logger.info("Attachment[%d]: type=%s, mime=%s, base64_size=%d bytes",
+                       i, att.type, att.mime_type, original_size)
+            data, mime = compress_image_base64(att.data, att.mime_type)
+            logger.info("Attachment[%d] after compression: mime=%s, base64_size=%d bytes",
+                       i, mime, len(data))
+            blocks.append(provider.format_image_content(data, mime))
+        else:
+            logger.info("Attachment[%d]: type=%s (skipped, not image or no data)", i, att.type)
     return blocks if blocks else None
 
 

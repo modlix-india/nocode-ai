@@ -40,6 +40,9 @@ chromadb==0.5.23
 # Eureka Client
 py-eureka-client==0.11.10
 
+# Image Processing (compression before sending to LLM APIs)
+Pillow>=10.3.0,<11.0.0
+
 # Utilities
 python-dotenv==1.0.1
 pydantic==2.10.4

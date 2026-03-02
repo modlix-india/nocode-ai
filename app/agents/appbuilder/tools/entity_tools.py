@@ -172,12 +172,14 @@ def _make_crud_tools(
     return [
         ToolDefinition(
             name=f"list_{entity_name}s",
+            display_name=f"List {entity_name.title()}s",
             description=f"List all {description_prefix} in an application.",
             parameters=[ToolParameter(name="app_code", type="string", description="Application code.", required=False)],
             execute=list_exec,
         ),
         ToolDefinition(
             name=f"create_{entity_name}",
+            display_name=f"Create {entity_name.title()}",
             description=f"Create a new {description_prefix}.",
             parameters=[
                 ToolParameter(name="name", type="string", description=f"{entity_name.title()} name (letters only)."),
@@ -191,12 +193,14 @@ def _make_crud_tools(
         ),
         ToolDefinition(
             name=f"read_{entity_name}",
+            display_name=f"Read {entity_name.title()}",
             description=f"Read a {description_prefix} by ID.",
             parameters=[ToolParameter(name="id", type="string", description=f"{entity_name.title()} ID.")],
             execute=read_exec,
         ),
         ToolDefinition(
             name=f"update_{entity_name}",
+            display_name=f"Update {entity_name.title()}",
             description=f"Update a {description_prefix}.",
             parameters=[
                 ToolParameter(name="id", type="string", description=f"{entity_name.title()} ID."),
@@ -210,6 +214,7 @@ def _make_crud_tools(
         ),
         ToolDefinition(
             name=f"delete_{entity_name}",
+            display_name=f"Delete {entity_name.title()}",
             description=f"Delete a {description_prefix}. If the object is inherited (owned by another client), this removes your override and resets to the inherited version.",
             parameters=[ToolParameter(name="id", type="string", description=f"{entity_name.title()} ID.")],
             execute=delete_exec,

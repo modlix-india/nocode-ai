@@ -148,13 +148,14 @@ async def _update_theme_execute(params: dict[str, Any], context: dict[str, Any])
 
 
 list_themes = ToolDefinition(
-    name="list_themes", description="List all themes in an application.",
+    name="list_themes", display_name="List Themes", description="List all themes in an application.",
     parameters=[ToolParameter(name="app_code", type="string", description="Application code.", required=False)],
     execute=_list_themes_execute,
 )
 
 create_theme = ToolDefinition(
     name="create_theme",
+    display_name="Create Theme",
     description=(
         "Create a new theme — a named set of design tokens (camelCase key-value pairs) "
         "organized by screen-resolution breakpoints (ALL, MOBILE_POTRAIT_SCREEN_ONLY, etc.). "
@@ -187,13 +188,14 @@ create_theme = ToolDefinition(
 )
 
 read_theme = ToolDefinition(
-    name="read_theme", description="Read a theme's full definition.",
+    name="read_theme", display_name="Read Theme", description="Read a theme's full definition.",
     parameters=[ToolParameter(name="theme_id", type="string", description="Theme ID.")],
     execute=_read_theme_execute,
 )
 
 update_theme = ToolDefinition(
     name="update_theme",
+    display_name="Update Theme",
     description=(
         "Update a theme's variables (partial merge per breakpoint). "
         "Variables are camelCase design tokens referenced as Theme.variableName in expressions. "
@@ -326,13 +328,13 @@ async def _update_style_execute(params: dict[str, Any], context: dict[str, Any])
 
 
 list_styles = ToolDefinition(
-    name="list_styles", description="List all reusable style definitions in an application.",
+    name="list_styles", display_name="List Styles", description="List all reusable style definitions in an application.",
     parameters=[ToolParameter(name="app_code", type="string", description="Application code.", required=False)],
     execute=_list_styles_execute,
 )
 
 create_style = ToolDefinition(
-    name="create_style", description="Create a new reusable style definition.",
+    name="create_style", display_name="Create Style", description="Create a new reusable style definition.",
     parameters=[
         ToolParameter(name="name", type="string", description="Style name (letters only)."),
         ToolParameter(name="definition", type="object", description="Style definition with responsive breakpoints.", required=False),
@@ -345,13 +347,13 @@ create_style = ToolDefinition(
 )
 
 read_style = ToolDefinition(
-    name="read_style", description="Read a style definition.",
+    name="read_style", display_name="Read Style", description="Read a style definition.",
     parameters=[ToolParameter(name="style_id", type="string", description="Style ID.")],
     execute=_read_style_execute,
 )
 
 update_style = ToolDefinition(
-    name="update_style", description="Update a style definition (partial merge).",
+    name="update_style", display_name="Update Style", description="Update a style definition (partial merge).",
     parameters=[
         ToolParameter(name="style_id", type="string", description="Style ID."),
         ToolParameter(name="definition", type="object", description="Definition to merge."),

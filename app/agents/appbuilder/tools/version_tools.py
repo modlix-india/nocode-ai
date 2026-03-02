@@ -88,6 +88,7 @@ async def _list_versions_execute(params: dict[str, Any], context: dict[str, Any]
 
 list_versions = ToolDefinition(
     name="list_versions",
+    display_name="List Versions",
     description="List version history for a UI or core entity. Returns version numbers, messages, and IDs.",
     parameters=[
         ToolParameter(name="object_id", type="string", description="The entity's ID whose versions to list."),
@@ -129,6 +130,7 @@ async def _read_version_execute(params: dict[str, Any], context: dict[str, Any])
 
 read_version = ToolDefinition(
     name="read_version",
+    display_name="Read Version",
     description="Read a specific version snapshot. Returns the full object state at that version.",
     parameters=[
         ToolParameter(name="version_id", type="string", description="Version document ID (from list_versions)."),
@@ -191,6 +193,7 @@ async def _rollback_version_execute(params: dict[str, Any], context: dict[str, A
 
 rollback_version = ToolDefinition(
     name="rollback_version",
+    display_name="Rollback Version",
     description="Rollback an entity to a previous version. Fetches the historical snapshot and PUTs it back, creating a new version.",
     parameters=[
         ToolParameter(name="version_id", type="string", description="Version document ID to restore (from list_versions)."),

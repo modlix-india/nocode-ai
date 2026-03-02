@@ -149,13 +149,13 @@ async def _search_builtin_functions_execute(params: dict[str, Any], context: dic
 
 
 list_functions = ToolDefinition(
-    name="list_functions", description="List all custom functions in an application.",
+    name="list_functions", display_name="List Functions", description="List all custom functions in an application.",
     parameters=[ToolParameter(name="app_code", type="string", description="Application code.", required=False)],
     execute=_list_functions_execute,
 )
 
 create_function = ToolDefinition(
-    name="create_function", description="Create a new reusable KIRun function definition.",
+    name="create_function", display_name="Create Function", description="Create a new reusable KIRun function definition.",
     parameters=[
         ToolParameter(name="name", type="string", description="Function name (letters only)."),
         ToolParameter(name="namespace", type="string", description="Function namespace.", required=False),
@@ -169,13 +169,13 @@ create_function = ToolDefinition(
 )
 
 read_function = ToolDefinition(
-    name="read_function", description="Read a function's full definition.",
+    name="read_function", display_name="Read Function", description="Read a function's full definition.",
     parameters=[ToolParameter(name="function_id", type="string", description="Function ID.")],
     execute=_read_function_execute,
 )
 
 update_function = ToolDefinition(
-    name="update_function", description="Update a function's definition.",
+    name="update_function", display_name="Update Function", description="Update a function's definition.",
     parameters=[
         ToolParameter(name="function_id", type="string", description="Function ID."),
         ToolParameter(name="name", type="string", description="New function name.", required=False),
@@ -189,6 +189,7 @@ update_function = ToolDefinition(
 
 search_builtin_functions = ToolDefinition(
     name="search_builtin_functions",
+    display_name="Search Builtin Functions",
     description=(
         "Search KIRun CORE/SYSTEM builtin functions by name (System.*, UIEngine.*, etc.). "
         "Returns namespace.name list. Use when building reusable KIRun function definitions "
@@ -260,6 +261,7 @@ async def _get_kirun_function_signature_execute(params: dict[str, Any], context:
 
 get_kirun_function_signature = ToolDefinition(
     name="get_kirun_function_signature",
+    display_name="Get Function Signature",
     description=(
         "Get the full input/output signature of a KIRun CORE/SYSTEM builtin function. "
         "Returns parameter (input port) names+types and output event names+port names. "
@@ -387,13 +389,13 @@ async def _update_schema_execute(params: dict[str, Any], context: dict[str, Any]
 
 
 list_schemas = ToolDefinition(
-    name="list_schemas", description="List all data schemas in an application.",
+    name="list_schemas", display_name="List Schemas", description="List all data schemas in an application.",
     parameters=[ToolParameter(name="app_code", type="string", description="Application code.", required=False)],
     execute=_list_schemas_execute,
 )
 
 create_schema = ToolDefinition(
-    name="create_schema", description="Create a new data schema definition.",
+    name="create_schema", display_name="Create Schema", description="Create a new data schema definition.",
     parameters=[
         ToolParameter(name="name", type="string", description="Schema name (letters only)."),
         ToolParameter(name="definition", type="object", description="Schema definition object."),
@@ -406,13 +408,13 @@ create_schema = ToolDefinition(
 )
 
 read_schema = ToolDefinition(
-    name="read_schema", description="Read a schema definition.",
+    name="read_schema", display_name="Read Schema", description="Read a schema definition.",
     parameters=[ToolParameter(name="schema_id", type="string", description="Schema ID.")],
     execute=_read_schema_execute,
 )
 
 update_schema = ToolDefinition(
-    name="update_schema", description="Update a schema definition.",
+    name="update_schema", display_name="Update Schema", description="Update a schema definition.",
     parameters=[
         ToolParameter(name="schema_id", type="string", description="Schema ID."),
         ToolParameter(name="name", type="string", description="New schema name.", required=False),
