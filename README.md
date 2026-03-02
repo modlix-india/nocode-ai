@@ -1,189 +1,169 @@
 # Nocode AI Service
 
-Multi-agent AI service for generating nocode page definitions using Claude and RAG.
+Agentic AI service for building no-code applications using Claude with 60+ specialized tools and RAG.
 
-## Features
+## At a Glance
 
-- **Multi-Agent Page Generation**: 7 specialized agents work together to create complete page definitions
-- **SSE Streaming**: Real-time progress updates during generation
-- **RAG System**: Retrieval-augmented generation using documentation and examples
-- **Create/Modify/Enhance**: Support for new pages and modifications
-- **Config Server Integration**: Fetches configuration from Spring Cloud Config Server
-- **Eureka Integration**: Service discovery for microservices architecture
+| | |
+|---|---|
+| **Framework** | FastAPI (async), Python 3.9+ |
+| **LLM** | Claude (Anthropic) — with OpenAI fallback |
+| **Architecture** | Single-agent, multi-tool loop (Claude Code-style) |
+| **Tools** | 60+ tools — pages, components, events, styles, functions, entities, versions |
+| **Streaming** | Server-Sent Events (SSE) for real-time output |
+| **RAG** | ChromaDB + FastEmbed (local embeddings, no API key needed) |
+| **Session Tracking** | MySQL (aiomysql) — conversations, token usage, tool calls |
+| **Rate Limiting** | Redis (optional, graceful degradation) |
+| **Service Discovery** | Eureka + Spring Cloud Config integration |
+| **Prompt Caching** | ~90% token savings on repeated system prompts (Anthropic) |
+| **Port** | `5001` |
 
-## Agents
-
-| Agent         | Responsibility                                     |
-| ------------- | -------------------------------------------------- |
-| **Layout**    | Grid structure, responsive breakpoints, containers |
-| **Component** | Component selection and properties                 |
-| **Events**    | Event handlers and interactions                    |
-| **Styles**    | Visual styling and theming                         |
-| **Animation** | Animations and transitions                         |
-| **Data**      | Data binding and store management                  |
-| **Review**    | Validation and quality improvement                 |
-
-## Local Development Setup
-
-### 1. Create Virtual Environment
+## Quick Start
 
 ```bash
-cd /Users/kirangrandhi/kiran/fincity/nocode-ai
-
-# Create venv
-python3 -m venv venv
-
-# Activate
-source venv/bin/activate
-```
-
-### 2. Install Dependencies
-
-```bash
+# 1. Setup
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-```
 
-### 3. Start the Service
+# 2. Configure (.env)
+ANTHROPIC_API_KEY=sk-ant-your-key
+CONFIG_SERVER_ENABLED=false
+EUREKA_ENABLED=false
 
-**Option A: With Config Server (recommended if nocode-saas services are running)**
-
-```bash
-# Make sure config server is running at localhost:8888
-# Uses 'default' profile by default
-uvicorn app.main:app --reload --port 5001
-
-# Or specify a different profile (dev, stage, prod)
-SPRING_PROFILE=dev uvicorn app.main:app --reload --port 5001
-```
-
-The service fetches config from: `http://localhost:8888/ai/{profile}`
-
-**Option B: Without Config Server (standalone)**
-
-```bash
-# Disable config server and set API key directly
-CONFIG_SERVER_ENABLED=false \
-EUREKA_ENABLED=false \
-ANTHROPIC_API_KEY=your-key-here \
-uvicorn app.main:app --reload --port 5001
-```
-
-### 4. Ingest Documents (First Time)
-
-```bash
+# 3. Ingest docs (first time only)
 python scripts/ingest.py
+
+# 4. Run
+uvicorn app.main:app --reload --port 5001
 ```
 
-## Configuration
+Verify: `curl http://localhost:5001/health`
 
-### Config Server Integration
+## How It Works
 
-The service fetches configuration from Spring Cloud Config Server at startup:
-
-| Config Server Key            | Environment Variable   | Description          |
-| ---------------------------- | ---------------------- | -------------------- |
-| `ai.security.url`            | `SECURITY_SERVICE_URL` | Security service URL |
-| `ai.secrets.anthropicAPIKey` | `ANTHROPIC_API_KEY`    | Anthropic API key    |
-
-**Priority**: Environment variables > Config Server values > Default values
-
-### Environment Variables
-
-```bash
-# Service
-SERVICE_NAME=ai
-SERVICE_PORT=5001
-
-# Config Server
-CONFIG_SERVER_URL=http://localhost:8888
-CONFIG_SERVER_ENABLED=true
-SPRING_PROFILE=default  # Options: default, dev, stage, prod
-
-# Eureka
-EUREKA_ENABLED=true
-EUREKA_SERVER=http://localhost:9999/eureka/
-
-# Embeddings
-EMBEDDING_MODEL=local
-LOCAL_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
-
-# ChromaDB
-CHROMA_PERSIST_DIR=./data/chroma
-
-# Document paths
-AICONTEXT_PATH=../nocode-ui/ui-app/aicontext
 ```
+User message → Build system prompt (static + dynamic context)
+                    ↓
+              Call LLM with tools → Stream text via SSE
+                    ↓
+              tool_use? → Execute tool → Emit result → Loop back
+                    ↓
+              end_turn? → Done → Emit session stats
+```
+
+Large objects (30K+ JSON pages) are **never shown to the agent**. The agent sees compact tree structures and operates at the component level. A Python executor handles read-modify-write internally.
 
 ## API Endpoints
 
-### Generate Page (SSE Streaming)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/ai/appbuilder/chat` | SSE streaming agent chat |
+| `GET` | `/api/ai/appbuilder/sessions` | List sessions (paginated) |
+| `GET` | `/api/ai/appbuilder/sessions/{id}` | Session detail + history |
+| `PATCH` | `/api/ai/appbuilder/sessions/{id}` | Rename session |
+| `DELETE` | `/api/ai/appbuilder/sessions/{id}` | Delete session |
+| `POST` | `/api/ai/query` | RAG documentation query |
+| `GET` | `/health` | Health check |
+| `GET` | `/health/detailed` | Detailed component health |
+
+### Example: Chat
 
 ```bash
-curl -N -X POST http://localhost:5001/api/ai/agent/page \
+curl -N -X POST http://localhost:5001/api/ai/appbuilder/chat \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{
-    "instruction": "Create a login page with email and password fields",
-    "options": { "mode": "create" }
-  }'
+  -H "clientCode: SYSTEM" \
+  -H "appCode: appbuilder" \
+  -d '{"message": "Create a login page with email and password fields"}'
 ```
 
-### Generate Page (Synchronous)
+### SSE Event Types
 
-```bash
-curl -X POST http://localhost:5001/api/ai/agent/page/sync \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "instruction": "Create a login page",
-    "options": { "mode": "create" }
-  }'
-```
+`text` | `tool_start` | `tool_result` | `error` | `done` | `keepalive`
 
-### Query Documentation
+## Tool Categories
 
-```bash
-curl -X POST http://localhost:5001/api/ai/query \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "query": "How do I create a form with validation?",
-    "topK": 5
-  }'
-```
+| Category | Count | Examples |
+|----------|-------|---------|
+| **Page** | 6 | `create_page`, `read_page_structure`, `delete_page` |
+| **Component** | 8 | `add_component`, `update_component`, `move_component` |
+| **Batch** | 6 | Bulk component operations |
+| **Event** | 4 | `write_event_function`, `read_event_function` |
+| **Application** | 7 | App CRUD, export, import |
+| **Style** | 4 | Theme + style CRUD |
+| **Function** | 6 | Function + schema CRUD, search builtins |
+| **Entity** | 10 | Connection, workflow, template, filler, URI path |
+| **Version** | 4 | Version management |
 
 ## Project Structure
 
 ```
 nocode-ai/
 ├── app/
-│   ├── main.py                    # FastAPI application
-│   ├── config.py                  # Configuration
-│   ├── api/routes/
-│   │   ├── health.py              # Health check
-│   │   ├── agent.py               # Page generation with SSE
-│   │   └── query.py               # RAG query
-│   ├── agents/
-│   │   ├── page_agent.py          # Page Agent (orchestrator)
-│   │   └── ...                    # Sub-agents
-│   ├── rag/
-│   │   ├── engine.py              # RAG engine
-│   │   └── ...
-│   ├── services/
-│   │   ├── config_server.py       # Config Server client
-│   │   ├── eureka.py              # Eureka registration
-│   │   └── security.py            # Token validation
-│   └── streaming/
-│       └── events.py              # SSE events
-├── scripts/
-│   └── ingest.py                  # Document ingestion
-├── definitions/                   # Example definitions for RAG
-├── data/chroma/                   # ChromaDB persistence
-├── Dockerfile                     # For cloud deployments
-├── docker-compose.yml             # For cloud deployments
-├── requirements.txt
-└── README.md
+│   ├── main.py                  # FastAPI entry + lifespan
+│   ├── config.py                # Pydantic Settings
+│   ├── core/                    # Shared agentic framework
+│   │   ├── agent.py             #   BaseAgent (tool-use loop)
+│   │   ├── context.py           #   System prompt builder
+│   │   ├── session.py           #   Session model
+│   │   ├── streaming.py         #   SSE protocol
+│   │   └── tools/               #   ToolDefinition, SaasClient
+│   ├── agents/appbuilder/       # AppBuilder agent
+│   │   ├── agent.py             #   AppBuilderAgent
+│   │   ├── router.py            #   Chat + session endpoints
+│   │   ├── AGENT.md             #   Agent specification
+│   │   └── tools/               #   60+ tool implementations
+│   ├── services/                # LLM, Eureka, Config, Security, Sessions, Redis
+│   ├── api/                     # Routes + request models
+│   ├── rag/                     # ChromaDB + FastEmbed
+│   ├── db/                      # MySQL models, connections, migrations
+│   └── middleware/              # Rate limiting
+├── migrations/                  # SQL migrations (V1–V5)
+├── scripts/                     # start-local.sh, start-production.sh
+├── data/chroma/                 # Vector store (gitignored)
+├── docs/                        # Documentation
+├── Dockerfile
+└── requirements.txt
 ```
+
+## Configuration
+
+**Priority**: Environment variables > Config Server > Defaults
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` |
+| `ANTHROPIC_API_KEY` | — | Required for Anthropic provider |
+| `AGENT_MODEL_TIER` | `balanced` | `fast` (Haiku) or `balanced` (Sonnet) |
+| `MAX_AGENT_TURNS` | `50` | Max tool-use iterations |
+| `PROMPT_CACHING_ENABLED` | `true` | Anthropic prompt caching |
+| `CONFIG_SERVER_ENABLED` | `true` | Fetch from Spring Cloud Config |
+| `EUREKA_ENABLED` | `true` | Register with Eureka |
+| `REDIS_URL` | — | Optional, enables rate limiting |
+| `MYSQL_URL` | — | Optional, enables session persistence |
+
+## Running with Full Stack
+
+```bash
+# With Config Server + Eureka (nocode-saas running)
+uvicorn app.main:app --reload --port 5001
+
+# Specify profile
+SPRING_PROFILE=dev uvicorn app.main:app --reload --port 5001
+```
+
+## Docker
+
+```bash
+docker build -t nocode-ai .
+docker run -p 5001:5001 -e ANTHROPIC_API_KEY=sk-ant-... -e CONFIG_SERVER_ENABLED=false -e EUREKA_ENABLED=false nocode-ai
+```
+
+Production uses Gunicorn + UvicornWorker with 4 workers (`scripts/start-production.sh`).
+
+## Contributing
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## License
 
