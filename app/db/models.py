@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 class SessionStatus(str, Enum):
     """Session status enum matching database ENUM."""
     ACTIVE = "ACTIVE"
+    PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     EXPIRED = "EXPIRED"
 
@@ -30,6 +31,8 @@ class AiSessionCreate(BaseModel):
     object_name: Optional[str] = Field(None, max_length=256, description="Name of the object being tracked (page, function, etc.)")
     agent_name: Optional[str] = Field(None, max_length=64, description="Type of agent (PageAgent, FunctionAgent, etc.)")
     app_code: Optional[str] = Field(None, max_length=64, description="App code (sitezump/appbuilder)")
+    title: Optional[str] = Field(None, max_length=256, description="Session title for sidebar display")
+    context_json: Optional[str] = Field(None, description="JSON-serialized agent context")
     context_limit: int = Field(default=184000, description="Context token limit")
 
 
@@ -43,6 +46,8 @@ class AiSession(BaseModel):
     object_name: Optional[str] = None
     agent_name: Optional[str] = None
     app_code: Optional[str] = None
+    title: Optional[str] = None
+    context_json: Optional[str] = None
     status: SessionStatus = SessionStatus.ACTIVE
     total_input_tokens: int = 0
     total_output_tokens: int = 0
@@ -59,6 +64,26 @@ class AiSession(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SessionListItem(BaseModel):
+    """Lightweight session for list display (sidebar)."""
+    session_id: str
+    title: Optional[str] = None
+    agent_name: Optional[str] = None
+    app_code: Optional[str] = None
+    status: SessionStatus = SessionStatus.ACTIVE
+    turn_count: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class SessionListResponse(BaseModel):
+    """Paginated session list response."""
+    items: List[SessionListItem]
+    total: int
+    limit: int
+    offset: int
 
 
 # =============================================================================
@@ -134,6 +159,7 @@ class AiSessionHistory(BaseModel):
     turn_number: int
     user_instruction: str
     assistant_summary: Optional[str] = None
+    tool_calls_json: Optional[str] = None
     page_snapshot: Optional[str] = None
     input_tokens_used: int = 0
     created_at: Optional[datetime] = None

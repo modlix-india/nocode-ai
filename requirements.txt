@@ -26,6 +26,7 @@ llama-index-vector-stores-chroma==0.4.1
 llama-index-readers-file==0.4.3
 
 # LLM SDKs
+anthropic>=0.40.0
 openai==1.58.1
 
 # Embeddings - FastEmbed (lightweight ONNX-based, no PyTorch needed)
@@ -39,13 +40,8 @@ chromadb==0.5.23
 # Eureka Client
 py-eureka-client==0.11.10
 
-# JavaScript Parser (for JS-to-KIRun conversion)
-esprima>=4.0.1
-
-# Website Import - HTML parsing and browser automation
-beautifulsoup4==4.12.3
-lxml==5.3.0
-playwright==1.48.0
+# Image Processing (compression before sending to LLM APIs)
+Pillow>=10.3.0,<11.0.0
 
 # Utilities
 python-dotenv==1.0.1
