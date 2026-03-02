@@ -157,6 +157,7 @@ class Settings(BaseSettings):
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
+            ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
         }
         
         for keys, attr in mappings.items():
