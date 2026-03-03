@@ -40,6 +40,7 @@ class AgentEventType(str, Enum):
     ERROR = "error"  # Error occurred
     DONE = "done"  # Agent finished
     KEEPALIVE = "keepalive"  # Connection keepalive ping
+    FEEDBACK_REQUEST = "feedback_request"  # Ask client to show feedback UI
 
 
 @dataclass
@@ -133,6 +134,13 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.KEEPALIVE,
             data={},
+        ))
+
+    async def emit_feedback_request(self, session_id: str, turn_number: int) -> None:
+        """Emit an event asking the client to show the feedback UI."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.FEEDBACK_REQUEST,
+            data={"session_id": session_id, "turn_number": turn_number},
         ))
 
     # ── Consumer side ───────────────────────────────────────────

@@ -15,6 +15,7 @@ Thank you for your interest in contributing to the Nocode AI service. This guide
 - [Database Migrations](#database-migrations)
 - [Configuration](#configuration)
 - [Docker](#docker)
+- [Learning Loop](#learning-loop)
 - [Submitting Changes](#submitting-changes)
 
 ---
@@ -119,6 +120,15 @@ nocode-ai/
 │   │           ├── function_tools.py   # Function & schema CRUD
 │   │           ├── entity_tools.py     # Connection, workflow, template
 │   │           └── version_tools.py    # Version control tools
+│   ├── learning/                       # Learning loop framework
+│   │   ├── __init__.py
+│   │   ├── models.py                  # Pydantic models (Feedback, Score, Knowledge, Analytics)
+│   │   ├── feedback.py                # Explicit + implicit feedback collection
+│   │   ├── outcome.py                 # Session success scoring (0.0–1.0)
+│   │   ├── knowledge.py               # Knowledge extraction + retrieval (MySQL + ChromaDB)
+│   │   ├── prompt_enhancer.py         # Dynamic prompt injection from learned knowledge
+│   │   ├── analytics.py               # Aggregate metrics for dashboards
+│   │   └── router.py                  # Learning API endpoints (feedback, knowledge, scores, errors)
 │   ├── services/                       # Shared services
 │   │   ├── llm_provider.py            # Per-agent LLM provider (Anthropic/OpenAI)
 │   │   ├── eureka.py                  # Service discovery
@@ -391,6 +401,7 @@ return EventSourceResponse(event_generator())
 | `tool_start` | Tool execution starting |
 | `tool_result` | Tool result (success/failure) |
 | `error` | Error occurred |
+| `feedback_request` | Prompt user for feedback (thumbs up/down) — emitted after each turn |
 | `done` | Agent finished (includes session_id, token usage) |
 | `keepalive` | Connection ping |
 
@@ -418,7 +429,10 @@ migrations/
 ├── V4__Add_Session_Context.sql
 ├── V5__Add_Turn_Tool_Calls.sql
 ├── V6__Add_Processing_Status.sql
-└── V7__Unique_Session_Turn.sql
+├── V7__Unique_Session_Turn.sql
+├── V8__Learning_Feedback_And_Errors.sql
+├── V9__Learning_Scores.sql
+└── V10__Learning_Knowledge.sql
 ```
 
 ### Adding a Migration
@@ -431,9 +445,13 @@ migrations/
 
 | Table | Purpose |
 |-------|---------|
-| `ai_tracking_sessions` | Session metadata, token totals, status (ACTIVE/PROCESSING/COMPLETED/EXPIRED) |
+| `ai_tracking_sessions` | Session metadata, token totals, agent_name, status (ACTIVE/PROCESSING/COMPLETED/EXPIRED) |
 | `ai_token_usage` | Per-request token tracking |
 | `ai_session_history` | Turn-by-turn conversation log (with tool_calls_json, incremental upsert) |
+| `ai_learning_feedback` | User feedback records — ratings, corrections, denormalized turn data |
+| `ai_learning_tool_errors` | Aggregated tool error patterns with occurrence counts |
+| `ai_learning_session_scores` | Computed session scores — success, satisfaction, error rate, retries, undos |
+| `ai_learning_knowledge` | Extracted knowledge entries — patterns, pitfalls, examples, lessons |
 
 ---
 
@@ -485,6 +503,148 @@ docker run -p 5001:5001 \
 ### Production
 
 The Dockerfile uses Gunicorn with UvicornWorker (4 workers, 300s timeout). The production startup script is at `scripts/start-production.sh`.
+
+---
+
+## Learning Loop
+
+The learning loop framework (`app/learning/`) enables agents to improve over time by collecting feedback, scoring outcomes, extracting knowledge, and enhancing future prompts. It's **per-agent** — all data is scoped by `AGENT_NAME`, so each agent (appbuilder, databuilder, etc.) learns independently.
+
+### Architecture
+
+```
+User interacts with agent
+        │
+        ▼
+┌─ BaseAgent._run_loop ──────────────────────────────┐
+│  build_dynamic_context()                            │
+│    └─ PromptEnhancer injects relevant knowledge     │
+│       (pitfalls, examples, patterns — ≤2000 tokens) │
+│                                                     │
+│  Tool-use loop (existing)                           │
+│    └─ Tool fails → _on_tool_error() → track pattern │
+│                                                     │
+│  Loop ends → _on_loop_complete()                    │
+│    └─ async: OutcomeAnalyzer.score_session()         │
+│    └─ SSE: feedback_request event                    │
+└─────────────────────────────────────────────────────┘
+        │                          │
+        ▼                          ▼
+  ai_learning_feedback    ai_learning_session_scores
+  (user thumbs up/down)   (computed success_score)
+        │                          │
+        └──────────┬───────────────┘
+                   ▼
+         KnowledgeExtractor
+         (batch: mine high-scoring sessions)
+                   │
+                   ▼
+         ai_learning_knowledge + ChromaDB
+                   │
+                   ▼
+         PromptEnhancer (next session uses learned knowledge)
+```
+
+### Components
+
+| Module | File | Purpose |
+|--------|------|---------|
+| FeedbackCollector | `app/learning/feedback.py` | Collects explicit (thumbs up/down) and implicit (retry/undo/abandon) signals |
+| OutcomeAnalyzer | `app/learning/outcome.py` | Computes `success_score` (0.0–1.0) per session from tool results + feedback + implicit signals |
+| KnowledgeExtractor | `app/learning/knowledge.py` | Mines high-scoring sessions for reusable patterns; tracks tool error patterns |
+| PromptEnhancer | `app/learning/prompt_enhancer.py` | Injects relevant knowledge into dynamic context (≤2000 token budget) |
+| LearningAnalytics | `app/learning/analytics.py` | Aggregates metrics: success trends, error patterns, feedback rates |
+
+### Per-Agent Scoping
+
+All learning data is scoped by `agent_name`:
+
+- **Feedback**: The `agent_name` is resolved from the session's `AGENT_NAME` column in `ai_tracking_sessions` (not hardcoded)
+- **Scores**: `OutcomeAnalyzer` reads `AGENT_NAME` from the session record when persisting scores
+- **Knowledge**: Entries are stored per agent; `KnowledgeExtractor.get_relevant_knowledge()` filters by `agent_name`
+- **Prompt Enhancement**: `PromptEnhancer.build_enhancement()` retrieves knowledge only for the calling agent
+- **API Endpoints**: All GET endpoints accept `agent_name` as a query parameter (defaults to `"appbuilder"`)
+
+When adding a new agent, the learning loop works automatically because:
+1. `BaseAgent._on_tool_error()` passes `self.name` to the knowledge extractor
+2. `BaseAgent._on_loop_complete()` scores using the session's own `AGENT_NAME`
+3. Agent subclasses call `PromptEnhancer.build_enhancement(agent_name=self.name, ...)`
+
+### BaseAgent Hooks
+
+The learning loop integrates via two hooks on `BaseAgent` (not per-agent subclasses):
+
+```python
+# Called when a tool execution fails
+async def _on_tool_error(self, tool_name, tool_input, error):
+    # Records error pattern in ai_learning_tool_errors
+    # INSERT ON DUPLICATE KEY UPDATE (counts occurrences)
+
+# Called after the agent loop completes
+async def _on_loop_complete(self, session, tool_call_log):
+    # Launches async task: OutcomeAnalyzer.score_session()
+    # Non-blocking — doesn't delay the SSE response
+```
+
+### API Endpoints
+
+All under `/api/ai/learning/`:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/feedback` | Submit user feedback (agent_name resolved from session) |
+| `GET` | `/feedback` | List feedback history (filter by agent_name, rating) |
+| `GET` | `/analytics/summary` | Aggregate analytics (period: day/week/month) |
+| `GET` | `/knowledge` | List knowledge entries (filter by type/status) |
+| `GET` | `/knowledge/{id}` | Full knowledge entry detail |
+| `PATCH` | `/knowledge/{id}` | Update status (ACTIVE/DEPRECATED) or relevance_score |
+| `GET` | `/tool-errors` | List tool error patterns |
+| `PATCH` | `/tool-errors/{id}` | Resolve/ignore error pattern, add resolution note |
+| `GET` | `/session-scores` | List session scores (filter by min/max score) |
+| `GET` | `/session-scores/{session_id}` | Score detail + feedback for a session |
+
+### Scoring Formula (v1)
+
+```
+success_score =
+    0.30 * tool_success_rate       # did tools succeed?
+  + 0.25 * user_satisfaction_norm  # explicit ratings (normalized 0–1)
+  + 0.20 * (1 - retry_penalty)    # did user retry same request?
+  + 0.15 * (1 - undo_penalty)     # did user undo agent work?
+  + 0.10 * efficiency_score       # tokens per successful tool call
+```
+
+### Knowledge Extraction
+
+Run the batch extraction script to mine high-scoring sessions:
+
+```bash
+python scripts/extract_knowledge.py --min-score 0.7 --limit 50
+```
+
+Knowledge entries are stored in both MySQL (FULLTEXT search) and ChromaDB (semantic search). The `PromptEnhancer` retrieves relevant entries using ChromaDB first, falls back to MySQL FULLTEXT, and always includes the top pitfalls.
+
+### Admin Workflow
+
+```bash
+# See what the agent has learned
+GET /api/ai/learning/knowledge?agent_name=appbuilder&status=ACTIVE
+
+# See what it keeps getting wrong
+GET /api/ai/learning/tool-errors?agent_name=appbuilder
+
+# Discard a bad knowledge entry
+PATCH /api/ai/learning/knowledge/42?status=DEPRECATED
+
+# Mark an error as fixed
+PATCH /api/ai/learning/tool-errors/7?status=RESOLVED&resolution=Fixed+property+format
+
+# Find worst sessions to debug
+GET /api/ai/learning/session-scores?agent_name=appbuilder&max_score=0.3
+
+# Find best sessions to learn from
+GET /api/ai/learning/session-scores?agent_name=appbuilder&min_score=0.8
+```
 
 ---
 

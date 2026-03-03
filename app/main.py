@@ -200,6 +200,10 @@ app.include_router(query.router, prefix=f"{API_PREFIX}/query", tags=["Query"])
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
+# Learning loop router (feedback, analytics, knowledge)
+from app.learning.router import router as learning_router
+app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
+
 
 # Root health check (for direct container health checks)
 @app.get("/health")
