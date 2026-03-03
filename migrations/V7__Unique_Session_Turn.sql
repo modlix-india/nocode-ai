@@ -1,0 +1,4 @@
+-- Make (SESSION_ID, TURN_NUMBER) unique for upsert support
+ALTER TABLE ai_session_history
+    DROP INDEX IDX_TURN,
+    ADD UNIQUE INDEX UQ_SESSION_TURN (SESSION_ID, TURN_NUMBER);

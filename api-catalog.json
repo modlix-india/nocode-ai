@@ -1,0 +1,1746 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-02-28T12:00:00Z",
+
+  "crudPatterns": {
+    "mongo_crud": {
+      "description": "Standard CRUD for MongoDB entities (UI + Core services). Extends AbstractOverridableDataController.",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/",
+          "description": "Create new entity",
+          "body": "Entity JSON object",
+          "response": "Created entity with id"
+        },
+        {
+          "method": "GET",
+          "path": "/{id}",
+          "description": "Get entity by ID",
+          "response": "Entity JSON object"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "description": "List entities with pagination",
+          "params": {
+            "eager": "boolean — include related entities (default false)",
+            "clientOnly": "boolean — filter to current client only (default false)",
+            "page": "int (default 0)",
+            "size": "int (default 10)"
+          },
+          "response": "Page<ListResultObject> with content array"
+        },
+        {
+          "method": "PUT",
+          "path": "/{id}",
+          "description": "Full update — replaces entity",
+          "body": "Complete entity JSON",
+          "response": "Updated entity"
+        },
+        {
+          "method": "DELETE",
+          "path": "/{id}",
+          "description": "Delete entity by ID",
+          "response": "boolean"
+        }
+      ]
+    },
+    "jooq_crud": {
+      "description": "Standard CRUD for JOOQ/SQL entities (Security service). Extends AbstractJOOQUpdatableDataController.",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/",
+          "description": "Create new entity",
+          "body": "Entity DTO",
+          "response": "Created DTO with id"
+        },
+        {
+          "method": "GET",
+          "path": "/{id}",
+          "description": "Get entity by ID",
+          "response": "Entity DTO"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "description": "List with pagination and filter params",
+          "params": {
+            "page": "int (default 0)",
+            "size": "int (default 10)",
+            "sort": "field,direction (e.g. 'updatedAt,desc')"
+          },
+          "response": "Page<DTO> with content array"
+        },
+        {
+          "method": "POST",
+          "path": "/query",
+          "description": "Advanced filtering with condition object",
+          "body": "Query {condition, size, page, sort, fields}",
+          "response": "Page<DTO>"
+        },
+        {
+          "method": "PUT",
+          "path": "/{id}",
+          "description": "Full update",
+          "body": "Complete entity DTO",
+          "response": "Updated DTO"
+        },
+        {
+          "method": "PATCH",
+          "path": "/{id}",
+          "description": "Partial update — only provided fields changed",
+          "body": "Map<String, Object> of fields to update",
+          "response": "Updated DTO"
+        },
+        {
+          "method": "DELETE",
+          "path": "/{id}",
+          "description": "Delete entity",
+          "response": "int (rows affected)"
+        }
+      ]
+    }
+  },
+
+  "commonPatterns": {
+    "headers": {
+      "Authorization": "Bearer {token} — from header or cookie",
+      "X-Forwarded-Host": "Original host (set by gateway/proxy)",
+      "X-Forwarded-Port": "Original port (set by gateway/proxy)",
+      "clientCode": "{clientCode}",
+      "appCode": "{appCode}",
+      "Content-Type": "application/json"
+    },
+    "paginatedResponse": {
+      "content": "array of entities",
+      "totalElements": "int — total matching records",
+      "totalPages": "int — total pages",
+      "number": "int — current page (0-based)",
+      "size": "int — page size"
+    },
+    "queryObject": {
+      "condition": "AbstractCondition — nested filter conditions",
+      "page": "int (default 0)",
+      "size": "int (default 10)",
+      "sort": {"orders": [{"property": "fieldName", "direction": "ASC|DESC"}]},
+      "fields": "array of field names to include",
+      "excludeFields": "boolean — if true, fields list is exclusion list"
+    },
+    "conditionOperators": [
+      "EQUALS", "NOT_EQUALS", "LESS_THAN", "GREATER_THAN",
+      "LESS_THAN_EQUAL", "GREATER_THAN_EQUAL", "LIKE",
+      "IN", "NOT_IN", "IS_NULL", "IS_NOT_NULL", "BETWEEN",
+      "STRING_LOOSE_EQUAL"
+    ],
+    "simpleCondition": {"k": "fieldName", "v": "value", "o": "EQUALS"},
+    "compoundCondition": {
+      "operator": "AND|OR",
+      "conditions": ["array of simple or compound conditions"]
+    }
+  },
+
+  "services": {
+    "ui": {
+      "basePath": "/api/ui",
+      "description": "UI service — manages application UI metadata (pages, styles, themes, functions, schemas).",
+      "entities": {
+        "applications": {
+          "path": "/applications",
+          "pattern": "mongo_crud",
+          "description": "Application definitions — the root entity. Contains app name, code, type, default/shell/login pages, themes, styles, icon packs, font packs, manifest, and CSP settings.",
+          "schema": {
+            "name": "string — application display name",
+            "appCode": "string — unique app code",
+            "clientCode": "string — owning client code",
+            "appType": "string — APP or SITE",
+            "properties": {
+              "title": "string — browser tab title",
+              "defaultPage": "string — page name shown after login",
+              "shellPage": "string — layout wrapper page (optional)",
+              "loginPage": "string — login page name (optional)",
+              "forbiddenPage": "string — 403 page name (optional)",
+              "iconPacks": "array — icon library names (e.g. fa-solid, fa-brands)",
+              "fontPacks": "array — [{name, url}] for Google Fonts",
+              "links": "array — [{rel, href}] for favicon etc.",
+              "manifest": "object — PWA manifest {name, short_name, theme_color, display}",
+              "csp": "object — Content Security Policy directives",
+              "themes": "array — theme names to include",
+              "styles": "array — style names to include"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/{appCode}/mobileApps",
+              "params": {"clientCode": "string"},
+              "description": "List mobile apps for an application"
+            }
+          ]
+        },
+        "pages": {
+          "path": "/pages",
+          "pattern": "mongo_crud",
+          "description": "Page definitions — contains the component tree (flat componentDefinition map), event functions (KIRun), and store initialization.",
+          "schema": {
+            "name": "string — page name (unique within app)",
+            "appCode": "string",
+            "clientCode": "string",
+            "rootComponent": "string — key of root component in componentDefinition",
+            "componentDefinition": "object — FLAT map of componentKey → {key, type, name, properties, styleProperties, children, displayOrder}",
+            "eventFunctions": "object — map of functionName → KIRun function definition with steps",
+            "properties": {
+              "storeInitialization": "object — storePath → {value: initialValue}",
+              "classes": "string — raw CSS for page-level styles",
+              "translations": "object — i18n translations"
+            }
+          },
+          "customEndpoints": []
+        },
+        "styles": {
+          "path": "/styles",
+          "pattern": "mongo_crud",
+          "description": "CSS style definitions — contains raw CSS (styleString) applied globally to the application.",
+          "schema": {
+            "name": "string — style name",
+            "appCode": "string",
+            "clientCode": "string",
+            "styleString": "string — raw CSS (e.g. '* { transition: width 1s; }')"
+          },
+          "customEndpoints": []
+        },
+        "themes": {
+          "path": "/themes",
+          "pattern": "mongo_crud",
+          "description": "Theme variable definitions — CSS custom properties organized by responsive breakpoint.",
+          "schema": {
+            "name": "string — theme name",
+            "appCode": "string",
+            "clientCode": "string",
+            "variables": {
+              "ALL": "object — variables for all breakpoints {varName: value}",
+              "MOBILE_POTRAIT_SCREEN_ONLY": "object — mobile overrides",
+              "TABLET_POTRAIT_SCREEN_ONLY": "object — tablet overrides",
+              "DESKTOP_SCREEN_ONLY": "object — desktop overrides"
+            }
+          },
+          "customEndpoints": []
+        },
+        "functions": {
+          "path": "/functions",
+          "pattern": "mongo_crud",
+          "description": "UI KIRun function definitions — reusable logic with steps, parameters, and events. Namespaced (e.g. Namespace.functionName).",
+          "schema": {
+            "name": "string — full name (Namespace.functionName)",
+            "appCode": "string",
+            "clientCode": "string",
+            "definition": {
+              "name": "string — function name",
+              "namespace": "string — namespace",
+              "parameters": "object — paramName → {parameterName, schema: {type, version}}",
+              "events": "object — eventName → {name, parameters: {resultName: {type, version}}}",
+              "steps": "object — stepName → {statementName, name, namespace, parameterMap, dependentStatements, position}"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/repositoryFind",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean — include built-in KIRun functions",
+                "namespace": "string",
+                "name": "string"
+              },
+              "description": "Find a specific function by namespace + name",
+              "response": "Function definition or null"
+            },
+            {
+              "method": "GET",
+              "path": "/repositoryFilter",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "filter": "string — search pattern"
+              },
+              "description": "Search functions by name pattern",
+              "response": "Array of matching function definitions"
+            }
+          ]
+        },
+        "schemas": {
+          "path": "/schemas",
+          "pattern": "mongo_crud",
+          "description": "UI KIRun schema definitions — data type definitions used by functions.",
+          "schema": {
+            "name": "string — full name (Namespace.SchemaName)",
+            "appCode": "string",
+            "clientCode": "string",
+            "definition": {
+              "name": "string",
+              "namespace": "string",
+              "type": "array — e.g. ['OBJECT']",
+              "properties": "object — propName → {type: 'STRING|INTEGER|BOOLEAN|...'}",
+              "items": "object — for ARRAY type, schema of items"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/repositoryFind",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "namespace": "string",
+                "name": "string"
+              },
+              "description": "Find a specific schema by namespace + name"
+            },
+            {
+              "method": "GET",
+              "path": "/repositoryFilter",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "filter": "string — search pattern"
+              },
+              "description": "Search schemas by name pattern"
+            }
+          ]
+        },
+        "uripaths": {
+          "path": "/uripaths",
+          "pattern": "mongo_crud",
+          "description": "URI path definitions — expose core KIRun functions as REST API endpoints. NOT for page routing.",
+          "schema": {
+            "name": "string",
+            "appCode": "string",
+            "clientCode": "string",
+            "pathString": "string — URL pattern with path params (e.g. '/hello/{a}/{b}/C/B')",
+            "pathDefinitions": "object — HTTP method → {uriType: 'KIRUN_FUNCTION', kiRunFxDefinition: {name, namespace, pathParamMapping}}"
+          },
+          "customEndpoints": []
+        },
+        "personalization": {
+          "path": "/personalization",
+          "pattern": "custom",
+          "description": "Per-user personalization settings — stores user preferences for app/page layouts (e.g. column widths, sidebar state).",
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/{appName}/{name}",
+              "body": "Map<String, Object>",
+              "description": "Create or update personalization data"
+            },
+            {
+              "method": "GET",
+              "path": "/{appName}/{name}",
+              "description": "Get personalization data"
+            },
+            {
+              "method": "DELETE",
+              "path": "/{appName}/{name}",
+              "description": "Delete personalization data"
+            }
+          ]
+        }
+      }
+    },
+
+    "core": {
+      "basePath": "/api/core",
+      "description": "Core service — manages backend logic, data storage, connections, and server-side functions.",
+      "entities": {
+        "storages": {
+          "path": "/storages",
+          "pattern": "mongo_crud",
+          "description": "Storage definitions — define data collections with fields, relations, indexes, and unique constraints.",
+          "schema": {
+            "name": "string — storage name",
+            "appCode": "string",
+            "clientCode": "string",
+            "schema": "object — field definitions with types and validators",
+            "relations": "object — references to related storages",
+            "indexes": "array — index definitions",
+            "uniqueFields": "array — unique constraint field combinations"
+          },
+          "customEndpoints": []
+        },
+        "connections": {
+          "path": "/connections",
+          "pattern": "mongo_crud",
+          "description": "External connections — database, API, OAuth2, email, SMS provider configurations.",
+          "schema": {
+            "name": "string — connection name",
+            "appCode": "string",
+            "clientCode": "string",
+            "connectionType": "string — e.g. REST_API, OAUTH2, SMTP, DATABASE",
+            "connectionSubType": "string",
+            "properties": "object — connection-specific settings"
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/oauth/evoke",
+              "params": {"connectionName": "string"},
+              "description": "Initiate OAuth2 consent flow — returns redirect URL"
+            },
+            {
+              "method": "GET",
+              "path": "/oauth/callback",
+              "description": "OAuth2 callback handler (redirected by provider)"
+            },
+            {
+              "method": "GET",
+              "path": "/oauth/revoke",
+              "params": {"connectionName": "string"},
+              "description": "Revoke OAuth2 token"
+            }
+          ]
+        },
+        "functions": {
+          "path": "/functions",
+          "pattern": "mongo_crud",
+          "description": "Core KIRun function definitions — backend logic, data processing, server-side operations.",
+          "schema": {
+            "name": "string — full name (Namespace.functionName)",
+            "appCode": "string",
+            "clientCode": "string",
+            "definition": "object — same structure as UI functions: {name, namespace, parameters, events, steps}"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/repositoryFind",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "namespace": "string",
+                "name": "string"
+              },
+              "description": "Find function by namespace + name"
+            },
+            {
+              "method": "GET",
+              "path": "/repositoryFilter",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "filter": "string"
+              },
+              "description": "Search functions by pattern"
+            }
+          ]
+        },
+        "schemas": {
+          "path": "/schemas",
+          "pattern": "mongo_crud",
+          "description": "Core KIRun schema definitions — data type definitions for core functions.",
+          "schema": {
+            "name": "string — full name (Namespace.SchemaName)",
+            "appCode": "string",
+            "clientCode": "string",
+            "definition": "object — same structure as UI schemas: {name, namespace, type, properties}"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/repositoryFind",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "namespace": "string",
+                "name": "string"
+              },
+              "description": "Find schema by namespace + name"
+            },
+            {
+              "method": "GET",
+              "path": "/repositoryFilter",
+              "params": {
+                "appCode": "string",
+                "clientCode": "string",
+                "includeKIRunRepos": "boolean",
+                "filter": "string"
+              },
+              "description": "Search schemas by pattern"
+            }
+          ]
+        },
+        "templates": {
+          "path": "/templates",
+          "pattern": "mongo_crud",
+          "description": "Email/notification templates with variable substitution for automated communications.",
+          "schema": {
+            "name": "string — template name",
+            "appCode": "string",
+            "clientCode": "string",
+            "templateParts": "object — template sections with content and variables"
+          },
+          "customEndpoints": []
+        },
+        "workflows": {
+          "path": "/workflows",
+          "pattern": "mongo_crud",
+          "description": "Workflow definitions — multi-step automated processes triggered by events.",
+          "schema": {
+            "name": "string — workflow name",
+            "appCode": "string",
+            "clientCode": "string",
+            "definition": "object — workflow steps and conditions"
+          },
+          "customEndpoints": []
+        },
+        "eventDefinitions": {
+          "path": "/eventDefinitions",
+          "pattern": "mongo_crud",
+          "description": "Event type definitions — define custom event types that can be triggered in the application.",
+          "schema": {
+            "name": "string — event name",
+            "appCode": "string",
+            "clientCode": "string",
+            "definition": "object — event payload schema"
+          },
+          "customEndpoints": []
+        },
+        "eventActions": {
+          "path": "/eventActions",
+          "pattern": "mongo_crud",
+          "description": "Event action handlers — define what happens when events are triggered (e.g. send email, call function).",
+          "schema": {
+            "name": "string",
+            "appCode": "string",
+            "clientCode": "string",
+            "eventName": "string — event to listen for",
+            "action": "object — action configuration"
+          },
+          "customEndpoints": []
+        },
+        "data": {
+          "path": "/data",
+          "pattern": "custom",
+          "description": "App data CRUD — read/write records in storage collections. This is the actual application data, not metadata.",
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/{storage}",
+              "body": "DataObject — the record to create",
+              "description": "Create a new record in a storage collection"
+            },
+            {
+              "method": "GET",
+              "path": "/{storage}/{id}",
+              "description": "Read a record by ID"
+            },
+            {
+              "method": "GET",
+              "path": "/{storage}",
+              "params": {
+                "page": "int (default 0)",
+                "size": "int (default 10)",
+                "count": "boolean — include total count",
+                "eager": "boolean — include related records",
+                "eagerFields": "string — specific fields to eager load"
+              },
+              "description": "List records with pagination and filtering"
+            },
+            {
+              "method": "POST",
+              "path": "/{storage}/query",
+              "body": "Query object with conditions",
+              "description": "Advanced query with filtering"
+            },
+            {
+              "method": "PUT",
+              "path": "/{storage}/{id}",
+              "body": "DataObject — full record replacement",
+              "description": "Full update of a record"
+            },
+            {
+              "method": "PATCH",
+              "path": "/{storage}/{id}",
+              "body": "Partial DataObject — only fields to update",
+              "description": "Partial update of a record"
+            },
+            {
+              "method": "DELETE",
+              "path": "/{storage}/{id}",
+              "description": "Delete a record"
+            },
+            {
+              "method": "GET",
+              "path": "/download/{fileType}/{storage}",
+              "params": {"fileType": "CSV|EXCEL|JSON"},
+              "description": "Download data as CSV, Excel, or JSON"
+            },
+            {
+              "method": "POST",
+              "path": "/upload/{storage}",
+              "params": {"type": "CSV|EXCEL|JSON"},
+              "body": "Multipart file",
+              "description": "Upload data from file"
+            },
+            {
+              "method": "GET",
+              "path": "/template/{storage}",
+              "params": {"type": "CSV|EXCEL|JSON"},
+              "description": "Download import template for a storage"
+            }
+          ]
+        },
+        "functionExecution": {
+          "path": "/function",
+          "pattern": "custom",
+          "description": "Execute KIRun functions by namespace/name. Used for running backend logic.",
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/execute/{namespace}/{name}",
+              "description": "Execute function without input arguments",
+              "response": "Array of EventResult [{name, data, status}]"
+            },
+            {
+              "method": "POST",
+              "path": "/execute/{namespace}/{name}",
+              "body": "JSON object — function arguments mapped to parameter names",
+              "description": "Execute function with input arguments",
+              "response": "Array of EventResult [{name, data, status}]"
+            }
+          ]
+        }
+      }
+    },
+
+    "security": {
+      "basePath": "/api/security",
+      "description": "Security service — manages authentication, authorization, multi-tenant client hierarchy, user management, role-based access control, subscription plans, billing, and application access. Uses JOOQ/MySQL with a 4-level hierarchy: SYSTEM → CLIENT → CUSTOMER → CONSUMER. All IDs are ULong (unsigned 64-bit). All DTOs inherit id, createdAt, createdBy, updatedAt, updatedBy from AbstractUpdatableDTO.",
+      "entities": {
+        "applications": {
+          "path": "/applications",
+          "pattern": "jooq_crud",
+          "description": "Application records in security DB. Each app belongs to one client and has an access control mode: OWN (only owning client), ANY (all clients in hierarchy), or EXPLICIT (only clients with granted access via security_app_access). Apps can have properties, dependencies on other apps, and are the root entity for roles, profiles, and permissions. Deleting via /everything removes all related UI data (pages, styles, themes, functions).",
+          "schema": {
+            "clientId": "ULong — owning client ID",
+            "appName": "string — display name",
+            "appCode": "string — unique application code",
+            "appType": "SecurityAppAppType enum — APP, SITE, or POSTER",
+            "appAccessType": "SecurityAppAppAccessType enum — OWN (default), ANY, or EXPLICIT. Controls which clients can use this app",
+            "thumbUrl": "string — thumbnail/icon URL",
+            "appUsageType": "SecurityAppAppUsageType enum — S, B, B2C, B2B, B2X, B2B2B, B2B2C, B2B2X, B2X2C, B2X2X. Describes target audience",
+            "status": "SecurityAppStatus enum — ACTIVE or ARCHIVED"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/appCode/{appCode}",
+              "description": "Get application by code (with multi-tenant access check — verifies caller's client has access)"
+            },
+            {
+              "method": "POST",
+              "path": "/{id}/access",
+              "body": "{clientId: ULong, editAccess: boolean}",
+              "description": "Grant client access to an EXPLICIT-mode application. editAccess=true allows write access"
+            },
+            {
+              "method": "PATCH",
+              "path": "/{id}/access",
+              "body": "{clientId: ULong, editAccess: boolean}",
+              "description": "Update client's access level (read-only vs edit) for an application"
+            },
+            {
+              "method": "DELETE",
+              "path": "/{id}/access",
+              "params": {"accessId": "ULong"},
+              "description": "Remove client access from an EXPLICIT-mode application"
+            },
+            {
+              "method": "GET",
+              "path": "/clients/{appCode}",
+              "params": {
+                "onlyWriteAccess": "boolean — filter to clients with edit access only",
+                "name": "string — filter by client name",
+                "page": "int",
+                "size": "int"
+              },
+              "description": "List clients with access to an application (paginated). Returns clients based on app's access mode"
+            },
+            {
+              "method": "GET",
+              "path": "/property",
+              "params": {
+                "appCode": "string",
+                "propName": "string"
+              },
+              "description": "Get application property by name (e.g. custom settings, feature flags)"
+            },
+            {
+              "method": "POST",
+              "path": "/property",
+              "body": "{appId: ULong, name: string, value: string}",
+              "description": "Create or update an application property"
+            },
+            {
+              "method": "DELETE",
+              "path": "/property/{propertyId}",
+              "description": "Delete an application property"
+            },
+            {
+              "method": "GET",
+              "path": "/dependencies",
+              "params": {"appCode": "string"},
+              "description": "Get application dependencies (other apps this app depends on for shared functions/schemas)"
+            },
+            {
+              "method": "POST",
+              "path": "/dependency",
+              "body": "{appCode: string, dependencyCode: string}",
+              "description": "Add an application dependency"
+            },
+            {
+              "method": "DELETE",
+              "path": "/dependency",
+              "params": {"appCode": "string", "dependencyCode": "string"},
+              "description": "Remove an application dependency"
+            },
+            {
+              "method": "DELETE",
+              "path": "/everything/{id}",
+              "params": {"forceDelete": "boolean"},
+              "description": "Delete application and ALL related data across services: pages, styles, themes, functions, schemas, roles, profiles, permissions, app access entries"
+            }
+          ]
+        },
+        "authentication": {
+          "path": "",
+          "pattern": "custom",
+          "description": "Authentication and token management. Supports multiple auth methods: password, PIN, OTP, and social login (Google, Meta, Apple, Microsoft, X). The flow: credentials → validate against policy (password/OTP/PIN policy) → check failed attempts → generate JWT token. The token contains user authorities derived from: User → assigned Profiles (per app) → Roles in each Profile → Permissions in each Role. Token format is 'Authorities.APPCODE.PermissionName' for app-scoped permissions.",
+          "schema": {
+            "AuthenticationRequest": {
+              "userName": "string — username, email, or phone number depending on identifierType",
+              "password": "string — password for PASSWORD auth",
+              "pin": "string — PIN for PIN auth",
+              "otp": "string — OTP code for OTP auth",
+              "userId": "ULong — optional, for direct user auth",
+              "identifierType": "AuthenticationIdentifierType enum — USER_NAME, PHONE_NUMBER, or EMAIL_ID (default: USER_NAME)",
+              "isResend": "boolean — true to resend OTP (default: false)",
+              "rememberMe": "boolean — extend token validity (default: false)",
+              "cookie": "boolean — return token as HTTP cookie (default: false)",
+              "generateOtp": "boolean — generate OTP instead of authenticating (default: false)",
+              "ssoToken": "boolean — include SSO token in response (default: false)",
+              "socialRegisterState": "string — state token from social OAuth flow"
+            },
+            "AuthenticationResponse": {
+              "accessToken": "string — JWT bearer token",
+              "accessTokenExpiryAt": "LocalDateTime — token expiration timestamp",
+              "user": "ContextUser — authenticated user details",
+              "client": "Client — user's client",
+              "verifiedAppCode": "string — the app code verified during auth",
+              "loggedInClientCode": "string — client code of the logged-in client",
+              "loggedInClientId": "BigInteger — client ID of the logged-in client",
+              "managedClientCode": "string — client code being managed (if acting as manager)",
+              "managedClientId": "BigInteger — managed client ID",
+              "ssoToken": "string — SSO token for cross-app authentication (if requested)"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/authenticate",
+              "body": "AuthenticationRequest — see schema above",
+              "description": "Primary login endpoint. Accepts password, PIN, or OTP based on what's provided. Validates against client's auth policies, tracks failed attempts, and locks account if threshold exceeded",
+              "response": "AuthenticationResponse with accessToken, user, client details"
+            },
+            {
+              "method": "POST",
+              "path": "/authenticate/social",
+              "body": "{socialRegisterState: string, clientCode: string, appCode: string}",
+              "description": "Social login callback — completes OAuth flow with Google, Meta, Apple, Microsoft, or X. Uses the socialRegisterState from the OAuth redirect"
+            },
+            {
+              "method": "GET",
+              "path": "/revoke",
+              "params": {"ssoLogout": "boolean — also invalidate SSO token (default: false)"},
+              "description": "Logout — invalidate current access token. Optionally revokes SSO token for cross-app logout"
+            },
+            {
+              "method": "GET",
+              "path": "/refreshToken",
+              "description": "Refresh the access token using the current valid token. Returns new token with updated expiry",
+              "response": "AuthenticationResponse with new accessToken"
+            },
+            {
+              "method": "GET",
+              "path": "/verifyToken",
+              "description": "Verify current token is still valid and return current session info",
+              "response": "AuthenticationResponse with current session details"
+            },
+            {
+              "method": "POST",
+              "path": "/authenticate/otp/generate",
+              "body": "AuthenticationRequest with generateOtp=true",
+              "description": "Generate and send OTP for authentication. OTP is sent via email or SMS based on identifierType and OTP policy"
+            },
+            {
+              "method": "POST",
+              "path": "/makeOneTimeToken",
+              "body": "{userId: ULong, purposeType: string, expiresInMinutes: int}",
+              "description": "Create a single-use authentication token. Used for magic links, email verification, password reset flows"
+            }
+          ]
+        },
+        "users": {
+          "path": "/users",
+          "pattern": "jooq_crud",
+          "description": "User accounts within the multi-tenant system. Each user belongs to exactly one client. Users are assigned Profiles (per app) which contain Roles which contain Permissions. Permissions become 'authorities' in the JWT token. Users can have status: ACTIVE, INACTIVE, DELETED, LOCKED (auto-locked after failed auth attempts), or PASSWORD_EXPIRED. The invite flow: send invite → user receives email with code → user accepts invite with registration details → account created with pre-assigned profiles/roles.",
+          "schema": {
+            "clientId": "ULong — owning client ID",
+            "clientCode": "string — client code (read-only, derived)",
+            "userName": "string — unique login username",
+            "emailId": "string — email address (unique within client)",
+            "phoneNumber": "string — phone number (unique within client)",
+            "firstName": "string",
+            "lastName": "string",
+            "middleName": "string",
+            "localeCode": "string — locale preference (e.g. 'en-US')",
+            "password": "string — hashed password (write-only, never returned in API responses)",
+            "passwordHashed": "boolean — whether password is already hashed",
+            "pin": "string — hashed PIN (write-only)",
+            "pinHashed": "boolean — whether PIN is already hashed",
+            "accountNonExpired": "boolean — false if account has expired",
+            "accountNonLocked": "boolean — false if locked due to failed attempts",
+            "credentialsNonExpired": "boolean — false if password has expired per policy",
+            "noFailedAttempt": "short — count of consecutive failed password attempts",
+            "noPinFailedAttempt": "short — count of consecutive failed PIN attempts",
+            "noOtpResendAttempts": "short — count of OTP resend attempts in current session",
+            "noOtpFailedAttempt": "short — count of consecutive failed OTP attempts",
+            "statusCode": "SecurityUserStatusCode enum — ACTIVE, INACTIVE, DELETED, LOCKED, PASSWORD_EXPIRED",
+            "lockedUntil": "LocalDateTime — when auto-lock expires (null = indefinite lock)",
+            "lockedDueTo": "string — reason for lock (e.g. 'FAILED_PASSWORD_ATTEMPTS')",
+            "designationId": "ULong — reference to designation",
+            "reportingTo": "ULong — reporting manager user ID",
+            "authorities": "List<string> — computed list of permission strings (read-only)",
+            "profiles": "List<Profile> — assigned profiles (read-only, eager-loaded)",
+            "client": "Client — owning client (read-only, eager-loaded)",
+            "designation": "Designation — designation details (read-only, eager-loaded)"
+          },
+          "requestSchemas": {
+            "UserInvite": {
+              "clientId": "ULong — target client",
+              "emailId": "string — invitee's email (required)",
+              "firstName": "string",
+              "lastName": "string",
+              "phoneNumber": "string",
+              "userName": "string — suggested username",
+              "inviteCode": "string — generated invite code (read-only)",
+              "profileId": "ULong — profile to pre-assign on acceptance",
+              "designationId": "ULong — designation to assign",
+              "reportingTo": "ULong — reporting manager user ID"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/{userId}/assignProfile/{profileId}",
+              "description": "Assign a profile to a user. Profile must belong to an app the user has access to. User inherits all roles/permissions from the profile"
+            },
+            {
+              "method": "GET",
+              "path": "/{userId}/removeProfile/{profileId}",
+              "description": "Remove a profile assignment from a user. Revokes all permissions that came exclusively from that profile"
+            },
+            {
+              "method": "GET",
+              "path": "/{userId}/app/{appId}/assignedProfiles",
+              "description": "Get all profiles assigned to a user for a specific app",
+              "response": "List<Profile>"
+            },
+            {
+              "method": "GET",
+              "path": "/{userId}/assignRole/{roleId}",
+              "description": "Assign a role directly to a user (bypassing profiles). Use sparingly — profiles are the preferred assignment mechanism"
+            },
+            {
+              "method": "GET",
+              "path": "/{userId}/removeRole/{roleId}",
+              "description": "Remove a direct role assignment from a user"
+            },
+            {
+              "method": "PATCH",
+              "path": "/makeUserActive",
+              "params": {"userId": "ULong"},
+              "description": "Activate a user account (set status to ACTIVE)"
+            },
+            {
+              "method": "PATCH",
+              "path": "/makeUserInActive",
+              "params": {"userId": "ULong"},
+              "description": "Deactivate a user account (set status to INACTIVE). User can no longer log in"
+            },
+            {
+              "method": "POST",
+              "path": "/unblockUser",
+              "params": {"userId": "ULong"},
+              "description": "Unblock a user locked due to failed authentication attempts. Resets failed attempt counters and sets accountNonLocked=true"
+            },
+            {
+              "method": "POST",
+              "path": "/{userId}/updatePassword",
+              "body": "{oldPassword: string, newPassword: string}",
+              "description": "Update user's password. Validates old password, checks new password against password policy (complexity, history), hashes and stores"
+            },
+            {
+              "method": "POST",
+              "path": "/invite",
+              "body": "UserInvite — see requestSchemas",
+              "description": "Send invitation email to a new user with pre-assigned profile and designation",
+              "response": "UserInvite with generated inviteCode"
+            },
+            {
+              "method": "GET",
+              "path": "/inviteDetails/{code}",
+              "description": "Get invitation details by invite code — used on the acceptance page to pre-fill form"
+            },
+            {
+              "method": "POST",
+              "path": "/acceptInvite",
+              "body": "{inviteCode: string, userName: string, password: string, firstName: string, lastName: string, phoneNumber: string}",
+              "description": "Accept an invitation — creates user account with pre-assigned profile/roles from the invite"
+            },
+            {
+              "method": "DELETE",
+              "path": "/invite/{code}",
+              "description": "Cancel/delete a pending invitation"
+            },
+            {
+              "method": "GET",
+              "path": "/invites",
+              "params": {"page": "int", "size": "int"},
+              "description": "List all pending invitations for the current client (paginated)"
+            },
+            {
+              "method": "GET",
+              "path": "/exists",
+              "params": {
+                "username": "string",
+                "email": "string",
+                "phoneNumber": "string"
+              },
+              "description": "Check if a user exists by any identifier. Returns boolean. Used for real-time validation in registration/invite forms"
+            },
+            {
+              "method": "POST",
+              "path": "/findUserClients",
+              "params": {"appLevel": "boolean — if true, filter by app access too"},
+              "body": "AuthenticationRequest with userName",
+              "description": "Find all clients accessible by a user. Used when user belongs to multiple clients — shows client picker on login"
+            },
+            {
+              "method": "PUT",
+              "path": "/{userId}/reportingManager/{managerId}",
+              "description": "Set the reporting manager for a user (for org hierarchy)"
+            },
+            {
+              "method": "PUT",
+              "path": "/{userId}/designation/{designationId}",
+              "description": "Update user's designation/title"
+            }
+          ]
+        },
+        "rolev2": {
+          "path": "/rolev2",
+          "pattern": "jooq_crud",
+          "description": "Role definitions — named groups of permissions within an application. Roles form a hierarchy: a parent role can have sub-roles. Each role contains permissions (authorities) that grant access to specific API operations. Roles are assigned to users either directly or via Profiles (preferred). The authority string format is the permission name, which becomes 'Authorities.APPCODE.PermissionName' in the JWT token for app-scoped access.",
+          "schema": {
+            "clientId": "ULong — owning client ID",
+            "appId": "ULong — application this role belongs to",
+            "appName": "string — app name (read-only, derived)",
+            "name": "string — role display name",
+            "shortName": "string — abbreviated name",
+            "description": "string — role description",
+            "authority": "string — the authority string for this role",
+            "parentRoleId": "ULong — parent role for hierarchy (null = top-level)",
+            "subRoles": "List<RoleV2> — child roles (read-only, eager-loaded)",
+            "app": "App — application details (read-only, eager-loaded)",
+            "permissions": "List<Permission> — permissions in this role (write-only in JSON)"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/assignable/{appCode}",
+              "description": "Get all roles assignable within an app — combines RoleV2 records and roles from Profile assignments. Used to populate role picker dropdowns"
+            }
+          ]
+        },
+        "profiles": {
+          "path": "/app",
+          "pattern": "custom",
+          "description": "Profiles — collections of roles that simplify permission assignment. Instead of assigning individual roles to users, assign a Profile that bundles multiple roles. Profiles are scoped to an application. A profile can be the 'defaultProfile' assigned automatically to new users. Profiles can be restricted to specific clients within the hierarchy. The 'arrangement' field stores UI layout preferences for the profile (e.g. sidebar structure).",
+          "schema": {
+            "appId": "ULong — application this profile belongs to",
+            "clientId": "ULong — owning client ID",
+            "name": "string — profile name",
+            "title": "string — display title",
+            "description": "string — profile description",
+            "defaultProfile": "boolean — if true, auto-assigned to new users in this app",
+            "rootProfileId": "ULong — ID of the root/parent profile (for profile inheritance)",
+            "arrangement": "Map<String, Object> — UI layout configuration (sidebar, menu structure)"
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/profiles",
+              "body": "{name: string, title: string, description: string, appId: ULong, roleIds: [ULong]}",
+              "description": "Create a new profile with selected roles"
+            },
+            {
+              "method": "PUT",
+              "path": "/profiles",
+              "body": "{id: ULong, name: string, title: string, description: string, appId: ULong, roleIds: [ULong]}",
+              "description": "Update a profile — can change roles, name, description"
+            },
+            {
+              "method": "GET",
+              "path": "/profiles/{id}",
+              "description": "Get profile by ID with role details"
+            },
+            {
+              "method": "DELETE",
+              "path": "/profiles/{id}",
+              "description": "Delete a profile — removes profile assignments from all users"
+            },
+            {
+              "method": "GET",
+              "path": "/{appId}/profiles",
+              "params": {"page": "int", "size": "int"},
+              "description": "List profiles for an application (paginated)"
+            },
+            {
+              "method": "POST",
+              "path": "/profiles/{id}/restrictClient/{clientId}",
+              "description": "Restrict profile visibility to a specific client — only users of that client can be assigned this profile"
+            }
+          ]
+        },
+        "clients": {
+          "path": "/clients",
+          "pattern": "jooq_crud",
+          "description": "Client/tenant records in the multi-tenant hierarchy. Clients form a 4-level tree: SYSTEM (root) → CLIENT → CUSTOMER → CONSUMER. Each level inherits policies (password, OTP, PIN) from its parent unless overridden. Clients have a managerId (managing user), businessType/businessSize/industry for B2B categorization, and tokenValidityMinutes for JWT lifetime. Registration creates a new client + admin user + default plan assignment. The 'code' field is CHAR(8) max.",
+          "schema": {
+            "code": "string — unique client code (max 8 chars, uppercase)",
+            "name": "string — client display name",
+            "typeCode": "string — client type classification",
+            "tokenValidityMinutes": "int — JWT token validity in minutes for this client's users",
+            "localeCode": "string — default locale (e.g. 'en-US')",
+            "statusCode": "SecurityClientStatusCode enum — ACTIVE, INACTIVE, DELETED, LOCKED",
+            "businessType": "string — business type for B2B categorization",
+            "businessSize": "string — business size (e.g. 'SMALL', 'MEDIUM', 'LARGE')",
+            "industry": "string — industry vertical",
+            "levelType": "SecurityClientLevelType enum — SYSTEM, CLIENT, CUSTOMER, CONSUMER. Determines position in hierarchy",
+            "managerId": "ULong — the user who manages this client (for client manager features)",
+            "activeUsers": "int — count of active users (read-only, computed)",
+            "inactiveUsers": "int — count of inactive users (read-only)",
+            "deletedUsers": "int — count of deleted users (read-only)",
+            "lockedUsers": "int — count of locked users (read-only)",
+            "passwordExpiredUsers": "int — count of password-expired users (read-only)",
+            "owners": "List<User> — client owner users (read-only, eager-loaded)",
+            "managagingClient": "Client — parent client in hierarchy (read-only)",
+            "apps": "List<App> — applications owned by this client (read-only)",
+            "clientManagers": "List<User> — users assigned as managers (read-only)"
+          },
+          "requestSchemas": {
+            "ClientRegistrationRequest": {
+              "clientName": "string — new client name",
+              "localeCode": "string — locale preference",
+              "userId": "ULong — existing user ID (if linking to existing user)",
+              "userName": "string — admin username",
+              "emailId": "string — admin email (required)",
+              "phoneNumber": "string — admin phone",
+              "firstName": "string — admin first name",
+              "lastName": "string — admin last name",
+              "middleName": "string — admin middle name",
+              "passType": "AuthenticationPasswordType enum — PASSWORD, PIN, or OTP",
+              "password": "string — admin password",
+              "pin": "string — admin PIN (if passType=PIN)",
+              "otp": "string — OTP code (if passType=OTP, must be pre-verified)",
+              "businessClient": "boolean — true for B2B client",
+              "businessType": "string — business type",
+              "businessSize": "string — business size",
+              "industry": "string — industry",
+              "subDomain": "string — requested subdomain",
+              "subDomainSuffix": "string — domain suffix",
+              "socialRegisterState": "string — state from social OAuth (for social-based registration)",
+              "planId": "ULong — subscription plan to assign",
+              "cycleId": "ULong — billing cycle of the plan",
+              "managerId": "ULong — user to set as client manager"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/makeClientActive",
+              "params": {"clientId": "ULong"},
+              "description": "Activate a client — sets status to ACTIVE, enables login for all its users"
+            },
+            {
+              "method": "GET",
+              "path": "/makeClientInActive",
+              "params": {"clientId": "ULong"},
+              "description": "Deactivate a client — sets status to INACTIVE, prevents login for all its users"
+            },
+            {
+              "method": "POST",
+              "path": "/register",
+              "body": "ClientRegistrationRequest — see requestSchemas",
+              "description": "Register a new client with admin user. Creates: client record, admin user, client hierarchy entry, assigns default plan. Supports password/PIN/OTP and social registration"
+            },
+            {
+              "method": "POST",
+              "path": "/appRegister",
+              "params": {"appCode": "string", "clientId": "ULong", "userId": "ULong"},
+              "description": "Register an existing application for a client — creates app access and assigns default profiles/roles per app registration type config"
+            }
+          ]
+        },
+        "designations": {
+          "path": "/designations",
+          "pattern": "jooq_crud",
+          "description": "User designations/titles within an organization. Designations form a hierarchy (parentDesignationId) and can define career progression (nextDesignationId). Each designation is scoped to a client and optionally linked to a department and a default profile (auto-assigned when user gets this designation).",
+          "schema": {
+            "clientId": "ULong — owning client ID",
+            "name": "string — designation name (e.g. 'Software Engineer', 'Team Lead')",
+            "description": "string — designation description",
+            "parentDesignationId": "ULong — parent designation in hierarchy (null = top-level)",
+            "departmentId": "ULong — associated department",
+            "nextDesignationId": "ULong — next designation in career progression",
+            "profileId": "ULong — default profile to assign when user gets this designation",
+            "parentDesignation": "Designation — parent details (read-only, eager-loaded)",
+            "nextDesignation": "Designation — next designation details (read-only)",
+            "department": "Department — department details (read-only)"
+          },
+          "customEndpoints": []
+        },
+        "departments": {
+          "path": "/departments",
+          "pattern": "jooq_crud",
+          "description": "Organizational departments for grouping users and designations. Departments form a hierarchy (parentDepartmentId). Each department is scoped to a client.",
+          "schema": {
+            "clientId": "ULong — owning client ID",
+            "name": "string — department name (e.g. 'Engineering', 'Sales')",
+            "description": "string — department description",
+            "parentDepartmentId": "ULong — parent department in hierarchy (null = top-level)",
+            "parentDepartment": "Department — parent details (read-only, eager-loaded)"
+          },
+          "customEndpoints": []
+        },
+        "clientManagers": {
+          "path": "/client-managers",
+          "pattern": "custom",
+          "description": "Client manager relationships — assigns users as managers of client tenants. Separate from the client hierarchy: a manager doesn't own the client but has delegated administrative access. Managers can view/manage the client's users, settings, and data. Used for sales teams managing customer accounts. Transfer endpoint allows reassigning clients between managers.",
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/{uid}",
+              "description": "Get clients managed by a specific user (paginated)",
+              "params": {"page": "int", "size": "int"},
+              "response": "Page<Client> — paginated list of managed clients"
+            },
+            {
+              "method": "POST",
+              "path": "/{uid}/{clientId}",
+              "description": "Create manager relationship — assign user {uid} as manager of client {clientId}. User must belong to a parent client in the hierarchy"
+            },
+            {
+              "method": "POST",
+              "path": "/{clientId}",
+              "params": {"oldManagerId": "ULong", "newManagerId": "ULong"},
+              "description": "Transfer client management — reassign client from old manager to new manager"
+            },
+            {
+              "method": "DELETE",
+              "path": "/{uid}/{clientId}",
+              "description": "Remove manager relationship — user {uid} is no longer manager of client {clientId}"
+            }
+          ]
+        },
+        "otp": {
+          "path": "/otp",
+          "pattern": "custom",
+          "description": "OTP (One-Time Password) generation and verification. Used for: login authentication, client registration verification, password reset, and email/phone verification flows. OTP behavior is governed by the client's OTP policy (length, numeric/alphanumeric, expiry interval, max failed attempts, resend limits). OTP is sent via email or SMS based on the target type.",
+          "schema": {
+            "OtpGenerationRequest": {
+              "emailId": "string — recipient email (for EMAIL target type)",
+              "phoneNumber": "string — recipient phone (for PHONE target type)",
+              "purpose": "string — OTP purpose (e.g. 'LOGIN', 'REGISTRATION', 'PASSWORD_RESET')",
+              "appCode": "string — application code",
+              "clientCode": "string — client code"
+            },
+            "OtpVerificationRequest": {
+              "emailId": "string — email used for OTP generation",
+              "phoneNumber": "string — phone used for OTP generation",
+              "otp": "string — the OTP code to verify",
+              "purpose": "string — must match the purpose used during generation"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/generate",
+              "body": "OtpGenerationRequest — see schema",
+              "description": "Generate and send OTP to user via email or SMS. Respects client OTP policy for length, format, and expiry"
+            },
+            {
+              "method": "POST",
+              "path": "/verify",
+              "body": "OtpVerificationRequest — see schema",
+              "description": "Verify an OTP code. Tracks failed attempts and locks account if threshold exceeded per OTP policy"
+            }
+          ]
+        },
+        "clientUrls": {
+          "path": "/clienturls",
+          "pattern": "jooq_crud",
+          "description": "Client URL mappings — maps custom domain URLs to client+app combinations for multi-tenant routing. When a user visits a custom domain, the gateway resolves it to a specific client and app. Used for white-labeling: each client can have their own domain pointing to the same app. URLs are also linked to SSL certificates for HTTPS.",
+          "schema": {
+            "clientId": "ULong — client this URL belongs to",
+            "urlPattern": "string — the URL/domain pattern (e.g. 'app.customerdomain.com')",
+            "appCode": "string — application code this URL routes to"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/fetchUrls",
+              "params": {"appCode": "string (required)", "suffix": "string (optional — filter by domain suffix)"},
+              "description": "Get all URLs configured for an application",
+              "response": "List<String> — URL patterns"
+            },
+            {
+              "method": "GET",
+              "path": "/urls",
+              "params": {"appCode": "string (required)", "clientCode": "string (required)"},
+              "description": "Get URLs for a specific client+app combination",
+              "response": "List<ClientUrl> — full URL records"
+            }
+          ]
+        },
+        "plans": {
+          "path": "/plans",
+          "pattern": "jooq_crud",
+          "description": "Subscription plans for client billing. Plans define feature limits (users, apps, storage, etc.) and pricing via billing cycles. A plan has: cycles (billing periods with cost/tax), limits (resource caps), and can be marked for registration (shown during client signup). Plans support prepaid/postpaid models, can have a fallback plan (downgrade target), and can be scoped to a specific app or be multi-app. Each client is assigned one or more plans via the clientPlan relationship.",
+          "schema": {
+            "clientId": "ULong — owning client (who created the plan)",
+            "name": "string — plan display name",
+            "description": "string — plan description",
+            "features": "string — feature description text (marketing copy)",
+            "status": "SecurityPlanStatus enum — ACTIVE, INACTIVE, DELETED",
+            "planCode": "string — unique plan code",
+            "fallBackPlanId": "ULong — plan to downgrade to when this plan expires",
+            "forRegistration": "boolean — if true, shown in client registration plan picker",
+            "orderNumber": "int — display order in plan listings",
+            "defaultPlan": "boolean — if true, auto-assigned to new clients",
+            "forClientId": "ULong — if set, plan is restricted to this specific client",
+            "prepaid": "boolean — true=prepaid (pay before use), false=postpaid",
+            "appId": "ULong — if set, plan is scoped to this specific app (null = multi-app plan)",
+            "app": "App — application details (read-only, eager-loaded)",
+            "cycles": "List<PlanCycle> — billing cycles with pricing (read-only, eager-loaded)",
+            "limits": "List<PlanLimit> — resource limits (read-only, eager-loaded)"
+          },
+          "relatedSchemas": {
+            "PlanCycle": {
+              "planId": "ULong — parent plan",
+              "name": "string — cycle name (e.g. 'Monthly', 'Annual')",
+              "description": "string — cycle description",
+              "cost": "BigDecimal — base cost for this cycle",
+              "currency": "string — currency code (e.g. 'USD', 'INR')",
+              "tax1": "BigDecimal — tax amount 1",
+              "tax1Name": "string — tax name 1 (e.g. 'GST')",
+              "tax2": "BigDecimal — tax amount 2",
+              "tax2Name": "string — tax name 2",
+              "tax3": "BigDecimal — tax amount 3",
+              "tax3Name": "string — tax name 3",
+              "tax4": "BigDecimal — tax amount 4",
+              "tax4Name": "string — tax name 4",
+              "tax5": "BigDecimal — tax amount 5",
+              "tax5Name": "string — tax name 5",
+              "intervalType": "SecurityPlanCycleIntervalType enum — MONTH, QUARTER, ANNUAL, WEEK",
+              "reminderIntervalDays": "Integer — days before expiry to send renewal reminder",
+              "paymentTermsDays": "Integer — days after invoice to expect payment",
+              "status": "SecurityPlanCycleStatus enum — ACTIVE, INACTIVE, DELETED"
+            },
+            "PlanLimit": {
+              "planId": "ULong — parent plan",
+              "name": "SecurityPlanLimitName enum — USER, CLIENT, APP, FILE, CONNECTIONS, PAGES, STORAGE, CUSTOM",
+              "customName": "string — display name for CUSTOM limit type",
+              "limit": "Integer — maximum allowed count/quantity",
+              "status": "SecurityPlanLimitStatus enum — ACTIVE, INACTIVE, DELETED"
+            },
+            "ClientPlan": {
+              "clientId": "ULong — subscribed client",
+              "planId": "ULong — assigned plan",
+              "cycleId": "ULong — selected billing cycle",
+              "startDate": "LocalDateTime — subscription start",
+              "endDate": "LocalDateTime — subscription end",
+              "nextInvoiceDate": "LocalDateTime — when next invoice will be generated",
+              "cycleNumber": "int — current cycle iteration count"
+            },
+            "Invoice": {
+              "_note": "Auto-generated by plan billing system (no direct REST controller). Referenced by payments.",
+              "clientId": "ULong — billed client",
+              "planId": "ULong — plan this invoice is for",
+              "cycleId": "ULong — billing cycle",
+              "invoiceNumber": "string — unique invoice number",
+              "invoiceDate": "LocalDateTime — invoice creation date",
+              "invoiceDueDate": "LocalDateTime — payment due date",
+              "invoiceAmount": "BigDecimal — total invoice amount",
+              "invoiceStatus": "SecurityInvoiceInvoiceStatus enum — DRAFT, SENT, PENDING, PAID, FAILED, CANCELLED",
+              "invoiceReason": "string — reason/description",
+              "periodStart": "LocalDateTime — billing period start",
+              "periodEnd": "LocalDateTime — billing period end"
+            },
+            "InvoiceItem": {
+              "invoiceId": "ULong — parent invoice",
+              "itemName": "string — charge name",
+              "itemDescription": "string — charge description",
+              "itemAmount": "BigDecimal — base amount",
+              "itemTax1-5": "BigDecimal — tax amounts (up to 5 tax fields)",
+              "cycleId": "ULong — billing cycle"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/registration",
+              "params": {"includeMultiAppPlans": "boolean (default false)"},
+              "description": "Get plans available for client registration — returns plans where forRegistration=true, optionally including multi-app plans",
+              "response": "List<Plan> with cycles and limits eager-loaded"
+            },
+            {
+              "method": "POST",
+              "path": "/addToClient",
+              "body": "{clientId: ULong, planId: ULong, cycleId: ULong}",
+              "description": "Assign a plan to a client — creates ClientPlan record, sets startDate and computes endDate based on cycle interval"
+            },
+            {
+              "method": "DELETE",
+              "path": "/removeFromClient",
+              "params": {"clientId": "ULong", "planId": "ULong"},
+              "description": "Remove a plan from a client — deletes the ClientPlan assignment"
+            }
+          ]
+        },
+        "payments": {
+          "path": "/payments",
+          "pattern": "jooq_crud",
+          "description": "Payment records tracking financial transactions. Each payment is linked to an invoice and processed through a payment gateway (Stripe, Razorpay, Cashfree). The flow: invoice generated → payment initialized with gateway → user redirected to gateway → gateway callback updates payment status. Supports manual status updates for offline/manual payments.",
+          "schema": {
+            "invoiceId": "ULong — linked invoice",
+            "paymentDate": "LocalDateTime — when payment was made",
+            "paymentAmount": "BigDecimal — payment amount",
+            "paymentStatus": "SecurityPaymentPaymentStatus enum — PENDING, PAID, FAILED, CANCELLED",
+            "paymentMethod": "SecurityPaymentPaymentMethod enum — CASHFREE, RAZORPAY, STRIPE, OTHER",
+            "paymentReference": "string — gateway transaction reference ID",
+            "paymentResponse": "Map<String, Object> — raw gateway response data (for debugging/audit)"
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/initialize",
+              "params": {"invoiceId": "ULong", "gateway": "string — CASHFREE|RAZORPAY|STRIPE|OTHER"},
+              "body": "Map<String, Object> — optional metadata for gateway",
+              "description": "Initialize a payment session with a gateway — creates payment record with PENDING status and returns gateway redirect/checkout info",
+              "response": "Payment with gateway session details"
+            },
+            {
+              "method": "POST",
+              "path": "/callback/{clientId}/{gateway}",
+              "body": "Map<String, Object> — raw gateway webhook payload",
+              "description": "Process payment gateway callback/webhook — updates payment status based on gateway response (PAID, FAILED, etc.)"
+            },
+            {
+              "method": "GET",
+              "path": "/invoice/{invoiceId}",
+              "description": "Get all payment attempts for an invoice — includes successful and failed attempts",
+              "response": "List<Payment>"
+            },
+            {
+              "method": "POST",
+              "path": "/{paymentId}/status",
+              "params": {"status": "string — PENDING|PAID|FAILED|CANCELLED"},
+              "description": "Manually update payment status — used for offline/manual payment reconciliation"
+            }
+          ]
+        },
+        "paymentGateways": {
+          "path": "/payment-gateways",
+          "pattern": "jooq_crud",
+          "description": "Payment gateway configurations per client. Stores encrypted credentials for external payment processors (Stripe, Razorpay, Cashfree). Each client configures their own gateway credentials so payments go to their account.",
+          "schema": {
+            "clientId": "ULong — client this gateway config belongs to",
+            "paymentGateway": "SecurityPaymentGatewayPaymentGateway enum — CASHFREE, RAZORPAY, STRIPE, OTHER",
+            "paymentGatewayDetails": "Map<String, Object> — encrypted gateway-specific credentials (API keys, secrets, merchant IDs)"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/client/{clientId}/gateway/{gateway}",
+              "description": "Get payment gateway config for a specific client and gateway type. Used during payment initialization"
+            }
+          ]
+        },
+        "ssl": {
+          "path": "/ssl",
+          "pattern": "custom",
+          "description": "SSL certificate management for client custom domains. Supports both auto-provisioned certificates (via ACME/Let's Encrypt challenge-response) and externally issued certificates. The flow: create order request → system creates domain challenges → domain owner verifies challenges → certificate issued → certificate stored and linked to ClientUrl. Certificates auto-renew until autoRenewTill date.",
+          "schema": {
+            "urlId": "ULong — linked ClientUrl record",
+            "crt": "string — PEM-encoded certificate",
+            "crtChain": "string — PEM-encoded certificate chain",
+            "crtKey": "string — PEM-encoded private key (write-only, never returned in API)",
+            "csr": "string — Certificate Signing Request",
+            "domains": "string — comma-separated domain names covered",
+            "organization": "string — organization name in certificate",
+            "expiryDate": "LocalDateTime — certificate expiration date",
+            "issuer": "string — certificate issuer (e.g. 'Let\\'s Encrypt')",
+            "current": "Boolean — true if this is the active certificate for the URL",
+            "autoRenewTill": "LocalDateTime — auto-renewal cutoff date (null = no auto-renew)",
+            "crtKeyUpload": "string — for uploading external private key"
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/",
+              "body": "{urlId: ULong, domains: string, organization: string, autoRenewTill: LocalDateTime}",
+              "description": "Create a new SSL certificate order — initiates ACME flow for domain validation"
+            },
+            {
+              "method": "POST",
+              "path": "/external",
+              "body": "{urlId: ULong, crt: string, crtChain: string, crtKeyUpload: string, domains: string}",
+              "description": "Register an externally issued SSL certificate — upload your own cert files"
+            },
+            {
+              "method": "GET",
+              "path": "/",
+              "params": {"urlId": "ULong (optional — filter by URL)", "page": "int", "size": "int"},
+              "description": "List SSL certificates with optional URL filter"
+            },
+            {
+              "method": "POST",
+              "path": "/query",
+              "body": "Query object with conditions",
+              "description": "Query SSL certificates with advanced filtering"
+            },
+            {
+              "method": "GET",
+              "path": "/certificate",
+              "params": {"requestId": "ULong"},
+              "description": "Trigger certificate creation from a completed domain challenge"
+            },
+            {
+              "method": "GET",
+              "path": "/request/challenge",
+              "params": {"challengeId": "ULong"},
+              "description": "Trigger SSL domain challenge verification — checks DNS/HTTP challenge status"
+            },
+            {
+              "method": "GET",
+              "path": "/request",
+              "params": {"urlId": "ULong"},
+              "description": "Get certificate request details and challenge status by URL ID"
+            },
+            {
+              "method": "DELETE",
+              "path": "/request",
+              "params": {"urlId": "ULong"},
+              "description": "Delete a pending certificate request"
+            },
+            {
+              "method": "DELETE",
+              "path": "/{id}",
+              "description": "Delete a certificate"
+            },
+            {
+              "method": "POST",
+              "path": "/request/challenges",
+              "params": {"requestId": "ULong"},
+              "description": "Create SSL domain challenges for a request — generates DNS TXT or HTTP file challenges"
+            }
+          ]
+        },
+        "transports": {
+          "path": "/transports",
+          "pattern": "custom",
+          "description": "Security transport — export/import security configurations between environments (dev → staging → production). Exports a complete package of an application's security setup: roles with permissions, profiles with role assignments, app properties, and app registration configurations (access rules, role assignments, file access rules). Used for CI/CD deployment of security configurations.",
+          "schema": {
+            "TransportPOJO": {
+              "appCode": "string — application code",
+              "name": "string — transport name",
+              "uniqueTransportCode": "string — unique identifier for this transport",
+              "type": "string — transport type",
+              "clientCode": "string — target client code",
+              "roles": "List<AppTransportRole> — roles with permissions and sub-roles",
+              "packages": "List<AppTransportProfile> — profiles with role assignments",
+              "properties": "List<AppTransportProperty> — app properties {propertyName, propertyValue}",
+              "appAccess": "List<AppTransportRegAppAccess> — app access registration rules by client type/level",
+              "rolesAccess": "List<AppTransportRegRoles> — role registration rules by client type/level",
+              "packagesAccess": "List<AppTransportRegPackages> — profile registration rules by client type/level",
+              "filesAccess": "List<AppTransportRegFiles> — file access rules {resourceType, accessName, writeAccess, path, allowSubPathAccess}"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/makeTransport",
+              "params": {"applicationCode": "string"},
+              "description": "Export security transport — generates a complete TransportPOJO with all roles, profiles, properties, and registration configs for the application"
+            },
+            {
+              "method": "POST",
+              "path": "/createAndApply",
+              "body": "TransportPOJO — see schema",
+              "description": "Import and apply security transport — creates/updates roles, profiles, properties, and registration configs. Idempotent based on uniqueTransportCode"
+            }
+          ]
+        },
+        "appRegistration": {
+          "path": "/applications/reg",
+          "pattern": "custom",
+          "description": "App registration types — configurable registration flow definitions for applications. Controls what happens when a new client registers for an app: which sub-apps get access, which roles/profiles are assigned, which departments/designations are created, and file access rules. Registrations are filtered by client level (CLIENT/CUSTOMER/CONSUMER) and business type. URL part determines the registration type: 'access' (app access), 'roles' (role assignments), 'packages' (profile assignments), 'departments', 'designations', 'fileAccess', 'profileRestriction', 'userDesignation', 'userProfile', 'userRole'.",
+          "schema": {
+            "AbstractAppRegistration (base fields)": {
+              "clientId": "ULong — owning client",
+              "appId": "ULong — application ID",
+              "clientType": "string — client type filter",
+              "level": "ClientLevelType enum — CLIENT, CUSTOMER, CONSUMER. Which hierarchy level this registration applies to",
+              "businessType": "string — business type filter (default: 'COMMON')"
+            },
+            "AppRegistrationAccess (urlPart: access)": {
+              "allowAppId": "ULong — app to grant access to",
+              "writeAccess": "boolean — grant edit access",
+              "register": "boolean — also register the app for the client"
+            },
+            "AppRegistrationFileAccess (urlPart: fileAccess)": {
+              "resourceType": "string — file resource type",
+              "accessName": "string — access identifier",
+              "writeAccess": "boolean — allow file writes",
+              "path": "string — file path pattern",
+              "allowSubPathAccess": "boolean — allow access to sub-paths"
+            }
+          },
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/{appCode}/{urlPart}",
+              "body": "Registration type object (varies by urlPart — see schema)",
+              "description": "Create an app registration rule. urlPart: access, roles, packages, departments, designations, fileAccess, profileRestriction, userDesignation, userProfile, userRole"
+            },
+            {
+              "method": "POST",
+              "path": "/{appCode}/{urlPart}/query",
+              "body": "{clientCode: string, clientId: ULong, clientType: string, level: string, businessType: string, page: int, size: int}",
+              "description": "Query registration rules for a specific app and type, filtered by client attributes"
+            },
+            {
+              "method": "DELETE",
+              "path": "/{urlPart}/{id}",
+              "description": "Delete a specific app registration rule"
+            }
+          ]
+        },
+        "appRegIntegration": {
+          "path": "/appRegIntegration",
+          "pattern": "jooq_crud",
+          "description": "App registration social login integrations — configure OAuth2/social login providers (Google, Meta, Apple, Microsoft, X/Twitter, SSO) for application registration and login flows. Each integration stores the OAuth client credentials and endpoint URLs.",
+          "schema": {
+            "clientId": "ULong — owning client",
+            "appId": "ULong — application",
+            "platform": "SecurityAppRegIntegrationPlatform enum — GOOGLE, META, APPLE, SSO, MICROSOFT, X",
+            "intgId": "string — OAuth client ID / integration identifier",
+            "intgSecret": "string — OAuth client secret (stored encrypted)",
+            "loginUri": "string — OAuth login redirect URI",
+            "signupUri": "string — OAuth signup redirect URI"
+          },
+          "customEndpoints": []
+        },
+        "clientOtpPolicy": {
+          "path": "/clientOtpPolicy",
+          "pattern": "jooq_crud",
+          "description": "Client OTP policies — configure OTP behavior per client and optionally per app. Policies cascade from parent client to child client in the hierarchy unless overridden. Controls: OTP length, format (numeric vs alphanumeric), expiry interval, failed attempt limits, resend limits, and user lock duration. The '/codes/policy' endpoint returns the effective policy after inheritance resolution.",
+          "schema": {
+            "clientId": "ULong — client (write-only)",
+            "appId": "ULong — optional app scope (write-only, null = client-wide)",
+            "targetType": "SecurityClientOtpPolicyTargetType enum — EMAIL, PHONE, or BOTH (default: EMAIL)",
+            "isNumeric": "boolean — OTP contains only digits (default: true)",
+            "isAlphanumeric": "boolean — OTP contains letters and digits (default: false)",
+            "length": "short — OTP length in characters (default: 4)",
+            "expireInterval": "long — OTP expiry in minutes (default: 5)",
+            "noFailedAttempts": "short — max failed verification attempts before locking (default: 3)",
+            "noResendAttempts": "short — max OTP resend attempts per session (write-only, default: 3)",
+            "resendSameOtp": "boolean — resend the same OTP instead of generating new one (write-only)",
+            "isConstant": "boolean — always generate the same OTP value (write-only, for testing)",
+            "constantValue": "string — the constant OTP value (write-only, for testing)",
+            "userLockTime": "long — minutes to lock user after exceeding failed attempts (write-only, default: 15)"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/codes/policy",
+              "params": {"appCode": "string (header)", "clientCode": "string (header)"},
+              "description": "Get effective OTP policy for a client-app combination — resolves inheritance from parent client and returns the merged policy"
+            }
+          ]
+        },
+        "clientPasswordPolicy": {
+          "path": "/clientPasswordPolicy",
+          "pattern": "jooq_crud",
+          "description": "Client password policies — configure password complexity and lifecycle rules per client and optionally per app. Policies cascade from parent to child client unless overridden. Controls: minimum/maximum length, character requirements (uppercase, lowercase, digit, special char), spaces, regex pattern, expiry, history (prevent reuse), and lock behavior on failed attempts.",
+          "schema": {
+            "clientId": "ULong — client (write-only)",
+            "appId": "ULong — optional app scope (write-only, null = client-wide)",
+            "atleastOneUppercase": "boolean — require at least one uppercase letter",
+            "atleastOneLowercase": "boolean — require at least one lowercase letter",
+            "atleastOneDigit": "boolean — require at least one digit",
+            "atleastOneSpecialChar": "boolean — require at least one special character",
+            "spacesAllowed": "boolean — allow spaces in passwords",
+            "regex": "string — custom regex pattern for additional validation",
+            "percentageName": "short — max percentage of username allowed in password",
+            "passMinLength": "short — minimum password length",
+            "passMaxLength": "short — maximum password length",
+            "passExpiryInDays": "short — password expiry in days (write-only, 0 = never expires)",
+            "passExpiryWarnInDays": "short — days before expiry to start warning (write-only)",
+            "passHistoryCount": "short — number of previous passwords to remember (write-only, prevents reuse)",
+            "noFailedAttempts": "short — max failed login attempts before locking (default: 3)",
+            "userLockTime": "long — minutes to lock user after exceeding failed attempts (write-only, default: 15)"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/codes/policy",
+              "params": {"appCode": "string (header)", "clientCode": "string (header)"},
+              "description": "Get effective password policy for a client-app combination — resolves inheritance from parent client and returns the merged policy"
+            }
+          ]
+        },
+        "clientPinPolicy": {
+          "path": "/clientPinPolicy",
+          "pattern": "jooq_crud",
+          "description": "Client PIN policies — configure PIN behavior per client and optionally per app. PINs are a simpler alternative to passwords, typically 4-6 digits. Policies cascade from parent to child client. Controls: PIN length, expiry, history (prevent reuse), re-login interval (how often PIN is required), and lock behavior.",
+          "schema": {
+            "clientId": "ULong — client (write-only)",
+            "appId": "ULong — optional app scope (write-only, null = client-wide)",
+            "length": "short — PIN length in digits (default: 4)",
+            "reLoginAfterInterval": "long — minutes after which PIN re-entry is required (write-only, default: 120)",
+            "expiryInDays": "short — PIN expiry in days (write-only, default: 30)",
+            "expiryWarnInDays": "short — days before expiry to warn (write-only, default: 25)",
+            "pinHistoryCount": "short — number of previous PINs to remember (write-only, default: 3)",
+            "noFailedAttempts": "short — max failed attempts before locking (default: 3)",
+            "userLockTime": "long — minutes to lock user after exceeding failed attempts (write-only, default: 15)"
+          },
+          "customEndpoints": [
+            {
+              "method": "GET",
+              "path": "/codes/policy",
+              "params": {"appCode": "string (header)", "clientCode": "string (header)"},
+              "description": "Get effective PIN policy for a client-app combination — resolves inheritance from parent client and returns the merged policy"
+            }
+          ]
+        }
+      }
+    },
+
+    "files": {
+      "basePath": "/api/files",
+      "description": "Files service — manages static and secured file storage with image transformation capabilities.",
+      "entities": {
+        "static": {
+          "path": "/static",
+          "pattern": "custom",
+          "description": "Static file storage — images, CSS, JS files. Accessible without authentication tokens via direct URL.",
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/",
+              "body": "Multipart file upload (field: 'file')",
+              "params": {"override": "boolean — replace existing file"},
+              "description": "Upload a static file"
+            },
+            {
+              "method": "GET",
+              "path": "/**",
+              "params": {
+                "width": "int — resize image width in pixels",
+                "height": "int — resize image height in pixels",
+                "download": "boolean — force download vs inline display",
+                "fit": "contain|cover|fill — image fit mode",
+                "format": "general|webp|avif — output image format"
+              },
+              "description": "Download/serve static file by path with optional image transformation"
+            },
+            {
+              "method": "DELETE",
+              "path": "/**",
+              "description": "Delete a static file"
+            },
+            {
+              "method": "POST",
+              "path": "/copyToClientPage",
+              "params": {"clientCode": "string", "pageName": "string"},
+              "body": "List<String> — source file URLs",
+              "description": "Copy static files to a client page path"
+            }
+          ]
+        },
+        "secured": {
+          "path": "/secured",
+          "pattern": "custom",
+          "description": "Secured file storage — files that require authentication to access. Supports time-limited access keys.",
+          "customEndpoints": [
+            {
+              "method": "POST",
+              "path": "/",
+              "body": "Multipart file upload (field: 'file')",
+              "description": "Upload a secured file"
+            },
+            {
+              "method": "GET",
+              "path": "/**",
+              "description": "Download secured file (requires authentication)"
+            },
+            {
+              "method": "DELETE",
+              "path": "/**",
+              "description": "Delete a secured file"
+            },
+            {
+              "method": "GET",
+              "path": "/createKey/**",
+              "params": {
+                "timeSpan": "long — duration value",
+                "timeUnit": "MILLIS|SECONDS|MINUTES|HOURS|DAYS",
+                "accessLimit": "int — max number of accesses"
+              },
+              "description": "Generate a time-limited secure access key for a file"
+            },
+            {
+              "method": "GET",
+              "path": "/downloadFileByKey/{key}",
+              "params": {
+                "width": "int — resize width",
+                "height": "int — resize height",
+                "download": "boolean — force download"
+              },
+              "description": "Download file using secure access key (no auth needed)"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
