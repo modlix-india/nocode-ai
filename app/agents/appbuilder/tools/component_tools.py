@@ -108,7 +108,7 @@ add_component = ToolDefinition(
         "Use the component catalog in the system prompt to know valid types and properties. "
         "IMPORTANT: Many components require binding_paths for two-way data binding. "
         "Binding paths live at the TOP LEVEL of the component definition (not inside properties). "
-        "Format: {\"bindingPath\": {\"type\": \"VALUE\", \"value\": \"Page.someStore.field\"}}. "
+        "Format: {\"bindingPath\": {\"value\": \"Page.someStore.field\"}}. "
         "Components requiring binding paths:\n"
         "- Popup: bindingPath = boolean toggle (Page.isPopupOpen), controls open/close state\n"
         "- TextBox/TextArea: bindingPath = string value path (Page.form.fieldName)\n"
@@ -121,7 +121,7 @@ add_component = ToolDefinition(
         "- Gallery/Carousel: bindingPath = toggle visibility\n"
         "- Stepper: bindingPath = current step value\n"
         "- Tabs: bindingPath = active tab value\n"
-        "Use VALUE type for direct store paths, EXPRESSION type for computed paths."
+        "Use {\"value\": \"path\"} for direct store paths, {\"location\": {\"type\": \"EXPRESSION\", \"value\": \"expr\"}} for computed paths."
     ),
     parameters=[
         ToolParameter(name="page_name", type="string", description="Name of the page."),
@@ -131,40 +131,40 @@ add_component = ToolDefinition(
         ToolParameter(
             name="properties", type="object", required=False,
             description=(
-                "Component properties. EVERY value MUST be a DataLocation object, NEVER a bare string/number. "
-                "For static values use: {\"text\": {\"type\": \"VALUE\", \"value\": \"Hello\"}, "
-                "\"textContainer\": {\"type\": \"VALUE\", \"value\": \"SPAN\"}}. "
-                "For dynamic/expression values use: {\"text\": {\"type\": \"EXPRESSION\", "
-                "\"expression\": \"Store.user.name\"}}. "
-                "WRONG: {\"text\": \"Hello\"} or {\"text\": {\"value\": \"Hello\"}} — "
-                "bare values and missing type field will NOT work."
+                "Component properties. EVERY value MUST be a ComponentProperty object, NEVER a bare string/number. "
+                "For static values use: {\"text\": {\"value\": \"Hello\"}, "
+                "\"textContainer\": {\"value\": \"SPAN\"}}. "
+                "For dynamic/expression values use: {\"text\": {\"location\": {\"type\": \"EXPRESSION\", "
+                "\"value\": \"Store.user.name\"}}}. "
+                "For both static + dynamic: {\"text\": {\"value\": \"fallback\", \"location\": {\"type\": \"EXPRESSION\", \"value\": \"Store.user.name\"}}}. "
+                "WRONG: {\"text\": \"Hello\"} (bare string), {\"text\": {\"type\": \"VALUE\", \"value\": \"Hello\"}} (old DataLocation format)."
             ),
         ),
         ToolParameter(
             name="style_properties", type="object", required=False,
             description=(
                 "Style properties in responsive format. Structure: "
-                "{\"<uniqueStyleKey>\": {\"resolutions\": {\"ALL\": {\"<key>\": {\"type\": \"VALUE\", \"value\": \"<val>\"}}}}}. "
+                "{\"<uniqueStyleKey>\": {\"resolutions\": {\"ALL\": {\"<key>\": {\"value\": \"<val>\"}}}}}. "
                 "Key format: '<subComponent>-<cssProp>:<pseudoState>' where subComponent and pseudoState are optional. "
                 "Examples: 'backgroundColor' (main comp), 'comp-label-color' (label sub-component), "
                 "'backgroundColor:hover' (hover state), 'comp-icon-color:hover' (icon hover). "
                 "CSS props MUST be camelCase (paddingLeft, marginTop, fontSize), NEVER shorthand (padding, margin) "
                 "or kebab-case (padding-left). "
-                "Each value MUST be a DataLocation with type field. "
-                "Example: {\"s1\": {\"resolutions\": {\"ALL\": {\"paddingLeft\": {\"type\": \"VALUE\", \"value\": \"12px\"}, "
-                "\"backgroundColor\": {\"type\": \"VALUE\", \"value\": \"#4F46E5\"}}}}}. "
-                "Dynamic: {\"color\": {\"type\": \"EXPRESSION\", \"expression\": \"Theme.primaryColor\"}}. "
+                "Each value MUST be a ComponentProperty object. "
+                "Example: {\"s1\": {\"resolutions\": {\"ALL\": {\"paddingLeft\": {\"value\": \"12px\"}, "
+                "\"backgroundColor\": {\"value\": \"#4F46E5\"}}}}}. "
+                "Dynamic: {\"color\": {\"location\": {\"type\": \"EXPRESSION\", \"value\": \"Theme.primaryColor\"}}}. "
                 "WRONG: {\"padding\": ...} (shorthand), {\"padding-left\": ...} (kebab-case), "
-                "{\"paddingLeft\": {\"value\": \"12px\"}} (missing type)."
+                "{\"paddingLeft\": {\"type\": \"VALUE\", \"value\": \"12px\"}} (old DataLocation format)."
             ),
         ),
         ToolParameter(
             name="binding_paths", type="object", required=False,
             description=(
                 "Binding paths for two-way data binding. Keys: bindingPath, bindingPath2 ... bindingPath10. "
-                "Each value is a DataLocation: {\"type\": \"VALUE\", \"value\": \"Page.store.path\"} "
-                "or {\"type\": \"EXPRESSION\", \"expression\": \"some.expression\"}. "
-                "Example: {\"bindingPath\": {\"type\": \"VALUE\", \"value\": \"Page.isModalOpen\"}}"
+                "Each value is a ComponentProperty: {\"value\": \"Page.store.path\"} "
+                "or {\"location\": {\"type\": \"EXPRESSION\", \"value\": \"some.expression\"}}. "
+                "Example: {\"bindingPath\": {\"value\": \"Page.isModalOpen\"}}"
             ),
         ),
         ToolParameter(name="display_order", type="integer", description="Display order among siblings (default 0).", required=False),
@@ -252,21 +252,22 @@ update_component = ToolDefinition(
         ToolParameter(
             name="properties", type="object", required=False,
             description=(
-                "Properties to merge (partial update). EVERY value MUST be a DataLocation object. "
-                "Static: {\"label\": {\"type\": \"VALUE\", \"value\": \"New Label\"}}. "
-                "Dynamic: {\"text\": {\"type\": \"EXPRESSION\", \"expression\": \"Store.name\"}}. "
-                "WRONG: {\"label\": \"New Label\"} or {\"label\": {\"value\": \"New Label\"}} — "
-                "bare values and missing type field will NOT work."
+                "Properties to merge (partial update). EVERY value MUST be a ComponentProperty object. "
+                "Static: {\"label\": {\"value\": \"New Label\"}}. "
+                "Dynamic: {\"text\": {\"location\": {\"type\": \"EXPRESSION\", \"value\": \"Store.name\"}}}. "
+                "Both: {\"text\": {\"value\": \"fallback\", \"location\": {\"type\": \"EXPRESSION\", \"value\": \"Store.name\"}}}. "
+                "WRONG: {\"label\": \"New Label\"} (bare string), "
+                "{\"label\": {\"type\": \"VALUE\", \"value\": \"New Label\"}} (old DataLocation format)."
             ),
         ),
         ToolParameter(
             name="style_properties", type="object", required=False,
             description=(
                 "Style properties to merge. Structure: "
-                "{\"<styleKey>\": {\"resolutions\": {\"ALL\": {\"<key>\": {\"type\": \"VALUE\", \"value\": \"<val>\"}}}}}. "
+                "{\"<styleKey>\": {\"resolutions\": {\"ALL\": {\"<key>\": {\"value\": \"<val>\"}}}}}. "
                 "Key format: '<subComponent>-<cssProp>:<pseudoState>' (subComponent/pseudoState optional). "
                 "CSS props MUST be camelCase (paddingLeft, marginTop), NEVER shorthand (padding) or kebab-case (padding-left). "
-                "Each value MUST be a DataLocation with type field."
+                "Each value MUST be a ComponentProperty object."
             ),
         ),
         ToolParameter(
@@ -274,8 +275,8 @@ update_component = ToolDefinition(
             description=(
                 "Binding paths to set at the component's top level. "
                 "Keys: bindingPath, bindingPath2, ... bindingPath10. "
-                "Each value: {\"type\": \"VALUE\", \"value\": \"Page.store.path\"} "
-                "or {\"type\": \"EXPRESSION\", \"expression\": \"expr\"}."
+                "Each value: {\"value\": \"Page.store.path\"} "
+                "or {\"location\": {\"type\": \"EXPRESSION\", \"value\": \"expr\"}}."
             ),
         ),
         ToolParameter(name="display_order", type="integer", description="New display order.", required=False),
