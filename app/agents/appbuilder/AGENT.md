@@ -654,6 +654,141 @@ Each session tracks:
 
 ---
 
+## Learning Loop
+
+The agent improves over time via a closed-loop learning framework in `app/learning/`.
+
+### Architecture
+
+```
+User interacts with agent
+        │
+        ▼
+┌─ BaseAgent._run_loop ──────────────────────────────┐
+│  build_dynamic_context()                            │
+│    └─ PromptEnhancer injects relevant knowledge     │
+│       (pitfalls, examples, patterns — ≤2000 tokens) │
+│                                                     │
+│  Tool-use loop (existing)                           │
+│    └─ Tool fails → _on_tool_error() → track pattern │
+│                                                     │
+│  Loop ends → _on_loop_complete()                    │
+│    └─ async: OutcomeAnalyzer.score_session()         │
+│    └─ SSE: feedback_request event                    │
+└─────────────────────────────────────────────────────┘
+        │                          │
+        ▼                          ▼
+  ai_learning_feedback    ai_learning_session_scores
+  (user thumbs up/down)   (computed success_score)
+        │                          │
+        └──────────┬───────────────┘
+                   ▼
+         KnowledgeExtractor
+         (batch: mine high-scoring sessions)
+                   │
+                   ▼
+         ai_learning_knowledge + ChromaDB
+                   │
+                   ▼
+         PromptEnhancer (next session uses learned knowledge)
+```
+
+### Components
+
+| Module | File | Purpose |
+|--------|------|---------|
+| FeedbackCollector | `app/learning/feedback.py` | Collects explicit (thumbs up/down) and implicit (retry/undo/abandon) signals |
+| OutcomeAnalyzer | `app/learning/outcome.py` | Computes `success_score` (0.0–1.0) per session from tool results + feedback + implicit signals |
+| KnowledgeExtractor | `app/learning/knowledge.py` | Mines high-scoring sessions for reusable patterns; tracks tool error patterns |
+| PromptEnhancer | `app/learning/prompt_enhancer.py` | Injects relevant knowledge into the dynamic context (≤2000 token budget) |
+| LearningAnalytics | `app/learning/analytics.py` | Aggregates metrics: success trends, error patterns, feedback rates |
+
+### Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `ai_learning_feedback` | User feedback records (rating, corrections, denormalized turn data) |
+| `ai_learning_tool_errors` | Aggregated tool error patterns with occurrence counts |
+| `ai_learning_session_scores` | Computed session scores (success, satisfaction, error rate, retries, undos) |
+| `ai_learning_knowledge` | Extracted knowledge entries (patterns, pitfalls, examples, lessons) |
+
+### API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/ai/learning/feedback` | Submit user feedback for a turn |
+| `GET` | `/api/ai/learning/feedback` | List feedback history (filter by rating) |
+| `GET` | `/api/ai/learning/analytics/summary` | Aggregate analytics (period: day/week/month) |
+| `GET` | `/api/ai/learning/knowledge` | List knowledge entries (filter by type/status) |
+| `GET` | `/api/ai/learning/knowledge/{id}` | Full knowledge entry detail with content + tool sequence |
+| `PATCH` | `/api/ai/learning/knowledge/{id}` | Update status (ACTIVE/DEPRECATED) or relevance_score |
+| `GET` | `/api/ai/learning/tool-errors` | List tool error patterns (what keeps failing) |
+| `PATCH` | `/api/ai/learning/tool-errors/{id}` | Resolve/ignore error, add resolution note |
+| `GET` | `/api/ai/learning/session-scores` | List session scores (filter by min/max score) |
+| `GET` | `/api/ai/learning/session-scores/{session_id}` | Score breakdown + feedback for a session |
+
+### Admin Workflow
+
+**See what the agent has learned:**
+```
+GET /api/ai/learning/knowledge?status=ACTIVE
+```
+
+**See what the agent keeps getting wrong:**
+```
+GET /api/ai/learning/tool-errors
+```
+
+**Discard a bad knowledge entry:**
+```
+PATCH /api/ai/learning/knowledge/42?status=DEPRECATED
+```
+
+**Mark a tool error as fixed:**
+```
+PATCH /api/ai/learning/tool-errors/7?status=RESOLVED&resolution=Fixed property format in tool description
+```
+
+**Find worst sessions (to debug):**
+```
+GET /api/ai/learning/session-scores?max_score=0.3
+```
+
+**Find best sessions (to extract knowledge from):**
+```
+GET /api/ai/learning/session-scores?min_score=0.8
+```
+
+### SSE Events
+
+```
+event: feedback_request
+data: {"session_id": "abc-123", "turn_number": 3}
+```
+
+Emitted after each agent turn completes (before `done`). The frontend uses this to show thumbs up/down buttons.
+
+### Batch Knowledge Extraction
+
+```bash
+python scripts/extract_knowledge.py --min-score 0.7 --limit 50
+```
+
+Finds sessions with `success_score > 0.7` not yet extracted, creates PATTERN entries in MySQL + ChromaDB.
+
+### Scoring Formula (v1)
+
+```
+success_score =
+    0.30 * tool_success_rate
+  + 0.25 * user_satisfaction_norm
+  + 0.20 * (1 - retry_penalty)
+  + 0.15 * (1 - undo_penalty)
+  + 0.10 * efficiency_score
+```
+
+---
+
 ## Dependencies on Other Systems
 
 | System | How Used | Required? |

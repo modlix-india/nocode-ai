@@ -25,6 +25,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 import uuid
@@ -71,6 +72,9 @@ class BaseAgent:
 
         # Pre-compute Anthropic tool schemas
         self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
+
+        # Hold references to background tasks to prevent premature GC
+        self._background_tasks: set[asyncio.Task] = set()
 
     async def run(
         self,
@@ -125,7 +129,7 @@ class BaseAgent:
         await session.set_processing()
 
         # Build system prompt
-        dynamic_context = self.build_dynamic_context(session)
+        dynamic_context = await self.build_dynamic_context(session)
         system_prompt = self.context_builder.build_system_prompt(
             dynamic_context=dynamic_context,
         )
@@ -193,7 +197,7 @@ class BaseAgent:
             session.append_tool_results(tool_result_blocks)
 
             # Persist incremental progress so data is not lost on disconnect
-            partial_summary = " ".join(assistant_text_parts) if assistant_text_parts else ""
+            partial_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
             await session.persist_turn_incremental(
                 user_message, partial_summary, tool_call_log
             )
@@ -206,9 +210,16 @@ class BaseAgent:
             )
 
         # Persist the turn summary, tool call log, and context
-        assistant_summary = " ".join(assistant_text_parts) if assistant_text_parts else ""
+        assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None)
         await session.save_context()
+
+        # Learning loop: score session and request feedback
+        await self._on_loop_complete(session, tool_call_log)
+        await event_stream.emit_feedback_request(
+            session_id=session.session_id,
+            turn_number=session._turn_count,
+        )
 
         # Mark session as completed and emit done
         await session.complete()
@@ -229,6 +240,10 @@ class BaseAgent:
             if block["type"] == "text":
                 text = block["text"]
                 if text:
+                    # Separate consecutive text messages with a markdown
+                    # paragraph break so they don't run together on the client.
+                    if assistant_text_parts:
+                        text = "\n\n" + text
                     assistant_text_parts.append(text)
                     await event_stream.emit_text(text)
             elif block["type"] == "tool_use":
@@ -262,6 +277,10 @@ class BaseAgent:
             display_summary = display_summary[:200] + "…"
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
+
+        # Learning loop: track tool errors for pitfall detection
+        if not result.success:
+            await self._on_tool_error(tool_name, tool_input, result.error or "Unknown error")
 
         result_block = {
             "type": "tool_result",
@@ -315,11 +334,11 @@ class BaseAgent:
                 error=f"Tool execution error: {type(e).__name__}: {e}",
             )
 
-    def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession) -> str:
         """Build per-request dynamic context string.
 
         Override in subclasses to add agent-specific context
-        (e.g., component catalog, app state).
+        (e.g., component catalog, app state, learned knowledge).
 
         Args:
             session: Active session with auth context.
@@ -333,6 +352,41 @@ class BaseAgent:
             f"Client: {session.auth.client_code}\n"
             f"App: {session.auth.app_code}\n"
         )
+
+    async def _on_loop_complete(
+        self, session: BaseSession, tool_call_log: list[dict[str, Any]],
+    ) -> None:
+        """Hook called after the agent loop completes.
+
+        Triggers async outcome scoring (best-effort, non-blocking).
+        """
+        try:
+            from app.learning.outcome import get_outcome_analyzer
+            task = asyncio.create_task(
+                get_outcome_analyzer().score_session(session.session_id)
+            )
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+        except Exception as e:
+            logger.debug("Learning post-hook skipped: %s", e)
+
+    async def _on_tool_error(
+        self, tool_name: str, tool_input: dict[str, Any], error: str,
+    ) -> None:
+        """Hook called when a tool execution fails.
+
+        Records the error pattern for pitfall detection.
+        """
+        try:
+            from app.learning.knowledge import get_knowledge_extractor
+            await get_knowledge_extractor().extract_pitfall_from_errors(
+                agent_name=self.name,
+                tool_name=tool_name,
+                error_message=error,
+                tool_input=tool_input,
+            )
+        except Exception as e:
+            logger.debug("Tool error tracking skipped: %s", e)
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Build context dict passed to each tool's execute function.
