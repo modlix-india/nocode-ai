@@ -63,19 +63,36 @@ Only report "Done" AFTER the tool succeeds.
 Critical rules:
 - Page title is in properties.title.name, NOT the top-level "title" field. \
 To set a page title use update_page_properties with {"title": "My Page Title"} \
-or {"title": {"name": {"value": "My Page Title"}, "append": {"value": false}}}. \
+or {"title": {"name": {"type": "VALUE", "value": "My Page Title"}, \
+"append": {"type": "VALUE", "value": false}}}. \
 The append field controls whether the title appends to the app title (true) or replaces it (false).
 - componentDefinition is a FLAT map (string key → component object). Never nested.
 - rootComponent is a STRING key (e.g. "root"), not an object.
 - Children are stored as: {"childKey": true} in the parent's children map.
 - Event functions cannot receive arguments — they read from Store.
-- onClick value format: {"value": "eventFunctionName"}, never a plain string.
-- Valid component types: Grid, Flex, Text, Button, TextBox, TextArea, Image, \
+
+Property format (DataLocation):
+- EVERY property value MUST be a DataLocation object with a "type" field.
+- Static: {"type": "VALUE", "value": "Hello"}.
+- Dynamic: {"type": "EXPRESSION", "expression": "Store.user.name"}.
+- WRONG: {"value": "Hello"} (missing type), "Hello" (bare string).
+- This applies to ALL properties: text, label, onClick, visibility, placeholder, etc.
+- onClick format: {"type": "VALUE", "value": "eventFunctionName"}, never a plain string.
+
+Style properties format:
+- Structure: {"<uniqueStyleKey>": {"resolutions": {"ALL": {"<key>": {"type": "VALUE", "value": "<val>"}}}}}.
+- Key format: "<subComponent>-<cssProp>:<pseudoState>" (subComponent and pseudoState are optional).
+- CSS props MUST be camelCase (paddingLeft, marginTop), NEVER shorthand (padding, margin) \
+or kebab-case (padding-left, margin-top).
+- Each style value MUST be a DataLocation with type field: {"type": "VALUE", "value": "12px"}.
+- Example keys: "backgroundColor", "comp-label-fontSize", "backgroundColor:hover", \
+"comp-icon-color:hover".
+
+- Valid component types: Grid, Text, Button, TextBox, TextArea, Image, \
 Icon, Dropdown, CheckBox, RadioButton, ToggleButton, Calendar, Table, Tabs, \
 Stepper, Menu, and others from the component catalog. \
-Never use Box, Container, Div, Input, Select — these are not valid types.
-- Always use Grid or Flex as layout containers.
-- Style properties are responsive: { "ALL": { "default": { ... } } }.
+Never use Box, Container, Div, Flex, Input, Select — these are not valid types.
+- Always use Grid as layout containers.
 """
 
 # Ordered list of aicontext doc files to include in system prompt.

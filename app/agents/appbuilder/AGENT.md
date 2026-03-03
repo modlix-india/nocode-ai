@@ -57,11 +57,13 @@ app/agents/appbuilder/
     ├── _shared.py            SaasClient singleton + helper utilities
     ├── page_tools.py         Page CRUD (list, create, delete, read structure/properties)
     ├── component_tools.py    Component CRUD (add, update, read, remove, move)
+    ├── batch_tools.py        Batch page operations (multiple add/update/remove/move in one call)
     ├── event_tools.py        Event function CRUD (write, read, list)
     ├── application_tools.py  App CRUD + export/import
     ├── style_tools.py        Theme + style CRUD
     ├── function_tools.py     Function + schema CRUD, search builtins
-    └── entity_tools.py       Connection, workflow, template, filler, uripath, event def/action CRUD
+    ├── entity_tools.py       Connection, workflow, template, filler, uripath, event def/action CRUD
+    └── version_tools.py      Version history listing and rollback for any entity
 ```
 
 ---
@@ -226,6 +228,7 @@ For new pages, the agent DOES provide the full component definition since it's g
 | `update_component` | Modify a component's properties or styles | `{pageName, appCode, componentKey, properties: {...}, styleProperties: {...}}` |
 | `remove_component` | Remove a component (and optionally its children) | `{pageName, appCode, componentKey, removeChildren: bool}` |
 | `move_component` | Move a component to a different parent | `{pageName, appCode, componentKey, newParentKey, displayOrder}` |
+| `batch_update_page` | Apply multiple component operations in a single fetch+save (preferred over individual calls) | `{pageName, operations: [{op, ...}], message}` |
 | `add_event_function` | Add an event function to the page | `{pageName, appCode, eventName, functionDefinition: {steps, ...}}` |
 | `update_event_function` | Modify an event function | `{pageName, appCode, eventName, functionDefinition: {steps, ...}}` |
 | `remove_event_function` | Remove an event function | `{pageName, appCode, eventName}` |
@@ -339,6 +342,15 @@ Sub-types: `MONGO`, `SENDGRID`, `SMTP`, `REST_API_BASIC`, `REST_API_AUTH`, `REST
 |------|-------------|
 | `create_filler` / `read_filler` / `update_filler` / `list_fillers` | `api/core/filler` |
 
+### Version Tools
+
+| Tool | Description | Backend Call |
+|------|-------------|-------------|
+| `list_versions` | List version history for any entity (page, theme, function, etc.) | `GET /api/ui/versions/{objectId}/query` or `GET /api/core/versions/{objectId}/query` |
+| `rollback_version` | Rollback an entity to a previous version | Fetch historical version → PUT to entity endpoint |
+
+Supported entity types: application, page, theme, style, function, schema, filler, uripath, connection, workflow, template.
+
 ---
 
 ## Preview System
@@ -404,7 +416,7 @@ data: {
             "key": "email_input",
             "type": "TextBox",
             "parentKey": "form_grid",
-            "properties": {"placeholder": {"value": "Enter email"}}
+            "properties": {"placeholder": {"type": "VALUE", "value": "Enter email"}}
         }
     }
 }
@@ -435,51 +447,62 @@ The agent's system prompt is built from two sources:
 
 ### Static Context (Prompt Cached)
 
-These `aicontext/` documents are loaded once and cached via Anthropic's ephemeral cache for ~90% token savings on subsequent turns:
+These `aicontext/` documents are loaded once and cached via Anthropic's ephemeral cache for ~90% token savings on subsequent turns (see `context.py:AICONTEXT_DOCS` for the full ordered list):
 
 | Document | Content | Why |
 |----------|---------|-----|
-| `00-critical-rules.md` | FLAT componentDefinition, event function format, valid component types | Prevents structural errors |
+| `00-critical-rules.md` | FLAT componentDefinition, DataLocation format, style key format, valid component types | Prevents structural errors |
 | `02-application-and-page-definitions.md` | App and page JSON structure | Core data model |
 | `03-component-system.md` | Component registry and property system | What components exist |
-| `05-style-system.md` | Responsive styles, pseudo-states, breakpoints | How styling works |
+| `04-property-system.md` | ComponentProperty, DataLocation types, property resolution | Property format rules |
+| `05-style-system.md` | Responsive styles, pseudo-states, sub-component keys, breakpoints | How styling works |
+| `06-state-management.md` | Store system, Page/Store/Theme paths | State management |
 | `07-event-system.md` | Event functions and execution | How interactions work |
 | `08-functions-and-actions.md` | UIEngine functions (SetStore, Navigate, Fetch, etc.) | Available actions |
+| `11-data-binding.md` | Binding paths for form/data components | Data binding details |
+| `15-examples-and-patterns.md` | Real-world patterns (forms, lists, responsive layouts) | Practical examples |
+| `16-schema-definitions.md` | Schema definitions | Schema format |
+| `17-theme-definitions.md` | Theme variable definitions | Theme format |
+| `18-style-definitions.md` | Global style definitions | Style format |
+| `19-function-definitions.md` | KIRun function definitions | Function format |
+| `20-filler-and-uripath.md` | Filler and URI path definitions | Filler/URI format |
 | `21-kirun-system-functions.md` | System functions (Math, String, Array, Date) | Available utilities |
-| `22-component-reference.md` | All component types with properties | Component catalog |
+| `22-component-reference.md` | All component types with properties, sub-components, pseudo-states | Component catalog |
 
 ### Dynamic Context (RAG per Session)
 
 Retrieved from ChromaDB based on the user's first message:
 - Relevant page/app/theme/style samples from `aicontext/samples/`
-- Additional reference docs (validation, translations, data binding) as needed
+- Additional reference docs as needed
 
 ### System Prompt Persona
 
+See `context.py:AGENT_PERSONA` for the full text. Key rules enforced:
+
 ```
-You are an expert application builder for the Modlix no-code platform.
-You build complete applications through conversation — not just individual pages.
+Structure rules:
+- componentDefinition is a FLAT map (string key → component object). Never nested.
+- rootComponent is a STRING key (e.g. "root"), not an object.
+- Children are stored as: {"childKey": true} in the parent's children map.
+- Event functions cannot receive arguments — they read from Store.
 
-When asked to build something, you:
-1. Plan the application architecture (what pages, data models, connections are needed)
-2. Create the application if it doesn't exist
-3. Build out artifacts methodically: theme → styles → pages → functions → routing
-4. Explain what you're doing and why at each step
-5. Handle errors gracefully and retry or adjust
+Property format (DataLocation):
+- EVERY property value MUST be a DataLocation object with a "type" field.
+- Static: {"type": "VALUE", "value": "Hello"}.
+- Dynamic: {"type": "EXPRESSION", "expression": "Store.user.name"}.
+- WRONG: {"value": "Hello"} (missing type), "Hello" (bare string).
+- onClick format: {"type": "VALUE", "value": "eventFunctionName"}.
 
-You have tools to create and modify all Modlix platform artifacts:
-applications, pages, themes, styles, functions, schemas, connections,
-workflows, templates, event definitions, event actions, fillers, and URI paths.
+Style properties format:
+- Structure: {"<uniqueKey>": {"resolutions": {"ALL": {"<key>": {"type": "VALUE", "value": "<val>"}}}}}.
+- Key format: "<subComponent>-<cssProp>:<pseudoState>" (subComponent/pseudoState optional).
+- CSS props MUST be camelCase (paddingLeft, marginTop), NEVER shorthand (padding) or kebab-case.
+- Each style value MUST be a DataLocation with type field.
 
-Critical rules:
-- Page componentDefinition is a FLAT map (never nested)
-- rootComponent is a STRING key, not an object
-- Children reference by key: {"childKey": true}
-- Event functions cannot receive arguments — use separate functions or store
-- onClick value is always {"value": "eventName"}, never a plain string
-- Valid component types: Grid, Text, Button, TextBox, Checkbox, Dropdown,
-  RadioButton, Image, Icon, Link (and extended types like Table, Tabs, etc.)
-- Never use: Box, Container, Div, Section, Span, Paragraph, Input, TextField
+Component types:
+- Valid: Grid, Text, Button, TextBox, TextArea, Image, Icon, Dropdown, CheckBox,
+  RadioButton, ToggleButton, Calendar, Table, Tabs, Stepper, Menu, etc.
+- Never use: Box, Container, Div, Flex, Input, Select, Section, Span, Paragraph.
 ```
 
 ---
@@ -571,16 +594,13 @@ button in the header.
 
 [tool_call: add_component(pageName="home", appCode="myblog", parentKey="nav_links",
             component={key: "dark_toggle", type: "ToggleButton",
-                       properties: {label: {value: "🌙"}, ...}})]
+                       properties: {label: {type: "VALUE", value: "🌙"},
+                                    onClick: {type: "VALUE", value: "toggleDarkMode"}}})]
 [tool_result: Added ToggleButton 'dark_toggle' to 'nav_links']
 
 [tool_call: add_event_function(pageName="home", appCode="myblog", eventName="toggleDarkMode",
             functionDefinition={steps: {setDarkMode: {name: "SetStore", ...}}})]
 [tool_result: Event function 'toggleDarkMode' added]
-
-[tool_call: update_component(pageName="home", appCode="myblog", componentKey="dark_toggle",
-            properties={onClick: {value: "toggleDarkMode"}})]
-[tool_result: Updated 'dark_toggle' with onClick event]
 
 Done! I've added:
 - **Dark mode theme variables** — darkBg, darkText, darkPrimary alongside the existing light values
@@ -608,13 +628,13 @@ I'll add a search section between the header and post list.
 
 [tool_call: add_component(pageName="home", appCode="myblog", parentKey="search_section",
             component={key: "search_input", type: "TextBox",
-                       properties: {placeholder: {value: "Search posts..."},
-                                    onChange: {value: "filterPosts"}}})]
+                       properties: {placeholder: {type: "VALUE", value: "Search posts..."},
+                                    onChange: {type: "VALUE", value: "filterPosts"}}})]
 [tool_result: Added TextBox 'search_input' to 'search_section']
 
 [tool_call: add_event_function(pageName="home", appCode="myblog", eventName="filterPosts",
             functionDefinition={steps: {filter: {name: "SetStore",
-                                parameterMap: {path: {value: "Page.searchQuery"}, ...}}}})]
+                                parameterMap: {path: {type: "VALUE", value: "Page.searchQuery"}, ...}}}})]
 [tool_result: Event function 'filterPosts' added]
 
 Done! I added a search section with a text input that filters posts via a store variable.
@@ -631,6 +651,141 @@ Each session tracks:
 - `request_count` — Number of user messages
 - `turn_count` — Total agent turns (including tool-use loops)
 - `tools_called` — List of tools invoked and their success/failure counts
+
+---
+
+## Learning Loop
+
+The agent improves over time via a closed-loop learning framework in `app/learning/`.
+
+### Architecture
+
+```
+User interacts with agent
+        │
+        ▼
+┌─ BaseAgent._run_loop ──────────────────────────────┐
+│  build_dynamic_context()                            │
+│    └─ PromptEnhancer injects relevant knowledge     │
+│       (pitfalls, examples, patterns — ≤2000 tokens) │
+│                                                     │
+│  Tool-use loop (existing)                           │
+│    └─ Tool fails → _on_tool_error() → track pattern │
+│                                                     │
+│  Loop ends → _on_loop_complete()                    │
+│    └─ async: OutcomeAnalyzer.score_session()         │
+│    └─ SSE: feedback_request event                    │
+└─────────────────────────────────────────────────────┘
+        │                          │
+        ▼                          ▼
+  ai_learning_feedback    ai_learning_session_scores
+  (user thumbs up/down)   (computed success_score)
+        │                          │
+        └──────────┬───────────────┘
+                   ▼
+         KnowledgeExtractor
+         (batch: mine high-scoring sessions)
+                   │
+                   ▼
+         ai_learning_knowledge + ChromaDB
+                   │
+                   ▼
+         PromptEnhancer (next session uses learned knowledge)
+```
+
+### Components
+
+| Module | File | Purpose |
+|--------|------|---------|
+| FeedbackCollector | `app/learning/feedback.py` | Collects explicit (thumbs up/down) and implicit (retry/undo/abandon) signals |
+| OutcomeAnalyzer | `app/learning/outcome.py` | Computes `success_score` (0.0–1.0) per session from tool results + feedback + implicit signals |
+| KnowledgeExtractor | `app/learning/knowledge.py` | Mines high-scoring sessions for reusable patterns; tracks tool error patterns |
+| PromptEnhancer | `app/learning/prompt_enhancer.py` | Injects relevant knowledge into the dynamic context (≤2000 token budget) |
+| LearningAnalytics | `app/learning/analytics.py` | Aggregates metrics: success trends, error patterns, feedback rates |
+
+### Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `ai_learning_feedback` | User feedback records (rating, corrections, denormalized turn data) |
+| `ai_learning_tool_errors` | Aggregated tool error patterns with occurrence counts |
+| `ai_learning_session_scores` | Computed session scores (success, satisfaction, error rate, retries, undos) |
+| `ai_learning_knowledge` | Extracted knowledge entries (patterns, pitfalls, examples, lessons) |
+
+### API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/ai/learning/feedback` | Submit user feedback for a turn |
+| `GET` | `/api/ai/learning/feedback` | List feedback history (filter by rating) |
+| `GET` | `/api/ai/learning/analytics/summary` | Aggregate analytics (period: day/week/month) |
+| `GET` | `/api/ai/learning/knowledge` | List knowledge entries (filter by type/status) |
+| `GET` | `/api/ai/learning/knowledge/{id}` | Full knowledge entry detail with content + tool sequence |
+| `PATCH` | `/api/ai/learning/knowledge/{id}` | Update status (ACTIVE/DEPRECATED) or relevance_score |
+| `GET` | `/api/ai/learning/tool-errors` | List tool error patterns (what keeps failing) |
+| `PATCH` | `/api/ai/learning/tool-errors/{id}` | Resolve/ignore error, add resolution note |
+| `GET` | `/api/ai/learning/session-scores` | List session scores (filter by min/max score) |
+| `GET` | `/api/ai/learning/session-scores/{session_id}` | Score breakdown + feedback for a session |
+
+### Admin Workflow
+
+**See what the agent has learned:**
+```
+GET /api/ai/learning/knowledge?status=ACTIVE
+```
+
+**See what the agent keeps getting wrong:**
+```
+GET /api/ai/learning/tool-errors
+```
+
+**Discard a bad knowledge entry:**
+```
+PATCH /api/ai/learning/knowledge/42?status=DEPRECATED
+```
+
+**Mark a tool error as fixed:**
+```
+PATCH /api/ai/learning/tool-errors/7?status=RESOLVED&resolution=Fixed property format in tool description
+```
+
+**Find worst sessions (to debug):**
+```
+GET /api/ai/learning/session-scores?max_score=0.3
+```
+
+**Find best sessions (to extract knowledge from):**
+```
+GET /api/ai/learning/session-scores?min_score=0.8
+```
+
+### SSE Events
+
+```
+event: feedback_request
+data: {"session_id": "abc-123", "turn_number": 3}
+```
+
+Emitted after each agent turn completes (before `done`). The frontend uses this to show thumbs up/down buttons.
+
+### Batch Knowledge Extraction
+
+```bash
+python scripts/extract_knowledge.py --min-score 0.7 --limit 50
+```
+
+Finds sessions with `success_score > 0.7` not yet extracted, creates PATTERN entries in MySQL + ChromaDB.
+
+### Scoring Formula (v1)
+
+```
+success_score =
+    0.30 * tool_success_rate
+  + 0.25 * user_satisfaction_norm
+  + 0.20 * (1 - retry_penalty)
+  + 0.15 * (1 - undo_penalty)
+  + 0.10 * efficiency_score
+```
 
 ---
 
