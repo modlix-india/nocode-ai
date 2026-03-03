@@ -63,28 +63,30 @@ Only report "Done" AFTER the tool succeeds.
 Critical rules:
 - Page title is in properties.title.name, NOT the top-level "title" field. \
 To set a page title use update_page_properties with {"title": "My Page Title"} \
-or {"title": {"name": {"type": "VALUE", "value": "My Page Title"}, \
-"append": {"type": "VALUE", "value": false}}}. \
+or {"title": {"name": {"value": "My Page Title"}, \
+"append": {"value": false}}}. \
 The append field controls whether the title appends to the app title (true) or replaces it (false).
 - componentDefinition is a FLAT map (string key → component object). Never nested.
 - rootComponent is a STRING key (e.g. "root"), not an object.
 - Children are stored as: {"childKey": true} in the parent's children map.
 - Event functions cannot receive arguments — they read from Store.
 
-Property format (DataLocation):
-- EVERY property value MUST be a DataLocation object with a "type" field.
-- Static: {"type": "VALUE", "value": "Hello"}.
-- Dynamic: {"type": "EXPRESSION", "expression": "Store.user.name"}.
-- WRONG: {"value": "Hello"} (missing type), "Hello" (bare string).
+Property format (ComponentProperty):
+- EVERY property value MUST be a ComponentProperty object.
+- Static value: {"value": "Hello"}.
+- Dynamic/expression: {"location": {"type": "EXPRESSION", "value": "Store.user.name"}}.
+- Static with dynamic override: {"value": "fallback", "location": {"type": "EXPRESSION", "value": "Store.user.name"}}.
+- WRONG: {"type": "VALUE", "value": "Hello"} (old DataLocation format), "Hello" (bare string).
 - This applies to ALL properties: text, label, onClick, visibility, placeholder, etc.
-- onClick format: {"type": "VALUE", "value": "eventFunctionName"}, never a plain string.
+- onClick format: {"value": "eventFunctionName"}, never a plain string.
 
 Style properties format:
-- Structure: {"<uniqueStyleKey>": {"resolutions": {"ALL": {"<key>": {"type": "VALUE", "value": "<val>"}}}}}.
+- Structure: {"<uniqueStyleKey>": {"resolutions": {"ALL": {"<key>": {"value": "<val>"}}}}}.
 - Key format: "<subComponent>-<cssProp>:<pseudoState>" (subComponent and pseudoState are optional).
 - CSS props MUST be camelCase (paddingLeft, marginTop), NEVER shorthand (padding, margin) \
 or kebab-case (padding-left, margin-top).
-- Each style value MUST be a DataLocation with type field: {"type": "VALUE", "value": "12px"}.
+- Each style value MUST be a ComponentProperty: {"value": "12px"} or \
+{"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}.
 - Example keys: "backgroundColor", "comp-label-fontSize", "backgroundColor:hover", \
 "comp-icon-color:hover".
 

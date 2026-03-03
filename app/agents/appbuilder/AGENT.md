@@ -416,7 +416,7 @@ data: {
             "key": "email_input",
             "type": "TextBox",
             "parentKey": "form_grid",
-            "properties": {"placeholder": {"type": "VALUE", "value": "Enter email"}}
+            "properties": {"placeholder": {"value": "Enter email"}}
         }
     }
 }
@@ -486,18 +486,19 @@ Structure rules:
 - Children are stored as: {"childKey": true} in the parent's children map.
 - Event functions cannot receive arguments — they read from Store.
 
-Property format (DataLocation):
-- EVERY property value MUST be a DataLocation object with a "type" field.
-- Static: {"type": "VALUE", "value": "Hello"}.
-- Dynamic: {"type": "EXPRESSION", "expression": "Store.user.name"}.
-- WRONG: {"value": "Hello"} (missing type), "Hello" (bare string).
-- onClick format: {"type": "VALUE", "value": "eventFunctionName"}.
+Property format (ComponentProperty):
+- EVERY property value MUST be a ComponentProperty object.
+- Static value: {"value": "Hello"}.
+- Dynamic/expression: {"location": {"type": "EXPRESSION", "value": "Store.user.name"}}.
+- Static with dynamic override: {"value": "fallback", "location": {"type": "EXPRESSION", "value": "Store.user.name"}}.
+- WRONG: {"type": "VALUE", "value": "Hello"} (old DataLocation format), "Hello" (bare string).
+- onClick format: {"value": "eventFunctionName"}.
 
 Style properties format:
-- Structure: {"<uniqueKey>": {"resolutions": {"ALL": {"<key>": {"type": "VALUE", "value": "<val>"}}}}}.
+- Structure: {"<uniqueKey>": {"resolutions": {"ALL": {"<key>": {"value": "<val>"}}}}}.
 - Key format: "<subComponent>-<cssProp>:<pseudoState>" (subComponent/pseudoState optional).
 - CSS props MUST be camelCase (paddingLeft, marginTop), NEVER shorthand (padding) or kebab-case.
-- Each style value MUST be a DataLocation with type field.
+- Each style value MUST be a ComponentProperty object.
 
 Component types:
 - Valid: Grid, Text, Button, TextBox, TextArea, Image, Icon, Dropdown, CheckBox,
@@ -594,8 +595,8 @@ button in the header.
 
 [tool_call: add_component(pageName="home", appCode="myblog", parentKey="nav_links",
             component={key: "dark_toggle", type: "ToggleButton",
-                       properties: {label: {type: "VALUE", value: "🌙"},
-                                    onClick: {type: "VALUE", value: "toggleDarkMode"}}})]
+                       properties: {label: {value: "🌙"},
+                                    onClick: {value: "toggleDarkMode"}}})]
 [tool_result: Added ToggleButton 'dark_toggle' to 'nav_links']
 
 [tool_call: add_event_function(pageName="home", appCode="myblog", eventName="toggleDarkMode",
@@ -628,13 +629,13 @@ I'll add a search section between the header and post list.
 
 [tool_call: add_component(pageName="home", appCode="myblog", parentKey="search_section",
             component={key: "search_input", type: "TextBox",
-                       properties: {placeholder: {type: "VALUE", value: "Search posts..."},
-                                    onChange: {type: "VALUE", value: "filterPosts"}}})]
+                       properties: {placeholder: {value: "Search posts..."},
+                                    onChange: {value: "filterPosts"}}})]
 [tool_result: Added TextBox 'search_input' to 'search_section']
 
 [tool_call: add_event_function(pageName="home", appCode="myblog", eventName="filterPosts",
             functionDefinition={steps: {filter: {name: "SetStore",
-                                parameterMap: {path: {type: "VALUE", value: "Page.searchQuery"}, ...}}}})]
+                                parameterMap: {path: {value: "Page.searchQuery"}, ...}}}})]
 [tool_result: Event function 'filterPosts' added]
 
 Done! I added a search section with a text input that filters posts via a store variable.
