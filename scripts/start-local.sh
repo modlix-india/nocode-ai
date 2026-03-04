@@ -38,25 +38,12 @@ export EUREKA_ENABLED="${EUREKA_ENABLED:-true}"
 export EUREKA_SERVER="${EUREKA_SERVER:-http://localhost:9999/eureka/}"
 export EUREKA_INSTANCE_HOST="${EUREKA_INSTANCE_HOST:-localhost}"
 
-# ChromaDB
-export CHROMA_PERSIST_DIR="${CHROMA_PERSIST_DIR:-./data/chroma}"
-
-# Embedding model
-export EMBEDDING_MODEL="${EMBEDDING_MODEL:-local}"
-export LOCAL_EMBEDDING_MODEL="${LOCAL_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}"
-
-# Document paths
-export AICONTEXT_PATH="${AICONTEXT_PATH:-../nocode-ui/ui-app/aicontext}"
-export APP_DEFINITIONS_PATH="${APP_DEFINITIONS_PATH:-./definitions/app defs}"
-export SITE_DEFINITIONS_PATH="${SITE_DEFINITIONS_PATH:-./definitions/site defs}"
-
 echo ""
 echo "Configuration:"
 echo "  Port: $SERVICE_PORT"
 echo "  Config Server: http://$CLOUD_CONFIG_SERVER:$CONFIG_SERVER_PORT"
 echo "  Profile: $SPRING_PROFILES_ACTIVE"
 echo "  Eureka: $EUREKA_SERVER (enabled: $EUREKA_ENABLED)"
-echo "  ChromaDB: $CHROMA_PERSIST_DIR"
 echo ""
 
 # Check if config server is running (optional)

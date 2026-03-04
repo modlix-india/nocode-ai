@@ -225,7 +225,7 @@ class BaseAgent:
         await session.complete()
         await event_stream.emit_done(
             session_id=session.session_id,
-            usage=session.total_usage,
+            usage=session.get_usage_summary(),
         )
 
     async def _process_content_blocks(

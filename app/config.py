@@ -91,16 +91,8 @@ class Settings(BaseSettings):
     # Legacy - kept for backward compatibility
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
     
-    # Embeddings - Local HuggingFace model (no API needed)
-    LOCAL_EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
-    
-    # ChromaDB
-    CHROMA_PERSIST_DIR: str = "./data/chroma"
-    
-    # RAG Document Paths
-    AICONTEXT_PATH: str = "../nocode-ui/ui-app/aicontext"
-    APP_DEFINITIONS_PATH: str = "./definitions/app defs"
-    SITE_DEFINITIONS_PATH: str = "./definitions/site defs"
+    # AIContext path (empty = use bundled aicontext in appbuilder package)
+    AICONTEXT_PATH: str = ""
     
     # Website Import Settings
     WEBSITE_IMPORT_TIMEOUT: int = 30  # Timeout for website HTML fetching (seconds)
@@ -237,7 +229,6 @@ async def initialize_settings():
         logger.info(f"Models: Fast={settings.OPENAI_MODEL_FAST}, Balanced={settings.OPENAI_MODEL_BALANCED}")
     
     logger.info(f"Google API Key: {'*' * 20 + settings.GOOGLE_API_KEY[-8:] if settings.GOOGLE_API_KEY else 'NOT SET'}")
-    logger.info(f"Embedding Model: {settings.LOCAL_EMBEDDING_MODEL}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")
     logger.info(f"Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min, {settings.RATE_LIMIT_PER_HOUR}/hour")
     logger.info(f"AI Tracking: {'ENABLED - ' + settings.MYSQL_URL[:50] + '...' if settings.AI_TRACKING_ENABLED else 'DISABLED'}")

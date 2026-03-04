@@ -16,6 +16,7 @@ from app.agents.appbuilder.tools.style_tools import STYLE_TOOLS
 from app.agents.appbuilder.tools.function_tools import FUNCTION_TOOLS, SCHEMA_TOOLS
 from app.agents.appbuilder.tools.entity_tools import ENTITY_TOOLS
 from app.agents.appbuilder.tools.version_tools import VERSION_TOOLS
+from app.agents.appbuilder.tools.api_catalog_tools import API_CATALOG_TOOLS
 
 ALL_TOOLS: list[ToolDefinition] = (
     PAGE_TOOLS
@@ -28,4 +29,5 @@ ALL_TOOLS: list[ToolDefinition] = (
     + SCHEMA_TOOLS
     + ENTITY_TOOLS
     + VERSION_TOOLS
+    + API_CATALOG_TOOLS
 )

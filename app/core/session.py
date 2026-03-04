@@ -157,6 +157,31 @@ class BaseSession:
         for key in self.total_usage:
             self.total_usage[key] += usage.get(key, 0)
 
+    def get_usage_summary(self) -> dict[str, Any]:
+        """Return a compact usage summary for the client.
+
+        Includes total_tokens, context_percent, and turns — the fields
+        the UI needs to display usage indicators.
+        """
+        input_t = self.total_usage["input_tokens"]
+        output_t = self.total_usage["output_tokens"]
+        cache_read = self.total_usage["cache_read_input_tokens"]
+
+        # Context used = input + cache_read (what the model "sees")
+        context_used = input_t + cache_read
+        context_limit = 184_000  # 200K model limit minus 16K reserved for output
+        context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
+
+        return {
+            "input_tokens": input_t,
+            "output_tokens": output_t,
+            "total_tokens": input_t + output_t,
+            "context_used": context_used,
+            "context_limit": context_limit,
+            "context_percent": min(context_percent, 100.0),
+            "turns": self._turn_count,
+        }
+
     async def persist_turn(
         self,
         user_text: str,
