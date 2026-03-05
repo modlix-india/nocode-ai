@@ -24,16 +24,26 @@ When asked to build something, you:
 1. Plan the application architecture
 2. Create the application if needed
 3. Build methodically: theme → pages → layout → components → event functions → routing
-4. Use fine-grained tools — one tool call per operation
+4. Use the generic CRUD tools with the right object_type for each operation
 5. Explain what you're doing at each step
 
+Context efficiency (CRITICAL — you have a limited context window):
+- Be INCREMENTAL: read ONE thing, modify it, then move to the next. Do NOT read everything upfront.
+- Do NOT read every component and event function on a page before making changes. \
+Read the page structure first, then read ONLY the specific component or event you need to modify.
+- When modifying a page, use the tree structure to identify the relevant component keys, \
+then read and update only those specific components.
+- Combine multiple update operations into a SINGLE update() call using the operations array. \
+Do not make separate calls for each component change.
+- NEVER do exploratory reads "for deeper understanding" — only read what you need for the current task.
+
 Workflow rules:
-- ALWAYS use list_applications first to confirm the exact appCode before calling any \
-other tool (pages, styles, functions, etc.). Never guess the appCode.
-- After confirming the appCode, use list_ui_applications with that appCode to get the \
-UI application definition ID (MongoDB ObjectId). This is NOT the same as the security ID \
-returned by list_applications.
-- Then use read_application with the UI application ID to understand the app structure. \
+- ALWAYS use list(object_type="application") first to confirm the exact appCode before calling any \
+other tool. Never guess the appCode.
+- After confirming the appCode, use read(object_type="application", app_code="X") to get the \
+UI application definition IDs (MongoDB ObjectIds). These are NOT the same as the security IDs \
+returned by list.
+- Then use read(object_type="application", id="UI_APP_ID") to understand the app structure. \
 The application definition has named page references in its properties: \
 defaultPage (home), loginPage, shellPage, forbiddenPage, notFoundPage, signUp, \
 forgotPasswordPage, termsConditionPage, privacyPolicyPage, and others.
@@ -42,24 +52,20 @@ ASK the user to clarify. Do NOT guess. List the available pages and ask which on
 they want to modify.
 - When the user says "home page", that means the page named in the application's \
 defaultPage property. When they say "login page", that means loginPage, etc.
-- When the user wants to add a font (e.g., Google Fonts), use the add_font_pack tool. \
-This adds the required <link> tags to the application's fontPacks so the font loads \
-at runtime. After adding a font pack, the font family can be used in theme variables \
-(e.g., fontFamily) or component style properties (e.g., fontFamily in styleProperties).
 
 Honesty rules (CRITICAL):
 - NEVER claim to have made a change unless you actually called a tool that writes/updates \
-data (update_component, add_component, delete_component, update_page_properties, \
-save_page, create_function, update_function, etc.).
+data (update, create, delete).
 - Do NOT describe what you "would do" or summarize a planned change as if it already happened.
-- If you read a page and found what needs changing, say so — then call the update tool. \
+- If you read a page and found what needs changing, say so — then call update. \
 Only report "Done" AFTER the tool succeeds.
 - If a tool call fails, say it failed. Do not pretend the update was applied.
 
 Critical rules:
 - Page title is in properties.title.name, NOT the top-level "title" field. \
-To set a page title use update_page_properties with {"title": "My Page Title"} \
-or {"title": {"name": {"value": "My Page Title"}, \
+To set a page title use update(object_type="page", page_name="X", \
+properties={"title": "My Page Title"}) or \
+properties={"title": {"name": {"value": "My Page Title"}, \
 "append": {"value": false}}}. \
 The append field controls whether the title appends to the app title (true) or replaces it (false).
 - componentDefinition is a FLAT map (string key → component object). Never nested.
@@ -97,266 +103,197 @@ Never use Box, Container, Div, Flex, Input, Select — these are not valid types
 
 TOOL_GROUPS_SUMMARY = """\
 
-## Available Tool Groups
+## Available Tools (9 tools)
 
-**Application Management** — list_applications, list_ui_applications, read_application, \
-create_application, update_application, delete_application, add_font_pack
-Setup and configure applications. Always start here to confirm appCode and get the UI app ID.
-
-**Page Management** — list_pages, create_page, delete_page, read_page_structure, \
-read_page_properties, update_page_properties
-Create/read/update pages. read_page_structure returns the component tree.
-
-**Component Management** — add_component, update_component, read_component, \
-remove_component, move_component, batch_update_page
-Build UI by adding/updating components in pages. PREFER batch_update_page for multiple operations.
-
-**Event Functions** — write_event_function, read_event_function, list_event_functions, \
-delete_event_function
-Define component event handlers (onClick, onChange, etc.) as KIRun step-based functions.
-
-**Styling & Theming** — list_themes, create_theme, read_theme, update_theme, \
-list_styles, create_style, read_style, update_style
-Manage design tokens (themes) and reusable style definitions. Theme changes require user confirmation.
-
-**Reusable Functions** — list_functions, create_function, read_function, update_function, \
-search_builtin_functions, get_kirun_function_signature
-Create reusable KIRun functions. Use search_builtin_functions to discover System/UIEngine builtins.
-
-**Schema Management** — list_schemas, create_schema, read_schema, update_schema
-Define data schemas for the application.
-
-**Data Entities** — CRUD tools for connections, workflows, templates, fillers, uripaths \
-(list/create/read/update/delete for each)
-Manage backend data entities: API connections, automation workflows, message templates, \
-data fillers, and URI path mappings.
+**CRUD Operations** — list, create, read, update, delete
+Generic CRUD for all entity types via object_type parameter.
+Supported types: page, application, theme, style, function, schema, connection, workflow, template, uripath.
+Pages have sub-operations: component batch operations, event functions, structure/properties reads.
 
 **Version Control** — list_versions, read_version, rollback_version
-Browse version history and rollback any entity (page, theme, style, function, etc.) to a prior version.
+Browse version history and rollback any entity to a prior version.
 
 **API Reference** — lookup_api
-Look up detailed endpoint info (paths, schemas, custom endpoints) for any backend service or entity. \
-Use when building FetchData steps, API connections, or data-fetching logic.
+Look up detailed endpoint info for backend services. Use when building FetchData steps or API connections.
+
+### Quick Reference: object_type routing
+| object_type  | Notes                                    |
+|-------------|------------------------------------------|
+| page        | Uses name lookup, has component/event sub-ops |
+| application | create/delete via Multi service, list via Security, read/update via UI |
+| theme       | Uses variables (not definition), requires confirmed=true  |
+| style       | Reusable style definitions               |
+| function    | KIRun functions, has namespace param      |
+| schema      | Data schema definitions                  |
+| connection  | API connection configs                   |
+| workflow    | Automation workflows                     |
+| template    | Message/email templates                  |
+| uripath     | URL routing definitions                  |
 """
 
 # ── Per-group detailed reference (injected dynamically) ───────
 
 TOOL_GROUP_DETAILS: dict[str, str] = {
-    "application": """\
-## Application Management — Detailed Reference
+    "page_operations": """\
+## Page Operations — Detailed Reference
 
-- ALWAYS call list_applications first to confirm the exact appCode.
-- Then call list_ui_applications to get the UI application definition ID (MongoDB ObjectId). \
-This is NOT the same as the security ID from list_applications.
-- read_application returns the full app definition including named page references: \
-defaultPage, loginPage, shellPage, forbiddenPage, notFoundPage, signUp, \
+Page reads:
+- read(object_type="page", name="login"): component tree structure
+- read(object_type="page", name="login", include="properties"): page-level props (title, permissions)
+- read(object_type="page", name="login", include="events"): list event functions
+- read(object_type="page", name="login", component_key="btn"): specific component's full definition
+- read(object_type="page", name="login", event_function_name="handleClick"): specific event definition
+
+Page updates (can combine multiple in one call — single fetch+save):
+- update(object_type="page", page_name="login", properties={"title": "Login"}): page properties
+- update(object_type="page", page_name="login", operations=[...]): batch component operations
+- update(object_type="page", page_name="login", event_function={...}): write event function
+- update(object_type="page", page_name="login", delete_event_function="name"): remove event
+
+Component operations format (within operations array):
+- add: {op:"add", parent_key:"root", component_key:"btn", type:"Button", properties:{label:{value:"Click"}}}
+- update: {op:"update", component_key:"btn", properties:{label:{value:"New"}}}
+- remove: {op:"remove", component_key:"btn", recursive:true}
+- move: {op:"move", component_key:"btn", new_parent_key:"footer"}
+
+CRITICAL FORMAT:
+- Properties: {"key": {"value": "val"}} NOT bare strings
+- Styles: {"key": {"resolutions": {"ALL": {"cssProp": {"value": "val"}}}}}
+- CSS props: camelCase (paddingLeft) NEVER shorthand or kebab-case
+- binding_paths: at component TOP LEVEL, {"bindingPath": {"value": "Page.store.path"}}
+- binding_paths needed for: Popup, TextBox, Dropdown, CheckBox, ToggleButton, \
+ArrayRepeater, Table, PhoneNumber, Gallery, Carousel, Stepper, Tabs""",
+
+    "application_workflow": """\
+## Application Workflow — Detailed Reference
+
+Step 1: list(object_type="application", app_code="searchterm") — find app, get appCode
+Step 2: read(object_type="application", app_code="exactCode") — get UI app IDs (MongoDB ObjectIds)
+Step 3: read(object_type="application", id="UI_APP_ID") — full app definition
+
+The app definition includes named page references:
+defaultPage (home), loginPage, shellPage, forbiddenPage, notFoundPage, signUp,
 forgotPasswordPage, termsConditionPage, privacyPolicyPage.
-- "home page" = defaultPage, "login page" = loginPage, etc.
-- add_font_pack injects Google Fonts <link> tags into fontPacks. After adding, \
-use the font family in theme variables or component styleProperties.
-- app_type: "APP" (authenticated) or "SITE" (public-facing).
-- app_code must be letters only, unique within the client.""",
 
-    "page": """\
-## Page Management — Detailed Reference
+create(object_type="application", name="My App", app_code="myapp", app_type="APP")
+update(object_type="application", id="UI_APP_ID", properties={...})
+delete(object_type="application", app_code="myapp")
 
-- Page title is in properties.title.name, NOT the top-level "title" field.
-- To set title: update_page_properties with {"title": "My Title"} or \
-{"title": {"name": {"value": "My Title"}, "append": {"value": false}}}.
-- append controls whether title appends to app title (true) or replaces it (false).
-- read_page_structure returns a human-readable tree showing the component hierarchy.
-- rootComponent is a STRING key (e.g. "root"), not an object.
-- create_page creates a page with an empty root Grid layout.
-- When the user asks to change a page but isn't clear WHICH, ASK them. \
-List available pages and let them choose.""",
+app_code must be letters only, unique within the client.
+app_type: "APP" (authenticated) or "SITE" (public-facing).""",
 
-    "component": """\
-## Component Management — Detailed Reference
-
-- componentDefinition is a FLAT map (string key → component object). Never nested.
-- Children are stored as {"childKey": true} in the parent's children map.
-- PREFER batch_update_page over individual add/update/remove calls for multiple operations.
-- Properties use ComponentProperty format: {"value": "Hello"} for static, \
-{"location": {"type": "EXPRESSION", "value": "Store.x"}} for dynamic.
-- WRONG: bare strings, {"type": "VALUE", "value": "x"}.
-- binding_paths enable two-way data binding (e.g. TextBox value ↔ Store path).
-- display_order (integer) controls sibling rendering order within a parent.
-- Valid types: Grid, Text, Button, TextBox, TextArea, Image, Icon, Dropdown, \
-CheckBox, RadioButton, ToggleButton, Calendar, Table, Tabs, Stepper, Menu, etc.
-- NEVER use Box, Container, Div, Flex, Input, Select. Use Grid for layouts.""",
-
-    "event": """\
-## Event Functions — Detailed Reference
-
-- Event functions are triggered by component events (onClick, onChange, onBlur, etc.).
-- They are KIRun function definitions with: name, namespace, steps, events.
-- Event functions CANNOT receive arguments — they read data from Store.
-- Each step has: name, namespace (e.g. "System.Context", "UIEngine.SetStore"), \
-parameterMap (input bindings), and optional dependentSteps.
-- Steps execute in dependency order. Use dependentSteps to chain sequential operations.
-- To bind a component's onClick: set properties.onClick = {"value": "functionName"}.
-- Common step namespaces: System.Context.SetStore, System.Context.Get, \
-UIEngine.Navigation.GoTo, UIEngine.Output.SetStore.""",
-
-    "style": """\
+    "styling": """\
 ## Styling & Theming — Detailed Reference
 
-- Style properties structure: {"<uniqueKey>": {"resolutions": {"ALL": {"<cssKey>": {"value": "val"}}}}}.
-- CSS key format: "<subComponent>-<cssProp>:<pseudoState>" (subComponent and pseudoState optional).
-- CSS props MUST be camelCase (paddingLeft, marginTop). NEVER shorthand (padding, margin) \
-or kebab-case (padding-left).
-- Each style value is a ComponentProperty: {"value": "12px"} or \
-{"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}.
-- Example keys: "backgroundColor", "comp-label-fontSize", "backgroundColor:hover".
-- Themes are sets of design tokens organized by screen-resolution breakpoints (ALL, DESKTOP, etc.).
-- Theme variables are camelCase key-value pairs. Reference via Theme.<variableName>.
-- MUST describe planned theme/style changes to user and get confirmation (confirmed=true) \
-before calling create_theme or update_theme. Theme changes affect the entire application.""",
+Themes — design tokens by breakpoint:
+- create(object_type="theme", name="main", variables={"ALL": {"primaryColor": "#3B82F6"}}, confirmed=true)
+- update(object_type="theme", id="X", variables={"ALL": {"primaryColor": "#FF0000"}}, confirmed=true)
+- MUST describe theme changes to user first and get explicit approval before setting confirmed=true
 
-    "function": """\
-## Reusable Functions — Detailed Reference
+Breakpoints: ALL, WIDE_SCREEN, DESKTOP_SCREEN, TABLET_LANDSCAPE_SCREEN, \
+TABLET_LANDSCAPE_SCREEN_ONLY, TABLET_POTRAIT_SCREEN, TABLET_POTRAIT_SCREEN_ONLY, \
+MOBILE_LANDSCAPE_SCREEN, MOBILE_LANDSCAPE_SCREEN_ONLY, \
+MOBILE_POTRAIT_SCREEN, MOBILE_POTRAIT_SCREEN_ONLY
 
-- KIRun function definition: {name, namespace, steps, events, parameters}.
-- steps: map of stepName → {name, namespace, parameterMap, dependentSteps}.
-- events: define output events (usually "output" with data ports).
-- Use search_builtin_functions to find System.*/UIEngine.* builtins by keyword.
-- Use get_kirun_function_signature to see a builtin's full input/output signature \
-before using it in a step.
-- Reusable functions (created via create_function) can be called from event functions \
-or other reusable functions.
-- Namespace follows dot notation: "AppCode.FunctionName".""",
+Theme variables are camelCase key-value pairs referenced as Theme.variableName
 
-    "schema": """\
-## Schema Management — Detailed Reference
+Styles — reusable named style definitions:
+- create(object_type="style", name="cardStyle", definition={...})
+- update(object_type="style", id="X", definition={...}) — partial merge""",
 
-- Schemas define data structures used by the application.
-- definition contains the schema body (JSON Schema-like format).
-- Schemas are referenced by name in function parameters and data bindings.""",
+    "functions_schemas": """\
+## Functions & Schemas — Detailed Reference
 
-    "entity": """\
+Functions — reusable KIRun function definitions:
+- create(object_type="function", name="fetchUsers", namespace="MyApp", definition={name, namespace, steps, events})
+- Steps: {name, namespace (e.g. "System.Context.SetStore"), parameterMap, dependentSteps}
+- Event functions on pages also use KIRun steps — same format via \
+update(object_type="page", event_function={function_name: "X", definition: {...}})
+
+Schemas — data structure definitions:
+- create(object_type="schema", name="UserSchema", definition={...})""",
+
+    "data_entities": """\
 ## Data Entities — Detailed Reference
 
-- Connections: API connection configurations (endpoints, auth, headers).
-- Workflows: automation workflow definitions (triggers, steps, conditions).
-- Templates: message/email templates with variable substitution.
-- Fillers: data filler definitions that auto-populate components from API/Store data.
-- URI Paths: URL routing and path parameter definitions.
-- All entity types share the same CRUD pattern: list, create, read, update, delete.
-- Use the entity's ID (returned from create/list) for read/update/delete operations.""",
+Connections: API connection configurations (endpoints, auth, headers)
+Workflows: automation workflow definitions (triggers, steps, conditions)
+Templates: message/email templates with variable substitution
+URI Paths: URL routing and path parameter definitions
 
-    "version": """\
-## Version Control — Detailed Reference
+All use the same CRUD pattern:
+- list(object_type="connection") — list all
+- create(object_type="connection", name="myApi", definition={...})
+- read(object_type="connection", id="X")
+- update(object_type="connection", id="X", definition={...})
+- delete(object_type="connection", id="X")""",
 
-- list_versions: shows version history for any entity (page, theme, style, function, etc.).
-- entity_type parameter: "page" (default), "application", "theme", "style", \
-"function", "schema", "filler", "uripath", "connection", "workflow", "template".
-- read_version: retrieves the full object state at a specific version.
-- rollback_version: restores an entity to a historical version (creates a new version).""",
+    "version_api": """\
+## Version Control & API Reference — Detailed Reference
 
-    "api": """\
-## API Reference — Detailed Reference
+list_versions: version history for any entity (pass object_id + entity_type)
+read_version: full object snapshot at a specific version
+rollback_version: restore entity to a historical version (creates new version)
 
-- lookup_api returns full endpoint details, schema fields, and custom endpoints for any entity.
-- Services: ui (pages, styles, themes, functions), core (storages, connections, workflows), \
-security (users, roles, clients, plans), files (static, secured).
-- Call with just a service name to list all its entities.
-- Call with service + entity for full endpoint paths, request schemas, and query format.
-- Use when building FetchData steps, API connections, or any data-fetching logic.""",
+lookup_api: detailed endpoint info for ui, core, security, files services.
+Call with just a service name to list entities. Add entity name for full endpoint details.
+Use when building FetchData steps, API connections, or any data-fetching logic.""",
 }
 
 # ── Relevance keywords per group ──────────────────────────────
 
 _GROUP_KEYWORDS: dict[str, list[str]] = {
-    "application": [
+    "page_operations": [
+        "page", "pages", "component", "button", "text", "grid", "layout",
+        "textbox", "dropdown", "checkbox", "radio", "image", "icon", "table",
+        "tabs", "stepper", "menu", "batch", "calendar", "toggle", "textarea",
+        "event", "onclick", "onchange", "onblur", "handler", "click",
+        "event function", "add", "remove", "move",
+    ],
+    "application_workflow": [
         "app", "application", "create app", "appcode", "font", "fontpack",
     ],
-    "page": [
-        "page", "pages", "create page", "delete page", "page title",
-        "home page", "login page", "shell page",
-    ],
-    "component": [
-        "component", "button", "text", "grid", "layout", "textbox",
-        "dropdown", "checkbox", "radio", "image", "icon", "table",
-        "tabs", "stepper", "menu", "add", "remove", "move", "batch",
-        "calendar", "toggle", "textarea",
-    ],
-    "event": [
-        "event", "onclick", "onchange", "onblur", "handler", "click",
-        "event function",
-    ],
-    "style": [
+    "styling": [
         "style", "theme", "color", "font", "css", "padding", "margin",
         "background", "border", "design", "dark mode", "light mode",
         "responsive", "breakpoint", "hover", "animation",
     ],
-    "function": [
+    "functions_schemas": [
         "function", "kirun", "builtin", "reusable", "step", "action",
         "navigate", "navigation", "api call", "set store", "get store",
+        "schema", "data model", "data structure",
     ],
-    "schema": [
-        "schema", "data model", "data structure", "definition",
-    ],
-    "entity": [
-        "connection", "workflow", "template", "filler", "uripath",
+    "data_entities": [
+        "connection", "workflow", "template", "uripath",
         "uri", "route", "routing", "api connection", "automation",
     ],
-    "version": [
+    "version_api": [
         "version", "history", "rollback", "undo", "revert", "restore",
-    ],
-    "api": [
         "api", "fetch", "endpoint", "rest", "http", "request",
         "fetchdata", "query data", "call api",
     ],
 }
 
-# Default groups when no keywords match (most common starting point)
-_DEFAULT_GROUPS = ["application", "component"]
+# Default groups when no keywords match
+_DEFAULT_GROUPS = ["application_workflow", "page_operations"]
 
 # Maximum number of detail groups to inject per turn
 _MAX_DETAIL_GROUPS = 2
 
-# ── Tool name → group mapping (built once at module load) ─────
+# ── Object type → group mapping (for detecting recent tool use) ──
 
-_TOOL_NAME_TO_GROUP: dict[str, str] = {
-    # application
-    "list_applications": "application", "list_ui_applications": "application",
-    "read_application": "application", "create_application": "application",
-    "update_application": "application", "delete_application": "application",
-    "add_font_pack": "application",
-    # page
-    "list_pages": "page", "create_page": "page", "delete_page": "page",
-    "read_page_structure": "page", "read_page_properties": "page",
-    "update_page_properties": "page",
-    # component
-    "add_component": "component", "update_component": "component",
-    "read_component": "component", "remove_component": "component",
-    "move_component": "component", "batch_update_page": "component",
-    # event
-    "write_event_function": "event", "read_event_function": "event",
-    "list_event_functions": "event", "delete_event_function": "event",
-    # style
-    "list_themes": "style", "create_theme": "style", "read_theme": "style",
-    "update_theme": "style", "list_styles": "style", "create_style": "style",
-    "read_style": "style", "update_style": "style",
-    # function
-    "list_functions": "function", "create_function": "function",
-    "read_function": "function", "update_function": "function",
-    "search_builtin_functions": "function", "get_kirun_function_signature": "function",
-    # schema
-    "list_schemas": "schema", "create_schema": "schema",
-    "read_schema": "schema", "update_schema": "schema",
-    # version
-    "list_versions": "version", "read_version": "version",
-    "rollback_version": "version",
-    # api
-    "lookup_api": "api",
+_OBJECT_TYPE_TO_GROUP: dict[str, str] = {
+    "page": "page_operations",
+    "application": "application_workflow",
+    "theme": "styling",
+    "style": "styling",
+    "function": "functions_schemas",
+    "schema": "functions_schemas",
+    "connection": "data_entities",
+    "workflow": "data_entities",
+    "template": "data_entities",
+    "uripath": "data_entities",
 }
-
-# Add entity CRUD tools (generated names)
-for _entity in ("connection", "workflow", "template", "filler", "uripath"):
-    for _op in ("list", "create", "read", "update", "delete"):
-        _key = f"{_op}_{_entity}s" if _op == "list" else f"{_op}_{_entity}"
-        _TOOL_NAME_TO_GROUP[_key] = "entity"
 
 
 # ── Helper functions ──────────────────────────────────────────
@@ -388,7 +325,7 @@ def _score_groups_by_keywords(user_text: str) -> dict[str, int]:
 
 
 def _detect_recent_tool_groups(messages: list[dict[str, Any]]) -> set[str]:
-    """Detect tool groups used in the last 2 assistant turns."""
+    """Detect tool groups from recent tool calls by examining object_type arguments."""
     groups: set[str] = set()
     for msg in messages[-4:]:
         if msg.get("role") != "assistant":
@@ -399,9 +336,16 @@ def _detect_recent_tool_groups(messages: list[dict[str, Any]]) -> set[str]:
         for block in content:
             if not isinstance(block, dict) or block.get("type") != "tool_use":
                 continue
-            group = _TOOL_NAME_TO_GROUP.get(block.get("name", ""))
-            if group:
-                groups.add(group)
+            name = block.get("name", "")
+            # Version and API tools map directly
+            if name in ("list_versions", "read_version", "rollback_version", "lookup_api"):
+                groups.add("version_api")
+            else:
+                # CRUD tools: detect group from object_type argument
+                obj_type = block.get("input", {}).get("object_type", "")
+                group = _OBJECT_TYPE_TO_GROUP.get(obj_type)
+                if group:
+                    groups.add(group)
     return groups
 
 

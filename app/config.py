@@ -59,10 +59,10 @@ class Settings(BaseSettings):
     AI_TRACKING_ENABLED: bool = False  # Auto-enabled when MYSQL_URL is configured
 
     # Context limits for conversation tracking
-    CONTEXT_LIMIT_DEFAULT: int = 184000  # Default context limit (200K - 16K reserved for output)
+    CONTEXT_LIMIT_DEFAULT: int = 48000  # Default context limit (64K - 16K reserved for output)
     
     # LLM Provider Selection
-    # Options: "anthropic" or "openai"
+    # Options: "anthropic", "openai", or "deepseek"
     # Can be overridden by config server: ai.llm.provider
     LLM_PROVIDER: str = "anthropic"
     
@@ -77,6 +77,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL_FAST: str = "gpt-4o-mini"    # Equivalent to Claude Haiku
     OPENAI_MODEL_BALANCED: str = "gpt-4o"      # Equivalent to Claude Sonnet
+
+    # DeepSeek Settings
+    # Can be overridden by config server: ai.secrets.deepSeekAPIKey
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_MODEL_FAST: str = "deepseek-chat"       # DeepSeek V3.2 (non-thinking)
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-chat"   # DeepSeek V3.2 (with thinking)
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
     
     # Google Settings
     # Can be overridden by config server: ai.secrets.googleAPIKey
@@ -112,10 +120,10 @@ class Settings(BaseSettings):
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
     MAX_AGENT_TURNS: int = 50  # Max tool-use loop iterations per request
-    AGENT_MAX_TOKENS: int = 16384  # Max tokens per LLM response
+    AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "anthropic"  # AppBuilder always uses Anthropic
+    APPBUILDER_PROVIDER: str = "anthropic"  # AppBuilder uses Claude
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
@@ -146,6 +154,7 @@ class Settings(BaseSettings):
             ("files", "url"): "FILES_SERVICE_URL",
             ("secrets", "anthropicAPIKey"): "ANTHROPIC_API_KEY",
             ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
+            ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
@@ -224,9 +233,18 @@ async def initialize_settings():
         logger.info(f"Anthropic API Key: {'*' * 20 + settings.ANTHROPIC_API_KEY[-8:] if settings.ANTHROPIC_API_KEY else 'NOT SET'}")
         logger.info(f"Models: Haiku={settings.CLAUDE_HAIKU}, Sonnet={settings.CLAUDE_SONNET}")
         logger.info(f"Prompt Caching: {'ENABLED' if settings.PROMPT_CACHING_ENABLED else 'DISABLED'}")
+    elif settings.LLM_PROVIDER == "deepseek":
+        logger.info(f"DeepSeek API Key: {'*' * 20 + settings.DEEPSEEK_API_KEY[-8:] if settings.DEEPSEEK_API_KEY else 'NOT SET'}")
+        logger.info(f"Models: Fast={settings.DEEPSEEK_MODEL_FAST}, Balanced={settings.DEEPSEEK_MODEL_BALANCED}")
     else:
         logger.info(f"OpenAI API Key: {'*' * 20 + settings.OPENAI_API_KEY[-8:] if settings.OPENAI_API_KEY else 'NOT SET'}")
         logger.info(f"Models: Fast={settings.OPENAI_MODEL_FAST}, Balanced={settings.OPENAI_MODEL_BALANCED}")
+
+    if settings.APPBUILDER_PROVIDER != settings.LLM_PROVIDER:
+        logger.info(f"AppBuilder Provider Override: {settings.APPBUILDER_PROVIDER.upper()}")
+        if settings.APPBUILDER_PROVIDER == "deepseek":
+            logger.info(f"DeepSeek API Key: {'*' * 20 + settings.DEEPSEEK_API_KEY[-8:] if settings.DEEPSEEK_API_KEY else 'NOT SET'}")
+            logger.info(f"DeepSeek Models: Fast={settings.DEEPSEEK_MODEL_FAST}, Balanced={settings.DEEPSEEK_MODEL_BALANCED}")
     
     logger.info(f"Google API Key: {'*' * 20 + settings.GOOGLE_API_KEY[-8:] if settings.GOOGLE_API_KEY else 'NOT SET'}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")

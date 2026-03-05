@@ -66,19 +66,28 @@ class ToolResult:
     summary: str = ""
     error: str = ""
 
+    # Hard cap on tool result content sent to the LLM.
+    # Prevents a single read from consuming excessive context.
+    MAX_RESULT_CHARS: int = 6000
+
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM."""
         if not self.success:
             return f"Error: {self.error}"
         if self.summary:
-            return self.summary
-        if self.data is not None:
+            text = self.summary
+        elif self.data is not None:
             import json
             try:
-                return json.dumps(self.data, indent=2, default=str)
+                text = json.dumps(self.data, indent=2, default=str)
             except (TypeError, ValueError):
-                return str(self.data)
-        return "OK"
+                text = str(self.data)
+        else:
+            return "OK"
+
+        if len(text) > self.MAX_RESULT_CHARS:
+            return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
+        return text
 
 
 # Type alias for tool execute functions.

@@ -133,12 +133,26 @@ class BaseSession:
         else:
             self.messages.append({"role": "user", "content": text})
 
-    def append_assistant_message(self, content_blocks: list[dict[str, Any]]) -> None:
-        """Append an assistant message (may contain text + tool_use blocks)."""
-        self.messages.append({
+    def append_assistant_message(
+        self,
+        content_blocks: list[dict[str, Any]],
+        reasoning_content: str | None = None,
+    ) -> None:
+        """Append an assistant message (may contain text + tool_use blocks).
+
+        Args:
+            content_blocks: Anthropic-style content blocks.
+            reasoning_content: Optional CoT reasoning from thinking-mode
+                providers (e.g. DeepSeek). Stored as ``_reasoning_content``
+                so providers can pass it back on subsequent turns.
+        """
+        msg: dict[str, Any] = {
             "role": "assistant",
             "content": content_blocks,
-        })
+        }
+        if reasoning_content:
+            msg["_reasoning_content"] = reasoning_content
+        self.messages.append(msg)
 
     def append_tool_results(self, tool_results: list[dict[str, Any]]) -> None:
         """Append tool results as a user message (Anthropic format).
@@ -169,7 +183,8 @@ class BaseSession:
 
         # Context used = input + cache_read (what the model "sees")
         context_used = input_t + cache_read
-        context_limit = 184_000  # 200K model limit minus 16K reserved for output
+        from app.config import settings
+        context_limit = settings.CONTEXT_LIMIT_DEFAULT
         context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
 
         return {
@@ -198,6 +213,9 @@ class BaseSession:
 
         This is a best-effort operation — failures are logged but don't
         stop the agent.
+
+        Uses upsert so that if persist_turn_incremental() already created
+        the row during the tool loop, the final complete data overwrites it.
         """
         if not self.auth:
             return
@@ -212,7 +230,9 @@ class BaseSession:
             from app.services.context_manager import get_context_manager
             context_manager = get_context_manager()
             request_id = uuid.uuid4().hex[:8]
-            await context_manager.add_turn(
+            # Use upsert (not plain insert) because persist_turn_incremental()
+            # may have already created this turn during the tool-use loop.
+            await context_manager.upsert_turn(
                 session_id=self.session_id,
                 request_id=request_id,
                 turn_number=self._turn_count,
@@ -223,13 +243,32 @@ class BaseSession:
         except Exception as e:
             logger.warning(f"Failed to persist turn: {e}")
 
+        # Update TURN_COUNT in the session table so the UI shows
+        # the correct turn count on refresh.
+        try:
+            from app.services.session_manager import get_session_manager
+            session_manager = get_session_manager()
+            await session_manager.increment_turn_count(
+                self.session_id, self.auth.user_id if self.auth else None
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update turn count: {e}")
+
     async def record_token_usage(
         self,
         usage: dict[str, Any],
         request_id: str,
         model: str,
+        provider_name: str | None = None,
     ) -> None:
         """Record token usage for a single LLM call.
+
+        Args:
+            usage: Token usage dict from LLM response.
+            request_id: Unique request identifier.
+            model: Model name used for this call.
+            provider_name: LLM provider name (e.g. "anthropic", "deepseek").
+                Falls back to settings.LLM_PROVIDER if not provided.
 
         Best-effort — failures are logged but don't stop the agent.
         """
@@ -249,7 +288,7 @@ class BaseSession:
                 user_id=self.auth.user_id,
                 agent_type=self.agent_name,
                 model=model,
-                llm_provider=settings.LLM_PROVIDER,
+                llm_provider=provider_name or settings.LLM_PROVIDER,
                 input_tokens=usage.get("input_tokens", 0),
                 output_tokens=usage.get("output_tokens", 0),
                 cache_read_tokens=usage.get("cache_read_input_tokens", 0),

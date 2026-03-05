@@ -35,6 +35,7 @@ class AgentEventType(str, Enum):
     """Types of events emitted during agent execution."""
 
     TEXT = "text"  # Streamed text from the LLM
+    THINKING = "thinking"  # CoT reasoning from thinking-mode providers
     TOOL_START = "tool_start"  # Tool execution started
     TOOL_RESULT = "tool_result"  # Tool execution completed
     ERROR = "error"  # Error occurred
@@ -80,6 +81,13 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.TEXT,
             data={"text": text},
+        ))
+
+    async def emit_thinking(self, reasoning: str) -> None:
+        """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek)."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.THINKING,
+            data={"text": reasoning},
         ))
 
     async def emit_tool_start(

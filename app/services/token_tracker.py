@@ -73,6 +73,9 @@ class TokenTracker:
 
             logger.debug(f"Recorded token usage for {usage.agent_type}: {usage.input_tokens}+{usage.output_tokens} tokens")
 
+            # Update session totals (token counts, context usage)
+            await self._update_session_totals([usage])
+
             # Return a model with the ID
             return AiTokenUsage(
                 id=record_id,

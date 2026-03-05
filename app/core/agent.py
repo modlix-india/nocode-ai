@@ -82,6 +82,7 @@ class BaseAgent:
         session: BaseSession,
         event_stream: AgentEventStream,
         image_blocks: list[dict[str, Any]] | None = None,
+        model_override: str | None = None,
     ) -> None:
         """Execute the agentic loop for a single user turn.
 
@@ -99,15 +100,22 @@ class BaseAgent:
             session: Active session with auth context and message history.
             event_stream: SSE stream to emit events to the client.
             image_blocks: Optional image content blocks (Anthropic format) to include with the message.
+            model_override: Optional model ID in "provider:model" format to override the default.
         """
         try:
-            logger.info("Agent '%s' run: session=%s, provider=%s, images=%s",
+            logger.info("Agent '%s' run: session=%s, provider=%s, model_override=%s, images=%s",
                        self.name, session.session_id, self._provider_name or "(default)",
+                       model_override or "(none)",
                        len(image_blocks) if image_blocks else 0)
-            await self._run_loop(user_message, session, event_stream, image_blocks)
+            await self._run_loop(user_message, session, event_stream, image_blocks, model_override)
         except Exception as e:
             logger.exception("Agent '%s' error in session %s", self.name, session.session_id)
-            await event_stream.emit_error(f"Agent error: {type(e).__name__}: {e}")
+            error_text = f"Agent error: {type(e).__name__}: {e}"
+            await event_stream.emit_error(error_text)
+            # Persist the error as a turn so it shows in session history
+            await session.persist_turn(
+                user_message, error_text, None
+            )
             await session.complete()
             await event_stream.emit_done(
                 session_id=session.session_id,
@@ -120,9 +128,18 @@ class BaseAgent:
         session: BaseSession,
         event_stream: AgentEventStream,
         image_blocks: list[dict[str, Any]] | None = None,
+        model_override: str | None = None,
     ) -> None:
         """Internal agentic loop implementation."""
-        provider = get_llm_provider(self._provider_name)
+        # Resolve provider and model: use override if specified, else defaults
+        override_model: str | None = None
+        if model_override:
+            from app.services.llm_provider import resolve_model_override
+            override_provider, override_model = resolve_model_override(model_override)
+            provider = get_llm_provider(override_provider)
+            logger.info("Model override: provider=%s, model=%s", override_provider, override_model)
+        else:
+            provider = get_llm_provider(self._provider_name)
         logger.info("Provider resolved: %s (class=%s)", self._provider_name, type(provider).__name__)
 
         # Mark session as processing so UI can detect in-progress state on refresh
@@ -149,14 +166,17 @@ class BaseAgent:
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
             # Call LLM with tools
+            # When a model override is set, pass it as model_tier — providers
+            # treat unknown tier strings as direct model names (see get_model).
+            effective_tier = override_model or self.model_tier
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
-                       turn, self.max_turns, self.model_tier, self.max_tokens, len(self._anthropic_tools))
+                       turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
             start_time = time.monotonic()
             response = await provider.create_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=session.get_messages(),
                 tools=self._anthropic_tools,
-                model_tier=self.model_tier,
+                model_tier=effective_tier,
                 max_tokens=self.max_tokens,
             )
             latency_ms = int((time.monotonic() - start_time) * 1000)
@@ -167,10 +187,15 @@ class BaseAgent:
             usage = response["usage"]
             usage["latency_ms"] = latency_ms
             stop_reason = response["stop_reason"]
+            reasoning_content = response.get("reasoning_content")
 
             # Track usage
             session.accumulate_usage(usage)
-            await session.record_token_usage(usage, request_id, response["model"])
+            await session.record_token_usage(usage, request_id, response["model"], provider.name.lower())
+
+            # Stream thinking/reasoning content if present
+            if reasoning_content:
+                await event_stream.emit_thinking(reasoning_content)
 
             # Split text blocks (stream) from tool_use blocks (execute)
             tool_use_blocks = await self._process_content_blocks(
@@ -178,7 +203,7 @@ class BaseAgent:
             )
 
             # Save assistant message to conversation history
-            session.append_assistant_message(content_blocks)
+            session.append_assistant_message(content_blocks, reasoning_content)
 
             # If no tool calls, we're done
             if stop_reason != "tool_use" or not tool_use_blocks:
