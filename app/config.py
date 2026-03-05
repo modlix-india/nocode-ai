@@ -123,7 +123,7 @@ class Settings(BaseSettings):
     AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "anthropic"  # AppBuilder uses Claude
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder uses DeepSeek
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
