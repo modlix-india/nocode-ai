@@ -156,6 +156,11 @@ class BaseAgent:
         session.append_user_message(user_message, image_blocks)
         logger.info("Message history: %d messages", len(session.get_messages()))
 
+        # Start the turn counter and persist user message early so it
+        # survives LLM failures and connection drops.
+        session.start_turn()
+        await session.persist_turn_incremental(user_message, "", None)
+
         turn = 0
         assistant_text_parts: list[str] = []
         # Collects one record per tool call for training/audit storage
