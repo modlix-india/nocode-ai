@@ -33,7 +33,7 @@ class AiSessionCreate(BaseModel):
     app_code: Optional[str] = Field(None, max_length=64, description="App code (sitezump/appbuilder)")
     title: Optional[str] = Field(None, max_length=256, description="Session title for sidebar display")
     context_json: Optional[str] = Field(None, description="JSON-serialized agent context")
-    context_limit: int = Field(default=184000, description="Context token limit")
+    context_limit: int = Field(default=48000, description="Context token limit")
 
 
 class AiSession(BaseModel):
@@ -56,7 +56,7 @@ class AiSession(BaseModel):
     request_count: int = 0
     turn_count: int = 0
     context_tokens_used: int = 0
-    context_limit: int = 184000
+    context_limit: int = 48000
     created_by: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_by: Optional[int] = None

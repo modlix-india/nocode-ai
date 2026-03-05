@@ -42,22 +42,11 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     exit 1
 fi
 
-# ChromaDB
-export CHROMA_PERSIST_DIR="${CHROMA_PERSIST_DIR:-./data/chroma}"
-
-# Embedding model
-export EMBEDDING_MODEL="${EMBEDDING_MODEL:-local}"
-export LOCAL_EMBEDDING_MODEL="${LOCAL_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}"
-
-# Document paths
-export AICONTEXT_PATH="${AICONTEXT_PATH:-../nocode-ui/ui-app/aicontext}"
-
 echo ""
 echo "Configuration:"
 echo "  Port: $SERVICE_PORT"
 echo "  Config Server: DISABLED"
 echo "  Eureka: DISABLED"
-echo "  ChromaDB: $CHROMA_PERSIST_DIR"
 echo "  Anthropic API Key: ****${ANTHROPIC_API_KEY: -8}"
 echo ""
 echo "Starting server on http://localhost:$SERVICE_PORT..."
