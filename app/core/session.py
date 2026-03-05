@@ -197,6 +197,16 @@ class BaseSession:
             "turns": self._turn_count,
         }
 
+    def start_turn(self) -> None:
+        """Increment the turn counter at the beginning of a new turn.
+
+        Must be called once at the start of each agent turn (before the
+        LLM loop), so that ``persist_turn_incremental`` and ``persist_turn``
+        both use the same ``_turn_count`` and write to the same DB row.
+        """
+        self._turn_count += 1
+        self._turn_started = True
+
     async def persist_turn(
         self,
         user_text: str,
@@ -220,7 +230,11 @@ class BaseSession:
         if not self.auth:
             return
 
-        self._turn_count += 1
+        # If start_turn() was not called (error before the agent loop),
+        # increment now so we still get a valid turn_number.
+        if not getattr(self, '_turn_started', False):
+            self._turn_count += 1
+        self._turn_started = False
 
         tool_calls_json: str | None = None
         if tool_calls:
