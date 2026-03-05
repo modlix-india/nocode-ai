@@ -4,7 +4,7 @@ Extends BaseAgent with:
 - AppBuilder-specific tools (pages, components, events, styles, entities)
 - Component catalog integration (when available)
 - API catalog integration (when available)
-- System prompt from aicontext/ documentation
+- Progressive tool documentation (group summary + per-turn details)
 """
 
 from __future__ import annotations
@@ -15,24 +15,10 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.core.context import BaseContext
+from app.agents.appbuilder.context import get_relevant_tool_details, extract_last_user_text
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-
-def _extract_last_user_message(messages: list[dict]) -> str:
-    """Extract the text from the most recent user message."""
-    for msg in reversed(messages):
-        if msg.get("role") != "user":
-            continue
-        content = msg.get("content", "")
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    return block.get("text", "")
-    return ""
 
 
 class AppBuilderAgent(BaseAgent):
@@ -48,7 +34,7 @@ class AppBuilderAgent(BaseAgent):
     ) -> None:
         """
         Args:
-            context_builder: BaseContext loaded with aicontext docs.
+            context_builder: BaseContext with agent persona and tool groups summary.
             tools: List of ToolDefinitions. Defaults to empty (populated by registry).
             catalog: ComponentCatalog instance (optional).
             api_catalog: ApiCatalog instance (optional).
@@ -72,8 +58,8 @@ class AppBuilderAgent(BaseAgent):
     async def build_dynamic_context(self, session: BaseSession) -> str:
         """Build per-request dynamic context.
 
-        Includes: auth info, component catalog, API catalog,
-        and learned knowledge from the learning loop.
+        Includes: auth info, relevant tool group details,
+        component catalog, API catalog, and learned knowledge.
         """
         parts: list[str] = []
 
@@ -84,6 +70,11 @@ class AppBuilderAgent(BaseAgent):
                 f"- Client: {session.auth.client_code}\n"
                 f"- App: {app_code}\n"
             )
+
+        # Progressive tool docs: inject detailed reference for relevant groups
+        tool_details = get_relevant_tool_details(session.messages)
+        if tool_details:
+            parts.append(tool_details)
 
         if self._catalog_context:
             parts.append(self._catalog_context)
@@ -103,7 +94,7 @@ class AppBuilderAgent(BaseAgent):
         try:
             from app.learning.prompt_enhancer import get_prompt_enhancer
 
-            last_user_msg = _extract_last_user_message(session.messages)
+            last_user_msg = extract_last_user_text(session.messages)
             if not last_user_msg:
                 return ""
 

@@ -50,6 +50,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     app_code: Optional[str] = None
+    model: Optional[str] = None  # Model override: "provider:model_name"
     attachments: Optional[List[ChatAttachment]] = None
 
 
@@ -166,6 +167,15 @@ async def _authenticate_chat_request(request: Request, body: ChatRequest) -> Aut
         raise HTTPException(status_code=401, detail="Token validation failed")
 
 
+@router.get("/models")
+async def list_models(request: Request):
+    """List available LLM models for the appbuilder agent."""
+    await _authenticate_session_request(request)
+
+    from app.services.llm_provider import get_available_models
+    return {"models": get_available_models()}
+
+
 @router.post("/chat")
 async def chat(request: Request, body: ChatRequest):
     """Stream an appbuilder agent response as SSE."""
@@ -173,8 +183,9 @@ async def chat(request: Request, body: ChatRequest):
         logger.error("Chat request rejected: AppBuilder agent is None (not initialized)")
         raise HTTPException(status_code=503, detail="AppBuilder agent not initialized")
 
-    logger.info("Chat request: session=%s, app=%s, attachments=%d, message_len=%d",
+    logger.info("Chat request: session=%s, app=%s, model=%s, attachments=%d, message_len=%d",
                 body.session_id or "(new)", body.app_code or "(none)",
+                body.model or "(default)",
                 len(body.attachments) if body.attachments else 0, len(body.message))
 
     auth = await _authenticate_chat_request(request, body)
@@ -207,7 +218,7 @@ async def chat(request: Request, body: ChatRequest):
         image_blocks = _build_image_blocks(body.attachments, provider_name)
         logger.info("Image blocks built: %d", len(image_blocks) if image_blocks else 0)
 
-    return _stream_agent_response(body.message, session, image_blocks)
+    return _stream_agent_response(body.message, session, image_blocks, body.model)
 
 
 def _build_image_blocks(attachments: List[ChatAttachment], provider_name: str | None = None) -> list[dict] | None:
@@ -238,6 +249,7 @@ def _stream_agent_response(
     message: str,
     session: BaseSession,
     image_blocks: list[dict] | None = None,
+    model_override: str | None = None,
 ) -> StreamingResponse:
     """Create SSE streaming response for an agent run."""
     import asyncio
@@ -246,14 +258,24 @@ def _stream_agent_response(
 
     async def run_agent():
         try:
-            await _agent.run(message, session, event_stream, image_blocks)
+            await _agent.run(message, session, event_stream, image_blocks, model_override)
         except Exception as e:
             logger.exception("Agent run failed")
             await event_stream.emit_error(str(e))
             await event_stream.emit_done(session_id=session.session_id)
 
+    async def keepalive():
+        """Send keepalive pings every 15s to prevent connection timeout."""
+        try:
+            while True:
+                await asyncio.sleep(15)
+                await event_stream.emit_keepalive()
+        except asyncio.CancelledError:
+            pass
+
     async def event_generator():
         task = asyncio.create_task(run_agent())
+        keepalive_task = asyncio.create_task(keepalive())
         try:
             async for event in event_stream.events():
                 yield event.to_sse()
@@ -261,6 +283,7 @@ def _stream_agent_response(
             task.cancel()
             raise
         finally:
+            keepalive_task.cancel()
             if not task.done():
                 task.cancel()
 

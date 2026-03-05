@@ -4,10 +4,6 @@ Nocode AI Service - FastAPI Application
 Agentic AI service for building no-code applications through conversation.
 Integrates with nocode-saas via Eureka service discovery and Config Server.
 """
-import os
-# Suppress tokenizers parallelism warning (must be before importing transformers/tokenizers)
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,8 +12,7 @@ import logging
 from app.config import settings, initialize_settings
 from app.services.eureka import register_with_eureka, deregister_from_eureka
 from app.services.redis_client import get_redis_client, close_redis
-from app.rag.engine import initialize_rag_engine
-from app.api.routes import health, query
+from app.api.routes import health
 from app.middleware.rate_limiter import RateLimitMiddleware, RequestDeduplicationMiddleware
 
 # Configure logging
@@ -36,8 +31,7 @@ async def lifespan(app: FastAPI):
     Startup:
     1. Fetch config from Config Server
     2. Register with Eureka
-    3. Initialize RAG engine
-    4. Initialize AppBuilder Agent
+    3. Initialize AppBuilder Agent
 
     Shutdown:
     - Close connections and deregister from Eureka
@@ -53,11 +47,7 @@ async def lifespan(app: FastAPI):
     # 2. Register with Eureka
     await register_with_eureka()
 
-    # 3. Initialize RAG engine
-    logger.info("Initializing RAG engine...")
-    await initialize_rag_engine()
-
-    # 4. Initialize Redis (if configured)
+    # 3. Initialize Redis (if configured)
     if settings.REDIS_ENABLED:
         logger.info("Initializing Redis connection...")
         redis_client = await get_redis_client()
@@ -66,7 +56,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.warning("Redis connection failed - rate limiting and caching disabled")
 
-    # 5. Initialize AI Tracking Database (if configured)
+    # 4. Initialize AI Tracking Database (if configured)
     if settings.AI_TRACKING_ENABLED:
         logger.info("Initializing AI tracking database...")
         try:
@@ -80,7 +70,7 @@ async def lifespan(app: FastAPI):
             logger.warning("AI tracking will be disabled")
             settings.AI_TRACKING_ENABLED = False
 
-    # 6. Initialize AppBuilder Agent (agentic system)
+    # 5. Initialize AppBuilder Agent (agentic system)
     logger.info("Initializing AppBuilder Agent...")
     try:
         from app.agents.appbuilder.context import build_appbuilder_context
@@ -90,8 +80,8 @@ async def lifespan(app: FastAPI):
         from app.agents.appbuilder.tools.registry import ALL_TOOLS
         from app.agents.appbuilder.router import set_appbuilder_agent
 
-        logger.info("Loading appbuilder context from %s ...", settings.AICONTEXT_PATH)
-        appbuilder_context = build_appbuilder_context(settings.AICONTEXT_PATH)
+        logger.info("Loading appbuilder context ...")
+        appbuilder_context = build_appbuilder_context()
         await appbuilder_context.load()
         logger.info("Appbuilder context loaded")
 
@@ -103,6 +93,8 @@ async def lifespan(app: FastAPI):
         logger.info("Loading API catalog ...")
         api_catalog = ApiCatalog()
         await api_catalog.load()
+        from app.agents.appbuilder.tools.api_catalog_tools import set_api_catalog
+        set_api_catalog(api_catalog)
         logger.info("API catalog loaded")
 
         logger.info("Creating AppBuilderAgent (provider=%s, model_tier=%s, max_turns=%d) ...",
@@ -160,7 +152,6 @@ Agentic AI service for building no-code applications through conversation.
 
 - **AppBuilder Agent**: Single agent with 61+ tools for building entire applications
 - **SSE Streaming**: Real-time text + tool call progress via Server-Sent Events
-- **RAG System**: Retrieval-augmented generation using documentation and examples
 - **Component Catalog**: Dynamic component metadata from UI source files
 
 ## Authentication
@@ -194,7 +185,6 @@ API_PREFIX = "/api/ai"
 
 # Include routers with /api/ai prefix to match gateway routing
 app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
-app.include_router(query.router, prefix=f"{API_PREFIX}/query", tags=["Query"])
 
 # AppBuilder agent router
 from app.agents.appbuilder.router import router as appbuilder_router
@@ -222,7 +212,6 @@ async def root():
         "endpoints": {
             "health": "/api/ai/health",
             "appbuilder_chat": "/api/ai/appbuilder/chat",
-            "query": "/api/ai/query",
             "docs": "/api/ai/docs"
         }
     }
@@ -236,8 +225,7 @@ async def api_root():
         "version": "2.0.0",
         "endpoints": {
             "health": "/api/ai/health",
-            "appbuilder_chat": "/api/ai/appbuilder/chat",
-            "query": "/api/ai/query"
+            "appbuilder_chat": "/api/ai/appbuilder/chat"
         }
     }
 
