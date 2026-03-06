@@ -212,6 +212,7 @@ class BaseSession:
         user_text: str,
         assistant_summary: str,
         tool_calls: list[dict[str, Any]] | None = None,
+        model: str | None = None,
     ) -> None:
         """Persist a conversation turn to the database for analytics and training.
 
@@ -220,6 +221,7 @@ class BaseSession:
             assistant_summary: Text summary of the assistant's response.
             tool_calls: List of tool call records for this turn. Each entry:
                 {"tool": str, "input": dict, "success": bool, "summary": str}
+            model: LLM model name used for this turn.
 
         This is a best-effort operation — failures are logged but don't
         stop the agent.
@@ -253,6 +255,7 @@ class BaseSession:
                 user_instruction=user_text,
                 assistant_summary=assistant_summary,
                 tool_calls_json=tool_calls_json,
+                model=model,
             )
         except Exception as e:
             logger.warning(f"Failed to persist turn: {e}")
@@ -352,6 +355,7 @@ class BaseSession:
         user_text: str,
         assistant_summary: str,
         tool_calls: list[dict[str, Any]] | None = None,
+        model: str | None = None,
     ) -> None:
         """Upsert the current turn state for incremental saves.
 
@@ -373,10 +377,11 @@ class BaseSession:
             await context_manager.upsert_turn(
                 session_id=self.session_id,
                 request_id=request_id,
-                turn_number=self._turn_count + 1,
+                turn_number=self._turn_count,
                 user_instruction=user_text,
                 assistant_summary=assistant_summary,
                 tool_calls_json=tool_calls_json,
+                model=model,
             )
         except Exception as e:
             logger.warning(f"Failed to persist incremental turn: {e}")
