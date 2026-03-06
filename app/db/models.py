@@ -149,6 +149,7 @@ class AiSessionHistoryCreate(BaseModel):
     assistant_summary: Optional[str] = Field(None, description="Summary of what was generated")
     page_snapshot: Optional[str] = Field(None, description="JSON snapshot of page after this turn")
     input_tokens_used: int = Field(default=0, description="Tokens used for context in this turn")
+    model: Optional[str] = Field(None, max_length=64, description="LLM model used for this turn")
 
 
 class AiSessionHistory(BaseModel):
@@ -160,6 +161,7 @@ class AiSessionHistory(BaseModel):
     user_instruction: str
     assistant_summary: Optional[str] = None
     tool_calls_json: Optional[str] = None
+    model: Optional[str] = None
     page_snapshot: Optional[str] = None
     input_tokens_used: int = 0
     created_at: Optional[datetime] = None

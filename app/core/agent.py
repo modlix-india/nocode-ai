@@ -165,6 +165,8 @@ class BaseAgent:
         assistant_text_parts: list[str] = []
         # Collects one record per tool call for training/audit storage
         tool_call_log: list[dict[str, Any]] = []
+        # Track the model used (from the first LLM response)
+        model_used: str | None = None
 
         while turn < self.max_turns:
             turn += 1
@@ -194,7 +196,9 @@ class BaseAgent:
             stop_reason = response["stop_reason"]
             reasoning_content = response.get("reasoning_content")
 
-            # Track usage
+            # Track usage and capture model name
+            if not model_used:
+                model_used = response["model"]
             session.accumulate_usage(usage)
             await session.record_token_usage(usage, request_id, response["model"], provider.name.lower())
 
@@ -229,7 +233,7 @@ class BaseAgent:
             # Persist incremental progress so data is not lost on disconnect
             partial_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
             await session.persist_turn_incremental(
-                user_message, partial_summary, tool_call_log
+                user_message, partial_summary, tool_call_log, model_used
             )
 
         else:
@@ -241,7 +245,7 @@ class BaseAgent:
 
         # Persist the turn summary, tool call log, and context
         assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
-        await session.persist_turn(user_message, assistant_summary, tool_call_log or None)
+        await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
         # Learning loop: score session and request feedback
