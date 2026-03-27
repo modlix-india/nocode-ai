@@ -32,7 +32,7 @@ async def get_context_authentication(
     if "," in forwarded_port:
         forwarded_port = forwarded_port.split(",")[0]
     
-    security_url = f"{settings.SECURITY_SERVICE_URL}/api/security/internal/securityContextAuthentication"
+    security_url = f"{settings.SECURITY_SERVICE_URL}/api/security/securityContextAuthentication"
     request_headers = {
         "Authorization": authorization,
         "X-Forwarded-Host": forwarded_host,
