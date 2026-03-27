@@ -31,6 +31,15 @@ export SERVICE_PORT="${SERVICE_PORT:-5001}"
 export CONFIG_SERVER_ENABLED="false"
 export EUREKA_ENABLED="false"
 
+# Route API calls through remote dev gateway (override with env vars if needed)
+export GATEWAY_URL="${GATEWAY_URL:-https://apps.dev.modlix.com}"
+export SECURITY_SERVICE_URL="${SECURITY_SERVICE_URL:-https://apps.dev.modlix.com}"
+export FILES_SERVICE_URL="${FILES_SERVICE_URL:-https://apps.dev.modlix.com}"
+
+# Default to Anthropic for AppBuilder in standalone mode (override with APPBUILDER_PROVIDER env var)
+export LLM_PROVIDER="${LLM_PROVIDER:-anthropic}"
+export APPBUILDER_PROVIDER="${APPBUILDER_PROVIDER:-deepseek}"
+
 # You must set ANTHROPIC_API_KEY for standalone mode
 if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo ""
@@ -47,6 +56,10 @@ echo "Configuration:"
 echo "  Port: $SERVICE_PORT"
 echo "  Config Server: DISABLED"
 echo "  Eureka: DISABLED"
+echo "  Gateway URL: $GATEWAY_URL"
+echo "  Security URL: $SECURITY_SERVICE_URL"
+echo "  LLM Provider: $LLM_PROVIDER"
+echo "  AppBuilder Provider: $APPBUILDER_PROVIDER"
 echo "  Anthropic API Key: ****${ANTHROPIC_API_KEY: -8}"
 echo ""
 echo "Starting server on http://localhost:$SERVICE_PORT..."
