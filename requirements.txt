@@ -28,6 +28,10 @@ py-eureka-client==0.11.10
 # Image Processing (compression before sending to LLM APIs)
 Pillow>=10.3.0,<11.0.0
 
+# Web Scraping (Adzump business analysis)
+beautifulsoup4==4.13.5
+playwright==1.55.0
+
 # Utilities
 python-dotenv==1.0.1
 pydantic==2.10.4

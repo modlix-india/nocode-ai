@@ -123,7 +123,8 @@ class Settings(BaseSettings):
     AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder uses DeepSeek
+    APPBUILDER_PROVIDER: str = "openai"  # AppBuilder LLM provider
+    ADZUMP_PROVIDER: str = "openai"  # Adzump LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
