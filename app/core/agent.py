@@ -440,4 +440,6 @@ class BaseAgent:
             ctx["headers"] = session.auth.to_headers()
             ctx["client_code"] = session.auth.client_code
             ctx["app_code"] = session.auth.app_code
+            if session.auth.path_prefix:
+                ctx["path_prefix"] = session.auth.path_prefix
         return ctx

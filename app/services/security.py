@@ -18,7 +18,7 @@ async def get_context_authentication(
     """
     Validate token via security service, matching JWTTokenFilter behavior.
     
-    Calls: GET /api/security/internal/securityContextAuthentication
+    Calls: GET /api/security/securityContextAuthentication
     Headers: Authorization, X-Forwarded-Host, X-Forwarded-Port, clientCode, appCode
     """
     if not authorization:
@@ -32,7 +32,18 @@ async def get_context_authentication(
     if "," in forwarded_port:
         forwarded_port = forwarded_port.split(",")[0]
     
-    security_url = f"{settings.SECURITY_SERVICE_URL}/api/security/securityContextAuthentication"
+    # In standalone mode, extract appCode/clientCode from the URL path prefix
+    # and prepend it to the outgoing security URL
+    path_prefix = ""
+    if settings.STANDALONE_MODE:
+        path_prefix = request.headers.get("X-Path-Prefix", "")
+        if path_prefix and (not client_code or not app_code):
+            parts = path_prefix.strip("/").split("/")
+            if len(parts) >= 2:
+                app_code = app_code or parts[0]
+                client_code = client_code or parts[1]
+
+    security_url = f"{settings.SECURITY_SERVICE_URL}{path_prefix}/api/security/securityContextAuthentication"
     request_headers = {
         "Authorization": authorization,
         "X-Forwarded-Host": forwarded_host,

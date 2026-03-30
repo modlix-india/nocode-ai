@@ -31,23 +31,43 @@ export SERVICE_PORT="${SERVICE_PORT:-5001}"
 export CONFIG_SERVER_ENABLED="false"
 export EUREKA_ENABLED="false"
 
-# Route API calls through remote dev gateway (override with env vars if needed)
-export GATEWAY_URL="${GATEWAY_URL:-https://apps.dev.modlix.com}"
-export SECURITY_SERVICE_URL="${SECURITY_SERVICE_URL:-https://apps.dev.modlix.com}"
-export FILES_SERVICE_URL="${FILES_SERVICE_URL:-https://apps.dev.modlix.com}"
+# Standalone mode — route API calls through the local webpack dev server.
+# The webpack proxy forwards /api/** to apps.dev.modlix.com.
+# X-Path-Prefix header (extracted from the incoming URL by webpack) is used
+# to dynamically prepend /{appCode}/{clientCode}/page to outgoing API paths.
+export STANDALONE_MODE="true"
+export GATEWAY_URL="${GATEWAY_URL:-http://localhost:1234}"
+export SECURITY_SERVICE_URL="${SECURITY_SERVICE_URL:-http://localhost:1234}"
+export FILES_SERVICE_URL="${FILES_SERVICE_URL:-http://localhost:1234}"
 
 # Default to Anthropic for AppBuilder in standalone mode (override with APPBUILDER_PROVIDER env var)
 export LLM_PROVIDER="${LLM_PROVIDER:-anthropic}"
 export APPBUILDER_PROVIDER="${APPBUILDER_PROVIDER:-deepseek}"
 
-# You must set ANTHROPIC_API_KEY for standalone mode
-if [ -z "$ANTHROPIC_API_KEY" ]; then
+# Load API keys from ~/.nocode-ai/variables.sh (if present)
+if [ -f "$HOME/.nocode-ai/variables.sh" ]; then
+    source "$HOME/.nocode-ai/variables.sh"
+else
     echo ""
-    echo "Error: ANTHROPIC_API_KEY is required in standalone mode"
+    echo "Warning: ~/.nocode-ai/variables.sh not found."
     echo ""
-    echo "Usage:"
-    echo "  ANTHROPIC_API_KEY=sk-ant-xxx ./scripts/start-standalone.sh"
+    echo "Create it with your API keys:"
+    echo "  mkdir -p ~/.nocode-ai"
+    echo "  cat > ~/.nocode-ai/variables.sh << 'EOF'"
+    echo '  export ANTHROPIC_API_KEY="sk-ant-..."'
+    echo '  export DEEPSEEK_API_KEY="sk-..."'
+    echo '  export OPENAI_API_KEY="sk-..."'
+    echo '  export GOOGLE_API_KEY="..."'
+    echo "  EOF"
     echo ""
+    echo "Or export keys directly:"
+    echo "  export ANTHROPIC_API_KEY=sk-ant-xxx && ./scripts/start-standalone.sh"
+    echo ""
+fi
+
+# Require at least one API key
+if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$DEEPSEEK_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
+    echo "Error: At least one API key is required."
     exit 1
 fi
 
@@ -60,7 +80,10 @@ echo "  Gateway URL: $GATEWAY_URL"
 echo "  Security URL: $SECURITY_SERVICE_URL"
 echo "  LLM Provider: $LLM_PROVIDER"
 echo "  AppBuilder Provider: $APPBUILDER_PROVIDER"
-echo "  Anthropic API Key: ****${ANTHROPIC_API_KEY: -8}"
+echo "  Anthropic API Key: ${ANTHROPIC_API_KEY:+****${ANTHROPIC_API_KEY: -8}}${ANTHROPIC_API_KEY:-NOT SET}"
+echo "  DeepSeek API Key:  ${DEEPSEEK_API_KEY:+****${DEEPSEEK_API_KEY: -8}}${DEEPSEEK_API_KEY:-NOT SET}"
+echo "  OpenAI API Key:    ${OPENAI_API_KEY:+****${OPENAI_API_KEY: -8}}${OPENAI_API_KEY:-NOT SET}"
+echo "  Google API Key:    ${GOOGLE_API_KEY:+****${GOOGLE_API_KEY: -8}}${GOOGLE_API_KEY:-NOT SET}"
 echo ""
 echo "Starting server on http://localhost:$SERVICE_PORT..."
 echo "Press Ctrl+C to stop"
