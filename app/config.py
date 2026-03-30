@@ -117,6 +117,12 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.gateway.url
     GATEWAY_URL: str = "http://localhost:8080"
 
+    # Standalone mode — when true, the AI service reads the X-Path-Prefix header
+    # from incoming requests and prepends it to all outgoing API calls.
+    # This allows routing through the webpack dev server with the correct
+    # /{appCode}/{clientCode}/page prefix. Has no effect in production.
+    STANDALONE_MODE: bool = False
+
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
     MAX_AGENT_TURNS: int = 50  # Max tool-use loop iterations per request

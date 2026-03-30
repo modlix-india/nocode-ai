@@ -50,6 +50,7 @@ class AuthContext:
     access_app_code: str = "appbuilder"
     forwarded_host: str = "localhost"
     forwarded_port: str = "80"
+    path_prefix: str = ""  # Standalone mode: URL prefix e.g. /appbuilder/SYSTEM/page
 
     def to_headers(self) -> dict[str, str]:
         """Build HTTP headers for forwarding to Gateway APIs.
@@ -59,13 +60,16 @@ class AuthContext:
         The ``appCode`` header is set to the *access* app (appbuilder/sitezump),
         NOT the target app being built.
         """
-        return {
+        headers = {
             "Authorization": f"Bearer {self.token}" if not self.token.startswith("Bearer") else self.token,
             "X-Forwarded-Host": self.forwarded_host,
             "X-Forwarded-Port": self.forwarded_port,
             "clientCode": self.client_code,
             "appCode": self.access_app_code,
         }
+        if self.path_prefix:
+            headers["X-Path-Prefix"] = self.path_prefix
+        return headers
 
 
 class BaseSession:
