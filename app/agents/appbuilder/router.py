@@ -70,6 +70,25 @@ def _extract_token(request: Request) -> str:
     return ""
 
 
+def _extract_standalone_context(request: Request) -> tuple[str, str]:
+    """In standalone mode, extract appCode and clientCode from X-Path-Prefix.
+
+    The prefix follows the pattern /{appCode}/{clientCode}/page.
+    Returns (app_code, client_code) — empty strings if not available.
+    """
+    from app.config import settings
+    if not settings.STANDALONE_MODE:
+        return "", ""
+    prefix = request.headers.get("X-Path-Prefix", "")
+    if not prefix:
+        return "", ""
+    # /{appCode}/{clientCode}/page → ["", appCode, clientCode, "page"]
+    parts = prefix.strip("/").split("/")
+    if len(parts) >= 2:
+        return parts[0], parts[1]
+    return "", ""
+
+
 def _extract_forwarded_headers(request: Request) -> tuple[str, str]:
     """Extract X-Forwarded-Host/Port from request (set by gateway/proxy)."""
     host = request.headers.get(
@@ -120,6 +139,13 @@ async def _authenticate(
 
     forwarded_host, forwarded_port = _extract_forwarded_headers(request)
 
+    # In standalone mode, capture the URL path prefix (e.g. /appbuilder/SYSTEM/page)
+    # set by the webpack dev server proxy for outgoing API calls
+    from app.config import settings
+    path_prefix = ""
+    if settings.STANDALONE_MODE:
+        path_prefix = request.headers.get("X-Path-Prefix", "")
+
     return AuthContext(
         token=auth_header,
         client_code=client_code,
@@ -129,6 +155,7 @@ async def _authenticate(
         access_app_code=verified_app or access_app_code,
         forwarded_host=forwarded_host,
         forwarded_port=forwarded_port,
+        path_prefix=path_prefix,
     )
 
 
@@ -137,6 +164,12 @@ async def _authenticate_session_request(request: Request) -> AuthContext:
     auth_header = _extract_token(request)
     client_code = request.headers.get("clientCode", "")
     access_app_code = request.headers.get("appCode", "")
+
+    # In standalone mode, fall back to values from the URL path prefix
+    if not client_code or not access_app_code:
+        sa_app, sa_client = _extract_standalone_context(request)
+        client_code = client_code or sa_client
+        access_app_code = access_app_code or sa_app
 
     if not auth_header:
         raise HTTPException(status_code=401, detail="Missing Authorization header or token cookie")
@@ -152,6 +185,12 @@ async def _authenticate_chat_request(request: Request, body: ChatRequest) -> Aut
     client_code = request.headers.get("clientCode", "")
     access_app_code = request.headers.get("appCode", "")
     target_app_code = body.app_code or ""
+
+    # In standalone mode, fall back to values from the URL path prefix
+    if not client_code or not access_app_code:
+        sa_app, sa_client = _extract_standalone_context(request)
+        client_code = client_code or sa_client
+        access_app_code = access_app_code or sa_app
 
     if not auth_header:
         raise HTTPException(status_code=401, detail="Missing Authorization header or token cookie")
