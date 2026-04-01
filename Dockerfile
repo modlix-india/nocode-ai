@@ -17,17 +17,9 @@ COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY migrations/ ./migrations/
 
-# Create data directory for ChromaDB
-RUN mkdir -p /app/data/chroma
-
 # Environment defaults
 ENV SERVICE_NAME=ai
 ENV SERVICE_PORT=5001
-ENV CHROMA_PERSIST_DIR=/app/data/chroma
-
-# Local HuggingFace embeddings (no API key needed)
-ENV EMBEDDING_MODEL=local
-ENV LOCAL_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 # Config Server settings
 ENV CLOUD_CONFIG_SERVER=localhost

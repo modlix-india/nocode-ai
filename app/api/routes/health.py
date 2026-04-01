@@ -16,7 +16,7 @@ async def detailed_health_check():
     """
     Detailed health check including dependencies.
     
-    Includes Redis and RAG engine status.
+    Includes Redis status.
     """
     from app.services.redis_client import redis_health_check
     

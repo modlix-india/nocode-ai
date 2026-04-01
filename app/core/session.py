@@ -50,6 +50,7 @@ class AuthContext:
     access_app_code: str = "appbuilder"
     forwarded_host: str = "localhost"
     forwarded_port: str = "80"
+    path_prefix: str = ""  # Standalone mode: URL prefix e.g. /appbuilder/SYSTEM/page
 
     def to_headers(self) -> dict[str, str]:
         """Build HTTP headers for forwarding to Gateway APIs.
@@ -59,13 +60,16 @@ class AuthContext:
         The ``appCode`` header is set to the *access* app (appbuilder/sitezump),
         NOT the target app being built.
         """
-        return {
+        headers = {
             "Authorization": f"Bearer {self.token}" if not self.token.startswith("Bearer") else self.token,
             "X-Forwarded-Host": self.forwarded_host,
             "X-Forwarded-Port": self.forwarded_port,
             "clientCode": self.client_code,
             "appCode": self.access_app_code,
         }
+        if self.path_prefix:
+            headers["X-Path-Prefix"] = self.path_prefix
+        return headers
 
 
 class BaseSession:
@@ -133,12 +137,26 @@ class BaseSession:
         else:
             self.messages.append({"role": "user", "content": text})
 
-    def append_assistant_message(self, content_blocks: list[dict[str, Any]]) -> None:
-        """Append an assistant message (may contain text + tool_use blocks)."""
-        self.messages.append({
+    def append_assistant_message(
+        self,
+        content_blocks: list[dict[str, Any]],
+        reasoning_content: str | None = None,
+    ) -> None:
+        """Append an assistant message (may contain text + tool_use blocks).
+
+        Args:
+            content_blocks: Anthropic-style content blocks.
+            reasoning_content: Optional CoT reasoning from thinking-mode
+                providers (e.g. DeepSeek). Stored as ``_reasoning_content``
+                so providers can pass it back on subsequent turns.
+        """
+        msg: dict[str, Any] = {
             "role": "assistant",
             "content": content_blocks,
-        })
+        }
+        if reasoning_content:
+            msg["_reasoning_content"] = reasoning_content
+        self.messages.append(msg)
 
     def append_tool_results(self, tool_results: list[dict[str, Any]]) -> None:
         """Append tool results as a user message (Anthropic format).
@@ -157,11 +175,48 @@ class BaseSession:
         for key in self.total_usage:
             self.total_usage[key] += usage.get(key, 0)
 
+    def get_usage_summary(self) -> dict[str, Any]:
+        """Return a compact usage summary for the client.
+
+        Includes total_tokens, context_percent, and turns — the fields
+        the UI needs to display usage indicators.
+        """
+        input_t = self.total_usage["input_tokens"]
+        output_t = self.total_usage["output_tokens"]
+        cache_read = self.total_usage["cache_read_input_tokens"]
+
+        # Context used = input + cache_read (what the model "sees")
+        context_used = input_t + cache_read
+        from app.config import settings
+        context_limit = settings.CONTEXT_LIMIT_DEFAULT
+        context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
+
+        return {
+            "input_tokens": input_t,
+            "output_tokens": output_t,
+            "total_tokens": input_t + output_t,
+            "context_used": context_used,
+            "context_limit": context_limit,
+            "context_percent": min(context_percent, 100.0),
+            "turns": self._turn_count,
+        }
+
+    def start_turn(self) -> None:
+        """Increment the turn counter at the beginning of a new turn.
+
+        Must be called once at the start of each agent turn (before the
+        LLM loop), so that ``persist_turn_incremental`` and ``persist_turn``
+        both use the same ``_turn_count`` and write to the same DB row.
+        """
+        self._turn_count += 1
+        self._turn_started = True
+
     async def persist_turn(
         self,
         user_text: str,
         assistant_summary: str,
         tool_calls: list[dict[str, Any]] | None = None,
+        model: str | None = None,
     ) -> None:
         """Persist a conversation turn to the database for analytics and training.
 
@@ -170,14 +225,22 @@ class BaseSession:
             assistant_summary: Text summary of the assistant's response.
             tool_calls: List of tool call records for this turn. Each entry:
                 {"tool": str, "input": dict, "success": bool, "summary": str}
+            model: LLM model name used for this turn.
 
         This is a best-effort operation — failures are logged but don't
         stop the agent.
+
+        Uses upsert so that if persist_turn_incremental() already created
+        the row during the tool loop, the final complete data overwrites it.
         """
         if not self.auth:
             return
 
-        self._turn_count += 1
+        # If start_turn() was not called (error before the agent loop),
+        # increment now so we still get a valid turn_number.
+        if not getattr(self, '_turn_started', False):
+            self._turn_count += 1
+        self._turn_started = False
 
         tool_calls_json: str | None = None
         if tool_calls:
@@ -187,24 +250,46 @@ class BaseSession:
             from app.services.context_manager import get_context_manager
             context_manager = get_context_manager()
             request_id = uuid.uuid4().hex[:8]
-            await context_manager.add_turn(
+            # Use upsert (not plain insert) because persist_turn_incremental()
+            # may have already created this turn during the tool-use loop.
+            await context_manager.upsert_turn(
                 session_id=self.session_id,
                 request_id=request_id,
                 turn_number=self._turn_count,
                 user_instruction=user_text,
                 assistant_summary=assistant_summary,
                 tool_calls_json=tool_calls_json,
+                model=model,
             )
         except Exception as e:
             logger.warning(f"Failed to persist turn: {e}")
+
+        # Update TURN_COUNT in the session table so the UI shows
+        # the correct turn count on refresh.
+        try:
+            from app.services.session_manager import get_session_manager
+            session_manager = get_session_manager()
+            await session_manager.increment_turn_count(
+                self.session_id, self.auth.user_id if self.auth else None
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update turn count: {e}")
 
     async def record_token_usage(
         self,
         usage: dict[str, Any],
         request_id: str,
         model: str,
+        provider_name: str | None = None,
     ) -> None:
         """Record token usage for a single LLM call.
+
+        Args:
+            usage: Token usage dict from LLM response.
+            request_id: Unique request identifier.
+            model: Model name used for this call.
+            provider_name: LLM provider name (e.g. "anthropic", "deepseek").
+                Falls back to settings.LLM_PROVIDER if not provided.
 
         Best-effort — failures are logged but don't stop the agent.
         """
@@ -224,7 +309,7 @@ class BaseSession:
                 user_id=self.auth.user_id,
                 agent_type=self.agent_name,
                 model=model,
-                llm_provider=settings.LLM_PROVIDER,
+                llm_provider=provider_name or settings.LLM_PROVIDER,
                 input_tokens=usage.get("input_tokens", 0),
                 output_tokens=usage.get("output_tokens", 0),
                 cache_read_tokens=usage.get("cache_read_input_tokens", 0),
@@ -274,6 +359,7 @@ class BaseSession:
         user_text: str,
         assistant_summary: str,
         tool_calls: list[dict[str, Any]] | None = None,
+        model: str | None = None,
     ) -> None:
         """Upsert the current turn state for incremental saves.
 
@@ -295,10 +381,11 @@ class BaseSession:
             await context_manager.upsert_turn(
                 session_id=self.session_id,
                 request_id=request_id,
-                turn_number=self._turn_count + 1,
+                turn_number=self._turn_count,
                 user_instruction=user_text,
                 assistant_summary=assistant_summary,
                 tool_calls_json=tool_calls_json,
+                model=model,
             )
         except Exception as e:
             logger.warning(f"Failed to persist incremental turn: {e}")

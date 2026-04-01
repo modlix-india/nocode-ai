@@ -33,7 +33,7 @@ class AiSessionCreate(BaseModel):
     app_code: Optional[str] = Field(None, max_length=64, description="App code (sitezump/appbuilder)")
     title: Optional[str] = Field(None, max_length=256, description="Session title for sidebar display")
     context_json: Optional[str] = Field(None, description="JSON-serialized agent context")
-    context_limit: int = Field(default=184000, description="Context token limit")
+    context_limit: int = Field(default=48000, description="Context token limit")
 
 
 class AiSession(BaseModel):
@@ -56,7 +56,7 @@ class AiSession(BaseModel):
     request_count: int = 0
     turn_count: int = 0
     context_tokens_used: int = 0
-    context_limit: int = 184000
+    context_limit: int = 48000
     created_by: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_by: Optional[int] = None
@@ -149,6 +149,7 @@ class AiSessionHistoryCreate(BaseModel):
     assistant_summary: Optional[str] = Field(None, description="Summary of what was generated")
     page_snapshot: Optional[str] = Field(None, description="JSON snapshot of page after this turn")
     input_tokens_used: int = Field(default=0, description="Tokens used for context in this turn")
+    model: Optional[str] = Field(None, max_length=64, description="LLM model used for this turn")
 
 
 class AiSessionHistory(BaseModel):
@@ -160,6 +161,7 @@ class AiSessionHistory(BaseModel):
     user_instruction: str
     assistant_summary: Optional[str] = None
     tool_calls_json: Optional[str] = None
+    model: Optional[str] = None
     page_snapshot: Optional[str] = None
     input_tokens_used: int = 0
     created_at: Optional[datetime] = None

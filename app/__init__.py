@@ -1,3 +1,2 @@
-"""Nocode AI Service - Multi-agent page generation with RAG"""
+"""Nocode AI Service - Agentic AI for building no-code applications"""
 __version__ = "0.1.0"
-

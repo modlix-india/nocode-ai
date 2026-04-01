@@ -45,6 +45,7 @@ class ContextManager:
         assistant_summary: Optional[str] = None,
         page_snapshot: Optional[str] = None,
         tool_calls_json: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> Optional[AiSessionHistory]:
         """
         Add a conversation turn to the history.
@@ -58,12 +59,14 @@ class ContextManager:
             page_snapshot: JSON snapshot of page after this turn
             tool_calls_json: JSON array of tool calls made during this turn,
                 each entry: {tool, input, success, summary}
+            model: LLM model name used for this turn
 
         Returns:
             Created history entry or None if failed
         """
         if not is_pool_available():
-            logger.debug("Database not available, context tracking disabled")
+            self._save_turn_file(session_id, turn_number, user_instruction,
+                                assistant_summary, tool_calls_json, model)
             return None
 
         # Estimate tokens used for this turn's context
@@ -81,8 +84,8 @@ class ContextManager:
                         INSERT INTO ai_session_history (
                             SESSION_ID, REQUEST_ID, TURN_NUMBER,
                             USER_INSTRUCTION, ASSISTANT_SUMMARY, TOOL_CALLS_JSON,
-                            PAGE_SNAPSHOT, INPUT_TOKENS_USED
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            MODEL, PAGE_SNAPSHOT, INPUT_TOKENS_USED
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             session_id,
@@ -91,6 +94,7 @@ class ContextManager:
                             user_instruction,
                             assistant_summary,
                             tool_calls_json,
+                            model,
                             page_snapshot,
                             input_tokens_used,
                         )
@@ -107,6 +111,7 @@ class ContextManager:
                 turn_number=turn_number,
                 user_instruction=user_instruction,
                 assistant_summary=assistant_summary,
+                model=model,
                 page_snapshot=page_snapshot,
                 input_tokens_used=input_tokens_used,
             )
@@ -123,6 +128,7 @@ class ContextManager:
         user_instruction: str,
         assistant_summary: Optional[str] = None,
         tool_calls_json: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> None:
         """Insert or update a turn for incremental persistence.
 
@@ -131,6 +137,8 @@ class ContextManager:
         Requires a UNIQUE index on (SESSION_ID, TURN_NUMBER).
         """
         if not is_pool_available():
+            self._save_turn_file(session_id, turn_number, user_instruction,
+                                assistant_summary, tool_calls_json, model)
             return
 
         input_tokens_used = (
@@ -146,11 +154,12 @@ class ContextManager:
                         INSERT INTO ai_session_history (
                             SESSION_ID, REQUEST_ID, TURN_NUMBER,
                             USER_INSTRUCTION, ASSISTANT_SUMMARY, TOOL_CALLS_JSON,
-                            INPUT_TOKENS_USED
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            MODEL, INPUT_TOKENS_USED
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE
                             ASSISTANT_SUMMARY = VALUES(ASSISTANT_SUMMARY),
                             TOOL_CALLS_JSON = VALUES(TOOL_CALLS_JSON),
+                            MODEL = VALUES(MODEL),
                             INPUT_TOKENS_USED = VALUES(INPUT_TOKENS_USED)
                         """,
                         (
@@ -160,6 +169,7 @@ class ContextManager:
                             user_instruction,
                             assistant_summary,
                             tool_calls_json,
+                            model,
                             input_tokens_used,
                         )
                     )
@@ -184,7 +194,7 @@ class ContextManager:
             Tuple of (history entries ordered by turn number, total count)
         """
         if not is_pool_available():
-            return [], 0
+            return self._get_history_file(session_id, limit, offset)
 
         try:
             async with get_connection() as conn:
@@ -206,7 +216,7 @@ class ContextManager:
                             SELECT * FROM (
                                 SELECT ID, SESSION_ID, REQUEST_ID, TURN_NUMBER,
                                        USER_INSTRUCTION, ASSISTANT_SUMMARY,
-                                       TOOL_CALLS_JSON, PAGE_SNAPSHOT,
+                                       TOOL_CALLS_JSON, MODEL, PAGE_SNAPSHOT,
                                        INPUT_TOKENS_USED, CREATED_AT
                                 FROM ai_session_history
                                 WHERE SESSION_ID = %s
@@ -222,7 +232,7 @@ class ContextManager:
                             """
                             SELECT ID, SESSION_ID, REQUEST_ID, TURN_NUMBER,
                                    USER_INSTRUCTION, ASSISTANT_SUMMARY,
-                                   TOOL_CALLS_JSON, PAGE_SNAPSHOT,
+                                   TOOL_CALLS_JSON, MODEL, PAGE_SNAPSHOT,
                                    INPUT_TOKENS_USED, CREATED_AT
                             FROM ai_session_history
                             WHERE SESSION_ID = %s
@@ -410,8 +420,8 @@ class ContextManager:
         Column order from SELECT:
         0: ID, 1: SESSION_ID, 2: REQUEST_ID, 3: TURN_NUMBER,
         4: USER_INSTRUCTION, 5: ASSISTANT_SUMMARY,
-        6: TOOL_CALLS_JSON, 7: PAGE_SNAPSHOT,
-        8: INPUT_TOKENS_USED, 9: CREATED_AT
+        6: TOOL_CALLS_JSON, 7: MODEL, 8: PAGE_SNAPSHOT,
+        9: INPUT_TOKENS_USED, 10: CREATED_AT
         """
         return AiSessionHistory(
             id=row[0],
@@ -421,10 +431,54 @@ class ContextManager:
             user_instruction=row[4],
             assistant_summary=row[5],
             tool_calls_json=row[6],
-            page_snapshot=row[7],
-            input_tokens_used=row[8] or 0,
-            created_at=row[9],
+            model=row[7],
+            page_snapshot=row[8],
+            input_tokens_used=row[9] or 0,
+            created_at=row[10],
         )
+
+
+    # ── File-backed helpers (standalone mode without MySQL) ────────
+
+    def _save_turn_file(
+        self, session_id, turn_number, user_instruction,
+        assistant_summary, tool_calls_json, model,
+    ) -> None:
+        try:
+            from app.db.file_store import get_file_store
+            get_file_store().save_turn(
+                session_id, turn_number,
+                user_instruction or "",
+                assistant_summary or "",
+                tool_calls_json, model,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to save turn to file store: {e}")
+
+    def _get_history_file(
+        self, session_id, limit, offset,
+    ) -> Tuple[List[AiSessionHistory], int]:
+        try:
+            from app.db.file_store import get_file_store
+            turns, total = get_file_store().load_history(
+                session_id, limit=limit or 100, offset=offset,
+            )
+            history = []
+            for t in turns:
+                history.append(AiSessionHistory(
+                    id=0,
+                    session_id=session_id,
+                    request_id="",
+                    turn_number=t.get("turn_number", 0),
+                    user_instruction=t.get("user_instruction"),
+                    assistant_summary=t.get("assistant_summary"),
+                    tool_calls_json=t.get("tool_calls_json"),
+                    model=t.get("model"),
+                ))
+            return history, total
+        except Exception as e:
+            logger.warning(f"Failed to load history from file store: {e}")
+            return [], 0
 
 
 # Singleton instance
