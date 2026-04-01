@@ -30,6 +30,9 @@ router = APIRouter()
 # Module-level reference to the agent (set during startup)
 _agent = None
 
+# Active event streams keyed by session_id — needed for confirmation resolution
+_active_streams: dict[str, AgentEventStream] = {}
+
 
 def set_appbuilder_agent(agent) -> None:
     """Set the AppBuilderAgent instance (called from main.py lifespan)."""
@@ -52,6 +55,15 @@ class ChatRequest(BaseModel):
     app_code: Optional[str] = None
     model: Optional[str] = None  # Model override: "provider:model_name"
     attachments: Optional[List[ChatAttachment]] = None
+
+
+class ConfirmationResponse(BaseModel):
+    """Request body for confirming/denying a tool operation."""
+    confirmation_id: str
+    session_id: str
+    approved: bool
+    selected: str = ""  # The option value the user selected
+    reason: str = ""  # Optional reason for denial
 
 
 class UpdateSessionRequest(BaseModel):
@@ -294,6 +306,7 @@ def _stream_agent_response(
     import asyncio
 
     event_stream = AgentEventStream()
+    sid = session.session_id
 
     async def run_agent():
         try:
@@ -313,18 +326,24 @@ def _stream_agent_response(
             pass
 
     async def event_generator():
+        _active_streams[sid] = event_stream
         task = asyncio.create_task(run_agent())
         keepalive_task = asyncio.create_task(keepalive())
         try:
             async for event in event_stream.events():
                 yield event.to_sse()
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, GeneratorExit):
+            # Client disconnected — signal the agent to stop gracefully
+            event_stream.cancel()
             task.cancel()
-            raise
         finally:
             keepalive_task.cancel()
+            # If client disconnected but agent is still running, cancel it
             if not task.done():
+                event_stream.cancel()
                 task.cancel()
+            # Clean up after agent finishes (give it a moment to wrap up)
+            _active_streams.pop(sid, None)
 
     return StreamingResponse(
         event_generator(),
@@ -335,6 +354,53 @@ def _stream_agent_response(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/confirm")
+async def confirm_action(request: Request, body: ConfirmationResponse):
+    """Resolve a pending confirmation request from the agent."""
+    await _authenticate_session_request(request)
+
+    event_stream = _active_streams.get(body.session_id)
+    if not event_stream:
+        raise HTTPException(status_code=404, detail="No active stream for this session")
+
+    resolved = event_stream.resolve_confirmation(
+        body.confirmation_id,
+        {
+            "approved": body.approved,
+            "selected": body.selected or ("approve" if body.approved else "deny"),
+            "reason": body.reason,
+        },
+    )
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Confirmation not found or already resolved")
+
+    return {"resolved": True, "confirmation_id": body.confirmation_id}
+
+
+class StopRequest(BaseModel):
+    """Request body for stopping an active agent run."""
+    session_id: str
+
+
+@router.post("/stop")
+async def stop_agent(request: Request, body: StopRequest):
+    """Stop an active agent run for the given session."""
+    await _authenticate_session_request(request)
+
+    event_stream = _active_streams.get(body.session_id)
+    if event_stream:
+        event_stream.cancel()
+
+    # Always mark the session as completed so polling stops on refresh
+    try:
+        session_mgr = get_session_manager()
+        await session_mgr.complete_session(body.session_id)
+    except Exception:
+        pass
+
+    return {"stopped": True, "session_id": body.session_id}
 
 
 # ── Session management endpoints ─────────────────────────────────

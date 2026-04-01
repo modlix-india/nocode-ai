@@ -12,6 +12,7 @@ from app.agents.appbuilder.tools.crud.create_handler import create_tool
 from app.agents.appbuilder.tools.crud.read_handler import read_tool
 from app.agents.appbuilder.tools.crud.update_handler import update_tool
 from app.agents.appbuilder.tools.crud.delete_handler import delete_tool
+from app.agents.appbuilder.tools.crud.copy_handler import copy_tool
 
 CRUD_TOOLS: list[ToolDefinition] = [
     list_tool,
@@ -19,4 +20,5 @@ CRUD_TOOLS: list[ToolDefinition] = [
     read_tool,
     update_tool,
     delete_tool,
+    copy_tool,
 ]

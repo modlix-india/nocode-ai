@@ -9,7 +9,7 @@ Manages AI generation sessions per page, including:
 
 import logging
 import uuid
-from typing import Optional, List, Tuple
+from typing import Any, Optional, List, Tuple
 
 from app.config import settings
 from app.db.connection import get_connection, is_pool_available
@@ -85,8 +85,10 @@ class SessionManager:
             Created session or None if tracking disabled
         """
         if not is_pool_available():
-            logger.debug("Database not available, session tracking disabled")
-            return None
+            return self._create_session_file(
+                client_code, client_id, user_id, object_name,
+                agent_name, app_code, title, context_json,
+            )
 
         session_id = generate_session_id(client_code, object_name)
 
@@ -127,7 +129,7 @@ class SessionManager:
     async def get_session(self, session_id: str) -> Optional[AiSession]:
         """Get session by session_id string."""
         if not is_pool_available():
-            return None
+            return self._get_session_file(session_id)
 
         try:
             async with get_connection() as conn:
@@ -189,7 +191,7 @@ class SessionManager:
             Tuple of (sessions list, total count)
         """
         if not is_pool_available():
-            return [], 0
+            return self._list_sessions_file(user_id, client_code, agent_name, limit, offset)
 
         try:
             # Build WHERE clause dynamically
@@ -244,7 +246,7 @@ class SessionManager:
             True if successful
         """
         if not is_pool_available():
-            return False
+            return self._update_session_field_file(session_id, "title", title[:256])
 
         try:
             async with get_connection() as conn:
@@ -277,7 +279,8 @@ class SessionManager:
             True if deleted, False otherwise
         """
         if not is_pool_available():
-            return False
+            from app.db.file_store import get_file_store
+            return get_file_store().delete_session(session_id)
 
         try:
             async with get_connection() as conn:
@@ -330,7 +333,7 @@ class SessionManager:
             True if successful
         """
         if not is_pool_available():
-            return False
+            return self._update_session_field_file(session_id, "context_json", context_json)
 
         try:
             async with get_connection() as conn:
@@ -397,7 +400,7 @@ class SessionManager:
     async def increment_turn_count(self, session_id: str, user_id: Optional[int] = None) -> int:
         """Increment the turn count and return the new turn number."""
         if not is_pool_available():
-            return 0
+            return self._increment_turn_count_file(session_id)
 
         try:
             async with get_connection() as conn:
@@ -427,7 +430,7 @@ class SessionManager:
     async def set_session_processing(self, session_id: str, user_id: Optional[int] = None) -> bool:
         """Mark a session as currently being processed by the agent."""
         if not is_pool_available():
-            return False
+            return self._update_session_field_file(session_id, "status", SessionStatus.PROCESSING.value)
 
         try:
             async with get_connection() as conn:
@@ -449,7 +452,7 @@ class SessionManager:
     async def complete_session(self, session_id: str, user_id: Optional[int] = None) -> bool:
         """Mark a session as completed."""
         if not is_pool_available():
-            return False
+            return self._update_session_field_file(session_id, "status", SessionStatus.COMPLETED.value)
 
         try:
             async with get_connection() as conn:
@@ -505,6 +508,90 @@ class SessionManager:
             created_at=row[20],
             updated_by=row[21],
             updated_at=row[22],
+        )
+
+
+    # ── File-backed helpers (standalone mode without MySQL) ────────
+
+    def _create_session_file(
+        self, client_code, client_id, user_id, object_name,
+        agent_name, app_code, title, context_json,
+    ) -> Optional[AiSession]:
+        from app.db.file_store import get_file_store
+        session_id = generate_session_id(client_code, object_name)
+        data = {
+            "session_id": session_id,
+            "client_code": client_code,
+            "client_id": client_id,
+            "user_id": user_id,
+            "object_name": object_name,
+            "agent_name": agent_name,
+            "app_code": app_code,
+            "title": title,
+            "context_json": context_json,
+            "status": SessionStatus.ACTIVE.value,
+            "turn_count": 0,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+        }
+        get_file_store().save_session(session_id, data)
+        return self._dict_to_session(data)
+
+    def _get_session_file(self, session_id: str) -> Optional[AiSession]:
+        from app.db.file_store import get_file_store
+        data = get_file_store().load_session(session_id)
+        if not data:
+            return None
+        return self._dict_to_session(data)
+
+    def _list_sessions_file(
+        self, user_id, client_code, agent_name, limit, offset,
+    ) -> tuple[list[AiSession], int]:
+        from app.db.file_store import get_file_store
+        items, total = get_file_store().list_sessions(
+            user_id, client_code, agent_name, limit, offset,
+        )
+        return [self._dict_to_session(d) for d in items], total
+
+    def _update_session_field_file(self, session_id: str, field: str, value: Any) -> bool:
+        from app.db.file_store import get_file_store
+        store = get_file_store()
+        data = store.load_session(session_id)
+        if not data:
+            return False
+        data[field] = value
+        store.save_session(session_id, data)
+        return True
+
+    def _increment_turn_count_file(self, session_id: str) -> int:
+        from app.db.file_store import get_file_store
+        store = get_file_store()
+        data = store.load_session(session_id)
+        if not data:
+            return 0
+        data["turn_count"] = data.get("turn_count", 0) + 1
+        store.save_session(session_id, data)
+        return data["turn_count"]
+
+    def _dict_to_session(self, d: dict) -> AiSession:
+        """Convert a file-store dict to an AiSession model."""
+        return AiSession(
+            id=0,
+            session_id=d.get("session_id", ""),
+            client_code=d.get("client_code", ""),
+            client_id=d.get("client_id", 0),
+            user_id=d.get("user_id", 0),
+            object_name=d.get("object_name"),
+            agent_name=d.get("agent_name"),
+            app_code=d.get("app_code"),
+            title=d.get("title"),
+            context_json=d.get("context_json"),
+            status=SessionStatus(d["status"]) if d.get("status") else SessionStatus.ACTIVE,
+            total_input_tokens=d.get("total_input_tokens", 0),
+            total_output_tokens=d.get("total_output_tokens", 0),
+            turn_count=d.get("turn_count", 0),
+            context_tokens_used=d.get("context_tokens_used", 0),
+            context_limit=d.get("context_limit", settings.CONTEXT_LIMIT_DEFAULT),
         )
 
 
