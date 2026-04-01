@@ -62,10 +62,16 @@ class ComponentCatalog:
         return list(self._catalog.get("components", {}).keys())
 
     def to_prompt_context(self) -> str:
-        """Format catalog as concise text for system prompt injection.
+        """Format catalog as tier-aware text for system prompt injection.
 
-        Returns a summary of all component types with descriptions,
-        visual structure, properties, sub-components, and theme style info.
+        Tier-based output:
+        - common/data: full detail (description, structure, properties,
+          sub-components, design types)
+        - specialized/table/multimedia: one-liner grouped by category
+        - internal: omitted entirely
+
+        Components without a tier field are treated as "specialized"
+        (backwards-compatible with catalogs generated before tiers).
         """
         if not self._catalog:
             return ""
@@ -74,63 +80,121 @@ class ComponentCatalog:
         if not components:
             return ""
 
+        full_detail, condensed_groups = _partition_by_tier(components)
+
+        all_visible = [n for n, _ in full_detail]
+        for items in condensed_groups.values():
+            all_visible.extend(n for n, _ in items)
+
         lines = ["## Component Catalog\n"]
-        lines.append(f"Available types ({len(components)}): {', '.join(sorted(components.keys()))}\n")
+        lines.append(f"Available types ({len(all_visible)}): {', '.join(all_visible)}\n")
 
-        # Design type reference
-        dt_descs = self._catalog.get("designTypeDescriptions", {})
-        if dt_descs:
-            lines.append("### Design Type Reference")
-            for dt_name, dt_desc in dt_descs.items():
-                lines.append(f"- **{dt_name}**: {dt_desc}")
-            lines.append("")
+        _append_design_type_reference(lines, self._catalog)
 
-        for comp_type, info in sorted(components.items()):
-            description = info.get("description", "")
-            lines.append(f"### {comp_type}")
-            if description:
-                lines.append(description)
+        for comp_type, info in full_detail:
+            _format_component_full(lines, comp_type, info)
 
-            # Visual structure
-            structure = info.get("structure")
-            if structure:
-                lines.append(f"Structure: `{structure}`")
-
-            # Properties
-            props = info.get("properties", [])
-            if props:
-                prop_names = [p.get("name", "?") for p in props[:20]]
-                lines.append(f"Properties: {', '.join(prop_names)}")
-
-                # Show enum values for key properties
-                for p in props:
-                    enum_vals = p.get("enumValues", [])
-                    if enum_vals:
-                        names = [e.get("name", "?") for e in enum_vals]
-                        lines.append(f"  {p['name']}: {names}")
-
-            # Sub-components (stylable parts)
-            sub_comps = info.get("subComponents", {})
-            if sub_comps and len(sub_comps) > 1:
-                parts = []
-                for key, sub_info in sub_comps.items():
-                    if key == "(root)":
-                        continue
-                    desc = sub_info.get("description", key)
-                    parts.append(f"{key} ({desc})")
-                if parts:
-                    lines.append(f"Stylable parts: {', '.join(parts)}")
-
-            # Theme style info (design types)
-            theme = info.get("themeStyleProperties", {})
-            if theme:
-                design_types = theme.get("designTypes", [])
-                if design_types:
-                    lines.append(f"Design types: {', '.join(design_types)}")
-
+        for group_name, items in condensed_groups.items():
+            if not items:
+                continue
+            lines.append(f"### {group_name}")
+            for comp_type, info in items:
+                desc = info.get("description", "")
+                lines.append(f"- **{comp_type}**: {desc}" if desc else f"- **{comp_type}**")
             lines.append("")
 
         return "\n".join(lines)
+
+
+# Tiers that get full detail in the prompt
+_FULL_DETAIL_TIERS = {"common", "data"}
+
+# Display names for condensed tier groups
+_CONDENSED_GROUP_NAMES: dict[str, str] = {
+    "specialized": "Specialized Components",
+    "table": "Table Components",
+    "multimedia": "Multimedia Components",
+}
+
+
+def _partition_by_tier(
+    components: dict[str, Any],
+) -> tuple[list[tuple[str, dict]], dict[str, list[tuple[str, dict]]]]:
+    """Split components into full-detail list and condensed groups by tier."""
+    full_detail: list[tuple[str, dict]] = []
+    condensed: dict[str, list[tuple[str, dict]]] = {
+        name: [] for name in _CONDENSED_GROUP_NAMES.values()
+    }
+    for comp_type in sorted(components):
+        info = components[comp_type]
+        tier = info.get("tier", "specialized")
+        if tier == "internal":
+            continue
+        if tier in _FULL_DETAIL_TIERS:
+            full_detail.append((comp_type, info))
+        else:
+            group_name = _CONDENSED_GROUP_NAMES.get(tier, "Specialized Components")
+            condensed[group_name].append((comp_type, info))
+    return full_detail, condensed
+
+
+def _append_design_type_reference(lines: list[str], catalog: dict[str, Any]) -> None:
+    """Append design-type descriptions to output lines."""
+    dt_descs = catalog.get("designTypeDescriptions", {})
+    if not dt_descs:
+        return
+    lines.append("### Design Type Reference")
+    for dt_name, dt_desc in dt_descs.items():
+        lines.append(f"- **{dt_name}**: {dt_desc}")
+    lines.append("")
+
+
+def _format_component_full(lines: list[str], comp_type: str, info: dict) -> None:
+    """Append full-detail lines for a single component."""
+    description = info.get("description", "")
+    lines.append(f"### {comp_type}")
+    if description:
+        lines.append(description)
+
+    structure = info.get("structure")
+    if structure:
+        lines.append(f"Structure: `{structure}`")
+
+    _append_properties(lines, info.get("properties", []))
+    _append_sub_components(lines, info.get("subComponents", {}))
+
+    theme = info.get("themeStyleProperties", {})
+    design_types = theme.get("designTypes", []) if theme else []
+    if design_types:
+        lines.append(f"Design types: {', '.join(design_types)}")
+
+    lines.append("")
+
+
+def _append_properties(lines: list[str], props: list[dict]) -> None:
+    """Append property names and enum values to output lines."""
+    if not props:
+        return
+    prop_names = [p.get("name", "?") for p in props[:20]]
+    lines.append(f"Properties: {', '.join(prop_names)}")
+    for p in props:
+        enum_vals = p.get("enumValues", [])
+        if enum_vals:
+            names = [e.get("name", "?") for e in enum_vals]
+            lines.append(f"  {p['name']}: {names}")
+
+
+def _append_sub_components(lines: list[str], sub_comps: dict) -> None:
+    """Append stylable sub-component parts to output lines."""
+    if not sub_comps or len(sub_comps) <= 1:
+        return
+    parts = [
+        f"{key} ({sub_info.get('description', key)})"
+        for key, sub_info in sub_comps.items()
+        if key != "(root)"
+    ]
+    if parts:
+        lines.append(f"Stylable parts: {', '.join(parts)}")
 
 
 # ── Fallback catalog ────────────────────────────────────────────

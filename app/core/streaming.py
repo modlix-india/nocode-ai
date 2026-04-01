@@ -35,12 +35,14 @@ class AgentEventType(str, Enum):
     """Types of events emitted during agent execution."""
 
     TEXT = "text"  # Streamed text from the LLM
+    THINKING = "thinking"  # CoT reasoning from thinking-mode providers
     TOOL_START = "tool_start"  # Tool execution started
     TOOL_RESULT = "tool_result"  # Tool execution completed
     ERROR = "error"  # Error occurred
     DONE = "done"  # Agent finished
     KEEPALIVE = "keepalive"  # Connection keepalive ping
     FEEDBACK_REQUEST = "feedback_request"  # Ask client to show feedback UI
+    CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
 
 
 @dataclass
@@ -72,6 +74,24 @@ class AgentEventStream:
 
     def __init__(self) -> None:
         self._queue: asyncio.Queue[AgentEvent | object] = asyncio.Queue()
+        # Pending confirmation requests: confirmation_id → Future[dict]
+        self._pending_confirmations: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        # Cancellation flag — set by POST /stop, checked by the agent loop
+        self._cancelled = False
+
+    # ── Cancellation ─────────────────────────────────────────────
+
+    def cancel(self) -> None:
+        """Signal the agent loop to stop at the next checkpoint."""
+        self._cancelled = True
+        # Unblock any pending confirmation so the loop can exit
+        for future in self._pending_confirmations.values():
+            if not future.done():
+                future.set_result({"approved": False, "selected": "deny", "reason": "cancelled"})
+
+    @property
+    def is_cancelled(self) -> bool:
+        return self._cancelled
 
     # ── Emit methods (producer side) ────────────────────────────
 
@@ -80,6 +100,13 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.TEXT,
             data={"text": text},
+        ))
+
+    async def emit_thinking(self, reasoning: str) -> None:
+        """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek)."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.THINKING,
+            data={"text": reasoning},
         ))
 
     async def emit_tool_start(
@@ -142,6 +169,79 @@ class AgentEventStream:
             event=AgentEventType.FEEDBACK_REQUEST,
             data={"session_id": session_id, "turn_number": turn_number},
         ))
+
+    async def request_confirmation(
+        self,
+        confirmation_id: str,
+        message: str,
+        tool_name: str,
+        display_name: str,
+        details: dict[str, Any] | None = None,
+        options: list[dict[str, str]] | None = None,
+        timeout: float = 120.0,
+        session_id: str = "",
+    ) -> dict[str, Any]:
+        """Emit a confirmation request and wait for the user's response.
+
+        Blocks the calling coroutine until the user responds via
+        resolve_confirmation() or the timeout expires.
+
+        Args:
+            confirmation_id: Unique ID for this confirmation.
+            message: Human-readable description of what will be changed.
+            tool_name: The tool requesting confirmation.
+            display_name: Human-friendly tool name.
+            details: Optional structured details about the operation.
+            options: List of {label, value} dicts. Defaults to Approve/Deny.
+            timeout: Seconds to wait before auto-denying.
+            session_id: Session ID so the client can POST /confirm before the stream ends.
+
+        Returns:
+            Dict with at least {"approved": bool, "selected": str}.
+        """
+        if options is None:
+            options = [
+                {"label": "Approve", "value": "approve"},
+                {"label": "Deny", "value": "deny"},
+            ]
+
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[dict[str, Any]] = loop.create_future()
+        self._pending_confirmations[confirmation_id] = future
+
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.CONFIRMATION_REQUEST,
+            data={
+                "confirmation_id": confirmation_id,
+                "message": message,
+                "tool_name": tool_name,
+                "display_name": display_name,
+                "details": details or {},
+                "options": options,
+                "session_id": session_id,
+            },
+        ))
+
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        except asyncio.TimeoutError:
+            return {"approved": False, "selected": "deny", "reason": "timeout"}
+        finally:
+            self._pending_confirmations.pop(confirmation_id, None)
+
+    def resolve_confirmation(self, confirmation_id: str, response: dict[str, Any]) -> bool:
+        """Resolve a pending confirmation request with the user's response.
+
+        Called by the /confirm endpoint when the user clicks approve/deny.
+
+        Returns:
+            True if the confirmation was found and resolved, False otherwise.
+        """
+        future = self._pending_confirmations.get(confirmation_id)
+        if future and not future.done():
+            future.set_result(response)
+            return True
+        return False
 
     # ── Consumer side ───────────────────────────────────────────
 

@@ -59,10 +59,10 @@ class Settings(BaseSettings):
     AI_TRACKING_ENABLED: bool = False  # Auto-enabled when MYSQL_URL is configured
 
     # Context limits for conversation tracking
-    CONTEXT_LIMIT_DEFAULT: int = 184000  # Default context limit (200K - 16K reserved for output)
+    CONTEXT_LIMIT_DEFAULT: int = 48000  # Default context limit (64K - 16K reserved for output)
     
     # LLM Provider Selection
-    # Options: "anthropic" or "openai"
+    # Options: "anthropic", "openai", or "deepseek"
     # Can be overridden by config server: ai.llm.provider
     LLM_PROVIDER: str = "anthropic"
     
@@ -77,6 +77,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL_FAST: str = "gpt-4o-mini"    # Equivalent to Claude Haiku
     OPENAI_MODEL_BALANCED: str = "gpt-4o"      # Equivalent to Claude Sonnet
+
+    # DeepSeek Settings
+    # Can be overridden by config server: ai.secrets.deepSeekAPIKey
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_MODEL_FAST: str = "deepseek-chat"       # DeepSeek V3.2 (non-thinking)
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-chat"   # DeepSeek V3.2 (with thinking)
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
     
     # Google Settings
     # Can be overridden by config server: ai.secrets.googleAPIKey
@@ -91,16 +99,8 @@ class Settings(BaseSettings):
     # Legacy - kept for backward compatibility
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
     
-    # Embeddings - Local HuggingFace model (no API needed)
-    LOCAL_EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
-    
-    # ChromaDB
-    CHROMA_PERSIST_DIR: str = "./data/chroma"
-    
-    # RAG Document Paths
-    AICONTEXT_PATH: str = "../nocode-ui/ui-app/aicontext"
-    APP_DEFINITIONS_PATH: str = "./definitions/app defs"
-    SITE_DEFINITIONS_PATH: str = "./definitions/site defs"
+    # AIContext path (empty = use bundled aicontext in appbuilder package)
+    AICONTEXT_PATH: str = ""
     
     # Website Import Settings
     WEBSITE_IMPORT_TIMEOUT: int = 30  # Timeout for website HTML fetching (seconds)
@@ -117,13 +117,19 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.gateway.url
     GATEWAY_URL: str = "http://localhost:8080"
 
+    # Standalone mode — when true, the AI service reads the X-Path-Prefix header
+    # from incoming requests and prepends it to all outgoing API calls.
+    # This allows routing through the webpack dev server with the correct
+    # /{appCode}/{clientCode}/page prefix. Has no effect in production.
+    STANDALONE_MODE: bool = False
+
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
-    MAX_AGENT_TURNS: int = 50  # Max tool-use loop iterations per request
-    AGENT_MAX_TOKENS: int = 16384  # Max tokens per LLM response
+    MAX_AGENT_TURNS: int = 100  # Max tool-use loop iterations per request
+    AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "anthropic"  # AppBuilder always uses Anthropic
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder uses DeepSeek
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
@@ -154,6 +160,7 @@ class Settings(BaseSettings):
             ("files", "url"): "FILES_SERVICE_URL",
             ("secrets", "anthropicAPIKey"): "ANTHROPIC_API_KEY",
             ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
+            ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
@@ -232,12 +239,20 @@ async def initialize_settings():
         logger.info(f"Anthropic API Key: {'*' * 20 + settings.ANTHROPIC_API_KEY[-8:] if settings.ANTHROPIC_API_KEY else 'NOT SET'}")
         logger.info(f"Models: Haiku={settings.CLAUDE_HAIKU}, Sonnet={settings.CLAUDE_SONNET}")
         logger.info(f"Prompt Caching: {'ENABLED' if settings.PROMPT_CACHING_ENABLED else 'DISABLED'}")
+    elif settings.LLM_PROVIDER == "deepseek":
+        logger.info(f"DeepSeek API Key: {'*' * 20 + settings.DEEPSEEK_API_KEY[-8:] if settings.DEEPSEEK_API_KEY else 'NOT SET'}")
+        logger.info(f"Models: Fast={settings.DEEPSEEK_MODEL_FAST}, Balanced={settings.DEEPSEEK_MODEL_BALANCED}")
     else:
         logger.info(f"OpenAI API Key: {'*' * 20 + settings.OPENAI_API_KEY[-8:] if settings.OPENAI_API_KEY else 'NOT SET'}")
         logger.info(f"Models: Fast={settings.OPENAI_MODEL_FAST}, Balanced={settings.OPENAI_MODEL_BALANCED}")
+
+    if settings.APPBUILDER_PROVIDER != settings.LLM_PROVIDER:
+        logger.info(f"AppBuilder Provider Override: {settings.APPBUILDER_PROVIDER.upper()}")
+        if settings.APPBUILDER_PROVIDER == "deepseek":
+            logger.info(f"DeepSeek API Key: {'*' * 20 + settings.DEEPSEEK_API_KEY[-8:] if settings.DEEPSEEK_API_KEY else 'NOT SET'}")
+            logger.info(f"DeepSeek Models: Fast={settings.DEEPSEEK_MODEL_FAST}, Balanced={settings.DEEPSEEK_MODEL_BALANCED}")
     
     logger.info(f"Google API Key: {'*' * 20 + settings.GOOGLE_API_KEY[-8:] if settings.GOOGLE_API_KEY else 'NOT SET'}")
-    logger.info(f"Embedding Model: {settings.LOCAL_EMBEDDING_MODEL}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")
     logger.info(f"Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min, {settings.RATE_LIMIT_PER_HOUR}/hour")
     logger.info(f"AI Tracking: {'ENABLED - ' + settings.MYSQL_URL[:50] + '...' if settings.AI_TRACKING_ENABLED else 'DISABLED'}")

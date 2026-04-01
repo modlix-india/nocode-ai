@@ -4,9 +4,7 @@ Two extraction strategies:
 1. Rule-based: Detect common tool sequences from high-scoring sessions
 2. Error-to-pitfall: Promote frequent tool errors into prompt-injectable pitfalls
 
-Knowledge is stored in:
-- MySQL ai_learning_knowledge: structured records, FULLTEXT search
-- ChromaDB "agent_knowledge" collection: semantic retrieval via embeddings
+Knowledge is stored in MySQL ai_learning_knowledge with FULLTEXT search.
 """
 
 from __future__ import annotations
@@ -98,7 +96,6 @@ class KnowledgeExtractor:
                     tool_sequence_json=json.dumps(tool_sequence),
                 )
                 entries.append(entry)
-                await self._store_in_chromadb(entry_id, title, content, category, agent_name)
 
         except Exception as e:
             logger.error("Failed to extract patterns from %s: %s", session_id, e)
@@ -150,25 +147,16 @@ class KnowledgeExtractor:
         """Retrieve knowledge entries relevant to the current user message.
 
         Strategy:
-        1. ChromaDB semantic search (if available)
-        2. MySQL FULLTEXT fallback
-        3. Always include active PITFALLs
+        1. MySQL FULLTEXT search
+        2. Always include active PITFALLs
         """
         entries: List[KnowledgeEntry] = []
 
-        # Strategy 1: ChromaDB semantic search
-        chroma_entries = await self._search_chromadb(agent_name, user_message, max_entries)
-        entries.extend(chroma_entries)
+        # Strategy 1: MySQL FULLTEXT search
+        sql_entries = await self._search_mysql(agent_name, user_message, max_entries)
+        entries.extend(sql_entries)
 
-        # Strategy 2: MySQL FULLTEXT fallback
-        if len(entries) < max_entries:
-            sql_entries = await self._search_mysql(
-                agent_name, user_message, max_entries - len(entries)
-            )
-            existing_ids = {e.id for e in entries}
-            entries.extend(e for e in sql_entries if e.id not in existing_ids)
-
-        # Strategy 3: Always include top pitfalls
+        # Strategy 2: Always include top pitfalls
         pitfalls = await self._get_top_pitfalls(agent_name, limit=2)
         existing_ids = {e.id for e in entries}
         entries.extend(e for e in pitfalls if e.id not in existing_ids)
@@ -265,61 +253,6 @@ class KnowledgeExtractor:
         except Exception as e:
             logger.error("Failed to store knowledge entry: %s", e)
             return None
-
-    async def _store_in_chromadb(
-        self, entry_id: int, title: str, content: str,
-        category: str, agent_name: str,
-    ) -> None:
-        """Store knowledge entry embedding in ChromaDB for semantic retrieval."""
-        try:
-            import chromadb
-            from app.config import settings
-
-            client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
-            collection = client.get_or_create_collection("agent_knowledge")
-
-            collection.upsert(
-                ids=[f"knowledge_{entry_id}"],
-                documents=[f"{title}\n\n{content}"],
-                metadatas=[{
-                    "knowledge_id": str(entry_id),
-                    "agent_name": agent_name,
-                    "category": category or "",
-                }],
-            )
-        except Exception as e:
-            logger.warning("Failed to store in ChromaDB: %s", e)
-
-    async def _search_chromadb(
-        self, agent_name: str, query: str, limit: int,
-    ) -> List[KnowledgeEntry]:
-        """Semantic search in ChromaDB knowledge collection."""
-        try:
-            import chromadb
-            from app.config import settings
-
-            client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
-            collection = client.get_or_create_collection("agent_knowledge")
-
-            results = collection.query(
-                query_texts=[query],
-                n_results=limit,
-                where={"agent_name": agent_name},
-            )
-
-            entries: List[KnowledgeEntry] = []
-            if results and results["ids"] and results["ids"][0]:
-                for i, _doc_id in enumerate(results["ids"][0]):
-                    metadata = results["metadatas"][0][i] if results["metadatas"] else {}
-                    knowledge_id = metadata.get("knowledge_id")
-                    if knowledge_id:
-                        entry = await self._load_entry_by_id(int(knowledge_id))
-                        if entry:
-                            entries.append(entry)
-            return entries
-        except Exception as e:
-            logger.debug("ChromaDB search failed (may not be initialized): %s", e)
-            return []
 
     async def _search_mysql(
         self, agent_name: str, query: str, limit: int,

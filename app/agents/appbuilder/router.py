@@ -30,6 +30,9 @@ router = APIRouter()
 # Module-level reference to the agent (set during startup)
 _agent = None
 
+# Active event streams keyed by session_id — needed for confirmation resolution
+_active_streams: dict[str, AgentEventStream] = {}
+
 
 def set_appbuilder_agent(agent) -> None:
     """Set the AppBuilderAgent instance (called from main.py lifespan)."""
@@ -50,7 +53,17 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     app_code: Optional[str] = None
+    model: Optional[str] = None  # Model override: "provider:model_name"
     attachments: Optional[List[ChatAttachment]] = None
+
+
+class ConfirmationResponse(BaseModel):
+    """Request body for confirming/denying a tool operation."""
+    confirmation_id: str
+    session_id: str
+    approved: bool
+    selected: str = ""  # The option value the user selected
+    reason: str = ""  # Optional reason for denial
 
 
 class UpdateSessionRequest(BaseModel):
@@ -67,6 +80,25 @@ def _extract_token(request: Request) -> str:
     if cookie_token:
         return f"Bearer {cookie_token}"
     return ""
+
+
+def _extract_standalone_context(request: Request) -> tuple[str, str]:
+    """In standalone mode, extract appCode and clientCode from X-Path-Prefix.
+
+    The prefix follows the pattern /{appCode}/{clientCode}/page.
+    Returns (app_code, client_code) — empty strings if not available.
+    """
+    from app.config import settings
+    if not settings.STANDALONE_MODE:
+        return "", ""
+    prefix = request.headers.get("X-Path-Prefix", "")
+    if not prefix:
+        return "", ""
+    # /{appCode}/{clientCode}/page → ["", appCode, clientCode, "page"]
+    parts = prefix.strip("/").split("/")
+    if len(parts) >= 2:
+        return parts[0], parts[1]
+    return "", ""
 
 
 def _extract_forwarded_headers(request: Request) -> tuple[str, str]:
@@ -119,6 +151,13 @@ async def _authenticate(
 
     forwarded_host, forwarded_port = _extract_forwarded_headers(request)
 
+    # In standalone mode, capture the URL path prefix (e.g. /appbuilder/SYSTEM/page)
+    # set by the webpack dev server proxy for outgoing API calls
+    from app.config import settings
+    path_prefix = ""
+    if settings.STANDALONE_MODE:
+        path_prefix = request.headers.get("X-Path-Prefix", "")
+
     return AuthContext(
         token=auth_header,
         client_code=client_code,
@@ -128,6 +167,7 @@ async def _authenticate(
         access_app_code=verified_app or access_app_code,
         forwarded_host=forwarded_host,
         forwarded_port=forwarded_port,
+        path_prefix=path_prefix,
     )
 
 
@@ -136,6 +176,12 @@ async def _authenticate_session_request(request: Request) -> AuthContext:
     auth_header = _extract_token(request)
     client_code = request.headers.get("clientCode", "")
     access_app_code = request.headers.get("appCode", "")
+
+    # In standalone mode, fall back to values from the URL path prefix
+    if not client_code or not access_app_code:
+        sa_app, sa_client = _extract_standalone_context(request)
+        client_code = client_code or sa_client
+        access_app_code = access_app_code or sa_app
 
     if not auth_header:
         raise HTTPException(status_code=401, detail="Missing Authorization header or token cookie")
@@ -152,6 +198,12 @@ async def _authenticate_chat_request(request: Request, body: ChatRequest) -> Aut
     access_app_code = request.headers.get("appCode", "")
     target_app_code = body.app_code or ""
 
+    # In standalone mode, fall back to values from the URL path prefix
+    if not client_code or not access_app_code:
+        sa_app, sa_client = _extract_standalone_context(request)
+        client_code = client_code or sa_client
+        access_app_code = access_app_code or sa_app
+
     if not auth_header:
         raise HTTPException(status_code=401, detail="Missing Authorization header or token cookie")
     if not client_code:
@@ -166,6 +218,15 @@ async def _authenticate_chat_request(request: Request, body: ChatRequest) -> Aut
         raise HTTPException(status_code=401, detail="Token validation failed")
 
 
+@router.get("/models")
+async def list_models(request: Request):
+    """List available LLM models for the appbuilder agent."""
+    await _authenticate_session_request(request)
+
+    from app.services.llm_provider import get_available_models
+    return {"models": get_available_models()}
+
+
 @router.post("/chat")
 async def chat(request: Request, body: ChatRequest):
     """Stream an appbuilder agent response as SSE."""
@@ -173,8 +234,9 @@ async def chat(request: Request, body: ChatRequest):
         logger.error("Chat request rejected: AppBuilder agent is None (not initialized)")
         raise HTTPException(status_code=503, detail="AppBuilder agent not initialized")
 
-    logger.info("Chat request: session=%s, app=%s, attachments=%d, message_len=%d",
+    logger.info("Chat request: session=%s, app=%s, model=%s, attachments=%d, message_len=%d",
                 body.session_id or "(new)", body.app_code or "(none)",
+                body.model or "(default)",
                 len(body.attachments) if body.attachments else 0, len(body.message))
 
     auth = await _authenticate_chat_request(request, body)
@@ -207,7 +269,7 @@ async def chat(request: Request, body: ChatRequest):
         image_blocks = _build_image_blocks(body.attachments, provider_name)
         logger.info("Image blocks built: %d", len(image_blocks) if image_blocks else 0)
 
-    return _stream_agent_response(body.message, session, image_blocks)
+    return _stream_agent_response(body.message, session, image_blocks, body.model)
 
 
 def _build_image_blocks(attachments: List[ChatAttachment], provider_name: str | None = None) -> list[dict] | None:
@@ -238,31 +300,50 @@ def _stream_agent_response(
     message: str,
     session: BaseSession,
     image_blocks: list[dict] | None = None,
+    model_override: str | None = None,
 ) -> StreamingResponse:
     """Create SSE streaming response for an agent run."""
     import asyncio
 
     event_stream = AgentEventStream()
+    sid = session.session_id
 
     async def run_agent():
         try:
-            await _agent.run(message, session, event_stream, image_blocks)
+            await _agent.run(message, session, event_stream, image_blocks, model_override)
         except Exception as e:
             logger.exception("Agent run failed")
             await event_stream.emit_error(str(e))
             await event_stream.emit_done(session_id=session.session_id)
 
+    async def keepalive():
+        """Send keepalive pings every 15s to prevent connection timeout."""
+        try:
+            while True:
+                await asyncio.sleep(15)
+                await event_stream.emit_keepalive()
+        except asyncio.CancelledError:
+            pass
+
     async def event_generator():
+        _active_streams[sid] = event_stream
         task = asyncio.create_task(run_agent())
+        keepalive_task = asyncio.create_task(keepalive())
         try:
             async for event in event_stream.events():
                 yield event.to_sse()
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, GeneratorExit):
+            # Client disconnected — signal the agent to stop gracefully
+            event_stream.cancel()
             task.cancel()
-            raise
         finally:
+            keepalive_task.cancel()
+            # If client disconnected but agent is still running, cancel it
             if not task.done():
+                event_stream.cancel()
                 task.cancel()
+            # Clean up after agent finishes (give it a moment to wrap up)
+            _active_streams.pop(sid, None)
 
     return StreamingResponse(
         event_generator(),
@@ -273,6 +354,53 @@ def _stream_agent_response(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/confirm")
+async def confirm_action(request: Request, body: ConfirmationResponse):
+    """Resolve a pending confirmation request from the agent."""
+    await _authenticate_session_request(request)
+
+    event_stream = _active_streams.get(body.session_id)
+    if not event_stream:
+        raise HTTPException(status_code=404, detail="No active stream for this session")
+
+    resolved = event_stream.resolve_confirmation(
+        body.confirmation_id,
+        {
+            "approved": body.approved,
+            "selected": body.selected or ("approve" if body.approved else "deny"),
+            "reason": body.reason,
+        },
+    )
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Confirmation not found or already resolved")
+
+    return {"resolved": True, "confirmation_id": body.confirmation_id}
+
+
+class StopRequest(BaseModel):
+    """Request body for stopping an active agent run."""
+    session_id: str
+
+
+@router.post("/stop")
+async def stop_agent(request: Request, body: StopRequest):
+    """Stop an active agent run for the given session."""
+    await _authenticate_session_request(request)
+
+    event_stream = _active_streams.get(body.session_id)
+    if event_stream:
+        event_stream.cancel()
+
+    # Always mark the session as completed so polling stops on refresh
+    try:
+        session_mgr = get_session_manager()
+        await session_mgr.complete_session(body.session_id)
+    except Exception:
+        pass
+
+    return {"stopped": True, "session_id": body.session_id}
 
 
 # ── Session management endpoints ─────────────────────────────────
