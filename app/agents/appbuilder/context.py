@@ -73,6 +73,24 @@ The append field controls whether the title appends to the app title (true) or r
 - Children are stored as: {"childKey": true} in the parent's children map.
 - Event functions cannot receive arguments — they read from Store.
 
+Expression syntax (KIRun — NOT JavaScript):
+- Equality: = (single equals), NOT == or ===
+- Not equal: !=
+- Logical: and, or, not (keywords, NOT &&, ||, !)
+- Ternary: condition ? trueValue : falseValue
+- Null coalescing: value ?? fallback
+- String concat: value1 + ' ' + value2
+- Comparison: <, >, <=, >=
+- Array access: items[0], items[{{dynamicIndex}}]
+- Nested expressions: use {{ }} for dynamic parts, e.g. Steps.items[{{Arguments.index}}].name
+- Prefixes for value access:
+  - Page properties: Page.propertyName
+  - Store data: Store.path.to.data
+  - Theme variables: Theme.variableName
+  - Parent context: Parent.propertyName
+  - In event functions: Arguments.paramName, Steps.stepName.output.propertyName
+- WRONG: === (use =), && (use and), || (use or), ! (use not), ` template literals
+
 Property format (ComponentProperty):
 - EVERY property value MUST be a ComponentProperty object.
 - Static value: {"value": "Hello"}.
@@ -103,18 +121,24 @@ Never use Box, Container, Div, Flex, Input, Select — these are not valid types
 
 TOOL_GROUPS_SUMMARY = """\
 
-## Available Tools (9 tools)
+## Using Tools
 
-**CRUD Operations** — list, create, read, update, delete
-Generic CRUD for all entity types via object_type parameter.
-Supported types: page, application, theme, style, function, schema, connection, workflow, template, uripath.
-Pages have sub-operations: component batch operations, event functions, structure/properties reads.
+Call execute(tool="<name>", params={...}) with any of these tools:
 
-**Version Control** — list_versions, read_version, rollback_version
-Browse version history and rollback any entity to a prior version.
+| Tool | Key Params | Purpose |
+|------|-----------|---------|
+| list | object_type, app_code? | List entities |
+| create | object_type, name, message, ... | Create entity |
+| read | object_type, id\\|name, include?, component_key? | Read entity |
+| update | object_type, message, id\\|page_name, operations? | Update entity |
+| delete | object_type, id\\|app_code | Delete entity |
+| copy | object_type, source_app_code, source_name, target_app_code | Copy definitions |
+| list_versions | object_id, entity_type | Version history |
+| read_version | version_id, entity_type | Read version snapshot |
+| rollback_version | version_id, entity_type, message | Rollback to version |
+| lookup_api | service, entity? | API reference lookup |
 
-**API Reference** — lookup_api
-Look up detailed endpoint info for backend services. Use when building FetchData steps or API connections.
+object_type values: page, application, theme, style, function, schema, connection, workflow, template, uripath.
 
 ### Quick Reference: object_type routing
 | object_type  | Notes                                    |
@@ -122,13 +146,7 @@ Look up detailed endpoint info for backend services. Use when building FetchData
 | page        | Uses name lookup, has component/event sub-ops |
 | application | create/delete via Multi service, list via Security, read/update via UI |
 | theme       | Uses variables (not definition), requires confirmed=true  |
-| style       | Reusable style definitions               |
 | function    | KIRun functions, has namespace param      |
-| schema      | Data schema definitions                  |
-| connection  | API connection configs                   |
-| workflow    | Automation workflows                     |
-| template    | Message/email templates                  |
-| uripath     | URL routing definitions                  |
 """
 
 # ── Per-group detailed reference (injected dynamically) ───────
@@ -209,6 +227,17 @@ Functions — reusable KIRun function definitions:
 - Steps: {name, namespace (e.g. "System.Context.SetStore"), parameterMap, dependentSteps}
 - Event functions on pages also use KIRun steps — same format via \
 update(object_type="page", event_function={function_name: "X", definition: {...}})
+
+Expression syntax in parameterMap values (KIRun expressions, NOT JavaScript):
+- Use = for equality (NOT ==), != for not-equal
+- Use and, or, not (NOT &&, ||, !)
+- Ternary: condition ? trueVal : falseVal
+- Null coalescing: val ?? fallback
+- String concat: val1 + ' ' + val2
+- Dynamic array index: Steps.items[{{Steps.counter.iteration.index}}].name
+- Step output: Steps.stepName.output.propertyName
+- Arguments: Arguments.paramName
+- Example: Arguments.role = 'admin' ? 'Full Access' : 'Limited Access'
 
 Schemas — data structure definitions:
 - create(object_type="schema", name="UserSchema", definition={...})""",

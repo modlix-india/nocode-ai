@@ -125,7 +125,7 @@ class Settings(BaseSettings):
 
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
-    MAX_AGENT_TURNS: int = 50  # Max tool-use loop iterations per request
+    MAX_AGENT_TURNS: int = 100  # Max tool-use loop iterations per request
     AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)

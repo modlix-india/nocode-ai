@@ -26,10 +26,18 @@ read_tool = ToolDefinition(
         "For pages: pass name (page name) + app_code instead of id.\n\n"
         "Page sub-operations (object_type='page'):\n"
         "- Default: returns component tree structure (hierarchy with types and labels)\n"
+        "- include='summary': condensed page overview — component type counts, top-level sections with descendant counts, event names, bindings, labeled components\n"
+        "- include='search': find components by type/name/text/bindings/events using search_* params\n"
+        "- include='subtree': detailed subtree with inline properties, event refs, and binding indicators (requires subtree_root)\n"
         "- include='properties': page-level properties (title, permissions, translations, version)\n"
         "- include='events': lists all event functions with step counts\n"
         "- component_key='btnSubmit': reads a specific component's full definition\n"
         "- event_function_name='handleClick': reads a specific event function's KIRun definition\n\n"
+        "Recommended workflow for large pages:\n"
+        "1. include='summary' to understand the page layout\n"
+        "2. include='search' to find specific components\n"
+        "3. include='subtree' to explore a section in detail\n"
+        "4. component_key to read a specific component's full definition\n\n"
         "For 'application':\n"
         "- id=UI app ID: reads full app definition (named pages, themes, fontPacks, settings)\n"
         "- app_code (no id): lists UI application definitions for that appCode, "
@@ -48,7 +56,23 @@ read_tool = ToolDefinition(
         ToolParameter(name="app_code", type="string", required=False, description="Application code. Required when reading pages by name. For 'application', lists UI defs for that appCode."),
         ToolParameter(name="component_key", type="string", required=False, description="Page sub-op: read a specific component's full definition. Only for object_type='page'."),
         ToolParameter(name="event_function_name", type="string", required=False, description="Page sub-op: read a specific event function definition. Only for object_type='page'."),
-        ToolParameter(name="include", type="string", required=False, enum=["structure", "properties", "events"], description="Page read mode. 'structure' (default): component tree. 'properties': page-level props. 'events': list event functions."),
+        ToolParameter(
+            name="include", type="string", required=False,
+            enum=["structure", "summary", "search", "subtree", "properties", "events"],
+            description=(
+                "Page read mode. 'structure' (default): component tree. "
+                "'summary': condensed page overview index. "
+                "'search': find components (use with search_* params). "
+                "'subtree': detailed section view (use with subtree_root). "
+                "'properties': page-level props. 'events': list event functions."
+            ),
+        ),
+        ToolParameter(name="subtree_root", type="string", required=False, description="Component key to use as subtree root. Required when include='subtree'."),
+        ToolParameter(name="search_type", type="string", required=False, description="Search filter: component type, exact match (e.g. 'Button', 'TextBox', 'Grid'). Only for include='search'."),
+        ToolParameter(name="search_name", type="string", required=False, description="Search filter: substring match on component key or name (e.g. 'login', 'header'). Only for include='search'."),
+        ToolParameter(name="search_text", type="string", required=False, description="Search filter: substring match on text/label/placeholder properties (e.g. 'Submit', 'Email'). Only for include='search'."),
+        ToolParameter(name="search_has_binding", type="boolean", required=False, description="Search filter: only components with data bindings. Only for include='search'."),
+        ToolParameter(name="search_has_events", type="boolean", required=False, description="Search filter: only components referenced in event functions. Only for include='search'."),
     ],
     execute=_read_execute,
 )

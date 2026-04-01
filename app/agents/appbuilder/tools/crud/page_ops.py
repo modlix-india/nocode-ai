@@ -17,6 +17,9 @@ from app.agents.appbuilder.tools._executor import (
     save_page,
     build_component_tree,
     summarize_component,
+    build_page_summary,
+    search_components,
+    build_subtree,
 )
 
 
@@ -177,6 +180,32 @@ async def page_read(params: dict[str, Any], context: dict[str, Any]) -> ToolResu
     if include == "events":
         return _read_event_functions_list(page_data, page_name)
 
+    if include == "summary":
+        return ToolResult(success=True, summary=build_page_summary(page_data))
+
+    if include == "search":
+        filters = {
+            "search_type": params.get("search_type"),
+            "search_name": params.get("search_name"),
+            "search_text": params.get("search_text"),
+            "search_has_binding": params.get("search_has_binding", False),
+            "search_has_events": params.get("search_has_events", False),
+        }
+        results = search_components(page_data, filters)
+        if not results:
+            return ToolResult(success=True, summary=f"No components matched the search filters on page '{page_name}'.")
+        return ToolResult(
+            success=True,
+            data=results,
+            summary=f"Found {len(results)} matching component(s) on page '{page_name}':\n{json.dumps(results, indent=2, default=str)}",
+        )
+
+    if include == "subtree":
+        subtree_root = params.get("subtree_root")
+        if not subtree_root:
+            return ToolResult(success=False, error="'subtree_root' is required when include='subtree'.")
+        return ToolResult(success=True, summary=build_subtree(page_data, subtree_root))
+
     # Default: component tree structure
     tree = build_component_tree(page_data)
     comp_count = len(page_data.get("componentDefinition", {}))
@@ -215,7 +244,7 @@ def _read_component(page_data: dict, page_name: str, component_key: str) -> Tool
         compact["stylePropertyKeys"] = list(style_props.keys())
     return ToolResult(
         success=True,
-        data=comp,
+        data=compact,
         summary=f"Component '{component_key}' ({comp.get('type', '?')}):\n{json.dumps(compact, indent=2, default=str)}",
     )
 
