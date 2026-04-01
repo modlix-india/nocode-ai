@@ -61,6 +61,7 @@ class BaseAgent:
         max_turns: int = 50,
         max_tokens: int = 16384,
         provider: str | None = None,
+        router_tool: ToolDefinition | None = None,
     ) -> None:
         self.name = name
         self.tools = {t.name: t for t in tools}
@@ -70,8 +71,14 @@ class BaseAgent:
         self.max_tokens = max_tokens
         self._provider_name = provider
 
-        # Pre-compute Anthropic tool schemas
-        self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
+        # Tool-of-tools: when a router_tool is provided, the LLM sees only
+        # the router schema.  The agent unwraps execute(tool=X, params={})
+        # into the real tool call before dispatch.
+        self._router_tool_name = router_tool.name if router_tool else None
+        if router_tool:
+            self._anthropic_tools = [router_tool.to_anthropic_tool()]
+        else:
+            self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
 
         # Hold references to background tasks to prevent premature GC
         self._background_tasks: set[asyncio.Task] = set()
@@ -108,6 +115,18 @@ class BaseAgent:
                        model_override or "(none)",
                        len(image_blocks) if image_blocks else 0)
             await self._run_loop(user_message, session, event_stream, image_blocks, model_override)
+        except asyncio.CancelledError:
+            logger.info("Agent '%s' cancelled in session %s", self.name, session.session_id)
+            try:
+                await session.persist_turn(user_message, "[Stopped by user]", None)
+                await session.complete()
+                await event_stream.emit_done(
+                    session_id=session.session_id,
+                    usage=session.total_usage,
+                )
+            except Exception:
+                pass  # Stream may already be closed
+            raise
         except Exception as e:
             logger.exception("Agent '%s' error in session %s", self.name, session.session_id)
             error_text = f"Agent error: {type(e).__name__}: {e}"
@@ -169,6 +188,11 @@ class BaseAgent:
         model_used: str | None = None
 
         while turn < self.max_turns:
+            # Check for user-initiated cancellation
+            if event_stream.is_cancelled:
+                await event_stream.emit_text("\n\n[Stopped by user.]")
+                break
+
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
@@ -179,16 +203,36 @@ class BaseAgent:
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
                        turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
             start_time = time.monotonic()
-            response = await provider.create_completion_with_tools(
+
+            # Wrap LLM call so it can be interrupted by cancellation.
+            # asyncio.shield() is NOT used — we WANT CancelledError to propagate.
+            llm_coro = provider.create_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=session.get_messages(),
                 tools=self._anthropic_tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
             )
+            llm_task = asyncio.create_task(llm_coro)
+
+            # Poll for cancellation while waiting for the LLM
+            while not llm_task.done():
+                if event_stream.is_cancelled:
+                    llm_task.cancel()
+                    break
+                await asyncio.sleep(0.5)
+
+            if event_stream.is_cancelled:
+                break
+
+            response = await llm_task
             latency_ms = int((time.monotonic() - start_time) * 1000)
             logger.info("Turn %d: LLM responded in %dms, stop_reason=%s, model=%s",
                        turn, latency_ms, response.get("stop_reason"), response.get("model"))
+
+            # Check cancellation right after LLM returns
+            if event_stream.is_cancelled:
+                break
 
             content_blocks = response["content"]
             usage = response["usage"]
@@ -221,11 +265,17 @@ class BaseAgent:
             # Execute each tool block, stream result, collect logs
             tool_result_blocks = []
             for tool_block in tool_use_blocks:
+                if event_stream.is_cancelled:
+                    break
                 result_block, log_entry = await self._run_tool_block(
                     tool_block, session, event_stream
                 )
                 tool_result_blocks.append(result_block)
                 tool_call_log.append(log_entry)
+
+            if event_stream.is_cancelled:
+                await event_stream.emit_text("\n\n[Stopped by user.]")
+                break
 
             # Append tool results to conversation
             session.append_tool_results(tool_result_blocks)
@@ -284,6 +334,59 @@ class BaseAgent:
                 tool_use_blocks.append(block)
         return tool_use_blocks
 
+    # Tools that require user confirmation before execution.
+    CONFIRMATION_TOOLS: set[str] = {"create", "update", "delete", "copy"}
+
+    def _build_confirmation_message(
+        self, tool_name: str, display_name: str, tool_input: dict[str, Any],
+    ) -> str:
+        """Build a human-readable confirmation message from tool input."""
+        object_type = tool_input.get("object_type", "object")
+        name = tool_input.get("name") or tool_input.get("page_name") or tool_input.get("id") or "?"
+        message = tool_input.get("message", "")
+
+        if tool_name == "create":
+            return f"Create {object_type} '{name}'" + (f" — {message}" if message else "")
+        if tool_name == "update":
+            parts = []
+            if tool_input.get("properties"):
+                parts.append(f"properties: {list(tool_input['properties'].keys())}")
+            if tool_input.get("operations"):
+                ops = tool_input["operations"]
+                op_summary = ", ".join(
+                    f"{op.get('op', '?')} '{op.get('component_key', op.get('parent_key', '?'))}'"
+                    for op in ops[:5]
+                )
+                if len(ops) > 5:
+                    op_summary += f", +{len(ops) - 5} more"
+                parts.append(f"component ops: [{op_summary}]")
+            if tool_input.get("event_function"):
+                fn_name = tool_input["event_function"].get("function_name", "?")
+                parts.append(f"event function: {fn_name}")
+            if tool_input.get("delete_event_function"):
+                parts.append(f"delete event: {tool_input['delete_event_function']}")
+            if tool_input.get("definition"):
+                parts.append("definition update")
+            detail = "; ".join(parts) if parts else message
+            return f"Update {object_type} '{name}'" + (f" — {detail}" if detail else "")
+        if tool_name == "delete":
+            return f"Delete {object_type} '{name}'"
+        if tool_name == "copy":
+            src_name = tool_input.get("source_name", "?")
+            src_app = tool_input.get("source_app_code", "?")
+            tgt_app = tool_input.get("target_app_code", "?")
+            tgt_name = tool_input.get("target_name") or src_name
+            if tool_input.get("source_component_key"):
+                return (
+                    f"Copy subtree '{tool_input['source_component_key']}' from "
+                    f"{object_type} '{src_name}' in app '{src_app}' into page "
+                    f"'{tool_input.get('target_page_name', '?')}' in app '{tgt_app}'"
+                )
+            if object_type == "application":
+                return f"Copy application '{src_app}' to new app '{tgt_app}'"
+            return f"Copy {object_type} '{src_name}' from app '{src_app}' to app '{tgt_app}' as '{tgt_name}'"
+        return f"{display_name} on {object_type} '{name}'"
+
     async def _run_tool_block(
         self,
         tool_block: dict[str, Any],
@@ -295,10 +398,46 @@ class BaseAgent:
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
 
+        # Unwrap tool-of-tools router: execute(tool="read", params={...}) → read({...})
+        if self._router_tool_name and tool_name == self._router_tool_name:
+            tool_name = tool_input.get("tool", tool_name)
+            tool_input = tool_input.get("params", {})
+
         tool = self.tools.get(tool_name)
         display_name = tool.get_display_name() if tool else tool_name
 
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
+
+        # Request user confirmation for mutating operations
+        if tool_name in self.CONFIRMATION_TOOLS:
+            confirmation_id = f"confirm_{tool_use_id}"
+            confirm_msg = self._build_confirmation_message(tool_name, display_name, tool_input)
+            confirmation = await event_stream.request_confirmation(
+                confirmation_id=confirmation_id,
+                message=confirm_msg,
+                tool_name=tool_name,
+                display_name=display_name,
+                details=tool_input,
+                session_id=session.session_id,
+            )
+            if not confirmation.get("approved"):
+                reason = confirmation.get("reason", "User denied the operation")
+                result = ToolResult(success=False, error=f"Operation denied: {reason}")
+                await event_stream.emit_tool_result(tool_name, False, f"Denied: {reason}", tool_use_id)
+                result_block = {
+                    "type": "tool_result",
+                    "tool_use_id": tool_use_id,
+                    "content": result.to_tool_result_content(),
+                    "is_error": True,
+                }
+                log_entry = {
+                    "tool": tool_name,
+                    "display_name": display_name,
+                    "input": tool_input,
+                    "success": False,
+                    "summary": f"Denied: {reason}",
+                }
+                return result_block, log_entry
 
         result = await self._execute_tool(tool_name, tool_input, session)
         tool_content = result.to_tool_result_content()

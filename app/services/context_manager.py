@@ -65,7 +65,8 @@ class ContextManager:
             Created history entry or None if failed
         """
         if not is_pool_available():
-            logger.debug("Database not available, context tracking disabled")
+            self._save_turn_file(session_id, turn_number, user_instruction,
+                                assistant_summary, tool_calls_json, model)
             return None
 
         # Estimate tokens used for this turn's context
@@ -136,6 +137,8 @@ class ContextManager:
         Requires a UNIQUE index on (SESSION_ID, TURN_NUMBER).
         """
         if not is_pool_available():
+            self._save_turn_file(session_id, turn_number, user_instruction,
+                                assistant_summary, tool_calls_json, model)
             return
 
         input_tokens_used = (
@@ -191,7 +194,7 @@ class ContextManager:
             Tuple of (history entries ordered by turn number, total count)
         """
         if not is_pool_available():
-            return [], 0
+            return self._get_history_file(session_id, limit, offset)
 
         try:
             async with get_connection() as conn:
@@ -433,6 +436,49 @@ class ContextManager:
             input_tokens_used=row[9] or 0,
             created_at=row[10],
         )
+
+
+    # ── File-backed helpers (standalone mode without MySQL) ────────
+
+    def _save_turn_file(
+        self, session_id, turn_number, user_instruction,
+        assistant_summary, tool_calls_json, model,
+    ) -> None:
+        try:
+            from app.db.file_store import get_file_store
+            get_file_store().save_turn(
+                session_id, turn_number,
+                user_instruction or "",
+                assistant_summary or "",
+                tool_calls_json, model,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to save turn to file store: {e}")
+
+    def _get_history_file(
+        self, session_id, limit, offset,
+    ) -> Tuple[List[AiSessionHistory], int]:
+        try:
+            from app.db.file_store import get_file_store
+            turns, total = get_file_store().load_history(
+                session_id, limit=limit or 100, offset=offset,
+            )
+            history = []
+            for t in turns:
+                history.append(AiSessionHistory(
+                    id=0,
+                    session_id=session_id,
+                    request_id="",
+                    turn_number=t.get("turn_number", 0),
+                    user_instruction=t.get("user_instruction"),
+                    assistant_summary=t.get("assistant_summary"),
+                    tool_calls_json=t.get("tool_calls_json"),
+                    model=t.get("model"),
+                ))
+            return history, total
+        except Exception as e:
+            logger.warning(f"Failed to load history from file store: {e}")
+            return [], 0
 
 
 # Singleton instance

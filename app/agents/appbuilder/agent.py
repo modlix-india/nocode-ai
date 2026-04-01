@@ -45,6 +45,8 @@ class AppBuilderAgent(BaseAgent):
         self._api_catalog = api_catalog
         self._api_catalog_context = api_catalog.to_prompt_context() if api_catalog else ""
 
+        from app.agents.appbuilder.tools.registry import TOOL_ROUTER
+
         super().__init__(
             name="appbuilder",
             tools=tools or [],
@@ -53,6 +55,7 @@ class AppBuilderAgent(BaseAgent):
             max_turns=settings.MAX_AGENT_TURNS,
             max_tokens=settings.AGENT_MAX_TOKENS,
             provider=provider,
+            router_tool=TOOL_ROUTER,
         )
 
     async def build_dynamic_context(self, session: BaseSession) -> str:
