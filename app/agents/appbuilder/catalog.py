@@ -61,6 +61,100 @@ class ComponentCatalog:
             return []
         return list(self._catalog.get("components", {}).keys())
 
+    # ── Validation methods ─────────────────────────────────────────
+
+    _VALID_RESOLUTIONS = {
+        "ALL", "WIDE_SCREEN", "DESKTOP_SCREEN",
+        "TABLET_LANDSCAPE_SCREEN", "TABLET_LANDSCAPE_SCREEN_ONLY",
+        "TABLET_POTRAIT_SCREEN", "TABLET_POTRAIT_SCREEN_ONLY",
+        "MOBILE_LANDSCAPE_SCREEN", "MOBILE_LANDSCAPE_SCREEN_ONLY",
+        "MOBILE_POTRAIT_SCREEN", "MOBILE_POTRAIT_SCREEN_ONLY",
+    }
+
+    def validate_component(
+        self, comp_type: str, properties: dict[str, Any] | None = None, styles: dict[str, Any] | None = None,
+    ) -> list[str]:
+        """Validate properties and styles against the catalog.
+
+        Returns a list of warning strings (empty if valid). Warnings are
+        advisory — the backend is the authoritative validator.
+        """
+        warnings: list[str] = []
+        info = self.get_component_info(comp_type)
+        if not info:
+            if comp_type not in (self.get_all_types() or []):
+                warnings.append(f"Unknown component type '{comp_type}'.")
+            return warnings
+
+        # Validate property names
+        if properties:
+            known_props = {p.get("name") for p in info.get("properties", [])}
+            if known_props:
+                for pname in properties:
+                    if pname not in known_props and pname not in ("onClick", "onChange", "onBlur", "onFocus", "onEnter", "visibility", "readOnly"):
+                        warnings.append(f"Unknown property '{pname}' on {comp_type}. Known: {sorted(known_props)[:10]}")
+
+        # Validate style resolution keys
+        if styles:
+            for style_key, style_val in styles.items():
+                if isinstance(style_val, dict) and "resolutions" in style_val:
+                    for res_key in style_val["resolutions"]:
+                        if res_key not in self._VALID_RESOLUTIONS:
+                            warnings.append(f"Unknown resolution '{res_key}'. Valid: ALL, MOBILE_POTRAIT_SCREEN_ONLY, etc.")
+
+        return warnings
+
+    def validate_style_properties(
+        self, comp_type: str, sub_component: str, resolution: str, css_props: dict[str, Any],
+    ) -> list[str]:
+        """Validate CSS properties for a specific sub-component at a resolution.
+
+        Returns a list of warning strings.
+        """
+        warnings: list[str] = []
+
+        if resolution not in self._VALID_RESOLUTIONS:
+            warnings.append(f"Unknown resolution '{resolution}'.")
+
+        info = self.get_component_info(comp_type)
+        if not info:
+            return warnings
+
+        # Check sub-component exists
+        sub_comps = info.get("subComponents", {})
+        if sub_comps and sub_component and sub_component != "(root)":
+            if sub_component not in sub_comps:
+                known = [k for k in sub_comps if k != "(root)"]
+                warnings.append(f"Unknown sub-component '{sub_component}' on {comp_type}. Known: {known}")
+
+        # Check CSS property names are camelCase
+        for css_prop in css_props:
+            if "-" in css_prop:
+                warnings.append(f"CSS property '{css_prop}' uses kebab-case — must be camelCase (e.g. 'paddingLeft').")
+            # Check for common shorthand mistakes
+            if css_prop in ("padding", "margin", "border", "background", "font", "animation", "transition"):
+                warnings.append(f"CSS shorthand '{css_prop}' not allowed — use individual properties (e.g. 'paddingLeft', 'paddingTop').")
+
+        return warnings
+
+    def get_valid_properties(self, comp_type: str) -> list[dict[str, Any]]:
+        """Return all valid properties for a component type."""
+        info = self.get_component_info(comp_type)
+        return info.get("properties", []) if info else []
+
+    def get_valid_style_keys(self, comp_type: str, sub_component: str = "") -> list[str]:
+        """Return valid CSS property names for a sub-component from theme styles."""
+        info = self.get_component_info(comp_type)
+        if not info:
+            return []
+        theme_styles = info.get("themeStyleProperties", {})
+        if not theme_styles:
+            return []
+        styles_map = theme_styles.get("themeStyles", {})
+        key = sub_component or "(root)"
+        entries = styles_map.get(key, [])
+        return [e.get("cssProperty", "") for e in entries if isinstance(e, dict)]
+
     def to_prompt_context(self) -> str:
         """Format catalog as tier-aware text for system prompt injection.
 

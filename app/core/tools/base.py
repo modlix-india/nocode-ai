@@ -24,7 +24,23 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable, Awaitable, Optional
+
+
+class ResultTier(str, Enum):
+    """Controls the maximum result size returned to the LLM."""
+
+    COMPACT = "compact"      # 2,000 chars — tree structures, summaries, entity lists
+    STANDARD = "standard"    # 6,000 chars — component reads, event reads, function DSL
+    LARGE = "large"          # 12,000 chars — multi-component search, full section reads
+
+
+RESULT_TIER_LIMITS: dict[ResultTier, int] = {
+    ResultTier.COMPACT: 2_000,
+    ResultTier.STANDARD: 6_000,
+    ResultTier.LARGE: 12_000,
+}
 
 
 @dataclass(frozen=True)
@@ -59,19 +75,43 @@ class ToolParameter:
 
 @dataclass
 class ToolResult:
-    """Structured return value from a tool execution."""
+    """Structured return value from a tool execution.
+
+    The ``result_tier`` field controls the maximum character limit sent to
+    the LLM.  Tools should set an appropriate tier when constructing a
+    result so that compact data (trees, summaries) isn't capped at the same
+    size as large search results.
+
+    When the formatted text exceeds the tier limit the content is stored in
+    the session's ``ResultStore`` (if one is attached to the context) and a
+    short reference is returned instead, allowing the LLM to page through
+    the full result via the ``read_result`` tool.
+    """
 
     success: bool
     data: Any = None
     summary: str = ""
     error: str = ""
+    result_tier: ResultTier = ResultTier.STANDARD
 
-    # Hard cap on tool result content sent to the LLM.
-    # Prevents a single read from consuming excessive context.
-    MAX_RESULT_CHARS: int = 4000
+    # Legacy flat cap kept for backward compatibility — callers that set
+    # this directly override tier-based limits.
+    _max_override: int | None = None
 
-    def to_tool_result_content(self) -> str:
-        """Format as text content for the tool_result message back to the LLM."""
+    @property
+    def _char_limit(self) -> int:
+        if self._max_override is not None:
+            return self._max_override
+        return RESULT_TIER_LIMITS.get(self.result_tier, 6_000)
+
+    def to_tool_result_content(self, result_store: Any = None) -> str:
+        """Format as text content for the tool_result message back to the LLM.
+
+        Args:
+            result_store: Optional ``ResultStore`` instance.  When provided
+                and the text exceeds the tier limit the full content is
+                persisted and a reference is returned.
+        """
         if not self.success:
             return f"Error: {self.error}"
         if self.summary:
@@ -85,9 +125,21 @@ class ToolResult:
         else:
             return "OK"
 
-        if len(text) > self.MAX_RESULT_CHARS:
-            return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
-        return text
+        limit = self._char_limit
+        if len(text) <= limit:
+            return text
+
+        # If a result store is available, persist the full text and return a
+        # compact reference the LLM can page through.
+        if result_store is not None:
+            result_id = result_store.store(text)
+            return (
+                text[:limit]
+                + f"\n\n... [truncated — full result stored as result_id={result_id}. "
+                + "Use read_result tool to page through it.]"
+            )
+
+        return text[:limit] + "\n\n... [truncated — use more specific reads to see details]"
 
 
 # Type alias for tool execute functions.
@@ -108,6 +160,14 @@ class ToolDefinition:
         description: Human-readable description shown to the LLM.
         parameters: List of ToolParameter definitions.
         execute: Async function that runs the tool.
+        is_deferred: When True, tool schema is NOT included in the initial
+            prompt.  The LLM must discover it via ToolSearchTool before it
+            can call it.  Reduces initial prompt token cost.
+        search_hint: Short phrase (3-10 words) used by ToolSearchTool for
+            keyword matching when the tool is deferred.  Should contain
+            terms NOT already in the tool name.
+        result_tier: Default ResultTier for results returned by this tool.
+            Individual ToolResult instances can override this.
     """
 
     name: str
@@ -115,6 +175,9 @@ class ToolDefinition:
     display_name: str = ""
     parameters: list[ToolParameter] = field(default_factory=list)
     execute: Optional[ToolExecuteFunc] = None
+    is_deferred: bool = False
+    search_hint: str = ""
+    result_tier: ResultTier = ResultTier.STANDARD
 
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""

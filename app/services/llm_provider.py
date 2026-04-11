@@ -26,6 +26,67 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 
+def _safe_parse_tool_args(raw_args: str | None, tool_name: str, model: str) -> dict:
+    """Parse tool call arguments JSON with repair for malformed output.
+
+    LLMs (especially DeepSeek) sometimes produce invalid JSON in tool
+    arguments: trailing commas, truncated strings, unescaped characters.
+    This function attempts increasingly aggressive repairs before falling
+    back to empty args.
+    """
+    import json as json_lib
+    import re
+
+    raw = raw_args or "{}"
+
+    # 1. Try as-is
+    try:
+        return json_lib.loads(raw)
+    except json_lib.JSONDecodeError:
+        pass
+
+    logger.warning("Malformed tool args from %s for %s (len=%d), attempting repair",
+                   model, tool_name, len(raw))
+
+    # 2. Strip trailing commas before } or ]
+    try:
+        return json_lib.loads(re.sub(r',\s*([}\]])', r'\1', raw))
+    except json_lib.JSONDecodeError:
+        pass
+
+    # 3. Truncate at last valid closing brace and try
+    last_brace = raw.rfind('}')
+    if last_brace > 0:
+        try:
+            return json_lib.loads(raw[:last_brace + 1])
+        except json_lib.JSONDecodeError:
+            pass
+
+    # 4. Try closing unclosed braces/brackets (truncated response)
+    try:
+        repaired = re.sub(r',\s*([}\]])', r'\1', raw)
+        # Remove any trailing incomplete string value
+        repaired = re.sub(r',\s*"[^"]*$', '', repaired)
+        # Count unclosed braces/brackets and close them
+        open_braces = repaired.count('{') - repaired.count('}')
+        open_brackets = repaired.count('[') - repaired.count(']')
+        if open_braces > 0 or open_brackets > 0:
+            repaired += ']' * max(0, open_brackets) + '}' * max(0, open_braces)
+            return json_lib.loads(repaired)
+    except json_lib.JSONDecodeError:
+        pass
+
+    # 5. Try wrapping in braces if it looks like bare key-value pairs
+    if not raw.strip().startswith('{'):
+        try:
+            return json_lib.loads('{' + raw + '}')
+        except json_lib.JSONDecodeError:
+            pass
+
+    logger.error("Could not repair tool args for %s (first 300 chars): %s", tool_name, raw[:300])
+    return {}
+
+
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
     
@@ -458,11 +519,12 @@ class OpenAIProvider(LLMProvider):
             content_blocks.append({"type": "text", "text": choice.message.content})
         if choice.message.tool_calls:
             for tc in choice.message.tool_calls:
+                args = _safe_parse_tool_args(tc.function.arguments, tc.function.name, model)
                 content_blocks.append({
                     "type": "tool_use",
                     "id": tc.id,
                     "name": tc.function.name,
-                    "input": json_lib.loads(tc.function.arguments),
+                    "input": args,
                 })
 
         # Map OpenAI finish_reason to Anthropic stop_reason
@@ -647,11 +709,12 @@ class DeepSeekProvider(OpenAIProvider):
             content_blocks.append({"type": "text", "text": choice.message.content})
         if choice.message.tool_calls:
             for tc in choice.message.tool_calls:
+                args = _safe_parse_tool_args(tc.function.arguments, tc.function.name, model)
                 content_blocks.append({
                     "type": "tool_use",
                     "id": tc.id,
                     "name": tc.function.name,
-                    "input": json_lib.loads(tc.function.arguments),
+                    "input": args,
                 })
 
         stop_reason = "end_turn"

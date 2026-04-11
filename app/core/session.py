@@ -31,6 +31,25 @@ from app.db.models import AiTokenUsageCreate
 logger = logging.getLogger(__name__)
 
 
+def _estimate_block_chars(block: dict) -> int:
+    """Estimate character count for a single content block."""
+    chars = len(block.get("text", "") or block.get("content", "") or "")
+    inp = block.get("input")
+    if inp is not None:
+        chars += len(str(inp))
+    return chars
+
+
+def _estimate_message_chars(msg: dict) -> int:
+    """Estimate character count for a single message."""
+    content = msg.get("content", "")
+    if isinstance(content, str):
+        return len(content)
+    if isinstance(content, list):
+        return sum(_estimate_block_chars(b) for b in content if isinstance(b, dict))
+    return 0
+
+
 @dataclass
 class AuthContext:
     """Authentication context passed from the HTTP request.
@@ -121,6 +140,15 @@ class BaseSession:
     def get_messages(self) -> list[dict[str, Any]]:
         """Return the full conversation history in Anthropic format."""
         return self.messages
+
+    def estimated_context_tokens(self) -> int:
+        """Estimate total tokens in the current message history.
+
+        Uses a rough 4 chars per token heuristic.  Good enough for
+        compaction threshold checks — exact counting would require
+        a tokenizer and add latency to every turn.
+        """
+        return sum(_estimate_message_chars(msg) for msg in self.messages) // 4
 
     def append_user_message(self, text: str, image_blocks: list[dict[str, Any]] | None = None) -> None:
         """Append a user message to the conversation.

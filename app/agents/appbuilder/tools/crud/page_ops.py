@@ -261,25 +261,34 @@ def _read_event_function(page_data: dict, page_name: str, function_name: str) ->
     # Return compact summary: step names and namespaces, not full parameterMaps
     steps = definition.get("steps", {})
     compact_steps = {}
-    for step_name, step_def in steps.items():
+    # Steps can be a dict (name → def) or a list (array of defs)
+    if isinstance(steps, dict):
+        step_items = steps.items()
+    elif isinstance(steps, list):
+        step_items = ((s.get("statementName", s.get("name", f"step_{i}")), s) for i, s in enumerate(steps))
+    else:
+        step_items = ()
+    for step_name, step_def in step_items:
+        if not isinstance(step_def, dict):
+            continue
         compact_steps[step_name] = {
             "namespace": step_def.get("namespace", "?"),
             "name": step_def.get("name", "?"),
             "dependentSteps": step_def.get("dependentSteps", []),
         }
-        # Include parameterMap keys (not values) for awareness
         param_map = step_def.get("parameterMap", {})
         if param_map:
-            compact_steps[step_name]["parameterMapKeys"] = list(param_map.keys())
+            compact_steps[step_name]["parameterMapKeys"] = list(param_map.keys()) if isinstance(param_map, dict) else []
     compact = {
         "name": definition.get("name", function_name),
         "namespace": definition.get("namespace", ""),
         "steps": compact_steps,
     }
+    step_count = len(steps) if isinstance(steps, (dict, list)) else 0
     return ToolResult(
         success=True,
         data=definition,
-        summary=f"Event function '{function_name}' ({len(steps)} steps):\n{json.dumps(compact, indent=2, default=str)}",
+        summary=f"Event function '{function_name}' ({step_count} steps):\n{json.dumps(compact, indent=2, default=str)}",
     )
 
 

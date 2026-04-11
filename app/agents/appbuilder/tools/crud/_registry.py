@@ -93,8 +93,8 @@ OBJECT_TYPES: dict[str, ObjectTypeConfig] = {
         display_name="Application",
         api_path="/api/ui/applications",
         list_api_path="/api/security/applications/query",
-        create_api_path="/api/multi/application",
-        delete_api_path="/api/multi/application",
+        create_api_path="/api/security/applications",
+        delete_api_path="/api/security/applications",
         has_special_create=True,
     ),
 }

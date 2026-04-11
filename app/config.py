@@ -58,8 +58,12 @@ class Settings(BaseSettings):
     MYSQL_PASSWORD: str = ""
     AI_TRACKING_ENABLED: bool = False  # Auto-enabled when MYSQL_URL is configured
 
-    # Context limits for conversation tracking
-    CONTEXT_LIMIT_DEFAULT: int = 48000  # Default context limit (64K - 16K reserved for output)
+    # Context limits and auto-compaction
+    CONTEXT_LIMIT_DEFAULT: int = 180_000  # Match model capacity (200K - 20K output reserve)
+    COMPACTION_THRESHOLD: float = 0.80     # Compact when context usage exceeds this ratio
+    POST_COMPACT_BUDGET: int = 20_000      # Token budget for re-injected state after compaction
+    COMPACTION_MODEL_TIER: str = "fast"    # Use cheap/fast model for summarization calls
+    COMPACTION_KEEP_RECENT: int = 2        # Number of recent user/assistant pairs to keep verbatim
     
     # LLM Provider Selection
     # Options: "anthropic", "openai", or "deepseek"
@@ -81,8 +85,8 @@ class Settings(BaseSettings):
     # DeepSeek Settings
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
-    DEEPSEEK_MODEL_FAST: str = "deepseek-chat"       # DeepSeek V3.2 (non-thinking)
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-chat"   # DeepSeek V3.2 (with thinking)
+    DEEPSEEK_MODEL_FAST: str = "deepseek-chat"           # DeepSeek V3 (fast, cheap, compaction/summaries)
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-reasoner"  # DeepSeek R1 (CoT reasoning, better tool-use)
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
     
@@ -125,7 +129,7 @@ class Settings(BaseSettings):
 
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
-    MAX_AGENT_TURNS: int = 100  # Max tool-use loop iterations per request
+    MAX_AGENT_TURNS: int = 40  # Max tool-use loop iterations per request
     AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)

@@ -191,7 +191,11 @@ async def generic_create(
 
 
 async def _create_application(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Create application via the Multi service."""
+    """Create application: security registration + UI definition.
+
+    Step 1: POST /api/security/applications — register in security (SQL)
+    Step 2: POST /api/ui/applications — create UI definition (MongoDB)
+    """
     from app.agents.appbuilder.tools._shared import validate_name
 
     client, headers = _get_client_and_headers(context)
@@ -206,16 +210,32 @@ async def _create_application(params: dict[str, Any], context: dict[str, Any]) -
     if err:
         return err
 
-    body: dict[str, Any] = {
+    # Step 1: Create security app registration
+    sec_body: dict[str, Any] = {
         "appName": app_name,
         "appCode": app_code,
         "appType": app_type,
+        "appAccessType": "OWN",
     }
-    body["message"] = params["message"]
+    sec_result = await client.post("/api/security/applications", headers=headers, json=sec_body)
+    if not sec_result.success:
+        return ToolResult(success=False, error=f"Failed to create security app: {sec_result.error}")
 
-    result = await client.post("/api/multi/application", headers=headers, json=body)
-    if not result.success:
-        return ToolResult(success=False, error=f"Failed to create application: {result.error}")
+    # Step 2: Create UI application definition
+    ui_body: dict[str, Any] = {
+        "name": app_code,
+        "appCode": app_code,
+        "clientCode": context.get("client_code", ""),
+        "properties": {},
+        "message": params.get("message", f"Created application '{app_name}'"),
+    }
+    ui_result = await client.post("/api/ui/applications", headers=headers, json=ui_body)
+    if not ui_result.success:
+        return ToolResult(
+            success=False,
+            error=f"Security app created but UI definition failed: {ui_result.error}. "
+                  f"Create UI definition manually: POST /api/ui/applications with appCode='{app_code}'.",
+        )
 
     # Track in session context
     session_ctx = context.get("session_context")
@@ -225,10 +245,18 @@ async def _create_application(params: dict[str, Any], context: dict[str, Any]) -
         if app_code not in app_codes:
             app_codes.append(app_code)
 
+    ui_data = ui_result.data
+    ui_id = ui_data.get("id", "?") if isinstance(ui_data, dict) else "?"
+
     return ToolResult(
         success=True,
-        data=result.data,
-        summary=f"Created application '{app_name}' (code={app_code}, type={app_type}).",
+        data={"app_code": app_code, "ui_definition_id": ui_id},
+        summary=(
+            f"Created application '{app_name}' (code={app_code}, type={app_type}).\n"
+            f"  Security app: registered\n"
+            f"  UI definition: {ui_id}\n"
+            f"Use read(object_type='application', id='{ui_id}') to view the full definition."
+        ),
     )
 
 
@@ -278,15 +306,50 @@ async def generic_read(
     )
 
 
+def _is_mongo_id(value: str) -> bool:
+    """Check if a string looks like a MongoDB ObjectId (24 hex chars)."""
+    return len(value) == 24 and all(c in "0123456789abcdef" for c in value.lower())
+
+
 async def _read_application(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Application read: by app_code lists UI defs, by id reads full definition."""
+    """Application read: by app_code lists UI defs, by id reads full definition.
+
+    IMPORTANT: The security service returns integer SQL IDs (e.g. 783) which
+    are NOT valid for the UI service.  UI applications use MongoDB ObjectIds
+    (24 hex chars).  If the caller passes a non-MongoDB ID, we treat it as
+    an app_code lookup instead.
+    """
     client, headers = _get_client_and_headers(context)
 
     entity_id = params.get("id")
     app_code = params.get("app_code") or params.get("name", "")
 
+    # Guard: if the ID looks like a security service integer ID, redirect to
+    # app_code lookup.  Security IDs are NOT valid MongoDB ObjectIds.
+    if entity_id and not _is_mongo_id(str(entity_id)):
+        if not app_code:
+            # Try to find the app_code from session context
+            session_ctx = context.get("session_context", {})
+            app_code = session_ctx.get("app_code", "")
+        if app_code:
+            return ToolResult(
+                success=False,
+                error=(
+                    f"ID '{entity_id}' is a security service ID, not a UI MongoDB ID. "
+                    f"Use read(object_type='application', app_code='{app_code}') first to get "
+                    f"the UI application definition IDs (MongoDB ObjectIds), then read by that ID."
+                ),
+            )
+        return ToolResult(
+            success=False,
+            error=(
+                f"ID '{entity_id}' is a security service ID, not a UI MongoDB ID. "
+                "Use read(object_type='application', app_code='<appCode>') to get UI definition IDs."
+            ),
+        )
+
     if entity_id:
-        # Read full UI application definition by ID
+        # Read full UI application definition by MongoDB ID
         result = await client.get(f"/api/ui/applications/{entity_id}", headers=headers)
         if not result.success:
             return ToolResult(success=False, error=f"Failed to read application: {result.error}")
@@ -321,13 +384,44 @@ async def _read_application(params: dict[str, Any], context: dict[str, Any]) -> 
         apps = data.get("content", []) if isinstance(data, dict) else []
         lines = [f"- {a.get('name', '?')} (id={a.get('id', '?')}, v{a.get('version', '?')})" for a in apps]
 
+        if not apps:
+            # Auto-create UI definition when security app exists but UI doesn't
+            ui_body = {
+                "name": app_code,
+                "appCode": app_code,
+                "clientCode": context.get("client_code", ""),
+                "properties": {},
+                "message": "Auto-created UI application definition",
+            }
+            create_result = await client.post("/api/ui/applications", headers=headers, json=ui_body)
+            if create_result.success:
+                created = create_result.data
+                ui_id = created.get("id", "?") if isinstance(created, dict) else "?"
+                return ToolResult(
+                    success=True,
+                    data=[{"name": app_code, "id": ui_id, "appCode": app_code}],
+                    summary=(
+                        f"UI application definition was missing for '{app_code}' — auto-created it.\n"
+                        f"UI definition ID: {ui_id}\n"
+                        f"Use read(object_type='application', id='{ui_id}') to view/update properties."
+                    ),
+                )
+            return ToolResult(
+                success=True,
+                data=[],
+                summary=(
+                    f"Found 0 UI application definitions for appCode '{app_code}' "
+                    f"and auto-creation failed: {create_result.error}"
+                ),
+            )
+
         return ToolResult(
             success=True,
             data=[{"name": a.get("name"), "id": a.get("id"), "appCode": a.get("appCode"), "version": a.get("version")} for a in apps],
             summary=f"Found {len(apps)} UI application definition(s) for appCode '{app_code}':\n" + "\n".join(lines),
         )
 
-    return ToolResult(success=False, error="Provide either 'id' (UI app ID) or 'app_code' to read application.")
+    return ToolResult(success=False, error="Provide either 'id' (MongoDB ObjectId from UI service) or 'app_code' to read application.")
 
 
 # ── UPDATE ────────────────────────────────────────────────────────

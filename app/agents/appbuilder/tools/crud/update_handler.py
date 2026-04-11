@@ -10,10 +10,17 @@ from app.agents.appbuilder.tools.crud._handlers import generic_update
 
 
 async def _update_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    object_type = params["object_type"]
+    object_type = params.get("object_type")
+    if not object_type:
+        return ToolResult(
+            success=False,
+            error="object_type is required. Provide one of: " + ", ".join(OBJECT_TYPE_ENUM),
+        )
     config = OBJECT_TYPES.get(object_type)
     if not config:
         return ToolResult(success=False, error=f"Unknown object_type: {object_type}")
+    if not params.get("message"):
+        params["message"] = "Update via agent"
     return await generic_update(config, params, context)
 
 
