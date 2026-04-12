@@ -195,8 +195,8 @@ class BaseAgent:
         # Mark session as processing so UI can detect in-progress state on refresh
         await session.set_processing()
 
-        # Build system prompt
-        dynamic_context = await self.build_dynamic_context(session)
+        # Build system prompt (pass user_message for URL auto-scraping)
+        dynamic_context = await self.build_dynamic_context(session, user_message=user_message)
         system_prompt = self.context_builder.build_system_prompt(
             dynamic_context=dynamic_context,
         )
@@ -593,7 +593,7 @@ class BaseAgent:
                 error=f"Tool execution error: {type(e).__name__}: {e}",
             )
 
-    async def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession, user_message: str = "") -> str:
         """Build per-request dynamic context string.
 
         Override in subclasses to add agent-specific context
@@ -601,6 +601,7 @@ class BaseAgent:
 
         Args:
             session: Active session with auth context.
+            user_message: The current user message (not yet in session.messages).
 
         Returns:
             Dynamic context text to append to system prompt.

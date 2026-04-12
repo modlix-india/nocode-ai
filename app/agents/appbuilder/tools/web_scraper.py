@@ -57,8 +57,15 @@ async def scrape_website(url: str) -> dict[str, Any]:
     result["title"] = _extract_title(soup)
     result["meta"] = _extract_meta(soup)
 
-    # Extract color palette and fonts from inline/embedded CSS
+    # Extract color palette and fonts from ALL CSS (inline + embedded + external)
     styles_text = _extract_all_css(soup, html)
+    try:
+        external_css = await _fetch_external_css(soup, final_url)
+        if external_css:
+            styles_text += "\n" + external_css
+            logger.info("Fetched external CSS: %d chars", len(external_css))
+    except Exception as e:
+        logger.debug("External CSS fetch failed: %s", e)
     result["colors"] = _extract_colors(styles_text)
     result["fonts"] = _extract_fonts(styles_text)
 
@@ -107,6 +114,25 @@ def _extract_meta(soup: BeautifulSoup) -> dict[str, str]:
         if name in ("description", "keywords", "og:image", "og:title", "og:description"):
             meta[name] = content
     return meta
+
+
+async def _fetch_external_css(soup: BeautifulSoup, base_url: str) -> str:
+    """Fetch external CSS files linked in the page (first 3, max 50KB each)."""
+    css_texts: list[str] = []
+    link_tags = soup.find_all("link", rel="stylesheet", href=True)
+
+    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True,
+        headers={"User-Agent": "Mozilla/5.0"}) as client:
+        for link in link_tags[:3]:  # Max 3 external stylesheets
+            href = urljoin(base_url, link["href"])
+            try:
+                resp = await client.get(href)
+                if resp.status_code == 200 and len(resp.text) < 50_000:
+                    css_texts.append(resp.text)
+            except Exception:
+                continue
+
+    return "\n".join(css_texts)
 
 
 def _extract_all_css(soup: BeautifulSoup, html: str) -> str:
@@ -390,6 +416,104 @@ async def _take_screenshot(url: str) -> str | None:
 
 
 # ── Format for Agent ─────────────────────────────────────────────
+
+
+def format_scraped_data_with_styles(data: dict[str, Any]) -> str:
+    """Format scraped data with pre-converted Modlix styleProperties.
+
+    This version includes ready-to-use styleProperties JSON for each section,
+    so the LLM can directly apply them instead of figuring out the format.
+    """
+    import json
+    from app.agents.appbuilder.tools.css_converter import (
+        scraped_section_to_style_properties,
+        get_section_template_styles,
+        css_to_style_properties,
+    )
+
+    if data.get("error"):
+        return f"Failed to scrape {data['url']}: {data['error']}"
+
+    # Extract colors for template generation
+    colors_list = data.get("colors", [])
+    # Build a color map from whatever we have
+    colors = {}
+    if colors_list:
+        colors["primary"] = colors_list[0] if len(colors_list) > 0 else "#c9a44c"
+        colors["background"] = colors_list[1] if len(colors_list) > 1 else "#1a1a2e"
+        colors["text"] = "#ffffff"
+
+    parts: list[str] = []
+    parts.append(f"## Scraped Website: {data['url']}")
+    parts.append(f"Title: {data.get('title', '(none)')}")
+
+    # Navigation
+    nav = data.get("navigation", [])
+    if nav:
+        parts.append(f"\nNavigation: {' | '.join(n['text'] for n in nav)}")
+
+    # Images
+    images = data.get("images", [])
+    if images:
+        parts.append(f"\nImages ({len(images)}):")
+        for img in images[:8]:
+            parts.append(f"  - {img['src']} (alt: {img.get('alt', '')})")
+
+    # Sections with pre-built styleProperties
+    sections = data.get("sections", [])
+    if sections:
+        parts.append(f"\n## Page Sections ({len(sections)} sections)")
+        parts.append("Each section includes ready-to-use Modlix styleProperties JSON.")
+
+        for sec in sections:
+            sec_type = sec.get("type", "section")
+            parts.append(f"\n### Section: {sec_type}")
+
+            # Text content
+            for t in sec.get("texts", [])[:3]:
+                parts.append(f'  Text: "{t}"')
+
+            # Images
+            for img in sec.get("images", [])[:2]:
+                parts.append(f"  Image: {img['src']}")
+
+            # Buttons
+            for btn in sec.get("buttons", [])[:2]:
+                parts.append(f"  Button: \"{btn['text']}\"")
+
+            # Background
+            bg = sec.get("backgroundImage", "")
+            if bg:
+                parts.append(f"  Background: {bg}")
+
+            # Pre-converted styleProperties
+            style_props = scraped_section_to_style_properties(sec, colors)
+            if style_props:
+                # Extract just the resolution data for readability
+                for sid, sdata in style_props.items():
+                    res = sdata.get("resolutions", {})
+                    all_styles = res.get("ALL", {})
+                    if all_styles:
+                        compact = {k: v["value"] for k, v in all_styles.items()}
+                        parts.append(f"  styleProperties (ALL): {json.dumps(compact)}")
+                    mobile = res.get("MOBILE_LANDSCAPE_SCREEN_SMALL", {})
+                    if mobile:
+                        compact_m = {k: v["value"] for k, v in mobile.items()}
+                        parts.append(f"  styleProperties (MOBILE): {json.dumps(compact_m)}")
+
+        # Button template
+        btn_styles = get_section_template_styles("button_primary", colors)
+        if btn_styles:
+            parts.append(f"\n### Button Template")
+            parts.append(f"  styleProperties: {json.dumps(btn_styles)}")
+
+        # Card template
+        card_styles = get_section_template_styles("card", colors)
+        if card_styles:
+            parts.append(f"\n### Card Template")
+            parts.append(f"  styleProperties: {json.dumps(card_styles)}")
+
+    return "\n".join(parts)
 
 
 def format_scraped_data_for_agent(data: dict[str, Any]) -> str:

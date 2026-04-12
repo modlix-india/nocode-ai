@@ -49,8 +49,15 @@ use tool_search to discover additional tools:
 - App config: "app pages" or "app fonts" or "app meta"
 - Versioning: "version history" or "rollback"
 - API docs: "API endpoint"
+- Cloning: "clone website" or "clone URL" — clones a site's HTML/CSS into Modlix components
 - Planning: "plan steps" or "create plan"
 - Delegation: "delegate task" or "sub-agent"
+
+## Cloning Websites
+When the user provides a URL to clone or replicate, ALWAYS use tool_search to find "clone website" \
+and use the clone_website tool. This tool scrapes the HTML, converts all elements to Modlix components \
+with proper styleProperties (including layout, colors, fonts, images, backgrounds), and creates/updates \
+the page automatically. Do NOT try to manually build components when cloning — use clone_website instead.
 
 ## Complex Tasks (3+ pages or 3+ entity types)
 For large tasks like "build me a CRM" or "create a portfolio site", use tool_search to discover \

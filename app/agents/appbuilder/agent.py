@@ -64,7 +64,7 @@ class AppBuilderAgent(BaseAgent):
             deferred_tools=DEFERRED_TOOLS,
         )
 
-    async def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession, user_message: str = "") -> str:
         """Build per-request dynamic context.
 
         Includes: auth info, component catalog, API catalog, learned knowledge,
@@ -85,8 +85,8 @@ class AppBuilderAgent(BaseAgent):
                 f"- Preview URL pattern: {base_url}/<appCode>/{session.auth.client_code}/page/<pageName>\n"
             )
 
-        # Auto-scrape URLs in the latest user message
-        scraped = await self._auto_scrape_urls(session)
+        # Auto-scrape URLs in the current user message
+        scraped = await self._auto_scrape_urls(session, user_message)
         if scraped:
             parts.append(scraped)
 
@@ -103,22 +103,27 @@ class AppBuilderAgent(BaseAgent):
 
         return "\n\n".join(parts)
 
-    async def _auto_scrape_urls(self, session: BaseSession) -> str:
-        """Detect URLs in the latest user message and scrape them.
+    async def _auto_scrape_urls(self, session: BaseSession, user_message: str = "") -> str:
+        """Detect URLs in the current user message and scrape them.
+
+        Args:
+            session: Active session.
+            user_message: The current user message (not yet in session.messages).
 
         Returns formatted scraped data or empty string.
         """
         from app.agents.appbuilder.tools.web_scraper import (
             extract_urls_from_text,
             scrape_website,
-            format_scraped_data_for_agent,
+            format_scraped_data_with_styles,
         )
 
-        last_user_text = extract_last_user_text(session.messages)
-        if not last_user_text:
+        # Check current message first, then fall back to last message in history
+        text_to_check = user_message or extract_last_user_text(session.messages)
+        if not text_to_check:
             return ""
 
-        urls = extract_urls_from_text(last_user_text)
+        urls = extract_urls_from_text(text_to_check)
         if not urls:
             return ""
 
@@ -132,20 +137,31 @@ class AppBuilderAgent(BaseAgent):
                 logger.warning("Scrape failed: %s", data["error"])
                 return f"[Attempted to scrape {url} but failed: {data['error']}]"
 
-            formatted = format_scraped_data_for_agent(data)
-
-            # Store screenshot in session context for vision-capable models
-            if data.get("screenshot_base64"):
-                session.context["scraped_screenshot"] = data["screenshot_base64"]
-                session.context["scraped_url"] = url
-                logger.info("Screenshot captured for %s", url)
-
             logger.info("Scraped %s: %d sections, %d colors, %d images",
                        url,
                        len(data.get("sections", [])),
                        len(data.get("colors", [])),
                        len(data.get("images", [])))
-            return formatted
+
+            # If we have a screenshot, analyze it with Claude Haiku vision
+            # to extract the actual visual design (colors, fonts, layout)
+            screenshot = data.get("screenshot_base64")
+            if screenshot:
+                session.context["scraped_screenshot"] = screenshot
+                session.context["scraped_url"] = url
+
+                from app.agents.appbuilder.tools.style_analyzer import analyze_and_format_styles
+                try:
+                    logger.info("Analyzing screenshot styles with Claude Haiku vision...")
+                    design_brief = await analyze_and_format_styles(screenshot, data)
+                    logger.info("Style analysis complete: %d chars", len(design_brief))
+                    # Return the vision-enhanced design brief instead of basic scrape
+                    return design_brief
+                except Exception as e:
+                    logger.warning("Style analysis failed, falling back to basic scrape: %s", e)
+
+            # Fallback: scraper output with pre-converted Modlix styles
+            return format_scraped_data_with_styles(data)
 
         except Exception as e:
             logger.warning("Auto-scrape failed for %s: %s", url, e)
