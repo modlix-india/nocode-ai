@@ -70,6 +70,7 @@ class AuthContext:
     forwarded_host: str = "localhost"
     forwarded_port: str = "80"
     path_prefix: str = ""  # Standalone mode: URL prefix e.g. /appbuilder/SYSTEM/page
+    referer: str = ""  # Original Referer URL from the browser request
 
     def to_headers(self) -> dict[str, str]:
         """Build HTTP headers for forwarding to Gateway APIs.

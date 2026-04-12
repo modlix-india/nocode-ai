@@ -250,18 +250,10 @@ def _apply_fixes(comp_def: dict[str, Any], fixes: list[dict[str, Any]]) -> list[
             applied.append(fix)
 
         elif action == "remove":
-            # Reparent children to parent
-            parent_key = _find_parent(comp_def, key)
-            if parent_key:
-                parent = comp_def[parent_key]
-                parent_children = parent.get("children", {})
-                # Remove this key from parent
-                parent_children.pop(key, None)
-                # Add this component's children to parent
-                for child_key in comp.get("children", {}):
-                    parent_children[child_key] = True
-            del comp_def[key]
-            applied.append(fix)
+            # DISABLED — removing components during visual QA is too destructive.
+            # Gemini often misjudges "redundant" wrappers and destroys page structure.
+            logger.warning("Skipping 'remove' action for key '%s' — too destructive", key)
+            continue
 
     return applied
 

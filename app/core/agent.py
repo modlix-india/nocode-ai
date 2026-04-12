@@ -714,4 +714,6 @@ class BaseAgent:
             ctx["app_code"] = session.auth.app_code
             if session.auth.path_prefix:
                 ctx["path_prefix"] = session.auth.path_prefix
+            if session.auth.referer:
+                ctx["referer"] = session.auth.referer
         return ctx

@@ -158,6 +158,8 @@ async def _authenticate(
     if settings.STANDALONE_MODE:
         path_prefix = request.headers.get("X-Path-Prefix", "")
 
+    referer = request.headers.get("Referer", request.headers.get("Origin", ""))
+
     return AuthContext(
         token=auth_header,
         client_code=client_code,
@@ -168,6 +170,7 @@ async def _authenticate(
         forwarded_host=forwarded_host,
         forwarded_port=forwarded_port,
         path_prefix=path_prefix,
+        referer=referer,
     )
 
 

@@ -26,8 +26,9 @@ google-generativeai>=0.8.0
 # Eureka Client
 py-eureka-client==0.11.10
 
-# Image Processing (compression before sending to LLM APIs)
+# Image Processing (compression before sending to LLM APIs, visual QA similarity)
 Pillow>=10.3.0,<11.0.0
+numpy>=1.26.0,<3.0.0
 
 # Utilities
 python-dotenv==1.0.1

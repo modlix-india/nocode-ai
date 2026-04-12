@@ -85,7 +85,17 @@ _TAG_TYPE_MAP = {
     "textarea": "TextArea",
     "select": "Dropdown",
     "video": "Grid",
-    "iframe": "Grid",
+    "iframe": "Iframe",
+    "picture": "Image",
+    "figure": "Grid",
+    "figcaption": "Text",
+    "blockquote": "Text",
+    "code": "Text",
+    "pre": "Text",
+    "table": "Grid",
+    "tr": "Grid",
+    "td": "Grid",
+    "th": "Grid",
 }
 
 _HEADING_SIZES = {
@@ -443,16 +453,17 @@ async def scrape_and_convert(
 _EXTRACT_JS = """() => {
     const LAYOUT_PROPS = [
         'display', 'flexDirection', 'flexWrap', 'justifyContent',
-        'alignItems', 'gap', 'gridTemplateColumns', 'gridTemplateRows',
+        'alignItems', 'alignSelf', 'gap', 'gridTemplateColumns', 'gridTemplateRows',
+        'flex', 'flexGrow', 'flexShrink', 'flexBasis',
     ];
     const BOX_PROPS = [
-        'width', 'height', 'minHeight', 'maxWidth',
+        'width', 'height', 'minHeight', 'maxWidth', 'minWidth', 'maxHeight',
         'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
         'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
     ];
     const BG_PROPS = [
         'backgroundColor', 'backgroundImage', 'backgroundSize',
-        'backgroundPosition', 'backgroundRepeat',
+        'backgroundPosition', 'backgroundRepeat', 'backgroundClip',
     ];
     const BORDER_PROPS = [
         'borderTopWidth', 'borderTopStyle', 'borderTopColor',
@@ -465,29 +476,48 @@ _EXTRACT_JS = """() => {
     const TEXT_PROPS = [
         'color', 'fontSize', 'fontFamily', 'fontWeight',
         'lineHeight', 'textAlign', 'letterSpacing',
+        'textDecoration', 'textDecorationLine', 'textTransform',
+        'whiteSpace', 'wordBreak', 'textOverflow',
     ];
-    const VISUAL_PROPS = ['opacity', 'boxShadow', 'overflow', 'objectFit', 'position', 'zIndex'];
+    const POSITION_PROPS = [
+        'position', 'top', 'left', 'right', 'bottom', 'zIndex',
+    ];
+    const VISUAL_PROPS = [
+        'opacity', 'boxShadow', 'overflow', 'overflowX', 'overflowY',
+        'objectFit', 'cursor', 'transform', 'transition',
+        'backdropFilter',
+    ];
 
     const ALL_PROPS = [...LAYOUT_PROPS, ...BOX_PROPS, ...BG_PROPS,
-                       ...BORDER_PROPS, ...TEXT_PROPS, ...VISUAL_PROPS];
+                       ...BORDER_PROPS, ...TEXT_PROPS, ...POSITION_PROPS, ...VISUAL_PROPS];
 
     const DEFAULTS = {
-        backgroundColor: 'rgba(0, 0, 0, 0)', backgroundImage: 'none', boxShadow: 'none',
+        backgroundColor: 'rgba(0, 0, 0, 0)', backgroundImage: 'none', backgroundClip: 'border-box',
+        boxShadow: 'none',
         borderTopWidth: '0px', borderRightWidth: '0px', borderBottomWidth: '0px', borderLeftWidth: '0px',
         borderTopStyle: 'none', borderRightStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none',
         borderTopColor: 'rgb(0, 0, 0)', borderRightColor: 'rgb(0, 0, 0)',
         borderBottomColor: 'rgb(0, 0, 0)', borderLeftColor: 'rgb(0, 0, 0)',
         borderTopLeftRadius: '0px', borderTopRightRadius: '0px',
         borderBottomLeftRadius: '0px', borderBottomRightRadius: '0px',
-        display: 'block', position: 'static', opacity: '1', overflow: 'visible',
+        display: 'block', position: 'static', opacity: '1',
+        overflow: 'visible', overflowX: 'visible', overflowY: 'visible',
         zIndex: 'auto', gap: 'normal', flexDirection: 'row', flexWrap: 'nowrap',
+        flex: '0 1 auto', flexGrow: '0', flexShrink: '1', flexBasis: 'auto', alignSelf: 'auto',
         textAlign: 'start', letterSpacing: 'normal', objectFit: 'fill',
+        textDecoration: 'none solid rgb(0, 0, 0)', textDecorationLine: 'none', textTransform: 'none',
+        whiteSpace: 'normal', wordBreak: 'normal', textOverflow: 'clip',
+        cursor: 'auto', transform: 'none', transition: 'all 0s ease 0s',
+        backdropFilter: 'none',
+        top: 'auto', left: 'auto', right: 'auto', bottom: 'auto',
         marginTop: '0px', marginRight: '0px', marginBottom: '0px', marginLeft: '0px',
         paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px', paddingLeft: '0px',
+        minWidth: 'auto', maxWidth: 'none', minHeight: 'auto', maxHeight: 'none',
         gridTemplateColumns: 'none', gridTemplateRows: 'none',
     };
 
-    const INHERITED = new Set(['color','fontSize','fontFamily','fontWeight','lineHeight','textAlign','letterSpacing']);
+    const INHERITED = new Set(['color','fontSize','fontFamily','fontWeight','lineHeight','textAlign',
+                                'letterSpacing','whiteSpace','wordBreak','textTransform','cursor']);
 
     function camelToKebab(s) { return s.replace(/([A-Z])/g, '-$1').toLowerCase(); }
 
@@ -499,21 +529,20 @@ _EXTRACT_JS = """() => {
             if (!val) continue;
             if (DEFAULTS[prop] === val) continue;
             if (INHERITED.has(prop) && parentStyles && parentStyles[prop] === val) continue;
-            const pos = computed.getPropertyValue('position');
-            if (['top','left','right','bottom'].includes(prop) && pos === 'absolute') continue;
+            // Skip auto values for sizing (except positioned elements which use auto meaningfully)
             if (val === 'auto' && ['height','width','maxWidth','maxHeight'].includes(prop)) continue;
-            if (val === 'none' && ['maxWidth','maxHeight','minHeight'].includes(prop)) continue;
+            if (val === 'none' && ['maxWidth','maxHeight','minHeight','minWidth'].includes(prop)) continue;
             if (val === 'normal' && ['justifyContent','alignItems','lineHeight','letterSpacing'].includes(prop)) continue;
             if (val === '0px' && ['minHeight','marginTop','marginRight','marginBottom','marginLeft'].includes(prop)) continue;
             if (val === 'start' && prop === 'textAlign') continue;
             if (val === 'repeat' && prop === 'backgroundRepeat') continue;
+            // Skip full-width px values at desktop (likely just viewport width)
             if (prop === 'width' && val.includes('px') && parseFloat(val) > 1400) continue;
+            // Skip excessively large height values — these are scroll-computed heights,
+            // not intentional fixed heights. Content should determine height naturally.
+            if ((prop === 'height' || prop === 'minHeight') && val.includes('px') && parseFloat(val) > 1200) continue;
             if (prop.includes('border') && prop.includes('Color') && val === parentStyles?.color) continue;
             styles[prop] = val;
-        }
-        if (styles.position === 'absolute') { delete styles.position; }
-        if (styles.position === 'fixed') {
-            if (computed.getPropertyValue('top') !== '0px') delete styles.position;
         }
         const display = computed.getPropertyValue('display');
         if (display === 'flex' || display === 'inline-flex') styles.display = 'flex';
@@ -525,8 +554,22 @@ _EXTRACT_JS = """() => {
     function extractElement(el, depth, parentStyles) {
         if (depth > 8 || !el || !el.tagName) return null;
         const tag = el.tagName.toLowerCase();
-        if (['script','style','noscript','link','meta','head','svg','path','br','hr'].includes(tag)) return null;
+        if (['script','style','noscript','link','meta','head','path','br','hr'].includes(tag)) return null;
         const rect = el.getBoundingClientRect();
+        // Convert SVG to a data URI image instead of skipping entirely
+        if (tag === 'svg') {
+            if (rect.width < 1 && rect.height < 1) return null;
+            try {
+                const svgStr = new XMLSerializer().serializeToString(el);
+                const svgB64 = btoa(unescape(encodeURIComponent(svgStr)));
+                return {tag: 'img', id: el.id || '', classes: '', text: '',
+                        src: 'data:image/svg+xml;base64,' + svgB64,
+                        href: '', alt: el.getAttribute('aria-label') || 'icon', placeholder: '',
+                        styles: {}, isRowLayout: false,
+                        rect: {x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height)},
+                        children: []};
+            } catch(e) { return null; }
+        }
         if (rect.width < 1 && rect.height < 1) return null;
         if (rect.top > 5000) return null;
 
@@ -561,8 +604,30 @@ _EXTRACT_JS = """() => {
                 if (t) data.text += (data.text ? ' ' : '') + t.substring(0, 300);
             }
         }
-        if (tag === 'img') { data.src = el.src || el.dataset?.src || ''; data.alt = el.alt || ''; }
-        if (tag === 'a') data.href = el.href || '';
+        if (tag === 'img') {
+            data.src = el.src || el.dataset?.src || el.dataset?.lazy || '';
+            data.alt = el.alt || '';
+        }
+        if (tag === 'picture') {
+            // Extract best source from picture element
+            const source = el.querySelector('source');
+            const img = el.querySelector('img');
+            data.src = (source && source.srcset ? source.srcset.split(',')[0].trim().split(' ')[0] : '')
+                     || (img ? img.src || img.dataset?.src || '' : '');
+            data.alt = img ? img.alt || '' : '';
+            data.tag = 'img'; // Convert picture to img
+        }
+        if (tag === 'a') {
+            data.href = el.href || '';
+        }
+        if (tag === 'iframe') {
+            data.src = el.src || el.dataset?.src || '';
+        }
+        if (tag === 'video') {
+            data.src = el.poster || '';
+            const source = el.querySelector('source');
+            if (source) data.videoSrc = source.src || '';
+        }
         if (tag === 'input' || tag === 'textarea') data.placeholder = el.placeholder || '';
 
         let childCount = 0;
@@ -578,8 +643,43 @@ _EXTRACT_JS = """() => {
     const bodyComputed = window.getComputedStyle(body);
     const bodyStyles = {};
     for (const prop of ALL_PROPS) bodyStyles[prop] = bodyComputed.getPropertyValue(camelToKebab(prop));
+
+    // Unwrap SPA root containers — React (#root, #app, #__next, #___gatsby),
+    // Vue (#app), Angular (app-root), etc. Find the deepest single-child wrapper
+    // chain and extract from the first element that has multiple visible children.
+    let contentRoot = body;
+    let contentParentStyles = bodyStyles;
+    for (let i = 0; i < 5; i++) {
+        const visibleChildren = [];
+        for (const child of contentRoot.children) {
+            const tag = (child.tagName || '').toLowerCase();
+            if (['script','style','noscript','link','meta'].includes(tag)) continue;
+            const r = child.getBoundingClientRect();
+            if (r.width < 10 || r.height < 10) continue;
+            visibleChildren.push(child);
+        }
+        // If exactly one visible child that's a generic wrapper (div/main/section),
+        // unwrap into it to find real content sections
+        if (visibleChildren.length === 1) {
+            const wrapper = visibleChildren[0];
+            const wrapperTag = wrapper.tagName.toLowerCase();
+            if (['div', 'main', 'section'].includes(wrapperTag)) {
+                const wc = window.getComputedStyle(wrapper);
+                const wStyles = {};
+                for (const prop of ALL_PROPS) wStyles[prop] = wc.getPropertyValue(camelToKebab(prop));
+                contentParentStyles = wStyles;
+                contentRoot = wrapper;
+                continue;
+            }
+        }
+        break;
+    }
+
     const result = [];
-    for (const child of body.children) { const d = extractElement(child, 0, bodyStyles); if (d) result.push(d); }
+    for (const child of contentRoot.children) {
+        const d = extractElement(child, 0, contentParentStyles);
+        if (d) result.push(d);
+    }
     return result;
 }"""
 
@@ -691,6 +791,19 @@ async def _scrape_with_computed_styles(
 
         elements_data = await page.evaluate(_EXTRACT_JS)
 
+        # Extract body-level styles (font, color, background) for root component
+        body_styles = await page.evaluate("""() => {
+            const cs = window.getComputedStyle(document.body);
+            return {
+                fontFamily: cs.getPropertyValue('font-family'),
+                fontSize: cs.getPropertyValue('font-size'),
+                fontWeight: cs.getPropertyValue('font-weight'),
+                color: cs.getPropertyValue('color'),
+                backgroundColor: cs.getPropertyValue('background-color'),
+            };
+        }""")
+        logger.info("Body styles: font=%s, color=%s", body_styles.get("fontFamily", ""), body_styles.get("color", ""))
+
         # Extract pseudo-class styles (:hover, :focus, etc.) from stylesheets
         logger.info("Extracting pseudo-class styles from stylesheets...")
         pseudo_map = await page.evaluate(_EXTRACT_PSEUDO_JS)
@@ -726,13 +839,35 @@ async def _scrape_with_computed_styles(
             comp_def[child_key]["displayOrder"] = i
             root_children[child_key] = True
 
+    # Use body font for root — inherited styles are stripped from children,
+    # so fontFamily must be set on root for the page to render correctly
+    body_font = body_styles.get("fontFamily", "")
+    # Clean up the font family — remove quotes and fallbacks for the primary font
+    primary_font = body_font.split(",")[0].strip().strip("'\"") if body_font else ""
+
+    root_styles = {
+        "width": "100vw",
+        "height": "100vh",
+        "overflow": "auto",
+        "gap": "0",
+    }
+    if primary_font:
+        root_styles["fontFamily"] = primary_font
+    # Apply body color and background if meaningful
+    body_color = body_styles.get("color", "")
+    if body_color and body_color != "rgb(0, 0, 0)":
+        root_styles["color"] = body_color
+    body_bg = body_styles.get("backgroundColor", "")
+    if body_bg and body_bg != "rgba(0, 0, 0, 0)" and body_bg != "rgb(255, 255, 255)":
+        root_styles["backgroundColor"] = body_bg
+
     # Root
     comp_def["root"] = {
         "key": "root",
-        "name": "root",
+        "name": "rootGrid",
         "type": "Grid",
         "properties": {},
-        "styleProperties": _make_style_properties({"width": "100%", "minHeight": "100vh"}),
+        "styleProperties": _make_style_properties(root_styles),
         "children": root_children,
         "displayOrder": 0,
     }
@@ -742,6 +877,9 @@ async def _scrape_with_computed_styles(
 
     # Merge pseudo-class styles (hover, focus, active, disabled)
     _merge_pseudo_styles(comp_def, elements_data, pseudo_map)
+
+    # Extract unique fonts — includes root font from body styles
+    font_packs = await _extract_font_packs(comp_def)
 
     logger.info("Converted to %d Modlix components with responsive styles", len(comp_def))
 
@@ -755,7 +893,215 @@ async def _scrape_with_computed_styles(
         "properties": {},
         "translations": {},
         "message": f"Cloned from {url} with responsive styles",
+        "_fontPacks": font_packs,  # consumed by clone_tool to update Application
     }
+
+
+# Common system/fallback fonts that don't need Google Fonts loading
+_SYSTEM_FONTS = {
+    "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+    "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded",
+    "arial", "helvetica", "times new roman", "times", "courier new", "courier",
+    "georgia", "verdana", "tahoma", "trebuchet ms", "impact", "comic sans ms",
+    "segoe ui",
+}
+
+# Known Google Fonts — maps lowercase name to exact Google Fonts name.
+# Covers the top 100+ most-used web fonts. If a font is here, we know
+# the Google Fonts link will work.
+_KNOWN_GOOGLE_FONTS = {
+    "roboto": "Roboto", "open sans": "Open+Sans", "lato": "Lato",
+    "montserrat": "Montserrat", "poppins": "Poppins", "inter": "Inter",
+    "raleway": "Raleway", "nunito": "Nunito", "playfair display": "Playfair+Display",
+    "source sans pro": "Source+Sans+Pro", "source sans 3": "Source+Sans+3",
+    "oswald": "Oswald", "merriweather": "Merriweather", "pt sans": "PT+Sans",
+    "noto sans": "Noto+Sans", "noto serif": "Noto+Serif", "ubuntu": "Ubuntu",
+    "rubik": "Rubik", "work sans": "Work+Sans", "mulish": "Mulish",
+    "nunito sans": "Nunito+Sans", "fira sans": "Fira+Sans", "barlow": "Barlow",
+    "quicksand": "Quicksand", "dm sans": "DM+Sans", "manrope": "Manrope",
+    "karla": "Karla", "libre baskerville": "Libre+Baskerville",
+    "josefin sans": "Josefin+Sans", "cabin": "Cabin", "arimo": "Arimo",
+    "hind": "Hind", "dosis": "Dosis", "exo 2": "Exo+2",
+    "titillium web": "Titillium+Web", "asap": "Asap", "maven pro": "Maven+Pro",
+    "archivo": "Archivo", "lexend": "Lexend", "space grotesk": "Space+Grotesk",
+    "plus jakarta sans": "Plus+Jakarta+Sans", "outfit": "Outfit",
+    "sarabun": "Sarabun", "philosopher": "Philosopher", "cormorant": "Cormorant",
+    "aleo": "Aleo", "arvo": "Arvo", "unbounded": "Unbounded",
+    "advent pro": "Advent+Pro", "roboto slab": "Roboto+Slab",
+    "roboto condensed": "Roboto+Condensed", "roboto mono": "Roboto+Mono",
+    "pt serif": "PT+Serif", "dancing script": "Dancing+Script",
+    "bebas neue": "Bebas+Neue", "anton": "Anton", "lobster": "Lobster",
+    "pacifico": "Pacifico", "caveat": "Caveat", "comfortaa": "Comfortaa",
+    "overpass": "Overpass", "bitter": "Bitter", "catamaran": "Catamaran",
+    "crimson text": "Crimson+Text", "vollkorn": "Vollkorn",
+    "ibm plex sans": "IBM+Plex+Sans", "ibm plex serif": "IBM+Plex+Serif",
+    "ibm plex mono": "IBM+Plex+Mono", "spectral": "Spectral",
+    "signika": "Signika", "abel": "Abel", "oxygen": "Oxygen",
+    "libre franklin": "Libre+Franklin", "heebo": "Heebo",
+    "assistant": "Assistant", "kanit": "Kanit", "prompt": "Prompt",
+    "jost": "Jost", "sora": "Sora", "figtree": "Figtree",
+    "geist": "Geist", "geist mono": "Geist+Mono",
+}
+
+# Map non-Google/system fonts to their closest Google Font equivalent.
+# Used for custom/paid fonts that can't be loaded from Google Fonts.
+_FONT_REPLACEMENTS = {
+    "sf pro": "Inter",
+    "sf pro display": "Inter",
+    "sf pro text": "Inter",
+    "sf mono": "Roboto Mono",
+    "neue haas grotesk": "Inter",
+    "proxima nova": "Montserrat",
+    "futura": "Nunito Sans",
+    "avenir": "Nunito",
+    "avenir next": "Nunito Sans",
+    "gotham": "Montserrat",
+    "cera pro": "Montserrat",
+    "cera mono": "Roboto Mono",
+    "circular": "DM Sans",
+    "gilroy": "Poppins",
+    "graphik": "Inter",
+    "aktiv grotesk": "Inter",
+    "brandon grotesque": "Nunito",
+    "din": "Barlow",
+    "din next": "Barlow",
+    "museo sans": "Nunito",
+    "museo slab": "Roboto Slab",
+    "freight sans": "Source Sans 3",
+    "freight text": "Source Serif 4",
+    "sentinel": "Merriweather",
+    "whitney": "Work Sans",
+    "calibre": "Inter",
+    "acumin pro": "Source Sans 3",
+    "neue montreal": "DM Sans",
+    "general sans": "DM Sans",
+    "cabinet grotesk": "Outfit",
+    "clash display": "Space Grotesk",
+    "satoshi": "DM Sans",
+    "switzer": "Inter",
+    "walsheim": "DM Sans",
+}
+
+
+async def _resolve_font_with_llm(font_name: str) -> str | None:
+    """Ask Gemini Flash to suggest a Google Font replacement for an unknown font.
+
+    Returns the Google Font name, or None if unavailable.
+    """
+    try:
+        import google.generativeai as genai
+        from app.config import settings
+
+        if not settings.GOOGLE_API_KEY:
+            return None
+
+        genai.configure(api_key=settings.GOOGLE_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        import asyncio
+        response = await asyncio.to_thread(
+            model.generate_content,
+            f"What Google Font is most visually similar to '{font_name}'? "
+            f"Reply with ONLY the exact Google Font name, nothing else. "
+            f"If '{font_name}' IS a Google Font, just reply with its exact name.",
+        )
+        suggestion = (response.text or "").strip().strip("'\"")
+        if suggestion and len(suggestion) < 50:
+            logger.info("LLM suggested Google Font '%s' for '%s'", suggestion, font_name)
+            return suggestion
+    except Exception as e:
+        logger.warning("LLM font suggestion failed for '%s': %s", font_name, e)
+    return None
+
+
+async def _extract_font_packs(comp_def: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Extract unique font families and resolve them to Google Fonts.
+
+    For each font found in components:
+    1. If it's a system font → skip (no loading needed)
+    2. If it's a known Google Font → use directly
+    3. If it has a known replacement → swap to the Google Font equivalent
+    4. Otherwise → ask Gemini Flash for a suggestion
+
+    Returns dict of fontPack ID → {"name": "FontName", "code": "<link ...>"}
+    Also updates comp_def in-place to replace non-Google fonts with their equivalents.
+    """
+    fonts: set[str] = set()
+
+    for comp in comp_def.values():
+        sp = comp.get("styleProperties", {})
+        for sdata in sp.values():
+            for res_data in sdata.get("resolutions", {}).values():
+                ff = res_data.get("fontFamily", {})
+                val = ff.get("value", "") if isinstance(ff, dict) else ""
+                if val:
+                    for font in val.split(","):
+                        font = font.strip().strip("'\"")
+                        if font and font.lower() not in _SYSTEM_FONTS:
+                            fonts.add(font)
+
+    font_packs: dict[str, dict[str, str]] = {}
+    # Map: original font name → resolved Google Font name (for replacements)
+    resolved: dict[str, str] = {}
+
+    for font in sorted(fonts):
+        lower = font.lower()
+
+        # Check if it's a known Google Font
+        if lower in _KNOWN_GOOGLE_FONTS:
+            google_name = font  # Use original casing
+            url_name = _KNOWN_GOOGLE_FONTS[lower]
+        elif lower in _FONT_REPLACEMENTS:
+            # Known non-Google font → use replacement
+            replacement = _FONT_REPLACEMENTS[lower]
+            logger.info("Font '%s' → Google Font replacement '%s'", font, replacement)
+            google_name = replacement
+            url_name = replacement.replace(" ", "+")
+            resolved[font] = replacement
+        else:
+            # Unknown font — try LLM suggestion
+            suggestion = await _resolve_font_with_llm(font)
+            if suggestion:
+                google_name = suggestion
+                url_name = suggestion.replace(" ", "+")
+                resolved[font] = suggestion
+            else:
+                # Fallback: try using the font name as-is (might work if it IS a Google Font)
+                google_name = font
+                url_name = font.replace(" ", "+")
+
+        # Dedup by resolved Google Font name
+        already_added = {fp["name"].lower() for fp in font_packs.values()}
+        if google_name.lower() in already_added:
+            continue
+
+        pack_id = uuid.uuid4().hex[:22]
+        code = (
+            f'<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+            f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+            f'<link href="https://fonts.googleapis.com/css2?family={url_name}'
+            f':ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">'
+        )
+        font_packs[pack_id] = {"name": google_name, "code": code}
+
+    # Update comp_def to replace non-Google fonts with their resolved equivalents
+    if resolved:
+        for comp in comp_def.values():
+            sp = comp.get("styleProperties", {})
+            for sdata in sp.values():
+                for res_data in sdata.get("resolutions", {}).values():
+                    ff = res_data.get("fontFamily", {})
+                    val = ff.get("value", "") if isinstance(ff, dict) else ""
+                    if val:
+                        for orig, replacement in resolved.items():
+                            if orig in val:
+                                res_data["fontFamily"] = {"value": val.replace(orig, replacement)}
+        logger.info("Replaced fonts in components: %s", resolved)
+
+    if font_packs:
+        logger.info("Font packs: %s", [fp["name"] for fp in font_packs.values()])
+
+    return font_packs
 
 
 def _merge_responsive_overrides(
@@ -986,7 +1332,9 @@ def _convert_browser_element(
     children_map: dict[str, bool] = {}
 
     # Type-specific handling
-    if tag == "img":
+    href = el_data.get("href", "")
+
+    if tag == "img" or tag == "picture":
         comp_type = "Image"
         src = el_data.get("src", "")
         properties["src"] = {"value": src}
@@ -994,11 +1342,27 @@ def _convert_browser_element(
         if alt:
             properties["alt"] = {"value": alt}
 
-    elif tag in ("h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "label"):
+    elif tag == "iframe":
+        comp_type = "Iframe"
+        src = el_data.get("src", "")
+        if src:
+            properties["src"] = {"value": src}
+
+    elif tag == "video":
+        # Video with poster → Image; otherwise Grid container
+        poster = el_data.get("src", "")
+        if poster:
+            comp_type = "Image"
+            properties["src"] = {"value": poster}
+            properties["alt"] = {"value": "Video"}
+        else:
+            comp_type = "Grid"
+
+    elif tag in ("h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "label",
+                 "figcaption", "blockquote", "code", "pre"):
         comp_type = "Text"
         all_text = text
         if not all_text:
-            # Collect all nested text
             all_text = _collect_text(el_data)
         if all_text:
             properties["text"] = {"value": all_text[:500]}
@@ -1008,15 +1372,29 @@ def _convert_browser_element(
         if "btn" in classes or "button" in classes or "cta" in classes:
             comp_type = "Button"
             properties["label"] = {"value": text[:100] or "Link"}
+            properties["designType"] = {"value": "_outlined"}
         else:
-            comp_type = "Text"
-            if text:
-                properties["text"] = {"value": text[:300]}
+            # Links with children (images, grids) → Grid with linkPath
+            if children_data and not text:
+                comp_type = "Grid"
+            else:
+                comp_type = "Text"
+                if text:
+                    properties["text"] = {"value": text[:300]}
+        # Preserve link target
+        if href and not href.startswith("javascript:"):
+            if comp_type == "Grid":
+                properties["linkPath"] = {"value": href}
+            elif comp_type == "Button":
+                properties["onClick"] = {
+                    "value": f"Page.navigate('{href}')",
+                }
 
     elif tag == "button":
         comp_type = "Button"
         btn_text = text or _collect_text(el_data)
         properties["label"] = {"value": btn_text[:100] or "Button"}
+        properties["designType"] = {"value": "_outlined"}
 
     elif tag in ("input", "textarea"):
         comp_type = "TextBox" if tag == "input" else "TextArea"
@@ -1026,6 +1404,10 @@ def _convert_browser_element(
 
     # For Grid types, process children
     if comp_type == "Grid":
+        # Override Modlix's default 5px gap — use source gap or 0
+        if "gap" not in styles:
+            styles["gap"] = "0px"
+
         # Set ROWLAYOUT if the source element lays children out horizontally
         if el_data.get("isRowLayout"):
             properties["layout"] = {"value": "ROWLAYOUT"}
@@ -1056,6 +1438,13 @@ def _convert_browser_element(
     # Clean up styles that Grid handles via properties
     if comp_type == "Grid":
         styles.pop("display", None)  # Grid is always flex
+
+    # Image-specific style defaults
+    if comp_type == "Image":
+        if "objectFit" not in styles:
+            styles["objectFit"] = "cover"
+        if "width" not in styles:
+            styles["width"] = "100%"
 
     # Build styleProperties from computed styles
     style_props = _make_style_properties(styles) if styles else {}

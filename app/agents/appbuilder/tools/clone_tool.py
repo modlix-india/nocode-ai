@@ -28,7 +28,7 @@ async def _execute_clone_website(
 ) -> ToolResult:
     """Scrape a website and create/update a Modlix page from it."""
     url = params.get("url", "")
-    page_name = params.get("page_name", "home")
+    page_name = params.get("page_name", "home").lower()
     app_code = params.get("app_code") or context.get("app_code", "")
     replace_existing = params.get("replace_existing", True)
 
@@ -37,12 +37,12 @@ async def _execute_clone_website(
     if not app_code:
         return ToolResult(success=False, error="app_code is required.")
 
-    # Step 1: Scrape and convert
-    from app.agents.appbuilder.tools.html_to_modlix import scrape_and_convert
+    # Step 1: Vision-first conversion (screenshot → LLM → Modlix components)
+    from app.agents.appbuilder.tools.vision_converter import vision_scrape_and_convert
 
     try:
-        logger.info("Cloning %s → page '%s' in app '%s'", url, page_name, app_code)
-        page_def = await scrape_and_convert(
+        logger.info("Cloning %s → page '%s' in app '%s' (vision-first)", url, page_name, app_code)
+        page_def = await vision_scrape_and_convert(
             url=url,
             page_name=page_name,
             app_code=app_code,
@@ -55,27 +55,10 @@ async def _execute_clone_website(
     comp_count = len(page_def.get("componentDefinition", {}))
     logger.info("Converted %s to %d components", url, comp_count)
 
-    # Step 2: LLM layout refinement (if screenshot available)
-    screenshot = context.get("session_context", {}).get("scraped_screenshot")
-    if not screenshot:
-        # Try to take a fresh screenshot
-        try:
-            from app.agents.appbuilder.tools.web_scraper import _take_screenshot
-            screenshot = await _take_screenshot(url)
-        except Exception:
-            pass
+    # Step 2: Layout refinement skipped — vision converter handles layout directly
 
-    if screenshot:
-        try:
-            from app.agents.appbuilder.tools.layout_refiner import refine_layout_with_vision
-            fixes = await refine_layout_with_vision(
-                screenshot, page_def["componentDefinition"], url,
-            )
-            if fixes:
-                comp_count = len(page_def.get("componentDefinition", {}))
-                logger.info("After refinement: %d components, %d fixes applied", comp_count, len(fixes))
-        except Exception as e:
-            logger.warning("Layout refinement failed: %s", e)
+    # Extract fontPacks before saving page (internal field, not part of page schema)
+    font_packs = page_def.pop("_fontPacks", {})
 
     # Step 3: Check if page exists
     from app.agents.appbuilder.tools._shared import get_saas_client
@@ -117,38 +100,85 @@ async def _execute_clone_website(
         else:
             return ToolResult(success=False, error=f"Failed to create page: {save_result.error}")
 
-    # Step 5: Visual QA — screenshot generated page, compare with source, fix
+    # Step 5: Update Application fontPacks if fonts were extracted
+    if font_packs:
+        try:
+            # Get current application definition
+            app_list = await client.get(
+                "/api/ui/applications",
+                headers=headers,
+                params={"page": 0, "size": 1, "appCode": app_code},
+            )
+            if app_list.success:
+                apps = app_list.data.get("content", []) if isinstance(app_list.data, dict) else []
+                if apps:
+                    app_id = apps[0].get("id")
+                    app_full = await client.get(f"/api/ui/applications/{app_id}", headers=headers)
+                    if app_full.success:
+                        app_data = app_full.data
+                        existing_packs = app_data.get("properties", {}).get("fontPacks", {})
+                        existing_names = {fp.get("name", "").lower() for fp in existing_packs.values()}
+
+                        new_packs = {}
+                        for pack_id, pack in font_packs.items():
+                            if pack["name"].lower() not in existing_names:
+                                new_packs[pack_id] = pack
+
+                        if new_packs:
+                            app_data.setdefault("properties", {}).setdefault("fontPacks", {}).update(new_packs)
+                            app_data["message"] = f"Added font packs: {', '.join(p['name'] for p in new_packs.values())}"
+                            await client.put(f"/api/ui/applications/{app_id}", headers=headers, json=app_data)
+                            logger.info("Added %d font packs to application: %s",
+                                        len(new_packs), [p["name"] for p in new_packs.values()])
+        except Exception as e:
+            logger.warning("Font pack update failed: %s", e)
+
+    # Step 6: Visual QA — screenshot generated page, compare with source, regenerate if needed
     qa_summary = ""
     try:
-        # Build the preview URL for the generated page
-        session_ctx = context.get("session_context", {})
-        auth = context.get("headers", {})
-        forwarded_host = auth.get("X-Forwarded-Host", "apps.local.modlix.com")
+        referer = context.get("referer", "")
         client_code = context.get("client_code", "SYSTEM")
-        generated_url = f"https://{forwarded_host}/{app_code}/{client_code}/page/{page_name}"
 
-        from app.agents.appbuilder.tools.visual_qa import iterative_visual_fix
-        fixes = await iterative_visual_fix(
+        if referer:
+            from urllib.parse import urlparse
+            parsed = urlparse(referer)
+            base_url = f"{parsed.scheme}://{parsed.netloc}"
+        else:
+            auth = context.get("headers", {})
+            forwarded_host = auth.get("X-Forwarded-Host", "apps.local.modlix.com")
+            forwarded_host = forwarded_host.split(",")[0].strip()
+            scheme = "http" if "localhost" in forwarded_host or "127.0.0.1" in forwarded_host else "https"
+            base_url = f"{scheme}://{forwarded_host}"
+
+        generated_url = f"{base_url}/{app_code}/{client_code}/page/{page_name}"
+
+        from app.agents.appbuilder.tools.vision_converter import iterative_vision_refine
+
+        async def save_page_fn(updated_comp_def: dict[str, Any]) -> bool:
+            if not page_id:
+                return False
+            read_result = await client.get(f"/api/ui/pages/{page_id}", headers=headers)
+            if not read_result.success:
+                return False
+            page_data = read_result.data
+            page_data["componentDefinition"] = updated_comp_def
+            page_data["message"] = "Vision QA refinement"
+            save_result = await client.put(f"/api/ui/pages/{page_id}", headers=headers, json=page_data)
+            return save_result.success
+
+        improved = await iterative_vision_refine(
             source_url=url,
             generated_page_url=generated_url,
             comp_def=page_def["componentDefinition"],
             max_iterations=2,
+            save_callback=save_page_fn,
         )
-
-        if fixes:
-            # Save the fixed version
+        if improved:
             comp_count = len(page_def.get("componentDefinition", {}))
-            if page_id:
-                fix_result = await client.get(f"/api/ui/pages/{page_id}", headers=headers)
-                if fix_result.success:
-                    fix_data = fix_result.data
-                    fix_data["componentDefinition"] = page_def["componentDefinition"]
-                    fix_data["message"] = f"Visual QA fixes ({len(fixes)} corrections)"
-                    await client.put(f"/api/ui/pages/{page_id}", headers=headers, json=fix_data)
-            qa_summary = f"\nVisual QA: {len(fixes)} layout corrections applied."
+            qa_summary = f"\nVisual refinement: {improved} iterations of improvement applied."
     except Exception as e:
-        logger.warning("Visual QA step failed: %s", e)
-        qa_summary = f"\nVisual QA: skipped ({e})"
+        logger.warning("Visual refinement step failed: %s", e)
+        qa_summary = f"\nVisual refinement: skipped ({e})"
 
     return ToolResult(
         success=True,
