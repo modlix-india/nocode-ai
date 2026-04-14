@@ -49,7 +49,6 @@
       "mcp__integration-tests__get_endpoints",
       "Bash(ls /Users/kirangrandhi/kiran/fincity/nocode-saas/*.yml)",
       "Bash(find /Users/kirangrandhi/kiran/fincity/nocode-saas -path */src/test/java -type d -exec find {} -name *.java)",
-      "Bash(2)",
       "Bash(grep -l \"webTestClient\" /Users/kirangrandhi/kiran/fincity/nocode-saas/security/src/test/java/com/fincity/security/integration/*.java)",
       "Bash(grep -r \"class.*ApplicationService\\\\|class.*MultiApp\" /Users/kirangrandhi/kiran/fincity/nocode-saas --include=*.java)",
       "Read(//Users/kirangrandhi/Downloads/leadzump_SYSTEM \\(1\\)/**)",

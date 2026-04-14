@@ -263,16 +263,58 @@ async def chat(request: Request, body: ChatRequest):
                 session.session_id, title, auth.user_id
             )
 
-    # Convert attachments to image content blocks using the agent's provider
-    image_blocks = None
+    # Stash the first image attachment's raw base64 in session context so
+    # tools (e.g. build_page_from_screenshot) can access the full-resolution
+    # image without it being compressed or passed through tool-call JSON.
     if body.attachments:
+        for att in body.attachments:
+            if att.type == "image" and att.data:
+                session.context["user_screenshot_b64"] = att.data
+                session.context["user_screenshot_mime"] = att.mime_type
+                logger.info("Stashed user screenshot in session context (%d bytes)", len(att.data))
+                break
+
+    # Convert attachments to image content blocks using the agent's provider.
+    # If the configured provider can't process images (DeepSeek's hosted API
+    # is text-only), fall back to any vision-capable provider we have a key for.
+    image_blocks = None
+    effective_model = body.model
+    if body.attachments:
+        from app.services.llm_provider import get_llm_provider
         provider_name = _agent._provider_name if _agent else None
-        logger.info("Processing %d attachment(s) with provider=%s",
-                    len(body.attachments), provider_name or "(default)")
+        provider = get_llm_provider(provider_name)
+
+        if not provider.supports_vision():
+            from app.config import settings
+            fallback_name = (
+                "openai" if settings.OPENAI_API_KEY
+                else "anthropic" if settings.ANTHROPIC_API_KEY
+                else None
+            )
+            if fallback_name and fallback_name != provider_name:
+                logger.info(
+                    "Provider %s has no vision — using %s for this turn.",
+                    provider_name or "(default)", fallback_name,
+                )
+                provider_name = fallback_name
+                effective_model = effective_model or f"{fallback_name}:balanced"
+            else:
+                logger.warning(
+                    "Provider %s has no vision and no vision-capable fallback "
+                    "is configured; image will be dropped.",
+                    provider_name or "(default)",
+                )
+
+        logger.info(
+            "Processing %d attachment(s) with provider=%s model=%s",
+            len(body.attachments),
+            provider_name or "(default)",
+            effective_model or "(default-tier)",
+        )
         image_blocks = _build_image_blocks(body.attachments, provider_name)
         logger.info("Image blocks built: %d", len(image_blocks) if image_blocks else 0)
 
-    return _stream_agent_response(body.message, session, image_blocks, body.model)
+    return _stream_agent_response(body.message, session, image_blocks, effective_model)
 
 
 def _build_image_blocks(attachments: List[ChatAttachment], provider_name: str | None = None) -> list[dict] | None:

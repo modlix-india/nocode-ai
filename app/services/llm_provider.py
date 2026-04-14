@@ -478,16 +478,59 @@ class OpenAIProvider(LLMProvider):
                 full_messages.append(oai_msg)
 
             elif role == "user" and isinstance(content, list):
-                # Handle tool_result blocks → OpenAI tool messages
+                # Split into tool_results (separate "tool" role messages) and
+                # mixed user content (text + images → single user message).
+                tool_results: list[dict] = []
+                user_parts: list[dict] = []
                 for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
+                    itype = item.get("type")
+                    if itype == "tool_result":
+                        tool_results.append({
                             "role": "tool",
                             "tool_call_id": item.get("tool_use_id", ""),
                             "content": item.get("content", ""),
                         })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                    elif itype == "text":
+                        user_parts.append({"type": "text", "text": item["text"]})
+                    elif itype == "image_url":
+                        user_parts.append(item)  # OpenAI native format, passthrough
+                    elif itype == "image":
+                        # Anthropic format → convert to OpenAI image_url
+                        src = item.get("source", {})
+                        b64 = src.get("data", "")
+                        mt = src.get("media_type", "image/png")
+                        if b64:
+                            user_parts.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mt};base64,{b64}"},
+                            })
+                            logger.info(
+                                "OpenAI: converted Anthropic image block to "
+                                "image_url (mime=%s, b64_len=%d)", mt, len(b64),
+                            )
+                    else:
+                        logger.warning(
+                            "OpenAI: dropping unknown user content item type=%s",
+                            itype,
+                        )
+
+                if user_parts:
+                    has_image = any(p.get("type") == "image_url" for p in user_parts)
+                    if has_image:
+                        logger.info(
+                            "OpenAI: sending user message with %d image_url + "
+                            "%d text part(s) to model=%s",
+                            sum(1 for p in user_parts if p["type"] == "image_url"),
+                            sum(1 for p in user_parts if p["type"] == "text"),
+                            model,
+                        )
+                        full_messages.append({"role": "user", "content": user_parts})
+                    else:
+                        merged = "\n".join(
+                            p["text"] for p in user_parts if p.get("type") == "text"
+                        )
+                        full_messages.append({"role": "user", "content": merged})
+                full_messages.extend(tool_results)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -662,15 +705,62 @@ class DeepSeekProvider(OpenAIProvider):
                 full_messages.append(oai_msg)
 
             elif role == "user" and isinstance(content, list):
+                # Split into tool_results (separate "tool" role messages) vs
+                # mixed text+image content (a single user message).
+                tool_results: list[dict] = []
+                user_parts: list[dict] = []
                 for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
+                    itype = item.get("type")
+                    if itype == "tool_result":
+                        tool_results.append({
                             "role": "tool",
                             "tool_call_id": item.get("tool_use_id", ""),
                             "content": item.get("content", ""),
                         })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                    elif itype == "text":
+                        user_parts.append({"type": "text", "text": item["text"]})
+                    elif itype == "image_url":
+                        # OpenAI/DeepSeek native format — pass through unchanged
+                        user_parts.append(item)
+                    elif itype == "image":
+                        # Anthropic format → convert to OpenAI image_url shape
+                        src = item.get("source", {})
+                        b64 = src.get("data", "")
+                        mt = src.get("media_type", "image/png")
+                        if b64:
+                            user_parts.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mt};base64,{b64}"},
+                            })
+                            logger.info(
+                                "DeepSeek: converted Anthropic image block to "
+                                "image_url (mime=%s, b64_len=%d)", mt, len(b64),
+                            )
+                    else:
+                        logger.warning(
+                            "DeepSeek: dropping unknown user content item type=%s",
+                            itype,
+                        )
+
+                if user_parts:
+                    # If only text, collapse to a string for older DeepSeek
+                    # compatibility; mixed (text+image) needs the list form.
+                    has_image = any(p.get("type") == "image_url" for p in user_parts)
+                    if has_image:
+                        logger.info(
+                            "DeepSeek: sending user message with %d image_url part(s) "
+                            "and %d text part(s) to model=%s",
+                            sum(1 for p in user_parts if p["type"] == "image_url"),
+                            sum(1 for p in user_parts if p["type"] == "text"),
+                            model,
+                        )
+                        full_messages.append({"role": "user", "content": user_parts})
+                    else:
+                        merged = "\n".join(
+                            p["text"] for p in user_parts if p.get("type") == "text"
+                        )
+                        full_messages.append({"role": "user", "content": merged})
+                full_messages.extend(tool_results)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -741,7 +831,14 @@ class DeepSeekProvider(OpenAIProvider):
         return result
 
     def supports_vision(self) -> bool:
-        return True
+        # Verified empirically 2026-04: DeepSeek's hosted API returns
+        #   400 Bad Request: "unknown variant image_url, expected text"
+        # for both `deepseek-chat` and `deepseek-reasoner`. Their vision models
+        # (DeepSeek-VL2, Janus-Pro) are only distributed as HuggingFace weights,
+        # not served on api.deepseek.com. If you self-host one and expose it via
+        # an OpenAI-compatible endpoint, point DEEPSEEK_BASE_URL at it and then
+        # override this method in a subclass.
+        return False
 
     def supports_prompt_caching(self) -> bool:
         return False

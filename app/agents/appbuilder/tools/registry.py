@@ -59,6 +59,7 @@ from app.agents.appbuilder.tools.remote_repo import REMOTE_REPO_TOOLS
 from app.agents.appbuilder.tools.planning import PLANNING_TOOLS
 from app.agents.appbuilder.tools.orchestration import ORCHESTRATION_TOOLS
 from app.agents.appbuilder.tools.clone_tool import CLONE_WEBSITE
+from app.agents.appbuilder.tools.screenshot_tool import BUILD_PAGE_FROM_SCREENSHOT
 
 # Mark existing tools as deferred
 delete_tool.is_deferred = True
@@ -95,6 +96,7 @@ DEFERRED_TOOLS: list[ToolDefinition] = [
     *PLANNING_TOOLS,
     *ORCHESTRATION_TOOLS,
     CLONE_WEBSITE,
+    BUILD_PAGE_FROM_SCREENSHOT,
 ]
 
 

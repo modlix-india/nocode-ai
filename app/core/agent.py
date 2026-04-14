@@ -218,7 +218,14 @@ class BaseAgent:
 
         # Append user message to conversation (with optional images)
         session.append_user_message(user_message, all_image_blocks or None)
-        logger.info("Message history: %d messages", len(session.get_messages()))
+        logger.info(
+            "Message history: %d messages, image_blocks=%d "
+            "(provider=%s, model_override=%s)",
+            len(session.get_messages()),
+            len(all_image_blocks),
+            self._provider_name,
+            model_override or "(none)",
+        )
 
         # Start the turn counter and persist user message early so it
         # survives LLM failures and connection drops.

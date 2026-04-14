@@ -74,9 +74,18 @@ class AppBuilderAgent(BaseAgent):
 
         if session.auth:
             app_code = session.context.get("app_code") or session.auth.app_code
-            host = session.auth.forwarded_host or "localhost"
-            scheme = "https" if host != "localhost" else "http"
-            port_suffix = f":{session.auth.forwarded_port}" if session.auth.forwarded_port not in ("443", "80", "") else ""
+            # X-Forwarded-Host may be comma-separated (e.g. "apps.local.modlix.com,localhost:8080");
+            # take just the first (primary) host so the preview URL is valid.
+            raw_host = session.auth.forwarded_host or "localhost"
+            host = raw_host.split(",")[0].strip()
+            scheme = "https" if host not in ("localhost", "127.0.0.1") and "localhost" not in host else "http"
+            # Strip port from host if embedded (e.g. "localhost:8080")
+            if ":" in host:
+                host_part, port_part = host.rsplit(":", 1)
+                port_suffix = f":{port_part}" if port_part not in ("443", "80") else ""
+                host = host_part
+            else:
+                port_suffix = f":{session.auth.forwarded_port}" if session.auth.forwarded_port not in ("443", "80", "") else ""
             base_url = f"{scheme}://{host}{port_suffix}"
             parts.append(
                 f"Current session:\n"

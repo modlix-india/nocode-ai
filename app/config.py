@@ -133,7 +133,13 @@ class Settings(BaseSettings):
     AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder uses DeepSeek
+    # AppBuilder uses OpenAI:
+    #  - gpt-4o / gpt-4o-mini support vision natively (clone-from-screenshot)
+    #  - DeepSeek's hosted api.deepseek.com is text-only — verified empirically
+    #    (400: "unknown variant image_url, expected text") and confirmed against
+    #    api-docs.deepseek.com which only lists deepseek-chat and deepseek-reasoner.
+    #  - API shape is near-identical to DeepSeek (DeepSeekProvider extends OpenAIProvider)
+    APPBUILDER_PROVIDER: str = "openai"
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:

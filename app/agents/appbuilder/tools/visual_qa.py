@@ -57,8 +57,11 @@ async def take_multi_viewport_screenshots(url: str, timeout: int = 25000) -> dic
             for vp_name, vp_size in VIEWPORTS.items():
                 try:
                     page = await browser.new_page(viewport=vp_size)
-                    await page.goto(url, wait_until="networkidle", timeout=timeout)
-                    await asyncio.sleep(1)
+                    try:
+                        await page.goto(url, wait_until="networkidle", timeout=15000)
+                    except Exception:
+                        await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                    await asyncio.sleep(2)
                     screenshot_bytes = await page.screenshot(full_page=True)
                     screenshots[vp_name] = base64.b64encode(screenshot_bytes).decode("ascii")
                     await page.close()
@@ -86,11 +89,12 @@ def compute_similarity(source_b64: str, generated_b64: str) -> float:
         src_img = Image.open(io.BytesIO(base64.b64decode(source_b64))).convert("RGB")
         gen_img = Image.open(io.BytesIO(base64.b64decode(generated_b64))).convert("RGB")
 
-        # Resize to common dimensions (smaller of the two heights, same width)
+        # Resize to common dimensions (smaller of the two heights, same width).
+        # Cap at 4000px so we compare most of the page, not just above-the-fold.
+        # (Was 800px — only measured the hero section for tall pages.)
         target_w = min(src_img.width, gen_img.width)
         target_h = min(src_img.height, gen_img.height)
-        # Cap at 800px height to focus on above-the-fold content
-        target_h = min(target_h, 800)
+        target_h = min(target_h, 4000)
 
         src_resized = src_img.resize((target_w, target_h), Image.LANCZOS)
         gen_resized = gen_img.resize((target_w, target_h), Image.LANCZOS)
