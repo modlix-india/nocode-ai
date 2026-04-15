@@ -90,14 +90,25 @@ def compute_similarity(source_b64: str, generated_b64: str) -> float:
         gen_img = Image.open(io.BytesIO(base64.b64decode(generated_b64))).convert("RGB")
 
         # Resize to common dimensions (smaller of the two heights, same width).
-        # Cap at 4000px so we compare most of the page, not just above-the-fold.
-        # (Was 800px — only measured the hero section for tall pages.)
+        # Resize both images to the SAME width (preserving aspect ratio),
+        # then crop to the shorter of the two heights (capped at 8000px).
+        # This avoids distortion from different source widths (e.g. retina 2x).
         target_w = min(src_img.width, gen_img.width)
-        target_h = min(src_img.height, gen_img.height)
-        target_h = min(target_h, 4000)
 
-        src_resized = src_img.resize((target_w, target_h), Image.LANCZOS)
-        gen_resized = gen_img.resize((target_w, target_h), Image.LANCZOS)
+        # Resize preserving aspect ratio to target_w
+        src_ratio = target_w / src_img.width
+        src_resized = src_img.resize(
+            (target_w, round(src_img.height * src_ratio)), Image.LANCZOS,
+        )
+        gen_ratio = target_w / gen_img.width
+        gen_resized = gen_img.resize(
+            (target_w, round(gen_img.height * gen_ratio)), Image.LANCZOS,
+        )
+
+        # Crop both to the same height (shorter of the two, capped at 8000px)
+        target_h = min(src_resized.height, gen_resized.height, 8000)
+        src_resized = src_resized.crop((0, 0, target_w, target_h))
+        gen_resized = gen_resized.crop((0, 0, target_w, target_h))
 
         src_arr = np.array(src_resized, dtype=np.float32)
         gen_arr = np.array(gen_resized, dtype=np.float32)

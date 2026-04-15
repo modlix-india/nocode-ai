@@ -169,7 +169,7 @@ def _force_split(result: list[int], start: int, end: int, row_var: np.ndarray) -
 
 
 def _make_slice(img: Image.Image, index: int, y_start: int, y_end: int, width: int) -> SliceSpec:
-    """Crop and encode one slice."""
+    """Crop and encode one slice at original resolution."""
     crop = img.crop((0, y_start, width, y_end))
 
     # Average background colour (sample corners + centre)
@@ -182,7 +182,7 @@ def _make_slice(img: Image.Image, index: int, y_start: int, y_end: int, width: i
     avg = np.mean(samples, axis=0).astype(int)
     avg_color = f"#{avg[0]:02x}{avg[1]:02x}{avg[2]:02x}"
 
-    # Encode as JPEG quality 85
+    # Encode as JPEG quality 85 at original resolution
     buf = io.BytesIO()
     crop.save(buf, format="JPEG", quality=85)
     jpeg_b64 = base64.b64encode(buf.getvalue()).decode("ascii")

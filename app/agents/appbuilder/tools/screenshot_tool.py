@@ -49,6 +49,7 @@ async def _vision_to_json(
         client.chat.completions.create,
         model=settings.OPENAI_MODEL_BALANCED or "gpt-4o",
         max_tokens=max_tokens,
+        temperature=0.1,  # Low temp for consistent layout/color generation
         response_format={"type": "json_object"},
         messages=[
             {"role": "user", "content": [
@@ -68,6 +69,30 @@ async def _vision_to_json(
 
 
 # ── Phase 0: Page-level scan ───────────────────────────────────────
+
+_SECTION_DISCOVERY_PROMPT = """\
+Look at this full-page screenshot and identify the logical SECTIONS of the page.
+A section is a visually distinct block — hero area, feature showcase, testimonials, footer, etc.
+
+IMPORTANT rules for section boundaries:
+- A product image that extends from one visual area into the next is ONE section, not two.
+- A hero with header text + large product photo below = ONE section even if colors change.
+- Navigation bar at the top is its own section.
+- Footer is its own section.
+- Each distinct content block with its own purpose is a section.
+
+Return y-coordinates as PERCENTAGES (0-100) of the total page height.
+
+Return JSON:
+{{
+  "sections": [
+    {{"name": "navigation", "y_start_pct": 0, "y_end_pct": 3}},
+    {{"name": "hero_ring_pro", "y_start_pct": 3, "y_end_pct": 15}},
+    {{"name": "ring_air_showcase", "y_start_pct": 15, "y_end_pct": 28}},
+    ...
+  ]
+}}
+"""
 
 _PHASE0_PROMPT = """\
 Analyze this full-page screenshot and extract page-wide design attributes.
@@ -156,15 +181,26 @@ Each component is a JSON object with these fields:
 - For hero sections with centered text over a background, use the section Grid as the bg container with position:relative, and child Text/Button components.
 - Preserve the visual hierarchy: large headings (40-72px), subheadings (24-32px), body text (14-18px), small labels (12-14px).
 
+## CENTERING & COLOR
+- Center content within sections using flexbox: justifyContent: "center", alignItems: "center" on the sectionRoot.
+- Match text colors to the section background for readability:
+  Dark backgrounds → white/light text. Light backgrounds → dark text.
+
 ## Icons
 Use Modlix Icon component with FontAwesome or Material Icons class strings:
 - FontAwesome: "fa fa-solid fa-heart", "fa fa-brands fa-instagram"
 - Material Icons: "mi material-icons home", "mi material-icons search"
 
-## Image Assets
+## Image Placeholders
 For every visible image, logo, or photo in this slice:
-- Create an Image component with src: {{"value": "ASSET_N"}} (sequential placeholder)
-- Add an entry to the "assets" array in your response
+- Create an Image component with NO src (leave it empty — the user will provide real images later)
+- Set a descriptive alt text so the user knows what image goes there: alt: {{"value": "product ring photo on white background"}}
+- Match the image size to what you see in the screenshot:
+  * Full-width hero/banner images: width: "100%", height: "auto", objectFit: "cover"
+  * Background images (photo behind text): position: "absolute", width: "100%", height: "100%", objectFit: "cover", zIndex: "0"
+  * Medium images: use the approximate pixel width/height you see
+  * Small logos/icons: use precise dimensions
+- Set a backgroundColor on the Image component matching the dominant color of the image area as a placeholder
 
 ## Example — a hero section with image, title, subtitle, CTA button
 ```json
@@ -225,9 +261,20 @@ This example has 5 components. A real section should have 8-20+ depending on vis
 - This is slice {slice_index} of {total_slices}.
 - Slice dimensions: {width}x{height}px.
 - Slice background: {avg_bg_color}.
-- Page body font: {body_font}. Page text color: {body_color}.
+- Page body font: {body_font}. Page text color: {body_color}. Accent/CTA color: {accent_color}.
 - Use the body font unless this section clearly uses a different font.
-- Generate AT LEAST 8 components for this section. Every visible element matters.
+- Use the accent color for primary buttons and CTAs unless this section clearly uses a different color.
+- Generate AT LEAST 10 components for this section. Create a component for EVERY:
+  * Heading text (h1-h6 level)
+  * Paragraph/description text
+  * Button or CTA (with exact label text)
+  * Image or photo area
+  * Logo or icon
+  * Navigation link
+  * Badge, tag, or label
+  * Price or statistic number
+  * Card or feature box (as a Grid with children)
+  * Divider or separator line
 
 ## Response Format
 Return ONLY valid JSON:
@@ -268,7 +315,12 @@ async def _phase2_build_slice(
         avg_bg_color=avg_bg_color,
         body_font=page_info.get("body_font", "sans-serif"),
         body_color=page_info.get("body_color", "#000000"),
+        accent_color=page_info.get("dominant_accent", "#0066FF"),
     )
+    # Append extra prompt from hybrid clone (e.g. real DOM image URLs)
+    extra = page_info.get("_extra_prompt", "")
+    if extra:
+        prompt += "\n" + extra
     result = await _vision_to_json(slice_b64, prompt, max_tokens=16384)
     components = result.get("components", {})
     assets = result.get("assets", [])
@@ -284,6 +336,30 @@ async def _phase2_build_slice(
 
 
 # ── Validation ─────────────────────────────────────────────────────
+
+def _is_dark_color(hex_color: str) -> bool:
+    """Check if a hex color is dark (luminance < 128)."""
+    try:
+        h = hex_color.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return (0.299 * r + 0.587 * g + 0.114 * b) < 128
+    except Exception:
+        return False
+
+
+def _is_light_color(hex_color: str) -> bool:
+    """Check if a hex color is light (luminance >= 180)."""
+    try:
+        h = hex_color.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return (0.299 * r + 0.587 * g + 0.114 * b) >= 180
+    except Exception:
+        return False
+
 
 def _validate_components(comp_def: dict[str, Any]) -> dict[str, Any]:
     """Fix common issues in LLM-generated componentDefinition."""
@@ -363,11 +439,56 @@ async def _execute_build_from_screenshot(
         logger.warning("Phase 0 failed: %s — using defaults", e)
         page_info = {"body_font": "sans-serif", "body_color": "#000000", "body_bg": "#ffffff"}
 
-    # ── Phase 1: Slice ──
-    from app.agents.appbuilder.tools.screenshot_slicer import slice_screenshot
-    slices = slice_screenshot(screenshot_b64)
-    logger.info("Phase 1: %d slices from %dx%d screenshot",
-                len(slices), full_img.width, full_img.height)
+    # ── Phase 1: LLM-based section discovery ──
+    # Use gpt-4o to identify logical sections from the thumbnail instead of
+    # mechanical pixel-variance slicing. The LLM understands that a hero with
+    # a product image extending into the next visual area is ONE section.
+    logger.info("Phase 1: LLM section discovery...")
+    try:
+        section_result = await _vision_to_json(thumb_b64, _SECTION_DISCOVERY_PROMPT.format(
+            width=full_img.width, height=full_img.height,
+        ), max_tokens=2048)
+        cuts = section_result.get("sections", [])
+        logger.info("Phase 1: LLM identified %d sections: %s", len(cuts),
+                     [(s.get("name"), s.get("y_end")) for s in cuts[:5]])
+    except Exception as e:
+        logger.warning("Phase 1 LLM failed: %s — falling back to pixel slicer", e)
+        cuts = None
+
+    if cuts and len(cuts) >= 2:
+        from app.agents.appbuilder.tools.screenshot_slicer import SliceSpec
+        slices = []
+        for i, sec in enumerate(cuts):
+            # Convert percentage coordinates to pixel coordinates
+            y_start_pct = sec.get("y_start_pct", 0)
+            y_end_pct = sec.get("y_end_pct", 100)
+            y_start_full = round(full_img.height * y_start_pct / 100)
+            y_end_full = round(full_img.height * y_end_pct / 100)
+            y_end_full = min(y_end_full, full_img.height)
+            if y_end_full <= y_start_full:
+                continue
+            # Crop and encode
+            crop = full_img.crop((0, y_start_full, full_img.width, y_end_full))
+            buf = io.BytesIO()
+            crop.save(buf, format="JPEG", quality=85)
+            jpeg_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            # Avg color
+            import numpy as np_local
+            arr = np_local.array(crop)
+            samples = [arr[0,0], arr[0,-1], arr[-1,0], arr[-1,-1], arr[arr.shape[0]//2, arr.shape[1]//2]]
+            avg = np_local.mean(samples, axis=0).astype(int)
+            avg_color = f"#{avg[0]:02x}{avg[1]:02x}{avg[2]:02x}"
+
+            slices.append(SliceSpec(
+                index=i, y_start=y_start_full, y_end=y_end_full,
+                height=y_end_full - y_start_full, width=full_img.width,
+                jpeg_b64=jpeg_b64, avg_bg_color=avg_color,
+            ))
+        logger.info("Phase 1: Created %d slices from LLM sections", len(slices))
+    else:
+        from app.agents.appbuilder.tools.screenshot_slicer import slice_screenshot
+        slices = slice_screenshot(screenshot_b64)
+        logger.info("Phase 1: Fallback to pixel slicer — %d slices", len(slices))
 
     if not slices:
         return ToolResult(success=False, error="Failed to slice screenshot — no sections detected.")
@@ -377,9 +498,14 @@ async def _execute_build_from_screenshot(
 
     async def build_with_semaphore(sl):
         async with sem:
+            # Tell gpt-4o the CSS viewport dimensions, not retina pixels.
+            # This makes it generate sizes (padding, font-size, gap) that
+            # match a 1440px-wide rendered page instead of a 3458px capture.
+            css_w = min(sl.width, 1440)
+            css_h = round(sl.height * (1440 / sl.width)) if sl.width > 1440 else sl.height
             return await _phase2_build_slice(
                 sl.jpeg_b64, sl.index, len(slices),
-                sl.width, sl.height, sl.avg_bg_color, page_info,
+                css_w, css_h, sl.avg_bg_color, page_info,
             )
 
     logger.info("Phase 2: Building %d slices (3 concurrent)...", len(slices))
@@ -420,55 +546,57 @@ async def _execute_build_from_screenshot(
     # Validate components
     comp_def = _validate_components(comp_def)
 
-    from app.agents.appbuilder.tools._shared import get_saas_client
-    # Inject slice images as section background images.
-    # Most marketing pages use full-bleed photos as section backgrounds.
-    # The per-slice JPEG captures this perfectly — upload it and set as
-    # backgroundImage on the section root for a huge visual fidelity boost.
+    # Post-process: force correct text colors based on section brightness.
+    # Dark sections (avg_bg luminance < 128) need light text; light sections need dark text.
     for sl in slices:
         root_key = f"s{sl.index}_sectionRoot"
         if root_key not in comp_def:
             continue
-        # Upload the slice JPEG as a background asset
-        slice_bytes = base64.b64decode(sl.jpeg_b64)
-        from app.agents.appbuilder.tools.asset_resolver import _upload_to_files
-        bg_url = await _upload_to_files(
-            slice_bytes, "image/jpeg", app_code, client_code,
-            get_saas_client(), headers, {},
-        )
-        if bg_url:
-            # Set as section backgroundImage
-            comp = comp_def[root_key]
-            sp = comp.get("styleProperties", {})
-            if sp:
-                first_sid = next(iter(sp))
-                all_res = sp[first_sid].setdefault("resolutions", {}).setdefault("ALL", {})
-                all_res["backgroundImage"] = {"value": f"url('{bg_url}')"}
-                all_res["backgroundSize"] = {"value": "cover"}
-                all_res["backgroundPosition"] = {"value": "center top"}
-                all_res["backgroundRepeat"] = {"value": "no-repeat"}
-                # Scale the slice pixel height to the target viewport (1440px).
-                # Screenshots are often retina (2x-3x), so a 3458px-wide
-                # capture represents a ~1440px CSS viewport.
-                scaled_h = round(sl.height * (1440 / sl.width))
-                all_res["minHeight"] = {"value": f"{scaled_h}px"}
-                # Remove any solid backgroundColor from the section root
-                # (would hide the background image)
-                all_res.pop("backgroundColor", None)
-                logger.info("Injected slice %d as background on %s (h=%dpx)", sl.index, root_key, scaled_h)
+        # Parse avg_bg luminance
+        try:
+            h = sl.avg_bg_color.lstrip("#")
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            lum = 0.299 * r + 0.587 * g + 0.114 * b
+        except Exception:
+            lum = 128
+        is_dark = lum < 128
+        target_text_color = "#ffffff" if is_dark else "#111111"
 
-                # Also make direct children transparent so bg image shows through
-                for child_key in comp.get("children", {}):
-                    child_comp = comp_def.get(child_key)
-                    if not child_comp:
-                        continue
-                    for csid, cst in child_comp.get("styleProperties", {}).items():
-                        child_all = cst.get("resolutions", {}).get("ALL", {})
-                        bg = child_all.get("backgroundColor", {})
-                        bgv = bg.get("value", "") if isinstance(bg, dict) else ""
-                        # Only clear opaque backgrounds (not transparent/none)
-                        if bgv and bgv not in ("transparent", "none", "rgba(0,0,0,0)", "rgba(0, 0, 0, 0)"):
-                            child_all["backgroundColor"] = {"value": "transparent"}
+        # Fix text color on all Text/Button descendants of this section
+        def _fix_text_colors(key: str) -> None:
+            comp = comp_def.get(key)
+            if not comp:
+                return
+            ctype = comp.get("type", "")
+            if ctype in ("Text", "Button"):
+                for sid, st in comp.get("styleProperties", {}).items():
+                    all_r = st.get("resolutions", {}).get("ALL", {})
+                    cur = all_r.get("color", {})
+                    cur_v = cur.get("value", "") if isinstance(cur, dict) else ""
+                    # Only override if not set or if it conflicts with section brightness
+                    if not cur_v or (is_dark and _is_dark_color(cur_v)) or (not is_dark and _is_light_color(cur_v)):
+                        all_r["color"] = {"value": target_text_color}
+            for ck in comp.get("children", {}):
+                _fix_text_colors(ck)
+
+        _fix_text_colors(root_key)
+
+    from app.agents.appbuilder.tools._shared import get_saas_client
+    # Set section heights + force exact background colors from the slicer's
+    # pixel-sampled avg color (more accurate than gpt-4o's guess).
+    for sl in slices:
+        root_key = f"s{sl.index}_sectionRoot"
+        if root_key not in comp_def:
+            continue
+        comp = comp_def[root_key]
+        sp = comp.get("styleProperties", {})
+        if sp:
+            first_sid = next(iter(sp))
+            all_res = sp[first_sid].setdefault("resolutions", {}).setdefault("ALL", {})
+            scaled_h = round(sl.height * (1440 / sl.width))
+            all_res["minHeight"] = {"value": f"{scaled_h}px"}
+            all_res.setdefault("width", {"value": "100%"})
+            logger.info("Set section %s: h=%dpx", root_key, scaled_h)
 
     logger.info("Phase 2 complete: %d components, %d sections, %d assets, %d fonts",
                 len(comp_def), len(section_keys), len(all_assets), len(all_fonts))
@@ -483,9 +611,14 @@ async def _execute_build_from_screenshot(
     slices_y_offsets = {sl.index: sl.y_start for sl in slices}
 
     logger.info("Phase 3: Resolving %d assets...", len(all_assets))
+    # Scale factor: gpt-4o sees slices resized to 1440px CSS width, but the
+    # full screenshot is retina. Crop coordinates need scaling back.
+    css_to_retina = full_img.width / 1440 if full_img.width > 1440 else 1.0
     resolved = await resolve_assets(
         all_assets, full_img, slices_y_offsets,
         api_client, headers, app_code, client_code,
+        page_name=page_name,
+        css_to_retina_scale=css_to_retina,
     )
     rewrite_count = rewrite_placeholders(comp_def, resolved)
     logger.info("Phase 3: Rewrote %d/%d asset placeholders", rewrite_count, len(all_assets))

@@ -71,6 +71,8 @@ async def resolve_assets(
     headers: dict[str, str],
     app_code: str,
     client_code: str,
+    page_name: str = "",
+    css_to_retina_scale: float = 1.0,
 ) -> dict[str, str]:
     """Resolve asset placeholders to real URLs.
 
@@ -110,7 +112,7 @@ async def resolve_assets(
                     mime = "image/svg+xml" if url.endswith(".svg") or "simpleicons" in url else "image/png"
                     uploaded = await _upload_to_files(
                         logo_bytes, mime, app_code, client_code,
-                        api_client, headers, cache,
+                        api_client, headers, cache, page_name=page_name,
                     )
                     if uploaded:
                         resolved[placeholder] = uploaded
@@ -118,15 +120,16 @@ async def resolve_assets(
                         continue
 
         # Lane 2: Crop from screenshot (always-works fallback)
+        logger.info("Asset %s: kind=%s bbox=%s label=%s", placeholder, kind, bbox, label[:40] if label else "")
         if bbox and len(bbox) == 4:
             y_offset = slices_y_offsets.get(slice_index, 0)
             crop_bytes = _crop_from_screenshot(
-                full_screenshot, bbox, y_offset,
+                full_screenshot, bbox, y_offset, scale=css_to_retina_scale,
             )
             if crop_bytes:
                 uploaded = await _upload_to_files(
                     crop_bytes, "image/png", app_code, client_code,
-                    api_client, headers, cache,
+                    api_client, headers, cache, page_name=page_name,
                 )
                 if uploaded:
                     resolved[placeholder] = uploaded
@@ -139,7 +142,7 @@ async def resolve_assets(
             placeholder_bytes = _generate_placeholder(color, bbox)
             uploaded = await _upload_to_files(
                 placeholder_bytes, "image/png", app_code, client_code,
-                api_client, headers, cache,
+                api_client, headers, cache, page_name=page_name,
             )
             if uploaded:
                 resolved[placeholder] = uploaded
@@ -197,10 +200,22 @@ def _crop_from_screenshot(
     img: Image.Image,
     bbox: list[int],
     y_offset: int,
+    scale: float = 1.0,
 ) -> bytes | None:
-    """Crop a region from the full screenshot."""
+    """Crop a region from the full screenshot.
+
+    Args:
+        scale: Multiply bbox coords by this to convert from CSS to retina pixels.
+               E.g. if slices were resized to 1440px but the screenshot is 3458px,
+               scale = 3458/1440 = 2.4.
+    """
     try:
         x, y, bw, bh = bbox
+        # Scale from CSS coords to retina coords
+        x = round(x * scale)
+        y = round(y * scale)
+        bw = round(bw * scale)
+        bh = round(bh * scale)
         # Translate to page-level coords
         abs_y = y + y_offset
         # Add padding
@@ -245,6 +260,7 @@ async def _upload_to_files(
     api_client: Any,
     headers: dict[str, str],
     cache: dict[str, str],
+    page_name: str = "",
 ) -> str | None:
     """Upload bytes to Modlix files API, with SHA256 dedup cache."""
     sha = hashlib.sha256(file_bytes).hexdigest()[:16]
@@ -253,26 +269,42 @@ async def _upload_to_files(
 
     ext = "svg" if "svg" in mime else "png" if "png" in mime else "jpg"
     filename = f"asset_{sha}.{ext}"
-    path = f"/api/files/static/file/{client_code}/{app_code}/{filename}"
+    # Upload: POST /api/files/static/{app}/{page}/
+    #   (client code inferred from auth, NOT in URL path)
+    # Served: GET  /api/files/static/file/{client}/{app}/{page}/{filename}
+    dir_path = f"{app_code}/{page_name}" if page_name else app_code
+    upload_url = f"/api/files/static/{dir_path}/"
+    served_url = f"/api/files/static/file/{client_code}/{dir_path}/{filename}"
 
     try:
-        # Use httpx directly for multipart upload since SaasClient may not support it
         gateway_url = api_client.base_url if hasattr(api_client, "base_url") else "http://localhost:8080"
         async with httpx.AsyncClient(timeout=30) as client:
-            upload_headers = {k: v for k, v in headers.items()}
+            upload_headers = dict(headers)
+            # Gateway needs X-Forwarded-* headers to resolve the auth context
+            upload_headers.setdefault("X-Forwarded-Host", "apps.local.modlix.com,localhost:8080")
+            upload_headers.setdefault("X-Forwarded-Port", "443,8080")
+            # Override appCode to the target app so files service permits the write
+            upload_headers["appCode"] = app_code
             resp = await client.post(
-                f"{gateway_url}{path}",
+                f"{gateway_url}{upload_url}",
                 files={"file": (filename, file_bytes, mime)},
                 headers=upload_headers,
             )
             if resp.status_code in (200, 201):
-                # The response may be the URL or we construct it
-                url = f"api/files/static/file/{client_code}/{app_code}/{filename}"
+                # POST goes to /api/files/static/{path}/ (no /file/)
+                # GET is at /api/files/static/file/{path}/{filename}
+                url = served_url
+                # Ensure leading / for absolute browser resolution
+                if not url.startswith("/"):
+                    url = "/" + url
                 cache[sha] = url
                 logger.info("Uploaded %s (%d bytes) → %s", filename, len(file_bytes), url)
                 return url
             else:
-                logger.warning("Upload failed %s: HTTP %d — %s", path, resp.status_code, resp.text[:200])
+                logger.error(
+                    "Upload FAILED %s: HTTP %d — %s (appCode=%s)",
+                    path, resp.status_code, resp.text[:300], app_code,
+                )
     except Exception as e:
         logger.warning("Upload error for %s: %s", filename, e)
     return None
