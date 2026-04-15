@@ -41,6 +41,88 @@ def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[
 API_PREFIX = "/api/ui/pages"
 
 
+# ── Session-scoped memory ─────────────────────────────────────────
+# Populates session.context["known"] as tools discover entities. The
+# dynamic context builder surfaces this to the LLM on each turn so it
+# doesn't re-list/re-read things it already knows. Persisted to DB via
+# session.context_json, so it survives across turns (including server
+# restarts).
+
+_MAX_KNOWN_PAGES_PER_APP = 30
+_MAX_KNOWN_COMPONENTS_PER_PAGE = 60
+
+
+def _get_known(context: dict[str, Any]) -> dict[str, Any]:
+    """Get (and initialize if needed) the 'known' memo on the session context."""
+    session_ctx = context.get("session_context")
+    if session_ctx is None:
+        return {}  # no session; writes are a no-op
+    return session_ctx.setdefault("known", {
+        "pages": {},          # "{app_code}/{page_name}" → {id, component_count, top_sections}
+        "applications": {},   # "{app_code}" → {ui_app_id, app_type, page_names}
+    })
+
+
+def _remember_page(
+    context: dict[str, Any],
+    app_code: str,
+    page_name: str,
+    page_data: dict[str, Any],
+) -> None:
+    """Record what we learned about a page so the agent doesn't re-fetch it."""
+    known = _get_known(context)
+    if not known:
+        return
+    pages = known.setdefault("pages", {})
+    key = f"{app_code}/{page_name}"
+    comp_def = page_data.get("componentDefinition", {}) or {}
+    root_key = page_data.get("rootComponent", "")
+    root_comp = comp_def.get(root_key, {}) if root_key else {}
+    top_sections = list((root_comp.get("children") or {}).keys())
+    pages[key] = {
+        "id": page_data.get("id", ""),
+        "component_count": len(comp_def),
+        "root": root_key,
+        "top_sections": top_sections[:_MAX_KNOWN_COMPONENTS_PER_PAGE],
+        "event_function_names": list((page_data.get("eventFunctions") or {}).keys()),
+    }
+    # Soft cap memory size per app
+    if len(pages) > _MAX_KNOWN_PAGES_PER_APP:
+        # Drop the oldest (first-inserted) entry
+        oldest = next(iter(pages))
+        if oldest != key:
+            pages.pop(oldest, None)
+
+
+def _remember_application(
+    context: dict[str, Any],
+    app_code: str,
+    ui_app_id: str = "",
+    app_type: str = "",
+    page_names: list[str] | None = None,
+) -> None:
+    """Record application-level metadata."""
+    known = _get_known(context)
+    if not known:
+        return
+    apps = known.setdefault("applications", {})
+    entry = apps.setdefault(app_code, {})
+    if ui_app_id:
+        entry["ui_app_id"] = ui_app_id
+    if app_type:
+        entry["app_type"] = app_type
+    if page_names is not None:
+        entry["page_names"] = page_names
+
+
+def _invalidate_page_memory(context: dict[str, Any], app_code: str, page_name: str) -> None:
+    """Drop cached page memo after a mutation (forces re-read to get fresh state)."""
+    known = _get_known(context)
+    pages = known.get("pages") if known else None
+    if pages:
+        pages.pop(f"{app_code}/{page_name}", None)
+
+
 # ── LIST ──────────────────────────────────────────────────────────
 
 
@@ -61,6 +143,10 @@ async def page_list(params: dict[str, Any], context: dict[str, Any]) -> ToolResu
 
     data = result.data
     pages = data.get("content", []) if isinstance(data, dict) else []
+
+    # Remember page names for this app — avoids re-listing on later turns.
+    page_names = [p.get("name", "") for p in pages if p.get("name")]
+    _remember_application(context, app_code, page_names=page_names)
 
     lines = []
     for page in pages:
@@ -161,6 +247,10 @@ async def page_read(params: dict[str, Any], context: dict[str, Any]) -> ToolResu
     if error:
         return ToolResult(success=False, error=error)
 
+    # Remember what we learned — so the agent doesn't re-fetch it later.
+    # The dynamic context builder surfaces this as "Known entities" on each turn.
+    _remember_page(context, app_code, page_name, page_data)
+
     # Sub-operation: read specific component
     component_key = params.get("component_key")
     if component_key:
@@ -206,13 +296,19 @@ async def page_read(params: dict[str, Any], context: dict[str, Any]) -> ToolResu
             return ToolResult(success=False, error="'subtree_root' is required when include='subtree'.")
         return ToolResult(success=True, summary=build_subtree(page_data, subtree_root))
 
-    # Default: component tree structure
-    tree = build_component_tree(page_data)
+    # Default: COMPACT component tree (top 2 levels only, with descendant counts).
+    # Pages can have hundreds of components — dumping the full tree bloats the
+    # conversation history. Use include='subtree' with subtree_root to drill into
+    # a specific section, or include='search' to find components by name/type.
+    max_depth = params.get("max_depth", 2)
+    tree = build_component_tree(page_data, max_depth=max_depth)
     comp_count = len(page_data.get("componentDefinition", {}))
     event_count = len(page_data.get("eventFunctions", {}))
     summary = (
         f"Page '{page_name}' structure ({comp_count} components, {event_count} event functions):\n\n"
-        f"{tree}"
+        f"{tree}\n\n"
+        f"Tip: use include='subtree' with subtree_root=<key> to drill into a section, "
+        f"include='search' to find components, or component_key=<key> for one component."
     )
     return ToolResult(success=True, summary=summary)
 
@@ -367,7 +463,7 @@ async def page_update(params: dict[str, Any], context: dict[str, Any]) -> ToolRe
     # Sub-operation: batch component operations
     operations = params.get("operations")
     if operations:
-        op_result = _apply_component_operations(page_data, operations)
+        op_result = _apply_component_operations(page_data, operations, context.get("catalog"))
         changes.append(op_result)
 
     # Sub-operation: write/update event function
@@ -399,6 +495,10 @@ async def page_update(params: dict[str, Any], context: dict[str, Any]) -> ToolRe
     if not save_result.success:
         return save_result
 
+    # Refresh our remembered view of the page — the IDs/top-level structure
+    # may have changed. The agent will see the updated memo on the next turn.
+    _remember_page(context, app_code, page_name, page_data)
+
     return ToolResult(
         success=True,
         summary=f"Updated page '{page_name}': {'; '.join(changes)}.",
@@ -423,22 +523,32 @@ def _apply_page_properties(page_data: dict, updates: dict) -> None:
             page_data.setdefault("properties", {}).update(value)
 
 
-def _apply_component_operations(page_data: dict, operations: list[dict]) -> str:
-    """Apply batch component operations. Returns summary string."""
+def _apply_component_operations(
+    page_data: dict, operations: list[dict], catalog: Any = None,
+) -> str:
+    """Apply batch component operations. Returns summary string.
+
+    ``catalog`` is the component catalog singleton used to validate property
+    and style names against each component's schema. When provided, unknown
+    property names surface as WARNINGS in the summary so the LLM can
+    self-correct on the next turn (the op is still applied — the backend
+    remains the authoritative validator).
+    """
     comp_def = page_data.setdefault("componentDefinition", {})
     root_key = page_data.get("rootComponent", "")
 
-    errors = []
-    applied = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    applied: list[str] = []
 
     for i, op in enumerate(operations):
         op_type = op.get("op")
         err = None
 
         if op_type == "add":
-            err = _op_add(comp_def, op)
+            err = _op_add(comp_def, op, catalog, warnings)
         elif op_type == "update":
-            err = _op_update(comp_def, op)
+            err = _op_update(comp_def, op, catalog, warnings)
         elif op_type == "remove":
             err = _op_remove(comp_def, op, root_key)
         elif op_type == "move":
@@ -455,14 +565,22 @@ def _apply_component_operations(page_data: dict, operations: list[dict]) -> str:
     parts = [f"applied {len(applied)} op(s): {', '.join(applied)}"]
     if errors:
         parts.append(f"skipped {len(errors)} error(s): {'; '.join(errors)}")
+    if warnings:
+        parts.append(f"WARNINGS ({len(warnings)}): {'; '.join(warnings)}")
     return "; ".join(parts)
 
 
 # ── Component operation handlers ──────────────────────────────────
 
 
-def _op_add(comp_def: dict, op: dict) -> str | None:
-    """Add a new component. Returns error string or None."""
+def _op_add(
+    comp_def: dict, op: dict, catalog: Any = None, warnings: list[str] | None = None,
+) -> str | None:
+    """Add a new component. Returns error string or None.
+
+    Appends any schema mismatches from the catalog to ``warnings`` so the
+    caller can surface them in the tool summary.
+    """
     parent_key = op.get("parent_key")
     component_key = op.get("component_key")
     component_type = op.get("type")
@@ -488,11 +606,23 @@ def _op_add(comp_def: dict, op: dict) -> str | None:
 
     comp_def[component_key] = new_comp
     comp_def[parent_key].setdefault("children", {})[component_key] = True
+
+    _collect_schema_warnings(
+        catalog, warnings,
+        comp_type=component_type, component_key=component_key, op_name="add",
+        properties=op.get("properties"), styles=op.get("style_properties"),
+    )
     return None
 
 
-def _op_update(comp_def: dict, op: dict) -> str | None:
-    """Merge properties/styles into a component. Returns error string or None."""
+def _op_update(
+    comp_def: dict, op: dict, catalog: Any = None, warnings: list[str] | None = None,
+) -> str | None:
+    """Merge properties/styles into a component. Returns error string or None.
+
+    Appends any schema mismatches from the catalog to ``warnings`` so the
+    caller can surface them in the tool summary.
+    """
     component_key = op.get("component_key")
     if not component_key:
         return "update op missing component_key"
@@ -503,12 +633,129 @@ def _op_update(comp_def: dict, op: dict) -> str | None:
     if op.get("properties"):
         comp.setdefault("properties", {}).update(op["properties"])
     if op.get("style_properties"):
-        _deep_merge(comp.setdefault("styleProperties", {}), op["style_properties"])
+        _merge_style_properties(comp, op["style_properties"])
     if op.get("display_order") is not None:
         comp["displayOrder"] = op["display_order"]
     for bp_key, bp_value in op.get("binding_paths", {}).items():
         comp[bp_key] = bp_value
+
+    _collect_schema_warnings(
+        catalog, warnings,
+        comp_type=comp.get("type", ""), component_key=component_key, op_name="update",
+        properties=op.get("properties"), styles=op.get("style_properties"),
+    )
     return None
+
+
+def _collect_schema_warnings(
+    catalog: Any,
+    warnings: list[str] | None,
+    *,
+    comp_type: str,
+    component_key: str,
+    op_name: str,
+    properties: dict | None,
+    styles: dict | None,
+) -> None:
+    """Run catalog validation and append any schema mismatches to ``warnings``.
+
+    Also emits a targeted hint for the common ``properties: {"value": {...}}``
+    hallucination — ``value`` is never a property NAME (it's the inner
+    ComponentProperty wrapper), so when the LLM writes it the update silently
+    no-ops. We suggest the likely real property name when we can infer it
+    from the component type.
+    """
+    if catalog is None or warnings is None:
+        return
+
+    if properties and "value" in properties:
+        hint = _suggest_value_property(comp_type)
+        suffix = f" — did you mean '{hint}'?" if hint else ""
+        warnings.append(
+            f"{op_name} '{component_key}': 'value' is NOT a property name on {comp_type or '?'}; "
+            f"it's the inner ComponentProperty wrapper{suffix} "
+            f"(write `properties: {{\"{hint or '<propName>'}\": {{\"value\": ...}}}}`, "
+            f"not `properties: {{\"value\": {{\"value\": ...}}}}`)."
+        )
+
+    if not comp_type:
+        return
+    try:
+        schema_warnings = catalog.validate_component(comp_type, properties, styles)
+    except Exception:  # pragma: no cover — catalog is advisory, never block
+        return
+    for w in schema_warnings:
+        warnings.append(f"{op_name} '{component_key}': {w}")
+
+
+# Best-guess mapping from component type → the property name most likely
+# intended when the LLM wrongly uses ``value``. Keeps the agent's self-correction
+# fast without requiring a full catalog lookup.
+_VALUE_PROPERTY_HINTS = {
+    "Text": "text",
+    "Button": "label",
+    "Link": "label",
+    "TextBox": "bindingPath",
+    "TextArea": "bindingPath",
+    "Image": "src",
+    "Icon": "icon",
+}
+
+
+def _suggest_value_property(comp_type: str) -> str:
+    """Return the likely intended property name for a type, or '' if unknown."""
+    return _VALUE_PROPERTY_HINTS.get(comp_type, "")
+
+
+def _merge_style_properties(comp: dict, new_styles: dict) -> None:
+    """Merge new style properties into the component's existing styleProperties.
+
+    Modlix stores styleProperties as {<groupId>: {condition?, pseudoState?, resolutions}}.
+    Without a condition, there should be ONLY ONE group (the default). Pseudo states
+    like :hover are encoded as suffixed prop names within that one group (e.g.
+    "color:hover"), NOT as separate groups. Modlix's processing logic OVERWRITES
+    non-conditioned groups instead of merging, so creating a new group ID for each
+    update would lose all prior styles.
+
+    This function:
+    1. If incoming has a `condition` field → only matches existing entry with same condition
+    2. Otherwise → merges into the single default (non-conditioned) group
+    3. Falls back to creating a new group only if no existing one matches
+    """
+    import uuid as _uuid
+
+    existing = comp.setdefault("styleProperties", {})
+
+    for incoming_key, incoming_val in new_styles.items():
+        if not isinstance(incoming_val, dict):
+            existing[incoming_key] = incoming_val
+            continue
+
+        in_cond = incoming_val.get("condition")
+
+        # If the agent passed an existing key, deep-merge into it
+        if incoming_key in existing:
+            _deep_merge(existing[incoming_key], incoming_val)
+            continue
+
+        # Find an existing group matching the incoming condition
+        # (no condition matches no condition; otherwise must match exactly)
+        target_id = None
+        for ex_id, ex_val in existing.items():
+            if not isinstance(ex_val, dict):
+                continue
+            ex_cond = ex_val.get("condition")
+            if ex_cond == in_cond:
+                target_id = ex_id
+                break
+
+        if target_id:
+            # Deep-merge into the existing matching group
+            _deep_merge(existing[target_id], incoming_val)
+        else:
+            # No matching group — create a new one with a UUID-like key
+            new_id = _uuid.uuid4().hex[:22]
+            existing[new_id] = incoming_val
 
 
 def _op_remove(comp_def: dict, op: dict, root_key: str) -> str | None:

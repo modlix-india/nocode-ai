@@ -27,7 +27,7 @@ read_tool = ToolDefinition(
         "For most types: pass id (the MongoDB ObjectId from list).\n"
         "For pages: pass name (page name) + app_code instead of id.\n\n"
         "Page sub-operations (object_type='page'):\n"
-        "- Default: returns component tree structure (hierarchy with types and labels)\n"
+        "- Default: COMPACT component tree (top 2 levels only, deeper subtrees summarized as descendant counts). Use max_depth=N to see N levels, max_depth=-1 for full tree.\n"
         "- include='summary': condensed page overview — component type counts, top-level sections with descendant counts, event names, bindings, labeled components\n"
         "- include='search': find components by type/name/text/bindings/events using search_* params\n"
         "- include='subtree': detailed subtree with inline properties, event refs, and binding indicators (requires subtree_root)\n"
@@ -70,6 +70,14 @@ read_tool = ToolDefinition(
             ),
         ),
         ToolParameter(name="subtree_root", type="string", required=False, description="Component key to use as subtree root. Required when include='subtree'."),
+        ToolParameter(
+            name="max_depth", type="integer", required=False,
+            description=(
+                "For default page read (tree structure): depth to expand. "
+                "Default 2 (compact — top 2 levels, deeper subtrees shown as '[N descendants]'). "
+                "Use max_depth=4 for more detail, max_depth=-1 for full tree (expensive on large pages)."
+            ),
+        ),
         ToolParameter(name="search_type", type="string", required=False, description="Search filter: component type, exact match (e.g. 'Button', 'TextBox', 'Grid'). Only for include='search'."),
         ToolParameter(name="search_name", type="string", required=False, description="Search filter: substring match on component key or name (e.g. 'login', 'header'). Only for include='search'."),
         ToolParameter(name="search_text", type="string", required=False, description="Search filter: substring match on text/label/placeholder properties (e.g. 'Submit', 'Email'). Only for include='search'."),

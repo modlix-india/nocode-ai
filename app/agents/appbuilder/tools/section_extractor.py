@@ -108,7 +108,22 @@ _DISCOVER_SECTIONS_JS = """() => {
         const rect = child.getBoundingClientRect();
         if (rect.width < 10 || rect.height < 10) continue;
 
+        // Skip cookie/consent overlays, chatbots, and other floating widgets.
+        // Only skip fixed/sticky elements that look like overlays (cookie banners,
+        // chatbots) — NOT navbars and promo banners which are part of the design.
         const cs = getComputedStyle(child);
+        const elText = (child.textContent || '').toLowerCase().substring(0, 500);
+        const elClass = (child.className || '').toLowerCase();
+        const elId = (child.id || '').toLowerCase();
+        const skipPatterns = ['cookie', 'consent', 'gdpr', 'privacy-banner',
+                              'chat-widget', 'chatbot', 'intercom', 'drift', 'crisp',
+                              'hubspot-messages', 'freshchat'];
+        const isOverlay = skipPatterns.some(p => elClass.includes(p) || elId.includes(p) ||
+            (elText.includes(p) && rect.height < 400));
+        // Also skip small fixed widgets (h < 100) that float in a corner (chatbots, FABs)
+        const isSmallFixedWidget = (cs.position === 'fixed' && rect.height < 100);
+        if (isOverlay || isSmallFixedWidget) continue;
+
         const display = cs.display;
         const flexDir = cs.flexDirection;
         const isRow = (display === 'flex' || display === 'inline-flex') && flexDir === 'row';
@@ -127,11 +142,14 @@ _DISCOVER_SECTIONS_JS = """() => {
             selector = ':scope > ' + tag + ':nth-of-type(' + (sameTagBefore + 1) + ')';
         }
 
-        // Drill disabled — sub-sections lose parent flex/grid context and
-        // render collapsed. Reverted to plain top-level discovery.
-        if (false) {
+        // Drill into oversized sections: if a section is very tall (>2000px) and
+        // has multiple visible children, treat those children as separate sections.
+        // This handles SPAs like Next.js where <main> contains all page sections.
+        // Only drill into column-flow containers (not row/grid layouts).
+        if (rect.height > 2000 && !isRow) {
             let drill = child;
             let drillSelector = selector;
+            // Drill through single-child wrappers to find the real container
             for (let d = 0; d < 4; d++) {
                 const kids = [...drill.children].filter(k => {
                     const kt = (k.tagName || '').toLowerCase();
@@ -150,20 +168,26 @@ _DISCOVER_SECTIONS_JS = """() => {
                 }
                 break;
             }
-            if (drill.children.length >= 3) {
+            // If we found a container with multiple children, emit them as sections
+            const visibleKids = [...drill.children].filter(k => {
+                const kt = (k.tagName || '').toLowerCase();
+                if (['script','style','noscript','link','meta'].includes(kt)) return false;
+                const kr = k.getBoundingClientRect();
+                return kr.width >= 10 && kr.height >= 10;
+            });
+            if (visibleKids.length >= 2) {
                 let subIdx = 0;
-                for (const gc of drill.children) {
+                for (const gc of visibleKids) {
                     const gt = (gc.tagName || '').toLowerCase();
-                    if (['script','style','noscript','link','meta'].includes(gt)) continue;
                     const gr = gc.getBoundingClientRect();
-                    if (gr.width < 10 || gr.height < 10) continue;
                     const gcs = getComputedStyle(gc);
                     const sameTagBefore = [...drill.children].slice(0, [...drill.children].indexOf(gc))
                         .filter(s => s.tagName === gc.tagName).length;
                     const subSelector = drillSelector + ' > ' + gt + ':nth-of-type(' + (sameTagBefore + 1) + ')';
                     sections.push({
                         tag: gt, id: gc.id || '', selector: subSelector,
-                        index: idx, y: Math.round(gr.y), h: Math.round(gr.height), w: Math.round(gr.width),
+                        index: idx, y: Math.round(gr.y + window.scrollY),
+                        h: Math.round(gr.height), w: Math.round(gr.width),
                         bgColor: gcs.backgroundColor,
                         bgImage: gcs.backgroundImage !== 'none' ? gcs.backgroundImage : '',
                         position: gcs.position,
@@ -172,9 +196,10 @@ _DISCOVER_SECTIONS_JS = """() => {
                     });
                     idx++; subIdx++;
                 }
-                if (subIdx > 0) continue;
+                if (subIdx > 0) continue;  // skip adding parent as section
             }
         }
+        // Legacy disabled block preserved for reference
         if (false) {
             let subIdx = 0;
             for (const gc of child.children) {
@@ -345,10 +370,14 @@ _EXTRACT_SECTION_JS = """(selector) => {
                 if (RESET_CANDIDATES.has(p)) defaults[p] = v;
                 continue;
             }
-            // Skip full-viewport widths (computed px > 1400)
-            if (p === 'width' && v.includes('px') && parseFloat(v) > 1400) continue;
-            // Cap excessive heights (scroll-computed)
-            if ((p === 'height' || p === 'minHeight') && v.includes('px') && parseFloat(v) > 1200) continue;
+            // Convert full-viewport widths to 100% instead of dropping them
+            if (p === 'width' && v.includes('px') && parseFloat(v) > 1400) {
+                styles[p] = '100%';
+                continue;
+            }
+            // Cap excessive heights from scroll-computed body-level elements,
+            // but keep anything under 5000px (legitimate tall sections/images)
+            if ((p === 'height' || p === 'minHeight') && v.includes('px') && parseFloat(v) > 5000) continue;
             styles[p] = v;
         }
         // Stash defaults so the Python-side diff can see "became default" transitions
@@ -681,6 +710,24 @@ async def extract_page(url: str) -> PageExtraction:
             logger.info("networkidle timed out, retrying with domcontentloaded")
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(4)  # Extra wait for JS rendering on heavy SPAs
+
+        # Dismiss cookie consent banners before extraction
+        try:
+            await page.evaluate("""() => {
+                const btns = document.querySelectorAll('button, a, [role="button"]');
+                for (const b of btns) {
+                    const txt = (b.textContent || '').trim().toLowerCase();
+                    if (['accept', 'accept all', 'accept cookies', 'got it',
+                         'i agree', 'ok', 'close', 'reject', 'reject all',
+                         'deny'].includes(txt)) {
+                        const parent = b.closest('[class*="cookie"], [class*="consent"], [id*="cookie"], [id*="consent"]');
+                        if (parent) { b.click(); return; }
+                    }
+                }
+            }""")
+            await asyncio.sleep(0.5)
+        except Exception:
+            pass
 
         # ── Full-page screenshot ──
         full_screenshot = await page.screenshot(full_page=True)

@@ -411,13 +411,21 @@ class OpenAIProvider(LLMProvider):
             messages=full_messages
         )
         
+        cached = 0
+        try:
+            details = getattr(response.usage, "prompt_tokens_details", None)
+            if details is not None:
+                cached = getattr(details, "cached_tokens", 0) or 0
+        except Exception:
+            cached = 0
+
         return {
             "content": response.choices[0].message.content,
             "usage": {
                 "input_tokens": response.usage.prompt_tokens,
                 "output_tokens": response.usage.completion_tokens,
                 "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0
+                "cache_read_input_tokens": cached,
             },
             "model": model,
             "stop_reason": response.choices[0].finish_reason
@@ -575,13 +583,23 @@ class OpenAIProvider(LLMProvider):
         if choice.finish_reason == "tool_calls":
             stop_reason = "tool_use"
 
+        # OpenAI gpt-4o and later support automatic prompt caching. The cached
+        # token count is reported in usage.prompt_tokens_details.cached_tokens.
+        cached = 0
+        try:
+            details = getattr(response.usage, "prompt_tokens_details", None)
+            if details is not None:
+                cached = getattr(details, "cached_tokens", 0) or 0
+        except Exception:
+            cached = 0
+
         return {
             "content": content_blocks,
             "usage": {
                 "input_tokens": response.usage.prompt_tokens,
                 "output_tokens": response.usage.completion_tokens,
                 "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
+                "cache_read_input_tokens": cached,
             },
             "model": model,
             "stop_reason": stop_reason,
@@ -591,7 +609,9 @@ class OpenAIProvider(LLMProvider):
         return True
 
     def supports_prompt_caching(self) -> bool:
-        return False
+        # gpt-4o and later models support automatic prompt caching (no cache_control
+        # needed; OpenAI caches 1024+ token prefixes automatically)
+        return True
 
     def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
         """Format image for OpenAI's message format"""

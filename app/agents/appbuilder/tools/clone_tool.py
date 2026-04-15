@@ -365,10 +365,36 @@ async def _execute_clone_website(
     _img_cache: dict[str, str] = {}
     _rewrite_count = 0
 
+    async def _upload_svg_data_uri(data_uri: str) -> str | None:
+        """Upload an inline SVG data URI to the files service and return the URL."""
+        if not data_uri.startswith("data:image/svg"):
+            return None
+        try:
+            import base64 as _b64
+            # data:image/svg+xml;base64,XXXX
+            header, payload = data_uri.split(",", 1)
+            if "base64" in header:
+                svg_bytes = _b64.b64decode(payload)
+            else:
+                from urllib.parse import unquote
+                svg_bytes = unquote(payload).encode("utf-8")
+            if len(svg_bytes) < 10:
+                return None
+            uploaded = await _upload_to_files(
+                svg_bytes, "image/svg+xml", app_code, client_code,
+                _api, _headers, _img_cache, page_name=page_name,
+            )
+            return uploaded
+        except Exception as e:
+            logger.debug("SVG data URI upload failed: %s", e)
+            return None
+
     async def _download_and_reupload(src_url: str) -> str | None:
         """Download an image from an external URL and upload to files service."""
-        if not src_url or src_url.startswith("data:") or src_url.startswith("api/files") or src_url.startswith("/api/files"):
+        if not src_url or src_url.startswith("api/files") or src_url.startswith("/api/files"):
             return None
+        if src_url.startswith("data:"):
+            return await _upload_svg_data_uri(src_url)
         import httpx as _httpx
         try:
             async with _httpx.AsyncClient(timeout=15, follow_redirects=True) as client:

@@ -100,6 +100,41 @@ async def build_section(
                 if "backgroundPosition" not in all_res:
                     all_res["backgroundPosition"] = {"value": "center"}
 
+            # Ensure section height matches the source bounding rect.
+            # The extracted CSS height may be "auto" (filtered as default) or
+            # smaller than the visual rect (JS-driven dynamic content). Using
+            # minHeight from the bounding rect guarantees vertical space.
+            if spec.height > 50:
+                existing_h = all_res.get("height", {})
+                existing_hv = existing_h.get("value", "") if isinstance(existing_h, dict) else ""
+                existing_minh = all_res.get("minHeight", {})
+                existing_minhv = existing_minh.get("value", "") if isinstance(existing_minh, dict) else ""
+
+                # If no explicit height or the CSS height is significantly
+                # smaller than the bounding rect, set minHeight
+                css_h_px = 0
+                if existing_hv and "px" in existing_hv:
+                    try:
+                        css_h_px = float(existing_hv.replace("px", ""))
+                    except ValueError:
+                        pass
+                css_minh_px = 0
+                if existing_minhv and "px" in existing_minhv:
+                    try:
+                        css_minh_px = float(existing_minhv.replace("px", ""))
+                    except ValueError:
+                        pass
+
+                rect_h = spec.height
+                # If CSS height is significantly shorter than visual rect,
+                # override the CSS height with the bounding rect height.
+                # CSS height: Npx caps the element at N pixels even if content
+                # is taller, so we need to replace it (not just add minHeight).
+                if css_h_px > 0 and css_h_px < rect_h * 0.8:
+                    all_res["height"] = {"value": f"{rect_h}px"}
+                elif not existing_hv and css_minh_px < rect_h * 0.8:
+                    all_res["minHeight"] = {"value": f"{rect_h}px"}
+
     # Apply responsive diffs
     if spec.responsive_diffs:
         _apply_responsive_diffs(comp_def, spec)
@@ -181,8 +216,8 @@ def _convert_element(
 
     # Type-specific required props
     if comp_type == "Image":
-        if src and src.startswith("data:image/svg"):
-            return None  # inline-svg data URIs render as giant black blocks
+        # SVG data URIs are kept — the clone_tool will upload them to files
+        # service and rewrite the src to a proper URL.
         if src:
             properties["src"] = {"value": src}
         if alt:
@@ -229,6 +264,75 @@ def _convert_element(
     # Recurse into children for container types
     if comp_type == "Grid":
         properties["containerType"] = {"value": "_bare"}
+
+        # ── Carousel detection ──
+        # Pattern: overflow:hidden container → single flex-row child → 3+ same-sized items
+        # (some off-screen). Convert to Modlix Carousel component.
+        _overflow = styles.get("overflow", "") or styles.get("overflowX", "")
+        if _overflow == "hidden" and len(children_data) == 1:
+            inner = children_data[0]
+            inner_styles = inner.get("styles", {})
+            inner_is_row = inner_styles.get("_isRow") or (
+                inner_styles.get("display", "") in ("flex", "inline-flex")
+                and inner_styles.get("flexDirection", "row") in ("row", "row-reverse")
+            )
+            inner_kids = inner.get("children", [])
+            if inner_is_row and len(inner_kids) >= 3:
+                # Check if items are similarly sized (carousel slides)
+                rects = [k.get("rect", {}) for k in inner_kids if k.get("rect")]
+                if rects:
+                    heights = [r.get("h", 0) for r in rects]
+                    widths = [r.get("w", 0) for r in rects]
+                    avg_h = sum(heights) / len(heights) if heights else 0
+                    avg_w = sum(widths) / len(widths) if widths else 0
+                    # Similar sizes = all within 20% of average
+                    similar = (avg_h > 50 and avg_w > 50 and
+                               all(abs(h - avg_h) < avg_h * 0.2 for h in heights) and
+                               all(abs(w - avg_w) < avg_w * 0.2 for w in widths))
+                    # At least one item is off-screen (x > 1440)
+                    has_offscreen = any(r.get("x", 0) > 1400 for r in rects)
+
+                    if similar and has_offscreen:
+                        # Convert to Carousel component
+                        comp_type = "Carousel"
+                        properties = {
+                            "autoPlay": {"value": True},
+                            "slideSpeed": {"value": 3000},
+                            "animationType": {"value": "slide"},
+                            "animationDuration": {"value": 500},
+                            "showArrowButtons": {"value": True},
+                            "arrowButtons": {"value": "RightTop"},
+                            "showIndicators": {"value": False},
+                        }
+                        # Build children from the inner flex row's items
+                        display_idx = 0
+                        for slide_el in inner_kids:
+                            slide_key = _convert_element(slide_el, comp_def, depth=depth + 1)
+                            if slide_key:
+                                comp_def[slide_key]["displayOrder"] = display_idx
+                                children_map[slide_key] = True
+                                display_idx += 1
+
+                        # Build the Carousel component
+                        sp = _build_style_properties(styles)
+                        # Ensure carousel has correct dimensions
+                        if sp:
+                            first_sid = next(iter(sp))
+                            ar = sp[first_sid].get("resolutions", {}).get("ALL", {})
+                            ar.pop("overflow", None)  # Carousel handles its own overflow
+                            ar.pop("overflowX", None)
+
+                        comp_def[key] = {
+                            "key": key, "name": key, "type": "Carousel",
+                            "properties": properties,
+                            "styleProperties": sp,
+                            "children": children_map,
+                            "displayOrder": 0,
+                        }
+                        logger.info("Carousel detected: %d slides at %dx%dpx",
+                                    len(children_map), int(avg_w), int(avg_h))
+                        return key
+
         # Modlix Grid applies a `_SINGLECOLUMNLAYOUT` class by default whose CSS
         # forces flex-direction: column. Set ROWLAYOUT when source CSS is a flex row.
         _disp = styles.get("display", "")

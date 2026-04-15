@@ -62,6 +62,41 @@ async def take_multi_viewport_screenshots(url: str, timeout: int = 25000) -> dic
                     except Exception:
                         await page.goto(url, wait_until="domcontentloaded", timeout=20000)
                     await asyncio.sleep(2)
+                    # Dismiss cookie consent banners
+                    try:
+                        await page.evaluate("""() => {
+                            // Strategy 1: find buttons inside cookie/consent containers
+                            const containers = document.querySelectorAll(
+                                '[class*="cookie"], [class*="consent"], [class*="Cookie"], [class*="Consent"], ' +
+                                '[id*="cookie"], [id*="consent"]'
+                            );
+                            for (const c of containers) {
+                                const btns = c.querySelectorAll('button');
+                                for (const b of btns) {
+                                    const txt = (b.textContent || '').trim().toLowerCase();
+                                    if (txt.includes('accept') || txt.includes('reject') ||
+                                        txt.includes('close') || txt.includes('got it') ||
+                                        txt.includes('deny') || txt.includes('agree')) {
+                                        b.click();
+                                        return true;
+                                    }
+                                }
+                                // Try clicking any button in the container
+                                if (btns.length > 0) { btns[btns.length - 1].click(); return true; }
+                            }
+                            // Strategy 2: hide any fixed/absolute overlays with cookie text
+                            for (const el of document.querySelectorAll('div, aside')) {
+                                const cs = getComputedStyle(el);
+                                if (cs.position === 'fixed' && el.textContent.toLowerCase().includes('cookie')) {
+                                    el.style.display = 'none';
+                                    return true;
+                                }
+                            }
+                            return false;
+                        }""")
+                        await asyncio.sleep(0.5)
+                    except Exception:
+                        pass
                     screenshot_bytes = await page.screenshot(full_page=True)
                     screenshots[vp_name] = base64.b64encode(screenshot_bytes).decode("ascii")
                     await page.close()

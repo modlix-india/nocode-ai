@@ -35,10 +35,71 @@ from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream
 from app.core.session import BaseSession
 from app.core.context import BaseContext
-from app.core.compaction import ContextCompactor
+from app.core.compaction import ContextCompactor, prune_old_tool_results
 from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
+
+
+# Patterns the LLM uses to "promise an action" without actually calling a tool.
+# When the model replies with these and stop_reason=end_turn (no tool_use),
+# the user waits forever because the agent ends the turn. Detection lets us
+# nudge the model to execute.
+_ACTION_PROMISE_PATTERNS = (
+    "give me a moment",
+    "give me a sec",
+    "one moment",
+    "hold on",
+    "let me ",
+    "i'll ",
+    "i will ",
+    "i'm going to ",
+    "i am going to ",
+    "let's ",
+    "now let's ",
+    "next, i'll",
+    "next, i will",
+    "i shall ",
+    "please hold",
+    "please wait",
+    "stand by",
+    "just a moment",
+    "bear with me",
+)
+
+
+def _detect_action_promise(content_blocks: list[dict]) -> str:
+    """If the assistant's text promises action (but there's no tool_use),
+    return the matching phrase; else empty string.
+
+    Only flags messages that are text-only AND contain an action-promise
+    phrase. Uses lowercase substring match — simple and cheap.
+    """
+    if not content_blocks:
+        return ""
+
+    text_parts: list[str] = []
+    for b in content_blocks:
+        if not isinstance(b, dict):
+            continue
+        if b.get("type") == "tool_use":
+            # There IS a tool_use — not a promise-without-action situation.
+            return ""
+        if b.get("type") == "text":
+            t = b.get("text", "")
+            if isinstance(t, str):
+                text_parts.append(t)
+
+    if not text_parts:
+        return ""
+    combined = " ".join(text_parts).lower()
+    # Minimum length — tiny messages ("OK", "Done") should NOT be re-prompted.
+    if len(combined.strip()) < 20:
+        return ""
+    for p in _ACTION_PROMISE_PATTERNS:
+        if p in combined:
+            return p
+    return ""
 
 
 class BaseAgent:
@@ -248,6 +309,13 @@ class BaseAgent:
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
+            # Proactively prune large tool_result blocks from older turns so
+            # they don't keep re-transmitting on every subsequent LLM call.
+            # Safe to run every turn — only touches results older than the
+            # keep_recent window and only truncates results larger than the
+            # size threshold.
+            prune_old_tool_results(session)
+
             # Build per-request tool list (core + discovered deferred tools)
             request_tools = self._build_tools_for_request(session)
 
@@ -318,8 +386,31 @@ class BaseAgent:
             # Save assistant message to conversation history
             session.append_assistant_message(content_blocks, reasoning_content)
 
-            # If no tool calls, we're done
+            # If no tool calls, we're done — UNLESS the LLM made an action
+            # promise in text ("Let me...", "Give me a moment...") without
+            # actually calling a tool. In that case nudge it once to execute.
+            # Without this nudge, OpenAI gpt-4o frequently "narrates intent"
+            # and ends the turn, leaving the user waiting indefinitely.
             if stop_reason != "tool_use" or not tool_use_blocks:
+                promise_text = _detect_action_promise(content_blocks)
+                already_nudged = session.context.get("_nudged_this_turn", False)
+                if promise_text and not already_nudged:
+                    logger.info(
+                        "Turn %d ended with action-promise but no tool_use; "
+                        "nudging LLM to execute. Promise: %r",
+                        turn, promise_text[:80],
+                    )
+                    session.context["_nudged_this_turn"] = True
+                    # Inject a system-style follow-up as a user message that
+                    # asks the model to execute what it promised.
+                    session.append_user_message(
+                        "You said you would make changes but didn't call any "
+                        "tool. Please EXECUTE the tool call now to actually "
+                        "make the change. Do NOT reply with more narration — "
+                        "call the appropriate tool (e.g. read, update, etc.)."
+                    )
+                    continue
+                session.context.pop("_nudged_this_turn", None)
                 break
 
             # Execute each tool block, stream result, collect logs

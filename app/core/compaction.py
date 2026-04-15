@@ -11,6 +11,11 @@ Mirrors Claude Code's AutoCompact pattern:
 2. Summarize old messages (keep last N pairs verbatim)
 3. Replace with [COMPACTED SUMMARY] message
 4. Re-inject: plan state, definition cache, discovered tools, last tool results
+
+Also exposes a lightweight ``prune_old_tool_results`` function that
+PROACTIVELY truncates large tool_result blocks from older turns
+BEFORE the context hits the compaction threshold. This keeps per-call
+cost low even in short sessions where full compaction never triggers.
 """
 
 from __future__ import annotations
@@ -21,6 +26,127 @@ from typing import Any
 from app.core.session import BaseSession
 
 logger = logging.getLogger(__name__)
+
+
+# ── Proactive tool-result pruning ───────────────────────────────────
+
+# A tool_result is considered "large" if its text payload exceeds this.
+# 1500 chars ≈ 375 tokens. Below this, pruning saves little and may hurt
+# the agent's ability to reason about recent actions.
+_LARGE_RESULT_THRESHOLD = 1500
+
+# Keep the most recent N user+assistant round-trips' tool results verbatim.
+# Older tool results get truncated to a summary stub.
+_KEEP_RECENT_ROUNDTRIPS = 2
+
+
+def prune_old_tool_results(
+    session: BaseSession,
+    keep_recent_roundtrips: int = _KEEP_RECENT_ROUNDTRIPS,
+    large_threshold: int = _LARGE_RESULT_THRESHOLD,
+) -> int:
+    """Truncate large tool_result blocks from older turns.
+
+    Walks the session's message history and truncates tool_result
+    content in turns older than ``keep_recent_roundtrips``. This is a
+    mutating operation — the session's history is modified in place.
+
+    This runs every turn (before the LLM call) so large reads don't
+    linger in history forever. The most recent turns keep full detail
+    so the agent can still reason about its recent actions.
+
+    Args:
+        session: The active session.
+        keep_recent_roundtrips: How many recent user→assistant round-trips
+            to leave untouched. Each round-trip is a user message +
+            assistant reply (which may include multiple tool_use/result
+            pairs).
+        large_threshold: Only results with text longer than this are
+            truncated. Small tool results pass through unchanged.
+
+    Returns:
+        The total number of characters saved by truncation. Useful for
+        logging.
+    """
+    messages = session.messages
+    if len(messages) < 4:
+        return 0
+
+    # Find the cut-off index: everything BEFORE this index is "old" and
+    # eligible for pruning. Walk backward from the end, counting user
+    # round-trips (non-tool-result user messages). The cutoff is the START
+    # of the Kth-most-recent user message — everything before it belongs to
+    # even older round-trips and gets pruned.
+    roundtrips_seen = 0
+    cutoff_idx = 0
+    for i in range(len(messages) - 1, -1, -1):
+        msg = messages[i]
+        if msg.get("role") == "user" and not _is_tool_result_message(msg):
+            roundtrips_seen += 1
+            if roundtrips_seen == keep_recent_roundtrips:
+                cutoff_idx = i
+                break
+
+    if cutoff_idx == 0:
+        # Not enough history to prune anything
+        return 0
+
+    chars_saved = 0
+    pruned_count = 0
+    for i in range(cutoff_idx):
+        msg = messages[i]
+        content = msg.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "tool_result":
+                continue
+            result = block.get("content", "")
+            if isinstance(result, str) and len(result) > large_threshold:
+                tool_id = block.get("tool_use_id", "?")[:12]
+                original_len = len(result)
+                # Keep the first ~200 chars (usually has the summary/status)
+                truncated = (
+                    f"[tool result from earlier turn, truncated — "
+                    f"tool_use_id={tool_id}, original size {original_len} chars]\n"
+                    f"{result[:200]}...\n"
+                    f"[end truncated]"
+                )
+                block["content"] = truncated
+                chars_saved += original_len - len(truncated)
+                pruned_count += 1
+            elif isinstance(result, list):
+                # Multimodal tool result (rare) — truncate each text block
+                for sub in result:
+                    if (isinstance(sub, dict) and sub.get("type") == "text"
+                            and len(sub.get("text", "")) > large_threshold):
+                        original = sub["text"]
+                        sub["text"] = (
+                            f"[tool result text from earlier turn, truncated — "
+                            f"original size {len(original)} chars]\n"
+                            f"{original[:200]}..."
+                        )
+                        chars_saved += len(original) - len(sub["text"])
+                        pruned_count += 1
+
+    if pruned_count > 0:
+        logger.info(
+            "Pruned %d old tool_result(s), saved ~%d chars (~%d tokens) "
+            "from conversation history",
+            pruned_count, chars_saved, chars_saved // 4,
+        )
+    return chars_saved
+
+
+def _is_tool_result_message(msg: dict[str, Any]) -> bool:
+    """True if this user message contains tool_result blocks (not a real user msg)."""
+    content = msg.get("content")
+    if not isinstance(content, list):
+        return False
+    return any(
+        isinstance(b, dict) and b.get("type") == "tool_result"
+        for b in content
+    )
 
 # Compaction summary prompt — instructs the fast model what to preserve
 _COMPACTION_SYSTEM_PROMPT = """\

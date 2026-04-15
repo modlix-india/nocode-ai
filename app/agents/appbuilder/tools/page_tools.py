@@ -277,7 +277,7 @@ async def _execute_patch_components(
     if error:
         return ToolResult(success=False, error=error)
 
-    op_result = _apply_component_operations(page_data, operations)
+    op_result = _apply_component_operations(page_data, operations, context.get("catalog"))
 
     page_data["message"] = params.get("message", "Component update via patch_components")
     save_result = await save_page(

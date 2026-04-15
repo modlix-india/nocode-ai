@@ -122,6 +122,57 @@ async def _extract_images_from_dom(url: str) -> dict[str, list[dict]]:
             result["page_height"] = images.get("height", 900)
             result["page_width"] = images.get("width", 1440)
 
+            # Extract top-level section computed styles for precise CSS values
+            sections_css = await page.evaluate("""() => {
+                // Find major sections: direct children of body/main or semantic tags
+                const body = document.body;
+                const candidates = [];
+                // Try semantic sections first
+                for (const tag of ['header', 'nav', 'main', 'section', 'footer', 'article']) {
+                    for (const el of document.querySelectorAll(tag)) {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.height > 50 && rect.width > 200) {
+                            candidates.push(el);
+                        }
+                    }
+                }
+                // Also try direct children of body with significant height
+                for (const el of body.children) {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.height > 100 && rect.width > 200 && !candidates.includes(el)) {
+                        candidates.push(el);
+                    }
+                }
+                // Deduplicate overlapping regions, sort by y
+                candidates.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+
+                return candidates.slice(0, 30).map(el => {
+                    const rect = el.getBoundingClientRect();
+                    const cs = getComputedStyle(el);
+                    return {
+                        tag: el.tagName.toLowerCase(),
+                        y: Math.round(rect.y + window.scrollY),
+                        height: Math.round(rect.height),
+                        width: Math.round(rect.width),
+                        backgroundColor: cs.backgroundColor,
+                        color: cs.color,
+                        padding: cs.padding,
+                        display: cs.display,
+                        flexDirection: cs.flexDirection,
+                        justifyContent: cs.justifyContent,
+                        alignItems: cs.alignItems,
+                        gap: cs.gap,
+                        maxWidth: cs.maxWidth,
+                        fontFamily: cs.fontFamily?.split(',')[0]?.trim()?.replace(/['"]/g, '') || '',
+                        fontSize: cs.fontSize,
+                        textAlign: cs.textAlign,
+                        backgroundImage: cs.backgroundImage !== 'none' ? cs.backgroundImage.substring(0, 200) : '',
+                    };
+                });
+            }""")
+            result["sections_css"] = sections_css or []
+            logger.info("DOM sections CSS: %d sections extracted", len(result.get("sections_css", [])))
+
             await browser.close()
     except Exception as e:
         logger.error("DOM extraction failed: %s", e)
@@ -175,7 +226,9 @@ async def _execute_hybrid_clone(
 
     page_images = dom_data["page_images"]
     page_h = dom_data["page_height"]
-    logger.info("Step 1: Got screenshot + %d DOM images", len(page_images))
+    sections_css = dom_data.get("sections_css", [])
+    logger.info("Step 1: Got screenshot + %d DOM images + %d DOM section styles",
+                len(page_images), len(sections_css))
 
     # ── Step 2: Run the screenshot pipeline with DOM image URLs injected ──
     # Store screenshot in session context (screenshot_tool reads from there)
@@ -323,19 +376,85 @@ The width/height values show how large each image appears on the actual page:
 
             img_urls_text = "\n".join(
                 f"- {img['src']} (w={img['width']}px, h={img['height']}px, alt=\"{img.get('alt','')[:40]}\")"
-                for img in section_imgs[:15]  # up from 10 to capture more
+                for img in section_imgs[:20]
             ) or "No images found in this section."
-            logger.info("  Section %d: %d DOM images in y-range [%d-%d]",
-                        sl.index, len(section_imgs), sl.y_start, sl.y_end)
+
+            # Detect image clusters — multiple images at similar y-positions = grid/carousel
+            grid_hint = ""
+            if len(section_imgs) >= 2:
+                # Group by y-position (within 50px tolerance)
+                y_groups: dict[int, list] = {}
+                for img in section_imgs:
+                    bucket = round(img["y"] / 50) * 50
+                    y_groups.setdefault(bucket, []).append(img)
+                for bucket, grp in y_groups.items():
+                    if len(grp) >= 2:
+                        grid_hint += (
+                            f"\n** GRID DETECTED: {len(grp)} images at similar y-position "
+                            f"(~{bucket}px) — these are a PRODUCT GRID or CAROUSEL. "
+                            f"Create {len(grp)} card components side-by-side in a ROWLAYOUT Grid. "
+                            f"Each card should have its own Image + title Text. **"
+                        )
+            if grid_hint:
+                img_urls_text += "\n" + grid_hint
+
+            # Find DOM sections overlapping this slice → extract exact CSS
+            css_hint = ""
+            matching_css = [
+                s for s in sections_css
+                if s["y"] + s["height"] > sl.y_start and s["y"] < sl.y_end
+                and s["height"] > 50
+            ]
+            if matching_css:
+                css_lines = []
+                for mc in matching_css[:3]:  # top 3 matching DOM sections
+                    props = []
+                    if mc.get("backgroundColor") and mc["backgroundColor"] != "rgba(0, 0, 0, 0)":
+                        props.append(f"backgroundColor: {mc['backgroundColor']}")
+                    if mc.get("color"):
+                        props.append(f"color: {mc['color']}")
+                    if mc.get("padding") and mc["padding"] != "0px":
+                        props.append(f"padding: {mc['padding']}")
+                    if mc.get("display"):
+                        props.append(f"display: {mc['display']}")
+                    if mc.get("flexDirection") and mc["flexDirection"] != "row":
+                        props.append(f"flexDirection: {mc['flexDirection']}")
+                    if mc.get("gap") and mc["gap"] != "normal":
+                        props.append(f"gap: {mc['gap']}")
+                    if mc.get("alignItems") and mc["alignItems"] != "normal":
+                        props.append(f"alignItems: {mc['alignItems']}")
+                    if mc.get("justifyContent") and mc["justifyContent"] != "normal":
+                        props.append(f"justifyContent: {mc['justifyContent']}")
+                    if mc.get("maxWidth") and mc["maxWidth"] != "none":
+                        props.append(f"maxWidth: {mc['maxWidth']}")
+                    if props:
+                        css_lines.append(
+                            f"  <{mc['tag']}> ({mc['width']}x{mc['height']}px): "
+                            + ", ".join(props)
+                        )
+                if css_lines:
+                    css_hint = (
+                        "\n\n## EXACT CSS from DOM (use these values, don't guess!):\n"
+                        + "\n".join(css_lines)
+                    )
+
+            logger.info("  Section %d: %d DOM images in y-range [%d-%d]%s%s",
+                        sl.index, len(section_imgs), sl.y_start, sl.y_end,
+                        " (grid detected)" if grid_hint else "",
+                        f" ({len(matching_css)} DOM styles)" if matching_css else "")
 
             css_w = min(sl.width, 1440)
             css_h = round(sl.height * (1440 / sl.width)) if sl.width > 1440 else sl.height
+
+            extra_prompt = _HYBRID_EXTRA.format(image_urls=img_urls_text)
+            if css_hint:
+                extra_prompt += css_hint
 
             return await _phase2_build_slice(
                 sl.jpeg_b64, sl.index, len(slices),
                 css_w, css_h, sl.avg_bg_color, {
                     **page_info,
-                    "_extra_prompt": _HYBRID_EXTRA.format(image_urls=img_urls_text),
+                    "_extra_prompt": extra_prompt,
                 },
             )
 

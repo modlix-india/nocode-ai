@@ -268,13 +268,21 @@ This example has 5 components. A real section should have 8-20+ depending on vis
   * Heading text (h1-h6 level)
   * Paragraph/description text
   * Button or CTA (with exact label text)
-  * Image or photo area
+  * Image or photo area (EVERY image, not just 1 per section)
   * Logo or icon
   * Navigation link
   * Badge, tag, or label
   * Price or statistic number
   * Card or feature box (as a Grid with children)
   * Divider or separator line
+
+## CRITICAL — Product Grids & Carousels
+If you see multiple product cards/items side-by-side (e.g. 2-6 items in a row):
+- Create a PARENT Grid with layout=ROWLAYOUT, gap, and flexWrap: "wrap"
+- Create a CHILD Grid for EACH card/item (with its own Image, title Text, subtitle Text, button)
+- Each card Grid should have a fixed width (e.g. "calc(33.333% - 16px)" for 3 columns)
+- Include ALL cards you see, not just 1 or 2. Count them carefully.
+- A grid of 6 products = 6 child Grids each with ~3-4 children = ~30 total components
 
 ## Response Format
 Return ONLY valid JSON:

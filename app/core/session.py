@@ -115,6 +115,11 @@ class BaseSession:
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
         }
+        # Most recent LLM call's context footprint (input + cache_read).
+        # Tracked separately from total_usage because total_usage is cumulative
+        # across the whole session, while "context used" should reflect the
+        # model's current working context — approximated by the latest call.
+        self._last_context_tokens: int = 0
         self._turn_count: int = 0
         self._db_session_created: bool = False
 
@@ -203,6 +208,12 @@ class BaseSession:
         """Add token usage from one LLM call to running totals."""
         for key in self.total_usage:
             self.total_usage[key] += usage.get(key, 0)
+        # Track the latest call's context footprint so get_usage_summary
+        # can report a context_used that reflects current context size
+        # rather than the sum of every call's inputs.
+        self._last_context_tokens = (
+            usage.get("input_tokens", 0) + usage.get("cache_read_input_tokens", 0)
+        )
 
     def get_usage_summary(self) -> dict[str, Any]:
         """Return a compact usage summary for the client.
@@ -212,10 +223,12 @@ class BaseSession:
         """
         input_t = self.total_usage["input_tokens"]
         output_t = self.total_usage["output_tokens"]
-        cache_read = self.total_usage["cache_read_input_tokens"]
 
-        # Context used = input + cache_read (what the model "sees")
-        context_used = input_t + cache_read
+        # Context used = most recent LLM call's input + cache_read (what the
+        # model saw on its last turn). total_usage is cumulative across the
+        # whole session, so summing it here would grossly over-count the
+        # working context.
+        context_used = self._last_context_tokens
         from app.config import settings
         context_limit = settings.CONTEXT_LIMIT_DEFAULT
         context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
@@ -471,26 +484,47 @@ class BaseSession:
             if session:
                 self._turn_count = session.turn_count
                 self._db_session_created = True
-
-                # Restore context from DB, merging with any in-memory values
-                # (in-memory values from the current request take precedence)
-                if session.context_json:
-                    try:
-                        db_context = json.loads(session.context_json)
-                        self.context = {**db_context, **self.context}
-                    except (json.JSONDecodeError, TypeError):
-                        logger.warning(f"Invalid context_json for session {self.session_id}")
-
-                # Restore app_code from context or DB if not provided in current request
-                if self.auth and not self.auth.app_code:
-                    restored_app_code = self.context.get("app_code") or session.app_code
-                    if restored_app_code:
-                        self.auth.app_code = restored_app_code
-
+                self._restore_usage_from_db(session)
+                self._restore_context_from_db(session)
                 # Rebuild conversation messages from persisted turn history
                 await self._restore_conversation_history()
         except Exception as e:
             logger.warning(f"Failed to load session {self.session_id}: {e}")
+
+    def _restore_usage_from_db(self, session: Any) -> None:
+        """Restore cumulative token totals from DB so get_usage_summary
+        reports session-wide totals across turns, not just the current
+        turn's delta. ``_last_context_tokens`` is seeded so the UI shows a
+        sensible context_percent even before the first LLM call of the
+        resumed turn completes.
+        """
+        self.total_usage["input_tokens"] = session.total_input_tokens or 0
+        self.total_usage["output_tokens"] = session.total_output_tokens or 0
+        self.total_usage["cache_read_input_tokens"] = (
+            session.total_cache_read_tokens or 0
+        )
+        self.total_usage["cache_creation_input_tokens"] = (
+            session.total_cache_creation_tokens or 0
+        )
+        self._last_context_tokens = session.context_tokens_used or 0
+
+    def _restore_context_from_db(self, session: Any) -> None:
+        """Merge DB-persisted context and app_code back onto the session.
+
+        In-memory values from the current request take precedence over
+        DB values.
+        """
+        if session.context_json:
+            try:
+                db_context = json.loads(session.context_json)
+                self.context = {**db_context, **self.context}
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(f"Invalid context_json for session {self.session_id}")
+
+        if self.auth and not self.auth.app_code:
+            restored_app_code = self.context.get("app_code") or session.app_code
+            if restored_app_code:
+                self.auth.app_code = restored_app_code
 
     async def _restore_conversation_history(self) -> None:
         """Rebuild Anthropic-format messages from persisted turn summaries.

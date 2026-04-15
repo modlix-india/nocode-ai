@@ -23,6 +23,68 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _format_known_entities(known: dict) -> str:
+    """Format the session's 'known' memo as a compact prompt block.
+
+    The agent sees this as "What you already know" at each turn, letting it
+    skip re-discovery of pages/apps it has already read. The memo is a dict of:
+      - applications: {app_code → {ui_app_id, app_type, page_names}}
+      - pages: {"{app_code}/{page_name}" → {id, component_count, top_sections, event_function_names}}
+    """
+    if not known:
+        return ""
+
+    lines: list[str] = []
+    apps = known.get("applications") or {}
+    pages = known.get("pages") or {}
+
+    if not apps and not pages:
+        return ""
+
+    lines.append("What you already know about this session (do NOT re-fetch these):")
+
+    for app_code, info in apps.items():
+        parts = [f"- App '{app_code}'"]
+        if info.get("ui_app_id"):
+            parts.append(f"UI app ID: {info['ui_app_id']}")
+        if info.get("app_type"):
+            parts.append(f"type: {info['app_type']}")
+        page_names = info.get("page_names") or []
+        if page_names:
+            # Cap at 15 names to keep prompt compact
+            shown = ", ".join(page_names[:15])
+            more = "" if len(page_names) <= 15 else f" (+{len(page_names) - 15} more)"
+            parts.append(f"pages: {shown}{more}")
+        lines.append(" | ".join(parts))
+
+    for page_key, info in pages.items():
+        parts = [f"- Page '{page_key}'"]
+        if info.get("id"):
+            parts.append(f"id: {info['id']}")
+        if info.get("component_count") is not None:
+            parts.append(f"{info['component_count']} components")
+        if info.get("root"):
+            parts.append(f"root: {info['root']}")
+        top = info.get("top_sections") or []
+        if top:
+            shown = ", ".join(top[:8])
+            more = "" if len(top) <= 8 else f" (+{len(top) - 8} more)"
+            parts.append(f"top sections: [{shown}{more}]")
+        events = info.get("event_function_names") or []
+        if events:
+            shown = ", ".join(events[:5])
+            more = "" if len(events) <= 5 else f" (+{len(events) - 5} more)"
+            parts.append(f"events: [{shown}{more}]")
+        lines.append(" | ".join(parts))
+
+    lines.append("")
+    lines.append(
+        "If the user asks about one of these, use the remembered info directly "
+        "instead of calling list/read again. Re-read only if you need details not in the memo."
+    )
+    return "\n".join(lines)
+
+
 class AppBuilderAgent(BaseAgent):
     """Agent that builds no-code applications via tool-use."""
 
@@ -69,9 +131,26 @@ class AppBuilderAgent(BaseAgent):
 
         Includes: auth info, component catalog, API catalog, learned knowledge,
         and auto-scraped website data when the user provides a URL.
+
+        ORDER MATTERS for prompt caching (OpenAI caches by exact prefix, Anthropic
+        uses explicit cache_control). Put STABLE content first, VARIABLE last so
+        the cacheable prefix stays intact across turns:
+          1. Catalogs (identical across all sessions — large, very cacheable)
+          2. Session info (stable within a session — app_code, client)
+          3. Learning enhancement (stable within a session)
+          4. Auto-scraped URL data (changes per-turn when URLs appear — put last)
         """
         parts: list[str] = []
 
+        # 1. Catalogs — process-wide static content (identical across sessions).
+        # These are the largest parts and ideally should be in the cached prefix.
+        if self._catalog_context:
+            parts.append(self._catalog_context)
+
+        if self._api_catalog_context:
+            parts.append(self._api_catalog_context)
+
+        # 2. Session info — stable within a session (client_code, app_code).
         if session.auth:
             app_code = session.context.get("app_code") or session.auth.app_code
             # X-Forwarded-Host may be comma-separated (e.g. "apps.local.modlix.com,localhost:8080");
@@ -94,21 +173,25 @@ class AppBuilderAgent(BaseAgent):
                 f"- Preview URL pattern: {base_url}/<appCode>/{session.auth.client_code}/page/<pageName>\n"
             )
 
-        # Auto-scrape URLs in the current user message
-        scraped = await self._auto_scrape_urls(session, user_message)
-        if scraped:
-            parts.append(scraped)
+        # 3. Known entities — what the agent already discovered this session
+        # (page IDs, structures, app metadata). Surfaced here so the agent
+        # doesn't re-fetch things it already knows. Persisted to DB via
+        # session.context_json so it survives across turns.
+        known = session.context.get("known") or {}
+        known_text = _format_known_entities(known)
+        if known_text:
+            parts.append(known_text)
 
-        if self._catalog_context:
-            parts.append(self._catalog_context)
-
-        if self._api_catalog_context:
-            parts.append(self._api_catalog_context)
-
-        # Learning loop: inject relevant knowledge from past sessions
+        # 4. Learning enhancement — stable within a session.
         enhancement = await self._build_learning_enhancement(session)
         if enhancement:
             parts.append(enhancement)
+
+        # 4. Auto-scraped URL data — changes per-turn; goes LAST so cacheable
+        # prefix stays stable across turns without URLs.
+        scraped = await self._auto_scrape_urls(session, user_message)
+        if scraped:
+            parts.append(scraped)
 
         return "\n\n".join(parts)
 
