@@ -20,7 +20,7 @@ aiomysql==0.2.0
 
 # LLM SDKs
 anthropic>=0.40.0
-openai==1.58.1
+openai>=1.76.0
 
 # Eureka Client
 py-eureka-client==0.11.10

@@ -41,8 +41,8 @@ async def get_context_authentication(
         "appCode": app_code or "",
     }
     
-    logger.info(f"Calling security service: {security_url}")
-    logger.debug(f"Security request headers: X-Forwarded-Host={forwarded_host}, X-Forwarded-Port={forwarded_port}, appCode={app_code}")
+    # logger.info(f"Calling security service: {security_url}")
+    # logger.debug(f"Security request headers: X-Forwarded-Host={forwarded_host}, X-Forwarded-Port={forwarded_port}, appCode={app_code}")
     
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
@@ -59,7 +59,7 @@ async def get_context_authentication(
                 )
             
             auth_data = response.json()
-            logger.info(f"Auth response data: {auth_data}")
+            # logger.info(f"Auth response data: {auth_data}")
             logger.info(f"Auth successful: isAuthenticated={auth_data.get('isAuthenticated')}, appCode={auth_data.get('verifiedAppCode') or auth_data.get('urlAppCode')}")
             return ContextAuthentication(**auth_data)
             

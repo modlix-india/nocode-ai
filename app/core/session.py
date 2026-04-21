@@ -401,7 +401,8 @@ class BaseSession:
                 self.session_id, context_json, self.auth.user_id if self.auth else None
             )
         except Exception as e:
-            logger.warning(f"Failed to save session context: {e}")
+            logger.warning("Failed to save session context: %s (keys=%s)",
+                           e, list(self.context.keys()) if self.context else "none")
 
     # ── Internal helpers ────────────────────────────────────────
 

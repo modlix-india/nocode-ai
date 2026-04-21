@@ -55,7 +55,7 @@ class OutcomeAnalyzer:
                 tool_stats["success_count"] / max(tool_stats["total_count"], 1)
             )
 
-            user_sat = feedback_stats["avg_rating"]  # [-1, 1]
+            user_sat = float(feedback_stats["avg_rating"])  # [-1, 1]
             user_sat_norm = (user_sat + 1) / 2  # normalize to [0, 1]
 
             retry_penalty = min(
@@ -67,8 +67,10 @@ class OutcomeAnalyzer:
 
             # Efficiency: lower tokens per successful tool call is better
             # 10K tokens/success = 1.0, 100K = 0.0
+            # Cast to float — MySQL may return total_tokens as decimal.Decimal,
+            # which can't mix with float literals like 1.0 below.
             tokens_per_success = (
-                session_meta["total_tokens"] / max(tool_stats["success_count"], 1)
+                float(session_meta["total_tokens"]) / max(tool_stats["success_count"], 1)
             )
             efficiency_score = max(0.0, 1.0 - (tokens_per_success - 10000) / 90000)
             efficiency_score = min(efficiency_score, 1.0)

@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.anthropicAPIKey
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_HAIKU: str = "claude-haiku-4-5-20251001"      # Fast model for analysis
-    CLAUDE_SONNET: str = "claude-opus-4-6"               # Balanced model for generation
+    CLAUDE_SONNET: str = "claude-sonnet-4-6"             # Balanced model for generation
     
     # OpenAI Settings
     # Can be overridden by config server: ai.secrets.openaiAPIKey
