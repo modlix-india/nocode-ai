@@ -258,10 +258,23 @@ async def generic_read(
     if not result.success:
         return ToolResult(success=False, error=f"Failed to read {config.display_name}: {result.error}")
 
+    # Build a compact summary instead of dumping raw JSON
+    entity_data = result.data
+    summary_parts = [f"{config.display_name}:"]
+    if isinstance(entity_data, dict):
+        for key in ("name", "appCode", "clientCode", "version", "namespace"):
+            if key in entity_data:
+                summary_parts.append(f"  {key}: {entity_data[key]}")
+        if "definition" in entity_data and isinstance(entity_data["definition"], dict):
+            defn_keys = list(entity_data["definition"].keys())[:20]
+            summary_parts.append(f"  definition keys: {defn_keys}")
+        if "variables" in entity_data and isinstance(entity_data["variables"], dict):
+            summary_parts.append(f"  variable breakpoints: {list(entity_data['variables'].keys())}")
+
     return ToolResult(
         success=True,
-        data=result.data,
-        summary=f"{config.display_name}:\n{json.dumps(result.data, indent=2, default=str)[:2000]}",
+        data=entity_data,
+        summary="\n".join(summary_parts),
     )
 
 
@@ -280,10 +293,18 @@ async def _read_application(params: dict[str, Any], context: dict[str, Any]) -> 
 
         app_data = result.data
         code = app_data.get("appCode", "?") if isinstance(app_data, dict) else "?"
+        parts = [f"Application '{code}':"]
+        if isinstance(app_data, dict):
+            for key in ("name", "appCode", "clientCode", "version"):
+                if key in app_data:
+                    parts.append(f"  {key}: {app_data[key]}")
+            props = app_data.get("properties", {})
+            if isinstance(props, dict):
+                parts.append(f"  property keys: {list(props.keys())[:20]}")
         return ToolResult(
             success=True,
             data=app_data,
-            summary=f"Application '{code}':\n{json.dumps(app_data, indent=2, default=str)[:2000]}",
+            summary="\n".join(parts),
         )
 
     if app_code:

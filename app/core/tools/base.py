@@ -68,7 +68,7 @@ class ToolResult:
 
     # Hard cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.
-    MAX_RESULT_CHARS: int = 6000
+    MAX_RESULT_CHARS: int = 4000
 
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM."""

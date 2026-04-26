@@ -126,6 +126,12 @@ class SaasClient:
         client = self._get_client()
         url = path if path.startswith("/") else f"/{path}"
 
+        # Standalone mode: extract path prefix from headers and prepend to URL.
+        # The X-Path-Prefix header is set by the webpack proxy and carried in
+        # the tool context headers — it is stripped before forwarding to the backend.
+        if headers and "X-Path-Prefix" in headers:
+            url = headers.pop("X-Path-Prefix") + url
+
         logger.info(f"→ {method} {self.gateway_url}{url}")
 
         try:
