@@ -5,7 +5,7 @@ WEBSITE CONTENT:
 
 Extract the following fields:
 - product_name: The business/brand name
-- business_type: Short business category, 1-2 words (e.g. "Real Estate", "SaaS", "Restaurant", "E-commerce", "Healthcare")
+- business_type: Short business category, 1-2 words (e.g. "Real Estate", "SaaS", "Restaurant", "E-commerce", "Healthcare"). For any property/villa/apartment/residential project, use "Real Estate" exactly.
 - location.location: The exact business address or primary city/state. Return "" if not found.
 - location.suggested_locations: A list of cities/regions good for ad targeting based on where the business operates. Return empty list if not found.
 

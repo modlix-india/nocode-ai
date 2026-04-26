@@ -161,6 +161,9 @@ class _PassthroughEventStream(AgentEventStream):
     async def emit_suggestions(self, options, mode="single") -> None:
         return
 
+    async def emit_data(self, data_type: str, payload: dict) -> None:
+        await self._parent.emit_data(data_type, payload)
+
     async def emit_agent_started(self, agent_id: str, label: str, parent_id: str = "root",
                                  parent_tool_use_id: str = "") -> None:
         await self._parent.emit_agent_started(agent_id, label, parent_id, parent_tool_use_id)

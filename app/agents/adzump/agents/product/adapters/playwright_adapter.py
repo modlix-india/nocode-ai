@@ -20,8 +20,9 @@ from app.agents.adzump.agents.product.models import ScrapeResult
 logger = logging.getLogger(__name__)
 
 MAX_CONCURRENT_BROWSERS = 3
-NAVIGATION_TIMEOUT_MS = 60_000
-PER_PAGE_BUDGET_MS = 12_000  # soft cap on extra time spent per page
+NAVIGATION_TIMEOUT_MS = 30_000  # primary goto() ceiling — domcontentloaded usually fires in 1-3s
+NETWORKIDLE_SETTLE_MS = 5_000   # best-effort post-load wait; timeout is non-fatal
+PER_PAGE_BUDGET_MS = 12_000     # soft cap on extra time spent per page
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -77,15 +78,24 @@ async def _fetch_page(url: str) -> tuple[str, str | None]:
                     "User-Agent": USER_AGENT,
                     "Accept-Language": "en-US,en;q=0.9",
                 })
+                # Primary wait: DOM parsed. Real-world ad-pixels / chat widgets /
+                # analytics beacons keep the network "busy" indefinitely on many
+                # sites — ``networkidle`` would wedge us at the 60s timeout for
+                # no content gain. Wait for HTML, then politely give the network
+                # up to 5s more (errors swallowed).
                 response = await page.goto(
                     url,
-                    wait_until="networkidle",
+                    wait_until="domcontentloaded",
                     timeout=NAVIGATION_TIMEOUT_MS,
                 )
                 if response and response.status in (403, 429, 503):
                     raise RuntimeError(
                         f"HTTP {response.status}: Access denied by server."
                     )
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=NETWORKIDLE_SETTLE_MS)
+                except Exception:
+                    pass  # networkidle never fires on tracker-heavy sites — fine.
 
                 # Cloudflare / interstitial challenge — wait briefly and retry content.
                 await _handle_cloudflare_challenge(page, url)

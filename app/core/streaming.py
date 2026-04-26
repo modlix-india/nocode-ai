@@ -55,6 +55,7 @@ class AgentEventType(str, Enum):
     FEEDBACK_REQUEST = "feedback_request"  # Ask client to show feedback UI
     SUGGESTIONS = "suggestions"  # Clickable option buttons for the user
     CRAFT = "craft"  # Rich structured content for the side panel
+    DATA = "data"  # Generic agent-defined inline payload (widget type + fields)
     AGENT_STARTED = "agent_started"  # Sub-agent started
     AGENT_FINISHED = "agent_finished"  # Sub-agent finished
     AGENT_USAGE = "agent_usage"  # Token usage update for an agent
@@ -248,6 +249,17 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.SUGGESTIONS,
             data={"options": options, "mode": mode},
+        ))
+
+    async def emit_data(self, data_type: str, payload: dict[str, Any]) -> None:
+        """Emit an agent-defined inline payload.
+
+        The UI dispatches on `type` and renders a matching widget. Keeps the
+        core domain-agnostic — each agent picks its own widget types.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.DATA,
+            data={"type": data_type, **payload},
         ))
 
     async def emit_craft(

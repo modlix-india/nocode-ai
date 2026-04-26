@@ -1,12 +1,12 @@
-"""Suggestion tools — present clickable options to the user.
+"""Suggestion tools — present a question + clickable options atomically.
 
-The LLM calls present_options when asking a question with fixed choices.
-The options are stored in session context and emitted as an SSE event
-after the agentic loop completes. The UI renders them as clickable buttons.
+`present_options` owns the *full* assistant turn for a discrete-choice ask:
+it streams the question text into the assistant message AND emits the chips
+event. The LLM can no longer write a question as free text and forget to
+call the tool — because the question text is a tool argument, not free text.
 
-`infer_suggestions` is the fallback for when the LLM forgets to call the
-tool — a cheap LLM call inspects the assistant text and returns options
-if the message ends with a discrete-choice question.
+`infer_suggestions` remains as a safety net for the rare case where the LLM
+ignores the contract and writes a question without calling the tool.
 """
 
 from __future__ import annotations
@@ -22,23 +22,46 @@ logger = logging.getLogger(__name__)
 
 
 async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Store suggested options for the UI to render as buttons."""
+    """Stream a question to the user + emit clickable option chips.
+
+    The tool owns the user-facing question text — pass it as ``question``.
+    Free-text echoing of the question by the LLM is unnecessary (and in the
+    summary we ask it not to). Each option is either a string (label==value)
+    or a ``{label, value}`` dict (label is what the user sees; value is what
+    the backend receives — needed for account picks where the label is a
+    name but value must be a customer_id / business id).
+    """
+    question = (params.get("question") or "").strip()
+    if not question:
+        return ToolResult(
+            success=False,
+            error=(
+                "`question` is required. Pass the exact question text the user "
+                "should see — the tool emits it; do not also write it as free text."
+            ),
+        )
+
     options = params.get("options", [])
     if not options:
         return ToolResult(success=False, error="options array is required.")
+
+    normalized: list[dict[str, str]] = []
+    for opt in options:
+        if isinstance(opt, str):
+            normalized.append({"label": opt, "value": opt})
+        elif isinstance(opt, dict) and opt.get("label"):
+            label = str(opt["label"])
+            value = str(opt.get("value") or label)
+            normalized.append({"label": label, "value": value})
+        else:
+            return ToolResult(success=False, error=f"Invalid option: {opt!r}")
 
     mode = params.get("mode", "single")
     if mode not in ("single", "multi"):
         return ToolResult(success=False, error="mode must be 'single' or 'multi'.")
 
-    suggestions = {
-        "options": [{"label": opt, "value": opt} for opt in options],
-        "mode": mode,
-    }
+    suggestions = {"options": normalized, "mode": mode}
 
-    # Write directly to the session object to guarantee the read-back works
-    # in get_pending_suggestions. The shared session_ctx dict can get
-    # detached after sub-agents replace sub_session.context.
     parent_session = context.get("_session")
     if parent_session:
         parent_session.context["_pending_suggestions"] = suggestions
@@ -48,25 +71,72 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             return ToolResult(success=False, error="No session context available.")
         session_ctx["_pending_suggestions"] = suggestions
 
-    logger.info("present_options: mode=%s options=%s", mode, options)
-    return ToolResult(success=True, summary=f"{len(options)} options")
+    # Stream the question into the assistant message so it visually precedes
+    # the chips. Wrapped in newlines so it separates from any conversational
+    # lead-in the LLM streamed before this tool call.
+    stream = context.get("event_stream")
+    if stream is not None:
+        await stream.emit_text(f"\n\n{question}\n")
+
+    logger.info("present_options: mode=%s options=%s question=%r",
+                mode, options, question[:80])
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Asked the user: \"{question[:120]}\" with {len(options)} options. "
+            "Question is already on screen — do not write it again. "
+            "Stop generating text now; wait for the user's reply."
+        ),
+    )
 
 
 present_options = ToolDefinition(
     name="present_options",
     description=(
-        "Show clickable option buttons to the user. Use when asking a question "
-        "with fixed choices (e.g., platform selection, account selection). "
-        "The user can click an option instead of typing."
+        "Ask the user a discrete-choice question with clickable option chips. "
+        "This tool emits BOTH the question text and the chips — do not write "
+        "the question as free text yourself. You may write a brief one-line "
+        "conversational lead-in (e.g. \"Got it.\") before calling the tool. "
+        "Use whenever the answer is a small set (2-6) of meaningful choices: "
+        "platform, duration, budget presets, accounts, Yes/No confirms. Each "
+        "option is a plain string (label==value) or a {label, value} object "
+        "(label is what the user sees; value is what you receive back — needed "
+        "for account picks where the label is the human name but value must "
+        "be the customer_id / business id)."
     ),
     display_name="Quick Replies",
     parameters=[
         ToolParameter(
+            name="question",
+            type="string",
+            description=(
+                "The exact question text shown to the user above the chips. "
+                "End with '?'. Be concise (one sentence). Don't repeat options "
+                "in the text — the chips show them."
+            ),
+            required=True,
+        ),
+        ToolParameter(
             name="options",
             type="array",
-            description="List of option labels to show as buttons",
+            description=(
+                "List of options. Item is either a string (label==value) or a "
+                "{label, value} object."
+            ),
             required=True,
-            items={"type": "string"},
+            items={
+                "anyOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string"},
+                            "value": {"type": "string"},
+                        },
+                        "required": ["label", "value"],
+                    },
+                ],
+            },
         ),
         ToolParameter(
             name="mode",
@@ -93,14 +163,14 @@ Return STRICT JSON in one of these shapes:
 When to return needs_options=true:
 - The message ends with a question that has a small set (2-6) of discrete, meaningful answers.
 - Yes/No, A/B branch decisions → Yes.
-- Numeric input IS fine when you can propose sensible presets from the business context (e.g. lead targets, budgets, durations).
+- Numeric input IS fine when you can propose sensible presets from the business context (e.g. budgets, durations).
 - Free-text questions with no sensible discrete answers (URL, free description) → needs_options=false.
 
 How to use the business context:
-- If the context shows a luxury real-estate product at ₹4+ Cr, lead targets should be small (5, 10, 25, 50) and budgets should be high (₹5,000/day, ₹10,000/day, ₹25,000/day).
-- If the context shows a mid-market SaaS at $49/mo, lead targets should be larger (100, 250, 500, 1000) and budgets much smaller.
-- If the context shows a D2C consumer product at ₹500-1500, tune both down accordingly.
-- Match labels to the currency/format already used in the conversation (₹/day vs $/day, "leads" vs "signups", etc.).
+- If the context shows a luxury real-estate product at ₹4+ Cr, budgets should be high (₹5,000/day, ₹10,000/day, ₹25,000/day).
+- If the context shows a mid-market SaaS at $49/mo, budgets should be much smaller.
+- If the context shows a D2C consumer product at ₹500-1500, tune down accordingly.
+- Match labels to the currency/format already used in the conversation (₹/day vs $/day).
 - Always include a sensible "Custom" option for numeric presets so the user can override.
 - If the message lists options inline (e.g. "Google Ads or Meta?"), honour those exact labels — don't invent new ones.
 
@@ -115,7 +185,7 @@ def _build_context_snippet(ctx: dict[str, Any] | None) -> str:
     if not ctx:
         return ""
     business = ctx.get("product_data") or {}
-    campaign = ctx.get("campaign_data") or {}
+    campaign = ctx.get("campaign_spec") or {}
     lines: list[str] = []
     if business:
         bits = []

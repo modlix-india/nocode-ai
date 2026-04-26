@@ -162,6 +162,50 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             summary=f"Already analyzed: {name}. No need to re-analyze.",
         )
 
+    # Cross-session storage cache: same URL was analyzed in a previous session
+    # (by adzump or ds/chatv2). Hydrate session.context and skip the scrape.
+    try:
+        from app.agents.adzump.services.business_storage import hydrate_from_storage
+        from app.agents.adzump.tools.competitor import _emit_final_craft
+        target_ctx = parent_session.context if parent_session else session_ctx
+        hit = await hydrate_from_storage(url, target_ctx, context)
+        if hit:
+            business = target_ctx.get("product_data") or {}
+            name = business.get("product_name", "product")
+            await emit_progress(context, f"Reused stored analysis for {name}")
+
+            # Re-render the craft panel with the hydrated data so the user
+            # sees the same screenshot + summary + competitors UI they'd
+            # get on a fresh scrape.
+            craft_id = target_ctx.get("craft_id", "")
+            if stream and craft_id:
+                competitive = target_ctx.get("competitor_analysis") or {"competitors": []}
+                try:
+                    await _emit_final_craft(
+                        stream, craft_id, url, business, competitive,
+                        screenshot_url=(
+                            business.get("primary_screenshot_url")
+                            or business.get("screenshot_url")
+                        ),
+                        baked_summary=business.get("summary", ""),
+                    )
+                except Exception as e:
+                    logger.warning("storage_hydrate_craft_failed: %s: %s",
+                                   type(e).__name__, str(e)[:200])
+
+            return ToolResult(
+                success=True,
+                data={"business": business, "from_storage": True},
+                summary=(
+                    f"Reused prior analysis for {name} from storage. "
+                    f"Type: {business.get('business_type', '')}. "
+                    f"Location: {business.get('location', '')}. "
+                    "Tell the user we're picking up where things left off."
+                ),
+            )
+    except Exception as e:
+        logger.warning("storage_hydrate_skipped: %s: %s", type(e).__name__, str(e)[:200])
+
     if auth is None:
         logger.warning("analyze_product: no auth in context, falling back to scrape_website")
         return await _scrape_website(params, context)

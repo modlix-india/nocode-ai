@@ -292,6 +292,23 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 data={"competitive": existing},
                 summary=f"Already analyzed: {comp_count} competitors found.",
             )
+        # Cross-session: try the storage record before spawning the sub-agent.
+        try:
+            from app.agents.adzump.services.business_storage import hydrate_from_storage
+            if url:
+                hit = await hydrate_from_storage(url, session_ctx, context)
+                if hit:
+                    existing = session_ctx.get("competitor_analysis")
+                    if existing and existing.get("competitors"):
+                        comp_count = len(existing["competitors"])
+                        return ToolResult(
+                            success=True,
+                            data={"competitive": existing, "from_storage": True},
+                            summary=f"Reused {comp_count} competitors from storage.",
+                        )
+        except Exception as e:
+            logger.warning("competitor_storage_hydrate_skipped: %s: %s",
+                           type(e).__name__, str(e)[:200])
     else:
         # Clear stale results so the pipeline runs fresh.
         session_ctx.pop("competitor_analysis", None)
@@ -414,6 +431,7 @@ async def _lookup_single_competitor(
 
     competitive = session_ctx.setdefault("competitor_analysis", {"competitors": []})
     competitors_list: list[dict] = competitive.setdefault("competitors", [])
+    skipped: list[dict] = []
 
     # ── Removals ──
     removed_names: list[str] = []
@@ -445,13 +463,20 @@ async def _lookup_single_competitor(
                 f"Look up these businesses as potential direct competitors: {query}\n\n"
                 f"Our product: {product_name} — {product_summary[:500]}\n\n"
                 "Check existing research data in context first; for any not found, "
-                "use web_search. Do NOT call scrape_url.\n"
-                "Only include businesses that are true head-to-head competitors — "
-                "same offering type, same geography, similar price tier. Skip anything "
-                "that's only adjacent or alternative.\n"
-                "Return a ```json block with 'competitive.competitors' array — one entry "
-                "per direct competitor found: name, url, business_type, location, pricing, "
-                "key_usps, weakness, why_competitor. Empty 'business' section."
+                "use web_search. Do NOT call scrape_url.\n\n"
+                "For EACH queried business, decide:\n"
+                " - ADD if it's a true head-to-head competitor (same offering type, "
+                "same geography, similar price tier).\n"
+                " - SKIP if it's only adjacent/alternative or you couldn't find info.\n\n"
+                "Return a ```json block with:\n"
+                "- 'competitive.competitors' array: one entry per ADDED business with "
+                "name, url, business_type, location, pricing, key_usps, weakness, "
+                "why_competitor.\n"
+                "- 'competitive.skipped' array: one entry per SKIPPED business with "
+                "{name, reason} — reason is ≤15 words (e.g. 'different area', "
+                "'different price tier', 'not found on web').\n"
+                "- Empty 'business' section.\n"
+                "Every queried name must appear in exactly one of the two arrays."
             ),
         )
 
@@ -472,10 +497,12 @@ async def _lookup_single_competitor(
         elif output.business:
             new_competitors = [output.business]
 
+        skipped = (output.competitive or {}).get("skipped") or []
+
         competitors_list.extend(new_competitors)
 
     # ── Nothing happened ──
-    if not removed_names and not new_competitors:
+    if not removed_names and not new_competitors and not skipped:
         return ToolResult(
             success=False,
             error=f"Could not find information about '{query}'. Ask the user for a URL.",
@@ -501,9 +528,16 @@ async def _lookup_single_competitor(
     if new_competitors:
         names = [c.get("product_name") or c.get("name") or "?" for c in new_competitors]
         parts.append(f"Added: {', '.join(names)}")
+    if skipped:
+        skip_lines = [
+            f"{s.get('name', '?')} ({s.get('reason', 'not a direct competitor')})"
+            for s in skipped if isinstance(s, dict)
+        ]
+        if skip_lines:
+            parts.append(f"Skipped: {'; '.join(skip_lines)}")
     return ToolResult(
         success=True,
-        data={"competitors": competitive["competitors"]},
+        data={"competitors": competitive["competitors"], "skipped": skipped},
         summary=". ".join(parts),
     )
 

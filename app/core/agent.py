@@ -32,12 +32,69 @@ import uuid
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
-from app.core.streaming import AgentEventStream
+from app.core.streaming import AgentEventStream, current_agent_id
 from app.core.session import BaseSession
 from app.core.context import BaseContext
 from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
+
+
+def _compact_host(url: str) -> str:
+    """Return ``host/path-tail`` compact form; empty if unparseable."""
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        host = (p.netloc or "").removeprefix("www.")
+        return host or url[:55]
+    except Exception:
+        return url[:55]
+
+
+def _format_web_search_hits(hits: list[dict[str, Any]], error: str) -> str:
+    """Render a pretty list of hits for a builtin web_search row.
+
+    All hits are shown (the UI scrolls). One line per hit:
+    ``N. Title — host.com``. On error, returns ``"search failed: <code>"``.
+    """
+    if error:
+        return f"search failed: {error}"
+    if not hits:
+        return "no results"
+
+    n = len(hits)
+    lines = [f"Found {n} hit{'s' if n != 1 else ''}:"]
+    for i, h in enumerate(hits, 1):
+        title = (h.get("title") or "").strip()
+        host = _compact_host(h.get("url") or "")
+        if title and host:
+            lines.append(f"  {i}. {title} — {host}")
+        elif title:
+            lines.append(f"  {i}. {title}")
+        elif host:
+            lines.append(f"  {i}. {host}")
+    return "\n".join(lines)
+
+
+def _format_web_fetch_result(hits: list[dict[str, Any]], error: str) -> str:
+    """Render a one-line outcome for a builtin web_fetch row.
+
+    ``hits`` carries a single-entry list ``[{"title", "url"}]`` on success
+    (shape-compatible with web_search so the chunk-level plumbing stays
+    uniform). On error, returns ``"fetch failed: <code>"``.
+    """
+    if error:
+        return f"fetch failed: {error}"
+    if not hits:
+        return "no content"
+    h = hits[0]
+    title = (h.get("title") or "").strip()
+    host = _compact_host(h.get("url") or "")
+    if title and host:
+        return f"fetched: {title[:80]} ({host})"
+    return f"fetched: {title or host or 'page'}"
 
 
 class BaseAgent:
@@ -52,6 +109,10 @@ class BaseAgent:
         max_tokens: Maximum tokens per LLM response.
     """
 
+    # Friendly label shown in the agent card header. Subclasses override.
+    # Defaults to a Title-Cased version of `name` if not set.
+    display_name: str | None = None
+
     def __init__(
         self,
         name: str,
@@ -61,6 +122,8 @@ class BaseAgent:
         max_turns: int = 50,
         max_tokens: int = 16384,
         provider: str | None = None,
+        sequential_tools: bool = False,
+        context_management: dict | None = None,
     ) -> None:
         self.name = name
         self.tools = {t.name: t for t in tools}
@@ -69,6 +132,10 @@ class BaseAgent:
         self.max_turns = max_turns
         self.max_tokens = max_tokens
         self._provider_name = provider
+        self.sequential_tools = sequential_tools
+        self.context_management = context_management
+        if not self.display_name:
+            self.display_name = name.replace("_", " ").title()
 
         # Pre-compute Anthropic tool schemas
         self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
@@ -83,6 +150,7 @@ class BaseAgent:
         event_stream: AgentEventStream,
         image_blocks: list[dict[str, Any]] | None = None,
         model_override: str | None = None,
+        parent_tool_use_id: str = "",
     ) -> None:
         """Execute the agentic loop for a single user turn.
 
@@ -102,25 +170,61 @@ class BaseAgent:
             image_blocks: Optional image content blocks (Anthropic format) to include with the message.
             model_override: Optional model ID in "provider:model" format to override the default.
         """
+        # Detect whether this is a nested sub-agent run. If so, emit
+        # agent_started / agent_finished lifecycle events so the UI can
+        # render an AgentCard wrapper around everything we produce.
+        # The top-level chat agent runs with parent_id == "root" and is
+        # NOT wrapped in a card (it IS the chat).
+        parent_id = current_agent_id.get()
+        is_nested = parent_id != "root"
+        ctx_token = current_agent_id.set(self.name)
+
+        run_started_at = time.monotonic()
+        usage_before = getattr(session, "total_usage", {}) or {}
+        tokens_in_before = usage_before.get("input_tokens", 0)
+        tokens_out_before = usage_before.get("output_tokens", 0)
+        finished_status = "success"
+
+        if is_nested:
+            try:
+                await event_stream.emit_agent_started(
+                    agent_id=self.name,
+                    label=self.display_name or self.name,
+                    parent_id=parent_id,
+                    parent_tool_use_id=parent_tool_use_id,
+                )
+            except Exception:
+                logger.exception("emit_agent_started failed for %s", self.name)
+
         try:
-            logger.info("Agent '%s' run: session=%s, provider=%s, model_override=%s, images=%s",
-                       self.name, session.session_id, self._provider_name or "(default)",
-                       model_override or "(none)",
-                       len(image_blocks) if image_blocks else 0)
-            await self._run_loop(user_message, session, event_stream, image_blocks, model_override)
-        except Exception as e:
-            logger.exception("Agent '%s' error in session %s", self.name, session.session_id)
-            error_text = f"Agent error: {type(e).__name__}: {e}"
-            await event_stream.emit_error(error_text)
-            # Persist the error as a turn so it shows in session history
-            await session.persist_turn(
-                user_message, error_text, None
-            )
-            await session.complete()
-            await event_stream.emit_done(
-                session_id=session.session_id,
-                usage=session.total_usage,
-            )
+            try:
+                logger.info("Agent '%s' run: session=%s, provider=%s, model_override=%s, images=%s",
+                           self.name, session.session_id, self._provider_name or "(default)",
+                           model_override or "(none)",
+                           len(image_blocks) if image_blocks else 0)
+                await self._run_loop(user_message, session, event_stream, image_blocks, model_override)
+            except Exception as e:
+                if is_nested:
+                    # Let the parent's tool wrapper catch & convert to ToolResult.
+                    finished_status = "error"
+                    raise
+                # Top-level: emit error + done so the SSE stream closes cleanly.
+                logger.exception("Agent '%s' error in session %s", self.name, session.session_id)
+                error_text = f"Agent error: {type(e).__name__}: {e}"
+                await event_stream.emit_error(error_text)
+                await session.persist_turn(user_message, error_text, None)
+                await session.complete()
+                await event_stream.emit_done(
+                    session_id=session.session_id,
+                    usage=session.total_usage,
+                )
+        finally:
+            # agent_finished is NOT emitted here. The spawning tool is
+            # responsible for emitting it after all post-processing completes.
+            # This ensures the agent row stays "running" through the full
+            # user-visible lifecycle (craft emission, summary streaming, etc.),
+            # not just the LLM tool-use loop.
+            current_agent_id.reset(ctx_token)
 
     async def _run_loop(
         self,
@@ -131,6 +235,10 @@ class BaseAgent:
         model_override: str | None = None,
     ) -> None:
         """Internal agentic loop implementation."""
+        # Clear one-shot relay keys from prior requests so stale values
+        # (e.g. suggestion buttons from a previous turn) don't leak through.
+        session.context.pop("_pending_suggestions", None)
+
         # Resolve provider and model: use override if specified, else defaults
         override_model: str | None = None
         if model_override:
@@ -145,21 +253,21 @@ class BaseAgent:
         # Mark session as processing so UI can detect in-progress state on refresh
         await session.set_processing()
 
+        # Append user message + start turn FIRST so build_dynamic_context can
+        # read the current turn's message via session.messages (and turn count
+        # via session._turn_count). Otherwise the dynamic context shows the
+        # PREVIOUS user message and uses an off-by-one turn for provenance.
+        session.append_user_message(user_message, image_blocks)
+        logger.info("Message history: %d messages", len(session.get_messages()))
+        session.start_turn()
+        await session.persist_turn_incremental(user_message, "", None)
+
         # Build system prompt
         dynamic_context = await self.build_dynamic_context(session)
         system_prompt = self.context_builder.build_system_prompt(
             dynamic_context=dynamic_context,
         )
         logger.info("System prompt built: %d chars", len(system_prompt))
-
-        # Append user message to conversation (with optional images)
-        session.append_user_message(user_message, image_blocks)
-        logger.info("Message history: %d messages", len(session.get_messages()))
-
-        # Start the turn counter and persist user message early so it
-        # survives LLM failures and connection drops.
-        session.start_turn()
-        await session.persist_turn_incremental(user_message, "", None)
 
         turn = 0
         assistant_text_parts: list[str] = []
@@ -172,44 +280,204 @@ class BaseAgent:
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
-            # Call LLM with tools
-            # When a model override is set, pass it as model_tier — providers
-            # treat unknown tier strings as direct model names (see get_model).
+            # Call LLM with streaming
             effective_tier = override_model or self.model_tier
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
                        turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
             start_time = time.monotonic()
-            response = await provider.create_completion_with_tools(
+
+            # Stream response — accumulate into content_blocks
+            content_blocks: list[dict[str, Any]] = []
+            tool_use_blocks: list[dict[str, Any]] = []
+            current_text = ""
+            current_tool: dict[str, Any] | None = None
+            stop_reason = "end_turn"
+            usage: dict[str, Any] = {}
+            # Per-tool-id state for builtin (server-executed) rows. Anthropic
+            # streams all tool_use blocks first, then all result blocks — so
+            # we can't use a single "active" slot like OpenAI's interleaved
+            # pattern. Each row stays open from builtin_tool_use until the
+            # end-of-stream cleanup below.
+            # Shape: ``{tool_id: {"name": str, "summary": str}}``.
+            builtin_rows: dict[str, dict[str, Any]] = {}
+
+            from app.services.llm_provider import StreamChunk
+            _text_chunk_count = 0
+            async for chunk in provider.stream_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=session.get_messages(),
                 tools=self._anthropic_tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
-            )
-            latency_ms = int((time.monotonic() - start_time) * 1000)
-            logger.info("Turn %d: LLM responded in %dms, stop_reason=%s, model=%s",
-                       turn, latency_ms, response.get("stop_reason"), response.get("model"))
+                context_management=self.context_management,
+            ):
+                if chunk.type == "text_delta":
+                    _text_chunk_count += 1
+                    current_text += chunk.text
+                    await event_stream.emit_text(chunk.text)
 
-            content_blocks = response["content"]
-            usage = response["usage"]
+                elif chunk.type == "reasoning_delta":
+                    await event_stream.emit_thinking(chunk.text)
+
+                elif chunk.type == "builtin_tool_use":
+                    # Server-executed builtin (Anthropic web_search / web_fetch,
+                    # OpenAI web_search_preview). Anthropic emits ALL tool_use
+                    # blocks first, then ALL result blocks — so we track each
+                    # row by tool_id rather than a single "active" slot.
+                    # Rows stay open until end-of-stream; then all are closed.
+                    query = (chunk.text or "").strip()
+                    if not query:
+                        continue
+                    tool_id = chunk.tool_id or f"builtin_{uuid.uuid4().hex[:8]}"
+                    name = chunk.tool_name or "builtin_tool"
+                    short_q = query if len(query) <= 80 else query[:79] + "…"
+
+                    rows = builtin_rows  # local alias for clarity
+                    row = rows.get(tool_id)
+                    if row is None:
+                        display = name.replace("_", " ").title()
+                        try:
+                            await event_stream.emit_tool_start(
+                                name, {"query": short_q}, tool_id, display,
+                            )
+                        except Exception:
+                            pass
+                        row = {"name": name, "summary": ""}
+                        rows[tool_id] = row
+
+                    msg = f"{name} · {short_q}"
+                    row["summary"] = msg
+                    try:
+                        await event_stream.emit_tool_update(tool_id, msg)
+                    except Exception:
+                        pass
+
+                elif chunk.type == "builtin_tool_result":
+                    # Hits/content for the builtin row with this tool_id.
+                    # Looked up in the per-tool-id map so results arriving
+                    # after later tool_use blocks (Anthropic's batch pattern)
+                    # still land on the correct row.
+                    tool_id = chunk.tool_id
+                    if not tool_id:
+                        continue
+                    row = builtin_rows.get(tool_id)
+                    if row is None:
+                        # Result arrived without a paired tool_use — shouldn't
+                        # happen in practice, log and skip.
+                        logger.warning(
+                            "builtin_tool_result orphaned: tool=%s tool_id=%s hits=%d",
+                            chunk.tool_name, tool_id, len(chunk.hits),
+                        )
+                        continue
+                    name = (chunk.tool_name or row.get("name", "") or "").lower()
+                    if name == "web_fetch":
+                        rendered = _format_web_fetch_result(chunk.hits, chunk.text)
+                    else:
+                        rendered = _format_web_search_hits(chunk.hits, chunk.text)
+                    # Emit ONLY the hits delta (not the cumulative summary).
+                    # The UI appends each update as a separate line under the
+                    # row, so re-sending the query would duplicate it.
+                    # Keep the cumulative form in row["summary"] so the
+                    # end-of-stream emit_tool_result shows the full picture.
+                    row["summary"] = (
+                        f"{row['summary']}\n{rendered}"
+                        if row.get("summary") else rendered
+                    )
+                    try:
+                        await event_stream.emit_tool_update(tool_id, rendered)
+                    except Exception:
+                        pass
+
+                elif chunk.type == "tool_use_start":
+                    # Flush text block if any
+                    if current_text:
+                        content_blocks.append({"type": "text", "text": current_text})
+                        assistant_text_parts.append(current_text)
+                        current_text = ""
+                    current_tool = {
+                        "type": "tool_use",
+                        "id": chunk.tool_id,
+                        "name": chunk.tool_name,
+                        "input": {},
+                    }
+
+                elif chunk.type == "tool_input_delta":
+                    if current_tool:
+                        current_tool["_input_json"] = current_tool.get("_input_json", "") + chunk.tool_input_json
+
+                elif chunk.type == "tool_use_end":
+                    if current_tool:
+                        # Parse accumulated JSON input
+                        import json as _json
+                        raw = current_tool.pop("_input_json", "{}")
+                        try:
+                            current_tool["input"] = _json.loads(raw)
+                        except (ValueError, _json.JSONDecodeError):
+                            current_tool["input"] = {}
+                        content_blocks.append(current_tool)
+                        tool_use_blocks.append(current_tool)
+                        current_tool = None
+
+                elif chunk.type == "message_complete":
+                    # Authoritative assembled content from the provider
+                    # (e.g. Anthropic stream.get_final_message()). Replaces
+                    # event-driven reconstruction so opaque server-tool
+                    # blocks (server_tool_use / web_search_tool_result)
+                    # arrive intact in their original position.
+                    if chunk.blocks:
+                        content_blocks, tool_use_blocks = self._adopt_final_blocks(
+                            chunk.blocks, assistant_text_parts,
+                        )
+                        current_text = ""
+                        current_tool = None
+
+                elif chunk.type == "done":
+                    stop_reason = chunk.stop_reason or "end_turn"
+                    usage = chunk.usage or {}
+                    break
+
+            # Close every builtin row opened this turn. Anthropic's batch
+            # pattern (tool_use×N then result×N) means multiple rows are
+            # open simultaneously; all get their final summary flushed here.
+            for _tid, _row in builtin_rows.items():
+                try:
+                    await event_stream.emit_tool_result(
+                        _row.get("name", "builtin_tool"),
+                        True,
+                        _row.get("summary", ""),
+                        _tid,
+                    )
+                except Exception:
+                    pass
+
+            # Flush any remaining text
+            if current_text:
+                content_blocks.append({"type": "text", "text": current_text})
+                assistant_text_parts.append(current_text)
+
+            latency_ms = int((time.monotonic() - start_time) * 1000)
+            usage.setdefault("input_tokens", 0)
+            usage.setdefault("output_tokens", 0)
+            usage.setdefault("cache_creation_input_tokens", 0)
+            usage.setdefault("cache_read_input_tokens", 0)
             usage["latency_ms"] = latency_ms
-            stop_reason = response["stop_reason"]
-            reasoning_content = response.get("reasoning_content")
+            logger.info("Turn %d: LLM streamed in %dms, stop_reason=%s, text_chunks=%d, usage=%s",
+                       turn, latency_ms, stop_reason, _text_chunk_count, usage)
+            if stop_reason == "max_tokens":
+                logger.warning(
+                    "Turn %d truncated at max_tokens=%d — response incomplete. "
+                    "Increase max_tokens or tighten the prompt's output.",
+                    turn, self.max_tokens,
+                )
 
             # Track usage and capture model name
+            resolved_model = provider.get_model(effective_tier)
             if not model_used:
-                model_used = response["model"]
+                model_used = resolved_model
             session.accumulate_usage(usage)
-            await session.record_token_usage(usage, request_id, response["model"], provider.name.lower())
+            await session.record_token_usage(usage, request_id, resolved_model, provider.name.lower())
 
-            # Stream thinking/reasoning content if present
-            if reasoning_content:
-                await event_stream.emit_thinking(reasoning_content)
-
-            # Split text blocks (stream) from tool_use blocks (execute)
-            tool_use_blocks = await self._process_content_blocks(
-                content_blocks, assistant_text_parts, event_stream
-            )
+            reasoning_content = None  # TODO: handle thinking mode streaming later
 
             # Save assistant message to conversation history
             session.append_assistant_message(content_blocks, reasoning_content)
@@ -218,14 +486,26 @@ class BaseAgent:
             if stop_reason != "tool_use" or not tool_use_blocks:
                 break
 
-            # Execute each tool block, stream result, collect logs
-            tool_result_blocks = []
-            for tool_block in tool_use_blocks:
+            logger.info("Turn %d: executing %d tool(s) %s: %s",
+                        turn, len(tool_use_blocks),
+                        "in parallel" if len(tool_use_blocks) > 1 else "",
+                        [tb.get("name", "?") for tb in tool_use_blocks])
+
+            if len(tool_use_blocks) == 1:
                 result_block, log_entry = await self._run_tool_block(
-                    tool_block, session, event_stream
+                    tool_use_blocks[0], session, event_stream
                 )
-                tool_result_blocks.append(result_block)
+                tool_result_blocks = [result_block]
                 tool_call_log.append(log_entry)
+            else:
+                results = await asyncio.gather(
+                    *(self._run_tool_block(tb, session, event_stream)
+                      for tb in tool_use_blocks),
+                    return_exceptions=False,
+                )
+                tool_result_blocks = [r[0] for r in results]
+                for _, log_entry in results:
+                    tool_call_log.append(log_entry)
 
             # Append tool results to conversation
             session.append_tool_results(tool_result_blocks)
@@ -248,6 +528,11 @@ class BaseAgent:
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
+        # Emit pending suggestions (e.g. quick reply buttons) if any
+        suggestions = await self.get_pending_suggestions(session, assistant_summary)
+        if suggestions:
+            await event_stream.emit_suggestions(**suggestions)
+
         # Learning loop: score session and request feedback
         await self._on_loop_complete(session, tool_call_log)
         await event_stream.emit_feedback_request(
@@ -261,6 +546,24 @@ class BaseAgent:
             session_id=session.session_id,
             usage=session.get_usage_summary(),
         )
+
+    @staticmethod
+    def _adopt_final_blocks(
+        blocks: list[dict[str, Any]],
+        assistant_text_parts: list[str],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Use an authoritative final-message block list in place of event reconstruction.
+
+        Returns ``(content_blocks, tool_use_blocks)`` and mutates
+        ``assistant_text_parts`` in place so persistence/summaries stay in sync.
+        """
+        content_blocks = [dict(b) for b in blocks]
+        tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
+        assistant_text_parts[:] = [
+            b["text"] for b in content_blocks
+            if b.get("type") == "text" and b.get("text")
+        ]
+        return content_blocks, tool_use_blocks
 
     async def _process_content_blocks(
         self,
@@ -300,15 +603,16 @@ class BaseAgent:
 
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
-        result = await self._execute_tool(tool_name, tool_input, session)
+        result = await self._execute_tool(
+            tool_name, tool_input, session,
+            event_stream=event_stream, tool_use_id=tool_use_id,
+        )
         tool_content = result.to_tool_result_content()
 
         # Use a short display summary for the SSE event — the UI only
         # shows 80 chars anyway and very large payloads (e.g. full page
         # trees) can fragment SSE lines and stall the spinner.
         display_summary = result.summary or result.error or tool_content
-        if len(display_summary) > 200:
-            display_summary = display_summary[:200] + "…"
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
 
@@ -336,6 +640,8 @@ class BaseAgent:
         tool_name: str,
         tool_input: dict[str, Any],
         session: BaseSession,
+        event_stream: AgentEventStream | None = None,
+        tool_use_id: str = "",
     ) -> ToolResult:
         """Execute a single tool by name.
 
@@ -358,6 +664,10 @@ class BaseAgent:
 
         # Build context for the tool
         context = self.build_tool_context(session)
+        if event_stream:
+            context["event_stream"] = event_stream
+        if tool_use_id:
+            context["tool_use_id"] = tool_use_id
 
         try:
             return await tool.execute(tool_input, context)
@@ -441,3 +751,22 @@ class BaseAgent:
             ctx["client_code"] = session.auth.client_code
             ctx["app_code"] = session.auth.app_code
         return ctx
+
+    async def get_pending_suggestions(
+        self, session: BaseSession, assistant_text: str = "",
+    ) -> dict[str, Any] | None:
+        """Return pending suggestion options to show in the UI.
+
+        Override in subclasses to check session context for suggestions
+        set by tools like present_options, or to detect choice patterns
+        in the assistant response text as a fallback.
+
+        Args:
+            session: Active session with context.
+            assistant_text: The accumulated assistant response text.
+
+        Returns:
+            Dict with 'options' (list of {label, value}) and 'mode'
+            ("single" or "multi"), or None.
+        """
+        return None
