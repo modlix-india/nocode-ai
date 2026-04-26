@@ -128,6 +128,20 @@ class _PassthroughEventStream(AgentEventStream):
         self._parent = parent
         self._parent_tool_use_id = parent_tool_use_id
 
+    @property
+    def is_cancelled(self) -> bool:
+        # Delegate to parent so a top-level user cancel propagates into the
+        # sub-agent's run loop. Without this, BaseAgent._run_loop's
+        # `event_stream.is_cancelled` check raises AttributeError because
+        # we skip super().__init__() (which would set self._cancelled = False).
+        return getattr(self._parent, "is_cancelled", False)
+
+    def cancel(self) -> None:
+        try:
+            self._parent.cancel()
+        except Exception:
+            pass
+
     async def emit_text(self, text: str) -> None:
         # The sub-agent's text is the JSON output — don't leak it to the user.
         return
