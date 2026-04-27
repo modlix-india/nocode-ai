@@ -108,6 +108,14 @@ class ToolDefinition:
         description: Human-readable description shown to the LLM.
         parameters: List of ToolParameter definitions.
         execute: Async function that runs the tool.
+        builtin_spec: If set, the tool is provider-executed (e.g., Anthropic's
+            server-side web_search or OpenAI's web_search_preview). The dict is
+            passed through verbatim to the matching provider's tool list; other
+            providers drop it. Must include a ``provider`` key ("anthropic" or
+            "openai"). In this case ``execute`` should be None and
+            ``parameters`` may be empty.
+            Example: {"provider": "anthropic", "type": "web_search_20250305",
+                      "name": "web_search", "max_uses": 10}
     """
 
     name: str
@@ -115,6 +123,7 @@ class ToolDefinition:
     display_name: str = ""
     parameters: list[ToolParameter] = field(default_factory=list)
     execute: Optional[ToolExecuteFunc] = None
+    builtin_spec: Optional[dict[str, Any]] = None
 
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""
@@ -138,7 +147,19 @@ class ToolDefinition:
                 "required": [ ... ]
             }
         }
+
+        If this tool has a `builtin_spec`, a marker dict is returned instead —
+        providers that understand it pass the spec through, others drop it.
+        The ``provider`` key inside ``spec`` identifies the target provider.
         """
+        if self.builtin_spec:
+            return {
+                "__builtin__": True,
+                "name": self.name,
+                "provider": self.builtin_spec.get("provider", ""),
+                "spec": dict(self.builtin_spec),
+            }
+
         properties: dict[str, Any] = {}
         required: list[str] = []
 
