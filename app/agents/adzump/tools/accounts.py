@@ -45,10 +45,9 @@ def _remember_names(context: dict, accounts: list[dict], id_key: str) -> None:
 
 
 def _options_pairs(items: list[dict], id_key: str) -> str:
-    return "; ".join(
-        f"{(a.get('name') or '').strip() or f'Account {a.get(id_key, '?')}'} → {a.get(id_key, '')}"
-        for a in items
-    )
+    def _label(a: dict) -> str:
+        return (a.get("name") or "").strip() or f"Account {a.get(id_key, '?')}"
+    return "; ".join(f"{_label(a)} → {a.get(id_key, '')}" for a in items)
 
 
 def _list_summary(
