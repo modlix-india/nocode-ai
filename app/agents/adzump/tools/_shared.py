@@ -38,11 +38,6 @@ async def upload_screenshot(screenshot_bytes: bytes, filename: str, context: dic
         headers["accept"] = "application/json"
         client_code = context.get("client_code", "")
         base = settings.GATEWAY_URL
-        logger.info(
-            "upload_screenshot: client_code=%r ctx_keys=%s header_keys=%s",
-            client_code, sorted(context.keys()),
-            sorted([k.lower() for k in headers.keys()]),
-        )
 
         # Use auth headers from context — same appCode the token was issued for
         file_headers = {

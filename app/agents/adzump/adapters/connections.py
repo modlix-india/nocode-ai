@@ -52,11 +52,6 @@ async def fetch_oauth_token(
         "appcode": appcode or _ci_get(auth_headers, "appCode") or "marketingai",
         "clientcode": client_code,
     }
-    logger.info(
-        "fetch_oauth_token: connection=%s client_code=%r appcode=%r auth_headers_keys=%s",
-        connection_name, client_code, headers["appcode"],
-        sorted([k.lower() for k in (auth_headers or {}).keys()]),
-    )
     auth = _ci_get(auth_headers, "Authorization")
     if auth:
         headers["authorization"] = auth
