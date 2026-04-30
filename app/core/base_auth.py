@@ -59,11 +59,24 @@ async def _authenticate(
 
     forwarded_host, forwarded_port = _extract_forwarded_headers(request)
 
+    # The security context is the only source of truth for tenant + identity.
+    # The URL/header clientCode is provider-side (gateway-injected from the URL
+    # path) and reflects which tenant the user is browsing, not who they are —
+    # it must not influence storage scope, OAuth connection lookup, or session
+    # ownership. Saas's security service resolves the user from the JWT and
+    # returns user.clientCode (the user's real home tenant from the DB); that
+    # is what we use everywhere downstream.
+    if not ctx_auth.user or not ctx_auth.user.clientCode:
+        raise HTTPException(
+            status_code=401,
+            detail="Security context did not return a resolved clientCode for the user",
+        )
+
     return AuthContext(
         token=auth_header,
-        client_code=client_code,
-        client_id=ctx_auth.user.clientId if ctx_auth.user else 0,
-        user_id=ctx_auth.user.id if ctx_auth.user else 0,
+        client_code=ctx_auth.user.clientCode,
+        client_id=ctx_auth.user.clientId or 0,
+        user_id=ctx_auth.user.id or 0,
         app_code=access_app_code,
         access_app_code=access_app_code,
         forwarded_host=forwarded_host,
