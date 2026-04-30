@@ -59,9 +59,21 @@ async def _authenticate(
 
     forwarded_host, forwarded_port = _extract_forwarded_headers(request)
 
+    # Prefer the security-service-verified clientCode (the user's actual home
+    # tenant from saas) over the request header. The header is set by the
+    # gateway from the URL path — for a SYSTEM admin browsing portal-style
+    # over MODLI9 (e.g. URL /marketingai/SYSTEM/...) the header carries
+    # SYSTEM, but the user belongs to MODLI9 in saas's user table. Using the
+    # verified value ensures session/tool calls run under the user's real
+    # tenant, which is what storage permissions and OAuth connections are
+    # scoped to.
+    verified_client_code = (
+        ctx_auth.user.clientCode if ctx_auth.user and ctx_auth.user.clientCode else None
+    )
+
     return AuthContext(
         token=auth_header,
-        client_code=client_code,
+        client_code=verified_client_code or client_code,
         client_id=ctx_auth.user.clientId if ctx_auth.user else 0,
         user_id=ctx_auth.user.id if ctx_auth.user else 0,
         app_code=access_app_code,
