@@ -189,6 +189,44 @@ def _resolve_url(session_ctx: dict) -> str:
     return ""
 
 
+def _build_location_object(loc_meta: dict, spec: dict, product: dict) -> dict:
+    """Match the legacy ds-v1 location object shape so ds downstream services
+    (chatv2 confirm-location, business_service.update lookup, geo-target
+    builders) can keep reading the same keys. Map-confirmed location wins,
+    then user-typed spec, then scraped-from-website.
+    """
+    coords = (
+        {"lng": loc_meta.get("lng"), "lat": loc_meta.get("lat")}
+        if loc_meta.get("lat") is not None and loc_meta.get("lng") is not None
+        else None
+    )
+    return {
+        "area_location": "",
+        "product_location": (
+            loc_meta.get("address")
+            or spec.get("location")
+            or product.get("location", "")
+        ),
+        "product_coordinates": coords,
+    }
+
+
+def _build_map_embeds(loc_meta: dict) -> list[dict]:
+    """Mirror ds-v1's mapEmbeds entry — empty when we have no coords."""
+    if loc_meta.get("lat") is None or loc_meta.get("lng") is None:
+        return []
+    lat = loc_meta["lat"]
+    lng = loc_meta["lng"]
+    return [{
+        "src": (
+            f"https://www.google.com/maps/embed/v1/place?"
+            f"q={lat},{lng}&zoom=15"
+        ),
+        "title": "",
+        "coordinates": {"lng": lng, "lat": lat},
+    }]
+
+
 def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
     """Build the AISuggestedData record from session.context. Pure function."""
     product = session_ctx.get("product_data") or {}
@@ -200,14 +238,26 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
 
     is_meta = "meta" in (spec.get("platform") or "").lower()
 
+    summary = profile.get("summary") or product.get("summary", "")
+    geo_targets = product.get("suggested_locations") or []
+
     return {
         "businessUrl": _normalize_url(url),
 
-        # ── Analysis fields (mirrors what ds/chatv2 writes) ──
-        "summary": profile.get("summary") or product.get("summary", ""),
+        # ── Analysis fields (mirror ds-v1 schema so its downstream APIs
+        #    keep working when reading rows nocode-ai writes) ──
+        "summary": summary,
+        # ds's google_kw_data_provider reads finalSummary specifically
+        "finalSummary": summary,
         "businessType": product.get("business_type", ""),
-        "location": product.get("location", "") or spec.get("location", ""),
-        "suggestedGeoTargets": product.get("suggested_locations") or [],
+        # legacy ds-v1 shape: object with area_location / product_location /
+        # product_coordinates. ds chatv2 confirm_location and business_service
+        # both read from this dict.
+        "location": _build_location_object(loc_meta, spec, product),
+        "mapEmbeds": _build_map_embeds(loc_meta),
+        "suggestedGeoTargets": geo_targets,
+        # ds's external_link_summary_service reads top-level `locations`
+        "locations": geo_targets,
         "screenshot": (
             product.get("primary_screenshot_url")
             or product.get("screenshot_url")
@@ -215,6 +265,9 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
             or ""
         ),
         "externalLinks": product.get("external_links") or [],
+        # ds asset services (lead_form, call_assets, whatsapp, site_link)
+        # all read siteLinks; default empty so they no-op gracefully
+        "siteLinks": product.get("site_links") or [],
         "productName": product.get("product_name", ""),
         "uniqueFeatures": product.get("unique_features") or [],
         "productsServices": product.get("products_services") or [],
@@ -279,11 +332,19 @@ def _record_to_business(record: dict) -> dict:
     """Translate AISuggestedData (camelCase) → adzump's product_data shape."""
     d = _record_data(record)
     screenshot = d.get("screenshot", "")
+    # `location` was a plain string historically; nocode-ai now writes the
+    # ds-v1 object shape `{area_location, product_location, product_coordinates}`.
+    # Hydrate to a string for product_data.location consumers.
+    raw_loc = d.get("location") or ""
+    if isinstance(raw_loc, dict):
+        location_str = raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+    else:
+        location_str = raw_loc
     return {
         "product_name": d.get("productName", ""),
         "business_type": d.get("businessType", ""),
         "summary": d.get("summary", ""),
-        "location": d.get("location", ""),
+        "location": location_str,
         "suggested_locations": d.get("suggestedGeoTargets") or [],
         # Populate both keys so downstream consumers (craft renderers,
         # competitor.py's `_emit_final_craft` etc.) find a screenshot under
