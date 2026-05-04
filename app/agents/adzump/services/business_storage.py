@@ -34,17 +34,17 @@ UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
 
 
 def _normalize_url(url: str) -> str:
-    """Same canonicalization ds/chatv2 uses so we share dedup keys.
+    """Canonicalize a business URL for storage keys and lookups.
 
-    Lowercase host, strip ``www.`` and trailing slash. Preserve scheme + path.
+    - Force ``https`` scheme so the same business doesn't end up with two
+      records keyed under ``http://`` and ``https://``.
+    - Lowercase host, strip leading ``www.``, drop trailing slash.
     """
     if not url:
         return ""
     p = urlparse(url.strip())
     host = (p.netloc or "").lower().removeprefix("www.")
     path = (p.path or "").rstrip("/")
-    if p.scheme:
-        return f"{p.scheme}://{host}{path}"
     return f"https://{host}{path}"
 
 

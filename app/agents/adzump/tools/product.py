@@ -140,7 +140,13 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     url = (params.get("url") or "").strip()
     if not url:
         return ToolResult(success=False, error="url is required.")
-    if not url.startswith("http"):
+    # Force https:// at the input boundary so storage records, complete-event
+    # payloads, and downstream API calls are all consistent. The previous
+    # `not url.startswith("http")` check accepted `http://` as-is, leaving
+    # records keyed under both schemes for the same business.
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    elif not url.startswith("https://"):
         url = f"https://{url}"
 
     stream = context.get("event_stream")
