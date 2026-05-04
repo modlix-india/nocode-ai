@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolResult
-from app.agents.adzump.services.business_storage import save_campaign
+from app.agents.adzump.services.business_storage import resolve_url, save_campaign
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,15 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             await stream.emit_complete({
                 "product_id": record_id,
                 "session_id": context.get("session_id", ""),
-                "business_url": session_ctx.get("product_data", {}).get("primary_url", ""),
+                # Same URL the storage record is keyed by — resolve_url checks
+                # product_profile.url, then product_data.pages_analyzed[0],
+                # so it works after a fresh scrape AND after a storage hydrate
+                # (where product_data.primary_url is not preserved).
+                "product_url": resolve_url(session_ctx),
+                # Which ad platform the user picked for this campaign
+                # (e.g. "Google Ads", "Meta") — read off campaign_spec
+                # since that's the user-confirmed value.
+                "platform": spec.get("platform", ""),
             })
         except Exception as e:
             logger.warning("emit_complete_failed: %s", str(e)[:200])

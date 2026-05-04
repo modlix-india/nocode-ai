@@ -122,7 +122,7 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     Payload shapes match ds's `oserver.services.storage_service` — the
     gateway expects `dataObject` / `dataObjectId` / `isPartial`.
     """
-    url = _resolve_url(session_ctx)
+    url = resolve_url(session_ctx)
     if not url:
         logger.warning("save_campaign_skipped: no businessUrl in session")
         return None
@@ -177,7 +177,7 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
 # ── Record construction (pure) ────────────────────────────────────────────
 
 
-def _resolve_url(session_ctx: dict) -> str:
+def resolve_url(session_ctx: dict) -> str:
     """Find the business URL across the various places it can live."""
     profile = session_ctx.get("product_profile") or {}
     if profile.get("url"):
