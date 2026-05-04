@@ -9,7 +9,7 @@ import logging
 
 from bs4 import BeautifulSoup, Tag, NavigableString
 
-from app.agents.adzump.agents.product.models import PageContent
+from app.agents.adzump.agents.product.models import PageContent, SiteLink
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +54,19 @@ def parse_html(url: str, html: str) -> PageContent:
             if text.lower() not in existing_text and len(text) > 30:
                 paragraphs.append(text)
 
-    links: list[str] = []
+    links: list[SiteLink] = []
+    seen_hrefs: set[str] = set()
     for a in soup.find_all("a", href=True):
-        if isinstance(a, Tag):
-            href = a.get("href")
-            if isinstance(href, str) and href:
-                links.append(href)
+        if not isinstance(a, Tag):
+            continue
+        href = a.get("href")
+        if not isinstance(href, str) or not href:
+            continue
+        href = href.strip()
+        if not href or href in seen_hrefs:
+            continue
+        seen_hrefs.add(href)
+        links.append(SiteLink(text=a.get_text(strip=True), href=href))
 
     structured_data = _extract_json_ld(soup)
 

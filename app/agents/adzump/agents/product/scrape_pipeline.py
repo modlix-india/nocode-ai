@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 from app.agents.adzump.agents.product.adapters.playwright_adapter import scrape_page
 from app.agents.adzump.agents.product.extraction_service import ExtractionService
-from app.agents.adzump.agents.product.models import BusinessProfile, PageContent
+from app.agents.adzump.agents.product.models import BusinessProfile, PageContent, SiteLink
 
 # Type for the optional progress callback
 ProgressCallback = Callable[[str], Coroutine[Any, Any, None]]
@@ -27,17 +27,18 @@ PRIORITY_PAGE_PATTERNS = ["contact", "about", "locations", "services", "pricing"
 MAX_SUBPAGES = 3
 
 
-def _select_subpages(links: list[str], base_url: str) -> list[str]:
+def _select_subpages(links: list[SiteLink], base_url: str) -> list[str]:
     """Select high-value subpages from homepage links."""
     base_host = urlparse(base_url).netloc
     selected: list[str] = []
     for link in links:
-        parsed = urlparse(link)
+        href = link.href
+        parsed = urlparse(href)
         if parsed.netloc and parsed.netloc != base_host:
             continue
         path = parsed.path.lower()
         if any(p in path for p in PRIORITY_PAGE_PATTERNS):
-            full_url = link if parsed.netloc else f"{urlparse(base_url).scheme}://{base_host}{parsed.path}"
+            full_url = href if parsed.netloc else f"{urlparse(base_url).scheme}://{base_host}{parsed.path}"
             if full_url not in selected:
                 selected.append(full_url)
     return selected[:MAX_SUBPAGES]
