@@ -15,6 +15,12 @@ class ContactInfo(BaseModel):
     address: str | None = None
 
 
+class SiteLink(BaseModel):
+    """A single anchor extracted from a page (text + href)."""
+    text: str = ""
+    href: str
+
+
 class PageContent(BaseModel):
     """Parsed content from a single web page."""
     url: str
@@ -22,7 +28,7 @@ class PageContent(BaseModel):
     meta_description: str = ""
     headings: list[str] = []
     paragraphs: list[str] = []
-    links: list[str] = []
+    links: list[SiteLink] = []
     structured_data: dict | None = None
 
 

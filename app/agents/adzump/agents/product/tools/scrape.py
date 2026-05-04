@@ -108,6 +108,10 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
     scraped_urls.append(url)
 
     page = result.content
+    page_links = [
+        {"text": link.text, "href": link.href}
+        for link in page.links[:MAX_LINKS]
+    ]
 
     data: dict = {
         "url": url,
@@ -115,8 +119,17 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         "meta_description": page.meta_description,
         "headings": page.headings[:MAX_HEADINGS],
         "paragraphs": _trim_paragraphs(page.paragraphs),
-        "links": page.links[:MAX_LINKS],
+        "links": page_links,
     }
+
+    # Accumulate links into product_data so the storage write surfaces them
+    # under `siteLinks`. Dedup by href (different pages link to same href).
+    site_links: list[dict] = product_data.setdefault("site_links", [])
+    seen_hrefs = {l.get("href") for l in site_links if l.get("href")}
+    for link in page_links:
+        if link["href"] not in seen_hrefs:
+            site_links.append(link)
+            seen_hrefs.add(link["href"])
 
     # Upload screenshot and emit craft updates.
     screenshot_url: str | None = None
