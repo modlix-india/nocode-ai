@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any  # noqa: F401  (used in type hints below)
 from urllib.parse import urlparse
 
+from app.agents.adzump.platform import is_meta as _platform_is_meta
 from app.agents.adzump.tools._shared import build_ds_headers
 from app.agents.appbuilder.tools._shared import get_saas_client
 
@@ -122,7 +123,7 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     Payload shapes match ds's `oserver.services.storage_service` — the
     gateway expects `dataObject` / `dataObjectId` / `isPartial`.
     """
-    url = _resolve_url(session_ctx)
+    url = resolve_url(session_ctx)
     if not url:
         logger.warning("save_campaign_skipped: no businessUrl in session")
         return None
@@ -177,7 +178,7 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
 # ── Record construction (pure) ────────────────────────────────────────────
 
 
-def _resolve_url(session_ctx: dict) -> str:
+def resolve_url(session_ctx: dict) -> str:
     """Find the business URL across the various places it can live."""
     profile = session_ctx.get("product_profile") or {}
     if profile.get("url"):
@@ -236,10 +237,9 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
     account_names = session_ctx.get("account_names") or {}
     competitive = session_ctx.get("competitor_analysis") or {}
 
-    is_meta = "meta" in (spec.get("platform") or "").lower()
+    is_meta = _platform_is_meta(spec.get("platform"))
 
     summary = profile.get("summary") or product.get("summary", "")
-    geo_targets = product.get("suggested_locations") or []
 
     return {
         "businessUrl": _normalize_url(url),
@@ -255,9 +255,11 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # both read from this dict.
         "location": _build_location_object(loc_meta, spec, product),
         "mapEmbeds": _build_map_embeds(loc_meta),
-        "suggestedGeoTargets": geo_targets,
-        # ds's external_link_summary_service reads top-level `locations`
-        "locations": geo_targets,
+        # `suggestedGeoTargets` and top-level `locations` are deliberately NOT
+        # written here. ds resolves them via its geo-target service (Google Ads
+        # geoTargetConstants lookup) when needed. The LLM's free-text guesses
+        # in product.suggested_locations are unreliable and would shadow the
+        # real resolution.
         "screenshot": (
             product.get("primary_screenshot_url")
             or product.get("screenshot_url")

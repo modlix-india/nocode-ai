@@ -238,20 +238,40 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             business["screenshot_url"] = output.screenshot_url
 
         # Persist to parent session.
+        #
+        # Ownership:
+        #   product_data       — shared between this tool and the scrape sub-agent.
+        #                        The sub-agent populates runtime artifacts during
+        #                        scraping (site_links, primary_screenshot_url,
+        #                        scrape_count, scraped_urls); this tool merges the
+        #                        analyst's structured JSON on top. Keys in the JSON
+        #                        (product_name, summary, business_type, etc.) win
+        #                        on conflict; runtime-only keys are preserved. Do
+        #                        NOT replace product_data wholesale — that wipes
+        #                        the sub-agent's artifacts (site_links was empty
+        #                        in storage records because of this).
+        #   product_profile    — owned by the scrape sub-agent. Wholesale-set in
+        #                        agents/product/tools/scrape.py:_generate_business_profile
+        #                        with a rich, streamed GPT-4o marketing summary.
+        #                        We only refresh url + title from the analysis
+        #                        output; summary stays under the sub-agent's
+        #                        ownership and must not be overwritten here.
+        #   competitor_analysis — owned by this tool when competitive output exists.
         parent_session = context.get("_session")
-        if parent_session:
-            parent_session.context["product_data"] = business
-            parent_session.context.setdefault("product_profile", {}).update({
-                "url": url,
-                "title": business.get("product_name", ""),
-                "summary": business.get("summary", ""),
-            })
-            if output.competitive and output.competitive.get("competitors"):
-                parent_session.context["competitor_analysis"] = output.competitive
-        else:
-            session_ctx["product_data"] = business
-            if output.competitive and output.competitive.get("competitors"):
-                session_ctx["competitor_analysis"] = output.competitive
+        target_ctx = parent_session.context if parent_session else session_ctx
+        target_ctx["product_data"] = {**(target_ctx.get("product_data") or {}), **business}
+        profile = target_ctx.setdefault("product_profile", {})
+        profile["url"] = url
+        profile["title"] = business.get("product_name", "") or profile.get("title", "")
+        # Seed summary only if the sub-agent didn't run (defensive fallback for
+        # legacy callers that bypass the sub-agent). The storage save's own
+        # fallback chain `profile.summary or product.summary` covers the same
+        # case at a different layer; keeping this here too means downstream
+        # readers of product_profile see something useful regardless of layer.
+        if not profile.get("summary"):
+            profile["summary"] = business.get("summary", "")
+        if output.competitive and output.competitive.get("competitors"):
+            target_ctx["competitor_analysis"] = output.competitive
 
         # Build summary for the LLM.
         summary_lines: list[str] = []
