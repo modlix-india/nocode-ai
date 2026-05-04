@@ -52,6 +52,21 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
     session_ctx["product_id"] = record_id
     spec["campaign_status"] = "launched"
     logger.info("launch_campaign_ok: product_id=%s", record_id)
+
+    # Signal the host page (LazyPrompt onComplete / completeBindingPath) that
+    # adzump reached a successful terminal state. Fire-and-forget — failure
+    # to emit must not roll back the save.
+    stream = context.get("event_stream")
+    if stream is not None:
+        try:
+            await stream.emit_complete({
+                "product_id": record_id,
+                "session_id": context.get("session_id", ""),
+                "business_url": session_ctx.get("product_data", {}).get("primary_url", ""),
+            })
+        except Exception as e:
+            logger.warning("emit_complete_failed: %s", str(e)[:200])
+
     return ToolResult(
         success=True,
         data={"product_id": record_id},
