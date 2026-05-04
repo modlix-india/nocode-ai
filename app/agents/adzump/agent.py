@@ -467,7 +467,7 @@ class AdzumpAgent(BaseAgent):
 
         def pretty_id(acct_id: str) -> str:
             raw = str(acct_id)
-            if is_google and raw.isdigit() and len(raw) == 10:
+            if is_google_platform and raw.isdigit() and len(raw) == 10:
                 return f"{raw[:3]}-{raw[3:6]}-{raw[6:]}"
             return raw
 
@@ -482,7 +482,7 @@ class AdzumpAgent(BaseAgent):
             f"- {parent_label}: {fmt(spec.get('parent_account'))}",
             f"- {account_label}: {fmt(spec.get('account'))}",
         ]
-        if is_meta:
+        if is_meta_platform:
             lines.append(f"- Facebook Page: {fmt(spec.get('fb_page'))}")
             lines.append(f"- Instagram Account: {fmt(spec.get('ig_page'))}")
         return "\n".join(lines)
