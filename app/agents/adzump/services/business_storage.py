@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any  # noqa: F401  (used in type hints below)
 from urllib.parse import urlparse
 
+from app.agents.adzump.platform import is_meta as _platform_is_meta
 from app.agents.adzump.tools._shared import build_ds_headers
 from app.agents.appbuilder.tools._shared import get_saas_client
 
@@ -236,7 +237,7 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
     account_names = session_ctx.get("account_names") or {}
     competitive = session_ctx.get("competitor_analysis") or {}
 
-    is_meta = "meta" in (spec.get("platform") or "").lower()
+    is_meta = _platform_is_meta(spec.get("platform"))
 
     summary = profile.get("summary") or product.get("summary", "")
 

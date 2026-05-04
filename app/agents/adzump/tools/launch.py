@@ -15,25 +15,10 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolResult
+from app.agents.adzump.platform import to_enum_value as platform_enum_value
 from app.agents.adzump.services.business_storage import resolve_url, save_campaign
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_platform(value: str | None) -> str:
-    """Map free-text campaign_spec.platform → stable enum for the complete event.
-
-    Same keyword classification as `_field_traceable` in tools/campaign_data.py
-    so the two stay aligned. Returns "google", "meta", or "" (unknown).
-    """
-    v = (value or "").strip().lower()
-    if not v:
-        return ""
-    if "google" in v or "adwords" in v:
-        return "google"
-    if "meta" in v or "facebook" in v or "instagram" in v:
-        return "meta"
-    return ""
 
 
 async def _launch_campaign(params: dict, context: dict) -> ToolResult:
@@ -86,7 +71,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
                 # Which ad platform the user picked, normalized to a stable
                 # enum ("google" / "meta" / "") so host pages can branch on
                 # it without parsing free-text variants like "Google Ads".
-                "platform": _normalize_platform(spec.get("platform")),
+                "platform": platform_enum_value(spec.get("platform")),
             })
         except Exception as e:
             logger.warning("emit_complete_failed: %s", str(e)[:200])

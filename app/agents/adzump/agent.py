@@ -22,6 +22,12 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.agents.adzump.context import build_adzump_context
+from app.agents.adzump.platform import (
+    CANONICAL_LABEL,
+    Platform,
+    is_google as _platform_is_google,
+    is_meta as _platform_is_meta,
+)
 from app.agents.adzump.tools.campaign_data import (
     _ACCOUNT_LIKE_FIELDS, _last_user_text, _normalize_id,
 )
@@ -99,11 +105,11 @@ class CampaignContext:
 
     @property
     def is_google(self) -> bool:
-        return "google" in (self.spec.get("platform") or "").lower()
+        return _platform_is_google(self.spec.get("platform"))
 
     @property
     def is_meta(self) -> bool:
-        return "meta" in (self.spec.get("platform") or "").lower()
+        return _platform_is_meta(self.spec.get("platform"))
 
 
 def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
@@ -120,12 +126,13 @@ def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     spec = cctx.spec
 
     # Platform: "Google Ads" / "Meta" chip clicks or close natural-language
-    # variants. Only fire if platform isn't already stored.
+    # variants. Only fire if platform isn't already stored. Defers keyword
+    # classification to app.agents.adzump.platform so all consumers stay
+    # aligned on which strings count as which platform.
     if not spec.get("platform"):
-        if lu in ("google ads", "google", "adwords"):
-            return ("platform", "Google Ads")
-        if lu in ("meta", "facebook", "instagram", "fb", "ig"):
-            return ("platform", "Meta")
+        platform = Platform.from_value(lu)
+        if platform is not None:
+            return ("platform", CANONICAL_LABEL[platform])
 
     return None
 
@@ -442,13 +449,21 @@ class AdzumpAgent(BaseAgent):
 
     @staticmethod
     def _ad_account_summary(spec: dict, account_names: dict) -> str:
-        platform = (spec.get("platform") or "").lower()
-        if not platform:
+        platform = Platform.from_value(spec.get("platform"))
+        if platform is None:
             return ""
-        is_meta = "meta" in platform
-        is_google = "google" in platform
-        parent_label = "Meta Business" if is_meta else "Google Manager" if is_google else "Parent Account"
-        account_label = "Meta Ad Account" if is_meta else "Google Ad Account" if is_google else "Ad Account"
+        is_meta_platform = platform is Platform.META
+        is_google_platform = platform is Platform.GOOGLE
+        parent_label = (
+            "Meta Business" if is_meta_platform
+            else "Google Manager" if is_google_platform
+            else "Parent Account"
+        )
+        account_label = (
+            "Meta Ad Account" if is_meta_platform
+            else "Google Ad Account" if is_google_platform
+            else "Ad Account"
+        )
 
         def pretty_id(acct_id: str) -> str:
             raw = str(acct_id)
