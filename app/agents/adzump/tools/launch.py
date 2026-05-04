@@ -20,6 +20,22 @@ from app.agents.adzump.services.business_storage import resolve_url, save_campai
 logger = logging.getLogger(__name__)
 
 
+def _normalize_platform(value: str | None) -> str:
+    """Map free-text campaign_spec.platform → stable enum for the complete event.
+
+    Same keyword classification as `_field_traceable` in tools/campaign_data.py
+    so the two stay aligned. Returns "google", "meta", or "" (unknown).
+    """
+    v = (value or "").strip().lower()
+    if not v:
+        return ""
+    if "google" in v or "adwords" in v:
+        return "google"
+    if "meta" in v or "facebook" in v or "instagram" in v:
+        return "meta"
+    return ""
+
+
 async def _launch_campaign(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context")
     if session_ctx is None:
@@ -67,10 +83,10 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
                 # so it works after a fresh scrape AND after a storage hydrate
                 # (where product_data.primary_url is not preserved).
                 "product_url": resolve_url(session_ctx),
-                # Which ad platform the user picked for this campaign
-                # (e.g. "Google Ads", "Meta") — read off campaign_spec
-                # since that's the user-confirmed value.
-                "platform": spec.get("platform", ""),
+                # Which ad platform the user picked, normalized to a stable
+                # enum ("google" / "meta" / "") so host pages can branch on
+                # it without parsing free-text variants like "Google Ads".
+                "platform": _normalize_platform(spec.get("platform")),
             })
         except Exception as e:
             logger.warning("emit_complete_failed: %s", str(e)[:200])
