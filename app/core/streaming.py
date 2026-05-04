@@ -56,6 +56,7 @@ class AgentEventType(str, Enum):
     SUGGESTIONS = "suggestions"  # Clickable option buttons for the user
     CRAFT = "craft"  # Rich structured content for the side panel
     DATA = "data"  # Generic agent-defined inline payload (widget type + fields)
+    COMPLETE = "complete"  # Successful terminal state with a structured result payload
     AGENT_STARTED = "agent_started"  # Sub-agent started
     AGENT_FINISHED = "agent_finished"  # Sub-agent finished
     AGENT_USAGE = "agent_usage"  # Token usage update for an agent
@@ -279,6 +280,23 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.DATA,
             data={"type": data_type, **payload},
+        ))
+
+    async def emit_complete(self, payload: dict[str, Any]) -> None:
+        """Emit a successful terminal-state event with a structured payload.
+
+        Distinct from `done`, which is the always-fired stream lifecycle
+        terminator (carries session_id + usage). `complete` is the
+        domain-task signal: fired only when an agent reaches a successful
+        terminal state with a result the host page should act on (e.g.
+        redirect, persist, call a downstream API).
+
+        Pairs with the LazyPrompt component's `onComplete` /
+        `completeBindingPath` props.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.COMPLETE,
+            data=payload,
         ))
 
     async def emit_craft(
