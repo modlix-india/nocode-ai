@@ -24,6 +24,7 @@ import unicodedata
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.platform import Platform
 
 logger = logging.getLogger(__name__)
 
@@ -128,9 +129,12 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
     if v in lu:
         return True
     if field == "platform":
-        if v == "google ads" and ("google" in lu or "adwords" in lu):
-            return True
-        if v == "meta" and ("meta" in lu or "facebook" in lu or "instagram" in lu):
+        # Both the LLM-stored value and the user's last message must resolve
+        # to the same platform via the shared classifier in `platform.py`.
+        # Catches "Google Ads" / "google" / "adwords" → GOOGLE and
+        # "Meta" / "facebook" / "instagram" / "fb" / "ig" → META.
+        v_platform = Platform.from_value(v)
+        if v_platform is not None and Platform.from_value(lu) is v_platform:
             return True
     if field in ("duration", "budget"):
         digits_v = "".join(c for c in v if c.isdigit())
@@ -286,11 +290,11 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     """If every required campaign-spec field is now set, return a string that
     instructs the LLM to render the review summary on this same turn.
     Otherwise return ''."""
-    platform = (spec.get("platform") or "").lower()
-    if not platform:
+    platform = Platform.from_value(spec.get("platform"))
+    if platform is None:
         return ""
-    is_google = "google" in platform
-    is_meta = "meta" in platform
+    is_google = platform is Platform.GOOGLE
+    is_meta = platform is Platform.META
 
     # Real-estate? location is required. Otherwise location is optional.
     business_type = ((session_ctx.get("product_data") or {})
