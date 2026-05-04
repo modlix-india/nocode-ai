@@ -240,9 +240,16 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         # Persist to parent session.
         #
         # Ownership:
-        #   product_data       — owned by this tool. The structured JSON output
-        #                        of the analyst (short summary, business_type,
-        #                        location, products, etc.).
+        #   product_data       — shared between this tool and the scrape sub-agent.
+        #                        The sub-agent populates runtime artifacts during
+        #                        scraping (site_links, primary_screenshot_url,
+        #                        scrape_count, scraped_urls); this tool merges the
+        #                        analyst's structured JSON on top. Keys in the JSON
+        #                        (product_name, summary, business_type, etc.) win
+        #                        on conflict; runtime-only keys are preserved. Do
+        #                        NOT replace product_data wholesale — that wipes
+        #                        the sub-agent's artifacts (site_links was empty
+        #                        in storage records because of this).
         #   product_profile    — owned by the scrape sub-agent. Wholesale-set in
         #                        agents/product/tools/scrape.py:_generate_business_profile
         #                        with a rich, streamed GPT-4o marketing summary.
@@ -252,7 +259,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         #   competitor_analysis — owned by this tool when competitive output exists.
         parent_session = context.get("_session")
         target_ctx = parent_session.context if parent_session else session_ctx
-        target_ctx["product_data"] = business
+        target_ctx["product_data"] = {**(target_ctx.get("product_data") or {}), **business}
         profile = target_ctx.setdefault("product_profile", {})
         profile["url"] = url
         profile["title"] = business.get("product_name", "") or profile.get("title", "")
