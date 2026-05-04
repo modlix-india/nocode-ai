@@ -239,7 +239,6 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
     is_meta = "meta" in (spec.get("platform") or "").lower()
 
     summary = profile.get("summary") or product.get("summary", "")
-    geo_targets = product.get("suggested_locations") or []
 
     return {
         "businessUrl": _normalize_url(url),
@@ -255,9 +254,11 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # both read from this dict.
         "location": _build_location_object(loc_meta, spec, product),
         "mapEmbeds": _build_map_embeds(loc_meta),
-        "suggestedGeoTargets": geo_targets,
-        # ds's external_link_summary_service reads top-level `locations`
-        "locations": geo_targets,
+        # `suggestedGeoTargets` and top-level `locations` are deliberately NOT
+        # written here. ds resolves them via its geo-target service (Google Ads
+        # geoTargetConstants lookup) when needed. The LLM's free-text guesses
+        # in product.suggested_locations are unreliable and would shadow the
+        # real resolution.
         "screenshot": (
             product.get("primary_screenshot_url")
             or product.get("screenshot_url")
