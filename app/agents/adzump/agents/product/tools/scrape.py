@@ -199,12 +199,16 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         )
 
         # Store the rich summary as the business brief for web_search context.
+        # Mutate the existing dict instead of wholesale-reassigning — the
+        # parent chat-agent shares this dict by reference (see
+        # agents/product/agent.py:306-311). Reassignment would detach the
+        # sub-agent's copy from the parent, and the rich summary would
+        # never reach the parent for the storage save.
         session_ctx = context.get("session_context") or {}
-        session_ctx["product_profile"] = {
-            "summary": business_summary,
-            "title": page.title or "",
-            "url": url,
-        }
+        profile = session_ctx.setdefault("product_profile", {})
+        profile["summary"] = business_summary
+        profile["title"] = page.title or ""
+        profile["url"] = url
 
         if business_summary:
             summary_lines.append(f"\n## Product Summary\n{business_summary}")
