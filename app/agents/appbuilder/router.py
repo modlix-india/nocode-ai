@@ -1,11 +1,7 @@
-"""AppBuilder router — chat + session management endpoints.
+"""AppBuilder router — chat endpoint.
 
-Endpoints:
-    POST /chat               — Stream agent response as SSE
-    GET  /sessions            — List sessions (paginated)
-    GET  /sessions/{id}       — Session detail with conversation history
-    PATCH /sessions/{id}      — Rename session (update title)
-    DELETE /sessions/{id}     — Delete session and related data
+Common endpoints (models, sessions) are registered via create_common_routes().
+Only the /chat endpoint with appbuilder-specific logic lives here.
 """
 
 from __future__ import annotations
@@ -13,25 +9,26 @@ from __future__ import annotations
 import logging
 from typing import Optional, List
 
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.core.streaming import AgentEventStream
+from app.core.base_auth import require_auth_context
+from app.core.base_router import (
+    ChatAttachment,
+    build_image_blocks,
+    create_common_routes,
+    stream_agent_response,
+)
 from app.core.session import BaseSession, AuthContext
-from app.db.models import SessionListItem, SessionListResponse, SessionStatus
 from app.services.session_manager import get_session_manager
-from app.services.context_manager import get_context_manager
+from app.services.security import ALLOWED_AI_APPS
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+create_common_routes(router, agent_name="appbuilder")
 
-# Module-level reference to the agent (set during startup)
 _agent = None
-
-# Active event streams keyed by session_id — needed for confirmation resolution
-_active_streams: dict[str, AgentEventStream] = {}
 
 
 def set_appbuilder_agent(agent) -> None:
@@ -40,114 +37,17 @@ def set_appbuilder_agent(agent) -> None:
     _agent = agent
 
 
-class ChatAttachment(BaseModel):
-    """An attachment sent with a chat message."""
-    type: str = "image"  # "image" or "file"
-    name: str = ""
-    mime_type: str = "image/png"
-    data: Optional[str] = None  # base64-encoded file content
-
-
-class ChatRequest(BaseModel):
-    """Request body for the chat endpoint."""
-    message: str
-    session_id: Optional[str] = None
-    app_code: Optional[str] = None
-    model: Optional[str] = None  # Model override: "provider:model_name"
-    attachments: Optional[List[ChatAttachment]] = None
-
-
-class ConfirmationResponse(BaseModel):
-    """Request body for confirming/denying a tool operation."""
-    confirmation_id: str
-    session_id: str
-    approved: bool
-    selected: str = ""  # The option value the user selected
-    reason: str = ""  # Optional reason for denial
-
-
-class UpdateSessionRequest(BaseModel):
-    """Request body for renaming a session."""
-    title: str
-
-
-def _extract_token(request: Request) -> str:
-    """Extract auth token from Authorization header or cookie fallback."""
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header:
-        return auth_header
-    cookie_token = request.cookies.get("Authorization", "")
-    if cookie_token:
-        return f"Bearer {cookie_token}"
-    return ""
-
-
-def _extract_standalone_context(request: Request) -> tuple[str, str]:
-    """In standalone mode, extract appCode and clientCode from X-Path-Prefix.
-
-    The prefix follows the pattern /{appCode}/{clientCode}/page.
-    Returns (app_code, client_code) — empty strings if not available.
-    """
-    from app.config import settings
-    if not settings.STANDALONE_MODE:
-        return "", ""
-    prefix = request.headers.get("X-Path-Prefix", "")
-    if not prefix:
-        return "", ""
-    # /{appCode}/{clientCode}/page → ["", appCode, clientCode, "page"]
-    parts = prefix.strip("/").split("/")
-    if len(parts) >= 2:
-        return parts[0], parts[1]
-    return "", ""
-
-
-def _extract_forwarded_headers(request: Request) -> tuple[str, str]:
-    """Extract X-Forwarded-Host/Port from request (set by gateway/proxy)."""
-    host = request.headers.get(
-        "X-Forwarded-Host", request.url.hostname or "localhost"
-    )
-    port = request.headers.get(
-        "X-Forwarded-Port", str(request.url.port or 80)
-    )
-    # Handle comma-separated port (matching Java behavior)
-    if "," in port:
-        port = port.split(",")[0]
-    return host, port
-
-
-async def _authenticate(
-    request: Request,
-    auth_header: str,
-    client_code: str,
-    access_app_code: str,
-    target_app_code: str,
+async def require_ai_auth_context(
+    auth: AuthContext = Depends(require_auth_context),
 ) -> AuthContext:
-    """Validate token and verify AI access.
-
-    Args:
-        access_app_code: The app from the header (must be appbuilder/sitezump).
-        target_app_code: The app to build/edit (from request body).
-
-    Raises HTTPException on auth failure or access denial.
-    """
-    from app.services.security import get_context_authentication, ALLOWED_AI_APPS
-
-    ctx_auth = await get_context_authentication(
-        request=request,
-        authorization=auth_header,
-        client_code=client_code,
-        app_code=access_app_code,
-    )
-    if not ctx_auth.isAuthenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    # Verify the access app is an AI-enabled app
-    verified_app = ctx_auth.verifiedAppCode or access_app_code
+    """Verify access app is AI-enabled (appbuilder/sitezump)."""
+    verified_app = auth.access_app_code
     if not verified_app or verified_app.lower() not in ALLOWED_AI_APPS:
         raise HTTPException(
             status_code=403,
             detail="AI features are only available in appbuilder or sitezump applications.",
         )
+    return auth
 
     forwarded_host, forwarded_port = _extract_forwarded_headers(request)
 
@@ -212,50 +112,29 @@ async def _authenticate_chat_request(request: Request, body: ChatRequest) -> Aut
     if not client_code:
         raise HTTPException(status_code=400, detail="Missing clientCode header")
 
-    try:
-        return await _authenticate(request, auth_header, client_code, access_app_code, target_app_code)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token validation failed: {e}")
-        raise HTTPException(status_code=401, detail="Token validation failed")
-
-
-@router.get("/models")
-async def list_models(request: Request):
-    """List available LLM models for the appbuilder agent."""
-    await _authenticate_session_request(request)
-
-    from app.services.llm_provider import get_available_models
-    return {"models": get_available_models()}
+class ChatRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = None
+    app_code: Optional[str] = None
+    model: Optional[str] = None
+    attachments: Optional[List[ChatAttachment]] = None
 
 
 @router.post("/chat")
-async def chat(request: Request, body: ChatRequest):
+async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_context)):
     """Stream an appbuilder agent response as SSE."""
     if _agent is None:
-        logger.error("Chat request rejected: AppBuilder agent is None (not initialized)")
         raise HTTPException(status_code=503, detail="AppBuilder agent not initialized")
 
-    logger.info("Chat request: session=%s, app=%s, model=%s, attachments=%d, message_len=%d",
-                body.session_id or "(new)", body.app_code or "(none)",
-                body.model or "(default)",
-                len(body.attachments) if body.attachments else 0, len(body.message))
+    if body.app_code:
+        auth.app_code = body.app_code
 
-    auth = await _authenticate_chat_request(request, body)
-    logger.info("Authenticated: user=%d, client=%s", auth.user_id, auth.client_code)
-
-    # Create/resume session
     session = BaseSession(agent_name="appbuilder")
-
-    # Seed context from request before session load (so it takes precedence on merge)
     if body.app_code:
         session.context["app_code"] = body.app_code
 
     await session.get_or_create(body.session_id, auth)
-    logger.info("Session ready: %s", session.session_id)
 
-    # Auto-set title on new sessions from first message
     if not body.session_id:
         title = body.message[:100].strip()
         if title:

@@ -26,9 +26,19 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+from contextvars import ContextVar
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field
 from typing import Any
+
+
+# Identifies which agent is currently executing. Set by BaseAgent.run() and
+# read by the emit_* methods to tag every event with its originating agent.
+# Default "root" = top-level chat agent (no card rendered for it).
+current_agent_id: ContextVar[str] = ContextVar("current_agent_id", default="root")
 
 
 class AgentEventType(str, Enum):
@@ -37,11 +47,19 @@ class AgentEventType(str, Enum):
     TEXT = "text"  # Streamed text from the LLM
     THINKING = "thinking"  # CoT reasoning from thinking-mode providers
     TOOL_START = "tool_start"  # Tool execution started
+    TOOL_UPDATE = "tool_update"  # Progress update during tool execution
     TOOL_RESULT = "tool_result"  # Tool execution completed
     ERROR = "error"  # Error occurred
     DONE = "done"  # Agent finished
     KEEPALIVE = "keepalive"  # Connection keepalive ping
     FEEDBACK_REQUEST = "feedback_request"  # Ask client to show feedback UI
+    SUGGESTIONS = "suggestions"  # Clickable option buttons for the user
+    CRAFT = "craft"  # Rich structured content for the side panel
+    DATA = "data"  # Generic agent-defined inline payload (widget type + fields)
+    COMPLETE = "complete"  # Successful terminal state with a structured result payload
+    AGENT_STARTED = "agent_started"  # Sub-agent started
+    AGENT_FINISHED = "agent_finished"  # Sub-agent finished
+    AGENT_USAGE = "agent_usage"  # Token usage update for an agent
     CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
     PLAN_UPDATE = "plan_update"  # Plan step status changed
     SUBTASK_START = "subtask_start"  # Sub-agent spawned for a task
@@ -103,14 +121,14 @@ class AgentEventStream:
         """Emit a text chunk from the LLM response."""
         await self._queue.put(AgentEvent(
             event=AgentEventType.TEXT,
-            data={"text": text},
+            data={"text": text, "agent_id": current_agent_id.get()},
         ))
 
     async def emit_thinking(self, reasoning: str) -> None:
         """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek)."""
         await self._queue.put(AgentEvent(
             event=AgentEventType.THINKING,
-            data={"text": reasoning},
+            data={"text": reasoning, "agent_id": current_agent_id.get()},
         ))
 
     async def emit_tool_start(
@@ -124,6 +142,18 @@ class AgentEventStream:
                 "tool_input": tool_input,
                 "tool_use_id": tool_use_id,
                 "display_name": display_name,
+                "agent_id": current_agent_id.get(),
+            },
+        ))
+
+    async def emit_tool_update(self, tool_use_id: str, message: str) -> None:
+        """Emit a progress message for a running tool."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.TOOL_UPDATE,
+            data={
+                "tool_use_id": tool_use_id,
+                "message": message,
+                "agent_id": current_agent_id.get(),
             },
         ))
 
@@ -138,6 +168,70 @@ class AgentEventStream:
                 "success": success,
                 "summary": summary,
                 "tool_use_id": tool_use_id,
+                "agent_id": current_agent_id.get(),
+            },
+        ))
+
+    # ── Sub-agent lifecycle events ──────────────────────────────
+
+    async def emit_agent_started(
+        self, agent_id: str, label: str, parent_id: str = "root",
+        parent_tool_use_id: str = "",
+    ) -> None:
+        """Emit when a sub-agent begins execution.
+
+        Frontend uses this to render an AgentGroup row for all subsequent
+        events tagged with this agent_id, and to suppress the spawning
+        tool call (`parent_tool_use_id`) from the "Used N tools" list.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.AGENT_STARTED,
+            data={
+                "agent_id": agent_id,
+                "label": label,
+                "parent_id": parent_id,
+                "parent_tool_use_id": parent_tool_use_id,
+            },
+        ))
+
+    async def emit_agent_finished(
+        self,
+        agent_id: str,
+        status: str = "success",
+        duration_ms: int = 0,
+        tokens_in: int = 0,
+        tokens_out: int = 0,
+        step_count: int = 0,
+        summary: str = "",
+    ) -> None:
+        """Emit when a sub-agent finishes execution.
+
+        `summary` is a one-line outcome shown in the collapsed card header.
+        `step_count` is the number of tool calls / inner items.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.AGENT_FINISHED,
+            data={
+                "agent_id": agent_id,
+                "status": status,
+                "duration_ms": duration_ms,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "step_count": step_count,
+                "summary": summary,
+            },
+        ))
+
+    async def emit_agent_usage(
+        self, agent_id: str, tokens_in: int, tokens_out: int,
+    ) -> None:
+        """Emit an interim token usage update for an agent."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.AGENT_USAGE,
+            data={
+                "agent_id": agent_id,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
             },
         ))
 
@@ -165,6 +259,85 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.KEEPALIVE,
             data={},
+        ))
+
+    async def emit_suggestions(
+        self, options: list[dict[str, str]], mode: str = "single",
+    ) -> None:
+        """Emit clickable suggestion options for the UI.
+
+        Args:
+            options: List of {label, value} dicts.
+            mode: "single" (click sends immediately) or "multi" (toggle + confirm).
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.SUGGESTIONS,
+            data={"options": options, "mode": mode},
+        ))
+
+    async def emit_data(self, data_type: str, payload: dict[str, Any]) -> None:
+        """Emit an agent-defined inline payload.
+
+        The UI dispatches on `type` and renders a matching widget. Keeps the
+        core domain-agnostic — each agent picks its own widget types.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.DATA,
+            data={"type": data_type, **payload},
+        ))
+
+    async def emit_complete(self, payload: dict[str, Any]) -> None:
+        """Emit a successful terminal-state event with a structured payload.
+
+        Distinct from `done`, which is the always-fired stream lifecycle
+        terminator (carries session_id + usage). `complete` is the
+        domain-task signal: fired only when an agent reaches a successful
+        terminal state with a result the host page should act on (e.g.
+        redirect, persist, call a downstream API).
+
+        Pairs with the LazyPrompt component's `onComplete` /
+        `completeBindingPath` props.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.COMPLETE,
+            data=payload,
+        ))
+
+    async def emit_craft(
+        self,
+        craft_id: str,
+        title: str,
+        blocks: list[dict[str, Any]],
+        message_id: str = "",
+        append: bool = False,
+    ) -> None:
+        """Emit rich structured content for the side panel.
+
+        Args:
+            craft_id: Unique identifier for this craft (same id = update).
+            title: Display title for the panel header and inline card.
+            blocks: Array of block objects (heading, text, table, etc.).
+            message_id: Links this craft to a specific chat message.
+            append: If True, blocks are appended to existing craft. If False, replaces.
+        """
+        data: dict[str, Any] = {
+            "id": craft_id,
+            "title": title,
+            "blocks": blocks,
+            "message_id": message_id,
+        }
+        if append:
+            data["append"] = True
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.CRAFT,
+            data=data,
+        ))
+
+    async def emit_craft_text(self, craft_id: str, text_delta: str) -> None:
+        """Append text to the craft panel's text block."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.CRAFT,
+            data={"id": craft_id, "text_delta": text_delta},
         ))
 
     async def emit_feedback_request(self, session_id: str, turn_number: int) -> None:

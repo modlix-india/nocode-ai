@@ -1,0 +1,19 @@
+You are an expert business analyst. Extract structured metadata from the website content below.
+
+WEBSITE CONTENT:
+{content}
+
+Extract the following fields:
+- product_name: The business/brand name
+- business_type: Short business category, 1-2 words (e.g. "Real Estate", "SaaS", "Restaurant", "E-commerce", "Healthcare"). For any property/villa/apartment/residential project, use "Real Estate" exactly.
+- location.location: The exact business address or primary city/state. Return "" if not found.
+- location.suggested_locations: A list of cities/regions good for ad targeting based on where the business operates. Return empty list if not found.
+
+RULES:
+- Only use information present in the content
+- Keep business_type short — 1-2 words, broad category
+- For location.location, include city AND state/region when available
+- For suggested_locations, list all mentioned geographic areas the business serves
+
+OUTPUT: Return ONLY valid JSON matching this exact schema:
+{{"product_name": "", "business_type": "", "location": {{"location": "", "suggested_locations": []}}}}

@@ -201,7 +201,19 @@ class ToolDefinition:
                 "required": [ ... ]
             }
         }
+
+        If this tool has a `builtin_spec`, a marker dict is returned instead —
+        providers that understand it pass the spec through, others drop it.
+        The ``provider`` key inside ``spec`` identifies the target provider.
         """
+        if self.builtin_spec:
+            return {
+                "__builtin__": True,
+                "name": self.name,
+                "provider": self.builtin_spec.get("provider", ""),
+                "spec": dict(self.builtin_spec),
+            }
+
         properties: dict[str, Any] = {}
         required: list[str] = []
 

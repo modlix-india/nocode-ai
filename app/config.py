@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.anthropicAPIKey
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_HAIKU: str = "claude-haiku-4-5-20251001"      # Fast model for analysis
-    CLAUDE_SONNET: str = "claude-opus-4-6"               # Balanced model for generation
+    CLAUDE_SONNET: str = "claude-sonnet-4-6"             # Balanced model for generation
     
     # OpenAI Settings
     # Can be overridden by config server: ai.secrets.openaiAPIKey
@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.googleAPIKey
     # Used for Google AI services (e.g. image generation)
     GOOGLE_API_KEY: str = ""
+
+    # Google Maps key — separate from the Gemini/LLM key so they can be
+    # rotated / restricted independently. Requires "Geocoding API" and
+    # "Maps Static API" enabled on the GCP project.
+    # Can be overridden by config server: ai.secrets.googleMapsAPIKey
+    GOOGLE_MAPS_API_KEY: str = ""
 
     # Prompt Caching (Anthropic-only feature)
     # Reduces token usage by ~90% for repeated system prompts
@@ -172,6 +178,7 @@ class Settings(BaseSettings):
             ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
             ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
+            ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
@@ -221,6 +228,14 @@ class Settings(BaseSettings):
         except (KeyError, TypeError, AttributeError):
             pass
 
+        # Agent-level config — adzump credentials under ai.adzump.*
+        try:
+            from app.agents.adzump.config import load_from_config_server as _load_adzump
+            _load_adzump(config)
+            logger.info("Applied config server values for adzump credentials")
+        except Exception as e:
+            logger.warning(f"Failed to load adzump config: {e}")
+
 
 # Global settings instance
 settings = Settings()
@@ -237,7 +252,14 @@ async def initialize_settings():
     if settings.CONFIG_SERVER_ENABLED:
         config = await initialize_config_from_server()
         settings.apply_config_server_values(config)
-    
+    else:
+        # No config server — still load adzump config from env vars alone.
+        try:
+            from app.agents.adzump.config import load_from_config_server as _load_adzump
+            _load_adzump({})
+        except Exception as e:
+            logger.warning(f"Failed to load adzump config from env: {e}")
+
     # Log final configuration (mask sensitive values)
     logger.info(f"Service: {settings.SERVICE_NAME}")
     logger.info(f"Port: {settings.SERVICE_PORT}")
