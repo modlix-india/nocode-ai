@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
         from app.agents.appbuilder.agent import AppBuilderAgent
         from app.agents.appbuilder.catalog import ComponentCatalog
         from app.agents.appbuilder.api_catalog import ApiCatalog
-        from app.agents.appbuilder.tools.registry import ALL_TOOLS
+        from app.agents.appbuilder.tools.registry import CORE_TOOLS, DEFERRED_TOOLS
         from app.agents.appbuilder.router import set_appbuilder_agent
 
         logger.info("Loading appbuilder context ...")
@@ -101,13 +101,16 @@ async def lifespan(app: FastAPI):
                      settings.APPBUILDER_PROVIDER, settings.AGENT_MODEL_TIER, settings.MAX_AGENT_TURNS)
         appbuilder_agent = AppBuilderAgent(
             context_builder=appbuilder_context,
-            tools=ALL_TOOLS,
+            tools=CORE_TOOLS,
             catalog=catalog,
             api_catalog=api_catalog,
             provider=settings.APPBUILDER_PROVIDER,
         )
         set_appbuilder_agent(appbuilder_agent)
-        logger.info(f"AppBuilder Agent initialized with {len(ALL_TOOLS)} tools, {len(catalog.get_all_types())} component types")
+        logger.info(
+            "AppBuilder Agent initialized: %d core tools, %d deferred tools, %d component types",
+            len(CORE_TOOLS), len(DEFERRED_TOOLS), len(catalog.get_all_types()),
+        )
     except Exception as e:
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")

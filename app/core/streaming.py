@@ -61,6 +61,10 @@ class AgentEventType(str, Enum):
     AGENT_FINISHED = "agent_finished"  # Sub-agent finished
     AGENT_USAGE = "agent_usage"  # Token usage update for an agent
     CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
+    PLAN_UPDATE = "plan_update"  # Plan step status changed
+    SUBTASK_START = "subtask_start"  # Sub-agent spawned for a task
+    SUBTASK_DONE = "subtask_done"  # Sub-agent completed
+    PROGRESS = "progress"  # Overall progress update (X of Y steps)
 
 
 @dataclass
@@ -341,6 +345,42 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.FEEDBACK_REQUEST,
             data={"session_id": session_id, "turn_number": turn_number},
+        ))
+
+    async def emit_plan_update(
+        self, step_id: int, status: str, task: str, notes: str = "",
+    ) -> None:
+        """Emit a plan step status change."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.PLAN_UPDATE,
+            data={"step_id": step_id, "status": status, "task": task, "notes": notes},
+        ))
+
+    async def emit_subtask_start(
+        self, subtask_id: str, task: str, step_id: int | None = None,
+    ) -> None:
+        """Emit a sub-agent spawn event."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.SUBTASK_START,
+            data={"subtask_id": subtask_id, "task": task, "step_id": step_id},
+        ))
+
+    async def emit_subtask_done(
+        self, subtask_id: str, success: bool, summary: str, step_id: int | None = None,
+    ) -> None:
+        """Emit a sub-agent completion event."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.SUBTASK_DONE,
+            data={"subtask_id": subtask_id, "success": success, "summary": summary, "step_id": step_id},
+        ))
+
+    async def emit_progress(
+        self, completed: int, total: int, current_task: str = "",
+    ) -> None:
+        """Emit an overall progress update."""
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.PROGRESS,
+            data={"completed": completed, "total": total, "current_task": current_task},
         ))
 
     async def request_confirmation(

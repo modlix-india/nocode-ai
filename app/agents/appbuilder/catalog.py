@@ -61,6 +61,128 @@ class ComponentCatalog:
             return []
         return list(self._catalog.get("components", {}).keys())
 
+    # ── Validation methods ─────────────────────────────────────────
+
+    _VALID_RESOLUTIONS = {
+        "ALL", "WIDE_SCREEN", "DESKTOP_SCREEN",
+        "TABLET_LANDSCAPE_SCREEN", "TABLET_LANDSCAPE_SCREEN_ONLY",
+        "TABLET_POTRAIT_SCREEN", "TABLET_POTRAIT_SCREEN_ONLY",
+        "MOBILE_LANDSCAPE_SCREEN", "MOBILE_LANDSCAPE_SCREEN_ONLY",
+        "MOBILE_POTRAIT_SCREEN", "MOBILE_POTRAIT_SCREEN_ONLY",
+    }
+
+    # Properties implicitly valid on every component (event bindings, visibility, etc.)
+    _IMPLICIT_PROPS = frozenset({
+        "onClick", "onChange", "onBlur", "onFocus", "onEnter",
+        "visibility", "readOnly",
+    })
+
+    def validate_component(
+        self, comp_type: str, properties: dict[str, Any] | None = None, styles: dict[str, Any] | None = None,
+    ) -> list[str]:
+        """Validate properties and styles against the catalog.
+
+        Returns a list of warning strings (empty if valid). Warnings are
+        advisory — the backend is the authoritative validator.
+        """
+        warnings: list[str] = []
+        info = self.get_component_info(comp_type)
+        if not info:
+            if comp_type not in (self.get_all_types() or []):
+                warnings.append(f"Unknown component type '{comp_type}'.")
+            return warnings
+
+        if properties:
+            warnings.extend(self._validate_properties(comp_type, info, properties))
+        if styles:
+            warnings.extend(self._validate_style_resolutions(styles))
+        return warnings
+
+    def _validate_properties(
+        self, comp_type: str, info: dict[str, Any], properties: dict[str, Any],
+    ) -> list[str]:
+        """Check property names against the catalog and enum values against each prop's schema."""
+        prop_defs = {p.get("name"): p for p in info.get("properties", []) if p.get("name")}
+        if not prop_defs:
+            return []
+        warnings: list[str] = []
+        for pname, pval in properties.items():
+            if pname not in prop_defs and pname not in self._IMPLICIT_PROPS:
+                warnings.append(
+                    f"Unknown property '{pname}' on {comp_type}. "
+                    f"Known: {sorted(prop_defs)[:10]}"
+                )
+                continue
+            enum_warning = _check_enum_value(comp_type, pname, pval, prop_defs.get(pname, {}))
+            if enum_warning:
+                warnings.append(enum_warning)
+        return warnings
+
+    def _validate_style_resolutions(self, styles: dict[str, Any]) -> list[str]:
+        """Ensure every resolution key in a style block is from the allowed set."""
+        warnings: list[str] = []
+        for style_val in styles.values():
+            if not (isinstance(style_val, dict) and "resolutions" in style_val):
+                continue
+            for res_key in style_val["resolutions"]:
+                if res_key not in self._VALID_RESOLUTIONS:
+                    warnings.append(
+                        f"Unknown resolution '{res_key}'. "
+                        "Valid: ALL, MOBILE_POTRAIT_SCREEN_ONLY, etc."
+                    )
+        return warnings
+
+    def validate_style_properties(
+        self, comp_type: str, sub_component: str, resolution: str, css_props: dict[str, Any],
+    ) -> list[str]:
+        """Validate CSS properties for a specific sub-component at a resolution.
+
+        Returns a list of warning strings.
+        """
+        warnings: list[str] = []
+
+        if resolution not in self._VALID_RESOLUTIONS:
+            warnings.append(f"Unknown resolution '{resolution}'.")
+
+        info = self.get_component_info(comp_type)
+        if not info:
+            return warnings
+
+        # Check sub-component exists
+        sub_comps = info.get("subComponents", {})
+        if sub_comps and sub_component and sub_component != "(root)":
+            if sub_component not in sub_comps:
+                known = [k for k in sub_comps if k != "(root)"]
+                warnings.append(f"Unknown sub-component '{sub_component}' on {comp_type}. Known: {known}")
+
+        # Check CSS property names are camelCase
+        for css_prop in css_props:
+            if "-" in css_prop:
+                warnings.append(f"CSS property '{css_prop}' uses kebab-case — must be camelCase (e.g. 'paddingLeft').")
+            # Check for common shorthand mistakes
+            if css_prop in ("padding", "margin", "border", "background", "font", "animation", "transition"):
+                warnings.append(f"CSS shorthand '{css_prop}' not allowed — use individual properties (e.g. 'paddingLeft', 'paddingTop').")
+
+        return warnings
+
+    def get_valid_properties(self, comp_type: str) -> list[dict[str, Any]]:
+        """Return all valid properties for a component type."""
+        info = self.get_component_info(comp_type)
+        return info.get("properties", []) if info else []
+
+    def get_valid_style_keys(self, comp_type: str, sub_component: str = "") -> list[str]:
+        """Return valid CSS property names for a sub-component from theme styles."""
+        info = self.get_component_info(comp_type)
+        if not info:
+            return []
+        theme_styles = info.get("themeStyleProperties", {})
+        if not theme_styles:
+            return []
+        styles_map = theme_styles.get("themeStyles", {})
+        key = sub_component or "(root)"
+        entries = styles_map.get(key, [])
+        return [e.get("cssProperty", "") for e in entries if isinstance(e, dict)]
+
     def to_prompt_context(self) -> str:
         """Format catalog as tier-aware text for system prompt injection.
 
@@ -172,16 +294,55 @@ def _format_component_full(lines: list[str], comp_type: str, info: dict) -> None
 
 
 def _append_properties(lines: list[str], props: list[dict]) -> None:
-    """Append property names and enum values to output lines."""
+    """Append property names and enum values to output lines.
+
+    Supports both catalog formats: CDN-generated uses
+    ``enumValues: [{"name": ...}, ...]``; the built-in fallback may use
+    ``enum: [str, ...]``. Both are rendered the same way.
+    """
     if not props:
         return
     prop_names = [p.get("name", "?") for p in props[:20]]
     lines.append(f"Properties: {', '.join(prop_names)}")
     for p in props:
-        enum_vals = p.get("enumValues", [])
-        if enum_vals:
-            names = [e.get("name", "?") for e in enum_vals]
+        names = _extract_enum_names(p)
+        if names:
             lines.append(f"  {p['name']}: {names}")
+
+
+def _extract_enum_names(prop: dict) -> list[str]:
+    """Return enum-value names for a property, handling both catalog formats."""
+    enum_vals = prop.get("enumValues")
+    if enum_vals:
+        return [e.get("name", "?") for e in enum_vals if isinstance(e, dict)]
+    legacy_enum = prop.get("enum")
+    if isinstance(legacy_enum, list):
+        return [str(v) for v in legacy_enum]
+    return []
+
+
+def _check_enum_value(
+    comp_type: str, pname: str, pval: Any, prop_def: dict,
+) -> str | None:
+    """Return a warning if ``pval`` is an enum-typed property set to an
+    invalid value, else None.
+
+    Catches cases like ``textType={'value': 'MARKDOWN'}`` when the only
+    valid values are ``['TEXT', 'MD']`` — the LLM has the prop name right
+    but hallucinated the value. Only flags when the catalog actually
+    declares an enum and the value is a plain string (dynamic expressions
+    and non-dict payloads are skipped — they may resolve at runtime).
+    """
+    enum_names = _extract_enum_names(prop_def)
+    if not enum_names or not isinstance(pval, dict):
+        return None
+    raw = pval.get("value")
+    if not isinstance(raw, str) or raw in enum_names:
+        return None
+    return (
+        f"Invalid value '{raw}' for '{pname}' on {comp_type}. "
+        f"Valid: {enum_names}"
+    )
 
 
 def _append_sub_components(lines: list[str], sub_comps: dict) -> None:
@@ -205,18 +366,26 @@ _FALLBACK_CATALOG: dict[str, Any] = {
     "version": "fallback",
     "components": {
         "Grid": {
+            "tier": "common",
+            "description": "Container for laying out children as rows or columns.",
             "properties": [
                 {"name": "columns", "type": "number"},
                 {"name": "columnGap", "type": "string"},
                 {"name": "rowGap", "type": "string"},
-                {"name": "direction", "type": "string", "enum": ["ROW", "COLUMN"]},
+                {"name": "direction", "type": "string",
+                 "enumValues": [{"name": "ROW"}, {"name": "COLUMN"}]},
             ],
             "styleProperties": [],
         },
         "Flex": {
+            "tier": "common",
+            "description": "Flexbox container for flexible layouts.",
             "properties": [
-                {"name": "direction", "type": "string", "enum": ["ROW", "COLUMN", "ROW_REVERSE", "COLUMN_REVERSE"]},
-                {"name": "wrap", "type": "string", "enum": ["WRAP", "NOWRAP", "WRAP_REVERSE"]},
+                {"name": "direction", "type": "string",
+                 "enumValues": [{"name": "ROW"}, {"name": "COLUMN"},
+                                {"name": "ROW_REVERSE"}, {"name": "COLUMN_REVERSE"}]},
+                {"name": "wrap", "type": "string",
+                 "enumValues": [{"name": "WRAP"}, {"name": "NOWRAP"}, {"name": "WRAP_REVERSE"}]},
                 {"name": "justifyContent", "type": "string"},
                 {"name": "alignItems", "type": "string"},
                 {"name": "gap", "type": "string"},
@@ -224,24 +393,69 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "Text": {
+            "tier": "common",
+            "description": "Renders text content. Set textType=MD to render the text as markdown.",
             "properties": [
-                {"name": "text", "type": "string"},
-                {"name": "textType", "type": "string", "enum": ["H1", "H2", "H3", "H4", "H5", "H6", "PARAGRAPH", "SPAN"]},
+                {"name": "text", "type": "string", "description": "The text to display (plain or markdown)."},
+                {"name": "textType", "type": "string",
+                 "description": "TEXT = plain text, MD = markdown (renders headings, lists, bold, links, code).",
+                 "enumValues": [
+                     {"name": "TEXT", "displayName": "Plain Text"},
+                     {"name": "MD", "displayName": "Markdown"},
+                 ]},
+                {"name": "textContainer", "type": "string",
+                 "description": "HTML tag used to wrap the text for SEO (SPAN, H1-H6, P, etc.). Independent of textType.",
+                 "enumValues": [
+                     {"name": "SPAN"}, {"name": "H1"}, {"name": "H2"}, {"name": "H3"},
+                     {"name": "H4"}, {"name": "H5"}, {"name": "H6"},
+                     {"name": "P"}, {"name": "I"}, {"name": "B"}, {"name": "PRE"},
+                 ]},
+                {"name": "processNewLine", "type": "boolean"},
+                {"name": "textColor", "type": "string"},
             ],
             "styleProperties": [],
         },
         "Button": {
+            "tier": "common",
+            "description": "Clickable button. Wire behavior via onClick referencing an event function name.",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "onClick", "type": "string"},
-                {"name": "designType", "type": "string", "enum": ["_outlined", "_text", "_iconButton", "_fabButton", "_decorative"]},
+                {"name": "designType", "type": "string",
+                 "enumValues": [
+                     {"name": "_outlined"}, {"name": "_text"},
+                     {"name": "_iconButton"}, {"name": "_fabButton"},
+                     {"name": "_decorative"},
+                 ]},
                 {"name": "colorScheme", "type": "string"},
                 {"name": "leftIcon", "type": "string"},
                 {"name": "rightIcon", "type": "string"},
             ],
             "styleProperties": [],
         },
+        "Image": {
+            "tier": "common",
+            "description": "Displays an image from a URL.",
+            "properties": [
+                {"name": "src", "type": "string"},
+                {"name": "alt", "type": "string"},
+                {"name": "onClick", "type": "string"},
+            ],
+            "styleProperties": [],
+        },
+        "Icon": {
+            "tier": "common",
+            "description": "Renders an icon from a registered icon pack.",
+            "properties": [
+                {"name": "icon", "type": "string"},
+                {"name": "size", "type": "number"},
+                {"name": "onClick", "type": "string"},
+            ],
+            "styleProperties": [],
+        },
         "TextBox": {
+            "tier": "data",
+            "description": "Single-line text input bound to Store via bindingPath.",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "placeholder", "type": "string"},
@@ -252,6 +466,8 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "TextArea": {
+            "tier": "data",
+            "description": "Multi-line text input bound to Store via bindingPath.",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "placeholder", "type": "string"},
@@ -260,23 +476,9 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             ],
             "styleProperties": [],
         },
-        "Image": {
-            "properties": [
-                {"name": "src", "type": "string"},
-                {"name": "alt", "type": "string"},
-                {"name": "onClick", "type": "string"},
-            ],
-            "styleProperties": [],
-        },
-        "Icon": {
-            "properties": [
-                {"name": "icon", "type": "string"},
-                {"name": "size", "type": "number"},
-                {"name": "onClick", "type": "string"},
-            ],
-            "styleProperties": [],
-        },
         "Dropdown": {
+            "tier": "data",
+            "description": "Select dropdown bound to Store.",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "bindingPath", "type": "string"},
@@ -287,6 +489,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "CheckBox": {
+            "tier": "data",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "bindingPath", "type": "string"},
@@ -295,6 +498,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "RadioButton": {
+            "tier": "data",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "bindingPath", "type": "string"},
@@ -303,6 +507,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "ToggleButton": {
+            "tier": "data",
             "properties": [
                 {"name": "label", "type": "string"},
                 {"name": "bindingPath", "type": "string"},
@@ -310,6 +515,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "Calendar": {
+            "tier": "data",
             "properties": [
                 {"name": "bindingPath", "type": "string"},
                 {"name": "dateFormat", "type": "string"},
@@ -319,6 +525,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "Table": {
+            "tier": "table",
             "properties": [
                 {"name": "dataBinding", "type": "object"},
                 {"name": "columns", "type": "array"},
@@ -328,6 +535,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "Tabs": {
+            "tier": "specialized",
             "properties": [
                 {"name": "tabs", "type": "array"},
                 {"name": "defaultTab", "type": "number"},
@@ -336,6 +544,7 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "Stepper": {
+            "tier": "specialized",
             "properties": [
                 {"name": "steps", "type": "array"},
                 {"name": "currentStep", "type": "number"},
@@ -344,9 +553,11 @@ _FALLBACK_CATALOG: dict[str, Any] = {
             "styleProperties": [],
         },
         "Menu": {
+            "tier": "specialized",
             "properties": [
                 {"name": "menuItems", "type": "array"},
-                {"name": "orientation", "type": "string", "enum": ["HORIZONTAL", "VERTICAL"]},
+                {"name": "orientation", "type": "string",
+                 "enumValues": [{"name": "HORIZONTAL"}, {"name": "VERTICAL"}]},
             ],
             "styleProperties": [],
         },

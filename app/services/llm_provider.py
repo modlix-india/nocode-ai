@@ -27,242 +27,65 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 
-def _extract_web_search_queries(event_or_item: Any) -> list[str]:
-    """Return every search query string on a web_search_call event/item.
+def _safe_parse_tool_args(raw_args: str | None, tool_name: str, model: str) -> dict:
+    """Parse tool call arguments JSON with repair for malformed output.
 
-    OpenAI's web_search may run MULTIPLE internal queries per tool call,
-    exposed via ``action.queries`` (list) — the singular ``action.query``
-    is only populated for single-query searches. We surface all of them
-    so the UI can show each one.
+    LLMs (especially DeepSeek) sometimes produce invalid JSON in tool
+    arguments: trailing commas, truncated strings, unescaped characters.
+    This function attempts increasingly aggressive repairs before falling
+    back to empty args.
     """
-    if event_or_item is None:
-        return []
-    candidates: list[Any] = [event_or_item]
-    inner_item = getattr(event_or_item, 'item', None)
-    if inner_item is not None:
-        candidates.append(inner_item)
+    import json as json_lib
+    import re
 
-    out: list[str] = []
-    seen: set[str] = set()
+    raw = raw_args or "{}"
 
-    def _add(val: Any) -> None:
-        if not val:
-            return
-        if isinstance(val, (list, tuple)):
-            for v in val:
-                _add(v)
-            return
-        s = str(val).strip()
-        if s and s not in seen:
-            seen.add(s)
-            out.append(s)
-
-    for c in candidates:
-        # Attribute-style access
-        action = getattr(c, 'action', None)
-        if action is not None:
-            _add(getattr(action, 'queries', None))
-            _add(getattr(action, 'query', None))
-            if isinstance(action, dict):
-                _add(action.get('queries'))
-                _add(action.get('query'))
-        _add(getattr(c, 'queries', None))
-        _add(getattr(c, 'query', None))
-        if isinstance(c, dict):
-            _add(c.get('queries'))
-            _add(c.get('query'))
-
-    return out
-
-
-def _extract_web_search_query(event_or_item: Any) -> str:
-    """Backwards-compat single-query extractor (first of the list)."""
-    qs = _extract_web_search_queries(event_or_item)
-    return qs[0] if qs else ""
-
-
-def _dump_attrs(obj: Any) -> str:
-    """Tiny diagnostic helper — stringify top-level attr names of an SDK object."""
-    if obj is None:
-        return "None"
+    # 1. Try as-is
     try:
-        if hasattr(obj, 'model_dump'):
-            return str(obj.model_dump())[:500]
-        if hasattr(obj, '__dict__'):
-            return str(vars(obj))[:500]
-        return str(obj)[:500]
-    except Exception:
-        return f"<{type(obj).__name__}>"
+        return json_lib.loads(raw)
+    except json_lib.JSONDecodeError:
+        pass
 
+    logger.warning("Malformed tool args from %s for %s (len=%d), attempting repair",
+                   model, tool_name, len(raw))
 
-def _block_to_dict(block: Any) -> Dict[str, Any]:
-    """Serialize a provider content block (SDK model or dict) to a JSON-safe dict.
+    # 2. Strip trailing commas before } or ]
+    try:
+        return json_lib.loads(re.sub(r',\s*([}\]])', r'\1', raw))
+    except json_lib.JSONDecodeError:
+        pass
 
-    ``mode="json"`` converts AnyUrl/datetime/etc. to primitives so the dict
-    survives ``json.dumps`` round-trips through session persistence. Opaque
-    fields (e.g. Anthropic ``server_tool_use`` / ``web_search_tool_result``)
-    must replay verbatim on subsequent API calls.
-    """
-    if hasattr(block, "model_dump"):
+    # 3. Truncate at last valid closing brace and try
+    last_brace = raw.rfind('}')
+    if last_brace > 0:
         try:
-            return block.model_dump(mode="json", exclude_none=True)
-        except TypeError:
-            try:
-                return block.model_dump(exclude_none=True)
-            except TypeError:
-                return block.model_dump()
-    if isinstance(block, dict):
-        return block
-    return {k: v for k, v in vars(block).items() if not k.startswith("_")}
+            return json_lib.loads(raw[:last_brace + 1])
+        except json_lib.JSONDecodeError:
+            pass
 
-
-def _parse_server_tool_query(input_json: str) -> str:
-    """Extract the ``query`` field from a partial/complete server_tool_use input.
-
-    Anthropic streams the JSON input of a server_tool_use (e.g. web_search)
-    via input_json_delta; the query is what we surface in the UI row.
-    Returns an empty string if the JSON is malformed or missing ``query``.
-    """
-    if not input_json:
-        return ""
-    import json as _json
+    # 4. Try closing unclosed braces/brackets (truncated response)
     try:
-        parsed = _json.loads(input_json)
-    except (ValueError, _json.JSONDecodeError):
-        return ""
-    if isinstance(parsed, dict):
-        return str(parsed.get("query") or "")
-    return ""
+        repaired = re.sub(r',\s*([}\]])', r'\1', raw)
+        # Remove any trailing incomplete string value
+        repaired = re.sub(r',\s*"[^"]*$', '', repaired)
+        # Count unclosed braces/brackets and close them
+        open_braces = repaired.count('{') - repaired.count('}')
+        open_brackets = repaired.count('[') - repaired.count(']')
+        if open_braces > 0 or open_brackets > 0:
+            repaired += ']' * max(0, open_brackets) + '}' * max(0, open_braces)
+            return json_lib.loads(repaired)
+    except json_lib.JSONDecodeError:
+        pass
 
+    # 5. Try wrapping in braces if it looks like bare key-value pairs
+    if not raw.strip().startswith('{'):
+        try:
+            return json_lib.loads('{' + raw + '}')
+        except json_lib.JSONDecodeError:
+            pass
 
-def _get_field(obj: Any, name: str, default: Any = None) -> Any:
-    """Read ``name`` from a pydantic model or dict — whichever ``obj`` is."""
-    if isinstance(obj, dict):
-        return obj.get(name, default)
-    return getattr(obj, name, default)
-
-
-def _parse_web_search_hits(block: Any) -> "tuple[list[dict], str]":
-    """Extract (hits, error) from a web_search_tool_result SDK block or dict.
-
-    Returns:
-        (hits, "") on success — hits is a list of ``{"title": str, "url": str}``.
-        ([], error_code) on failure — e.g. ``"max_uses_exceeded"``,
-        ``"too_many_requests"``, ``"unavailable"``.
-    """
-    content = _get_field(block, "content")
-
-    # Error variants (SDK model or dict form)
-    if isinstance(content, dict) and content.get("type") == "web_search_tool_result_error":
-        return [], str(content.get("error_code") or "")
-    if content is not None and not isinstance(content, (dict, list)):
-        err_code = _get_field(content, "error_code")
-        if err_code:
-            return [], str(err_code)
-
-    if not isinstance(content, list):
-        return [], ""
-
-    hits: list[dict] = []
-    for item in content:
-        if _get_field(item, "type") != "web_search_result":
-            continue
-        title = str(_get_field(item, "title", "") or "").strip()
-        if not title:
-            continue
-        url = str(_get_field(item, "url", "") or "")
-        hits.append({"title": title, "url": url})
-    return hits, ""
-
-
-def _parse_web_fetch_result(block: Any) -> "tuple[list[dict], str]":
-    """Extract (hits, error) from a web_fetch_tool_result SDK block or dict.
-
-    Web fetch returns a single page; we reuse the ``hits`` shape (a
-    single-entry list of ``{"title": str, "url": str}``) so the core agent
-    loop's ``builtin_tool_result`` handler is shape-compatible with
-    web_search. Error codes (e.g. ``"max_uses_exceeded"``, ``"url_not_allowed"``,
-    ``"unavailable"``) are surfaced the same way.
-    """
-    content = _get_field(block, "content")
-
-    # Error variants — SDK model or dict form
-    if content is not None and not isinstance(content, (list, dict)):
-        err_code = _get_field(content, "error_code")
-        if err_code:
-            return [], str(err_code)
-    if isinstance(content, dict) and content.get("type") == "web_fetch_tool_result_error":
-        return [], str(content.get("error_code") or "")
-
-    # Success — content is the fetched-page record (not a list)
-    if content is None:
-        return [], ""
-    if isinstance(content, list):
-        return [], ""
-
-    # Success shape: ``content.url`` + ``content.title`` + nested ``content.content`` document
-    url = str(_get_field(block, "url", "") or _get_field(content, "url", "") or "")
-    title = str(_get_field(content, "title", "") or "").strip()
-    if not title and not url:
-        return [], ""
-    return [{"title": title or url, "url": url}], ""
-
-
-def _summarize_messages(messages: List[Dict[str, Any]]) -> str:
-    """Compact one-line summary of message structure (role + block types + ids).
-
-    Used for diagnostic logging without dumping user/tool content. Helps
-    debug Anthropic 400s complaining about missing tool_result pairings.
-    """
-    parts: List[str] = []
-    for m in messages:
-        role = m.get("role", "?")
-        content = m.get("content")
-        if isinstance(content, list):
-            blocks = []
-            for b in content:
-                if not isinstance(b, dict):
-                    blocks.append("?")
-                    continue
-                bt = b.get("type", "?")
-                if bt == "tool_use":
-                    blocks.append(f"tool_use(id={b.get('id','?')},name={b.get('name','?')})")
-                elif bt == "tool_result":
-                    blocks.append(f"tool_result(id={b.get('tool_use_id','?')})")
-                elif bt == "server_tool_use":
-                    blocks.append(f"server_tool_use(id={b.get('id','?')},name={b.get('name','?')})")
-                elif bt == "web_search_tool_result":
-                    blocks.append(f"web_search_tool_result(id={b.get('tool_use_id','?')})")
-                elif bt == "web_fetch_tool_result":
-                    blocks.append(f"web_fetch_tool_result(id={b.get('tool_use_id','?')})")
-                else:
-                    blocks.append(bt)
-            parts.append(f"{role}:[{','.join(blocks)}]")
-        else:
-            parts.append(f"{role}:str")
-    return " | ".join(parts)
-
-
-@dataclass
-class StreamChunk:
-    """Unified streaming chunk across all providers."""
-    type: str  # "text_delta" | "reasoning_delta" | "tool_use_start" | "tool_input_delta" | "tool_use_end" | "builtin_tool_use" | "builtin_tool_result" | "message_complete" | "done"
-    text: str = ""
-    tool_name: str = ""
-    tool_id: str = ""
-    tool_input_json: str = ""
-    usage: dict = field(default_factory=dict)
-    stop_reason: str = ""
-    # For message_complete: the authoritative list of content blocks for the
-    # assistant turn, assembled by the provider (e.g. Anthropic's
-    # stream.get_final_message()). Consumer should persist this verbatim to
-    # history — in particular, Anthropic server-tool blocks
-    # (server_tool_use, web_search_tool_result) must round-trip unchanged.
-    blocks: list = field(default_factory=list)
-    # For builtin_tool_result: the hits returned by a server-executed tool
-    # (e.g. Anthropic web_search). Each hit: ``{"title": str, "url": str}``.
-    # ``text`` carries an error_code string on failure.
-    hits: list = field(default_factory=list)
+    logger.error("Could not repair tool args for %s (first 300 chars): %s", tool_name, raw[:300])
+    return {}
 
 
 class LLMProvider(ABC):
@@ -836,6 +659,88 @@ class OpenAIProvider(LLMProvider):
 
     def get_model(self, tier: str) -> str:
         return self._models.get(tier, tier)
+    
+    async def create_completion(
+        self,
+        system_prompt: str,
+        messages: List[Dict[str, Any]],
+        model_tier: str = "balanced",
+        max_tokens: int = 8192,
+        use_cache: bool = True  # Ignored - OpenAI doesn't support prompt caching
+    ) -> Dict[str, Any]:
+        """Create completion using OpenAI API"""
+        model = self.get_model(model_tier)
+        
+        # Build messages with system prompt
+        full_messages = [{"role": "system", "content": system_prompt}]
+        
+        # Convert Anthropic-style messages to OpenAI format
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content")
+            
+            if isinstance(content, str):
+                full_messages.append({"role": role, "content": content})
+            elif isinstance(content, list):
+                # Handle multimodal content (images + text)
+                openai_content = []
+                for item in content:
+                    if item.get("type") == "text":
+                        openai_content.append({
+                            "type": "text",
+                            "text": item.get("text", "")
+                        })
+                    elif item.get("type") == "image":
+                        # Convert Anthropic image format to OpenAI
+                        source = item.get("source", {})
+                        if source.get("type") == "base64":
+                            openai_content.append({
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{source.get('media_type', 'image/png')};base64,{source.get('data', '')}"
+                                }
+                            })
+                full_messages.append({"role": role, "content": openai_content})
+            else:
+                full_messages.append({"role": role, "content": str(content)})
+        
+        # Run synchronous API call in thread pool
+        response = await asyncio.to_thread(
+            self.client.chat.completions.create,
+            model=model,
+            max_tokens=max_tokens,
+            messages=full_messages
+        )
+        
+        cached = 0
+        try:
+            details = getattr(response.usage, "prompt_tokens_details", None)
+            if details is not None:
+                cached = getattr(details, "cached_tokens", 0) or 0
+        except Exception:
+            cached = 0
+
+        return {
+            "content": response.choices[0].message.content,
+            "usage": {
+                "input_tokens": response.usage.prompt_tokens,
+                "output_tokens": response.usage.completion_tokens,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": cached,
+            },
+            "model": model,
+            "stop_reason": response.choices[0].finish_reason
+        }
+    
+    async def create_completion_with_tools(
+        self,
+        system_prompt: Any,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_tier: str = "balanced",
+        max_tokens: int = 16384,
+    ) -> Dict[str, Any]:
+        """Create completion with tool-use via OpenAI function-calling API.
 
     def _extract_instructions(self, system_prompt: Any) -> str:
         """Extract plain text from system prompt (string or Anthropic content blocks)."""
@@ -884,15 +789,61 @@ class OpenAIProvider(LLMProvider):
                 input_items.append({"role": "user", "content": content})
 
             elif role == "user" and isinstance(content, list):
+                # Split into tool_results (separate "tool" role messages) and
+                # mixed user content (text + images → single user message).
+                tool_results: list[dict] = []
+                user_parts: list[dict] = []
                 for item in content:
-                    if item.get("type") == "tool_result":
-                        input_items.append({
-                            "type": "function_call_output",
-                            "call_id": item.get("tool_use_id", ""),
-                            "output": item.get("content", ""),
+                    itype = item.get("type")
+                    if itype == "tool_result":
+                        tool_results.append({
+                            "role": "tool",
+                            "tool_call_id": item.get("tool_use_id", ""),
+                            "content": item.get("content", ""),
                         })
-                    elif item.get("type") == "text":
-                        input_items.append({"role": "user", "content": item["text"]})
+                    elif itype == "text":
+                        user_parts.append({"type": "text", "text": item["text"]})
+                    elif itype == "image_url":
+                        user_parts.append(item)  # OpenAI native format, passthrough
+                    elif itype == "image":
+                        # Anthropic format → convert to OpenAI image_url
+                        src = item.get("source", {})
+                        b64 = src.get("data", "")
+                        mt = src.get("media_type", "image/png")
+                        if b64:
+                            user_parts.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mt};base64,{b64}"},
+                            })
+                            logger.info(
+                                "OpenAI: converted Anthropic image block to "
+                                "image_url (mime=%s, b64_len=%d)", mt, len(b64),
+                            )
+                    else:
+                        logger.warning(
+                            "OpenAI: dropping unknown user content item type=%s",
+                            itype,
+                        )
+
+                if user_parts:
+                    has_image = any(p.get("type") == "image_url" for p in user_parts)
+                    if has_image:
+                        logger.info(
+                            "OpenAI: sending user message with %d image_url + "
+                            "%d text part(s) to model=%s",
+                            sum(1 for p in user_parts if p["type"] == "image_url"),
+                            sum(1 for p in user_parts if p["type"] == "text"),
+                            model,
+                        )
+                        full_messages.append({"role": "user", "content": user_parts})
+                    else:
+                        merged = "\n".join(
+                            p["text"] for p in user_parts if p.get("type") == "text"
+                        )
+                        full_messages.append({"role": "user", "content": merged})
+                full_messages.extend(tool_results)
+            else:
+                full_messages.append({"role": role, "content": str(content) if content else ""})
 
             elif role == "assistant" and isinstance(content, list):
                 for item in content:
@@ -918,23 +869,31 @@ class OpenAIProvider(LLMProvider):
         """Convert Responses API response to Anthropic-style content blocks."""
         import json as json_lib
         content_blocks: List[Dict[str, Any]] = []
-
-        for item in response.output:
-            if item.type == "message":
-                for part in item.content:
-                    if hasattr(part, 'text'):
-                        content_blocks.append({"type": "text", "text": part.text})
-            elif item.type == "function_call":
+        if choice.message.content:
+            content_blocks.append({"type": "text", "text": choice.message.content})
+        if choice.message.tool_calls:
+            for tc in choice.message.tool_calls:
+                args = _safe_parse_tool_args(tc.function.arguments, tc.function.name, model)
                 content_blocks.append({
                     "type": "tool_use",
-                    "id": item.call_id,
-                    "name": item.name,
-                    "input": json_lib.loads(item.arguments),
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "input": args,
                 })
             # web_search_call items are auto-executed server-side, skip
 
         has_function_calls = any(item.type == "function_call" for item in response.output)
         stop_reason = "tool_use" if has_function_calls else "end_turn"
+
+        # OpenAI gpt-4o and later support automatic prompt caching. The cached
+        # token count is reported in usage.prompt_tokens_details.cached_tokens.
+        cached = 0
+        try:
+            details = getattr(response.usage, "prompt_tokens_details", None)
+            if details is not None:
+                cached = getattr(details, "cached_tokens", 0) or 0
+        except Exception:
+            cached = 0
 
         return {
             "content": content_blocks,
@@ -942,7 +901,7 @@ class OpenAIProvider(LLMProvider):
                 "input_tokens": getattr(response.usage, 'input_tokens', 0),
                 "output_tokens": getattr(response.usage, 'output_tokens', 0),
                 "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
+                "cache_read_input_tokens": cached,
             },
             "model": response.model,
             "stop_reason": stop_reason,
@@ -1151,7 +1110,9 @@ class OpenAIProvider(LLMProvider):
         return True
 
     def supports_prompt_caching(self) -> bool:
-        return False
+        # gpt-4o and later models support automatic prompt caching (no cache_control
+        # needed; OpenAI caches 1024+ token prefixes automatically)
+        return True
 
     def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
         return {
@@ -1297,15 +1258,62 @@ class DeepSeekProvider(LLMProvider):
                 full_messages.append(oai_msg)
 
             elif role == "user" and isinstance(content, list):
+                # Split into tool_results (separate "tool" role messages) vs
+                # mixed text+image content (a single user message).
+                tool_results: list[dict] = []
+                user_parts: list[dict] = []
                 for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
+                    itype = item.get("type")
+                    if itype == "tool_result":
+                        tool_results.append({
                             "role": "tool",
                             "tool_call_id": item.get("tool_use_id", ""),
                             "content": item.get("content", ""),
                         })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                    elif itype == "text":
+                        user_parts.append({"type": "text", "text": item["text"]})
+                    elif itype == "image_url":
+                        # OpenAI/DeepSeek native format — pass through unchanged
+                        user_parts.append(item)
+                    elif itype == "image":
+                        # Anthropic format → convert to OpenAI image_url shape
+                        src = item.get("source", {})
+                        b64 = src.get("data", "")
+                        mt = src.get("media_type", "image/png")
+                        if b64:
+                            user_parts.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mt};base64,{b64}"},
+                            })
+                            logger.info(
+                                "DeepSeek: converted Anthropic image block to "
+                                "image_url (mime=%s, b64_len=%d)", mt, len(b64),
+                            )
+                    else:
+                        logger.warning(
+                            "DeepSeek: dropping unknown user content item type=%s",
+                            itype,
+                        )
+
+                if user_parts:
+                    # If only text, collapse to a string for older DeepSeek
+                    # compatibility; mixed (text+image) needs the list form.
+                    has_image = any(p.get("type") == "image_url" for p in user_parts)
+                    if has_image:
+                        logger.info(
+                            "DeepSeek: sending user message with %d image_url part(s) "
+                            "and %d text part(s) to model=%s",
+                            sum(1 for p in user_parts if p["type"] == "image_url"),
+                            sum(1 for p in user_parts if p["type"] == "text"),
+                            model,
+                        )
+                        full_messages.append({"role": "user", "content": user_parts})
+                    else:
+                        merged = "\n".join(
+                            p["text"] for p in user_parts if p.get("type") == "text"
+                        )
+                        full_messages.append({"role": "user", "content": merged})
+                full_messages.extend(tool_results)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -1348,11 +1356,12 @@ class DeepSeekProvider(LLMProvider):
             content_blocks.append({"type": "text", "text": choice.message.content})
         if choice.message.tool_calls:
             for tc in choice.message.tool_calls:
+                args = _safe_parse_tool_args(tc.function.arguments, tc.function.name, model)
                 content_blocks.append({
                     "type": "tool_use",
                     "id": tc.id,
                     "name": tc.function.name,
-                    "input": json_lib.loads(tc.function.arguments),
+                    "input": args,
                 })
 
         stop_reason = "end_turn"
@@ -1378,15 +1387,15 @@ class DeepSeekProvider(LLMProvider):
 
         return result
 
-    async def stream_completion_with_tools(
-        self, system_prompt: Any, messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]], model_tier: str = "balanced",
-        max_tokens: int = 16384,
-        context_management: dict | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """Stream completion via Chat Completions API (OpenAI-compatible)."""
-        import json as json_lib
-        model = self.get_model(model_tier)
+    def supports_vision(self) -> bool:
+        # Verified empirically 2026-04: DeepSeek's hosted API returns
+        #   400 Bad Request: "unknown variant image_url, expected text"
+        # for both `deepseek-chat` and `deepseek-reasoner`. Their vision models
+        # (DeepSeek-VL2, Janus-Pro) are only distributed as HuggingFace weights,
+        # not served on api.deepseek.com. If you self-host one and expose it via
+        # an OpenAI-compatible endpoint, point DEEPSEEK_BASE_URL at it and then
+        # override this method in a subclass.
+        return False
 
         if isinstance(system_prompt, list):
             sys_text = " ".join(

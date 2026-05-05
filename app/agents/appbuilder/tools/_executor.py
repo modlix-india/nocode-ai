@@ -103,20 +103,27 @@ async def save_page(
     return await save_entity(client, API_PREFIX, page_id, page_data, headers, user_client_code)
 
 
-def build_component_tree(page_data: dict[str, Any]) -> str:
+def build_component_tree(
+    page_data: dict[str, Any],
+    max_depth: int = 2,
+    max_lines: int = 80,
+) -> str:
     """Build a human-readable component tree from a page definition.
+
+    Default output is COMPACT — shows the top 2 levels of hierarchy. Subtrees
+    deeper than max_depth are summarized as "(N descendants)". This keeps the
+    response small so it doesn't bloat conversation history. To see a specific
+    section's full details, the agent should use include='subtree' with
+    subtree_root or include='search'.
+
+    Pass max_depth=-1 for the full tree (old behavior).
 
     Returns an indented tree like:
         root (Grid)
-        ├── header (Grid)
-        │   ├── logo (Image)
-        │   └── nav (Grid)
-        ├── content (Grid)
-        │   ├── title (Text)
-        │   └── form (Grid)
-        │       ├── emailField (TextBox)
-        │       └── submitBtn (Button)
-        └── footer (Grid)
+        ├── headerSection (Grid) [12 descendants]
+        ├── section1Section (Text) "Introduction..."
+        ├── mainSection (Grid) [230 descendants]
+        └── footerSection (Grid) [18 descendants]
     """
     comp_def = page_data.get("componentDefinition", {})
     root_key = page_data.get("rootComponent", "")
@@ -125,8 +132,27 @@ def build_component_tree(page_data: dict[str, Any]) -> str:
         return "(empty page)"
 
     lines: list[str] = []
-    _build_tree_recursive(comp_def, root_key, lines, prefix="", is_last=True, is_root=True)
+    _build_tree_recursive(
+        comp_def, root_key, lines,
+        prefix="", is_last=True, is_root=True,
+        current_depth=0, max_depth=max_depth,
+    )
+    # Hard cap on lines as a safety net
+    if max_lines > 0 and len(lines) > max_lines:
+        dropped = len(lines) - max_lines
+        lines = lines[:max_lines] + [f"... +{dropped} more lines (use include='subtree' with subtree_root=<key> to drill in)"]
     return "\n".join(lines)
+
+
+def _count_descendants(comp_def: dict[str, Any], key: str) -> int:
+    """Count total descendants of a component recursively."""
+    comp = comp_def.get(key, {})
+    children = comp.get("children", {})
+    child_keys = [k for k, v in children.items() if v is True] if isinstance(children, dict) else []
+    total = 0
+    for ck in child_keys:
+        total += 1 + _count_descendants(comp_def, ck)
+    return total
 
 
 def _build_tree_recursive(
@@ -136,8 +162,14 @@ def _build_tree_recursive(
     prefix: str,
     is_last: bool,
     is_root: bool,
+    current_depth: int = 0,
+    max_depth: int = -1,
 ) -> None:
-    """Recursively build tree lines."""
+    """Recursively build tree lines.
+
+    If max_depth >= 0 and current_depth exceeds it, summarize the subtree
+    as a descendant count instead of recursing.
+    """
     comp = comp_def.get(key, {})
     comp_type = comp.get("type", "?")
 
@@ -154,15 +186,24 @@ def _build_tree_recursive(
     label = _get_label(props)
     extra = f' "{label}"' if label else ""
 
-    lines.append(f"{prefix}{connector}{key} ({comp_type}){extra}")
-
     # Process children
     children = comp.get("children", {})
     child_keys = [k for k, v in children.items() if v is True] if isinstance(children, dict) else []
 
+    # At max depth with children → summarize with descendant count
+    if max_depth >= 0 and current_depth >= max_depth and child_keys:
+        desc_count = _count_descendants(comp_def, key)
+        lines.append(f"{prefix}{connector}{key} ({comp_type}){extra} [{desc_count} descendants]")
+        return
+
+    lines.append(f"{prefix}{connector}{key} ({comp_type}){extra}")
+
     for i, child_key in enumerate(child_keys):
         is_last_child = i == len(child_keys) - 1
-        _build_tree_recursive(comp_def, child_key, lines, child_prefix, is_last_child, False)
+        _build_tree_recursive(
+            comp_def, child_key, lines, child_prefix, is_last_child, False,
+            current_depth=current_depth + 1, max_depth=max_depth,
+        )
 
 
 def _get_label(properties: dict[str, Any]) -> str:

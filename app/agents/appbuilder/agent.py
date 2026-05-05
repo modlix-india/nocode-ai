@@ -2,9 +2,9 @@
 
 Extends BaseAgent with:
 - AppBuilder-specific tools (pages, components, events, styles, entities)
+- Deferred tool loading (core tools in prompt, rest discovered via ToolSearch)
 - Component catalog integration (when available)
 - API catalog integration (when available)
-- Progressive tool documentation (group summary + per-turn details)
 """
 
 from __future__ import annotations
@@ -15,10 +15,74 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.core.context import BaseContext
-from app.agents.appbuilder.context import get_relevant_tool_details, extract_last_user_text
+from app.agents.appbuilder.context import extract_last_user_text
+from app.agents.appbuilder.tools.definition_cache import DefinitionCache
+from app.agents.appbuilder.tools.result_store import ResultStore
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _format_known_entities(known: dict) -> str:
+    """Format the session's 'known' memo as a compact prompt block.
+
+    The agent sees this as "What you already know" at each turn, letting it
+    skip re-discovery of pages/apps it has already read. The memo is a dict of:
+      - applications: {app_code → {ui_app_id, app_type, page_names}}
+      - pages: {"{app_code}/{page_name}" → {id, component_count, top_sections, event_function_names}}
+    """
+    if not known:
+        return ""
+
+    lines: list[str] = []
+    apps = known.get("applications") or {}
+    pages = known.get("pages") or {}
+
+    if not apps and not pages:
+        return ""
+
+    lines.append("What you already know about this session (do NOT re-fetch these):")
+
+    for app_code, info in apps.items():
+        parts = [f"- App '{app_code}'"]
+        if info.get("ui_app_id"):
+            parts.append(f"UI app ID: {info['ui_app_id']}")
+        if info.get("app_type"):
+            parts.append(f"type: {info['app_type']}")
+        page_names = info.get("page_names") or []
+        if page_names:
+            # Cap at 15 names to keep prompt compact
+            shown = ", ".join(page_names[:15])
+            more = "" if len(page_names) <= 15 else f" (+{len(page_names) - 15} more)"
+            parts.append(f"pages: {shown}{more}")
+        lines.append(" | ".join(parts))
+
+    for page_key, info in pages.items():
+        parts = [f"- Page '{page_key}'"]
+        if info.get("id"):
+            parts.append(f"id: {info['id']}")
+        if info.get("component_count") is not None:
+            parts.append(f"{info['component_count']} components")
+        if info.get("root"):
+            parts.append(f"root: {info['root']}")
+        top = info.get("top_sections") or []
+        if top:
+            shown = ", ".join(top[:8])
+            more = "" if len(top) <= 8 else f" (+{len(top) - 8} more)"
+            parts.append(f"top sections: [{shown}{more}]")
+        events = info.get("event_function_names") or []
+        if events:
+            shown = ", ".join(events[:5])
+            more = "" if len(events) <= 5 else f" (+{len(events) - 5} more)"
+            parts.append(f"events: [{shown}{more}]")
+        lines.append(" | ".join(parts))
+
+    lines.append("")
+    lines.append(
+        "If the user asks about one of these, use the remembered info directly "
+        "instead of calling list/read again. Re-read only if you need details not in the memo."
+    )
+    return "\n".join(lines)
 
 
 class AppBuilderAgent(BaseAgent):
@@ -34,8 +98,8 @@ class AppBuilderAgent(BaseAgent):
     ) -> None:
         """
         Args:
-            context_builder: BaseContext with agent persona and tool groups summary.
-            tools: List of ToolDefinitions. Defaults to empty (populated by registry).
+            context_builder: BaseContext with agent persona.
+            tools: List of ToolDefinitions. Defaults to registry CORE_TOOLS.
             catalog: ComponentCatalog instance (optional).
             api_catalog: ApiCatalog instance (optional).
             provider: LLM provider name ("anthropic" or "openai"). Defaults to Anthropic.
@@ -45,52 +109,155 @@ class AppBuilderAgent(BaseAgent):
         self._api_catalog = api_catalog
         self._api_catalog_context = api_catalog.to_prompt_context() if api_catalog else ""
 
-        from app.agents.appbuilder.tools.registry import TOOL_ROUTER
+        from app.agents.appbuilder.tools.registry import CORE_TOOLS, DEFERRED_TOOLS
+
+        # Per-session caches (created lazily per session in build_tool_context)
+        self._session_caches: dict[str, DefinitionCache] = {}
+        self._session_result_stores: dict[str, ResultStore] = {}
 
         super().__init__(
             name="appbuilder",
-            tools=tools or [],
+            tools=tools or CORE_TOOLS,
             context_builder=context_builder,
             model_tier=settings.AGENT_MODEL_TIER,
             max_turns=settings.MAX_AGENT_TURNS,
             max_tokens=settings.AGENT_MAX_TOKENS,
             provider=provider,
-            router_tool=TOOL_ROUTER,
+            deferred_tools=DEFERRED_TOOLS,
         )
 
-    async def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession, user_message: str = "") -> str:
         """Build per-request dynamic context.
 
-        Includes: auth info, relevant tool group details,
-        component catalog, API catalog, and learned knowledge.
+        Includes: auth info, component catalog, API catalog, learned knowledge,
+        and auto-scraped website data when the user provides a URL.
+
+        ORDER MATTERS for prompt caching (OpenAI caches by exact prefix, Anthropic
+        uses explicit cache_control). Put STABLE content first, VARIABLE last so
+        the cacheable prefix stays intact across turns:
+          1. Catalogs (identical across all sessions — large, very cacheable)
+          2. Session info (stable within a session — app_code, client)
+          3. Learning enhancement (stable within a session)
+          4. Auto-scraped URL data (changes per-turn when URLs appear — put last)
         """
         parts: list[str] = []
 
-        if session.auth:
-            app_code = session.context.get("app_code") or session.auth.app_code
-            parts.append(
-                f"Current session:\n"
-                f"- Client: {session.auth.client_code}\n"
-                f"- App: {app_code}\n"
-            )
-
-        # Progressive tool docs: inject detailed reference for relevant groups
-        tool_details = get_relevant_tool_details(session.messages)
-        if tool_details:
-            parts.append(tool_details)
-
+        # 1. Catalogs — process-wide static content (identical across sessions).
+        # These are the largest parts and ideally should be in the cached prefix.
         if self._catalog_context:
             parts.append(self._catalog_context)
 
         if self._api_catalog_context:
             parts.append(self._api_catalog_context)
 
-        # Learning loop: inject relevant knowledge from past sessions
+        # 2. Session info — stable within a session (client_code, app_code).
+        if session.auth:
+            app_code = session.context.get("app_code") or session.auth.app_code
+            # X-Forwarded-Host may be comma-separated (e.g. "apps.local.modlix.com,localhost:8080");
+            # take just the first (primary) host so the preview URL is valid.
+            raw_host = session.auth.forwarded_host or "localhost"
+            host = raw_host.split(",")[0].strip()
+            scheme = "https" if host not in ("localhost", "127.0.0.1") and "localhost" not in host else "http"
+            # Strip port from host if embedded (e.g. "localhost:8080")
+            if ":" in host:
+                host_part, port_part = host.rsplit(":", 1)
+                port_suffix = f":{port_part}" if port_part not in ("443", "80") else ""
+                host = host_part
+            else:
+                port_suffix = f":{session.auth.forwarded_port}" if session.auth.forwarded_port not in ("443", "80", "") else ""
+            base_url = f"{scheme}://{host}{port_suffix}"
+            parts.append(
+                f"Current session:\n"
+                f"- Client: {session.auth.client_code}\n"
+                f"- App: {app_code}\n"
+                f"- Preview URL pattern: {base_url}/<appCode>/{session.auth.client_code}/page/<pageName>\n"
+            )
+
+        # 3. Known entities — what the agent already discovered this session
+        # (page IDs, structures, app metadata). Surfaced here so the agent
+        # doesn't re-fetch things it already knows. Persisted to DB via
+        # session.context_json so it survives across turns.
+        known = session.context.get("known") or {}
+        known_text = _format_known_entities(known)
+        if known_text:
+            parts.append(known_text)
+
+        # 4. Learning enhancement — stable within a session.
         enhancement = await self._build_learning_enhancement(session)
         if enhancement:
             parts.append(enhancement)
 
+        # 4. Auto-scraped URL data — changes per-turn; goes LAST so cacheable
+        # prefix stays stable across turns without URLs.
+        scraped = await self._auto_scrape_urls(session, user_message)
+        if scraped:
+            parts.append(scraped)
+
         return "\n\n".join(parts)
+
+    async def _auto_scrape_urls(self, session: BaseSession, user_message: str = "") -> str:
+        """Detect URLs in the current user message and scrape them.
+
+        Args:
+            session: Active session.
+            user_message: The current user message (not yet in session.messages).
+
+        Returns formatted scraped data or empty string.
+        """
+        from app.agents.appbuilder.tools.web_scraper import (
+            extract_urls_from_text,
+            scrape_website,
+            format_scraped_data_with_styles,
+        )
+
+        # Check current message first, then fall back to last message in history
+        text_to_check = user_message or extract_last_user_text(session.messages)
+        if not text_to_check:
+            return ""
+
+        urls = extract_urls_from_text(text_to_check)
+        if not urls:
+            return ""
+
+        # Only scrape the first URL to avoid excessive latency
+        url = urls[0]
+        logger.info("Auto-scraping URL from user message: %s", url)
+
+        try:
+            data = await scrape_website(url)
+            if data.get("error"):
+                logger.warning("Scrape failed: %s", data["error"])
+                return f"[Attempted to scrape {url} but failed: {data['error']}]"
+
+            logger.info("Scraped %s: %d sections, %d colors, %d images",
+                       url,
+                       len(data.get("sections", [])),
+                       len(data.get("colors", [])),
+                       len(data.get("images", [])))
+
+            # If we have a screenshot, analyze it with Claude Haiku vision
+            # to extract the actual visual design (colors, fonts, layout)
+            screenshot = data.get("screenshot_base64")
+            if screenshot:
+                session.context["scraped_screenshot"] = screenshot
+                session.context["scraped_url"] = url
+
+                from app.agents.appbuilder.tools.style_analyzer import analyze_and_format_styles
+                try:
+                    logger.info("Analyzing screenshot styles with Claude Haiku vision...")
+                    design_brief = await analyze_and_format_styles(screenshot, data)
+                    logger.info("Style analysis complete: %d chars", len(design_brief))
+                    # Return the vision-enhanced design brief instead of basic scrape
+                    return design_brief
+                except Exception as e:
+                    logger.warning("Style analysis failed, falling back to basic scrape: %s", e)
+
+            # Fallback: scraper output with pre-converted Modlix styles
+            return format_scraped_data_with_styles(data)
+
+        except Exception as e:
+            logger.warning("Auto-scrape failed for %s: %s", url, e)
+            return f"[Attempted to scrape {url} but failed: {e}]"
 
     async def _build_learning_enhancement(self, session: BaseSession) -> str:
         """Retrieve and format learned knowledge for prompt injection."""
@@ -113,11 +280,37 @@ class AppBuilderAgent(BaseAgent):
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Build context dict passed to each tool's execute function.
 
-        Adds appbuilder-specific fields beyond the base context.
+        Adds appbuilder-specific fields beyond the base context:
+        - definition_cache: LRU cache for definition metadata
+        - result_store: persistence for oversized tool results
+        - catalog: component catalog for validation
         """
         ctx = super().build_tool_context(session)
         if session.auth:
             ctx["app_code"] = session.context.get("app_code") or session.auth.app_code
             ctx["client_code"] = session.auth.client_code
         ctx["session_context"] = session.context
+
+        # Lazily create per-session caches
+        sid = session.session_id
+        if sid not in self._session_caches:
+            self._session_caches[sid] = DefinitionCache()
+        if sid not in self._session_result_stores:
+            self._session_result_stores[sid] = ResultStore()
+
+        ctx["definition_cache"] = self._session_caches[sid]
+        ctx["result_store"] = self._session_result_stores[sid]
+
+        if self._catalog:
+            ctx["catalog"] = self._catalog
+
+        # Orchestrator context for delegate_task tool
+        if hasattr(self, '_current_provider'):
+            ctx["_session"] = session
+            ctx["_provider"] = self._current_provider
+            ctx["_event_stream"] = getattr(self, '_current_event_stream', None)
+            ctx["_all_tools"] = self.tools
+            ctx["_context_builder"] = self.context_builder
+            ctx["_tool_context_builder"] = self.build_tool_context
+
         return ctx

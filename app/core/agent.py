@@ -35,66 +35,71 @@ from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream, current_agent_id
 from app.core.session import BaseSession
 from app.core.context import BaseContext
+from app.core.compaction import ContextCompactor, prune_old_tool_results
 from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
 
-def _compact_host(url: str) -> str:
-    """Return ``host/path-tail`` compact form; empty if unparseable."""
-    if not url:
+# Patterns the LLM uses to "promise an action" without actually calling a tool.
+# When the model replies with these and stop_reason=end_turn (no tool_use),
+# the user waits forever because the agent ends the turn. Detection lets us
+# nudge the model to execute.
+_ACTION_PROMISE_PATTERNS = (
+    "give me a moment",
+    "give me a sec",
+    "one moment",
+    "hold on",
+    "let me ",
+    "i'll ",
+    "i will ",
+    "i'm going to ",
+    "i am going to ",
+    "let's ",
+    "now let's ",
+    "next, i'll",
+    "next, i will",
+    "i shall ",
+    "please hold",
+    "please wait",
+    "stand by",
+    "just a moment",
+    "bear with me",
+)
+
+
+def _detect_action_promise(content_blocks: list[dict]) -> str:
+    """If the assistant's text promises action (but there's no tool_use),
+    return the matching phrase; else empty string.
+
+    Only flags messages that are text-only AND contain an action-promise
+    phrase. Uses lowercase substring match — simple and cheap.
+    """
+    if not content_blocks:
         return ""
-    try:
-        from urllib.parse import urlparse
-        p = urlparse(url)
-        host = (p.netloc or "").removeprefix("www.")
-        return host or url[:55]
-    except Exception:
-        return url[:55]
 
+    text_parts: list[str] = []
+    for b in content_blocks:
+        if not isinstance(b, dict):
+            continue
+        if b.get("type") == "tool_use":
+            # There IS a tool_use — not a promise-without-action situation.
+            return ""
+        if b.get("type") == "text":
+            t = b.get("text", "")
+            if isinstance(t, str):
+                text_parts.append(t)
 
-def _format_web_search_hits(hits: list[dict[str, Any]], error: str) -> str:
-    """Render a pretty list of hits for a builtin web_search row.
-
-    All hits are shown (the UI scrolls). One line per hit:
-    ``N. Title — host.com``. On error, returns ``"search failed: <code>"``.
-    """
-    if error:
-        return f"search failed: {error}"
-    if not hits:
-        return "no results"
-
-    n = len(hits)
-    lines = [f"Found {n} hit{'s' if n != 1 else ''}:"]
-    for i, h in enumerate(hits, 1):
-        title = (h.get("title") or "").strip()
-        host = _compact_host(h.get("url") or "")
-        if title and host:
-            lines.append(f"  {i}. {title} — {host}")
-        elif title:
-            lines.append(f"  {i}. {title}")
-        elif host:
-            lines.append(f"  {i}. {host}")
-    return "\n".join(lines)
-
-
-def _format_web_fetch_result(hits: list[dict[str, Any]], error: str) -> str:
-    """Render a one-line outcome for a builtin web_fetch row.
-
-    ``hits`` carries a single-entry list ``[{"title", "url"}]`` on success
-    (shape-compatible with web_search so the chunk-level plumbing stays
-    uniform). On error, returns ``"fetch failed: <code>"``.
-    """
-    if error:
-        return f"fetch failed: {error}"
-    if not hits:
-        return "no content"
-    h = hits[0]
-    title = (h.get("title") or "").strip()
-    host = _compact_host(h.get("url") or "")
-    if title and host:
-        return f"fetched: {title[:80]} ({host})"
-    return f"fetched: {title or host or 'page'}"
+    if not text_parts:
+        return ""
+    combined = " ".join(text_parts).lower()
+    # Minimum length — tiny messages ("OK", "Done") should NOT be re-prompted.
+    if len(combined.strip()) < 20:
+        return ""
+    for p in _ACTION_PROMISE_PATTERNS:
+        if p in combined:
+            return p
+    return ""
 
 
 class BaseAgent:
@@ -125,6 +130,8 @@ class BaseAgent:
         sequential_tools: bool = False,
         context_management: dict | None = None,
         router_tool: ToolDefinition | None = None,
+        deferred_tools: list[ToolDefinition] | None = None,
+        auto_approve: bool = True,
     ) -> None:
         self.name = name
         self.tools = {t.name: t for t in tools}
@@ -138,14 +145,37 @@ class BaseAgent:
         if not self.display_name:
             self.display_name = name.replace("_", " ").title()
 
-        # Tool-of-tools: when a router_tool is provided, the LLM sees only
-        # the router schema.  The agent unwraps execute(tool=X, params={})
-        # into the real tool call before dispatch.
+        # Deferred tool loading: core tools are always in the prompt;
+        # deferred tools are only included after the LLM discovers them
+        # via ToolSearchTool.
+        self._core_tools = [t for t in tools if not t.is_deferred]
+        self._deferred_tools = deferred_tools or [t for t in tools if t.is_deferred]
+
+        # Register deferred tools in the dispatch map so they can be
+        # executed once discovered, even though their schemas aren't in
+        # the initial prompt.
+        for dt in self._deferred_tools:
+            self.tools[dt.name] = dt
+
+        # When True, mutating tools execute without waiting for user confirmation.
+        # Set to False for human-supervised mode.
+        self._auto_approve = auto_approve
+
+        # Legacy: tool-of-tools router (deprecated, kept for backward compat)
         self._router_tool_name = router_tool.name if router_tool else None
         if router_tool:
             self._anthropic_tools = [router_tool.to_anthropic_tool()]
         else:
-            self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
+            self._anthropic_tools = [t.to_anthropic_tool() for t in self._core_tools]
+
+        # Auto-compaction: summarize old messages when context approaches limit
+        from app.config import settings
+        self._compactor = ContextCompactor(
+            context_limit=settings.CONTEXT_LIMIT_DEFAULT,
+            threshold=settings.COMPACTION_THRESHOLD,
+            post_compact_budget=settings.POST_COMPACT_BUDGET,
+            keep_recent=settings.COMPACTION_KEEP_RECENT,
+        )
 
         # Hold references to background tasks to prevent premature GC
         self._background_tasks: set[asyncio.Task] = set()
@@ -272,24 +302,50 @@ class BaseAgent:
             provider = get_llm_provider(self._provider_name)
         logger.info("Provider resolved: %s (class=%s)", self._provider_name, type(provider).__name__)
 
+        # Store transient loop state for sub-agent delegation
+        self._current_provider = provider
+        self._current_event_stream = event_stream
+        self._current_session = session
+
         # Mark session as processing so UI can detect in-progress state on refresh
         await session.set_processing()
 
-        # Append user message + start turn FIRST so build_dynamic_context can
-        # read the current turn's message via session.messages (and turn count
-        # via session._turn_count). Otherwise the dynamic context shows the
-        # PREVIOUS user message and uses an off-by-one turn for provenance.
-        session.append_user_message(user_message, image_blocks)
-        logger.info("Message history: %d messages", len(session.get_messages()))
-        session.start_turn()
-        await session.persist_turn_incremental(user_message, "", None)
-
-        # Build system prompt
-        dynamic_context = await self.build_dynamic_context(session)
+        # Build system prompt (pass user_message for URL auto-scraping)
+        dynamic_context = await self.build_dynamic_context(session, user_message=user_message)
         system_prompt = self.context_builder.build_system_prompt(
             dynamic_context=dynamic_context,
         )
         logger.info("System prompt built: %d chars", len(system_prompt))
+
+        # Inject scraped screenshot as an image block if available
+        all_image_blocks = list(image_blocks) if image_blocks else []
+        scraped_screenshot = session.context.pop("scraped_screenshot", None)
+        if scraped_screenshot:
+            all_image_blocks.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": scraped_screenshot,
+                },
+            })
+            logger.info("Injected scraped screenshot as image block")
+
+        # Append user message to conversation (with optional images)
+        session.append_user_message(user_message, all_image_blocks or None)
+        logger.info(
+            "Message history: %d messages, image_blocks=%d "
+            "(provider=%s, model_override=%s)",
+            len(session.get_messages()),
+            len(all_image_blocks),
+            self._provider_name,
+            model_override or "(none)",
+        )
+
+        # Start the turn counter and persist user message early so it
+        # survives LLM failures and connection drops.
+        session.start_turn()
+        await session.persist_turn_incremental(user_message, "", None)
 
         turn = 0
         assistant_text_parts: list[str] = []
@@ -307,10 +363,22 @@ class BaseAgent:
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
-            # Call LLM with streaming
+            # Proactively prune large tool_result blocks from older turns so
+            # they don't keep re-transmitting on every subsequent LLM call.
+            # Safe to run every turn — only touches results older than the
+            # keep_recent window and only truncates results larger than the
+            # size threshold.
+            prune_old_tool_results(session)
+
+            # Build per-request tool list (core + discovered deferred tools)
+            request_tools = self._build_tools_for_request(session)
+
+            # Call LLM with tools
+            # When a model override is set, pass it as model_tier — providers
+            # treat unknown tier strings as direct model names (see get_model).
             effective_tier = override_model or self.model_tier
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
-                       turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
+                       turn, self.max_turns, effective_tier, self.max_tokens, len(request_tools))
             start_time = time.monotonic()
 
             # Stream response — accumulate into content_blocks
@@ -333,7 +401,7 @@ class BaseAgent:
             async for chunk in provider.stream_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=session.get_messages(),
-                tools=self._anthropic_tools,
+                tools=request_tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
                 context_management=self.context_management,
@@ -486,10 +554,13 @@ class BaseAgent:
                 assistant_text_parts.append(current_text)
 
             latency_ms = int((time.monotonic() - start_time) * 1000)
-            usage.setdefault("input_tokens", 0)
-            usage.setdefault("output_tokens", 0)
-            usage.setdefault("cache_creation_input_tokens", 0)
-            usage.setdefault("cache_read_input_tokens", 0)
+
+            # Check cancellation right after LLM returns
+            if event_stream.is_cancelled:
+                break
+
+            content_blocks = response["content"]
+            usage = response["usage"]
             usage["latency_ms"] = latency_ms
             logger.info("Turn %d: LLM streamed in %dms, stop_reason=%s, text_chunks=%d, usage=%s",
                        turn, latency_ms, stop_reason, _text_chunk_count, usage)
@@ -499,6 +570,13 @@ class BaseAgent:
                     "Increase max_tokens or tighten the prompt's output.",
                     turn, self.max_tokens,
                 )
+
+            # Summarize what the LLM produced this turn
+            text_len = sum(len(b.get("text", "")) for b in content_blocks if b.get("type") == "text")
+            tool_names = [b.get("name", "?") for b in content_blocks if b.get("type") == "tool_use"]
+            logger.info("Turn %d: %dms, stop=%s | text=%d chars, tools=%s",
+                       turn, latency_ms, stop_reason,
+                       text_len, ", ".join(tool_names) if tool_names else "(none)")
 
             # Track usage and capture model name
             resolved_model = provider.get_model(effective_tier)
@@ -512,8 +590,31 @@ class BaseAgent:
             # Save assistant message to conversation history
             session.append_assistant_message(content_blocks, reasoning_content)
 
-            # If no tool calls, we're done
+            # If no tool calls, we're done — UNLESS the LLM made an action
+            # promise in text ("Let me...", "Give me a moment...") without
+            # actually calling a tool. In that case nudge it once to execute.
+            # Without this nudge, OpenAI gpt-4o frequently "narrates intent"
+            # and ends the turn, leaving the user waiting indefinitely.
             if stop_reason != "tool_use" or not tool_use_blocks:
+                promise_text = _detect_action_promise(content_blocks)
+                already_nudged = session.context.get("_nudged_this_turn", False)
+                if promise_text and not already_nudged:
+                    logger.info(
+                        "Turn %d ended with action-promise but no tool_use; "
+                        "nudging LLM to execute. Promise: %r",
+                        turn, promise_text[:80],
+                    )
+                    session.context["_nudged_this_turn"] = True
+                    # Inject a system-style follow-up as a user message that
+                    # asks the model to execute what it promised.
+                    session.append_user_message(
+                        "You said you would make changes but didn't call any "
+                        "tool. Please EXECUTE the tool call now to actually "
+                        "make the change. Do NOT reply with more narration — "
+                        "call the appropriate tool (e.g. read, update, etc.)."
+                    )
+                    continue
+                session.context.pop("_nudged_this_turn", None)
                 break
 
             if event_stream.is_cancelled:
@@ -544,8 +645,20 @@ class BaseAgent:
                 await event_stream.emit_text("\n\n[Stopped by user.]")
                 break
 
+            # Log a concise turn summary
+            for entry in tool_call_log[-len(tool_result_blocks):]:
+                status = "OK" if entry.get("success") else "FAIL"
+                summary = entry.get("summary", "")
+                if len(summary) > 120:
+                    summary = summary[:120] + "..."
+                logger.info("  [%s] %s → %s: %s", status, entry.get("tool", "?"),
+                            entry.get("display_name", ""), summary)
+
             # Append tool results to conversation
             session.append_tool_results(tool_result_blocks)
+
+            # Auto-compact if context is approaching the limit
+            await self._check_and_compact(session, provider)
 
             # Persist incremental progress so data is not lost on disconnect
             partial_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
@@ -625,7 +738,26 @@ class BaseAgent:
         return tool_use_blocks
 
     # Tools that require user confirmation before execution.
-    CONFIRMATION_TOOLS: set[str] = {"create", "update", "delete", "copy"}
+    # Includes both core CRUD tools and deferred tools that mutate data.
+    CONFIRMATION_TOOLS: set[str] = {
+        # Core CRUD
+        "create", "update", "delete", "copy",
+        # Deferred page tools
+        "patch_components", "patch_event",
+        # Deferred theme/style tools (themes require extra care)
+        "create_theme", "update_theme", "create_style", "update_style",
+        # Deferred function/schema tools
+        "create_function", "update_function",
+        "create_schema", "update_schema",
+        # Deferred data tools
+        "create_connection", "update_connection",
+        "create_uripath", "update_uripath",
+        "manage_template",
+        # Deferred app config tools
+        "update_app_pages", "update_app_fonts", "update_app_meta",
+        # Deferred orchestration
+        "delegate_task",
+    }
 
     def _build_confirmation_message(
         self, tool_name: str, display_name: str, tool_input: dict[str, Any],
@@ -688,7 +820,7 @@ class BaseAgent:
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
 
-        # Unwrap tool-of-tools router: execute(tool="read", params={...}) → read({...})
+        # Legacy: unwrap tool-of-tools router if still active
         if self._router_tool_name and tool_name == self._router_tool_name:
             tool_name = tool_input.get("tool", tool_name)
             tool_input = tool_input.get("params", {})
@@ -698,8 +830,10 @@ class BaseAgent:
 
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
-        # Request user confirmation for mutating operations (master's flow)
-        if tool_name in self.CONFIRMATION_TOOLS:
+        # Request user confirmation for mutating operations.
+        # In auto_approve mode (default for AI-driven sessions), skip the
+        # confirmation SSE round-trip and execute immediately.
+        if tool_name in self.CONFIRMATION_TOOLS and not self._auto_approve:
             confirmation_id = f"confirm_{tool_use_id}"
             confirm_msg = self._build_confirmation_message(tool_name, display_name, tool_input)
             confirmation = await event_stream.request_confirmation(
@@ -804,7 +938,7 @@ class BaseAgent:
                 error=f"Tool execution error: {type(e).__name__}: {e}",
             )
 
-    async def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession, user_message: str = "") -> str:
         """Build per-request dynamic context string.
 
         Override in subclasses to add agent-specific context
@@ -812,6 +946,7 @@ class BaseAgent:
 
         Args:
             session: Active session with auth context.
+            user_message: The current user message (not yet in session.messages).
 
         Returns:
             Dynamic context text to append to system prompt.
@@ -858,6 +993,51 @@ class BaseAgent:
         except Exception as e:
             logger.debug("Tool error tracking skipped: %s", e)
 
+    async def _check_and_compact(self, session: BaseSession, provider: Any) -> None:
+        """Check if compaction is needed and run it if so.
+
+        Uses the same LLM provider but with the fast model tier for
+        cost-effective summarization.
+        """
+        if not self._compactor.should_compact(session):
+            return
+
+        # Get the definition cache from the tool context if available
+        definition_cache = None
+        ctx = self.build_tool_context(session)
+        if "definition_cache" in ctx:
+            definition_cache = ctx["definition_cache"]
+
+        # Reuse the same provider — the compactor calls create_completion
+        # with the fast model tier, not create_completion_with_tools
+        await self._compactor.compact(session, provider, definition_cache)
+
+    def _build_tools_for_request(self, session: BaseSession) -> list[dict[str, Any]]:
+        """Build the tool schemas to send in this LLM call.
+
+        Includes all core tools plus any deferred tools that the LLM has
+        already discovered via ToolSearchTool.  This keeps the initial
+        prompt lean while making discovered tools available in subsequent
+        turns.
+        """
+        if self._router_tool_name:
+            # Legacy router mode: just return the single router schema
+            return self._anthropic_tools
+
+        discovered: list[str] = session.context.get("discovered_tools", [])
+        if not discovered:
+            return self._anthropic_tools
+
+        # Start with core tools
+        schemas = list(self._anthropic_tools)
+
+        # Add discovered deferred tools
+        for dt in self._deferred_tools:
+            if dt.name in discovered:
+                schemas.append(dt.to_anthropic_tool())
+
+        return schemas
+
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Build context dict passed to each tool's execute function.
 
@@ -871,6 +1051,7 @@ class BaseAgent:
         """
         ctx: dict[str, Any] = {
             "session_id": session.session_id,
+            "deferred_tools": self._deferred_tools,
         }
         if session.auth:
             ctx["headers"] = session.auth.to_headers()
@@ -878,6 +1059,8 @@ class BaseAgent:
             ctx["app_code"] = session.auth.app_code
             if session.auth.path_prefix:
                 ctx["path_prefix"] = session.auth.path_prefix
+            if session.auth.referer:
+                ctx["referer"] = session.auth.referer
         return ctx
 
     async def get_pending_suggestions(
