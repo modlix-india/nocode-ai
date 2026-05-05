@@ -34,17 +34,17 @@ UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
 
 
 def _normalize_url(url: str) -> str:
-    """Same canonicalization ds/chatv2 uses so we share dedup keys.
+    """Canonicalize a business URL for storage keys and lookups.
 
-    Lowercase host, strip ``www.`` and trailing slash. Preserve scheme + path.
+    - Force ``https`` scheme so the same business doesn't end up with two
+      records keyed under ``http://`` and ``https://``.
+    - Lowercase host, strip leading ``www.``, drop trailing slash.
     """
     if not url:
         return ""
     p = urlparse(url.strip())
     host = (p.netloc or "").lower().removeprefix("www.")
     path = (p.path or "").rstrip("/")
-    if p.scheme:
-        return f"{p.scheme}://{host}{path}"
     return f"https://{host}{path}"
 
 
@@ -270,7 +270,12 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # ds asset services (lead_form, call_assets, whatsapp, site_link)
         # all read siteLinks; default empty so they no-op gracefully
         "siteLinks": product.get("site_links") or [],
+        # ds-v1 writes/reads `businessName`; nocode-ai's analyst calls it
+        # `productName`. Mirror both so ds APIs (chatv2/confirm.py,
+        # third_party/google/.../build_google_search_ad_payload.py,
+        # tools/account_selection_tool.py, etc.) keep working.
         "productName": product.get("product_name", ""),
+        "businessName": product.get("product_name", ""),
         "uniqueFeatures": product.get("unique_features") or [],
         "productsServices": product.get("products_services") or [],
         "pricing": product.get("pricing", ""),
@@ -343,7 +348,9 @@ def _record_to_business(record: dict) -> dict:
     else:
         location_str = raw_loc
     return {
-        "product_name": d.get("productName", ""),
+        # Tolerate ds-v1 records that only set `businessName` (we now write
+        # both — see _build_full_record).
+        "product_name": d.get("productName") or d.get("businessName", ""),
         "business_type": d.get("businessType", ""),
         "summary": d.get("summary", ""),
         "location": location_str,
@@ -389,7 +396,8 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
         d = _record_data(record)
         session_ctx.setdefault("product_profile", {}).update({
             "url": d.get("businessUrl") or url,
-            "title": d.get("productName", ""),
+            # Tolerate ds-v1 records that only set `businessName`.
+            "title": d.get("productName") or d.get("businessName", ""),
             "summary": d.get("summary", ""),
         })
         logger.info("hydrate_from_storage: business loaded url=%s", url)
