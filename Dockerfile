@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Playwright: download Chromium + install matching system libs
+# (the pip package alone doesn't pull the browser binary)
+RUN playwright install --with-deps chromium
+
 # Copy application
 COPY app/ ./app/
 COPY scripts/ ./scripts/

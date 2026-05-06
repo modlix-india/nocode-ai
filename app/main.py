@@ -128,6 +128,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing SaasClient: {e}")
 
+
     await close_redis()
 
     # Close AI tracking database connection
@@ -190,6 +191,10 @@ app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
+# Adzump agent router
+from app.agents.adzump.router import router as adzump_router
+app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"])
+
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
 app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
@@ -212,6 +217,7 @@ async def root():
         "endpoints": {
             "health": "/api/ai/health",
             "appbuilder_chat": "/api/ai/appbuilder/chat",
+            "adzump_chat": "/api/ai/adzump/chat",
             "docs": "/api/ai/docs"
         }
     }
@@ -225,7 +231,8 @@ async def api_root():
         "version": "2.0.0",
         "endpoints": {
             "health": "/api/ai/health",
-            "appbuilder_chat": "/api/ai/appbuilder/chat"
+            "appbuilder_chat": "/api/ai/appbuilder/chat",
+            "adzump_chat": "/api/ai/adzump/chat"
         }
     }
 

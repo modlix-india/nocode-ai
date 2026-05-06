@@ -61,6 +61,7 @@ update_tool = ToolDefinition(
         ),
         ToolParameter(
             name="operations", type="array", required=False,
+            items={"type": "object"},
             description=(
                 "Page component batch operations. Each: "
                 "{op:'add', parent_key, component_key, type, properties?, style_properties?, binding_paths?, display_order?} | "
