@@ -20,13 +20,17 @@ aiomysql==0.2.0
 
 # LLM SDKs
 anthropic>=0.40.0
-openai==1.58.1
+openai>=1.76.0
 
 # Eureka Client
 py-eureka-client==0.11.10
 
 # Image Processing (compression before sending to LLM APIs)
 Pillow>=10.3.0,<11.0.0
+
+# Web Scraping (Adzump business analysis)
+beautifulsoup4==4.13.5
+playwright==1.55.0
 
 # Utilities
 python-dotenv==1.0.1
