@@ -6,10 +6,11 @@ Captures all visible text, not just <p> tags.
 
 import json
 import logging
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag, NavigableString
 
-from app.agents.adzump.agents.product.models import PageContent, SiteLink
+from app.agents.adzump.agents.product.models import PageContent, SiteLink, SiteImage
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,7 @@ def parse_html(url: str, html: str) -> PageContent:
 
     # Extract paragraphs from <p> tags
     paragraphs = [
-        p.get_text(strip=True)
-        for p in soup.find_all("p")
-        if p.get_text(strip=True)
+        p.get_text(strip=True) for p in soup.find_all("p") if p.get_text(strip=True)
     ]
 
     # Also extract text from <li>, <span>, <div> that contain direct text
@@ -68,7 +67,50 @@ def parse_html(url: str, html: str) -> PageContent:
         seen_hrefs.add(href)
         links.append(SiteLink(text=a.get_text(strip=True), href=href))
 
+    images: list[SiteImage] = []
+
+    for img in soup.find_all("img"):
+        if not isinstance(img, Tag):
+            continue
+
+        src = img.get("src")
+        if not src or not isinstance(src, str):
+            continue
+
+        src = urljoin(url, src.strip())
+
+        if not src:
+            continue
+
+        alt = str(img.get("alt", "")).strip()
+        image_title = str(img.get("title", "")).strip()
+
+        width = None
+        height = None
+
+        try:
+            width = int(img.get("width")) if img.get("width") else None
+        except Exception:
+            pass
+
+        try:
+            height = int(img.get("height")) if img.get("height") else None
+        except Exception:
+            pass
+
+        images.append(
+            SiteImage(
+                src=src,
+                alt=alt,
+                title=image_title,
+                width=width,
+                height=height,
+            )
+        )
+
     structured_data = _extract_json_ld(soup)
+
+    logo_url = _extract_logo(images)
 
     return PageContent(
         url=url,
@@ -77,8 +119,30 @@ def parse_html(url: str, html: str) -> PageContent:
         headings=headings,
         paragraphs=paragraphs,
         links=links,
+        images=images,
+        logo_url=logo_url,
         structured_data=structured_data,
     )
+
+
+def _extract_logo(images: list[SiteImage]) -> str | None:
+    logo_keywords = [
+        "logo",
+        "brand",
+        "navbar",
+        "header",
+        "site-logo",
+        "brand-logo",
+        "company-logo",
+    ]
+
+    for image in images:
+        combined = (f"{image.src} {image.alt} {image.title}").lower()
+
+        if any(keyword in combined for keyword in logo_keywords):
+            return image.src
+
+    return None
 
 
 def _extract_visible_text(soup: BeautifulSoup) -> list[str]:
@@ -90,7 +154,9 @@ def _extract_visible_text(soup: BeautifulSoup) -> list[str]:
     texts: list[str] = []
     seen: set[str] = set()
 
-    for element in body.find_all(["div", "section", "article", "li", "td", "blockquote"]):
+    for element in body.find_all(
+        ["div", "section", "article", "li", "td", "blockquote"]
+    ):
         if element.name in _SKIP_TAGS:
             continue
 
@@ -99,7 +165,15 @@ def _extract_visible_text(soup: BeautifulSoup) -> list[str]:
         for child in element.children:
             if isinstance(child, NavigableString):
                 direct_text += child.strip() + " "
-            elif isinstance(child, Tag) and child.name in ("span", "strong", "em", "b", "i", "a", "br"):
+            elif isinstance(child, Tag) and child.name in (
+                "span",
+                "strong",
+                "em",
+                "b",
+                "i",
+                "a",
+                "br",
+            ):
                 direct_text += child.get_text(strip=True) + " "
 
         direct_text = direct_text.strip()
