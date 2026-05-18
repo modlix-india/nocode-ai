@@ -146,6 +146,11 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     """
     missing: list[str] = []
 
+    lu = (cctx.last_user or "").strip().lower()
+    if ("optimiz" in lu or "search term" in lu or "keywords" in lu):
+        missing.append("optimization — user wants to optimize search terms. Call `optimize_search_terms()` immediately.")
+        return missing
+
     if not cctx.product:
         missing.append("business URL — call `analyze_product(url=<the user's URL>)`")
         return missing
