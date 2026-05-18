@@ -308,6 +308,7 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
                 "fbPage": _account_pair(spec.get("fb_page"), account_names) if is_meta else None,
                 "igPage": _account_pair(spec.get("ig_page"), account_names) if is_meta else None,
             },
+            "creative": spec.get("creative") or None,
             "competitive": {
                 "attempted": session_ctx.get("competitor_analysis") is not None,
                 "declined": spec.get("competitive_analysis_declined") == "true",

@@ -29,7 +29,9 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.tools.campaign_data import (
-    _ACCOUNT_LIKE_FIELDS, _last_user_text, _normalize_id,
+    _ACCOUNT_LIKE_FIELDS,
+    _last_user_text,
+    _normalize_id,
 )
 from app.agents.adzump.tools.registry import ALL_TOOLS
 from app.agents.adzump.tools.suggestions import infer_suggestions
@@ -41,8 +43,18 @@ logger = logging.getLogger(__name__)
 # Substrings in ``product_data.business_type`` that flag a session as
 # real-estate. Matches the scraper's metadata prompt.
 _REAL_ESTATE_KEYWORDS = (
-    "real estate", "realty", "villa", "apartment", "residential",
-    "property", "housing", "homes", "realtor", "township", "builder", "developer",
+    "real estate",
+    "realty",
+    "villa",
+    "apartment",
+    "residential",
+    "property",
+    "housing",
+    "homes",
+    "realtor",
+    "township",
+    "builder",
+    "developer",
 )
 
 
@@ -53,6 +65,7 @@ class CampaignContext:
     Shields ``_next_action`` and the renderers from raw-dict shape drift.
     Construct per turn via ``from_session``; never mutated after construction.
     """
+
     product: dict
     product_profile: dict
     competitor_names: list[str]
@@ -83,7 +96,8 @@ class CampaignContext:
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
             competitor_names=[
-                c.get("name") for c in (competitive.get("competitors") or [])
+                c.get("name")
+                for c in (competitive.get("competitors") or [])
                 if c.get("name")
             ],
             # True iff `analyze_competitors` ran this session — even if it
@@ -161,7 +175,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     if intent is not None:
         intent_field, value = intent
         missing.append(
-            f"{intent_field} — user said \"{cctx.last_user[:40]}\". "
+            f'{intent_field} — user said "{cctx.last_user[:40]}". '
             f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
         )
 
@@ -171,10 +185,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             detected = cctx.pending_location
             missing.append(
                 f"location — map shown for **'{detected}'**. "
-                f"If user said `\"confirm\"` → `set_campaign_spec(location=\"{detected}\")`. "
-                f"If JSON `{{\"type\":\"location_update\",\"address\":\"X\",...}}` → "
-                f"`set_campaign_spec(location=\"X\")` (use address; fall back to "
-                f"`\"{detected}\"`). "
+                f'If user said `"confirm"` → `set_campaign_spec(location="{detected}")`. '
+                f'If JSON `{{"type":"location_update","address":"X",...}}` → '
+                f'`set_campaign_spec(location="X")` (use address; fall back to '
+                f'`"{detected}"`). '
                 f"If user said WRONG/INCORRECT/NOT RIGHT → call `confirm_location()` again. "
                 f"If user named a DIFFERENT city → `set_campaign_spec(location=<what they said>)`."
             )
@@ -183,13 +197,15 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform — call `present_options(question=\"Which platform should we run this on?\", "
-            "options=[\"Google Ads\", \"Meta\"])`"
+            'platform — call `present_options(question="Which platform should we run this on?", '
+            'options=["Google Ads", "Meta"])`'
         )
 
-    if (cctx.is_google
-            and not cctx.competitor_analysis_attempted
-            and "competitive_analysis_declined" not in cctx.spec):
+    if (
+        cctx.is_google
+        and not cctx.competitor_analysis_attempted
+        and "competitive_analysis_declined" not in cctx.spec
+    ):
         # Pending-aware: if user just said no/skip, drop the question and
         # store the declined flag. If user said yes (or anything else), the
         # LLM follows the prescription.
@@ -197,32 +213,42 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         if lu in ("no", "n", "no thanks", "skip", "no need"):
             missing.append(
                 "competitive analysis — user said NO. Call "
-                "`set_campaign_spec(competitive_analysis_declined=\"true\")` and proceed."
+                '`set_campaign_spec(competitive_analysis_declined="true")` and proceed.'
             )
         else:
             missing.append(
-                "competitive analysis — call `present_options(question=\"Want me to analyze "
-                "competitors before we set things up?\", options=[\"Yes\", \"No\"])`. "
+                'competitive analysis — call `present_options(question="Want me to analyze '
+                'competitors before we set things up?", options=["Yes", "No"])`. '
                 "If the user just said YES, call `analyze_competitors()` instead."
             )
 
     if not cctx.spec.get("duration"):
         missing.append(
-            "duration — call `present_options(question=\"How long should the campaign run?\", "
-            "options=[\"30 days\", \"60 days\", \"90 days\", \"Custom\"])`"
+            'duration — call `present_options(question="How long should the campaign run?", '
+            'options=["30 days", "60 days", "90 days", "Custom"])`'
         )
     if not cctx.spec.get("budget"):
         currency = "₹" if cctx.is_real_estate else "$"
         missing.append(
-            "budget — call `present_options(question=\"What's your daily budget?\", "
+            'budget — call `present_options(question="What\'s your daily budget?", '
             f"options=[<platform-tuned presets, e.g. {currency}5,000/day, {currency}10,000/day, "
-            f"{currency}25,000/day>, \"Custom\"])`"
+            f'{currency}25,000/day>, "Custom"])`'
+        )
+
+    if cctx.is_meta and not cctx.spec.get("creative"):
+        missing.append(
+            "creative text — call `generate_creative_text()` "
+            "to generate primary texts, headlines, descriptions, and CTA."
         )
     # Account-block lines depend on the platform pick — skip until platform
     # is set so we don't suggest the wrong fetch tool.
     if cctx.spec.get("platform"):
         if not cctx.spec.get("parent_account"):
-            fetch = "fetch_google_parent_accounts" if cctx.is_google else "fetch_meta_parent_accounts"
+            fetch = (
+                "fetch_google_parent_accounts"
+                if cctx.is_google
+                else "fetch_meta_parent_accounts"
+            )
             missing.append(
                 f"parent_account — call `{fetch}()` first; the result tells you "
                 "the present_options call to make next."
@@ -250,7 +276,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         meta_extra = (
             "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
             "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-            if cctx.is_meta else ""
+            "\n  - **Creative Text**: <copy verbatim from State>"
+            if cctx.is_meta
+            else ""
         )
         missing.append(
             "review & publish — your reply this turn is EXACTLY this markdown, "
@@ -270,8 +298,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
             "if competitive_analysis_declined='true'>\n\n"
-            "Then call `present_options(question=\"Ready to launch the campaign?\", "
-            "options=[\"Yes, launch\", \"No, make changes\"])`. EVERY bullet must be "
+            'Then call `present_options(question="Ready to launch the campaign?", '
+            'options=["Yes, launch", "No, make changes"])`. EVERY bullet must be '
             "present — do not omit any. "
             "**On the user's 'Yes, launch' reply, call `launch_campaign()` "
             "(no params) — that's the one tool that persists the campaign.**"
@@ -316,14 +344,18 @@ class AdzumpAgent(BaseAgent):
         missing = _next_action(cctx)
         logger.info(
             "next_action: turn=%d missing=%s user_said=%r",
-            cctx.current_turn, missing, last_user[:80],
+            cctx.current_turn,
+            missing,
+            last_user[:80],
         )
-        return "\n".join([
-            self._state_section(cctx),
-            self._user_said_section(last_user),
-            self._missing_section(missing),
-            self._how_to_respond_section(),
-        ])
+        return "\n".join(
+            [
+                self._state_section(cctx),
+                self._user_said_section(last_user),
+                self._missing_section(missing),
+                self._how_to_respond_section(),
+            ]
+        )
 
     @staticmethod
     def _migrate_legacy_keys(ctx: dict) -> None:
@@ -366,17 +398,26 @@ class AdzumpAgent(BaseAgent):
 
         # Surface the analyzed URL so the review summary can include it
         # without the LLM hunting for it across nested structures.
-        url = (cctx.product_profile.get("url")
-               or (cctx.product.get("pages_analyzed") or [None])[0]
-               or "")
+        url = (
+            cctx.product_profile.get("url")
+            or (cctx.product.get("pages_analyzed") or [None])[0]
+            or ""
+        )
         if url:
             lines.append(f"- Website: {url}")
 
         if cctx.competitor_names:
             names = ", ".join(cctx.competitor_names[:5])
-            suffix = f" (+{len(cctx.competitor_names) - 5} more)" if len(cctx.competitor_names) > 5 else ""
+            suffix = (
+                f" (+{len(cctx.competitor_names) - 5} more)"
+                if len(cctx.competitor_names) > 5
+                else ""
+            )
             lines.append(f"- Competitors: {names}{suffix} ✓")
-        elif cctx.competitor_analysis_attempted or "competitive_analysis_declined" in cctx.spec:
+        elif (
+            cctx.competitor_analysis_attempted
+            or "competitive_analysis_declined" in cctx.spec
+        ):
             lines.append("- Competitors: none analyzed")
 
         for key, label in (
@@ -391,6 +432,31 @@ class AdzumpAgent(BaseAgent):
                 lines.append(f"- {label}: {val} ✓{prov}")
             else:
                 lines.append(f"- {label}: —")
+
+        if cctx.is_meta:
+            if cctx.spec.get("creative"):
+                creative_data = cctx.spec.get("creative", {})
+                primary = creative_data.get("primary_texts") or []
+                headlines = creative_data.get("headlines") or []
+                descs = creative_data.get("descriptions") or []
+                cta = creative_data.get("cta", "")
+
+                def fmt_list(lst):
+                    if not lst:
+                        return "—"
+                    return "\n        ".join(
+                        f"{i + 1}. {item.replace(chr(10), chr(10) + '           ')}" for i, item in enumerate(lst)
+                    )
+
+                lines.append(
+                    f"- Creative Text: ✓\n"
+                    f"    - Primary Texts:\n        {fmt_list(primary)}\n"
+                    f"    - Headlines:\n        {fmt_list(headlines)}\n"
+                    f"    - Descriptions:\n        {fmt_list(descs)}\n"
+                    f"    - CTA: {cta}"
+                )
+            else:
+                lines.append("- Creative Text: —")
 
         account_block = self._ad_account_summary(cctx.spec, cctx.account_names)
         if account_block.strip():
@@ -440,10 +506,10 @@ class AdzumpAgent(BaseAgent):
             "2. Correction → `set_campaign_spec(<field>=<new>)`, acknowledge, then re-check Next action.\n"
             "3. **New data** (typed or chip-clicked) → `set_campaign_spec(<field>=<value>)` IMMEDIATELY, "
             "even if the value is for a different field than Next action. "
-            "Examples: user says \"Google Ads\" → `set_campaign_spec(platform=\"Google Ads\")`. "
-            "User says \"₹10,000/day\" → `set_campaign_spec(budget=\"₹10,000/day\")`. "
+            'Examples: user says "Google Ads" → `set_campaign_spec(platform="Google Ads")`. '
+            'User says "₹10,000/day" → `set_campaign_spec(budget="₹10,000/day")`. '
             "Then acknowledge in one short sentence and re-check Next action.\n"
-            "4. Ambient (\"ok\", \"continue\", \"next\") → just do Next action.\n"
+            '4. Ambient ("ok", "continue", "next") → just do Next action.\n'
             "5. Otherwise → do Next action."
         )
 
@@ -455,13 +521,17 @@ class AdzumpAgent(BaseAgent):
         is_meta_platform = platform is Platform.META
         is_google_platform = platform is Platform.GOOGLE
         parent_label = (
-            "Meta Business" if is_meta_platform
-            else "Google Manager" if is_google_platform
+            "Meta Business"
+            if is_meta_platform
+            else "Google Manager"
+            if is_google_platform
             else "Parent Account"
         )
         account_label = (
-            "Meta Ad Account" if is_meta_platform
-            else "Google Ad Account" if is_google_platform
+            "Meta Ad Account"
+            if is_meta_platform
+            else "Google Ad Account"
+            if is_google_platform
             else "Ad Account"
         )
 
@@ -499,7 +569,9 @@ class AdzumpAgent(BaseAgent):
         return ctx
 
     async def get_pending_suggestions(
-        self, session: BaseSession, assistant_text: str = "",
+        self,
+        session: BaseSession,
+        assistant_text: str = "",
     ) -> dict[str, Any] | None:
         pending = session.context.pop("_pending_suggestions", None)
         if pending:

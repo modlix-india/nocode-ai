@@ -317,13 +317,14 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
                 and "competitive_analysis_declined" not in spec):
             return ""
 
-    # Meta: fb_page + ig_page required.
-    if is_meta and not (spec.get("fb_page") and spec.get("ig_page")):
+    # Meta: fb_page + ig_page + creative required.
+    if is_meta and not (spec.get("fb_page") and spec.get("ig_page") and spec.get("creative")):
         return ""
 
     meta_extra = (
         "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
         "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
+        "\n  - **Creative Text**: <copy verbatim from State>"
         if is_meta else ""
     )
     return (
