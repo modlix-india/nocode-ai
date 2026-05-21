@@ -22,6 +22,9 @@ from app.agents.adzump.platform import is_meta as _platform_is_meta
 from app.agents.adzump.tools._shared import build_ds_headers
 from app.agents.appbuilder.tools._shared import get_saas_client
 
+from app.agents.adzump.agents.product.models import StorageReadRequest
+
+
 logger = logging.getLogger(__name__)
 
 STORAGE_NAME = "AISuggestedData"
@@ -65,6 +68,22 @@ def _storage_headers(ctx: dict) -> dict[str, str]:
 # ── Reads ─────────────────────────────────────────────────────────────────
 
 
+async def storage_read(request: StorageReadRequest, ctx: dict) -> list[dict]:
+    """Execute a storage read using the provided request model and return extracted records."""
+    # Mirror the POST pattern from other repos while maintaining compatibility with get_saas_client
+    result = await get_saas_client().post(
+        READ_PAGE,
+        headers=_storage_headers(ctx),
+        json=request.model_dump(exclude_none=True),
+    )
+
+    if not result.success:
+        logger.warning("storage_read_failed: err=%s", result.error)
+        return []
+
+    return _extract_records(result.data)
+
+
 def _extract_records(raw: Any) -> list[dict]:
     """Mirror ds's StorageResponse.content unwrap: gateway wraps the storage
     result in two `result` levels, then either has `content` (paged) or
@@ -99,11 +118,12 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
         "filter": {"field": "businessUrl", "value": _normalize_url(url)},
     }
     result = await get_saas_client().post(
-        READ_PAGE, headers=_storage_headers(ctx), json=payload,
+        READ_PAGE,
+        headers=_storage_headers(ctx),
+        json=payload,
     )
     if not result.success:
-        logger.info("business_storage_read_miss: url=%s err=%s",
-                    url, result.error)
+        logger.info("business_storage_read_miss: url=%s err=%s", url, result.error)
         return None
     records = _extract_records(result.data)
     return records[-1] if records else None
@@ -134,7 +154,9 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     if existing:
         existing_id = existing.get("_id") or existing.get("id")
         if not existing_id:
-            logger.warning("save_campaign: existing record has no _id, falling back to create")
+            logger.warning(
+                "save_campaign: existing record has no _id, falling back to create"
+            )
         else:
             payload = {
                 "storageName": STORAGE_NAME,
@@ -144,13 +166,18 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
                 "isPartial": True,  # merge — preserves existing fields not in record
             }
             result = await get_saas_client().post(
-                UPDATE, headers=_storage_headers(ctx), json=payload,
+                UPDATE,
+                headers=_storage_headers(ctx),
+                json=payload,
             )
             if not result.success:
-                logger.warning("save_campaign_update_failed: url=%s err=%s",
-                               url, result.error)
+                logger.warning(
+                    "save_campaign_update_failed: url=%s err=%s", url, result.error
+                )
                 return None
-            logger.info("save_campaign_ok: action=update url=%s id=%s", url, existing_id)
+            logger.info(
+                "save_campaign_ok: action=update url=%s id=%s", url, existing_id
+            )
             return existing_id
 
     # Create path
@@ -160,17 +187,18 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         "dataObject": record,
     }
     result = await get_saas_client().post(
-        CREATE, headers=_storage_headers(ctx), json=payload,
+        CREATE,
+        headers=_storage_headers(ctx),
+        json=payload,
     )
     if not result.success:
-        logger.warning("save_campaign_create_failed: url=%s err=%s",
-                       url, result.error)
+        logger.warning("save_campaign_create_failed: url=%s err=%s", url, result.error)
         return None
 
     new_records = _extract_records(result.data)
     new_id = ""
     if new_records:
-        new_id = (new_records[0].get("_id") or new_records[0].get("id") or "")
+        new_id = new_records[0].get("_id") or new_records[0].get("id") or ""
     logger.info("save_campaign_ok: action=create url=%s id=%s", url, new_id)
     return new_id or None
 
@@ -218,14 +246,15 @@ def _build_map_embeds(loc_meta: dict) -> list[dict]:
         return []
     lat = loc_meta["lat"]
     lng = loc_meta["lng"]
-    return [{
-        "src": (
-            f"https://www.google.com/maps/embed/v1/place?"
-            f"q={lat},{lng}&zoom=15"
-        ),
-        "title": "",
-        "coordinates": {"lng": lng, "lat": lat},
-    }]
+    return [
+        {
+            "src": (
+                f"https://www.google.com/maps/embed/v1/place?q={lat},{lng}&zoom=15"
+            ),
+            "title": "",
+            "coordinates": {"lng": lng, "lat": lat},
+        }
+    ]
 
 
 def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
@@ -243,7 +272,6 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
 
     return {
         "businessUrl": _normalize_url(url),
-
         # ── Analysis fields (mirror ds-v1 schema so its downstream APIs
         #    keep working when reading rows nocode-ai writes) ──
         "summary": summary,
@@ -282,12 +310,10 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         "contact": product.get("contact") or {},
         "pagesAnalyzed": product.get("pages_analyzed") or [],
         "competitors": (competitive or {}).get("competitors") or [],
-
         # ── Provenance ──
         "lastAnalyzedAt": _now_iso(),
         "lastAnalyzedBy": "adzump-launch",
         "schemaVersion": SCHEMA_VERSION,
-
         # ── Campaign sub-object ──
         "campaign": {
             "savedAt": _now_iso(),
@@ -305,8 +331,12 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
             "accounts": {
                 "parent": _account_pair(spec.get("parent_account"), account_names),
                 "ad": _account_pair(spec.get("account"), account_names),
-                "fbPage": _account_pair(spec.get("fb_page"), account_names) if is_meta else None,
-                "igPage": _account_pair(spec.get("ig_page"), account_names) if is_meta else None,
+                "fbPage": _account_pair(spec.get("fb_page"), account_names)
+                if is_meta
+                else None,
+                "igPage": _account_pair(spec.get("ig_page"), account_names)
+                if is_meta
+                else None,
             },
             "competitive": {
                 "attempted": session_ctx.get("competitor_analysis") is not None,
@@ -344,7 +374,9 @@ def _record_to_business(record: dict) -> dict:
     # Hydrate to a string for product_data.location consumers.
     raw_loc = d.get("location") or ""
     if isinstance(raw_loc, dict):
-        location_str = raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+        location_str = (
+            raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+        )
     else:
         location_str = raw_loc
     return {
@@ -394,20 +426,25 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     if not session_ctx.get("product_data"):
         session_ctx["product_data"] = _record_to_business(record)
         d = _record_data(record)
-        session_ctx.setdefault("product_profile", {}).update({
-            "url": d.get("businessUrl") or url,
-            # Tolerate ds-v1 records that only set `businessName`.
-            "title": d.get("productName") or d.get("businessName", ""),
-            "summary": d.get("summary", ""),
-        })
+        session_ctx.setdefault("product_profile", {}).update(
+            {
+                "url": d.get("businessUrl") or url,
+                # Tolerate ds-v1 records that only set `businessName`.
+                "title": d.get("productName") or d.get("businessName", ""),
+                "summary": d.get("summary", ""),
+            }
+        )
         logger.info("hydrate_from_storage: business loaded url=%s", url)
 
     if not session_ctx.get("competitor_analysis"):
         comp = _record_to_competitive(record)
         if comp:
             session_ctx["competitor_analysis"] = comp
-            logger.info("hydrate_from_storage: %d competitors loaded url=%s",
-                        len(comp.get("competitors") or []), url)
+            logger.info(
+                "hydrate_from_storage: %d competitors loaded url=%s",
+                len(comp.get("competitors") or []),
+                url,
+            )
 
     return True
 
