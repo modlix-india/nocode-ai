@@ -1,4 +1,4 @@
-  """LLM-based extraction service for business information.
+"""LLM-based extraction service for business information.
 
 Three-stage extraction:
   1. extract_metadata: Cheap structured extraction — product name, type, location

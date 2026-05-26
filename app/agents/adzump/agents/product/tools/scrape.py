@@ -50,7 +50,6 @@ scrape_url = ToolDefinition(
     execute=lambda params, context: _scrape_url(params, context),
 )
 
-
 async def _scrape_url(params: dict, context: dict) -> ToolResult:
     """Scrape a URL and return trimmed content + uploaded screenshot URL."""
     url = (params.get("url") or "").strip()
@@ -94,7 +93,6 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         )
 
     from app.agents.adzump.tools.research import _short_url
-
     await emit_progress(context, f"Scraping {_short_url(url)}")
 
     result = await scrape_page(url)
@@ -111,7 +109,8 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
 
     page = result.content
     page_links = [
-        {"text": link.text, "href": link.href} for link in page.links[:MAX_LINKS]
+        {"text": link.text, "href": link.href}
+        for link in page.links[:MAX_LINKS]
     ]
 
     data: dict = {
@@ -121,8 +120,6 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         "headings": page.headings[:MAX_HEADINGS],
         "paragraphs": _trim_paragraphs(page.paragraphs),
         "links": page_links,
-        "images": [image.model_dump() for image in page.images],
-        "logo_url": page.logo_url,
     }
 
     # Accumulate links into product_data so the storage write surfaces them
@@ -134,26 +131,13 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
             site_links.append(link)
             seen_hrefs.add(link["href"])
 
-    site_images: list[dict] = product_data.setdefault("site_images", [])
-    existing_sources = {image.get("src") for image in site_images}
-
-    for image in data["images"]:
-        if image["src"] not in existing_sources:
-            site_images.append(image)
-            existing_sources.add(image["src"])
-
-    if data.get("logo_url") and not product_data.get("logo_url"):
-        product_data["logo_url"] = data["logo_url"]
-
     # Upload screenshot and emit craft updates.
     screenshot_url: str | None = None
     if result.screenshot and stream:
         try:
             screenshot_bytes = base64.b64decode(result.screenshot)
             filename = f"analysis_{md5(url.encode()).hexdigest()[:8]}.jpg"
-            screenshot_url = await upload_screenshot(
-                screenshot_bytes, filename, context
-            )
+            screenshot_url = await upload_screenshot(screenshot_bytes, filename, context)
             if screenshot_url:
                 data["screenshot_url"] = screenshot_url
                 # Stash the primary-page screenshot URL for the caller
@@ -161,9 +145,7 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
                 if url == primary_url and "primary_screenshot_url" not in product_data:
                     product_data["primary_screenshot_url"] = screenshot_url
         except Exception as e:
-            logger.warning(
-                "analyst_screenshot_upload_failed: url=%s err=%s", url, str(e)[:200]
-            )
+            logger.warning("analyst_screenshot_upload_failed: url=%s err=%s", url, str(e)[:200])
 
     # Emit craft panel: primary URL creates the panel, follow-ups append to it.
     craft_id = session_ctx.get("craft_id", "")
@@ -171,44 +153,31 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         is_primary = _same_registrable_host(url, primary_url) and url == primary_url
         try:
             if is_primary:
-                await stream.emit_craft(
-                    craft_id,
-                    url,
-                    [
-                        {"type": "image", "url": screenshot_url},
-                        {"type": "callout", "text": "Analyzing…", "variant": "info"},
-                    ],
-                )
+                await stream.emit_craft(craft_id, url, [
+                    {"type": "image", "url": screenshot_url},
+                    {"type": "callout", "text": "Analyzing…", "variant": "info"},
+                ])
             else:
-                await stream.emit_craft(
-                    craft_id,
-                    url,
-                    [
-                        {"type": "divider"},
-                        {"type": "heading", "text": page.title or url},
-                        {"type": "image", "url": screenshot_url},
-                    ],
-                    append=True,
-                )
+                await stream.emit_craft(craft_id, url, [
+                    {"type": "divider"},
+                    {"type": "heading", "text": page.title or url},
+                    {"type": "image", "url": screenshot_url},
+                ], append=True)
         except Exception as e:
             logger.debug("craft_emit_failed: %s", str(e)[:120])
 
     new_count = product_data["scrape_count"]
     remaining = MAX_SCRAPE_CALLS - new_count
-    is_primary_scrape = new_count == 1
+    is_primary_scrape = (new_count == 1)
 
     summary_lines = [
         f"Scraped {url}",
         f"Title: {page.title}",
     ]
-    logger.info(
-        "scrape_url: headings=%d paragraphs=%d words≈%d budget=%d/%d",
-        len(page.headings),
-        len(page.paragraphs),
-        sum(len(p.split()) for p in page.paragraphs),
-        new_count,
-        MAX_SCRAPE_CALLS,
-    )
+    logger.info("scrape_url: headings=%d paragraphs=%d words≈%d budget=%d/%d",
+                len(page.headings), len(page.paragraphs),
+                sum(len(p.split()) for p in page.paragraphs),
+                new_count, MAX_SCRAPE_CALLS)
 
     # Directive next-step hint based on where we are in the budget.
     if is_primary_scrape:
@@ -218,14 +187,12 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         # 2. Stored as the business brief so web_search uses rich context
         await emit_progress(context, "Generating product summary…")
 
-        scraped_text = "\n".join(
-            [
-                f"Title: {page.title or ''}",
-                f"Meta: {page.meta_description or ''}",
-                f"Headings: {'; '.join(page.headings[:MAX_HEADINGS])}",
-                "\n".join(p[:400] for p in page.paragraphs[:15]),
-            ]
-        )
+        scraped_text = "\n".join([
+            f"Title: {page.title or ''}",
+            f"Meta: {page.meta_description or ''}",
+            f"Headings: {'; '.join(page.headings[:MAX_HEADINGS])}",
+            "\n".join(p[:400] for p in page.paragraphs[:15]),
+        ])
 
         business_summary = await _generate_business_profile(
             scraped_text, url, stream, screenshot_url, craft_id
@@ -294,16 +261,11 @@ async def _generate_business_profile(
     # Set up craft panel with screenshot + empty text block for streaming.
     if stream and screenshot_url:
         try:
-            await stream.emit_craft(
-                craft_id,
-                url,
-                [
-                    {"type": "image", "url": screenshot_url},
-                    {"type": "heading", "text": "Product Summary"},
-                    {"type": "text", "content": ""},
-                ],
-                append=False,
-            )
+            await stream.emit_craft(craft_id, url, [
+                {"type": "image", "url": screenshot_url},
+                {"type": "heading", "text": "Product Summary"},
+                {"type": "text", "content": ""},
+            ], append=False)
         except Exception:
             pass
 
@@ -315,10 +277,7 @@ async def _generate_business_profile(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": _PROFILE_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"Website: {url}\n\n{scraped_text[:15000]}",
-                },
+                {"role": "user", "content": f"Website: {url}\n\n{scraped_text[:15000]}"},
             ],
             temperature=0,
             max_tokens=3000,
@@ -338,9 +297,8 @@ async def _generate_business_profile(
                 except Exception:
                     pass
     except Exception as e:
-        logger.warning(
-            "business_profile_failed: %s: %s", type(e).__name__, str(e)[:200]
-        )
+        logger.warning("business_profile_failed: %s: %s",
+                       type(e).__name__, str(e)[:200])
 
     return "".join(accumulated).strip()
 
@@ -350,11 +308,7 @@ def _same_registrable_host(a: str, b: str) -> bool:
     try:
         ha = urlparse(a).netloc.lower().lstrip("www.")
         hb = urlparse(b).netloc.lower().lstrip("www.")
-        return (
-            bool(ha)
-            and bool(hb)
-            and (ha == hb or ha.endswith("." + hb) or hb.endswith("." + ha))
-        )
+        return bool(ha) and bool(hb) and (ha == hb or ha.endswith("." + hb) or hb.endswith("." + ha))
     except Exception:
         return False
 

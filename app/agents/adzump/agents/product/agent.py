@@ -9,9 +9,8 @@ Design notes:
 - Wrapped event stream — craft + progress passes through to the parent,
   done/error are silenced (the parent owns those).
 - Hard-capped at 25 turns, balanced model tier.
-- If anything goes wrong the caller (tools/business.py) falls back to the
-  deterministic ScrapePipeline, so a broken agent never blocks the
-  user's campaign flow.
+- On failure the caller (tools/product.py) returns a structured error to
+  the main chat agent — no deterministic fallback pipeline.
 """
 
 from __future__ import annotations
@@ -25,7 +24,7 @@ from app.core.streaming import AgentEventStream
 from app.agents.adzump.agents.product.context import build_product_context
 from app.agents.adzump.agents.product.tools import PRODUCT_TOOLS
 from app.agents.adzump.agents.product.models import AnalysisOutput
-from app.agents.adzump.tools._shared import extract_json
+from app.agents.adzump._shared import extract_json
 
 logger = logging.getLogger(__name__)
 
@@ -179,8 +178,12 @@ class _PassthroughEventStream(AgentEventStream):
         await self._parent.emit_data(data_type, payload)
 
     async def emit_agent_started(self, agent_id: str, label: str, parent_id: str = "root",
-                                 parent_tool_use_id: str = "") -> None:
-        await self._parent.emit_agent_started(agent_id, label, parent_id, parent_tool_use_id)
+                                 parent_tool_use_id: str = "",
+                                 agent_tool_use_id: str = "") -> None:
+        await self._parent.emit_agent_started(
+            agent_id, label, parent_id, parent_tool_use_id,
+            agent_tool_use_id=agent_tool_use_id,
+        )
 
     async def emit_agent_finished(self, agent_id: str, status: str = "success",
                                   duration_ms: int = 0, tokens_in: int = 0, tokens_out: int = 0,
@@ -247,6 +250,14 @@ class ProductAgent(BaseAgent):
         # shortlist_competitors pulls candidates out of Anthropic
         # web_search_tool_result blocks, which live only in message history.
         ctx["session_messages"] = session.get_messages
+        # v9 live-test fix (2026-05-22): AssetPickerAgent.pick() needs the
+        # AuthContext object itself (not just the headers). BaseAgent's default
+        # build_tool_context exposes headers/client_code/etc but not `auth`.
+        # Eval harness was injecting `ctx["auth"]` directly; production path
+        # never set it, so product_assets.py:300's guard fired and the picker
+        # skipped every URL. See plans/agent-tracing/v9-live-test-fixes.html.
+        if session.auth:
+            ctx["auth"] = session.auth
         return ctx
 
     def _parse_result(

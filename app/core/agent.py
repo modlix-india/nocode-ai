@@ -158,6 +158,7 @@ class BaseAgent:
         image_blocks: list[dict[str, Any]] | None = None,
         model_override: str | None = None,
         parent_tool_use_id: str = "",
+        agent_tool_use_id: str = "",
     ) -> None:
         """Execute the agentic loop for a single user turn.
 
@@ -199,6 +200,7 @@ class BaseAgent:
                     label=self.display_name or self.name,
                     parent_id=parent_id,
                     parent_tool_use_id=parent_tool_use_id,
+                    agent_tool_use_id=agent_tool_use_id,
                 )
             except Exception:
                 logger.exception("emit_agent_started failed for %s", self.name)

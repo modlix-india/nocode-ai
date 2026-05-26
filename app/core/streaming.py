@@ -173,12 +173,26 @@ class AgentEventStream:
     async def emit_agent_started(
         self, agent_id: str, label: str, parent_id: str = "root",
         parent_tool_use_id: str = "",
+        agent_tool_use_id: str = "",
     ) -> None:
         """Emit when a sub-agent begins execution.
 
         Frontend uses this to render an AgentGroup row for all subsequent
         events tagged with this agent_id, and to suppress the spawning
         tool call (`parent_tool_use_id`) from the "Used N tools" list.
+
+        ``agent_tool_use_id`` (v5 / asset-picker-fixes-v5) is the tool_use_id
+        the UI should bind to THIS agent's row for subsequent tool_updates.
+        Industry-aligned with Claude Agent SDK's parent_tool_use_id pattern
+        and OTel GenAI invoke_agent span semantics. Defaults to empty for
+        backwards compatibility — UI falls back to parent_tool_use_id
+        matching when this is empty (legacy behavior).
+
+        Race-safety invariant: SSE preserves order on this async queue, so
+        a tool_update bearing ``agent_tool_use_id`` always arrives after
+        the matching emit_agent_started. Any future caller emitting
+        tool_updates DURING the emit_agent_started await would break this
+        invariant — flag as a regression risk.
         """
         await self._queue.put(AgentEvent(
             event=AgentEventType.AGENT_STARTED,
@@ -187,6 +201,7 @@ class AgentEventStream:
                 "label": label,
                 "parent_id": parent_id,
                 "parent_tool_use_id": parent_tool_use_id,
+                "agent_tool_use_id": agent_tool_use_id,
             },
         ))
 
