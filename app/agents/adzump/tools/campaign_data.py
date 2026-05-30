@@ -68,8 +68,13 @@ _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 # message. Together with _ACCOUNT_LIKE_FIELDS, every allowed field passes
 # through one kind of traceability check. `competitive_analysis_declined`
 # has its own narrow rule (see _field_traceable).
-_USER_TEXT_FIELDS = {"platform", "duration", "budget", "location",
-                     "competitive_analysis_declined"}
+_USER_TEXT_FIELDS = {
+    "platform",
+    "duration",
+    "budget",
+    "location",
+    "competitive_analysis_declined",
+}
 
 
 def _last_user_text(context: dict[str, Any]) -> str:
@@ -107,7 +112,11 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
 
     if field == "location":
         if session_ctx.get("_pending_location_confirm"):
-            if lu == "confirm" or "location_update" in lu or lu.startswith("location confirmed"):
+            if (
+                lu == "confirm"
+                or "location_update" in lu
+                or lu.startswith("location confirmed")
+            ):
                 return True
         if lu and v in lu:
             return True
@@ -144,7 +153,9 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
     return False
 
 
-async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+async def _set_campaign_spec(
+    params: dict[str, Any], context: dict[str, Any]
+) -> ToolResult:
     """Store campaign-spec fields in session context."""
     session_ctx = context.get("session_context")
     if session_ctx is None:
@@ -172,7 +183,8 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         if not any_supplied:
             return ToolResult(
                 success=False,
-                error="No valid fields provided. Allowed: " + ", ".join(sorted(ALLOWED_FIELDS)),
+                error="No valid fields provided. Allowed: "
+                + ", ".join(sorted(ALLOWED_FIELDS)),
             )
         return ToolResult(success=True, summary="")
 
@@ -184,7 +196,9 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
     # Check 1 — free-text fields must reflect what the user actually said.
     last_user = _last_user_text(context)
     for k, v in list(incoming.items()):
-        if k in _USER_TEXT_FIELDS and not _field_traceable(k, v, last_user, session_ctx):
+        if k in _USER_TEXT_FIELDS and not _field_traceable(
+            k, v, last_user, session_ctx
+        ):
             rejected.append((k, v, "not traceable to user's last message"))
             incoming.pop(k)
 
@@ -204,7 +218,8 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         logger.warning(
             "campaign_spec_all_rejected: incoming=%s rejected=%s user_said=%r",
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
-            rejected, preview,
+            rejected,
+            preview,
         )
         return ToolResult(
             success=False,
@@ -236,12 +251,15 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         # Capture lat/lng from the map-confirm callback so we can save them
         # later. Plain "confirm" / typed-city paths just store the address.
         from app.agents.adzump.services.business_storage import parse_location_update
+
         loc_payload = parse_location_update(last_user)
+
+        display_name = ""
+        product = session_ctx.setdefault("product_data", {})
+        if product.get("product_name") and product.get("location"):
+            display_name = f"{product['product_name']}, {product['location']}"
+
         if loc_payload:
-            display_name = ""
-            product = session_ctx.get("product_data") or {}
-            if product.get("product_name") and product.get("location"):
-                display_name = f"{product['product_name']}, {product['location']}"
             session_ctx["_location_meta"] = {
                 "address": loc_payload["address"] or str(incoming["location"]),
                 "lat": loc_payload["lat"],
@@ -249,13 +267,78 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
                 "displayName": display_name,
             }
         else:
-            # Plain confirm / typed-city — record what we have, lat/lng null.
-            session_ctx["_location_meta"] = {
-                "address": str(incoming["location"]),
-                "lat": None,
-                "lng": None,
-                "displayName": "",
+            # Plain confirm / typed-city — resolve coordinates dynamically
+            address_str = str(incoming["location"])
+            from app.agents.adzump.adapters.google.maps import google_maps_client
+
+            geo_res = await google_maps_client.geocode(address_str)
+            if geo_res:
+                session_ctx["_location_meta"] = {
+                    "address": geo_res["address"] or address_str,
+                    "lat": geo_res["lat"],
+                    "lng": geo_res["lng"],
+                    "displayName": display_name,
+                }
+            else:
+                session_ctx["_location_meta"] = {
+                    "address": address_str,
+                    "lat": None,
+                    "lng": None,
+                    "displayName": display_name,
+                }
+
+        # Resolve coordinates for target area discovery
+        coordinates = None
+        if (
+            session_ctx["_location_meta"].get("lat") is not None
+            and session_ctx["_location_meta"].get("lng") is not None
+        ):
+            coordinates = {
+                "lat": session_ctx["_location_meta"]["lat"],
+                "lng": session_ctx["_location_meta"]["lng"],
             }
+
+        # Discover target areas dynamically inside the location confirm callback
+        from app.agents.adzump.services.geo import discover_geo_targets
+
+        try:
+            targets = await discover_geo_targets(coordinates, product)
+            product["target_areas"] = targets
+        except Exception as ex:
+            logger.exception("Callback discover_geo_targets failed: %s", ex)
+
+        # Persist coordinates/location/target areas to the database immediately
+        from app.agents.adzump.services.business_storage import save_campaign
+
+        await save_campaign(session_ctx, context)
+
+        # Trigger an immediate UI card re-render
+        from app.agents.adzump.tools.competitor import _emit_final_craft
+        from app.agents.adzump.services.business_storage import resolve_url
+
+        stream = context.get("event_stream")
+        craft_id = session_ctx.get("craft_id")
+        business_url = resolve_url(session_ctx)
+
+        if stream and craft_id and business_url:
+            business = session_ctx.setdefault("product_data", {})
+            business["location"] = session_ctx["_location_meta"]["address"]
+            competitive = session_ctx.get("competitor_analysis") or {"competitors": []}
+
+            # Prioritize rich streamed summary over concise sub-agent summary
+            profile = session_ctx.get("product_profile") or {}
+            baked_summary = profile.get("summary") or business.get("summary", "")
+
+            await _emit_final_craft(
+                stream,
+                craft_id,
+                business_url,
+                business,
+                competitive,
+                screenshot_url=business.get("primary_screenshot_url")
+                or business.get("screenshot_url"),
+                baked_summary=baked_summary,
+            )
 
     # Are we DONE after this write? If yes, inject the review prescription
     # into the tool result so the LLM renders the summary on the same turn —
@@ -269,7 +352,8 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         # which subset we kept.
         logger.warning(
             "campaign_spec_partial: stored=%s rejected=%s call=%s user_said=%r",
-            list(incoming.keys()), rejected,
+            list(incoming.keys()),
+            rejected,
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
             (last_user or "").replace("\n", " ")[:120],
         )
@@ -297,24 +381,43 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     is_meta = platform is Platform.META
 
     # Real-estate? location is required. Otherwise location is optional.
-    business_type = ((session_ctx.get("product_data") or {})
-                     .get("business_type") or "").lower()
-    is_real_estate = any(kw in business_type for kw in (
-        "real estate", "realty", "villa", "apartment", "residential",
-        "property", "housing", "homes", "realtor", "township",
-        "builder", "developer",
-    ))
+    business_type = (
+        (session_ctx.get("product_data") or {}).get("business_type") or ""
+    ).lower()
+    is_real_estate = any(
+        kw in business_type
+        for kw in (
+            "real estate",
+            "realty",
+            "villa",
+            "apartment",
+            "residential",
+            "property",
+            "housing",
+            "homes",
+            "realtor",
+            "township",
+            "builder",
+            "developer",
+        )
+    )
     if is_real_estate and not spec.get("location"):
         return ""
 
-    if not (spec.get("duration") and spec.get("budget")
-            and spec.get("parent_account") and spec.get("account")):
+    if not (
+        spec.get("duration")
+        and spec.get("budget")
+        and spec.get("parent_account")
+        and spec.get("account")
+    ):
         return ""
 
     # Google: competitive analysis must have been attempted OR declined.
     if is_google:
-        if (session_ctx.get("competitor_analysis") is None
-                and "competitive_analysis_declined" not in spec):
+        if (
+            session_ctx.get("competitor_analysis") is None
+            and "competitive_analysis_declined" not in spec
+        ):
             return ""
 
     # Meta: fb_page + ig_page required.
@@ -324,7 +427,8 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     meta_extra = (
         "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
         "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-        if is_meta else ""
+        if is_meta
+        else ""
     )
     return (
         "\n\nALL CAMPAIGN FIELDS ARE NOW SET. Do NOT call any other tool yet. "
@@ -344,8 +448,8 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         f"{meta_extra}\n"
         "  - **Competitors**: <comma-separated names from State, or 'none "
         "analyzed', or 'declined' if competitive_analysis_declined='true'>\n\n"
-        "Then call `present_options(question=\"Ready to launch the campaign?\", "
-        "options=[\"Yes, launch\", \"No, make changes\"])`. EVERY bullet must "
+        'Then call `present_options(question="Ready to launch the campaign?", '
+        'options=["Yes, launch", "No, make changes"])`. EVERY bullet must '
         "be present. **On the user's 'Yes, launch' reply, call "
         "`launch_campaign()` (no params) — that's the one tool that persists "
         "the campaign.**"

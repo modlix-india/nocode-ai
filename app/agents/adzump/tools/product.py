@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 # ── Tool implementations (bottom-up: fallback first, primary second) ──
 
+
 async def _scrape_website(params: dict, context: dict) -> ToolResult:
     """Scrape a website and extract business information using LLM."""
     url = params.get("url", "").strip()
@@ -50,29 +51,57 @@ async def _scrape_website(params: dict, context: dict) -> ToolResult:
 
             if stage == "screenshot" and data:
                 import base64
+
                 screenshot_bytes = base64.b64decode(data)
                 screenshot_url = await upload_screenshot(
-                    screenshot_bytes, f"{craft_id}.jpg", context,
+                    screenshot_bytes,
+                    f"{craft_id}.jpg",
+                    context,
                 )
                 if screenshot_url:
-                    await stream.emit_craft(craft_id, url, [
-                        {"type": "image", "url": screenshot_url},
-                        {"type": "callout", "text": "Analyzing website...", "variant": "info"},
-                    ])
-                    logger.info("Craft screenshot: id=%s url=%s", craft_id, screenshot_url[:80])
+                    await stream.emit_craft(
+                        craft_id,
+                        url,
+                        [
+                            {"type": "image", "url": screenshot_url},
+                            {
+                                "type": "callout",
+                                "text": "Analyzing website...",
+                                "variant": "info",
+                            },
+                        ],
+                    )
+                    logger.info(
+                        "Craft screenshot: id=%s url=%s", craft_id, screenshot_url[:80]
+                    )
 
             elif stage == "metadata" and data:
                 craft_title = data.product_name
                 kv_items = [{"key": "Website", "value": url}]
+                if getattr(data, "geo_scope", None):
+                    kv_items.append(
+                        {"key": "Targeting Scope", "value": str(data.geo_scope).title()}
+                    )
                 if data.location.location:
-                    kv_items.append({"key": "Location", "value": data.location.location})
+                    kv_items.append(
+                        {"key": "Location", "value": data.location.location}
+                    )
                 if data.location.suggested_locations:
-                    kv_items.append({"key": "Target Areas", "value": ", ".join(data.location.suggested_locations)})
+                    kv_items.append(
+                        {
+                            "key": "Target Areas",
+                            "value": ", ".join(data.location.suggested_locations),
+                        }
+                    )
                 blocks = [
                     {"type": "badge", "label": data.business_type},
                     {"type": "key_value", "items": kv_items},
                     {"type": "divider"},
-                    {"type": "callout", "text": "Generating marketing summary...", "variant": "info"},
+                    {
+                        "type": "callout",
+                        "text": "Generating marketing summary...",
+                        "variant": "info",
+                    },
                 ]
                 await stream.emit_craft(craft_id, craft_title, blocks, append=True)
                 logger.info("Craft metadata: id=%s", craft_id)
@@ -84,7 +113,9 @@ async def _scrape_website(params: dict, context: dict) -> ToolResult:
                 logger.info("Craft complete: id=%s", craft_id)
 
         agent = get_scrape_pipeline()
-        profile = await agent.run(url, progress_callback=progress, craft_callback=on_craft)
+        profile = await agent.run(
+            url, progress_callback=progress, craft_callback=on_craft
+        )
 
         # Store business info in session context
         session_ctx = context.get("session_context", {})
@@ -99,11 +130,15 @@ async def _scrape_website(params: dict, context: dict) -> ToolResult:
         if profile.location.location:
             summary_parts.append(f"Location: {profile.location.location}")
         if profile.location.suggested_locations:
-            summary_parts.append(f"Suggested Ad Locations: {', '.join(profile.location.suggested_locations)}")
+            summary_parts.append(
+                f"Suggested Ad Locations: {', '.join(profile.location.suggested_locations)}"
+            )
         if profile.unique_features:
             summary_parts.append(f"USPs: {', '.join(profile.unique_features[:5])}")
         if profile.products_services:
-            summary_parts.append(f"Products/Services: {', '.join(profile.products_services[:10])}")
+            summary_parts.append(
+                f"Products/Services: {', '.join(profile.products_services[:10])}"
+            )
         if profile.contact:
             contact_parts = []
             if profile.contact.phone:
@@ -125,7 +160,9 @@ async def _scrape_website(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error=str(e))
     except Exception as e:
         logger.exception("scrape_website failed: url=%s", url)
-        return ToolResult(success=False, error=f"Scraping failed: {type(e).__name__}: {e}")
+        return ToolResult(
+            success=False, error=f"Scraping failed: {type(e).__name__}: {e}"
+        )
 
 
 async def _analyze_product(params: dict, context: dict) -> ToolResult:
@@ -135,6 +172,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     Falls back to _scrape_website if auth is missing or agent fails.
     """
     import time as _time
+
     _run_start = _time.monotonic()
 
     url = (params.get("url") or "").strip()
@@ -145,7 +183,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     # `not url.startswith("http")` check accepted `http://` as-is, leaving
     # records keyed under both schemes for the same business.
     if url.startswith("http://"):
-        url = "https://" + url[len("http://"):]
+        url = "https://" + url[len("http://") :]
     elif not url.startswith("https://"):
         url = f"https://{url}"
 
@@ -157,9 +195,8 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     # Return cached results if already analyzed.
     parent_session = context.get("_session")
     existing_business = (
-        (parent_session.context.get("product_data") if parent_session else None)
-        or session_ctx.get("product_data")
-    )
+        parent_session.context.get("product_data") if parent_session else None
+    ) or session_ctx.get("product_data")
     if existing_business:
         name = existing_business.get("product_name", "product")
         return ToolResult(
@@ -173,6 +210,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     try:
         from app.agents.adzump.services.business_storage import hydrate_from_storage
         from app.agents.adzump.tools.competitor import _emit_final_craft
+
         target_ctx = parent_session.context if parent_session else session_ctx
         hit = await hydrate_from_storage(url, target_ctx, context)
         if hit:
@@ -185,10 +223,16 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             # get on a fresh scrape.
             craft_id = target_ctx.get("craft_id", "")
             if stream and craft_id:
-                competitive = target_ctx.get("competitor_analysis") or {"competitors": []}
+                competitive = target_ctx.get("competitor_analysis") or {
+                    "competitors": []
+                }
                 try:
                     await _emit_final_craft(
-                        stream, craft_id, url, business, competitive,
+                        stream,
+                        craft_id,
+                        url,
+                        business,
+                        competitive,
                         screenshot_url=(
                             business.get("primary_screenshot_url")
                             or business.get("screenshot_url")
@@ -196,8 +240,11 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
                         baked_summary=business.get("summary", ""),
                     )
                 except Exception as e:
-                    logger.warning("storage_hydrate_craft_failed: %s: %s",
-                                   type(e).__name__, str(e)[:200])
+                    logger.warning(
+                        "storage_hydrate_craft_failed: %s: %s",
+                        type(e).__name__,
+                        str(e)[:200],
+                    )
 
             return ToolResult(
                 success=True,
@@ -210,10 +257,14 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
                 ),
             )
     except Exception as e:
-        logger.warning("storage_hydrate_skipped: %s: %s", type(e).__name__, str(e)[:200])
+        logger.warning(
+            "storage_hydrate_skipped: %s: %s", type(e).__name__, str(e)[:200]
+        )
 
     if auth is None:
-        logger.warning("analyze_product: no auth in context, falling back to scrape_website")
+        logger.warning(
+            "analyze_product: no auth in context, falling back to scrape_website"
+        )
         return await _scrape_website(params, context)
 
     try:
@@ -265,7 +316,10 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         #   competitor_analysis — owned by this tool when competitive output exists.
         parent_session = context.get("_session")
         target_ctx = parent_session.context if parent_session else session_ctx
-        target_ctx["product_data"] = {**(target_ctx.get("product_data") or {}), **business}
+        target_ctx["product_data"] = {
+            **(target_ctx.get("product_data") or {}),
+            **business,
+        }
         profile = target_ctx.setdefault("product_profile", {})
         profile["url"] = url
         profile["title"] = business.get("product_name", "") or profile.get("title", "")
@@ -278,6 +332,31 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             profile["summary"] = business.get("summary", "")
         if output.competitive and output.competitive.get("competitors"):
             target_ctx["competitor_analysis"] = output.competitive
+
+        # Immediately trigger card re-render so metadata rows are visible right after Turn 1 scrape
+        craft_id = target_ctx.get("craft_id", "")
+        if stream and craft_id:
+            from app.agents.adzump.tools.competitor import _emit_final_craft
+
+            competitive = target_ctx.get("competitor_analysis") or {"competitors": []}
+            try:
+                await _emit_final_craft(
+                    stream,
+                    craft_id,
+                    url,
+                    target_ctx["product_data"],
+                    competitive,
+                    screenshot_url=(
+                        target_ctx["product_data"].get("primary_screenshot_url")
+                        or target_ctx["product_data"].get("screenshot_url")
+                    ),
+                    baked_summary=profile.get("summary", "")
+                    or target_ctx["product_data"].get("summary", ""),
+                )
+            except Exception as e:
+                logger.warning(
+                    "fresh_scrape_craft_failed: %s: %s", type(e).__name__, str(e)[:200]
+                )
 
         # Build summary for the LLM.
         summary_lines: list[str] = []
@@ -312,8 +391,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         )
 
     except Exception as e:
-        logger.warning("analyze_product failed: %s: %s",
-                       type(e).__name__, str(e)[:200])
+        logger.warning("analyze_product failed: %s: %s", type(e).__name__, str(e)[:200])
         if stream:
             try:
                 await stream.emit_agent_finished(
@@ -339,7 +417,12 @@ analyze_business = ToolDefinition(
     ),
     display_name="Analyze Product",
     parameters=[
-        ToolParameter(name="url", type="string", description="The business website URL to analyze.", required=True),
+        ToolParameter(
+            name="url",
+            type="string",
+            description="The business website URL to analyze.",
+            required=True,
+        ),
     ],
     execute=_analyze_product,
 )
@@ -349,7 +432,12 @@ scrape_website = ToolDefinition(
     description="Scrape a website to extract basic business information (name, type, description, products/services, USPs, contact info, location). Lower-level than analyze_business — prefer analyze_business unless you only need raw site content.",
     display_name="Scrape Website",
     parameters=[
-        ToolParameter(name="url", type="string", description="The website URL to analyze", required=True),
+        ToolParameter(
+            name="url",
+            type="string",
+            description="The website URL to analyze",
+            required=True,
+        ),
     ],
     execute=_scrape_website,
 )

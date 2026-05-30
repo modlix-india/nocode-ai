@@ -1,10 +1,8 @@
-"""Real-estate location confirmation tool.
+"""Real-estate location confirmation & geo target discovery tools.
 
-Gated on real-estate business-type keywords. Emits BOTH a prompt text and
-the map widget atomically — the LLM no longer has to remember to write
-"I'll show you a map" alongside the tool call. Frontend handles geocoding,
-rendering, pin-drag. On confirm it sends coords back as JSON and the LLM
-stores them via `set_campaign_spec`.
+Gates location map confirmations on real-estate keywords and exposes a
+unified tool to discover prime targeting areas (radial geocoded neighborhoods
+or strategic regional/national market hubs) and emit them immediately to the UI.
 """
 
 from __future__ import annotations
@@ -52,7 +50,9 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     business_type = (product.get("business_type") or "").strip()
 
     if not _is_real_estate(business_type):
-        logger.info("confirm_location skipped: business_type=%r not real-estate", business_type)
+        logger.info(
+            "confirm_location skipped: business_type=%r not real-estate", business_type
+        )
         return ToolResult(
             success=False,
             error=f"confirm_location only applies to real-estate campaigns — business_type is '{business_type}'. Skip this step.",
@@ -60,7 +60,11 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
 
     detected = _detected_location(product)
     product_name = (product.get("product_name") or "").strip()
-    display = f"{product_name}, {detected}" if product_name and detected else (detected or product_name)
+    display = (
+        f"{product_name}, {detected}"
+        if product_name and detected
+        else (detected or product_name)
+    )
 
     payload = {
         "location": detected,
@@ -95,6 +99,85 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     )
 
 
+async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
+    session_ctx = context.get("session_context") or {}
+    product_data = session_ctx.get("product_data") or {}
+
+    # 1. Resolve coordinates from cached _location_meta
+    loc_meta = session_ctx.get("_location_meta") or {}
+    lat = loc_meta.get("lat")
+    lng = loc_meta.get("lng")
+
+    coordinates = None
+    if lat is not None and lng is not None:
+        coordinates = {"lat": lat, "lng": lng}
+    else:
+        # Fallback: check if the user confirmed a location in campaign_spec, and try to geocode it
+        spec = session_ctx.get("campaign_spec") or {}
+        location_str = spec.get("location")
+        if location_str:
+            from app.agents.adzump.adapters.google.maps import google_maps_client
+
+            geo_res = await google_maps_client.geocode(location_str)
+            if geo_res:
+                coordinates = {"lat": geo_res["lat"], "lng": geo_res["lng"]}
+                # Update location meta so it is cached
+                session_ctx["_location_meta"] = {
+                    "address": geo_res["address"] or location_str,
+                    "lat": geo_res["lat"],
+                    "lng": geo_res["lng"],
+                    "displayName": loc_meta.get("displayName") or "",
+                }
+
+    # 2. Call the Orchestrator
+    from app.agents.adzump.services.geo import discover_geo_targets as run_discovery
+
+    logger.info(
+        "discover_geo_targets_tool: running discovery with coordinates=%r", coordinates
+    )
+
+    try:
+        targets = await run_discovery(coordinates, product_data)
+    except Exception as e:
+        logger.exception("discover_geo_targets_tool failed: %s", e)
+        return ToolResult(success=False, error=f"Target area discovery failed: {e}")
+
+    # 3. Save target areas into session context & database
+    product_data["target_areas"] = targets
+
+    from app.agents.adzump.services.business_storage import save_campaign
+
+    await save_campaign(session_ctx, context)
+
+    # 4. Trigger immediate Craft Panel re-rendering
+    from app.agents.adzump.tools.competitor import _emit_final_craft
+    from app.agents.adzump.services.business_storage import resolve_url
+
+    stream = context.get("event_stream")
+    craft_id = session_ctx.get("craft_id")
+    business_url = resolve_url(session_ctx)
+
+    if stream and craft_id and business_url:
+        competitive = session_ctx.get("competitor_analysis") or {"competitors": []}
+        await _emit_final_craft(
+            stream,
+            craft_id,
+            business_url,
+            product_data,
+            competitive,
+            screenshot_url=product_data.get("primary_screenshot_url")
+            or product_data.get("screenshot_url"),
+            baked_summary=product_data.get("summary", ""),
+        )
+
+    summary = f"Discovered {len(targets)} targeting areas successfully."
+    return ToolResult(
+        success=True,
+        data={"target_areas": targets},
+        summary=summary,
+    )
+
+
 confirm_location = ToolDefinition(
     name="confirm_location",
     description=(
@@ -109,4 +192,19 @@ confirm_location = ToolDefinition(
     execute=_confirm_location,
 )
 
-LOCATION_TOOLS = [confirm_location]
+
+discover_geo_targets = ToolDefinition(
+    name="discover_geo_targets",
+    description=(
+        "Analyze campaign parameters and coordinates to discover prime geographic target areas. "
+        "For hyperlocal/local scale, maps neighborhood-level radial target regions (e.g. Richmond Town). "
+        "For regional/national/global scale, recommends strategic metropolitan/city hubs with clear justifications. "
+        "Returns the unified target list and instantly saves/renders in the UI details card."
+    ),
+    display_name="Discover Target Areas",
+    parameters=[],
+    execute=_discover_geo_targets,
+)
+
+
+LOCATION_TOOLS = [confirm_location, discover_geo_targets]

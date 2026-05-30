@@ -110,7 +110,7 @@ class ExtractionService:
         )
 
         result = WebsiteMetadata.model_validate_json(response.choices[0].message.content)
-        logger.info("metadata_extracted: brand=%s type=%s", result.product_name, result.business_type)
+        logger.info("metadata_extracted: brand=%s type=%s scope=%s", result.product_name, result.business_type, result.geo_scope)
         return result
 
     async def stream_summary(
@@ -151,6 +151,7 @@ class ExtractionService:
         return BusinessProfile(
             product_name=metadata.product_name,
             business_type=metadata.business_type,
+            geo_scope=metadata.geo_scope,
             location=metadata.location,
             summary=summary_text,
             pages_analyzed=[page.url for page in pages],

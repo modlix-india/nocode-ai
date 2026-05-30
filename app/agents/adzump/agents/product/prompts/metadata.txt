@@ -6,6 +6,11 @@ WEBSITE CONTENT:
 Extract the following fields:
 - product_name: The business/brand name
 - business_type: Short business category, 1-2 words (e.g. "Real Estate", "SaaS", "Restaurant", "E-commerce", "Healthcare"). For any property/villa/apartment/residential project, use "Real Estate" exactly.
+- geo_scope: Classify the geographic scale/targeting scope of the business. Must be exactly one of:
+  * "hyperlocal": Physical services or stores serving a local radius (dentists, cafes, gyms, local clinics, restaurants, specific real estate/apartment projects).
+  * "regional": Operations running statewide, across a specific multi-city region, or regional franchises.
+  * "national": Country-wide brands, nationwide e-commerce platforms, or services operating across an entire country.
+  * "global": Global SaaS, international digital products, or software operating worldwide.
 - location.location: The exact business address or primary city/state. Return "" if not found.
 - location.suggested_locations: A list of cities/regions good for ad targeting based on where the business operates. Return empty list if not found.
 
@@ -16,4 +21,4 @@ RULES:
 - For suggested_locations, list all mentioned geographic areas the business serves
 
 OUTPUT: Return ONLY valid JSON matching this exact schema:
-{{"product_name": "", "business_type": "", "location": {{"location": "", "suggested_locations": []}}}}
+{{"product_name": "", "business_type": "", "geo_scope": "hyperlocal", "location": {{"location": "", "suggested_locations": []}}}}

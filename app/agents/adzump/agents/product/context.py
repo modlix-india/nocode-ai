@@ -39,15 +39,16 @@ fallbacks, and server-rendered copy that JS overwrites).
 If `web_fetch` errors (e.g. Cloudflare 403), skip it and proceed with
 `scrape_url` output alone — do not retry.
 
-### Step 2 — Extract the 5 competitive dimensions
+### Step 2 — Extract the 6 competitive dimensions
 
-From the scrape results, identify these 5 universal dimensions:
+From the scrape results, identify these 6 universal dimensions:
 
 1. **offering_type**: what they sell — be specific about format (e.g. "4BHK triplex villament", "no-code CRM", "cloud kitchen North Indian food", "organic face serum")
 2. **geography**: where they operate — as specific as possible (e.g. "Bannerghatta Road, South Bangalore", "US + UK SaaS market", "Indiranagar, Bangalore")
 3. **price_tier**: how they're priced relative to market (e.g. "₹4.12 Cr premium segment", "$49/mo mid-market", "₹800 avg order premium dining", "₹500-1500 mid-range D2C")
 4. **target_customer**: who buys — demographics, psychographics (e.g. "HNI families 35-55", "SMB founders 50-500 employees", "young professionals 25-35")
 5. **differentiator**: what makes them unique vs alternatives (e.g. "villa spaciousness + apartment convenience", "AI-powered + no-code", "farm-to-table + craft cocktails")
+6. **geo_scope**: the geographic scale/targeting scope of the business. Must be exactly one of: "hyperlocal" (local storefront/physical service/real estate), "regional" (statewide/multi-city operations), "national" (countrywide brand/e-commerce), or "global" (global SaaS/digital product).
 
 Write these down in your reasoning before proceeding.
 
@@ -121,6 +122,7 @@ Schema with hard caps:
   "business": {
     "product_name": "string",
     "business_type": "string",
+    "geo_scope": "string (exactly one of: hyperlocal, regional, national, global)",
     "location": "string",
     "suggested_locations": ["string", "..."],
     "summary": "CONCISE 2-3 sentence paragraph: what it is, who it's for, pricing anchor, one trust signal if any. Self-contained prose, no bullets, no placeholder phrasing. Target ≤400 chars.",
