@@ -292,6 +292,8 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         "contact": product.get("contact") or {},
         "pagesAnalyzed": product.get("pages_analyzed") or [],
         "targetAreas": product.get("target_areas") or [],
+        "googleMappedLocations": product.get("google_mapped_locations") or [],
+        "metaMappedLocations": product.get("meta_mapped_locations") or [],
         "competitors": (competitive or {}).get("competitors") or [],
         # ── Provenance ──
         "lastAnalyzedAt": _now_iso(),
@@ -383,6 +385,8 @@ def _record_to_business(record: dict) -> dict:
         "contact": d.get("contact") or {},
         "pages_analyzed": d.get("pagesAnalyzed") or [],
         "target_areas": d.get("targetAreas") or [],
+        "google_mapped_locations": d.get("googleMappedLocations") or [],
+        "meta_mapped_locations": d.get("metaMappedLocations") or [],
     }
 
 

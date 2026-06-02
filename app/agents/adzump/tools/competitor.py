@@ -187,7 +187,10 @@ async def _emit_final_craft(
     if target_areas:
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Target Areas"})
-        for area in target_areas:
+        for idx, area in enumerate(target_areas):
+            if idx > 0:
+                blocks.append({"type": "divider"})
+
             name = area.get("name")
             pincode = area.get("pincode")
             city = area.get("city")
@@ -206,8 +209,51 @@ async def _emit_final_craft(
 
             title = f"{full_name} ({dist} km away)" if dist is not None else full_name
             blocks.append({"type": "heading", "text": title, "level": 2})
+
+            # Build a clean key_value layout
+            kv_items = []
+            kv_items.append({"key": "Location", "value": full_name})
             if reason:
-                blocks.append({"type": "text", "content": reason})
+                kv_items.append({"key": "Reason", "value": reason})
+
+            # Platform target mapping info
+            google_id = area.get("google_id")
+            google_name = area.get("google_name")
+            google_prox = area.get("google_proximity")
+            meta_key = area.get("meta_key")
+            meta_type = area.get("meta_type")
+            meta_name = area.get("meta_name")
+            meta_radial = area.get("meta_radial")
+
+            # Google Ads Targeting info
+            if google_id:
+                kv_items.append(
+                    {
+                        "key": "Google Target",
+                        "value": f"Google Ads ID {google_id} ({google_name or 'Resolved'})",
+                    }
+                )
+            elif google_prox:
+                display = (
+                    google_prox.get("display")
+                    or f"Proximity ({google_prox.get('latitude_in_micro_degrees') / 1e6:.4f}, {google_prox.get('longitude_in_micro_degrees') / 1e6:.4f}) with {google_prox.get('radius')} km radius"
+                )
+                kv_items.append({"key": "Google Target", "value": display})
+
+            # Meta Ads Targeting info
+            if meta_key:
+                kv_items.append(
+                    {
+                        "key": "Meta Target",
+                        "value": f"Meta Key {meta_key} ({meta_name or 'Resolved'} - {meta_type or 'zip'})",
+                    }
+                )
+            elif meta_radial:
+                display = f"Radial coordinate ({meta_radial.get('latitude')}, {meta_radial.get('longitude')}) with {meta_radial.get('radius')} km radius"
+                kv_items.append({"key": "Meta Target", "value": display})
+
+            if kv_items:
+                blocks.append({"type": "key_value", "items": kv_items})
 
     _render_competitors(blocks, competitive)
 

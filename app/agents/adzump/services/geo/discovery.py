@@ -161,8 +161,12 @@ async def discover_neighborhoods(
 
             if res_lat is not None and res_lng is not None:
                 dist = calculate_distance(center_lat, center_lng, res_lat, res_lng)
+                final_lat = res_lat
+                final_lng = res_lng
             else:
                 dist = calculate_distance(center_lat, center_lng, lat, lng)
+                final_lat = lat
+                final_lng = lng
 
             # Filter out anything too far away
             if dist > radius_km * MAX_DISTANCE_MULTIPLIER:
@@ -175,6 +179,8 @@ async def discover_neighborhoods(
                     "pincode": addr_details["pincode"],
                     "city": addr_details["city"],
                     "state": addr_details["state"],
+                    "lat": final_lat,
+                    "lng": final_lng,
                     "distance_km": dist,
                     "reason": f"High-intent local neighborhood within {dist} km radius of your confirmed location."
                     if dist > 0

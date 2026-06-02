@@ -43,6 +43,32 @@ HYPERLOCAL_BUSINESS_KEYWORDS = ("dentist", "cafe", "gym", "restaurant", "clinic"
 FALLBACK_TARGET_REASON = "Target area extracted from website details."
 
 
+# OpenAI JSON Schema for Strategic Markets
+STRATEGIC_MARKETS_SCHEMA = {
+    "name": "strategic_markets",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "markets": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "reason": {"type": "string"},
+                    },
+                    "required": ["name", "reason"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["markets"],
+        "additionalProperties": False,
+    },
+    "strict": True,
+}
+
+
 def get_business_scope(product_data: dict) -> str:
     """Classify target scope from product data. Defaults to DEFAULT_GEO_SCOPE."""
     scope = (product_data.get("geo_scope") or "").strip().lower()
@@ -139,29 +165,7 @@ async def _discover_strategic_markets(
             max_tokens=MAX_STRATEGIC_MARKETS_TOKENS,
             response_format={
                 "type": "json_schema",
-                "json_schema": {
-                    "name": "strategic_markets",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "markets": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "name": {"type": "string"},
-                                        "reason": {"type": "string"},
-                                    },
-                                    "required": ["name", "reason"],
-                                    "additionalProperties": False,
-                                },
-                            }
-                        },
-                        "required": ["markets"],
-                        "additionalProperties": False,
-                    },
-                    "strict": True,
-                },
+                "json_schema": STRATEGIC_MARKETS_SCHEMA,
             },
         )
 

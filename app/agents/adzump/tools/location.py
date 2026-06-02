@@ -49,13 +49,20 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     product = session_ctx.get("product_data") or {}
     business_type = (product.get("business_type") or "").strip()
 
-    if not _is_real_estate(business_type):
+    from app.agents.adzump.services.geo import get_business_scope
+
+    scope = get_business_scope(product)
+    is_re = _is_real_estate(business_type)
+
+    if not (is_re or scope in ("hyperlocal", "local")):
         logger.info(
-            "confirm_location skipped: business_type=%r not real-estate", business_type
+            "confirm_location skipped: business_type=%r not real-estate and scope=%r not local/hyperlocal",
+            business_type,
+            scope,
         )
         return ToolResult(
             success=False,
-            error=f"confirm_location only applies to real-estate campaigns — business_type is '{business_type}'. Skip this step.",
+            error=f"confirm_location only applies to real-estate or local/hyperlocal campaigns — business_type is '{business_type}' and scope is '{scope}'. Skip this step.",
         )
 
     detected = _detected_location(product)

@@ -111,6 +111,16 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         return False
 
     if field == "location":
+        # 1. Matches scraped/detected location in product_data (trusted source)
+        from app.agents.adzump.tools.location import _detected_location
+
+        detected = (
+            _detected_location(session_ctx.get("product_data") or {}).strip().lower()
+        )
+        if detected and (v == detected or v in detected or detected in v):
+            return True
+
+        # 2. Map-confirm or manual overrides
         if session_ctx.get("_pending_location_confirm"):
             if (
                 lu == "confirm"
@@ -304,6 +314,21 @@ async def _set_campaign_spec(
         try:
             targets = await discover_geo_targets(coordinates, product)
             product["target_areas"] = targets
+
+            # Map platform geo targets if platform is already set
+            platform_val = spec.get("platform")
+            if platform_val:
+                try:
+                    from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+
+                    mapper = PlatformGeoMapper(session_ctx, context)
+                    product["target_areas"] = await mapper.map_target_areas(
+                        targets, platform_val
+                    )
+                except Exception as ex:
+                    logger.exception(
+                        "Platform geo-mapping failed in location update: %s", ex
+                    )
         except Exception as ex:
             logger.exception("Callback discover_geo_targets failed: %s", ex)
 
@@ -339,6 +364,56 @@ async def _set_campaign_spec(
                 or business.get("screenshot_url"),
                 baked_summary=baked_summary,
             )
+
+    # If platform was updated (and location was NOT in incoming, since that's handled above),
+    # and target_areas are already present, run the mapper!
+    if "platform" in incoming and "location" not in incoming:
+        platform_val = spec.get("platform")
+        product = session_ctx.setdefault("product_data", {})
+        target_areas = product.get("target_areas")
+        if platform_val and target_areas:
+            try:
+                from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+
+                mapper = PlatformGeoMapper(session_ctx, context)
+                product["target_areas"] = await mapper.map_target_areas(
+                    target_areas, platform_val
+                )
+
+                # Persist campaign and trigger immediate UI card re-render
+                from app.agents.adzump.services.business_storage import save_campaign
+
+                await save_campaign(session_ctx, context)
+
+                from app.agents.adzump.tools.competitor import _emit_final_craft
+                from app.agents.adzump.services.business_storage import resolve_url
+
+                stream = context.get("event_stream")
+                craft_id = session_ctx.get("craft_id")
+                business_url = resolve_url(session_ctx)
+                if stream and craft_id and business_url:
+                    if session_ctx.get("_location_meta", {}).get("address"):
+                        product["location"] = session_ctx["_location_meta"]["address"]
+                    competitive = session_ctx.get("competitor_analysis") or {
+                        "competitors": []
+                    }
+                    profile = session_ctx.get("product_profile") or {}
+                    baked_summary = profile.get("summary") or product.get("summary", "")
+
+                    await _emit_final_craft(
+                        stream,
+                        craft_id,
+                        business_url,
+                        product,
+                        competitive,
+                        screenshot_url=product.get("primary_screenshot_url")
+                        or product.get("screenshot_url"),
+                        baked_summary=baked_summary,
+                    )
+            except Exception as ex:
+                logger.exception(
+                    "Platform geo-mapping failed in platform update: %s", ex
+                )
 
     # Are we DONE after this write? If yes, inject the review prescription
     # into the tool result so the LLM renders the summary on the same turn —
@@ -401,7 +476,11 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
             "developer",
         )
     )
-    if is_real_estate and not spec.get("location"):
+    from app.agents.adzump.services.geo import get_business_scope
+
+    scope = get_business_scope(session_ctx.get("product_data") or {})
+    requires_location = is_real_estate or scope in ("hyperlocal", "local", "regional")
+    if requires_location and not spec.get("location"):
         return ""
 
     if not (
