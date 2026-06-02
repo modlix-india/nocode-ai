@@ -308,15 +308,6 @@ async def _set_campaign_spec(
                 "lng": session_ctx["_location_meta"]["lng"],
             }
 
-        # Discover target areas dynamically inside the location confirm callback
-        from app.agents.adzump.services.geo import discover_geo_targets
-
-        try:
-            targets = await discover_geo_targets(coordinates, product)
-            product["target_areas"] = targets
-        except Exception as ex:
-            logger.exception("Callback discover_geo_targets failed: %s", ex)
-
         # Persist coordinates/location/target areas to the database immediately
         from app.agents.adzump.services.business_storage import save_campaign
 
@@ -361,60 +352,18 @@ async def _set_campaign_spec(
         product = session_ctx.setdefault("product_data", {})
         platform_val = spec.get("platform")
 
-        if platform_val:
-            # 1. Fallback Auto-Discovery if target_areas is empty
-            if not product.get("target_areas"):
+        # Emit Craft-2 only if target_areas is not empty
+        if product.get("target_areas"):
+            stream = context.get("event_stream")
+            craft_id = session_ctx.get("craft_id")
+            if stream and craft_id:
                 try:
-                    from app.agents.adzump.services.geo import discover_geo_targets
+                    from app.agents.adzump.tools.competitor import _emit_craft2
 
-                    loc_meta = session_ctx.get("_location_meta") or {}
-                    lat = loc_meta.get("lat")
-                    lng = loc_meta.get("lng")
-                    coordinates = (
-                        {"lat": lat, "lng": lng}
-                        if (lat is not None and lng is not None)
-                        else None
-                    )
-
-                    targets = await discover_geo_targets(coordinates, product)
-                    product["target_areas"] = targets
+                    craft_id_2 = f"{craft_id}_craft2"
+                    await _emit_craft2(stream, craft_id_2, product, spec)
                 except Exception as ex:
-                    logger.exception(
-                        "Auto-discovery of target areas failed on completion: %s", ex
-                    )
-
-            # 2. Run PlatformGeoMapper
-            target_areas = product.get("target_areas")
-            if target_areas:
-                try:
-                    from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
-
-                    mapper = PlatformGeoMapper(session_ctx, context)
-                    product["target_areas"] = await mapper.map_target_areas(
-                        target_areas, platform_val
-                    )
-                    # Persist campaign to database immediately
-                    from app.agents.adzump.services.business_storage import (
-                        save_campaign,
-                    )
-
-                    await save_campaign(session_ctx, context)
-                except Exception as ex:
-                    logger.exception(
-                        "Deferred platform geo-mapping failed on completion: %s", ex
-                    )
-
-        # 3. Emit Craft-2
-        stream = context.get("event_stream")
-        craft_id = session_ctx.get("craft_id")
-        if stream and craft_id:
-            try:
-                from app.agents.adzump.tools.competitor import _emit_craft2
-
-                craft_id_2 = f"{craft_id}_craft2"
-                await _emit_craft2(stream, craft_id_2, product, spec)
-            except Exception as ex:
-                logger.exception("Failed to emit Campaign Assets Craft-2: %s", ex)
+                    logger.exception("Failed to emit Campaign Assets Craft-2: %s", ex)
 
     if rejected:
         # Partial-success: needed explicit logging so we can tune the guards

@@ -214,4 +214,72 @@ discover_geo_targets = ToolDefinition(
 )
 
 
-LOCATION_TOOLS = [confirm_location, discover_geo_targets]
+async def _map_target_areas(params: dict, context: dict) -> ToolResult:
+    session_ctx = context.get("session_context") or {}
+    product_data = session_ctx.get("product_data") or {}
+    spec = session_ctx.get("campaign_spec") or {}
+    platform_val = spec.get("platform")
+
+    if not platform_val:
+        return ToolResult(
+            success=False,
+            error="No target platform is configured in the campaign. Set a platform first before mapping.",
+        )
+
+    target_areas = product_data.get("target_areas") or []
+    if not target_areas:
+        return ToolResult(
+            success=False,
+            error="No targeting areas found to map. Run target area discovery first.",
+        )
+
+    from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+
+    try:
+        mapper = PlatformGeoMapper(session_ctx, context)
+        mapped = await mapper.map_target_areas(target_areas, platform_val)
+        product_data["target_areas"] = mapped
+    except Exception as e:
+        logger.exception("map_target_areas tool failed: %s", e)
+        return ToolResult(success=False, error=f"Target mapping failed: {e}")
+
+    # Save campaign state
+    from app.agents.adzump.services.business_storage import save_campaign
+
+    await save_campaign(session_ctx, context)
+
+    # Re-emit Craft-2
+    from app.agents.adzump.tools.competitor import _emit_craft2
+
+    stream = context.get("event_stream")
+    craft_id = session_ctx.get("craft_id")
+
+    if stream and craft_id:
+        try:
+            craft_id_2 = f"{craft_id}_craft2"
+            await _emit_craft2(stream, craft_id_2, product_data, spec)
+        except Exception as ex:
+            logger.exception(
+                "Failed to emit Campaign Assets Craft-2 during map tool: %s", ex
+            )
+
+    return ToolResult(
+        success=True,
+        data={"target_areas": mapped},
+        summary=f"Successfully mapped {len(mapped)} targeting areas to the {platform_val} platform.",
+    )
+
+
+map_target_areas = ToolDefinition(
+    name="map_target_areas",
+    description=(
+        "Resolve the discovered targeting areas to official ad network geolocations (Google Ads Criteria IDs or Meta ZIP keys) based on the selected platform. "
+        "Instantly saves the mapping results and updates the side panel targeting card."
+    ),
+    display_name="Map Target Areas",
+    parameters=[],
+    execute=_map_target_areas,
+)
+
+
+LOCATION_TOOLS = [confirm_location, discover_geo_targets, map_target_areas]
