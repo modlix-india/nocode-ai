@@ -183,83 +183,106 @@ async def _emit_final_craft(
         blocks.append({"type": "heading", "text": "Product Summary"})
         blocks.append({"type": "text", "content": baked_summary})
 
-    target_areas = business.get("target_areas") or []
-    if target_areas:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "heading", "text": "Target Areas"})
-        for idx, area in enumerate(target_areas):
-            if idx > 0:
-                blocks.append({"type": "divider"})
-
-            name = area.get("name")
-            pincode = area.get("pincode")
-            city = area.get("city")
-            state = area.get("state")
-            dist = area.get("distance_km")
-            reason = area.get("reason")
-
-            # Format compiled address: e.g. "BTM Layout, Bengaluru - 560076 (KA)"
-            full_name = f"{name}"
-            if city:
-                full_name += f", {city}"
-            if pincode:
-                full_name += f" - {pincode}"
-            if state:
-                full_name += f" ({state})"
-
-            title = f"{full_name} ({dist} km away)" if dist is not None else full_name
-            blocks.append({"type": "heading", "text": title, "level": 2})
-
-            # Build a clean key_value layout
-            kv_items = []
-            kv_items.append({"key": "Location", "value": full_name})
-            if reason:
-                kv_items.append({"key": "Reason", "value": reason})
-
-            # Platform target mapping info
-            google_id = area.get("google_id")
-            google_name = area.get("google_name")
-            google_prox = area.get("google_proximity")
-            meta_key = area.get("meta_key")
-            meta_type = area.get("meta_type")
-            meta_name = area.get("meta_name")
-            meta_radial = area.get("meta_radial")
-
-            # Google Ads Targeting info
-            if google_id:
-                kv_items.append(
-                    {
-                        "key": "Google Target",
-                        "value": f"Google Ads ID {google_id} ({google_name or 'Resolved'})",
-                    }
-                )
-            elif google_prox:
-                display = (
-                    google_prox.get("display")
-                    or f"Proximity ({google_prox.get('latitude_in_micro_degrees') / 1e6:.4f}, {google_prox.get('longitude_in_micro_degrees') / 1e6:.4f}) with {google_prox.get('radius')} km radius"
-                )
-                kv_items.append({"key": "Google Target", "value": display})
-
-            # Meta Ads Targeting info
-            if meta_key:
-                kv_items.append(
-                    {
-                        "key": "Meta Target",
-                        "value": f"Meta Key {meta_key} ({meta_name or 'Resolved'} - {meta_type or 'zip'})",
-                    }
-                )
-            elif meta_radial:
-                display = f"Radial coordinate ({meta_radial.get('latitude')}, {meta_radial.get('longitude')}) with {meta_radial.get('radius')} km radius"
-                kv_items.append({"key": "Meta Target", "value": display})
-
-            if kv_items:
-                blocks.append({"type": "key_value", "items": kv_items})
-
     _render_competitors(blocks, competitive)
 
     await stream.emit_craft(
         craft_id,
         business.get("product_name") or url,
+        blocks,
+        append=False,
+    )
+
+
+async def _emit_craft2(
+    stream,
+    craft_id: str,
+    business: dict,
+    spec: dict,
+) -> None:
+    """Emit the Campaign Assets card (craft-2) showing mapped targeting IDs."""
+    from app.agents.adzump.platform import Platform
+
+    platform_str = spec.get("platform")
+    is_google = False
+    is_meta = False
+    if platform_str:
+        platform_enum = Platform.from_value(platform_str)
+        is_google = platform_enum is Platform.GOOGLE
+        is_meta = platform_enum is Platform.META
+
+    blocks: list[dict] = []
+    blocks.append({"type": "heading", "text": "Campaign Assets"})
+    blocks.append({"type": "heading", "text": "Targeting Areas", "level": 2})
+
+    target_areas = business.get("target_areas") or []
+    if not target_areas:
+        blocks.append(
+            {"type": "text", "content": "No mapped targeting areas available."}
+        )
+    else:
+        rows: list[list[str]] = []
+        for area in target_areas:
+            intended_name = area.get("name") or "Target Area"
+            city = area.get("city")
+            state = area.get("state")
+
+            # Compile structured name: e.g. "Kalasipalya, Bengaluru, KA"
+            display_key = intended_name
+            if city:
+                display_key += f", {city}"
+            if state:
+                display_key += f", {state}"
+
+            # Check for Google mapping components
+            google_id = area.get("google_id")
+            google_name = area.get("google_name")
+            google_prox = area.get("google_proximity")
+
+            # Check for Meta mapping components
+            meta_key = area.get("meta_key")
+            meta_name = area.get("meta_name")
+            meta_radial = area.get("meta_radial")
+
+            target_val = "Pending mapping"
+            if is_google:
+                if google_id:
+                    target_val = (
+                        f"Google Ads: {google_name or 'Resolved'} (ID: {google_id})"
+                    )
+                elif google_prox:
+                    radius = google_prox.get("radius", 5)
+                    target_val = f"Proximity Target: {radius} km radius"
+                else:
+                    target_val = "Pending Google mapping"
+            elif is_meta:
+                if meta_key:
+                    target_val = (
+                        f"Meta ZIP: {meta_name or 'Resolved'} (Key: {meta_key})"
+                    )
+                elif meta_radial:
+                    radius = meta_radial.get("radius", 5)
+                    unit = meta_radial.get("distance_unit", "kilometer")
+                    target_val = f"Proximity Target: {radius} {unit}s"
+                else:
+                    target_val = "Pending Meta mapping"
+            else:
+                target_val = "Pending platform selection"
+
+            rows.append([display_key, target_val])
+
+        if rows:
+            blocks.append(
+                {
+                    "type": "table",
+                    "headers": ["Intended Location", "Ad Platform Mapping"],
+                    "rows": rows,
+                }
+            )
+
+    # Emit craft-2 with title "Campaign Assets"
+    await stream.emit_craft(
+        craft_id,
+        "Campaign Assets",
         blocks,
         append=False,
     )

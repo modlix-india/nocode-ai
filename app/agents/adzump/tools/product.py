@@ -246,6 +246,21 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
                         str(e)[:200],
                     )
 
+                # Restores Campaign Assets card (Craft-2) if specification is complete
+                spec = target_ctx.get("campaign_spec") or {}
+                from app.agents.adzump.tools.campaign_data import _review_hint_if_complete
+                if _review_hint_if_complete(spec, target_ctx):
+                    try:
+                        from app.agents.adzump.tools.competitor import _emit_craft2
+                        craft_id_2 = f"{craft_id}_craft2"
+                        await _emit_craft2(stream, craft_id_2, business, spec)
+                    except Exception as e:
+                        logger.warning(
+                            "storage_hydrate_craft2_failed: %s: %s",
+                            type(e).__name__,
+                            str(e)[:200],
+                        )
+
             return ToolResult(
                 success=True,
                 data={"business": business, "from_storage": True},

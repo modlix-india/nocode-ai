@@ -314,21 +314,6 @@ async def _set_campaign_spec(
         try:
             targets = await discover_geo_targets(coordinates, product)
             product["target_areas"] = targets
-
-            # Map platform geo targets if platform is already set
-            platform_val = spec.get("platform")
-            if platform_val:
-                try:
-                    from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
-
-                    mapper = PlatformGeoMapper(session_ctx, context)
-                    product["target_areas"] = await mapper.map_target_areas(
-                        targets, platform_val
-                    )
-                except Exception as ex:
-                    logger.exception(
-                        "Platform geo-mapping failed in location update: %s", ex
-                    )
         except Exception as ex:
             logger.exception("Callback discover_geo_targets failed: %s", ex)
 
@@ -365,61 +350,71 @@ async def _set_campaign_spec(
                 baked_summary=baked_summary,
             )
 
-    # If platform was updated (and location was NOT in incoming, since that's handled above),
-    # and target_areas are already present, run the mapper!
-    if "platform" in incoming and "location" not in incoming:
-        platform_val = spec.get("platform")
-        product = session_ctx.setdefault("product_data", {})
-        target_areas = product.get("target_areas")
-        if platform_val and target_areas:
-            try:
-                from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
-
-                mapper = PlatformGeoMapper(session_ctx, context)
-                product["target_areas"] = await mapper.map_target_areas(
-                    target_areas, platform_val
-                )
-
-                # Persist campaign and trigger immediate UI card re-render
-                from app.agents.adzump.services.business_storage import save_campaign
-
-                await save_campaign(session_ctx, context)
-
-                from app.agents.adzump.tools.competitor import _emit_final_craft
-                from app.agents.adzump.services.business_storage import resolve_url
-
-                stream = context.get("event_stream")
-                craft_id = session_ctx.get("craft_id")
-                business_url = resolve_url(session_ctx)
-                if stream and craft_id and business_url:
-                    if session_ctx.get("_location_meta", {}).get("address"):
-                        product["location"] = session_ctx["_location_meta"]["address"]
-                    competitive = session_ctx.get("competitor_analysis") or {
-                        "competitors": []
-                    }
-                    profile = session_ctx.get("product_profile") or {}
-                    baked_summary = profile.get("summary") or product.get("summary", "")
-
-                    await _emit_final_craft(
-                        stream,
-                        craft_id,
-                        business_url,
-                        product,
-                        competitive,
-                        screenshot_url=product.get("primary_screenshot_url")
-                        or product.get("screenshot_url"),
-                        baked_summary=baked_summary,
-                    )
-            except Exception as ex:
-                logger.exception(
-                    "Platform geo-mapping failed in platform update: %s", ex
-                )
-
     # Are we DONE after this write? If yes, inject the review prescription
     # into the tool result so the LLM renders the summary on the same turn —
     # the dynamic context computed at start-of-turn doesn't know the field
     # we just stored is set.
     review_hint = _review_hint_if_complete(spec, session_ctx)
+
+    if review_hint:
+        # Spec is complete! Resolve mapping and emit Craft-2
+        product = session_ctx.setdefault("product_data", {})
+        platform_val = spec.get("platform")
+
+        if platform_val:
+            # 1. Fallback Auto-Discovery if target_areas is empty
+            if not product.get("target_areas"):
+                try:
+                    from app.agents.adzump.services.geo import discover_geo_targets
+
+                    loc_meta = session_ctx.get("_location_meta") or {}
+                    lat = loc_meta.get("lat")
+                    lng = loc_meta.get("lng")
+                    coordinates = (
+                        {"lat": lat, "lng": lng}
+                        if (lat is not None and lng is not None)
+                        else None
+                    )
+
+                    targets = await discover_geo_targets(coordinates, product)
+                    product["target_areas"] = targets
+                except Exception as ex:
+                    logger.exception(
+                        "Auto-discovery of target areas failed on completion: %s", ex
+                    )
+
+            # 2. Run PlatformGeoMapper
+            target_areas = product.get("target_areas")
+            if target_areas:
+                try:
+                    from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+
+                    mapper = PlatformGeoMapper(session_ctx, context)
+                    product["target_areas"] = await mapper.map_target_areas(
+                        target_areas, platform_val
+                    )
+                    # Persist campaign to database immediately
+                    from app.agents.adzump.services.business_storage import (
+                        save_campaign,
+                    )
+
+                    await save_campaign(session_ctx, context)
+                except Exception as ex:
+                    logger.exception(
+                        "Deferred platform geo-mapping failed on completion: %s", ex
+                    )
+
+        # 3. Emit Craft-2
+        stream = context.get("event_stream")
+        craft_id = session_ctx.get("craft_id")
+        if stream and craft_id:
+            try:
+                from app.agents.adzump.tools.competitor import _emit_craft2
+
+                craft_id_2 = f"{craft_id}_craft2"
+                await _emit_craft2(stream, craft_id_2, product, spec)
+            except Exception as ex:
+                logger.exception("Failed to emit Campaign Assets Craft-2: %s", ex)
 
     if rejected:
         # Partial-success: needed explicit logging so we can tune the guards
