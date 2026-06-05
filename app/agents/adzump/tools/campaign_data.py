@@ -25,6 +25,7 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.platform import Platform
+from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ ALLOWED_FIELDS = {
     "fb_page",
     "ig_page",
     "competitive_analysis_declined",
+    "ig_page_declined",          # v3 · F3 — Instagram is optional; "true" = Facebook-only
 }
 
 # IDs from Google Ads / Meta — must be traceable to a fetch tool's output
@@ -66,10 +68,42 @@ _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 
 # Free-text fields whose values must be traceable to the user's most recent
 # message. Together with _ACCOUNT_LIKE_FIELDS, every allowed field passes
-# through one kind of traceability check. `competitive_analysis_declined`
-# has its own narrow rule (see _field_traceable).
+# through one kind of traceability check. The two decline flags
+# (`competitive_analysis_declined`, `ig_page_declined`) have their own narrow
+# rules (see _field_traceable).
 _USER_TEXT_FIELDS = {"platform", "duration", "budget", "location",
-                     "competitive_analysis_declined"}
+                     "competitive_analysis_declined", "ig_page_declined"}
+
+# v3 · F2 — when a campaign field that OTHERS depend on is *changed*, those
+# dependents are now stale and must be cleared. Without this a Google→Meta
+# switch leaks the old platform's account ids into the launch payload
+# (business_storage builds `accounts` straight from spec), and the forward-only
+# `_next_action` never re-asks a field that still looks "set". Keyed by the
+# field that changed → the fields it invalidates.
+_FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
+    "platform": ("parent_account", "account", "fb_page", "ig_page",
+                 "ig_page_declined", "competitive_analysis_declined"),
+    "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
+    "fb_page": ("ig_page", "ig_page_declined"),
+}
+
+# v3 · F3 — phrases that mean "skip linking Instagram, run Facebook-only".
+# Consulted by the ig_page_declined traceability rule (chip-click text like
+# "Continue with Facebook only") and by _next_action (typed "skip insta",
+# "lets do it later"). Kept narrow + scoped to the IG-pending branch.
+_IG_SKIP_PHRASES = (
+    "facebook only", "fb only", "without insta", "without instagram",
+    "no insta", "no instagram", "skip insta", "skip instagram",
+    "continue without", "do it later", "no thanks",
+)
+
+
+def is_ig_skip(text: str) -> bool:
+    """True if the user clearly opts out of linking Instagram (Facebook-only)."""
+    lu = (text or "").strip().lower()
+    if not lu:
+        return False
+    return any(p in lu for p in _IG_SKIP_PHRASES) or lu in ("skip", "later", "no", "n")
 
 
 def _last_user_text(context: dict[str, Any]) -> str:
@@ -124,6 +158,12 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
+    # v3 · F3 — Instagram-skip flag. Accept "true" when the user opts out of
+    # linking IG, by chip ("Continue with Facebook only") or typed ("skip insta",
+    # "do it later"). Same shape as the competitor decline above.
+    if field == "ig_page_declined":
+        return v in ("true", "yes", "1") and is_ig_skip(lu)
+
     if lu == v:
         return True
     if v in lu:
@@ -137,9 +177,20 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         if v_platform is not None and Platform.from_value(lu) is v_platform:
             return True
     if field in ("duration", "budget"):
-        digits_v = "".join(c for c in v if c.isdigit())
-        digits_lu = "".join(c for c in lu if c.isdigit())
-        if digits_v and digits_v in digits_lu:
+        # PR2 · Option 2 — normalization-aware: a typed reply and a normalized
+        # candidate that parse to the SAME canonical value are traceable, even
+        # when their raw digits differ ("4k" vs "₹4,000/day"). Hardens the LLM's
+        # own save path too.
+        #
+        # v3 · F1 — the old loose digit-substring fallback (digits_v in
+        # digits_lu) was DELETED: it leaked an unrelated number through (a stored
+        # "5 days" traced to "I have 15 properties" because "5" ⊂ "15"). The one
+        # legitimate case it used to cover — a typed bare number meaning days —
+        # is now handled CANONICALLY: parse_typed_answer reads bare "30" → "30
+        # days" (duration-only), so both sides parse equal and match above.
+        cur = currency_for(session_ctx)
+        pv = parse_typed_answer(field, str(value), cur)
+        if pv is not None and pv == parse_typed_answer(field, last_user, cur):
             return True
     return False
 
@@ -176,29 +227,29 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             )
         return ToolResult(success=True, summary="")
 
-    # Value-validity checks — drop offending fields from the write, but let
-    # valid fields in the same call go through. A free-text hallucination on
-    # one field shouldn't block a legitimate account pick bundled alongside.
-    rejected: list[tuple[str, Any, str]] = []
-
-    # Check 1 — free-text fields must reflect what the user actually said.
+    # Validate + write each field through the shared single-field helper, so
+    # this tool and PR2 tagged-answer capture can't diverge on the guard. A
+    # rejected field doesn't block a valid one in the same call.
     last_user = _last_user_text(context)
-    for k, v in list(incoming.items()):
-        if k in _USER_TEXT_FIELDS and not _field_traceable(k, v, last_user, session_ctx):
-            rejected.append((k, v, "not traceable to user's last message"))
-            incoming.pop(k)
-
-    # Check 2 — account/page IDs must have come from a fetch tool.
-    known_ids = set((session_ctx.get("account_names") or {}).keys())
-    for k, v in list(incoming.items()):
-        if k in _ACCOUNT_LIKE_FIELDS and str(v) not in known_ids:
-            rejected.append((k, v, "not returned by any fetch tool this session"))
-            incoming.pop(k)
+    turn = _current_turn(context)
+    parts: list[str] = []
+    stored_keys: list[str] = []
+    rejected: list[tuple[str, Any, str]] = []
+    # F2 · the whole incoming set is the "batch" — a field changed in this call
+    # must never be cleared by another field's cascade in the same call.
+    batch_fields = set(incoming.keys())
+    for k, v in incoming.items():
+        stored, info = _apply_field(k, v, last_user, session_ctx, turn, batch_fields)
+        if stored:
+            parts.append(info)
+            stored_keys.append(k)
+        else:
+            rejected.append((k, v, info))
 
     # If everything was rejected, return a guidance error. If some valid
     # fields remain, keep going — store them and append the rejection note
     # to the summary so the LLM sees which fields it needs to re-ask for.
-    if not incoming:
+    if not stored_keys:
         pairs = ", ".join(f"{k}={v} ({why})" for k, v, why in rejected)
         preview = (last_user or "").replace("\n", " ")[:120]
         logger.warning(
@@ -214,49 +265,6 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             ),
         )
 
-    # Apply writes. Track provenance + build delta strings for the summary so
-    # historical messages carry the transition ("was X → Y") and the dynamic
-    # context can render "just set" for fields changed this turn.
-    turn = _current_turn(context)
-    parts: list[str] = []
-    for key, value in incoming.items():
-        prior = spec.get(key)
-        spec[key] = value
-        set_at[key] = turn
-        if prior not in (None, "") and str(prior) != str(value):
-            parts.append(f"{key} (was {prior} → {value})")
-        else:
-            parts.append(key)
-
-    # Clear the map-confirm marker once location lands in spec. Belt-and-
-    # suspenders: works whether the LLM stores via the pending-aware
-    # prescription or the conversational "different city" branch.
-    if "location" in incoming:
-        session_ctx.pop("_pending_location_confirm", None)
-        # Capture lat/lng from the map-confirm callback so we can save them
-        # later. Plain "confirm" / typed-city paths just store the address.
-        from app.agents.adzump.services.business_storage import parse_location_update
-        loc_payload = parse_location_update(last_user)
-        if loc_payload:
-            display_name = ""
-            product = session_ctx.get("product_data") or {}
-            if product.get("product_name") and product.get("location"):
-                display_name = f"{product['product_name']}, {product['location']}"
-            session_ctx["_location_meta"] = {
-                "address": loc_payload["address"] or str(incoming["location"]),
-                "lat": loc_payload["lat"],
-                "lng": loc_payload["lng"],
-                "displayName": display_name,
-            }
-        else:
-            # Plain confirm / typed-city — record what we have, lat/lng null.
-            session_ctx["_location_meta"] = {
-                "address": str(incoming["location"]),
-                "lat": None,
-                "lng": None,
-                "displayName": "",
-            }
-
     # Are we DONE after this write? If yes, inject the review prescription
     # into the tool result so the LLM renders the summary on the same turn —
     # the dynamic context computed at start-of-turn doesn't know the field
@@ -264,12 +272,11 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
     review_hint = _review_hint_if_complete(spec, session_ctx)
 
     if rejected:
-        # Partial-success: needed explicit logging so we can tune the guards
-        # over the next week. Shows exactly what the LLM tried to bundle and
-        # which subset we kept.
+        # Partial-success: explicit logging so we can tune the guards. Shows
+        # exactly what the LLM tried to bundle and which subset we kept.
         logger.warning(
             "campaign_spec_partial: stored=%s rejected=%s call=%s user_said=%r",
-            list(incoming.keys()), rejected,
+            stored_keys, rejected,
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
             (last_user or "").replace("\n", " ")[:120],
         )
@@ -279,11 +286,96 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             summary=f"Campaign spec updated: {', '.join(summary_parts)}{review_hint}",
         )
 
-    logger.info("campaign_spec_updated: fields=%s", list(incoming.keys()))
+    logger.info("campaign_spec_updated: fields=%s", stored_keys)
     return ToolResult(
         success=True,
         summary=f"Campaign spec updated: {', '.join(parts)}{review_hint}",
     )
+
+
+def _store_location_meta(session_ctx: dict, location_value: Any, last_user: str) -> None:
+    """Location side-effect: clear the map-confirm marker + stash lat/lng for save.
+    Plain "confirm" / typed-city paths store the address with null coordinates."""
+    session_ctx.pop("_pending_location_confirm", None)
+    from app.agents.adzump.services.business_storage import parse_location_update
+    loc_payload = parse_location_update(last_user)
+    if loc_payload:
+        display_name = ""
+        product = session_ctx.get("product_data") or {}
+        if product.get("product_name") and product.get("location"):
+            display_name = f"{product['product_name']}, {product['location']}"
+        session_ctx["_location_meta"] = {
+            "address": loc_payload["address"] or str(location_value),
+            "lat": loc_payload["lat"], "lng": loc_payload["lng"],
+            "displayName": display_name,
+        }
+    else:
+        session_ctx["_location_meta"] = {
+            "address": str(location_value), "lat": None, "lng": None, "displayName": "",
+        }
+
+
+def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
+    """v3 · F2 — clear the fields that depend on ``field`` (now stale because
+    ``field`` changed). NEVER clears a field that is being set in the SAME
+    set_campaign_spec call (``batch_fields``) — otherwise a bundled
+    {platform, account} write would undo its own account. Returns the names
+    actually cleared (for the delta string)."""
+    deps = _FIELD_DEPENDENTS.get(field)
+    if not deps:
+        return []
+    spec = session_ctx.get("campaign_spec") or {}
+    set_at = session_ctx.get("_spec_set_at") or {}
+    cleared: list[str] = []
+    for dep in deps:
+        if dep in batch_fields:
+            continue
+        if spec.pop(dep, None) is not None:
+            set_at.pop(dep, None)
+            cleared.append(dep)
+    # A changed FB page (or anything upstream of it) also invalidates the
+    # "Instagram options were already offered" marker (F3).
+    if field in ("platform", "parent_account", "fb_page"):
+        session_ctx.pop("_ig_offered", None)
+    return cleared
+
+
+def _apply_field(
+    field: str, value: Any, last_user: str, session_ctx: dict, turn: int,
+    batch_fields=frozenset(),
+) -> tuple[bool, str]:
+    """Validated single-field write — the one place a campaign_spec field is
+    checked and stored. Shared by `set_campaign_spec` (LLM path) and PR2
+    `_capture_tagged_answer` (harness path) so they cannot diverge on the
+    traceability rule. ``value`` must already be normalized + changed (callers
+    filter no-ops). ``batch_fields`` names the other fields being set in the
+    same call, so the F2 cascade never clears a freshly-bundled sibling.
+    Returns (stored, info): info is the delta string on success or the rejection
+    reason on failure."""
+    spec = session_ctx.setdefault("campaign_spec", {})
+    set_at = session_ctx.setdefault("_spec_set_at", {})
+    if field in _USER_TEXT_FIELDS and not _field_traceable(field, value, last_user, session_ctx):
+        return (False, "not traceable to user's last message")
+    if field in _ACCOUNT_LIKE_FIELDS:
+        known_ids = set((session_ctx.get("account_names") or {}).keys())
+        if str(value) not in known_ids:
+            return (False, "not returned by any fetch tool this session")
+    prior = spec.get(field)
+    spec[field] = value
+    set_at[field] = turn
+    if field == "location":
+        _store_location_meta(session_ctx, value, last_user)
+    # v3 · F2 — cascade ONLY on a genuine change (overwrite), never on first-set
+    # or an idempotent re-send (prior empty / equal → no clear). This is what
+    # makes a Google→Meta switch drop the stale Google ids while a re-fire of
+    # the same value is a safe no-op.
+    if prior not in (None, "") and str(prior) != str(value):
+        cleared = _clear_dependents(field, session_ctx, batch_fields)
+        info = f"{field} (was {prior} → {value})"
+        if cleared:
+            info += f"; cleared stale {', '.join(cleared)}"
+        return (True, info)
+    return (True, field)
 
 
 def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
@@ -317,15 +409,22 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
                 and "competitive_analysis_declined" not in spec):
             return ""
 
-    # Meta: fb_page + ig_page required.
-    if is_meta and not (spec.get("fb_page") and spec.get("ig_page")):
+    # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) — but it must have
+    # been OFFERED, i.e. an ig_page was picked OR ig_page_declined is set. This
+    # gates review until the IG choice has been made once, without making IG
+    # mandatory (Facebook-only is a valid campaign).
+    if is_meta and not (spec.get("fb_page")
+                        and (spec.get("ig_page") or spec.get("ig_page_declined"))):
         return ""
 
-    meta_extra = (
-        "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-        "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-        if is_meta else ""
-    )
+    meta_extra = ""
+    if is_meta:
+        meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+        meta_extra += (
+            "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
+            if spec.get("ig_page")
+            else "\n  - **Instagram Account**: not linked (Facebook only)"
+        )
     return (
         "\n\nALL CAMPAIGN FIELDS ARE NOW SET. Do NOT call any other tool yet. "
         "Render this exact markdown summary on this turn — copy values VERBATIM "

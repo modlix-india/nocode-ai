@@ -40,6 +40,37 @@ from app.services.llm_provider import get_llm_provider
 logger = logging.getLogger(__name__)
 
 
+def _with_tail_reminder(messages: list[dict[str, Any]], reminder_text: str) -> list[dict[str, Any]]:
+    """Return a PER-CALL copy of ``messages`` with a fresh ``<system-reminder>``
+    text block appended to the tail (the last message's content).
+
+    Approach B (fix 1.1). The reminder is re-derived from live state every turn
+    and must NOT accumulate in history — so this copies the list and the last
+    message rather than mutating ``session.messages`` (replace-not-append). The
+    reminder block carries no ``cache_control``, so it sits after the cached
+    prefix. At stream time the last message is always role ``user`` (the user's
+    message on turn 1, a tool_result message thereafter), so appending a text
+    block is valid for both providers — the OpenAI converter emits it as the
+    final user input item; Anthropic accepts text alongside tool_result blocks.
+    """
+    if not reminder_text:
+        return messages
+    block = {"type": "text", "text": f"<system-reminder>\n{reminder_text}\n</system-reminder>"}
+    out = list(messages)
+    if not out:
+        return [{"role": "user", "content": [block]}]
+    last = dict(out[-1])
+    content = last.get("content")
+    if isinstance(content, list):
+        last["content"] = [*content, block]
+    elif isinstance(content, str):
+        last["content"] = ([{"type": "text", "text": content}] if content else []) + [block]
+    else:
+        last["content"] = [block]
+    out[-1] = last
+    return out
+
+
 def _compact_host(url: str) -> str:
     """Return ``host/path-tail`` compact form; empty if unparseable."""
     if not url:
@@ -147,6 +178,21 @@ class BaseAgent:
         else:
             self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
 
+        # v8 Plan B WS4 · registry lint. Confirmation tools elicit the user
+        # (via request_confirmation) — they should be declared
+        # kind="elicitation" so the registry is honest about which tools ask
+        # the user. Warn on any that aren't, to catch "added a confirmation
+        # tool, forgot to mark it kind='elicitation', elicit_mode='blocking'".
+        for _cname in self.CONFIRMATION_TOOLS:
+            _ct = self.tools.get(_cname)
+            if _ct is not None and getattr(_ct, "kind", "tool") != "elicitation":
+                logger.warning(
+                    "unmarked_elicitation_tool: agent=%s tool=%s is in "
+                    "CONFIRMATION_TOOLS but kind!='elicitation' — mark it "
+                    "kind='elicitation', elicit_mode='blocking'",
+                    name, _cname,
+                )
+
         # Hold references to background tasks to prevent premature GC
         self._background_tasks: set[asyncio.Task] = set()
 
@@ -159,6 +205,7 @@ class BaseAgent:
         model_override: str | None = None,
         parent_tool_use_id: str = "",
         agent_tool_use_id: str = "",
+        skip_started_emit: bool = False,
     ) -> None:
         """Execute the agentic loop for a single user turn.
 
@@ -193,7 +240,17 @@ class BaseAgent:
         tokens_out_before = usage_before.get("output_tokens", 0)
         finished_status = "success"
 
-        if is_nested:
+        # v6 S2 (2026-05-27) · skip_started_emit · DEPRECATION CANDIDATE.
+        # When the spawning code pre-emits agent_started (so a stage_emit
+        # fired before run() begins can route to the open span), skip the
+        # emit here. Default False keeps existing callers untouched.
+        # See: plans/agent-tracing/asset-picker-fixes-v6.html
+        # TODO(v7): symmetric lifecycle — make agent_started caller-
+        # responsibility by convention (mirrors emit_agent_finished which
+        # is already caller-owned). Stub plan: asset-picker-fixes-v7-
+        # symmetric-lifecycle.html. When v7 lands, this kwarg + the
+        # is_nested-guarded emit below both go away.
+        if is_nested and not skip_started_emit:
             try:
                 await event_stream.emit_agent_started(
                     agent_id=self.name,
@@ -286,12 +343,21 @@ class BaseAgent:
         session.start_turn()
         await session.persist_turn_incremental(user_message, "", None)
 
-        # Build system prompt
-        dynamic_context = await self.build_dynamic_context(session)
-        system_prompt = self.context_builder.build_system_prompt(
-            dynamic_context=dynamic_context,
-        )
-        logger.info("System prompt built: %d chars", len(system_prompt))
+        # Build system prompt. Two shapes:
+        #  • tail_reminder agents (Approach B / fix 1.1): the system prompt is
+        #    STATIC (persona + rules + tools only) so it stays a cacheable
+        #    prefix; the per-turn dynamic prescription is injected fresh as a
+        #    <system-reminder> at the messages tail inside the loop below.
+        #  • legacy agents: the dynamic context is folded into the system
+        #    prompt, built once (unchanged behavior).
+        if self.tail_reminder:
+            system_prompt = self.context_builder.build_system_prompt(dynamic_context="")
+        else:
+            dynamic_context = await self.build_dynamic_context(session)
+            system_prompt = self.context_builder.build_system_prompt(
+                dynamic_context=dynamic_context,
+            )
+        logger.info("System prompt built: %d block(s)", len(system_prompt))
 
         turn = 0
         assistant_text_parts: list[str] = []
@@ -332,9 +398,20 @@ class BaseAgent:
 
             from app.services.llm_provider import StreamChunk
             _text_chunk_count = 0
+            # Approach B (fix 1.1): re-derive the dynamic prescription from LIVE
+            # state every turn and inject it as a <system-reminder> at the tail
+            # of a PER-CALL copy of the messages — fresh every turn, never
+            # persisted to session.messages (replace-not-append), carrying no
+            # cache_control of its own. Legacy agents send messages unchanged
+            # (their prescription lives in the system prompt instead).
+            if self.tail_reminder:
+                reminder = await self.build_dynamic_context(session, turn=turn)
+                call_messages = _with_tail_reminder(session.get_messages(), reminder)
+            else:
+                call_messages = session.get_messages()
             async for chunk in provider.stream_completion_with_tools(
                 system_prompt=system_prompt,
-                messages=session.get_messages(),
+                messages=call_messages,
                 tools=self._anthropic_tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
@@ -526,12 +603,82 @@ class BaseAgent:
                         "in parallel" if len(tool_use_blocks) > 1 else "",
                         [tb.get("name", "?") for tb in tool_use_blocks])
 
-            if len(tool_use_blocks) == 1:
-                result_block, log_entry = await self._run_tool_block(
-                    tool_use_blocks[0], session, event_stream
+            # Expose THIS turn's streamed assistant text (prose written before
+            # the tool calls) so a widget tool can avoid re-emitting text the
+            # model already wrote — e.g. present_options skipping a question the
+            # model streamed as a lead-in (duplicate-question de-dup). Per-turn:
+            # content_blocks resets each turn (assistant_text_parts is the whole
+            # run), so this only carries the current turn's prose. Transient
+            # session attribute (not persisted context). Generic + inert — only
+            # a tool that opts to read it is affected.
+            session._turn_assistant_text = "".join(
+                b.get("text", "") for b in content_blocks if b.get("type") == "text"
+            )
+
+            # v8 Plan B WS5 / v9 I-1 · telemetry + kill-switch for the
+            # parallel-batch elicitation race. The LLM DOES batch >1 tool_use
+            # block when the dynamic context lists several missing items
+            # (reproduced live 2026-05-30: two present_options rendered stacked
+            # in one bubble). When force_serial_on_elicitation is on, the serial
+            # path above early-exits after the first deferred elicitation so a
+            # second widget can't stack. This warning fires regardless, for
+            # visibility into how often batching happens.
+            batch_has_elicitation = self._batch_has_deferred_elicitation(tool_use_blocks)
+            if len(tool_use_blocks) > 1 and batch_has_elicitation:
+                logger.warning(
+                    "stacked_elicitation_batch: turn=%d tools=%s force_serial=%s · "
+                    "LLM emitted multiple tool_use blocks incl. a deferred "
+                    "elicitation; widgets may stack unless force_serial_on_elicitation is on",
+                    turn, [tb.get("name", "?") for tb in tool_use_blocks],
+                    self.force_serial_on_elicitation,
                 )
-                tool_result_blocks = [result_block]
-                tool_call_log.append(log_entry)
+
+            run_serial = (
+                len(tool_use_blocks) == 1
+                or (self.force_serial_on_elicitation and batch_has_elicitation)
+            )
+            if run_serial:
+                tool_result_blocks = []
+                # v9 I-1 · serial dispatch EARLY-EXITS the batch after the first
+                # deferred elicitation: remaining batched tools are NOT run (so a
+                # second widget can't stack in the same bubble — the live bug
+                # where two present_options rendered together), but each still
+                # gets a placeholder tool_result, since the Anthropic API
+                # requires one per tool_use block. The LLM re-issues the deferred
+                # calls next turn if still needed. Reached when
+                # force_serial_on_elicitation is on (AdzumpAgent) or for the
+                # trivial single-tool case.
+                stop_batch = False
+                for tb in tool_use_blocks:
+                    if stop_batch:
+                        tool_result_blocks.append({
+                            "type": "tool_result",
+                            "tool_use_id": tb.get("id", ""),
+                            "content": (
+                                "Deferred: an earlier tool in this turn asked the "
+                                "user a question, so this call was not run. Re-issue "
+                                "it after the user replies if it's still needed."
+                            ),
+                            "is_error": False,
+                        })
+                        tool_call_log.append({
+                            "tool": tb.get("name", ""),
+                            "display_name": tb.get("name", ""),
+                            "input": tb.get("input", {}),
+                            "success": False,
+                            "summary": "deferred (batched after an elicitation)",
+                            "tool_use_id": tb.get("id", ""),
+                            "kind": "tool", "elicit_mode": "deferred",
+                            "elicited": False, "elicit_expects": "single",
+                        })
+                        continue
+                    result_block, log_entry = await self._run_tool_block(
+                        tb, session, event_stream
+                    )
+                    tool_result_blocks.append(result_block)
+                    tool_call_log.append(log_entry)
+                    if self._is_deferred_elicitation(log_entry):
+                        stop_batch = True
             else:
                 results = await asyncio.gather(
                     *(self._run_tool_block(tb, session, event_stream)
@@ -554,6 +701,44 @@ class BaseAgent:
             await session.persist_turn_incremental(
                 user_message, partial_summary, tool_call_log, model_used
             )
+
+            # v8 Plan B WS1/WS2 · elicitation turn boundary + lifecycle.
+            new_entries = tool_call_log[-len(tool_result_blocks):]
+            # Multi-reply elicitation (e.g. asset uploads): if one is open and
+            # this turn ran a tool other than its opener, the LLM has moved on
+            # to real work → close it. (A new deferred elicitation below would
+            # overwrite it anyway.)
+            pending = session.context.get("_pending_elicitation")
+            if pending and pending.get("expects") == "multi":
+                ran = {e.get("tool") for e in new_entries}
+                if pending.get("tool") not in ran:
+                    session.context.pop("_pending_elicitation", None)
+            # Break after a DEFERRED elicitation so the turn yields to the user
+            # (one ask per turn). Blocking elicitations are excluded — they
+            # already paused in-tool and resolved before returning. save_context()
+            # after the for-else (below) persists _pending_elicitation across
+            # disconnects/refreshes (message history drops tool blocks; context
+            # survives — see session.py).
+            elicited = next(
+                (e for e in new_entries if self._is_deferred_elicitation(e)), None
+            )
+            if elicited:
+                session.context["_pending_elicitation"] = {
+                    "id": f"elicit_{elicited.get('tool_use_id', '')}",
+                    "tool": elicited.get("tool", ""),
+                    "expects": elicited.get("elicit_expects", "single"),
+                    "opened_turn": turn,
+                    # PR2 · carry the answer tag (None for untagged elicitations);
+                    # consumed next turn by AdzumpAgent._capture_tagged_answer.
+                    "field": elicited.get("elicit_field"),
+                    "answers": elicited.get("elicit_answers"),
+                }
+                logger.info(
+                    "elicitation_break: turn=%d tool=%s expects=%s batch=%d",
+                    turn, elicited.get("tool"),
+                    elicited.get("elicit_expects"), len(tool_result_blocks),
+                )
+                break
 
         else:
             # Exhausted max_turns
@@ -628,6 +813,53 @@ class BaseAgent:
 
     # Tools that require user confirmation before execution.
     CONFIRMATION_TOOLS: set[str] = {"create", "update", "delete", "copy"}
+
+    # v8 Plan B WS5 · kill-switch. When True, a tool batch containing a
+    # deferred elicitation runs serially instead of via asyncio.gather, so a
+    # stacked widget can't stream before the break check. Default False — logs
+    # show the LLM never batches today; flip per-subclass or globally if the
+    # stacked_elicitation_batch telemetry ever fires.
+    force_serial_on_elicitation: bool = False
+
+    # Approach B (fix 1.1). When True, the dynamic prescription is NOT folded
+    # into the system prompt; the system prompt stays static (cacheable) and the
+    # prescription is re-derived from live state every turn and injected as a
+    # <system-reminder> at the messages tail (replace-not-append, never
+    # persisted). Default False = legacy behavior (dynamic context in the system
+    # prompt, built once per run). Opt in per-subclass (AdzumpAgent does).
+    tail_reminder: bool = False
+
+    @staticmethod
+    def _is_deferred_elicitation(log_entry: dict[str, Any]) -> bool:
+        """True if a completed tool was a deferred elicitation — either by
+        static declaration (kind='elicitation', elicit_mode='deferred') or by
+        a runtime signal (ToolResult.data['elicited']=True, e.g. analyze_product
+        when assets are missing). Blocking elicitations are excluded."""
+        static = (
+            log_entry.get("kind") == "elicitation"
+            and log_entry.get("elicit_mode") == "deferred"
+        )
+        return static or log_entry.get("elicited") is True
+
+    def _batch_has_deferred_elicitation(
+        self, tool_use_blocks: list[dict[str, Any]],
+    ) -> bool:
+        """True if any block names a statically-declared deferred elicitation
+        tool. Runtime-conditional elicitations (analyze_product) are unknown
+        pre-execution, so this static check serves only the parallel
+        kill-switch + telemetry."""
+        for tb in tool_use_blocks:
+            name = tb.get("name", "")
+            if self._router_tool_name and name == self._router_tool_name:
+                name = (tb.get("input") or {}).get("tool", name)
+            tool = self.tools.get(name)
+            if (
+                tool is not None
+                and getattr(tool, "kind", "tool") == "elicitation"
+                and getattr(tool, "elicit_mode", "deferred") == "deferred"
+            ):
+                return True
+        return False
 
     def _build_confirmation_message(
         self, tool_name: str, display_name: str, tool_input: dict[str, Any],
@@ -728,6 +960,13 @@ class BaseAgent:
                     "input": tool_input,
                     "success": False,
                     "summary": f"Denied: {reason}",
+                    "tool_use_id": tool_use_id,
+                    # Blocking elicitation (already resolved in-tool) — never
+                    # triggers the deferred break. Stamped for consistency.
+                    "kind": getattr(tool, "kind", "tool") if tool else "tool",
+                    "elicit_mode": getattr(tool, "elicit_mode", "deferred") if tool else "deferred",
+                    "elicited": False,
+                    "elicit_expects": "single",
                 }
                 return result_block, log_entry
 
@@ -754,12 +993,31 @@ class BaseAgent:
             "content": tool_content,
             "is_error": not result.success,
         }
+        # v8 Plan B · stamp the elicitation signal on the INTERNAL log_entry
+        # (never on result_block, which goes to the Anthropic API). The run
+        # loop reads these to decide the turn boundary. data["elicited"] is the
+        # runtime signal for conditionally-elicitng tools (e.g. analyze_product).
+        _elicited = bool(isinstance(result.data, dict) and result.data.get("elicited"))
         log_entry = {
             "tool": tool_name,
             "display_name": display_name,
             "input": tool_input,
             "success": result.success,
             "summary": result.summary or result.error or "",
+            "tool_use_id": tool_use_id,
+            "kind": getattr(tool, "kind", "tool") if tool else "tool",
+            "elicit_mode": getattr(tool, "elicit_mode", "deferred") if tool else "deferred",
+            "elicited": _elicited,
+            "elicit_expects": (
+                (result.data.get("elicit_expects") or "single")
+                if _elicited and isinstance(result.data, dict)
+                else (getattr(tool, "elicit_expects", "single") if tool else "single")
+            ),
+            # PR2 · domain-agnostic pass-through. A tool may tag its elicitation
+            # with the field it fills + a per-option answer map (present_options
+            # does). Inert (None) for every other tool and agent.
+            "elicit_field": (result.data.get("elicit_field") if isinstance(result.data, dict) else None),
+            "elicit_answers": (result.data.get("elicit_answers") if isinstance(result.data, dict) else None),
         }
         return result_block, log_entry
 
@@ -806,7 +1064,7 @@ class BaseAgent:
                 error=f"Tool execution error: {type(e).__name__}: {e}",
             )
 
-    async def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession, turn: int = 1) -> str:
         """Build per-request dynamic context string.
 
         Override in subclasses to add agent-specific context
@@ -814,9 +1072,13 @@ class BaseAgent:
 
         Args:
             session: Active session with auth context.
+            turn: 1-based agentic loop turn. ``tail_reminder`` agents re-run
+                this every turn; subclasses gate one-shot side effects on
+                ``turn == 1``. Legacy callers omit it (defaults to 1).
 
         Returns:
-            Dynamic context text to append to system prompt.
+            Dynamic context text (system prompt block, or tail reminder for
+            ``tail_reminder`` agents).
         """
         if not session.auth:
             return ""

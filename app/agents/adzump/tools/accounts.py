@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.tools._shared import build_ds_headers
+from app.agents.adzump._shared import build_ds_headers
 from app.agents.adzump.adapters.google.accounts import GoogleAccountsAdapter
 from app.agents.adzump.adapters.meta.accounts import MetaAccountsAdapter
 
@@ -27,21 +27,29 @@ def _format_account(a: dict) -> str:
     return f"{name} (ID: {cid})" if name else f"ID: {cid}"
 
 
-def _remember_names(context: dict, accounts: list[dict], id_key: str) -> None:
+def _remember_names(context: dict, accounts: list[dict], id_key: str,
+                    platform: str = "") -> None:
     """Record fetched IDs (for guard) and their display names (for rendering).
 
     Every fetched ID becomes a key in ``account_names`` so the guard in
     ``set_campaign_spec`` can confirm the ID was shown to the user. The value
     is the descriptive name when the API returned one, or an empty string —
     which renderers treat as "name not available, show ID only".
+
+    v3 · F2 — when ``platform`` ("google"/"meta") is given, also tag each id in
+    ``account_platforms`` so the launch boundary can refuse a cross-platform id
+    (defence-in-depth behind the dependency-clear cascade).
     """
     ctx = context.get("session_context")
     if ctx is None:
         return
     names = ctx.setdefault("account_names", {})
+    plats = ctx.setdefault("account_platforms", {}) if platform else None
     for a in accounts:
         if aid := a.get(id_key):
             names[str(aid)] = (a.get("name") or "").strip()
+            if plats is not None:
+                plats[str(aid)] = platform
 
 
 def _options_pairs(items: list[dict], id_key: str) -> str:
@@ -59,8 +67,9 @@ def _list_summary(
     lines.append(
         f"Pairs (label → value): {pairs}. "
         f"Now call `present_options(question=\"<one short question>\", "
-        f"options=[<{{label,value}} dicts from these pairs>])` and STOP — "
-        f"no chat text. On user click, `set_campaign_spec({spec_field}=<id>)`."
+        f"options=[<{{label, value, answer}} dicts from these pairs, with answer == value (the id)>], "
+        f"field=\"{spec_field}\")` and STOP — no chat text. "
+        f"(The harness stores the picked id on click — no set_campaign_spec needed.)"
     )
     return "\n".join(lines)
 
@@ -94,7 +103,7 @@ async def _fetch_google_parent_accounts(params: dict, context: dict) -> ToolResu
     if not managers and not direct:
         return ToolResult(success=False, error=_GOOGLE_NOT_CONNECTED)
 
-    _remember_names(context, top_level, "customer_id")
+    _remember_names(context, top_level, "customer_id", "google")
 
     # Auto-select: exactly 1 manager and no direct accounts → skip to children.
     if len(managers) == 1 and not direct:
@@ -149,7 +158,7 @@ async def _fetch_google_accounts(params: dict, context: dict) -> ToolResult:
             ),
         )
 
-    _remember_names(context, accounts, "customer_id")
+    _remember_names(context, accounts, "customer_id", "google")
 
     if len(accounts) == 1:
         acct = accounts[0]
@@ -192,10 +201,18 @@ _NO_FB_PAGES = (
 )
 
 
+# v3 · F3 — empty IG is no longer a dead end. Instagram is optional, so offer a
+# tagged Facebook-only choice (deterministically captured) + a connect-and-retry
+# fall-through. The "Continue with Facebook only" click stores
+# ig_page_declined="true"; "I'll connect Instagram first" falls through to the LLM.
 _NO_IG_ACCOUNTS = (
-    "No Instagram Business account is linked to this Facebook page. Tell the user to "
-    "connect an Instagram account to the page (Page Settings → Linked Accounts → Instagram) "
-    "or pick a different page, then reply 'ready'. Do NOT invent an Instagram id. Stop and wait."
+    "No Instagram account is linked to this Facebook page. Instagram is OPTIONAL — "
+    "the campaign can run on Facebook alone. Call `present_options(question=\"No "
+    "Instagram is linked to this page. Instagram is optional — continue with Facebook "
+    "only, or connect an Instagram account and retry.\", options=[{\"label\":\"Continue "
+    "with Facebook only\",\"value\":\"Facebook only\",\"answer\":\"true\"}, {\"label\":"
+    "\"I'll connect Instagram first\",\"value\":\"I'll connect Instagram first\"}], "
+    "field=\"ig_page_declined\")` and STOP — no chat text. Do NOT invent an Instagram id."
 )
 
 
@@ -214,7 +231,7 @@ async def _fetch_meta_parent_accounts(params: dict, context: dict) -> ToolResult
     if not businesses:
         return ToolResult(success=False, error=_META_NOT_CONNECTED)
 
-    _remember_names(context, businesses, "id")
+    _remember_names(context, businesses, "id", "meta")
 
     if len(businesses) == 1:
         biz = businesses[0]
@@ -267,7 +284,7 @@ async def _fetch_meta_accounts(params: dict, context: dict) -> ToolResult:
             ),
         )
 
-    _remember_names(context, accounts, "id")
+    _remember_names(context, accounts, "id", "meta")
 
     if len(accounts) == 1:
         acct = accounts[0]
@@ -312,7 +329,7 @@ async def _fetch_meta_fb_pages(params: dict, context: dict) -> ToolResult:
     if not pages:
         return ToolResult(success=False, error=_NO_FB_PAGES)
 
-    _remember_names(context, pages, "id")
+    _remember_names(context, pages, "id", "meta")
 
     if len(pages) == 1:
         page = pages[0]
@@ -320,9 +337,11 @@ async def _fetch_meta_fb_pages(params: dict, context: dict) -> ToolResult:
             success=True,
             data={"page": page, "auto_selected": True},
             summary=(
+                # v3 · F3 — store the page and STOP. Don't auto-chain into the IG
+                # fetch; the next-action step offers Instagram (now optional).
                 f"Only one Facebook page: {_format_account(page)}. Store via "
-                f"`set_campaign_spec(fb_page='{page['id']}')`, then call "
-                f"`fetch_meta_ig_accounts(page_id='{page['id']}')`."
+                f"`set_campaign_spec(fb_page='{page['id']}')`. Instagram is optional — "
+                f"the next step offers it."
             ),
         )
 
@@ -355,10 +374,23 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
                        page_id, str(e)[:200])
         return ToolResult(success=False, error=_META_NOT_CONNECTED)
 
-    if not accounts:
-        return ToolResult(success=False, error=_NO_IG_ACCOUNTS)
+    # v3 · F3 — Instagram is OPTIONAL. Mark that we've offered it so _next_action
+    # won't re-prescribe this fetch every turn (the cityville no-escape loop).
+    sc = context.get("session_context")
+    if sc is not None:
+        sc["_ig_offered"] = True
 
-    _remember_names(context, accounts, "id")
+    if not accounts:
+        # No IG linked is NOT an error anymore — it's a valid Facebook-only path.
+        # Offer the choice as a tagged decline so "Facebook only" is captured
+        # deterministically (field=ig_page_declined, answer="true").
+        return ToolResult(
+            success=True,
+            data={"accounts": [], "ig_optional": True},
+            summary=_NO_IG_ACCOUNTS,
+        )
+
+    _remember_names(context, accounts, "id", "meta")
 
     if len(accounts) == 1:
         acct = accounts[0]
@@ -374,11 +406,11 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
     return ToolResult(
         success=True,
         data={"accounts": accounts},
-        summary=_list_summary(
-            "Instagram account",
-            accounts,
-            _options_pairs(accounts, "id"),
-            "ig_page",
+        summary=(
+            _list_summary("Instagram account", accounts,
+                          _options_pairs(accounts, "id"), "ig_page")
+            + " ALSO append one final option {\"label\":\"Continue with Facebook only\","
+              "\"value\":\"Facebook only\"} (no answer — Instagram is optional)."
         ),
     )
 

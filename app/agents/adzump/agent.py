@@ -29,8 +29,10 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.tools.campaign_data import (
-    _ACCOUNT_LIKE_FIELDS, _last_user_text, _normalize_id,
+    _ACCOUNT_LIKE_FIELDS, _apply_field, _current_turn, _last_user_text, _normalize_id,
+    is_ig_skip,
 )
+from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 from app.agents.adzump.tools.registry import ALL_TOOLS
 from app.agents.adzump.tools.suggestions import infer_suggestions
 from app.config import settings
@@ -44,6 +46,15 @@ _REAL_ESTATE_KEYWORDS = (
     "real estate", "realty", "villa", "apartment", "residential",
     "property", "housing", "homes", "realtor", "township", "builder", "developer",
 )
+
+
+def _is_custom_reply(text: str) -> bool:
+    """v4 · F10 — did the user pick the "Custom" escape on a chip ask? The chip's
+    value is literally "Custom", so a click sends exactly that; a typed "custom
+    amount" / "custom budget" also qualifies. Tight on purpose — presets are
+    never "custom", so this won't fire on a real value."""
+    lu = (text or "").strip().lower()
+    return lu == "custom" or lu.startswith("custom")
 
 
 @dataclass(frozen=True)
@@ -65,6 +76,15 @@ class CampaignContext:
     # Detected location string when `confirm_location` has shown the map and
     # we're awaiting the user's reply. None when no map is in flight.
     pending_location: str | None
+    # v3 · F3 — True once Instagram options have been offered (a multi-IG list
+    # was shown, or the empty-IG Facebook-only choice). Stops _next_action from
+    # re-prescribing the IG fetch every turn. Defaulted so existing test
+    # fixtures that build CampaignContext directly need no change.
+    ig_offered: bool = False
+    # v4 · F10 — the field ("duration"/"budget") whose chip ask the user
+    # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
+    # free-text prescription instead of re-rendering the same chips. Defaulted.
+    awaiting_custom_field: str | None = None
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -79,6 +99,11 @@ class CampaignContext:
             pending_location = marker
         else:
             pending_location = None
+        # v4 · F10 — the field whose chip ask was escaped via "Custom" (awaiting a
+        # typed value). Computed before the return; a conditional expression would
+        # evaluate the condition before the walrus and raise UnboundLocalError.
+        pe = ctx.get("_pending_elicitation") or {}
+        awaiting_custom_field = pe.get("field") if pe.get("awaiting_custom") else None
         return cls(
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
@@ -96,6 +121,8 @@ class CampaignContext:
             current_turn=int(getattr(session, "_turn_count", 0) or 0),
             last_user=_last_user_text({"_session": session}),
             pending_location=pending_location,
+            ig_offered=bool(ctx.get("_ig_offered")),
+            awaiting_custom_field=awaiting_custom_field,
         )
 
     @property
@@ -184,7 +211,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
             "platform — call `present_options(question=\"Which platform should we run this on?\", "
-            "options=[\"Google Ads\", \"Meta\"])`"
+            "options=[{\"label\":\"Google Ads\",\"value\":\"Google Ads\",\"answer\":\"Google Ads\"}, "
+            "{\"label\":\"Meta\",\"value\":\"Meta\",\"answer\":\"Meta\"}], field=\"platform\")`"
         )
 
     if (cctx.is_google
@@ -202,22 +230,48 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             missing.append(
                 "competitive analysis — call `present_options(question=\"Want me to analyze "
-                "competitors before we set things up?\", options=[\"Yes\", \"No\"])`. "
+                "competitors before we set things up?\", options=[\"Yes\", "
+                "{\"label\":\"No\",\"value\":\"No\",\"answer\":\"true\"}], "
+                "field=\"competitive_analysis_declined\")`. "
                 "If the user just said YES, call `analyze_competitors()` instead."
             )
 
     if not cctx.spec.get("duration"):
-        missing.append(
-            "duration — call `present_options(question=\"How long should the campaign run?\", "
-            "options=[\"30 days\", \"60 days\", \"90 days\", \"Custom\"])`"
-        )
+        if cctx.awaiting_custom_field == "duration":
+            # v4 · F10 — user chose "Custom"; ask for a typed value, NOT chips.
+            # The elicitation is kept open, so their typed reply is captured.
+            missing.append(
+                "duration — the user chose Custom. Ask them in one short line to "
+                "TYPE the exact duration (e.g. \"45 days\", \"6 weeks\"). Do NOT call "
+                "present_options or show chips again — their typed reply is captured "
+                "automatically."
+            )
+        else:
+            missing.append(
+                "duration — call `present_options(question=\"How long should the campaign run?\", "
+                "options=[{\"label\":\"30 days\",\"value\":\"30 days\",\"answer\":\"30 days\"}, "
+                "{\"label\":\"60 days\",\"value\":\"60 days\",\"answer\":\"60 days\"}, "
+                "{\"label\":\"90 days\",\"value\":\"90 days\",\"answer\":\"90 days\"}, \"Custom\"], "
+                "field=\"duration\")`"
+            )
     if not cctx.spec.get("budget"):
-        currency = "₹" if cctx.is_real_estate else "$"
-        missing.append(
-            "budget — call `present_options(question=\"What's your daily budget?\", "
-            f"options=[<platform-tuned presets, e.g. {currency}5,000/day, {currency}10,000/day, "
-            f"{currency}25,000/day>, \"Custom\"])`"
-        )
+        if cctx.awaiting_custom_field == "budget":
+            # v4 · F10 — user chose "Custom"; ask for a typed value, NOT chips.
+            currency = "₹" if cctx.is_real_estate else "$"
+            missing.append(
+                "budget — the user chose Custom. Ask them in one short line to TYPE "
+                f"the exact daily budget (e.g. \"{currency}7,500/day\"). Do NOT call "
+                "present_options or show chips again — their typed reply is captured "
+                "automatically."
+            )
+        else:
+            currency = "₹" if cctx.is_real_estate else "$"
+            missing.append(
+                "budget — call `present_options(question=\"What's your daily budget?\", "
+                f"options=[<platform-tuned presets as {{label,value,answer}} dicts with answer==value, "
+                f"e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day>, \"Custom\"], "
+                "field=\"budget\")`"
+            )
     # Account-block lines depend on the platform pick — skip until platform
     # is set so we don't suggest the wrong fetch tool.
     if cctx.spec.get("platform"):
@@ -240,18 +294,43 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "fb_page — call `fetch_meta_fb_pages(parent_id=<stored parent>)`; "
                 "result tells you the present_options call."
             )
-        if not cctx.spec.get("ig_page"):
-            missing.append(
-                "ig_page — call `fetch_meta_ig_accounts(page_id=<stored fb_page>)`; "
-                "result tells you the present_options call."
-            )
+        # v3 · F3 — Instagram is OPTIONAL (Facebook-only is a valid campaign).
+        # Offer it once; honour skip/later; never block. Gated on fb_page being
+        # set so we ask one thing at a time.
+        elif not cctx.spec.get("ig_page") and "ig_page_declined" not in cctx.spec:
+            if is_ig_skip(cctx.last_user):
+                missing.append(
+                    "instagram — user is skipping Instagram (it's OPTIONAL). Call "
+                    "`set_campaign_spec(ig_page_declined=\"true\")` and proceed to review."
+                )
+            elif cctx.ig_offered:
+                # Already shown — do NOT re-fetch (that was the live loop). Read
+                # the reply: a pick is already captured; "Facebook only"/skip →
+                # decline; "connecting IG" → wait then re-fetch on 'ready'.
+                missing.append(
+                    "instagram — the Instagram options are ALREADY on screen; do NOT "
+                    "call fetch_meta_ig_accounts again. If the user picked an account it's "
+                    "captured. If they want Facebook only, call "
+                    "`set_campaign_spec(ig_page_declined=\"true\")`. If they're connecting "
+                    "an Instagram account, wait and re-fetch only when they say they're ready."
+                )
+            else:
+                missing.append(
+                    "ig_page — Instagram is OPTIONAL. Call "
+                    "`fetch_meta_ig_accounts(page_id=<stored fb_page>)`; the result tells you "
+                    "the present_options call (it includes a \"Continue with Facebook only\" "
+                    "option). If none are linked, the tool says so — offer Facebook-only."
+                )
 
     if not missing:
-        meta_extra = (
-            "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-            "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-            if cctx.is_meta else ""
-        )
+        meta_extra = ""
+        if cctx.is_meta:
+            meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+            meta_extra += (
+                "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
+                if cctx.spec.get("ig_page")
+                else "\n  - **Instagram Account**: not linked (Facebook only)"
+            )
         missing.append(
             "review & publish — your reply this turn is EXACTLY this markdown, "
             "with values copied VERBATIM from the `## State` block above (do NOT "
@@ -285,6 +364,17 @@ class AdzumpAgent(BaseAgent):
 
     _instance: "AdzumpAgent | None" = None
 
+    # v9 I-1 · data-backed (two present_options stacked live 2026-05-30). When
+    # the LLM batches a deferred elicitation with other tools, run them serially
+    # and early-exit after the first elicitation so a second widget can't stack.
+    force_serial_on_elicitation = True
+
+    # Approach B (fix 1.1): keep the system prompt static (cacheable) and inject
+    # the per-turn prescription as a <system-reminder> at the messages tail.
+    # build_dynamic_context() below is re-run every agentic turn and rendered
+    # into that tail reminder (fresh from live state, never persisted).
+    tail_reminder = True
+
     def __init__(self) -> None:
         context = build_adzump_context()
         provider = getattr(settings, "ADZUMP_PROVIDER", settings.LLM_PROVIDER)
@@ -308,22 +398,163 @@ class AdzumpAgent(BaseAgent):
     # ── Dynamic context (called every turn, placed AFTER the static prefix
     # so Anthropic's cache still hits the stable system prompt) ──────────
 
-    async def build_dynamic_context(self, session: BaseSession) -> str:
+    async def build_dynamic_context(self, session: BaseSession, turn: int = 1) -> str:
         self._migrate_legacy_keys(session.context)
         self._migrate_campaign_ids(session.context)
+        # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
+        # snapshot, so the just-answered field drops out of the missing-list
+        # this turn. AFTER the migrations (its setdefault would otherwise strand
+        # a legacy rename); gated to agentic turn==1 internally.
+        ack = self._capture_tagged_answer(session, turn)
         cctx = CampaignContext.from_session(session)
         last_user = _last_user_text({"_session": session})
         missing = _next_action(cctx)
         logger.info(
-            "next_action: turn=%d missing=%s user_said=%r",
-            cctx.current_turn, missing, last_user[:80],
+            "next_action: turn=%d agentic=%d missing=%s user_said=%r",
+            cctx.current_turn, turn, missing, last_user[:80],
         )
-        return "\n".join([
+        reminder = "\n".join(filter(None, [
+            ack,
+            self._uploaded_assets_section(session),
+            self._resume_elicitation_section(session, turn),
             self._state_section(cctx),
             self._user_said_section(last_user),
             self._missing_section(missing),
             self._how_to_respond_section(),
-        ])
+        ]))
+        return reminder
+
+    def _capture_tagged_answer(self, session: BaseSession, turn: int = 1) -> str:
+        """PR2 · store the user's reply to a tagged ``present_options`` directly,
+        before the LLM runs — so a forgotten ``set_campaign_spec`` follow-up
+        can't drop the answer (the Bug-B family). Returns a one-line
+        acknowledgement steer on a successful capture, else "".
+
+        Gated to agentic ``turn == 1`` (the reply only just arrived) — NOT
+        ``session._turn_count`` (restored to the max turn on resume). Match by
+        exact option value (chips), else a conservative typed parser
+        (duration/budget/platform). Ambiguous answers (Custom / "Yes" /
+        off-topic / unparseable) leave ``_pending_elicitation`` intact and fall
+        through to the LLM (then ``_resume_elicitation_section`` steers it)."""
+        if turn != 1:
+            return ""
+        pe = session.context.get("_pending_elicitation")
+        if not pe or not pe.get("field") or pe.get("expects") != "single":
+            return ""
+        field = pe["field"]
+        answers = pe.get("answers") or {}
+        last_user = _last_user_text({"_session": session})
+        if not last_user:
+            return ""
+        value = answers.get(last_user)                       # (a) exact chip match
+        if value is None and field in ("duration", "budget", "platform"):
+            value = parse_typed_answer(field, last_user, currency_for(session.context))  # (b) typed
+        if value is None:
+            # v4 · F10 — the user picked the "Custom" escape on a duration/budget
+            # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
+            # NEXT typed reply is captured by the typed-parser above, and steer a
+            # free-text ask instead of re-rendering the same chips (the live loop,
+            # bug #11). The mark also drives _next_action (awaiting_custom_field)
+            # and tells _resume_elicitation_section not to pop.
+            if field in ("duration", "budget") and _is_custom_reply(last_user) \
+                    and not pe.get("awaiting_custom"):
+                pe["awaiting_custom"] = True
+                logger.info("tagged_capture: custom escape for field=%s — awaiting typed value", field)
+                return (
+                    "## The user chose a custom value\n"
+                    f"They want to enter their own {field}. Ask them in ONE short line "
+                    f"to TYPE it (e.g. \"45 days\" / \"₹7,500/day\") — do NOT call "
+                    f"present_options or show chips. Their typed reply is captured automatically."
+                )
+            return ""                                        # Yes / off-topic / unparseable → LLM
+        stored, info = _apply_field(
+            field, value, last_user, session.context, _current_turn({"_session": session}),
+        )
+        if not stored:
+            logger.info("tagged_capture: rejected field=%s value=%r reason=%s user_said=%r",
+                        field, value, info, last_user[:80])
+            return ""
+        session.context.pop("_pending_elicitation", None)
+        # v3 · F4 — one-run marker: a tagged answer was captured this turn. Read
+        # (and cleared) by get_pending_suggestions to suppress the untagged
+        # infer_suggestions fallback when the LLM asks the next question as prose
+        # (its chips would carry no field tag → silent drop → re-ask). Lives in
+        # session.context but is popped on read, so it never leaks to next turn.
+        session.context["_captured_this_turn"] = field
+        logger.info("tagged_capture: stored field=%s value=%r user_said=%r",
+                    field, value, last_user[:80])
+        return (
+            "## You just captured the user's answer\n"
+            f"Their last message set **{field} = {value}**. It is already stored — "
+            "do NOT call set_campaign_spec for it. Acknowledge it in one short "
+            "phrase, then CALL the next tool from the missing-list (a fetch tool or "
+            "present_options) — do NOT write the next question as plain text."
+        )
+
+    def _uploaded_assets_section(self, session: BaseSession) -> str:
+        """v9 I-0 · when the user attached image(s) this turn, prompt the LLM to
+        persist them via save_uploaded_assets (the bytes are stashed on the
+        session by the /chat handler). First action of the turn — otherwise the
+        upload is lost (it only lives in the pending stash)."""
+        pending = session.context.get("_pending_uploads")
+        if not pending:
+            return ""
+        n = len(pending)
+        return (
+            f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
+            "FIRST, call `save_uploaded_assets(role=...)` to persist the upload — "
+            "look at the image and pick the role: a brand mark → 'logo'; a main "
+            "building/render → 'hero'; a lifestyle/amenity photo → 'amenity'; a "
+            "floor plan → 'floor_plan'. (All pending uploads are saved under that "
+            "one role, so if they're different types, pick the best fit.) Do this "
+            "before anything else, then continue."
+        )
+
+    def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
+        """v8 Plan B WS2 · when the previous turn ended on a deferred
+        elicitation, tell the LLM it is resuming so it does NOT re-ask or
+        paraphrase the question (Bug B). Read from session.context, which
+        survives restore — message history drops tool blocks (session.py).
+
+        Single-reply elicitations (location, options) are one-shot: emit the
+        reminder, then clear the flag. Multi-reply elicitations (asset uploads)
+        persist — the run loop closes them when the LLM moves on.
+
+        Gated to agentic ``turn == 1``: the resume hint steers how the model
+        reads the just-arrived reply, which only applies on the first turn of
+        the run. On later turns return "" WITHOUT popping, so the one-shot flag
+        survives (Approach B re-runs this builder every agentic turn — without
+        the gate the pop would fire on turn 1 and the hint would vanish on
+        turn 2+ of the SAME run, and the flag would be lost)."""
+        if turn != 1:
+            return ""
+        pe = session.context.get("_pending_elicitation")
+        if not pe:
+            return ""
+        if pe.get("expects") == "multi":
+            return (
+                "## Resuming — upload request is still open\n"
+                "Last turn you asked the user to upload assets. They may send "
+                "several messages (one per file) or say they're done. Do NOT "
+                "restate the upload request unless they ask what's still needed, "
+                "and do NOT assume it's closed until they signal completion or "
+                "you judge the captured assets sufficient."
+            )
+        # v4 · F10 — awaiting a typed custom value: keep the elicitation OPEN
+        # (do NOT pop) so the next typed reply is captured by the typed-parser.
+        # _capture_tagged_answer already emitted the free-text steer this turn.
+        if pe.get("awaiting_custom"):
+            return ""
+        # single: one-shot — clear after emitting so it fires for exactly this turn
+        session.context.pop("_pending_elicitation", None)
+        tool = pe.get("tool", "the previous step")
+        return (
+            "## Resuming after a question\n"
+            f"Last turn you asked the user a question (via {tool}); the widget is "
+            "already on screen. Their current message IS the reply. Do NOT restate "
+            "or paraphrase the question, and do NOT call another tool with the "
+            "previous tool's result as input — read their answer and pick the next action."
+        )
 
     @staticmethod
     def _migrate_legacy_keys(ctx: dict) -> None:
@@ -444,7 +675,11 @@ class AdzumpAgent(BaseAgent):
             "User says \"₹10,000/day\" → `set_campaign_spec(budget=\"₹10,000/day\")`. "
             "Then acknowledge in one short sentence and re-check Next action.\n"
             "4. Ambient (\"ok\", \"continue\", \"next\") → just do Next action.\n"
-            "5. Otherwise → do Next action."
+            "5. Otherwise → do Next action.\n"
+            "\n**One ask per turn.** Never call two question-asking tools "
+            "(`confirm_location`, `present_options`) in the same turn — ask one, "
+            "wait for the reply, then ask the next. (The runtime also enforces "
+            "this, but don't rely on it.)"
         )
 
     @staticmethod
@@ -493,7 +728,11 @@ class AdzumpAgent(BaseAgent):
         ctx = super().build_tool_context(session)
         ctx["session_context"] = session.context
         ctx["_session"] = session
-        session.context.setdefault("craft_id", f"adzump_{session.session_id[:8]}")
+        # Use the full session_id — the previous `[:8]` truncation left only
+        # one hex char of entropy after the `SYSTEM_` prefix, so distinct
+        # sessions routinely collided onto the same craft_id and stomped
+        # each other's UI panel state.
+        session.context.setdefault("craft_id", f"adzump_{session.session_id}")
         if session.auth:
             ctx["auth"] = session.auth
         return ctx
@@ -501,11 +740,32 @@ class AdzumpAgent(BaseAgent):
     async def get_pending_suggestions(
         self, session: BaseSession, assistant_text: str = "",
     ) -> dict[str, Any] | None:
+        # v3 · F4 — pop the one-run capture marker FIRST, before any early
+        # return, so it can never leak into the next turn (it rides the
+        # persisted context dict, which the generic run-loop doesn't clear).
+        # Kept here (not in core/agent.py) so the Adzump-specific marker stays
+        # out of the generic runtime.
+        captured = session.context.pop("_captured_this_turn", None)
         pending = session.context.pop("_pending_suggestions", None)
         if pending:
             return pending
         # When a map widget is in flight, the widget IS the answer mechanism —
         # don't let the inferrer auto-inject competing Yes/No chips.
         if session.context.get("_pending_location_confirm"):
+            return None
+        # v8 Plan B WS6 · any deferred elicitation already owns the ask (map,
+        # upload prompt, explicit chips). Suppress the untraced infer_suggestions
+        # fallback so it can't overlay competing chips on the elicitation bubble
+        # (and to skip its extra per-turn gpt-4o-mini call). Full tracing-wrap
+        # of infer_suggestions remains a fast-follow.
+        if session.context.get("_pending_elicitation"):
+            return None
+        # v3 · F4 — a tagged answer was captured this turn, but no tagged
+        # present_options was emitted (we'd have returned above). The LLM asked
+        # the next question as prose → suppress the untagged infer fallback whose
+        # chips would carry no field tag (a click wouldn't be captured → re-ask
+        # loop). The user can type the answer (typed-capture handles
+        # duration/budget/platform); next turn the LLM re-asks via a tagged tool.
+        if captured:
             return None
         return await infer_suggestions(assistant_text, session.context)

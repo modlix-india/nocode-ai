@@ -13,12 +13,20 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _norm_q(s: str) -> str:
+    """Normalize a question for the v4 · F9 de-dup compare: lowercase, collapse
+    whitespace, strip trailing punctuation. Lets "How long should it run?" match
+    a prose "...how long should it run" the model already streamed."""
+    return re.sub(r"\s+", " ", (s or "").lower()).strip().strip("?.!,: ").strip()
 
 
 async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
@@ -45,7 +53,9 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     if not options:
         return ToolResult(success=False, error="options array is required.")
 
+    field = (params.get("field") or "").strip() or None
     normalized: list[dict[str, str]] = []
+    answer_map: dict[str, str] = {}
     for opt in options:
         if isinstance(opt, str):
             normalized.append({"label": opt, "value": opt})
@@ -53,6 +63,11 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             label = str(opt["label"])
             value = str(opt.get("value") or label)
             normalized.append({"label": label, "value": value})
+            # PR2 · a capturable option declares `answer` (the value to store on
+            # click). Options without `answer` (e.g. "Custom", competitor "Yes")
+            # are fall-through — absent from the map → capture defers to the LLM.
+            if opt.get("answer") is not None:
+                answer_map[value] = str(opt["answer"])
         else:
             return ToolResult(success=False, error=f"Invalid option: {opt!r}")
 
@@ -74,14 +89,32 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     # Stream the question into the assistant message so it visually precedes
     # the chips. Wrapped in newlines so it separates from any conversational
     # lead-in the LLM streamed before this tool call.
+    #
+    # v4 · F9 — the tool OWNS the question, but the model sometimes ALSO writes
+    # it as prose this turn (the system prompt forbids it; F4's steer discourages
+    # it; it still happens). Emitting then would double-render the question (live
+    # bug #10). So skip our emit when the question already appears in this turn's
+    # streamed assistant text — exactly one copy either way. Normalized-contains
+    # match (panel rec); a divergent paraphrase still falls through to emit.
     stream = context.get("event_stream")
     if stream is not None:
-        await stream.emit_text(f"\n\n{question}\n")
+        parent_session = context.get("_session")
+        streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
+        nq = _norm_q(question)
+        already = bool(nq) and nq in _norm_q(streamed)
+        if already:
+            logger.info("present_options: question already in streamed prose — skip emit (F9)")
+        else:
+            await stream.emit_text(f"\n\n{question}\n")
 
-    logger.info("present_options: mode=%s options=%s question=%r",
-                mode, options, question[:80])
+    logger.info("present_options: mode=%s field=%s options=%s question=%r",
+                mode, field, options, question[:80])
     return ToolResult(
         success=True,
+        # PR2 · tag the elicitation so the harness captures the answer next turn.
+        # Rides _pending_elicitation via core (same channel as elicit_expects);
+        # None when untagged, so this stays inert for control-flow asks.
+        data=({"elicit_field": field, "elicit_answers": answer_map} if field else None),
         summary=(
             f"Asked the user: \"{question[:120]}\" with {len(options)} options. "
             "Question is already on screen — do not write it again. "
@@ -132,6 +165,7 @@ present_options = ToolDefinition(
                         "properties": {
                             "label": {"type": "string"},
                             "value": {"type": "string"},
+                            "answer": {"type": "string"},
                         },
                         "required": ["label", "value"],
                     },
@@ -145,8 +179,30 @@ present_options = ToolDefinition(
             required=False,
             enum=["single", "multi"],
         ),
+        ToolParameter(
+            name="field",
+            type="string",
+            description=(
+                "Set ONLY for data-collection asks that fill a campaign field "
+                "(platform / duration / budget / competitive_analysis_declined / "
+                "account picks). The harness then stores the user's answer "
+                "directly. For each capturable option give an `answer` (the value "
+                "to store on click; usually == value; \"true\" for a competitor "
+                "decline). Omit `answer` on fall-through options (\"Custom\", "
+                "competitor \"Yes\"). Leave `field` unset for control-flow asks "
+                "(launch confirmation)."
+            ),
+            required=False,
+        ),
     ],
     execute=_present_options,
+    # v8 Plan B WS3 · deferred elicitation. The run loop breaks after this so
+    # the chips are the only ask in the turn. (The `mode` param above is the
+    # chip selection mode; elicit_expects="single" because the user sends one
+    # reply — a click or a confirmed multi-select — regardless of chip mode.)
+    kind="elicitation",
+    elicit_mode="deferred",
+    elicit_expects="single",
 )
 
 SUGGESTION_TOOLS = [present_options]
