@@ -91,7 +91,11 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     return ToolResult(
         success=True,
         data={"location": detected, "shown": True},
-        summary=f"Map + prompt shown for '{display or 'unknown location'}'. Wait for the user's reply.",
+        summary=(
+            f"Map + prompt shown for '{display or 'unknown location'}'. The prompt "
+            "is already on screen — do NOT restate or paraphrase it. Wait for the "
+            "user's reply."
+        ),
     )
 
 
@@ -107,6 +111,11 @@ confirm_location = ToolDefinition(
     display_name="Confirm Location",
     parameters=[],
     execute=_confirm_location,
+    # v8 Plan B WS3 · deferred elicitation. After this returns, the run loop
+    # breaks and yields the turn to the user; their reply resumes next turn.
+    kind="elicitation",
+    elicit_mode="deferred",
+    elicit_expects="single",
 )
 
 LOCATION_TOOLS = [confirm_location]

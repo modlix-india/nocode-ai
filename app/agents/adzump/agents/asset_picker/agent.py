@@ -449,6 +449,7 @@ class AssetPickerAgent(BaseAgent):
         parent_session_context: dict | None = None,
         full_page_screenshot_b64: str | None = None,
         agent_tool_use_id: str = "",
+        skip_started_emit: bool = False,
     ) -> ProductAssets:
         """Run one vision pick and return resolved ``ProductAssets``.
 
@@ -490,6 +491,7 @@ class AssetPickerAgent(BaseAgent):
                 model_override=PICKER_MODEL_OVERRIDE,
                 parent_tool_use_id=parent_tool_use_id,
                 agent_tool_use_id=agent_tool_use_id,
+                skip_started_emit=skip_started_emit,
             )
         except Exception as e:
             logger.warning(

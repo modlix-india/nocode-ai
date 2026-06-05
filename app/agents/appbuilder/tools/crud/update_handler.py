@@ -20,6 +20,9 @@ async def _update_execute(params: dict[str, Any], context: dict[str, Any]) -> To
 update_tool = ToolDefinition(
     name="update",
     display_name="Update",
+    # v8 Plan B WS4 · declarative only · blocking elicitation (request_confirmation).
+    kind="elicitation",
+    elicit_mode="blocking",
     description=(
         "Update an existing object. Fetches current state, merges changes, saves.\n\n"
         "For most types: pass id + fields to update (definition, name, title, description).\n"

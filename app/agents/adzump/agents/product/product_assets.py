@@ -264,6 +264,23 @@ async def select_product_assets(
     # scrape tool, not picker work (Kiran's panel-review correction).
     import uuid as _uuid
     asset_picker_tuid = _uuid.uuid4().hex[:12]
+    # v6 S2 (2026-05-27): pre-emit agent_started BEFORE DISCOVER stage_emit so
+    # the UI has an open span for the tool_update to route to. pick() runs with
+    # skip_started_emit=True to avoid double-emit. See asset-picker-fixes-v6.
+    _stream = context.get("event_stream")
+    if _stream is not None:
+        try:
+            from app.core.streaming import current_agent_id as _curr_agent_id
+            await _stream.emit_agent_started(
+                agent_id="asset_picker",
+                label="Asset Picker",
+                parent_id=_curr_agent_id.get(),
+                parent_tool_use_id=context.get("tool_use_id", ""),
+                agent_tool_use_id=asset_picker_tuid,
+            )
+            context.setdefault("_started_tuids", set()).add(asset_picker_tuid)
+        except Exception:
+            logger.exception("v6_pre_emit_agent_started_failed agent=asset_picker")
     await stage_emit(context, ScrapeStage.DISCOVER, tool_use_id=asset_picker_tuid, n=len(candidates))
 
     # Parallel fetch + downscale. Anything that fails / is too small / isn't
@@ -328,6 +345,10 @@ async def select_product_assets(
             # used by DISCOVER + SELECT stage_emit calls above, so the UI can
             # group tool_updates correctly. See asset-picker-fixes-v5.
             agent_tool_use_id=asset_picker_tuid,
+            # v6 S2 (2026-05-27): caller pre-emitted agent_started before
+            # DISCOVER/SELECT stage_emits so the UI had a span to route to.
+            # Tell BaseAgent.run() not to double-emit.
+            skip_started_emit=True,
         )
     except Exception as e:
         logger.warning(
@@ -445,10 +466,17 @@ def _resolve(sel: _AssetSelection, candidates: list[SiteImage]) -> ProductAssets
         verdict = "partial"
     else:
         verdict = "needs_upload"
+    # v9 I-8 fix: missing_categories must agree with the 'complete' bar
+    # (complete = hero AND >=1 amenity — see CreativeCompleteness). floor_plan
+    # is tracked (floor_plan_found) but is NOT required for launch-readiness, so
+    # it must not appear in missing_categories — otherwise a 'complete' campaign
+    # still surfaces a "missing floor plan" ask. (Rejected the inverse fix —
+    # requiring floor_plan for 'complete' — because floor plans rarely live on
+    # marketing sites, so it would leave most real-estate campaigns perpetually
+    # 'needs_upload'.)
     missing = []
     if not hero_found: missing.append("hero")
     if amenities_count < 1: missing.append("amenity")
-    if not floor_plan_found: missing.append("floor_plan")
     creative_completeness = CreativeCompleteness(
         hero_found=hero_found,
         amenities_count=amenities_count,

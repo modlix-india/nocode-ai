@@ -187,12 +187,21 @@ class SummaryAgent(BaseAgent):
         craft_id: str,
         parent_session_context: dict | None = None,
         agent_tool_use_id: str = "",
+        skip_started_emit: bool = False,
     ) -> SummaryOutput:
         """Run one summary pass and return the accumulated text.
 
         Streams text deltas into the craft panel's ``summary_text`` block
         via ``_CraftBoundStream``. Parent stream owns all other events.
+
+        v6 (2026-05-27, S1): emits agent_finished on both success + error
+        paths so the Profile Writer span closes in the UI. Without this
+        emit the row stays in 'running' state indefinitely — observed
+        336s+ after the summary stream actually completed.
         """
+        import time as _time
+        run_start = _time.monotonic()
+
         sub_session = BaseSession(agent_name="summary_gen")
         await sub_session.get_or_create(None, auth)
 
@@ -211,14 +220,27 @@ class SummaryAgent(BaseAgent):
         # Truncate at 15k chars — same cap as the old direct call.
         msg = f"Website: {url}\n\n{(scraped_text or '')[:15000]}"
 
-        await self.run(
-            user_message=msg,
-            session=sub_session,
-            event_stream=wrapped_stream,
-            model_override=SUMMARY_MODEL_OVERRIDE,
-            parent_tool_use_id=parent_tool_use_id,
-            agent_tool_use_id=agent_tool_use_id,
-        )
+        try:
+            await self.run(
+                user_message=msg,
+                session=sub_session,
+                event_stream=wrapped_stream,
+                model_override=SUMMARY_MODEL_OVERRIDE,
+                parent_tool_use_id=parent_tool_use_id,
+                agent_tool_use_id=agent_tool_use_id,
+                skip_started_emit=skip_started_emit,
+            )
+        except Exception as e:
+            logger.warning(
+                "summary_run_failed: %s: %s",
+                type(e).__name__, str(e)[:200],
+            )
+            await self._emit_finished(
+                parent_event_stream, run_start, sub_session,
+                status="error",
+                summary=f"{type(e).__name__}: {str(e)[:80]}",
+            )
+            raise
 
         # Find the last assistant message — that's the summary text.
         final_text = ""
@@ -235,7 +257,63 @@ class SummaryAgent(BaseAgent):
                     final_text = "\n".join(p for p in parts if p)
                     break
 
-        return SummaryOutput(text=final_text.strip())
+        final_text = final_text.strip()
+        # rightMeta-overflow fix (2026-05-27): success path sends empty
+        # summary. The full profile text is already in the craft panel —
+        # duplicating 120 chars into the agent row's right meta overflowed
+        # and added zero new info. See agent-row-rightmeta-overflow plan.
+        # Error path keeps a non-empty summary because that info isn't
+        # visible elsewhere.
+        await self._emit_finished(
+            parent_event_stream, run_start, sub_session,
+            status="success",
+            summary="",
+        )
+        return SummaryOutput(text=final_text)
+
+    @staticmethod
+    async def _emit_finished(
+        parent_event_stream: AgentEventStream | None,
+        run_start: float,
+        sub_session: BaseSession,
+        status: str,
+        summary: str,
+    ) -> None:
+        """Emit agent_finished with token usage from sub_session.total_usage.
+
+        Mirrors AssetPickerAgent._emit_finished (asset_picker/agent.py:526)
+        so the Profile Writer span closes in the UI when the summary
+        stream completes. Defensive: never fails the summarize() call on
+        emit error (observability hook only).
+
+        ``summary`` contract (Lance · 2026-05-27): the string renders in
+        the agent row's right-meta slot in the chat UI alongside the
+        duration. It must be a span-level outcome users *can't derive
+        from elsewhere in the UI*. Examples:
+          · GOOD: AssetPicker's "logos=N creatives=N" (counts not shown elsewhere)
+          · GOOD: error path's "ExceptionName: ..." (not shown elsewhere)
+          · BAD:  the marketing-copy preview (full text already in craft panel)
+        When the agent's output is rendered in a sibling panel, send "".
+        AgentGroup.tsx defensively caps long strings, but the contract is
+        the source of truth — don't push the UI cap as the contract.
+        """
+        if parent_event_stream is None:
+            return
+        import time as _time
+        try:
+            duration_ms = int((_time.monotonic() - run_start) * 1000)
+            usage = sub_session.total_usage or {}
+            await parent_event_stream.emit_agent_finished(
+                agent_id="summary_gen",
+                status=status,
+                duration_ms=duration_ms,
+                tokens_in=int(usage.get("input_tokens") or 0),
+                tokens_out=int(usage.get("output_tokens") or 0),
+                step_count=1,
+                summary=summary,
+            )
+        except Exception:
+            pass
 
 
 def get_summary_agent() -> SummaryAgent:

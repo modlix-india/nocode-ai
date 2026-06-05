@@ -46,6 +46,7 @@ async def _generate_business_profile(
     tool_use_id: str = "",
     parent_session_context: dict | None = None,
     agent_tool_use_id: str = "",
+    skip_started_emit: bool = False,
 ) -> str:
     """Generate a product profile from scraped content via SummaryAgent.
 
@@ -95,6 +96,10 @@ async def _generate_business_profile(
             # from v4) and the agent_started lifecycle event share an id —
             # UI can group correctly. See asset-picker-fixes-v5.
             agent_tool_use_id=agent_tool_use_id,
+            # v6 S2 (2026-05-27): caller pre-emitted agent_started before
+            # SUMMARIZE stage_emit so the UI had a span to route to. Tell
+            # BaseAgent.run() not to double-emit.
+            skip_started_emit=skip_started_emit,
         )
         return result.text
     except Exception as e:

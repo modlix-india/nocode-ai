@@ -4,7 +4,7 @@ from app.core.tools.base import ToolDefinition
 
 from app.agents.adzump.agents.product.tools.scrape import scrape_url
 from app.agents.adzump.agents.product.tools.comp_discovery import shortlist_competitors
-from app.agents.adzump.tools._shared import AGGREGATOR_HOSTS
+from app.agents.adzump._shared import AGGREGATOR_HOSTS
 
 
 # Anthropic's server-executed web search. The agent declares it as a tool;
