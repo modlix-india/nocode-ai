@@ -1,0 +1,240 @@
+{
+  "_id": "67af3ba0015ce534c806bc25",
+  "definition": {
+    "name": "signUpOTPEmail",
+    "namespace": "cxapp",
+    "parameters": {
+      "email": {
+        "parameterName": "email",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "otp": {
+        "parameterName": "otp",
+        "schema": {
+          "version": 1,
+          "type": [
+            "STRING"
+          ]
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 61.222222222222214,
+          "top": 122.11111111111111
+        },
+        "parameterMap": {
+          "name": {
+            "6FjBn0wLU2l7W8YkYXYI8V": {
+              "key": "6FjBn0wLU2l7W8YkYXYI8V",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "user"
+            }
+          },
+          "schema": {
+            "21PADp5hoYJ6c2Me7bVD2H": {
+              "key": "21PADp5hoYJ6c2Me7bVD2H",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "sendEmail": {
+        "statementName": "sendEmail",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 1036.4444444444443,
+          "top": 77.22222222222221
+        },
+        "parameterMap": {
+          "templateData": {
+            "5VAVVjnP10PZRTTswixSur": {
+              "key": "5VAVVjnP10PZRTTswixSur",
+              "type": "EXPRESSION",
+              "expression": "Context.user",
+              "value": {}
+            }
+          },
+          "connectionName": {
+            "3h2aw6H1t6L5m8DQX24A5D": {
+              "key": "3h2aw6H1t6L5m8DQX24A5D",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "appCode": {
+            "3q6xYtpghPqHXO5gSakMx0": {
+              "key": "3q6xYtpghPqHXO5gSakMx0",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "address": {
+            "7cs44SLTHxLfP0S4JxvRV9": {
+              "key": "7cs44SLTHxLfP0S4JxvRV9",
+              "type": "EXPRESSION",
+              "expression": "Context.user.emailId",
+              "order": 1
+            }
+          },
+          "templateName": {
+            "ayCyy49HXYG3IOXTdB6el": {
+              "key": "ayCyy49HXYG3IOXTdB6el",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "otpTemplate"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1404.4444444444443,
+          "top": 124.44444444444443
+        },
+        "parameterMap": {
+          "results": {
+            "5jjhUnuxKGLLc5nyBNaPRH": {
+              "key": "5jjhUnuxKGLLc5nyBNaPRH",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.user"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__sendEmail__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 352.1111111111111,
+          "top": 79.88888888888889
+        },
+        "parameterMap": {
+          "name": {
+            "6IaAHVeLNXvOoNNaCSJIFK": {
+              "key": "6IaAHVeLNXvOoNNaCSJIFK",
+              "type": "VALUE",
+              "expression": "Context.userDetails.email",
+              "order": 1,
+              "value": "Context.user.email"
+            }
+          },
+          "value": {
+            "3i1MHQIKeVokJ1rm1Si6Hc": {
+              "key": "3i1MHQIKeVokJ1rm1Si6Hc",
+              "type": "EXPRESSION",
+              "expression": "Arguments.email",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 669.2222222222222,
+          "top": 74.22222222222221
+        },
+        "parameterMap": {
+          "name": {
+            "3jOK1Byq57ZQE4C8MIuFTT": {
+              "key": "3jOK1Byq57ZQE4C8MIuFTT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.user.otp"
+            }
+          },
+          "value": {
+            "32ewwopX4IM9nAjbgXYIPJ": {
+              "key": "32ewwopX4IM9nAjbgXYIPJ",
+              "type": "EXPRESSION",
+              "expression": "Arguments.otp",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "name": "cxapp.signUpOTPEmail",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 50,
+  "updatedAt": "2026-04-09 04:28:28.914000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-02-14 12:48:32.802000",
+  "createdBy": "<USER>"
+}

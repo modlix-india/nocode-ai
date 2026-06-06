@@ -106,6 +106,38 @@ class ComponentCatalog:
         return "\n".join(lines)
 
 
+# ── Module-level singleton ────────────────────────────────────────────────
+#
+# Tools that need catalog access (e.g. the modlix port's _conventions.py
+# `is_multi_valued_property`) read through these accessors instead of
+# threading the catalog through every call site. main.py's lifespan calls
+# `set_catalog(catalog)` after `await catalog.load()`. Code that runs before
+# the lifespan (unit tests, scripts) gets an empty catalog from get_catalog()
+# and falls back to other heuristics — no crashes from a missing singleton.
+
+_catalog_singleton: "ComponentCatalog | None" = None
+
+
+def set_catalog(catalog: "ComponentCatalog") -> None:
+    """Register the loaded catalog as the module-level singleton."""
+    global _catalog_singleton
+    _catalog_singleton = catalog
+
+
+def get_catalog() -> "ComponentCatalog":
+    """Return the registered catalog, or an empty one if not yet set.
+
+    The empty-catalog fallback keeps `is_multi_valued_property` and other
+    catalog-aware helpers usable in contexts where the lifespan hasn't run
+    (tests, scripts). Catalog-aware lookups return empty dicts; callers
+    degrade to their non-catalog heuristics.
+    """
+    global _catalog_singleton
+    if _catalog_singleton is None:
+        _catalog_singleton = ComponentCatalog("")
+    return _catalog_singleton
+
+
 # Tiers that get full detail in the prompt
 _FULL_DETAIL_TIERS = {"common", "data"}
 

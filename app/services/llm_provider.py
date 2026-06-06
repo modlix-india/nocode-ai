@@ -1493,6 +1493,262 @@ class DeepSeekProvider(LLMProvider):
         yield StreamChunk(type="done", stop_reason=final_stop_reason, usage=final_usage)
 
 
+class GeminiProvider(LLMProvider):
+    """Google Gemini provider (Gemini 2.5 Flash / Flash-Lite / Pro).
+
+    Chosen as the CFA default after the Phase 8 bench: roughly 13× cheaper
+    on input vs Claude Haiku and 33× cheaper than GPT-4o, with native vision
+    and a 1M-token context window — well-suited to the agent's generate →
+    screenshot → critique → fix iteration loop.
+
+    Uses the `google-generativeai` SDK. Tool use maps Anthropic's
+    `input_schema` shape onto Gemini's FunctionDeclaration directly (both
+    are JSON Schema dialects). Vision via inline_data parts. Prompt caching
+    is implicit on Gemini's side — no explicit cache markers in the request.
+
+    Streaming uses the base class's fallback (synthesize chunks from a
+    non-streaming response) — adequate for v1; native server-sent streaming
+    can land in a follow-up if turn latency becomes a concern.
+    """
+
+    def __init__(self):
+        import google.generativeai as genai  # type: ignore[import-not-found]
+        from app.config import settings
+
+        api_key = getattr(settings, "GEMINI_API_KEY", "") or ""
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY is required when using the gemini provider")
+        genai.configure(api_key=api_key)
+        self._genai = genai
+        self.settings = settings
+        self._models = {
+            "fast": getattr(settings, "GEMINI_MODEL_FAST", "gemini-2.5-flash-lite"),
+            "balanced": getattr(settings, "GEMINI_MODEL_BALANCED", "gemini-2.5-flash"),
+        }
+
+    @property
+    def name(self) -> str:
+        return "Gemini"
+
+    def get_model(self, tier: str) -> str:
+        return self._models.get(tier, tier)
+
+    def supports_vision(self) -> bool:
+        return True
+
+    def supports_prompt_caching(self) -> bool:
+        # Gemini has implicit caching; we don't manage cache markers.
+        return False
+
+    def _extract_instructions(self, system_prompt: Any) -> str:
+        if isinstance(system_prompt, list):
+            return " ".join(
+                b.get("text", "") for b in system_prompt if b.get("type") == "text"
+            )
+        return system_prompt or ""
+
+    def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Anthropic input_schema → Gemini FunctionDeclaration dict.
+
+        Skips provider-specific builtin tools (web_search etc.) — those are
+        not portable across providers and the CFA doesn't surface them
+        through the modlix tool catalog.
+        """
+        out: list[dict[str, Any]] = []
+        for t in tools:
+            if t.get("__builtin__"):
+                # Drop provider-specific builtins that aren't Gemini's.
+                if t.get("provider") and t["provider"] != "gemini":
+                    continue
+                spec = t.get("spec") or {}
+                if spec:
+                    out.append(spec)
+                continue
+            out.append({
+                "name": t["name"],
+                "description": t.get("description", ""),
+                "parameters": t.get("input_schema") or {"type": "object", "properties": {}},
+            })
+        if not out:
+            return []
+        # Gemini wants a list of Tool objects, each holding function_declarations.
+        return [{"function_declarations": out}]
+
+    @staticmethod
+    def _anthropic_block_to_gemini_part(item: Dict[str, Any]) -> Dict[str, Any] | None:
+        """Map one Anthropic content block to its Gemini part equivalent.
+
+        Returns None for unrecognized block types so the caller skips them.
+        """
+        itype = item.get("type")
+        if itype == "text":
+            return {"text": item.get("text", "")}
+        if itype == "tool_use":
+            return {"function_call": {"name": item["name"], "args": item.get("input") or {}}}
+        if itype == "tool_result":
+            # Gemini correlates response→call by name. Fall back to id then
+            # "result" when the caller didn't carry the tool name through.
+            return {
+                "function_response": {
+                    "name": item.get("name") or item.get("tool_use_id") or "result",
+                    "response": {"content": item.get("content", "")},
+                }
+            }
+        if itype == "image":
+            src = item.get("source") or {}
+            if src.get("type") != "base64":
+                return None
+            return {
+                "inline_data": {
+                    "mime_type": src.get("media_type", "image/png"),
+                    "data": src.get("data", ""),
+                }
+            }
+        return None
+
+    def _convert_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Anthropic messages → Gemini contents.
+
+        Gemini roles: 'user' and 'model' (assistant).
+        """
+        contents: list[dict[str, Any]] = []
+        for msg in messages:
+            gem_role = "model" if msg.get("role") == "assistant" else "user"
+            content = msg.get("content")
+            if isinstance(content, str):
+                parts: list[dict[str, Any]] = [{"text": content}]
+            elif isinstance(content, list):
+                parts = [
+                    p for p in (self._anthropic_block_to_gemini_part(it) for it in content)
+                    if p is not None
+                ]
+            else:
+                parts = []
+            if parts:
+                contents.append({"role": gem_role, "parts": parts})
+        return contents
+
+    @staticmethod
+    def _gemini_part_to_anthropic_block(part: Any) -> Dict[str, Any] | None:
+        """Map one Gemini response part to its Anthropic content-block equivalent.
+
+        Returns None for parts we don't surface to the agent (e.g. unrecognized
+        proto types). text and function_call are the two cases that matter.
+        """
+        text = getattr(part, "text", None)
+        if text:
+            return {"type": "text", "text": text}
+        fc = getattr(part, "function_call", None)
+        if fc and getattr(fc, "name", None):
+            try:
+                args = dict(fc.args) if fc.args else {}
+            except (TypeError, ValueError):
+                args = {}
+            return {
+                "type": "tool_use",
+                "id": fc.name,  # Gemini correlates by name; reuse as id
+                "name": fc.name,
+                "input": args,
+            }
+        return None
+
+    def _convert_response(self, response: Any, model_name: str) -> Dict[str, Any]:
+        """Gemini response → Anthropic content blocks + usage."""
+        try:
+            candidates = response.candidates or []
+        except (AttributeError, TypeError):
+            candidates = []
+
+        content_blocks: list[dict[str, Any]] = []
+        for cand in candidates:
+            cnt = getattr(cand, "content", None)
+            for part in getattr(cnt, "parts", []) or []:
+                block = self._gemini_part_to_anthropic_block(part)
+                if block is not None:
+                    content_blocks.append(block)
+
+        has_tool_call = any(b.get("type") == "tool_use" for b in content_blocks)
+        usage_meta = getattr(response, "usage_metadata", None)
+        return {
+            "content": content_blocks,
+            "usage": {
+                "input_tokens": getattr(usage_meta, "prompt_token_count", 0) or 0,
+                "output_tokens": getattr(usage_meta, "candidates_token_count", 0) or 0,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            },
+            "model": model_name,
+            "stop_reason": "tool_use" if has_tool_call else "end_turn",
+        }
+
+    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+        # Anthropic-shaped block; _convert_messages translates to inline_data.
+        return {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": base64_image},
+        }
+
+    async def create_completion(
+        self, system_prompt: str, messages: List[Dict[str, Any]],
+        model_tier: str = "balanced", max_tokens: int = 8192, use_cache: bool = True,
+    ) -> Dict[str, Any]:
+        model_name = self.get_model(model_tier)
+        instructions = self._extract_instructions(system_prompt)
+        contents = self._convert_messages(messages)
+
+        model = self._genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=instructions or None,
+        )
+        response = await model.generate_content_async(
+            contents=contents,
+            generation_config={"max_output_tokens": max_tokens},
+        )
+        text = ""
+        try:
+            text = response.text or ""
+        except (AttributeError, ValueError):
+            # No simple text accessor — gather from parts.
+            text = " ".join(
+                getattr(p, "text", "") or ""
+                for c in (response.candidates or [])
+                for p in (getattr(getattr(c, "content", None), "parts", []) or [])
+            )
+        usage_meta = getattr(response, "usage_metadata", None)
+        return {
+            "content": text,
+            "usage": {
+                "input_tokens": getattr(usage_meta, "prompt_token_count", 0) or 0,
+                "output_tokens": getattr(usage_meta, "candidates_token_count", 0) or 0,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            },
+            "model": model_name,
+            "stop_reason": "end_turn",
+        }
+
+    async def create_completion_with_tools(
+        self, system_prompt: Any, messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]], model_tier: str = "balanced",
+        max_tokens: int = 16384,
+    ) -> Dict[str, Any]:
+        model_name = self.get_model(model_tier)
+        instructions = self._extract_instructions(system_prompt)
+        contents = self._convert_messages(messages)
+        gemini_tools = self._convert_tools(tools)
+
+        model = self._genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=instructions or None,
+            tools=gemini_tools or None,
+        )
+        response = await model.generate_content_async(
+            contents=contents,
+            generation_config={"max_output_tokens": max_tokens},
+        )
+        return self._convert_response(response, model_name)
+
+
 # Per-provider cache: multiple providers can coexist (e.g. Anthropic for AppBuilder,
 # OpenAI for a future Ad Builder agent).
 _providers: dict[str, LLMProvider] = {}
@@ -1521,6 +1777,13 @@ def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
             raise ValueError("DEEPSEEK_API_KEY is required when using the deepseek provider")
         _providers[name] = DeepSeekProvider()
         logger.info(f"Initialized DeepSeek provider with models: {settings.DEEPSEEK_MODEL_FAST}, {settings.DEEPSEEK_MODEL_BALANCED}")
+    elif name == "gemini":
+        if not getattr(settings, "GEMINI_API_KEY", ""):
+            raise ValueError("GEMINI_API_KEY is required when using the gemini provider")
+        _providers[name] = GeminiProvider()
+        gemini_fast = getattr(settings, "GEMINI_MODEL_FAST", "gemini-2.5-flash-lite")
+        gemini_balanced = getattr(settings, "GEMINI_MODEL_BALANCED", "gemini-2.5-flash")
+        logger.info(f"Initialized Gemini provider with models: {gemini_fast}, {gemini_balanced}")
     elif name == "openai":
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is required when using the openai provider")

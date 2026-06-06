@@ -1,0 +1,4304 @@
+{
+  "_id": "63cfacb62288ff2273a8beb1",
+  "properties": {
+    "wrapShell": false,
+    "title": {
+      "name": {
+        "value": "Marketing Automation"
+      },
+      "append": {
+        "value": false
+      }
+    }
+  },
+  "rootComponent": "rootGrid",
+  "componentDefinition": {
+    "rootGrid": {
+      "key": "rootGrid",
+      "name": "rootGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "667b1ddc-15fa-4279-bd4e-708c0bf0b5e8": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "linear-gradient(to bottom, #ffffffe1, #ebebf0)"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "topContainerGrid": true,
+        "section2": true,
+        "section3": true,
+        "section4": true,
+        "section5": true,
+        "section6": true,
+        "section7": true,
+        "footer": true
+      }
+    },
+    "topContainerGrid": {
+      "key": "topContainerGrid",
+      "name": "topContainerGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "90047e29-ccb6-4e4c-89f6-18b5a4fbf157": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url(api/files/static/file/SYSTEM/markauto/markautoLandingBG.png)"
+              },
+              "backgroundSize": {
+                "value": "150% 200%"
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "backgroundPosition": {
+                "value": "70% 90%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "navBarGrid": true,
+        "sectionGrid": true
+      },
+      "displayOrder": 1
+    },
+    "navBarGrid": {
+      "key": "navBarGrid",
+      "name": "navBarGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4506aadd-20d1-4bdc-acee-3267edd65823": {
+          "resolutions": {
+            "DESKTOP_SCREEN": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "150px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "paddingLeft": {
+                "value": "120px"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "2px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "logoBarGrid": true,
+        "navigationGrid": true
+      },
+      "displayOrder": 1
+    },
+    "logoBarGrid": {
+      "key": "logoBarGrid",
+      "name": "logoBarGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "fincityBrandLogo": true
+      },
+      "displayOrder": 1
+    },
+    "fincityBrandLogo": {
+      "key": "fincityBrandLogo",
+      "name": "logo",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/fincitylogowhitesvg.png"
+        }
+      },
+      "styleProperties": {
+        "26dde592-a63f-4d44-bb67-a18409763e54": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "160px"
+              },
+              "height": {
+                "value": "54px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "96px"
+              },
+              "height": {
+                "value": "34px"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "navigationGrid": {
+      "key": "navigationGrid",
+      "name": "navigationGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "a011b80e-eb4f-407e-a68f-c8c4b49a7568": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "whyfincitylink": true,
+        "requestdemobutton": true
+      },
+      "displayOrder": 2
+    },
+    "whyfincitylink": {
+      "key": "whyfincitylink",
+      "name": "whyfincitylink",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Why Fincity ?"
+        },
+        "linkPath": {
+          "value": "https://fincity.com"
+        },
+        "isExternalUrl": {
+          "value": true
+        },
+        "target": {
+          "value": "_blank"
+        }
+      },
+      "styleProperties": {
+        "25d61beb-f789-4a2b-8a4b-bea1fd01d91e": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration": {
+                "value": "none"
+              },
+              "color": {
+                "value": "white"
+              },
+              "marginRight": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginRight": {
+                "value": "5px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "requestdemobutton": {
+      "key": "requestdemobutton",
+      "name": "requestdemobutton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Request For Demo"
+        }
+      },
+      "styleProperties": {
+        "7b855168-c90b-4c53-9872-1b1f2437ef78": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#F3BF4E"
+              },
+              "color": {
+                "value": "#1F3C3D"
+              },
+              "fontSize": {
+                "value": "16px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "paddingLeft": {
+                "value": "0"
+              },
+              "paddingRight": {
+                "value": "0"
+              },
+              "fontSize": {
+                "value": "13px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "sectionGrid": {
+      "key": "sectionGrid",
+      "name": "sectionGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "diversityText": true,
+        "diversityText2Grid": true,
+        "diversityTextIntro": true,
+        "ImageDashGrid": true
+      },
+      "displayOrder": 2
+    },
+    "diversityText": {
+      "key": "diversityText",
+      "name": "diversityText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Automate Revenue with"
+        }
+      },
+      "styleProperties": {
+        "2d626337-8831-4a74-9c5c-56d8950b18e0": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "diversityText2Grid": {
+      "key": "diversityText2Grid",
+      "name": "diversityText2Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1c4278bf-7f73-453d-b008-24ac71cd2d63": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "diversityText2": true
+      },
+      "displayOrder": 2
+    },
+    "diversityText2": {
+      "key": "diversityText2",
+      "name": "diversityText2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marketing Automation"
+        }
+      },
+      "styleProperties": {
+        "441ed2c8-2ce0-4b63-b006-8e0c08b9a069": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "white"
+              },
+              "clipPath": {
+                "value": "polygon(0% 20%, 100% 0%, 100% 80%, 0% 100%)"
+              },
+              "backgroundColor": {
+                "value": "rgba(255,255,255,.2)"
+              },
+              "paddingTop": {
+                "value": "3px"
+              },
+              "paddingBottom": {
+                "value": "4px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "display": {
+                "value": "inline"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "diversityTextIntro": {
+      "key": "diversityTextIntro",
+      "name": "diversityTextIntro",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Manage all your marketing channels effortlessly at single place."
+        }
+      },
+      "styleProperties": {
+        "650e0c5c-eed2-432e-a258-1f5e5553000d": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "20px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "lineHeight": {
+                "value": "1.6em"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "ImageDashGrid": {
+      "key": "ImageDashGrid",
+      "name": "ImageDashGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2d626337-8831-4a74-9c5c-56d8950b18e0": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ImageInnerDashGrid": true
+      },
+      "displayOrder": 4
+    },
+    "ImageInnerDashGrid": {
+      "key": "ImageInnerDashGrid",
+      "name": "ImageInnerDashGrid",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/dcrmdiversitydash.png"
+        },
+        "alt": {
+          "value": "Dashboard"
+        }
+      },
+      "styleProperties": {
+        "f5a0f729-95e1-4efb-95ca-446d4124062a": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "820px"
+              },
+              "height": {
+                "value": "560px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "264px"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "section2": {
+      "key": "section2",
+      "name": "section2",
+      "type": "Grid",
+      "styleProperties": {
+        "c6319a8d-af03-43ca-9497-d7351a6fd6fc": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "13px"
+              },
+              "paddingTop": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "150px"
+              },
+              "paddingBottom": {
+                "value": "30px"
+              },
+              "paddingLeft": {
+                "value": "150px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section2Heading": true,
+        "section2Desc": true,
+        "section2Image": true
+      },
+      "displayOrder": 2
+    },
+    "section2Heading": {
+      "key": "section2Heading",
+      "name": "section2Heading",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2e625722-2713-4047-8d23-6540e4ead814": {
+          "resolutions": {
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section2Heading1": true,
+        "section2Heading2": true
+      }
+    },
+    "section2Heading1": {
+      "key": "section2Heading1",
+      "name": "section2Heading1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How it "
+        }
+      },
+      "styleProperties": {
+        "12b8ffb9-da5f-4631-8f75-03963390b95f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontWeight": {
+                "value": "bold"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#1F3C3D"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "section2Heading2": {
+      "key": "section2Heading2",
+      "name": "section2Heading2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Works?"
+        }
+      },
+      "styleProperties": {
+        "33011314-f5a9-4a88-9b36-e1f49b53b815": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontWeight": {
+                "value": "bold"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#F3BF4E"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "section2Desc": {
+      "key": "section2Desc",
+      "name": "section2Desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Manage all your marketing channels effortlessly at single place."
+        }
+      },
+      "styleProperties": {
+        "810ad712-8e96-45ba-a5e6-94c1b5c890ce": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "21px"
+              },
+              "color": {
+                "value": "#1F3C3D"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "section2Image": {
+      "key": "section2Image",
+      "name": "section2Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/markautoworking.png"
+        },
+        "alt": {
+          "value": "Marketing Automation Working"
+        }
+      },
+      "styleProperties": {
+        "f5a0f729-95e1-4efb-95ca-446d4124062a": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "section3": {
+      "key": "section3",
+      "name": "section3",
+      "type": "Grid",
+      "styleProperties": {
+        "3d23759d-adb7-470a-bb84-3500873c53d6": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section3Heading": true
+      },
+      "displayOrder": 3
+    },
+    "section3Heading": {
+      "key": "section3Heading",
+      "name": "section3Heading",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "section3HeadingText1": true,
+        "section3HeadingText2Grid": true
+      }
+    },
+    "section3HeadingText1": {
+      "key": "section3HeadingText1",
+      "name": "section3HeadingText1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marketing Automation For"
+        }
+      },
+      "styleProperties": {
+        "380bb70f-4630-4a63-9945-8d058febdf5a": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1f3c3d"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section3HeadingText2Grid": {
+      "key": "section3HeadingText2",
+      "name": "section3HeadingText2",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3d23759d-adb7-470a-bb84-3500873c53d6": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section3HeadingText2": true,
+        "section3HeadingText3": true
+      },
+      "displayOrder": 2
+    },
+    "section3HeadingText2": {
+      "key": "section3HeadingText2",
+      "name": "section3HeadingText2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Better "
+        }
+      },
+      "styleProperties": {
+        "39ea84f8-38f5-43b1-89b8-df7157f98345": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#1f3c3d"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section3HeadingText3": {
+      "key": "section3HeadingText3",
+      "name": "section3HeadingText3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Conversion"
+        }
+      },
+      "styleProperties": {
+        "e2d3ae7a-7cf8-47f2-8a76-d19ae3800840": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#f3bf4e"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section4": {
+      "key": "section4",
+      "name": "section4",
+      "type": "Grid",
+      "styleProperties": {
+        "3d23759d-adb7-470a-bb84-3500873c53d6": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "backgroundColor": {
+                "value": "#7C2FA6"
+              },
+              "paddingTop": {
+                "value": "70px"
+              },
+              "paddingBottom": {
+                "value": "70px"
+              },
+              "marginTop": {
+                "value": "100px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "paddingTop": {
+                "value": "35px"
+              },
+              "paddingBottom": {
+                "value": "45px"
+              },
+              "marginTop": {
+                "value": "50px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section4Text1": true,
+        "section4Heading": true,
+        "requestdemobutton2": true
+      },
+      "displayOrder": 4
+    },
+    "section4Text1": {
+      "key": "section4Text1",
+      "name": "section4Text1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Convinced? Confused? Have Ideas?"
+        }
+      },
+      "styleProperties": {
+        "842937de-fd31-4e20-80f8-d7914215b28b": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "24px"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section4Heading": {
+      "key": "section4Heading",
+      "name": "section4Heading",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "16859202-d1ad-451b-96c3-19ff875b1859": {
+          "resolutions": {
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "3px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section4HeadingText1": true,
+        "section4HeadingText2": true,
+        "section4HeadingText3": true
+      },
+      "displayOrder": 2
+    },
+    "section4HeadingText1": {
+      "key": "section4HeadingText1",
+      "name": "section4HeadingText1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Let\u2019s talk about what "
+        }
+      },
+      "styleProperties": {
+        "bbca2d72-3396-4e9c-af8e-5c6c2ccc532e": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "22px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section4HeadingText2": {
+      "key": "section4HeadingText2",
+      "name": "section4HeadingText2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marketing Automation "
+        }
+      },
+      "styleProperties": {
+        "00ff3e6a-b9d5-4c1d-8546-ccb515b87304": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#f3bf4e"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "22px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section4HeadingText3": {
+      "key": "section4HeadingText3",
+      "name": "section4HeadingText3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "can do for your business"
+        }
+      },
+      "styleProperties": {
+        "44327040-7fd6-45a7-9a7f-929b2bcd471c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "22px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "requestdemobutton2": {
+      "key": "requestdemobutton2",
+      "name": "requestdemobutton2",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Request For Demo"
+        }
+      },
+      "styleProperties": {
+        "7b855168-c90b-4c53-9872-1b1f2437ef78": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "white"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "section5": {
+      "key": "section5",
+      "name": "section5",
+      "type": "Grid",
+      "styleProperties": {
+        "291ff82f-db8d-40f2-949a-129e5ca8ac63": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "80px"
+              },
+              "paddingBottom": {
+                "value": "80px"
+              },
+              "paddingLeft": {
+                "value": "80px"
+              },
+              "paddingRight": {
+                "value": "80px"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Heading": true,
+        "section5DetailsContainer": true
+      },
+      "displayOrder": 5
+    },
+    "section5Heading": {
+      "key": "section5Heading",
+      "name": "section5Heading",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1274d7c3-07f6-42aa-a78d-40c2e1ea5bb2": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Heading1": true,
+        "section5Heading2": true
+      },
+      "displayOrder": 1
+    },
+    "section5Heading1": {
+      "key": "section5Heading1",
+      "name": "section5Heading1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Onboarding & "
+        }
+      },
+      "styleProperties": {
+        "ed7e0b2f-e1a7-469a-b99a-7307b5aa7e86": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#F3BF4E"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Heading2": {
+      "key": "section5Heading2",
+      "name": "section5Heading2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Support"
+        }
+      },
+      "styleProperties": {
+        "c7260f96-15b2-4894-af02-8a557a359f55": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section5DetailsContainer": {
+      "key": "section5DetailsContainer",
+      "name": "section5DetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "d5389aa1-d6c7-4e07-a492-c8c28aa743f9": {
+          "resolutions": {
+            "ALL": {
+              "flexWrap": {
+                "value": "wrap"
+              },
+              "gap": {
+                "value": "20px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "50px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5DetailsContainer1": true,
+        "section5DetailsContainer2": true,
+        "section5DetailsContainer3": true,
+        "section5DetailsContainer4": true,
+        "section5DetailsContainer5": true,
+        "section5DetailsContainer6": true
+      },
+      "displayOrder": 2
+    },
+    "section5DetailsContainer1": {
+      "key": "section5DetailsContainer1",
+      "name": "section5DetailsContainer1",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "a9b8252d-1721-4217-86c5-48930b3b79b9": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              },
+              "borderRadius": {
+                "value": "2px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "250px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5img1": true,
+        "section5Details1": true
+      },
+      "displayOrder": 1
+    },
+    "section5img1": {
+      "key": "section5img1",
+      "name": "section5img1",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/softwareIcon.png"
+        },
+        "alt": {
+          "value": "Software"
+        }
+      },
+      "styleProperties": {
+        "748ed58d-955d-482e-bf89-6d1b0e047388": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70px"
+              },
+              "height": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details1": {
+      "key": "section5Details1",
+      "name": "section5Details1",
+      "type": "Grid",
+      "styleProperties": {
+        "cddd85fa-e532-439e-96b8-06729701ea05": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Details1Heading": true,
+        "section5Details1Text": true
+      },
+      "displayOrder": 2
+    },
+    "section5Details1Heading": {
+      "key": "section5Details1Heading",
+      "name": "section5Details1Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Quick & Easy Integration"
+        }
+      },
+      "styleProperties": {
+        "701e264a-4e7f-49c3-bbf7-83fa2071efed": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details1Text": {
+      "key": "section5Details1Text",
+      "name": "section5Details1Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Connect all your tools to Marketing Automation and unlock features within no time."
+        }
+      },
+      "styleProperties": {
+        "701e264a-4e7f-49c3-bbf7-83fa2071efed": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "textAlign": {
+                "value": "justify"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "36px"
+              },
+              "paddingLeft": {
+                "value": "36px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section5DetailsContainer2": {
+      "key": "section5DetailsContainer2",
+      "name": "section5DetailsContainer2",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4ef7ec6c-9593-4e30-8399-fa6e4327187e": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              },
+              "borderRadius": {
+                "value": "2px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "250px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5img2": true,
+        "section5Details2": true
+      },
+      "displayOrder": 2
+    },
+    "section5img2": {
+      "key": "section5img2",
+      "name": "section5img2",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/expertIcon.png"
+        },
+        "alt": {
+          "value": "Expert"
+        }
+      },
+      "styleProperties": {
+        "30e69bdb-d3fb-4bfd-98b8-b81744bc145a": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70px"
+              },
+              "height": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details2": {
+      "key": "section5Details2",
+      "name": "section5Details2",
+      "type": "Grid",
+      "styleProperties": {
+        "71827034-7f76-4d35-9a86-9ad9dcb89811": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Details2Heading": true,
+        "section5Details2Text": true
+      },
+      "displayOrder": 2
+    },
+    "section5Details2Heading": {
+      "key": "section5Details2Heading",
+      "name": "section5Details2Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Dedicated biz consultant"
+        }
+      },
+      "styleProperties": {
+        "f67812f7-06a7-414b-9d6b-1a47df3dea85": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details2Text": {
+      "key": "section5Details2Text",
+      "name": "section5Details2Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Professionals to help you with solutions relevant to your business."
+        }
+      },
+      "styleProperties": {
+        "1b1a2c62-e85e-4e3e-8b56-ed9167676379": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "textAlign": {
+                "value": "justify"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "36px"
+              },
+              "paddingLeft": {
+                "value": "36px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section5DetailsContainer3": {
+      "key": "section5DetailsContainer3",
+      "name": "section5DetailsContainer3",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4a31ce02-5810-4d51-97f7-ceab623fea10": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              },
+              "borderRadius": {
+                "value": "2px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "250px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5img3": true,
+        "section5Details3": true
+      },
+      "displayOrder": 3
+    },
+    "section5img3": {
+      "key": "section5img3",
+      "name": "section5img3",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/marketingIcon.png"
+        },
+        "alt": {
+          "value": "Marketing"
+        }
+      },
+      "styleProperties": {
+        "fffa76e5-51d3-4733-8127-87545f8d7316": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70px"
+              },
+              "height": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details3": {
+      "key": "section5Details3",
+      "name": "section5Details3",
+      "type": "Grid",
+      "styleProperties": {
+        "9223d916-cda4-4e1b-80f6-018458cf2adf": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Details3Heading": true,
+        "section5Details3Text": true
+      },
+      "displayOrder": 2
+    },
+    "section5Details3Heading": {
+      "key": "section5Details3Heading",
+      "name": "section5Details3Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Live webinars"
+        }
+      },
+      "styleProperties": {
+        "744f28dd-4775-4464-941b-179d095719d5": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details3Text": {
+      "key": "section5Details3Text",
+      "name": "section5Details3Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Join the webinar for training from our dedicated video experts & ask any questions."
+        }
+      },
+      "styleProperties": {
+        "1fedd4a5-4a3d-494f-aefc-2fe29685a607": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "textAlign": {
+                "value": "justify"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "36px"
+              },
+              "paddingLeft": {
+                "value": "36px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section5DetailsContainer4": {
+      "key": "section5DetailsContainer4",
+      "name": "section5DetailsContainer4",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "d854cce3-1798-4d0c-9abc-33323f8539b5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              },
+              "borderRadius": {
+                "value": "2px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "250px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5img4": true,
+        "section5Details4": true
+      },
+      "displayOrder": 4
+    },
+    "section5img4": {
+      "key": "section5img4",
+      "name": "section5img4",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/communityIcon.png"
+        },
+        "alt": {
+          "value": "Community"
+        }
+      },
+      "styleProperties": {
+        "f9fb569f-e76d-4c1e-adca-f6c3656e243b": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70px"
+              },
+              "height": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details4": {
+      "key": "section5Details4",
+      "name": "section5Details4",
+      "type": "Grid",
+      "styleProperties": {
+        "4d7b9905-cfd3-4c34-8bdd-defc4cd46943": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Details4Heading": true,
+        "section5Details4Text": true
+      },
+      "displayOrder": 2
+    },
+    "section5Details4Heading": {
+      "key": "section5Details4Heading",
+      "name": "section5Details4Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Join community"
+        }
+      },
+      "styleProperties": {
+        "d5101b37-9820-46b0-964a-3c4997ad0b99": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details4Text": {
+      "key": "section5Details4Text",
+      "name": "section5Details4Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Interact with others & learn from other users"
+        }
+      },
+      "styleProperties": {
+        "8b73260d-294b-49ef-86c5-04064f85691e": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "textAlign": {
+                "value": "justify"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "36px"
+              },
+              "paddingLeft": {
+                "value": "36px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section5DetailsContainer5": {
+      "key": "section5DetailsContainer5",
+      "name": "section5DetailsContainer5",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6bf5a97a-9b8d-4c06-ace4-e80536f2a534": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              },
+              "borderRadius": {
+                "value": "2px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "250px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5img5": true,
+        "section5Details5": true
+      },
+      "displayOrder": 5
+    },
+    "section5img5": {
+      "key": "section5img5",
+      "name": "section5img5",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/onboarding.png"
+        },
+        "alt": {
+          "value": "Onboarding"
+        }
+      },
+      "styleProperties": {
+        "d5e8d8a4-c1dc-48db-be8b-fc452067f363": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70px"
+              },
+              "height": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details5": {
+      "key": "section5Details5",
+      "name": "section5Details5",
+      "type": "Grid",
+      "styleProperties": {
+        "c1b9fdb5-791d-4fb4-b2bc-e713c2f2fc73": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Details5Heading": true,
+        "section5Details5Text": true
+      },
+      "displayOrder": 2
+    },
+    "section5Details5Heading": {
+      "key": "section5Details5Heading",
+      "name": "section5Details5Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Seamless onboarding"
+        }
+      },
+      "styleProperties": {
+        "06c18ab2-73d3-458e-8597-4735c6cb5ec3": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details5Text": {
+      "key": "section5Details5Text",
+      "name": "section5Details5Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Work with our onboarding specialists till go live with your first campaign"
+        }
+      },
+      "styleProperties": {
+        "e05757e0-dfe0-4d4c-8c55-2c661c312ff3": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "textAlign": {
+                "value": "justify"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "36px"
+              },
+              "paddingLeft": {
+                "value": "36px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section5DetailsContainer6": {
+      "key": "section5DetailsContainer6",
+      "name": "section5DetailsContainer6",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "ed73f92d-5302-4943-ade4-f4f77dac554f": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "380px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              },
+              "borderRadius": {
+                "value": "2px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "250px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5img6": true,
+        "section5Details6": true
+      },
+      "displayOrder": 6
+    },
+    "section5img6": {
+      "key": "section5img6",
+      "name": "section5img6",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/support.png"
+        },
+        "alt": {
+          "value": "Support"
+        }
+      },
+      "styleProperties": {
+        "8771d119-af1a-47b9-8956-796180a23d48": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70px"
+              },
+              "height": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details6": {
+      "key": "section5Details6",
+      "name": "section5Details6",
+      "type": "Grid",
+      "styleProperties": {
+        "c8d7b3a8-0a44-459b-8e82-fe963efecdda": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section5Details6Heading": true,
+        "section5Details6Text": true
+      },
+      "displayOrder": 2
+    },
+    "section5Details6Heading": {
+      "key": "section5Details6Heading",
+      "name": "section5Details6Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "12x7 customer support"
+        }
+      },
+      "styleProperties": {
+        "9a031656-8faf-4221-b499-ac3b3d8bf2fc": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section5Details6Text": {
+      "key": "section5Details6Text",
+      "name": "section5Details6Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Instant customer support on call/email for your software related queries."
+        }
+      },
+      "styleProperties": {
+        "a63cdeaa-2008-4de3-ba5d-1526aec61515": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "textAlign": {
+                "value": "justify"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "36px"
+              },
+              "paddingLeft": {
+                "value": "36px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section6": {
+      "key": "section6",
+      "name": "section6",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "74cf132c-1a7e-46c6-972b-6cc6310bf0ec": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "linear-gradient(to right, #5F30B1, #7E2FA5)"
+              },
+              "clipPath": {
+                "value": "polygon(5% 0%, 95% 0%, 100% 100%, 0% 100%)"
+              },
+              "paddingTop": {
+                "value": "50px"
+              },
+              "paddingBottom": {
+                "value": "50px"
+              },
+              "marginTop": {
+                "value": "30px"
+              },
+              "marginBottom": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "130px"
+              },
+              "marginRight": {
+                "value": "130px"
+              },
+              "justifyContent": {
+                "value": "space-evenly"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "clipPath": {
+                "value": ""
+              },
+              "marginLeft": {
+                "value": "0"
+              },
+              "marginRight": {
+                "value": "0"
+              },
+              "flexDirection": {
+                "value": "column"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section6DetailsContainer": true,
+        "section6SendEmailContainer": true
+      },
+      "displayOrder": 6
+    },
+    "section6DetailsContainer": {
+      "key": "section6DetailsContainer",
+      "name": "section6DetailsContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "b4afaae5-225c-47f8-8adf-673f4a68b50e": {
+          "resolutions": {
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section6Heading": true,
+        "section6DetailsText": true
+      },
+      "displayOrder": 1
+    },
+    "section6Heading": {
+      "key": "section6Heading",
+      "name": "section6Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Subscribe to our Newsletter"
+        }
+      },
+      "styleProperties": {
+        "7774ca20-0cea-4d1d-95aa-387e4df1c402": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "36px"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "24px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section6DetailsText": {
+      "key": "section6DetailsText",
+      "name": "section6DetailsText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Stay up to date with our latest updates"
+        }
+      },
+      "styleProperties": {
+        "7774ca20-0cea-4d1d-95aa-387e4df1c402": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "21px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section6SendEmailContainer": {
+      "key": "section6SendEmailContainer",
+      "name": "section6SendEmailContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "3f3987d1-1f32-40f4-a88d-5df1b4e39fa2": {
+          "resolutions": {
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section6SendEmail": true
+      },
+      "displayOrder": 2
+    },
+    "section6SendEmail": {
+      "key": "section6SendEmail",
+      "name": "section6SendEmail",
+      "type": "TextBox",
+      "properties": {
+        "rightIcon": {
+          "value": "fa fa-arrow-circle-right"
+        },
+        "placeholder": {
+          "value": "Your Email address"
+        },
+        "noFloat": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "5cb887d6-62b9-44e5-8814-150bd19ccb9f": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "white"
+              },
+              "width": {
+                "value": "320px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.sendEmail"
+      }
+    },
+    "section7": {
+      "key": "section7",
+      "name": "section7",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "b33a70e5-c6d8-4910-af71-3087bc964c57": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "10%"
+              },
+              "paddingRight": {
+                "value": "10%"
+              },
+              "paddingTop": {
+                "value": "70px"
+              },
+              "paddingBottom": {
+                "value": "70px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "paddingRight": {
+                "value": "0"
+              },
+              "paddingLeft": {
+                "value": "0"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "50px"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section7Container1": true,
+        "section7Container2": true,
+        "section7Container3": true,
+        "section7Container4": true
+      },
+      "displayOrder": 7
+    },
+    "section7Container1": {
+      "key": "section7Container1",
+      "name": "section7Container1",
+      "type": "Grid",
+      "styleProperties": {
+        "7058eff4-65b2-46be-ad62-aa45c5335ae7": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "25%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section7Container1Img": true,
+        "section7Container1Address1": true,
+        "section7Container1Address2": true,
+        "section7Container1Address3": true,
+        "section7Container1Address4": true
+      },
+      "displayOrder": 1
+    },
+    "section7Container1Img": {
+      "key": "section7Container1Img",
+      "name": "section7Container1Img",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/fincitylogo.svg"
+        }
+      },
+      "styleProperties": {
+        "88a3d102-ea00-4be8-9d54-8cfdf1b62f33": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "160px"
+              },
+              "height": {
+                "value": "54px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section7Container1Address1": {
+      "key": "section7Container1Address1",
+      "name": "section7Container1Address1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "#609, 3rd Floor "
+        }
+      },
+      "styleProperties": {
+        "d844a27b-00c7-421a-97cc-b735364a96bc": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "14px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section7Container1Address2": {
+      "key": "section7Container1Address2",
+      "name": "section7Container1Address2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "12th Main,Indiranagar"
+        }
+      },
+      "styleProperties": {
+        "dad7396f-6929-4481-a70f-273840ed5776": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "14px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "section7Container1Address3": {
+      "key": "section7Container1Address3",
+      "name": "section7Container1Address3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Bangalore 560008"
+        }
+      },
+      "styleProperties": {
+        "a3febd49-4008-43d1-bd64-039bb8cdc8e0": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "14px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "section7Container1Address4": {
+      "key": "section7Container1Address4",
+      "name": "section7Container1Address4",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "<EMAIL>"
+        }
+      },
+      "styleProperties": {
+        "84d7e84a-677f-45c7-98f7-1548cd033c9b": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "14px"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "section7Container2": {
+      "key": "section7Container2",
+      "name": "section7Container2",
+      "type": "Grid",
+      "styleProperties": {
+        "45f32413-635d-4df0-a2c6-9d4b549f2f71": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "25%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "4%"
+              },
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section7Container2Heading": true,
+        "section7Container2Link1": true,
+        "section7Container2Link2": true,
+        "section7Container2Link3": true,
+        "section7Container2Link4": true,
+        "section7Container2Link5": true,
+        "section7Container2Link6": true,
+        "section7Container2Link7": true,
+        "section7Container2Link8": true,
+        "section7Container2Link9": true
+      },
+      "displayOrder": 2
+    },
+    "section7Container2Heading": {
+      "key": "section7Container2Heading",
+      "name": "section7Container2Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Our Services"
+        }
+      },
+      "styleProperties": {
+        "e48bbe16-26cf-4a13-bf03-8d7eee2180a4": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section7Container2Link1": {
+      "key": "section7Container2Link1",
+      "name": "section7Container2Link1",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Home Loan (HL)"
+        }
+      },
+      "styleProperties": {
+        "2f5021b9-26bb-48da-b3cc-c8b4fdf0f64c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section7Container2Link2": {
+      "key": "section7Container2Link2",
+      "name": "section7Container2Link2",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Personal Loan (PL)"
+        }
+      },
+      "styleProperties": {
+        "531a50b9-62a4-49ac-9873-6bf9d36cdf50": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "section7Container2Link3": {
+      "key": "section7Container2Link3",
+      "name": "section7Container2Link3",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Loan Against Property (LAP)"
+        }
+      },
+      "styleProperties": {
+        "ca8fcadd-769d-4685-9e35-4f3901c0033c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "section7Container2Link4": {
+      "key": "section7Container2Link4",
+      "name": "section7Container2Link4",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Business Loan (BL)"
+        }
+      },
+      "styleProperties": {
+        "821e4e3f-a160-4c52-80f0-c8112e8da6ff": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "section7Container2Link5": {
+      "key": "section7Container2Link5",
+      "name": "section7Container2Link5",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Home Loan Calculators"
+        }
+      },
+      "styleProperties": {
+        "cdd1677f-6294-4334-a18e-09d6c0c3f37e": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "section7Container2Link6": {
+      "key": "section7Container2Link6",
+      "name": "section7Container2Link6",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "PL Calculators"
+        }
+      },
+      "styleProperties": {
+        "b6dc1e1e-6bbb-4453-a257-f9c66b2c0dbc": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "section7Container2Link7": {
+      "key": "section7Container2Link7",
+      "name": "section7Container2Link7",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "LAP Calculators"
+        }
+      },
+      "styleProperties": {
+        "8f8da228-d3d0-44df-8236-8fc137be054f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 8
+    },
+    "section7Container2Link8": {
+      "key": "section7Container2Link8",
+      "name": "section7Container2Link8",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "BL Calculators"
+        }
+      },
+      "styleProperties": {
+        "8b58e1bb-fadf-4af3-9284-075dd3ab0394": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 9
+    },
+    "section7Container2Link9": {
+      "key": "section7Container2Link9",
+      "name": "section7Container2Link9",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Pradhan Mantri Awas Yojana"
+        }
+      },
+      "styleProperties": {
+        "7840f2e2-65d3-4314-b914-210c656a49e8": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 10
+    },
+    "section7Container3": {
+      "key": "section7Container3",
+      "name": "section7Container3",
+      "type": "Grid",
+      "styleProperties": {
+        "2e68aa78-b687-4d8e-a217-df1d0e73b2d4": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "25%"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "4%"
+              },
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section7Container3Heading1": true,
+        "section7Container3Link1": true,
+        "section7Container3Link2": true,
+        "section7Container3Heading2": true,
+        "section7Container3Link3": true,
+        "section7Container3Link4": true,
+        "section7Container3Link5": true,
+        "section7Container3Link6": true,
+        "section7Container3Link7": true
+      },
+      "displayOrder": 3
+    },
+    "section7Container3Heading1": {
+      "key": "section7Container3Heading1",
+      "name": "section7Container3Heading1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Products"
+        }
+      },
+      "styleProperties": {
+        "c0e1d954-06e0-4493-9517-1ec268db1416": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section7Container3Link1": {
+      "key": "section7Container3Link1",
+      "name": "section7Container3Link1",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "DCRM"
+        }
+      },
+      "styleProperties": {
+        "6105ed66-e1fc-40d9-b445-930487668e7c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section7Container3Link2": {
+      "key": "section7Container3Link2",
+      "name": "section7Container3Link2",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Marketing Automation"
+        }
+      },
+      "styleProperties": {
+        "ff5acafa-759d-4ccd-8e9c-934b1e65c5ad": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "section7Container3Heading2": {
+      "key": "section7Container3Heading2",
+      "name": "section7Container3Heading2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Quick Menu"
+        }
+      },
+      "styleProperties": {
+        "a36a3ab0-497e-4b67-ae3f-886c88475877": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "section7Container3Link3": {
+      "key": "section7Container3Link3",
+      "name": "section7Container3Link3",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "About Us"
+        }
+      },
+      "styleProperties": {
+        "df242eb6-16b9-4f07-9386-d483de22c0a1": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "section7Container3Link4": {
+      "key": "section7Container3Link4",
+      "name": "section7Container3Link4",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Careers"
+        }
+      },
+      "styleProperties": {
+        "42c028dc-d9be-4fda-92fa-2e564500b436": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "section7Container3Link5": {
+      "key": "section7Container3Link5",
+      "name": "section7Container3Link5",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Blogs"
+        }
+      },
+      "styleProperties": {
+        "b40229fd-2301-44b6-8ccb-d78319b5c95d": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "section7Container3Link6": {
+      "key": "section7Container3Link6",
+      "name": "section7Container3Link6",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Help"
+        }
+      },
+      "styleProperties": {
+        "334a6009-fda1-4ece-84da-2ef819af15aa": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 8
+    },
+    "section7Container3Link7": {
+      "key": "section7Container3Link7",
+      "name": "section7Container3Link7",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "FAQs"
+        }
+      },
+      "styleProperties": {
+        "8db60771-0241-4993-bf30-c8943428bb6f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 9
+    },
+    "section7Container4": {
+      "key": "section7Container4",
+      "name": "section7Container4",
+      "type": "Grid",
+      "styleProperties": {
+        "62ee42ff-75b9-4939-87fa-d35ab15df791": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "20%"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "4%"
+              },
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section7Container4Heading": true,
+        "section7Container4Link1": true,
+        "section7Container4Link2": true,
+        "section7Container4Link3": true,
+        "section7Container4Link4": true,
+        "section7Container4Link5": true,
+        "section7Container4Link6": true,
+        "section7Container4ExperianLogo": true
+      },
+      "displayOrder": 4
+    },
+    "section7Container4Heading": {
+      "key": "section7Container4Heading",
+      "name": "section7Container4Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Resources"
+        }
+      },
+      "styleProperties": {
+        "36f3504f-21b5-4e68-acdb-71d8a19a90d7": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "700"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "section7Container4Link1": {
+      "key": "section7Container4Link1",
+      "name": "section7Container4Link1",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "HL 101"
+        }
+      },
+      "styleProperties": {
+        "2d24d661-e154-479e-b04a-ba2c27f589cb": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section7Container4Link2": {
+      "key": "section7Container4Link2",
+      "name": "section7Container4Link2",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Savings & Tax benefits"
+        }
+      },
+      "styleProperties": {
+        "5b45d757-828d-4589-94ad-080a8dfbe860": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "section7Container4Link3": {
+      "key": "section7Container4Link3",
+      "name": "section7Container4Link3",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "HL Components"
+        }
+      },
+      "styleProperties": {
+        "0fe35d55-1ce1-4580-87a5-0e3bfd22ca51": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "section7Container4Link4": {
+      "key": "section7Container4Link4",
+      "name": "section7Container4Link4",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Calculators"
+        }
+      },
+      "styleProperties": {
+        "1b88a236-fb3d-4e09-a6aa-c49d7c03c3d5": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "section7Container4Link5": {
+      "key": "section7Container4Link5",
+      "name": "section7Container4Link5",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Eligibility"
+        }
+      },
+      "styleProperties": {
+        "71a5ba0f-d4b9-42c7-a366-82cc6a4d5d39": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "section7Container4Link6": {
+      "key": "section7Container4Link6",
+      "name": "section7Container4Link6",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Rates"
+        }
+      },
+      "styleProperties": {
+        "ed149c97-9dc8-4afc-8f7f-8258004a19c9": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "section7Container4ExperianLogo": {
+      "key": "section7Container4ExperianLogo",
+      "name": "section7Container4ExperianLogo",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/experianlogo.png"
+        }
+      },
+      "styleProperties": {
+        "b3270db7-fa10-4b71-9386-0227929b0672": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "40px"
+              },
+              "marginLeft": {
+                "value": "1px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginTop": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "120px"
+              },
+              "height": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 8
+    },
+    "footer": {
+      "key": "footer",
+      "name": "footer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3b5be7f4-8bdc-4c8f-8f28-538cf14727d5": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "10%"
+              },
+              "marginRight": {
+                "value": "10%"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "marginLeft": {
+                "value": "4%"
+              },
+              "marginRight": {
+                "value": "4%"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "height": {
+                "value": "auto"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "footerCopyright": true,
+        "footerContainer2": true,
+        "footerContainer3": true
+      },
+      "displayOrder": 8
+    },
+    "footerCopyrightContainer": {
+      "key": "footerCopyrightContainer",
+      "name": "footerCopyrightContainer",
+      "type": "Grid",
+      "override": false
+    },
+    "footerCopyright": {
+      "key": "footerCopyright",
+      "name": "footerCopyright",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\u00a9 2023 fincity"
+        }
+      },
+      "styleProperties": {
+        "02e9e4a9-934d-4068-8559-489305882ecd": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "15%"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "footerContainer2": {
+      "key": "footerContainer2",
+      "name": "footerContainer2",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2f0f7a5c-684d-4232-be38-d2edf6f766d6": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "40%"
+              },
+              "justifyContent": {
+                "value": "space-evenly"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "footerTerms": true,
+        "footerPrivacyPolicy": true,
+        "footerCookiePolicy": true
+      },
+      "displayOrder": 2
+    },
+    "footerTerms": {
+      "key": "footerTerms",
+      "name": "footerTerms",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Terms of service"
+        }
+      },
+      "styleProperties": {
+        "ef41ef69-98ee-4cb1-be59-fab4c83fd8e8": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "footerPrivacyPolicy": {
+      "key": "footerPrivacyPolicy",
+      "name": "footerPrivacyPolicy",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Privacy Policy"
+        }
+      },
+      "styleProperties": {
+        "283da5a1-ed8e-4dc7-a9fd-1ce586205f00": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "footerCookiePolicy": {
+      "key": "footerCookiePolicy",
+      "name": "footerCookiePolicy",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Cookie Policy"
+        }
+      },
+      "styleProperties": {
+        "d56f218e-3c69-4cd8-a5b0-1cf661296d91": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "footerContainer3": {
+      "key": "footerContainer3",
+      "name": "footerContainer3",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "55f4771f-1905-46a4-a53f-b78fc5253b68": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "31%"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingRight": {
+                "value": "2px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "footerContainer3SafeAndSecure": true,
+        "footerContainer3IsoCertification": true
+      },
+      "displayOrder": 3
+    },
+    "footerContainer3SafeAndSecure": {
+      "key": "footerContainer3SafeAndSecure",
+      "name": "footerContainer3SafeAndSecure",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5503192c-5564-41b4-94c6-135b51cfe821": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "footerContainer3SafeAndSecureImage": true,
+        "footerContainer3SafeAndSecureText": true
+      },
+      "displayOrder": 1
+    },
+    "footerContainer3SafeAndSecureImage": {
+      "key": "footerContainer3SafeAndSecure",
+      "name": "footerContainer3SafeAndSecure",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/safeIcon.svg"
+        }
+      },
+      "styleProperties": {
+        "caba337b-4f06-49b1-8e1d-173a4621c683": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "footerContainer3SafeAndSecureText": {
+      "key": "footerContainer3SafeAndSecureText",
+      "name": "footerContainer3SafeAndSecureText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Safe and Secure"
+        }
+      },
+      "styleProperties": {
+        "853b302d-e350-408e-81ed-411a961f6828": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              },
+              "whiteSpace": {
+                "value": "noWrap"
+              },
+              "marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "footerContainer3IsoCertification": {
+      "key": "footerContainer3IsoCertification",
+      "name": "footerContainer3IsoCertification",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5503192c-5564-41b4-94c6-135b51cfe821": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "footerContainer3IsoCertificationImage": true,
+        "footerContainer3IsoCertificationText": true
+      },
+      "displayOrder": 2
+    },
+    "footerContainer3IsoCertificationImage": {
+      "key": "footerContainer3IsoCertificationImage",
+      "name": "footerContainer3IsoCertificationImage",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/markauto/isoIcon.svg"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "footerContainer3IsoCertificationText": {
+      "key": "footerContainer3IsoCertificationText",
+      "name": "footerContainer3IsoCertificationText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "ISO 27001 Certified"
+        }
+      },
+      "styleProperties": {
+        "d388b6fd-80ac-4ee0-8faf-077cf6eb5e07": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#6C7586"
+              },
+              "whiteSpace": {
+                "value": "noWrap"
+              },
+              "marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "name": "home",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 143,
+  "updatedAt": "2023-06-14 04:23:51.088000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-01-24 10:02:30.902000",
+  "createdBy": "<USER>"
+}

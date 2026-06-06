@@ -1,0 +1,320 @@
+{
+  "_id": "67ebefca3bac9071fbc842be",
+  "definition": {
+    "name": "saveIncomingMessages",
+    "namespace": "crmai",
+    "parameters": {
+      "entry": {
+        "parameterName": "entry",
+        "schema": {
+          "type": [
+            "ARRAY"
+          ],
+          "version": 1
+        }
+      },
+      "object": {
+        "parameterName": "object",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 157.33332824707028,
+          "top": 101.66665649414062
+        },
+        "parameterMap": {
+          "schema": {
+            "2sbNrFlilevRL5M0Nl4Yya": {
+              "key": "2sbNrFlilevRL5M0Nl4Yya",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          },
+          "name": {
+            "1n78FYzxE7r4yKMiWj03O8": {
+              "key": "1n78FYzxE7r4yKMiWj03O8",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "incomingObject"
+            }
+          }
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 468.9999949137368,
+          "top": 568.3333231608073
+        },
+        "parameterMap": {
+          "value": {
+            "2osuV3fmFaiWPhPhCQXJZY": {
+              "key": "2osuV3fmFaiWPhPhCQXJZY",
+              "type": "EXPRESSION",
+              "expression": "Arguments.object",
+              "order": 1
+            }
+          },
+          "name": {
+            "35nYAwVBZAOk9MSP5GDI0M": {
+              "key": "35nYAwVBZAOk9MSP5GDI0M",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.incomingObject.object"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 282.9999949137369,
+          "top": 307.66665649414057
+        },
+        "parameterMap": {
+          "value": {
+            "1qZpuc3ygACOjApcKYerXL": {
+              "key": "1qZpuc3ygACOjApcKYerXL",
+              "type": "EXPRESSION",
+              "expression": "Arguments.entry",
+              "order": 1
+            }
+          },
+          "name": {
+            "5KQMnSyJjGozQPnjTde7RX": {
+              "key": "5KQMnSyJjGozQPnjTde7RX",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.incomingObject.entry"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "updateReadReceipt": {
+        "statementName": "updateReadReceipt",
+        "name": "updateReadReceipt",
+        "namespace": "crmai",
+        "position": {
+          "left": 1236.285714830671,
+          "top": 146.28571428571428
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        },
+        "parameterMap": {
+          "incomingObject": {
+            "2dTvDY3HnSOd8OLyBtT3ux": {
+              "key": "2dTvDY3HnSOd8OLyBtT3ux",
+              "type": "EXPRESSION",
+              "expression": "Context.incomingObject",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1581.8571384974887,
+          "top": 387.1428593226841
+        },
+        "parameterMap": {
+          "results": {
+            "43Qnn1FJo2pCD570HaInUA": {
+              "key": "43Qnn1FJo2pCD570HaInUA",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": false,
+                  "value": "200 OK HTTPS"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": false,
+          "Steps__d-o-t__if__d-o-t__false": false,
+          "Steps__d-o-t__updateReadReceipt__d-o-t__output": true
+        }
+      },
+      "saveNewMessage": {
+        "statementName": "saveNewMessage",
+        "name": "saveNewMessage",
+        "namespace": "crmai",
+        "position": {
+          "left": 1401.7142854418073,
+          "top": 661.8571515764509
+        },
+        "parameterMap": {
+          "incomingObject": {
+            "dc6eWLBuMRG6dsuUdZEec": {
+              "key": "dc6eWLBuMRG6dsuUdZEec",
+              "type": "EXPRESSION",
+              "expression": "Context.incomingObject",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": true
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1715.8571428571427,
+          "top": 886.5714291163853
+        },
+        "parameterMap": {
+          "results": {
+            "2w4FFXthtOOosFC1A8vhsM": {
+              "key": "2w4FFXthtOOosFC1A8vhsM",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": false,
+                  "value": "200 OK HTTPS"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": false,
+          "Steps__d-o-t__saveNewMessage__d-o-t__output": true
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 781.8571384974888,
+          "top": 310.85714503696977
+        },
+        "parameterMap": {
+          "condition": {
+            "5lMGAQCDPU41d17vZgjopL": {
+              "key": "5lMGAQCDPU41d17vZgjopL",
+              "type": "EXPRESSION",
+              "expression": "Context.incomingObject.entry[0].changes[0].value.statuses",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 968.28570992606,
+          "top": 605.285714149475
+        },
+        "parameterMap": {
+          "condition": {
+            "4Fp5Ai2UL6AaX7Z2wud0SL": {
+              "key": "4Fp5Ai2UL6AaX7Z2wud0SL",
+              "type": "EXPRESSION",
+              "expression": "Context.incomingObject.entry[0].changes[0].value.messages[0].type = \"text\"",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1170.142852783203,
+          "top": 925.14285496303
+        },
+        "parameterMap": {
+          "results": {
+            "4ic09OEf2GXZStROfbFELj": {
+              "key": "4ic09OEf2GXZStROfbFELj",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": false,
+                  "value": "Coming soon"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__false": true
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "crmai.saveIncomingMessages",
+  "message": "From transport : 0bbcTLjPprd7Iaah3oYroY",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:19:09.080000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:53:14.156000",
+  "createdBy": "<USER>"
+}

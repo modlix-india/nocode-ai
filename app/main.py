@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
     try:
         from app.agents.appbuilder.context import build_appbuilder_context
         from app.agents.appbuilder.agent import AppBuilderAgent
-        from app.agents.appbuilder.catalog import ComponentCatalog
+        from app.agents.appbuilder.catalog import ComponentCatalog, set_catalog
         from app.agents.appbuilder.api_catalog import ApiCatalog
         from app.agents.appbuilder.tools.registry import ALL_TOOLS
         from app.agents.appbuilder.router import set_appbuilder_agent
@@ -88,6 +88,7 @@ async def lifespan(app: FastAPI):
         logger.info("Loading component catalog (URL=%s) ...", settings.COMPONENT_CATALOG_URL or "(fallback)")
         catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
         await catalog.load()
+        set_catalog(catalog)  # register module-level singleton for tool helpers
         logger.info("Component catalog loaded: %d types", len(catalog.get_all_types()))
 
         logger.info("Loading API catalog ...")
@@ -198,6 +199,11 @@ app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"]
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
 app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
+
+# Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
+# Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.
+from app.api.admin_app_kb import router as admin_app_kb_router
+app.include_router(admin_app_kb_router)
 
 
 # Root health check (for direct container health checks)

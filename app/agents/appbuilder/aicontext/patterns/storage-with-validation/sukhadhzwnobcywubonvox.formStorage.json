@@ -1,0 +1,114 @@
+{
+  "_id": "6687eb93968c2d219d49ba8c",
+  "schema": {
+    "type": "OBJECT",
+    "additionalProperties": false,
+    "properties": {
+      "textBox": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "textBox1": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "textArea": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 0,
+        "maxLength": 2000
+      }
+    },
+    "required": []
+  },
+  "uniqueName": "sukhadhzwnobcywubo_1ibeanc2fpagi",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "readAuth": "Authorities.Logged_IN",
+  "updateAuth": "Authorities.Logged_IN",
+  "deleteAuth": "Authorities.Logged_IN",
+  "fieldDefinitionMap": {
+    "textBox": {
+      "key": "textBox",
+      "uuid": "7UEV8EFquV8G1m3cWeA3t",
+      "order": 0,
+      "label": "Text box",
+      "placeholder": "Type something",
+      "inputType": "text",
+      "numberType": "",
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "3xxy0asl2EKjlnu8QEDI48",
+          "order": 0,
+          "type": "STRING_LENGTH"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "editorType": "TextBoxEditor"
+    },
+    "textBox1": {
+      "key": "textBox1",
+      "uuid": "5xa7rBLELj0JsXCHSKV7mz",
+      "order": 1,
+      "label": "Text box",
+      "placeholder": "Type something",
+      "inputType": "text",
+      "numberType": "",
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "1pHbynRPhtoOvkLgPuxnXc",
+          "order": 0,
+          "type": "STRING_LENGTH"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "editorType": "TextBoxEditor"
+    },
+    "textArea": {
+      "key": "textArea",
+      "uuid": "5FAKowt2PNEegaSZbAEsYn",
+      "order": 2,
+      "label": "Text area",
+      "placeholder": "Type description",
+      "maxChars": 2000,
+      "inputType": "text",
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "2iuTk3GuXvomN7HBwgPCWR",
+          "order": 0,
+          "type": "STRING_LENGTH",
+          "minLength": 0,
+          "maxLength": 2000,
+          "message": "not valid length"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 0,
+        "maxLength": 2000
+      },
+      "editorType": "TextAreaEditor"
+    }
+  },
+  "name": "formStorage",
+  "clientCode": "FIN",
+  "appCode": "sukhadhzwnobcywubonvox",
+  "version": 1,
+  "createdAt": "2024-07-05 12:48:19.343000",
+  "createdBy": "<USER>"
+}

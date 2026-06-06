@@ -1,0 +1,103 @@
+{
+  "_id": "67ebefca3bac9071fbc842cf",
+  "definition": {
+    "namespace": "crmai",
+    "name": "getUserRoles",
+    "steps": {
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 732.3333282470702,
+          "top": 366.9999694824218
+        },
+        "parameterMap": {
+          "storageName": {
+            "7iXyMSzcmttVo6aHPvm4kQ": {
+              "key": "7iXyMSzcmttVo6aHPvm4kQ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "UserRoles"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1217.9999949137368,
+          "top": 376.33330281575513
+        },
+        "parameterMap": {
+          "results": {
+            "1b7WVFYVShdDDXaSsMjiX3": {
+              "key": "1b7WVFYVShdDDXaSsMjiX3",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "userRoles",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.output.result.content[0]"
+                }
+              }
+            }
+          }
+        }
+      },
+      "getAuthentication": {
+        "statementName": "getAuthentication",
+        "name": "GetAuthentication",
+        "namespace": "CoreServices.SecurityContext",
+        "position": {
+          "left": 68.33332824707026,
+          "top": 454.33332824707026
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 335.33332824707026,
+          "top": 699.3333282470702
+        },
+        "parameterMap": {
+          "condition": {
+            "46zrbNTTutJmI8uriUX0C0": {
+              "key": "46zrbNTTutJmI8uriUX0C0",
+              "type": "EXPRESSION",
+              "expression": "Steps.getAuthentication.output.auth",
+              "order": 1
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "userRoles": {}
+        }
+      }
+    }
+  },
+  "name": "crmai.getUserRoles",
+  "message": "From transport : 0bbcTLjPprd7Iaah3oYroY",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:19:09.122000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:53:14.177000",
+  "createdBy": "<USER>"
+}

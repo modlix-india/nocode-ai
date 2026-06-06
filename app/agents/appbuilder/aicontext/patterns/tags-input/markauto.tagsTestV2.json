@@ -1,0 +1,340 @@
+{
+  "_id": "63e34cfe3a5cda5b683b4ef5",
+  "properties": {
+    "wrapShell": false,
+    "title": {
+      "name": {
+        "value": "try"
+      },
+      "append": {
+        "value": true
+      }
+    }
+  },
+  "eventFunctions": {
+    "genData": {
+      "name": "genData",
+      "steps": {
+        "loginStep": {
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "statementName": "loginStep",
+          "parameterMap": {
+            "path": {
+              "value1": {
+                "key": "value1",
+                "type": "VALUE",
+                "value": "Store.buttonbarData"
+              }
+            },
+            "value": {
+              "value2": {
+                "key": "value2",
+                "type": "VALUE",
+                "value": [
+                  {
+                    "name": "Raja",
+                    "id": 1,
+                    "department": "IT",
+                    "links": {
+                      "a": {
+                        "b": "Raja_Inner"
+                      }
+                    },
+                    "originalObjectKey": 0
+                  },
+                  {
+                    "name": "Avinash",
+                    "id": 2,
+                    "department": "CS",
+                    "links": {
+                      "a": {
+                        "b": "Avinash_Inner"
+                      }
+                    },
+                    "originalObjectKey": 1
+                  },
+                  {
+                    "name": "Alli",
+                    "id": 3,
+                    "department": "EE",
+                    "links": {
+                      "a": {
+                        "b": "Alli_Inner"
+                      }
+                    },
+                    "originalObjectKey": 2
+                  },
+                  {
+                    "name": "Akhilesh",
+                    "id": 4,
+                    "department": "EC",
+                    "links": {
+                      "a": {
+                        "b": "Akhilesh_Inner"
+                      }
+                    },
+                    "originalObjectKey": 3
+                  },
+                  {
+                    "name": "Surendhar",
+                    "id": 5,
+                    "department": "IT",
+                    "links": {
+                      "a": {
+                        "b": "Surendhar_Inner"
+                      }
+                    },
+                    "originalObjectKey": 4
+                  },
+                  {
+                    "name": "Kiran",
+                    "id": 6,
+                    "department": "IT",
+                    "links": {
+                      "a": {
+                        "b": "Kiran_Inner"
+                      }
+                    },
+                    "originalObjectKey": 5
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "genOutput": {
+          "statementName": "genOutput",
+          "namespace": "System",
+          "name": "GenerateEvent",
+          "dependentStatements": {
+            "Steps__d-o-t__loginStep__d-o-t__output": true
+          }
+        }
+      }
+    }
+  },
+  "rootComponent": "fbc35f6f-6100-49e4-9038-99a73207c537",
+  "componentDefinition": {
+    "fbc35f6f-6100-49e4-9038-99a73207c537": {
+      "key": "fbc35f6f-6100-49e4-9038-99a73207c537",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "Column Layout"
+        }
+      },
+      "styleProperties": {
+        "3e27d183-9796-4e7c-a262-c9816604ad15": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100vh"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.var1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "tagtag": true,
+        "tagtag456": true,
+        "a6ac59d1-6b15-46f2-ad05-8b8ab8cf7e0f": true,
+        "81501f89-4ef4-404c-92ec-9d7f438f4add": false
+      }
+    },
+    "tagtag": {
+      "key": "tagtag",
+      "name": "tagtag",
+      "type": "Tags",
+      "properties": {
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "OBJECT"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "hasInputBox": {
+          "value": false
+        },
+        "placeHolder": {
+          "value": "Enter a tag"
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "d9652d73-2292-4d8f-9112-7ac448eb6951": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "5c7560cd-99ff-4813-b2d1-f821f5dba02b": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.buttonbarData"
+      }
+    },
+    "tagtag456": {
+      "key": "tagtag456",
+      "name": "tagtag456",
+      "type": "Tags",
+      "properties": {
+        "hasInputBox": {
+          "value": true
+        },
+        "placeHolder": {
+          "value": "Enter a tag"
+        },
+        "label": {
+          "value": "Tags"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        }
+      },
+      "styleProperties": {
+        "d9652d73-2292-4d8f-9112-7ac448eb6951": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "5c7560cd-99ff-4813-b2d1-f821f5dba02b": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.tagsInput"
+      }
+    },
+    "a6ac59d1-6b15-46f2-ad05-8b8ab8cf7e0f": {
+      "key": "a6ac59d1-6b15-46f2-ad05-8b8ab8cf7e0f",
+      "name": "genBUtton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Generate Data"
+        },
+        "onClick": {
+          "value": "genData"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "81501f89-4ef4-404c-92ec-9d7f438f4add": {
+      "key": "81501f89-4ef4-404c-92ec-9d7f438f4add",
+      "name": "81501f89-4ef4-404c-92ec-9d7f438f4add",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "firstName"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "supportingText": {
+          "value": "fill me up"
+        }
+      },
+      "override": false,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.textbox"
+      }
+    }
+  },
+  "name": "tagsTestV2",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 48,
+  "updatedAt": "2023-06-14 04:23:50.374000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-02-08 07:19:26.295000",
+  "createdBy": "<USER>"
+}

@@ -85,6 +85,30 @@ class Settings(BaseSettings):
     DEEPSEEK_MODEL_BALANCED: str = "deepseek-chat"   # DeepSeek V3.2 (with thinking)
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
+
+    # Gemini Settings
+    # Chosen as the CFA default after the Phase 8 bench: 1M context window,
+    # native vision, ~13× cheaper than Claude Haiku on input — fits the
+    # iterate-heavy generate-screenshot-fix loop.
+    # Can be overridden by config server: ai.secrets.geminiAPIKey
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL_FAST: str = "gemini-2.5-flash-lite"   # Cheapest tier
+    GEMINI_MODEL_BALANCED: str = "gemini-2.5-flash"    # CFA default
+
+    # Admin token for the cross-env /api/ai/admin/* endpoints (per-app KB
+    # export/import etc.). Must be set per env; if empty the admin routes
+    # return 503 — safer than allowing unauthenticated access.
+    ADMIN_TOKEN: str = ""
+
+    # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
+    # nocode-kirun live for code-reading tools. Per-instance mounted volume
+    # in prod (/var/cfa/workspace); local dev falls back to siblings of
+    # nocode-ai.
+    CFA_WORKSPACE_DIR: str = "/var/cfa/workspace"
+
+    # Optional override for service log directory used by tail_service_logs.
+    # When empty the tool tries ../nocode-saas/logs relative to nocode-ai.
+    MODLIX_LOG_DIR: str = ""
     
     # Google Settings
     # Can be overridden by config server: ai.secrets.googleAPIKey

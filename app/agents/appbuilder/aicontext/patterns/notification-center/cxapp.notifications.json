@@ -1,0 +1,76 @@
+{
+  "_id": "665f4bb175cb641470f176de",
+  "rootComponent": "1uNjskmWo5VBQjLf260Sor",
+  "componentDefinition": {
+    "1uNjskmWo5VBQjLf260Sor": {
+      "key": "1uNjskmWo5VBQjLf260Sor",
+      "name": "PageGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1oUMdfaz7gcHLhWRavp3sx": true
+      }
+    },
+    "1oUMdfaz7gcHLhWRavp3sx": {
+      "key": "1oUMdfaz7gcHLhWRavp3sx",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "DqFNQy8IBauXJpW5y1gVL": {
+          "resolutions": {
+            "ALL": {
+              "minHeight": {
+                "value": "100vh"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "29VLys8BZvWUe5PCOsdVYL": true
+      }
+    },
+    "29VLys8BZvWUe5PCOsdVYL": {
+      "key": "29VLys8BZvWUe5PCOsdVYL",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Coming Soon..."
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        }
+      },
+      "styleProperties": {
+        "5KR3BzdolKYNCUcqsb7iP1": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    }
+  },
+  "name": "notifications",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN",
+  "appCode": "cxapp",
+  "version": 101,
+  "updatedAt": "2026-04-09 04:27:54.424000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:15:29.935000",
+  "createdBy": "<USER>"
+}

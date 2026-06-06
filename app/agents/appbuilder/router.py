@@ -50,12 +50,34 @@ async def require_ai_auth_context(
     return auth
 
 
+class AppUserAuth(BaseModel):
+    """Credentials for the app-user identity (separate from the caller's JWT).
+
+    Used by tools that render or interact with the CUSTOMER'S app as one of
+    its end users — screenshot_page, drive_page, call_as_app_user. The
+    caller's JWT (developer identity) does ALL platform authoring; these
+    credentials only authenticate against the target app's user pool.
+
+    Pass either `token` (pre-obtained) or `username` + `password` (the
+    session will run findUserClients + authenticate once and cache the
+    resolved token for the conversation's lifetime).
+    """
+
+    token: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     app_code: Optional[str] = None
     model: Optional[str] = None
     attachments: Optional[List[ChatAttachment]] = None
+    # Optional app-user identity. Required only when a tool that interacts
+    # with the customer's live app (screenshot_page / drive_page /
+    # call_as_app_user) is invoked. Other tools ignore it.
+    app_user: Optional[AppUserAuth] = None
 
 
 @router.post("/chat")
@@ -70,6 +92,12 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
     session = BaseSession(agent_name="appbuilder")
     if body.app_code:
         session.context["app_code"] = body.app_code
+
+    # Stash app-user credentials (token OR username+password) on the session.
+    # Consumed lazily by tools that need an end-user identity (screenshot_page,
+    # drive_page, call_as_app_user) — other tools ignore it entirely.
+    if body.app_user is not None:
+        session.set_app_user(body.app_user.model_dump(exclude_none=True))
 
     await session.get_or_create(body.session_id, auth)
 

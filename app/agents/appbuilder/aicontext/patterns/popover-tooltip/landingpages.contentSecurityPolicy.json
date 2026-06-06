@@ -1,0 +1,4160 @@
+{
+  "_id": "653bc0638fc99a6064372344",
+  "properties": {
+    "onLoadEvent": "6dqODq46mM4H1i0XJxkCGg"
+  },
+  "eventFunctions": {
+    "6dqODq46mM4H1i0XJxkCGg": {
+      "name": "onLoad",
+      "steps": {
+        "initializeData": {
+          "statementName": "initializeData",
+          "name": "initializeData",
+          "namespace": "_",
+          "position": {
+            "left": 46.6015625,
+            "top": 29.109375
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 51.6015625,
+            "top": 161.0390625
+          },
+          "parameterMap": {
+            "url": {
+              "41GuDGT0Yj7aJ5vqDAOqju": {
+                "key": "41GuDGT0Yj7aJ5vqDAOqju",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications?appCode={{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchData1": {
+          "statementName": "fetchData1",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 45.6015625,
+            "top": 432.0390625
+          },
+          "parameterMap": {
+            "url": {
+              "C7EErt6H28ct8FkDJHDdY": {
+                "key": "C7EErt6H28ct8FkDJHDdY",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications/{{Steps.fetchData.output.data.content[0].id}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "messageFetchStep_Copy_1": {
+          "statementName": "messageFetchStep_Copy_1",
+          "namespace": "UIEngine",
+          "name": "Message",
+          "parameterMap": {
+            "msg": {
+              "value1": {
+                "key": "value1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.error.data"
+              }
+            }
+          },
+          "position": {
+            "left": 481,
+            "top": 46
+          }
+        },
+        "messageFetchStep": {
+          "statementName": "messageFetchStep",
+          "namespace": "UIEngine",
+          "name": "Message",
+          "parameterMap": {
+            "msg": {
+              "value1": {
+                "key": "value1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData1.error.data"
+              }
+            }
+          },
+          "position": {
+            "left": 522,
+            "top": 298
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 407,
+            "top": 584
+          },
+          "parameterMap": {
+            "path": {
+              "5lgdAwErHjpROO2fLvHdbC": {
+                "key": "5lgdAwErHjpROO2fLvHdbC",
+                "type": "VALUE",
+                "expression": "Page.appdef",
+                "order": 1,
+                "value": "Page.appdef"
+              }
+            },
+            "value": {
+              "HjFFFTAlH90tAYqTPKbkP": {
+                "key": "HjFFFTAlH90tAYqTPKbkP",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData1.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1083.8828125,
+            "top": 1118.2578125
+          },
+          "parameterMap": {
+            "path": {
+              "4mTRnG3affNEf05EAzSW6": {
+                "key": "4mTRnG3affNEf05EAzSW6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.originalCsp"
+              }
+            },
+            "value": {
+              "2E1uCcYX7k3jv0Z9cTic1d": {
+                "key": "2E1uCcYX7k3jv0Z9cTic1d",
+                "type": "EXPRESSION",
+                "expression": "Page.appdef.properties.csp",
+                "order": 1,
+                "value": {
+                  "defaultSrc": "'self' 'unsafe-inline' https://*.openbracket.ai https://api-dcrm.fincity.com https://www.google.com https://www.googletagmanager.com https://td.doubleclick.net https://pagead2.googlesyndication.com https://analytics.google.com https://www.google.co.in https://www.facebook.com https://googleads.g.doubleclick.net https://connect.facebook.net https://openbracket.ai https://fonts.googleapis.com https://cdnjs.cloudflare.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://maps.googleapis.com blob: ",
+                  "fontSrc": "'self' 'unsafe-inline' https://*.openbracket.ai https://api-dcrm.fincity.com https://www.google.com https://www.googletagmanager.com https://td.doubleclick.net https://pagead2.googlesyndication.com https://analytics.google.com https://www.google.co.in https://www.facebook.com https://googleads.g.doubleclick.net https://connect.facebook.net https://openbracket.ai https://fonts.googleapis.com https://cdnjs.cloudflare.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://maps.googleapis.com blob: "
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__setCspReportDetails__d-o-t__output": true
+          }
+        },
+        "setCspDetails": {
+          "statementName": "setCspDetails",
+          "name": "setCspDetails",
+          "namespace": "_",
+          "position": {
+            "left": 1403.6015625,
+            "top": 1261.109375
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1_Copy_1__d-o-t__output": true
+          }
+        },
+        "setCspReportDetails": {
+          "statementName": "setCspReportDetails",
+          "name": "setCspReportDetails",
+          "namespace": "_",
+          "position": {
+            "left": 923.6015625,
+            "top": 974.109375
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 703.8828125,
+            "top": 734.2578125
+          },
+          "parameterMap": {
+            "path": {
+              "4mTRnG3affNEf05EAzSW6": {
+                "key": "4mTRnG3affNEf05EAzSW6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.originalCspReport"
+              }
+            },
+            "value": {
+              "2E1uCcYX7k3jv0Z9cTic1d": {
+                "key": "2E1uCcYX7k3jv0Z9cTic1d",
+                "type": "EXPRESSION",
+                "expression": "Page.appdef.properties.cspReport",
+                "order": 1,
+                "value": {
+                  "defaultSrc": "'self' 'unsafe-inline' https://*.openbracket.ai https://api-dcrm.fincity.com https://www.google.com https://www.googletagmanager.com https://td.doubleclick.net https://pagead2.googlesyndication.com https://analytics.google.com https://www.google.co.in https://www.facebook.com https://googleads.g.doubleclick.net https://connect.facebook.net https://openbracket.ai https://fonts.googleapis.com https://cdnjs.cloudflare.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://maps.googleapis.com blob: "
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5SOwqeHX8Kz5GQSpUd1LRH": {
+      "name": "showAll",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 148.75,
+            "top": 80
+          },
+          "parameterMap": {
+            "path": {
+              "6i3binYrS0AvrcdS4Rh8nm": {
+                "key": "6i3binYrS0AvrcdS4Rh8nm",
+                "type": "VALUE",
+                "expression": "Page.showAll",
+                "order": 1,
+                "value": "Page.showAll"
+              }
+            },
+            "value": {
+              "5BNL3YwT78UfcDT3Sqi85g": {
+                "key": "5BNL3YwT78UfcDT3Sqi85g",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1dnUu0ph5ceIUUzegkfzh8": {
+      "name": "showLess",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 148.75,
+            "top": 80
+          },
+          "parameterMap": {
+            "path": {
+              "6i3binYrS0AvrcdS4Rh8nm": {
+                "key": "6i3binYrS0AvrcdS4Rh8nm",
+                "type": "VALUE",
+                "expression": "Page.showAll",
+                "order": 1,
+                "value": "Page.showAll"
+              }
+            },
+            "value": {
+              "5BNL3YwT78UfcDT3Sqi85g": {
+                "key": "5BNL3YwT78UfcDT3Sqi85g",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6GOjiXqqElXsYF5CDoOQc6": {
+      "name": "initializeData",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 67.8828125,
+            "top": 35.2578125
+          },
+          "parameterMap": {
+            "path": {
+              "5CYekyx6zOlmQ7QSxVR7Oq": {
+                "key": "5CYekyx6zOlmQ7QSxVR7Oq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.reportOnly"
+              }
+            },
+            "value": {
+              "8k0T9gQklAagJavUErWZ1": {
+                "key": "8k0T9gQklAagJavUErWZ1",
+                "type": "VALUE",
+                "expression": "[]",
+                "order": 1,
+                "value": {
+                  "defaultSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "fontSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "imgSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "styleSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "childSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "connectSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "frameSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "manifestSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "mediaSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "objectSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "prefetchSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "scriptSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "scriptSrcElem": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "scriptSrcAttr": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "styleSrcElem": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "styleSrcAttr": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "workerSrc": [
+                    {
+                      "value": ""
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 436.8828125,
+            "top": 43.2578125
+          },
+          "parameterMap": {
+            "path": {
+              "5CYekyx6zOlmQ7QSxVR7Oq": {
+                "key": "5CYekyx6zOlmQ7QSxVR7Oq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.final"
+              }
+            },
+            "value": {
+              "8k0T9gQklAagJavUErWZ1": {
+                "key": "8k0T9gQklAagJavUErWZ1",
+                "type": "VALUE",
+                "expression": "[]",
+                "order": 1,
+                "value": {
+                  "defaultSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "fontSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "imgSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "styleSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "childSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "connectSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "frameSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "manifestSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "mediaSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "objectSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "prefetchSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "scriptSrc": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "scriptSrcElem": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "scriptSrcAttr": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "styleSrcElem": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "styleSrcAttr": [
+                    {
+                      "value": ""
+                    }
+                  ],
+                  "workerSrc": [
+                    {
+                      "value": ""
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 173.6015625,
+            "top": 299.109375
+          },
+          "parameterMap": {
+            "path": {
+              "6ZbA0XuVjSf23Q63e2lQ7i": {
+                "key": "6ZbA0XuVjSf23Q63e2lQ7i",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.tempArr"
+              }
+            },
+            "value": {
+              "23g2UCmYWXFdQPkkokNhGh": {
+                "key": "23g2UCmYWXFdQPkkokNhGh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3EjmtNWHhUH60I68d0AYx0": {
+      "name": "saveReport",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 65.8828125,
+            "top": 27.2578125
+          },
+          "parameterMap": {
+            "path": {
+              "5CYekyx6zOlmQ7QSxVR7Oq": {
+                "key": "5CYekyx6zOlmQ7QSxVR7Oq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sendData"
+              }
+            },
+            "value": {
+              "8k0T9gQklAagJavUErWZ1": {
+                "key": "8k0T9gQklAagJavUErWZ1",
+                "type": "VALUE",
+                "expression": "[]",
+                "order": 1,
+                "value": {}
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 41.6015625,
+            "top": 319.109375
+          },
+          "parameterMap": {
+            "source": {
+              "3Z4StPUQrm06fxZqYWijX5": {
+                "key": "3Z4StPUQrm06fxZqYWijX5",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectEntries.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "objectEntries": {
+          "statementName": "objectEntries",
+          "name": "ObjectEntries",
+          "namespace": "System.Object",
+          "position": {
+            "left": 315.6015625,
+            "top": 26.109375
+          },
+          "parameterMap": {
+            "source": {
+              "38VzY551ONldAJb3pDFgQl": {
+                "key": "38VzY551ONldAJb3pDFgQl",
+                "type": "EXPRESSION",
+                "expression": "Page.reportOnly",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "trim": {
+          "statementName": "trim",
+          "name": "Trim",
+          "namespace": "System.String",
+          "position": {
+            "left": 1214.6015625,
+            "top": 426.109375
+          },
+          "parameterMap": {
+            "string": {
+              "40UcUuklv57BqMrpc8ZILy": {
+                "key": "40UcUuklv57BqMrpc8ZILy",
+                "type": "EXPRESSION",
+                "expression": "Steps.concatenate.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 273.6015625,
+            "top": 539.109375
+          },
+          "parameterMap": {
+            "path": {
+              "4ljA6TP6RZ9AHfnw0gvI5m": {
+                "key": "4ljA6TP6RZ9AHfnw0gvI5m",
+                "type": "EXPRESSION",
+                "expression": "'Page.tempArr'",
+                "order": 1
+              }
+            },
+            "value": {
+              "5TbxVQqhd2pQkPTFQEqi5X": {
+                "key": "5TbxVQqhd2pQkPTFQEqi5X",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__iteration__d-o-t__each": true
+          }
+        },
+        "concatenate": {
+          "statementName": "concatenate",
+          "name": "Concatenate",
+          "namespace": "System.String",
+          "position": {
+            "left": 915.6015625,
+            "top": 432.109375
+          },
+          "parameterMap": {
+            "value": {
+              "2OI5PT89UdDmRC4cRxQMqG": {
+                "key": "2OI5PT89UdDmRC4cRxQMqG",
+                "type": "EXPRESSION",
+                "expression": "Page.tempArr",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop1__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1060.6015625,
+            "top": 174.109375
+          },
+          "parameterMap": {
+            "path": {
+              "7x8WMFsyJ9ff4tMXsMrqUc": {
+                "key": "7x8WMFsyJ9ff4tMXsMrqUc",
+                "type": "EXPRESSION",
+                "expression": "'Page.tempArr[{{Steps.forEachLoop1.iteration.index}}]'",
+                "order": 1,
+                "value": "Page.tempStr"
+              }
+            },
+            "value": {
+              "djFCYv1MgE2lXS9Yqdf09": {
+                "key": "djFCYv1MgE2lXS9Yqdf09",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop1.iteration.each.value +\" \"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 818.6015625,
+            "top": 5.109375
+          },
+          "parameterMap": {
+            "condition": {
+              "6Vssg5mKsska4CXc1lXO4A": {
+                "key": "6Vssg5mKsska4CXc1lXO4A",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop1.iteration.each.value != ''",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1778.6015625,
+            "top": 504.109375
+          },
+          "parameterMap": {
+            "path": {
+              "3O7vpHMenLuzAz2n5bIkda": {
+                "key": "3O7vpHMenLuzAz2n5bIkda",
+                "type": "EXPRESSION",
+                "expression": "'Page.sendData.{{Steps.forEachLoop.iteration.each[0]}}'",
+                "order": 1
+              }
+            },
+            "value": {
+              "39BieVfH1xbB5PSSyMdA0x": {
+                "key": "39BieVfH1xbB5PSSyMdA0x",
+                "type": "EXPRESSION",
+                "expression": "Steps.trim.output.result",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": false,
+            "Steps__d-o-t__forEachLoop1__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 723.8828125,
+            "top": 921.2578125
+          },
+          "parameterMap": {
+            "url": {
+              "5Kx4Vu381z70CGgQwwQrfm": {
+                "key": "5Kx4Vu381z70CGgQwwQrfm",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications/{{Page.appdef.id}}'",
+                "order": 1
+              }
+            },
+            "method": {
+              "5yCvMPucARum3YQ7PjPK8O": {
+                "key": "5yCvMPucARum3YQ7PjPK8O",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PUT"
+              }
+            },
+            "payload": {
+              "3mDT8ffoUH2GHD2gl0V0HY": {
+                "key": "3mDT8ffoUH2GHD2gl0V0HY",
+                "type": "EXPRESSION",
+                "expression": "Page.appdef",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__setStore4__d-o-t__output": true
+          }
+        },
+        "onLoad": {
+          "statementName": "onLoad",
+          "name": "onLoad",
+          "namespace": "_",
+          "position": {
+            "left": 1128.6015625,
+            "top": 901.109375
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output__d-o-t__data": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1136.6015625,
+            "top": 1076.109375
+          },
+          "parameterMap": {
+            "msg": {
+              "75kHwye4gkJRxws1RUOwOq": {
+                "key": "75kHwye4gkJRxws1RUOwOq",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "forEachLoop1": {
+          "statementName": "forEachLoop1",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 450.6015625,
+            "top": 212.109375
+          },
+          "parameterMap": {
+            "source": {
+              "4QsIBeBkiJcECiOLBngRnX": {
+                "key": "4QsIBeBkiJcECiOLBngRnX",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1]",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1590.6015625,
+            "top": 268.109375
+          },
+          "parameterMap": {
+            "condition": {
+              "6PPQS0XDVqs9X4G54eKWkf": {
+                "key": "6PPQS0XDVqs9X4G54eKWkf",
+                "type": "EXPRESSION",
+                "expression": "Steps.trim.output.result != \"\"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 403.6015625,
+            "top": 772.109375
+          },
+          "parameterMap": {
+            "path": {
+              "7BZ8B8SROspr3OHDrtKv09": {
+                "key": "7BZ8B8SROspr3OHDrtKv09",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.appdef.properties.cspReport"
+              }
+            },
+            "value": {
+              "geclTiTWGb6RCtMcMPEwe": {
+                "key": "geclTiTWGb6RCtMcMPEwe",
+                "type": "EXPRESSION",
+                "expression": "Page.sendData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6Zwr3T43CkQhZj01z3k4td": {
+      "name": "pushToFinal",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 65.8828125,
+            "top": 27.2578125
+          },
+          "parameterMap": {
+            "path": {
+              "5CYekyx6zOlmQ7QSxVR7Oq": {
+                "key": "5CYekyx6zOlmQ7QSxVR7Oq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sendData"
+              }
+            },
+            "value": {
+              "8k0T9gQklAagJavUErWZ1": {
+                "key": "8k0T9gQklAagJavUErWZ1",
+                "type": "VALUE",
+                "expression": "[]",
+                "order": 1,
+                "value": {}
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 41.6015625,
+            "top": 319.109375
+          },
+          "parameterMap": {
+            "source": {
+              "3Z4StPUQrm06fxZqYWijX5": {
+                "key": "3Z4StPUQrm06fxZqYWijX5",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectEntries.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "trim": {
+          "statementName": "trim",
+          "name": "Trim",
+          "namespace": "System.String",
+          "position": {
+            "left": 1214.6015625,
+            "top": 426.109375
+          },
+          "parameterMap": {
+            "string": {
+              "40UcUuklv57BqMrpc8ZILy": {
+                "key": "40UcUuklv57BqMrpc8ZILy",
+                "type": "EXPRESSION",
+                "expression": "Steps.concatenate.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "forEachLoop1": {
+          "statementName": "forEachLoop1",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 450.6015625,
+            "top": 212.109375
+          },
+          "parameterMap": {
+            "source": {
+              "4QsIBeBkiJcECiOLBngRnX": {
+                "key": "4QsIBeBkiJcECiOLBngRnX",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1]",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 273.6015625,
+            "top": 539.109375
+          },
+          "parameterMap": {
+            "path": {
+              "4ljA6TP6RZ9AHfnw0gvI5m": {
+                "key": "4ljA6TP6RZ9AHfnw0gvI5m",
+                "type": "EXPRESSION",
+                "expression": "'Page.tempArr'",
+                "order": 1
+              }
+            },
+            "value": {
+              "5TbxVQqhd2pQkPTFQEqi5X": {
+                "key": "5TbxVQqhd2pQkPTFQEqi5X",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__iteration__d-o-t__each": true
+          }
+        },
+        "concatenate": {
+          "statementName": "concatenate",
+          "name": "Concatenate",
+          "namespace": "System.String",
+          "position": {
+            "left": 915.6015625,
+            "top": 432.109375
+          },
+          "parameterMap": {
+            "value": {
+              "2OI5PT89UdDmRC4cRxQMqG": {
+                "key": "2OI5PT89UdDmRC4cRxQMqG",
+                "type": "EXPRESSION",
+                "expression": "Page.tempArr",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop1__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1044.6015625,
+            "top": 174.109375
+          },
+          "parameterMap": {
+            "path": {
+              "7x8WMFsyJ9ff4tMXsMrqUc": {
+                "key": "7x8WMFsyJ9ff4tMXsMrqUc",
+                "type": "EXPRESSION",
+                "expression": "'Page.tempArr[{{Steps.forEachLoop1.iteration.index}}]'",
+                "order": 1,
+                "value": "Page.tempStr"
+              }
+            },
+            "value": {
+              "djFCYv1MgE2lXS9Yqdf09": {
+                "key": "djFCYv1MgE2lXS9Yqdf09",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop1.iteration.each.value +\" \"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 778.6015625,
+            "top": 5.109375
+          },
+          "parameterMap": {
+            "condition": {
+              "6Vssg5mKsska4CXc1lXO4A": {
+                "key": "6Vssg5mKsska4CXc1lXO4A",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop1.iteration.each.value != ''",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1590.6015625,
+            "top": 268.109375
+          },
+          "parameterMap": {
+            "condition": {
+              "6PPQS0XDVqs9X4G54eKWkf": {
+                "key": "6PPQS0XDVqs9X4G54eKWkf",
+                "type": "EXPRESSION",
+                "expression": "Steps.trim.output.result != \"\"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1778.6015625,
+            "top": 504.109375
+          },
+          "parameterMap": {
+            "path": {
+              "3O7vpHMenLuzAz2n5bIkda": {
+                "key": "3O7vpHMenLuzAz2n5bIkda",
+                "type": "EXPRESSION",
+                "expression": "'Page.sendData.{{Steps.forEachLoop.iteration.each[0]}}'",
+                "order": 1
+              }
+            },
+            "value": {
+              "39BieVfH1xbB5PSSyMdA0x": {
+                "key": "39BieVfH1xbB5PSSyMdA0x",
+                "type": "EXPRESSION",
+                "expression": "Steps.trim.output.result",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": false,
+            "Steps__d-o-t__forEachLoop1__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 723.8828125,
+            "top": 921.2578125
+          },
+          "parameterMap": {
+            "url": {
+              "5Kx4Vu381z70CGgQwwQrfm": {
+                "key": "5Kx4Vu381z70CGgQwwQrfm",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications/{{Page.appdef.id}}'",
+                "order": 1
+              }
+            },
+            "method": {
+              "5yCvMPucARum3YQ7PjPK8O": {
+                "key": "5yCvMPucARum3YQ7PjPK8O",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PUT"
+              }
+            },
+            "payload": {
+              "3mDT8ffoUH2GHD2gl0V0HY": {
+                "key": "3mDT8ffoUH2GHD2gl0V0HY",
+                "type": "EXPRESSION",
+                "expression": "Page.appdef",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__setStore4__d-o-t__output": true
+          }
+        },
+        "onLoad": {
+          "statementName": "onLoad",
+          "name": "onLoad",
+          "namespace": "_",
+          "position": {
+            "left": 1128.6015625,
+            "top": 901.109375
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output__d-o-t__data": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1136.6015625,
+            "top": 1076.109375
+          },
+          "parameterMap": {
+            "msg": {
+              "75kHwye4gkJRxws1RUOwOq": {
+                "key": "75kHwye4gkJRxws1RUOwOq",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "objectEntries": {
+          "statementName": "objectEntries",
+          "name": "ObjectEntries",
+          "namespace": "System.Object",
+          "position": {
+            "left": 315.6015625,
+            "top": 26.109375
+          },
+          "parameterMap": {
+            "source": {
+              "38VzY551ONldAJb3pDFgQl": {
+                "key": "38VzY551ONldAJb3pDFgQl",
+                "type": "EXPRESSION",
+                "expression": "Page.reportOnly",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 403.6015625,
+            "top": 772.109375
+          },
+          "parameterMap": {
+            "path": {
+              "7BZ8B8SROspr3OHDrtKv09": {
+                "key": "7BZ8B8SROspr3OHDrtKv09",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.appdef.properties.csp"
+              }
+            },
+            "value": {
+              "geclTiTWGb6RCtMcMPEwe": {
+                "key": "geclTiTWGb6RCtMcMPEwe",
+                "type": "EXPRESSION",
+                "expression": "Page.sendData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5Q1b46BwXZWLKOzhhSMu8s": {
+      "name": "setCspReportDetails",
+      "steps": {
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 379.6015625,
+            "top": 13.109375
+          },
+          "parameterMap": {
+            "source": {
+              "4CdvDy5q9jBMazlwwCdmzn": {
+                "key": "4CdvDy5q9jBMazlwwCdmzn",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectEntries.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "split": {
+          "statementName": "split",
+          "name": "Split",
+          "namespace": "System.String",
+          "position": {
+            "left": 466.6015625,
+            "top": 265.109375
+          },
+          "parameterMap": {
+            "string": {
+              "58Lkjmi89k0AJTea2N1prs": {
+                "key": "58Lkjmi89k0AJTea2N1prs",
+                "type": "EXPRESSION",
+                "expression": "Steps.trim.output.result",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "2Rofh50PgUOT7C1tB1YYgo": {
+                "key": "2Rofh50PgUOT7C1tB1YYgo",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": " "
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "forEachLoop1": {
+          "statementName": "forEachLoop1",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 99.6015625,
+            "top": 479.109375
+          },
+          "parameterMap": {
+            "source": {
+              "34TU7Jw2oYxlzTIA49qIi8": {
+                "key": "34TU7Jw2oYxlzTIA49qIi8",
+                "type": "EXPRESSION",
+                "expression": "Steps.split.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "trim": {
+          "statementName": "trim",
+          "name": "Trim",
+          "namespace": "System.String",
+          "position": {
+            "left": 89.6015625,
+            "top": 264.109375
+          },
+          "parameterMap": {
+            "string": {
+              "2Mpk6N4neZwrqhcPEyTpz8": {
+                "key": "2Mpk6N4neZwrqhcPEyTpz8",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1]",
+                "order": 1,
+                "value": "Hello world"
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 814.6015625,
+            "top": 408.109375
+          },
+          "parameterMap": {
+            "path": {
+              "2Y3rhxI747LKeLiFb7bLh4": {
+                "key": "2Y3rhxI747LKeLiFb7bLh4",
+                "type": "EXPRESSION",
+                "expression": "'Page.reportOnly.{{Steps.forEachLoop.iteration.each[0]}}'",
+                "order": 1,
+                "value": "Page.reportOnly.{{Steps.forEachLoop.iteration.each[0]}}"
+              }
+            },
+            "value": {
+              "54zyDQ4twShZ897KQ3VgyH": {
+                "key": "54zyDQ4twShZ897KQ3VgyH",
+                "type": "EXPRESSION",
+                "expression": "Page.tempArr",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop1__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1062.6015625,
+            "top": 642.609375
+          },
+          "parameterMap": {
+            "path": {
+              "6qJTOV7zT81dukIOxFw9DS": {
+                "key": "6qJTOV7zT81dukIOxFw9DS",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.tempArr"
+              }
+            },
+            "value": {
+              "51zM5dTkwJy5jCdMK7wqNh": {
+                "key": "51zM5dTkwJy5jCdMK7wqNh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 496.6015625,
+            "top": 633.109375
+          },
+          "parameterMap": {
+            "path": {
+              "79e1buvuGt9Y2ImcAGUuCm": {
+                "key": "79e1buvuGt9Y2ImcAGUuCm",
+                "type": "EXPRESSION",
+                "expression": "'Page.tempArr[{{Steps.forEachLoop1.iteration.index}}].value'",
+                "order": 1
+              }
+            },
+            "value": {
+              "7ESmviuQnS6W5pnambcNN": {
+                "key": "7ESmviuQnS6W5pnambcNN",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop1.iteration.each",
+                "order": 1
+              }
+            }
+          }
+        },
+        "objectEntries": {
+          "statementName": "objectEntries",
+          "name": "ObjectEntries",
+          "namespace": "System.Object",
+          "position": {
+            "left": 41.6015625,
+            "top": 34.109375
+          },
+          "parameterMap": {
+            "source": {
+              "4LLZXkw0SjPTNssRiQH7eG": {
+                "key": "4LLZXkw0SjPTNssRiQH7eG",
+                "type": "EXPRESSION",
+                "expression": "Page.originalCspReport",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        }
+      },
+      "namespace": ""
+    },
+    "6wxdYKKZkCKPPtnv03C5y4": {
+      "name": "setCspDetails",
+      "steps": {
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 379.6015625,
+            "top": 13.109375
+          },
+          "parameterMap": {
+            "source": {
+              "4CdvDy5q9jBMazlwwCdmzn": {
+                "key": "4CdvDy5q9jBMazlwwCdmzn",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectEntries.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "split": {
+          "statementName": "split",
+          "name": "Split",
+          "namespace": "System.String",
+          "position": {
+            "left": 466.6015625,
+            "top": 265.109375
+          },
+          "parameterMap": {
+            "string": {
+              "58Lkjmi89k0AJTea2N1prs": {
+                "key": "58Lkjmi89k0AJTea2N1prs",
+                "type": "EXPRESSION",
+                "expression": "Steps.trim.output.result",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "2Rofh50PgUOT7C1tB1YYgo": {
+                "key": "2Rofh50PgUOT7C1tB1YYgo",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": " "
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "forEachLoop1": {
+          "statementName": "forEachLoop1",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 99.6015625,
+            "top": 479.109375
+          },
+          "parameterMap": {
+            "source": {
+              "34TU7Jw2oYxlzTIA49qIi8": {
+                "key": "34TU7Jw2oYxlzTIA49qIi8",
+                "type": "EXPRESSION",
+                "expression": "Steps.split.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "trim": {
+          "statementName": "trim",
+          "name": "Trim",
+          "namespace": "System.String",
+          "position": {
+            "left": 89.6015625,
+            "top": 264.109375
+          },
+          "parameterMap": {
+            "string": {
+              "2Mpk6N4neZwrqhcPEyTpz8": {
+                "key": "2Mpk6N4neZwrqhcPEyTpz8",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1]",
+                "order": 1,
+                "value": "Hello world"
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1062.6015625,
+            "top": 642.609375
+          },
+          "parameterMap": {
+            "path": {
+              "6qJTOV7zT81dukIOxFw9DS": {
+                "key": "6qJTOV7zT81dukIOxFw9DS",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.tempArr"
+              }
+            },
+            "value": {
+              "51zM5dTkwJy5jCdMK7wqNh": {
+                "key": "51zM5dTkwJy5jCdMK7wqNh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 496.6015625,
+            "top": 633.109375
+          },
+          "parameterMap": {
+            "path": {
+              "79e1buvuGt9Y2ImcAGUuCm": {
+                "key": "79e1buvuGt9Y2ImcAGUuCm",
+                "type": "EXPRESSION",
+                "expression": "'Page.tempArr[{{Steps.forEachLoop1.iteration.index}}].value'",
+                "order": 1
+              }
+            },
+            "value": {
+              "7ESmviuQnS6W5pnambcNN": {
+                "key": "7ESmviuQnS6W5pnambcNN",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop1.iteration.each",
+                "order": 1
+              }
+            }
+          }
+        },
+        "objectEntries": {
+          "statementName": "objectEntries",
+          "name": "ObjectEntries",
+          "namespace": "System.Object",
+          "position": {
+            "left": 41.6015625,
+            "top": 34.109375
+          },
+          "parameterMap": {
+            "source": {
+              "4LLZXkw0SjPTNssRiQH7eG": {
+                "key": "4LLZXkw0SjPTNssRiQH7eG",
+                "type": "EXPRESSION",
+                "expression": "Page.originalCsp",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 814.6015625,
+            "top": 408.109375
+          },
+          "parameterMap": {
+            "path": {
+              "2Y3rhxI747LKeLiFb7bLh4": {
+                "key": "2Y3rhxI747LKeLiFb7bLh4",
+                "type": "EXPRESSION",
+                "expression": "'Page.final.{{Steps.forEachLoop.iteration.each[0]}}'",
+                "order": 1,
+                "value": "Page.reportOnly.{{Steps.forEachLoop.iteration.each[0]}}"
+              }
+            },
+            "value": {
+              "54zyDQ4twShZ897KQ3VgyH": {
+                "key": "54zyDQ4twShZ897KQ3VgyH",
+                "type": "EXPRESSION",
+                "expression": "Page.tempArr",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "5BlboQhP6wKFfUJdtwQjwe",
+  "componentDefinition": {
+    "5BlboQhP6wKFfUJdtwQjwe": {
+      "key": "5BlboQhP6wKFfUJdtwQjwe",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5Vw1KwvhY7uUZqhZz0oyps": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "62px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2i28n0uBoRFQj1fLpONusU": true,
+        "Fg5AjHSO1VdFz1O04eMYc": true
+      }
+    },
+    "2i28n0uBoRFQj1fLpONusU": {
+      "key": "2i28n0uBoRFQj1fLpONusU",
+      "name": "Header",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Content security policy"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "5bplPcqm6N35JMH7IAB079": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5joeVSQsD90uM6y7Bb0yoQ": {
+      "key": "5joeVSQsD90uM6y7Bb0yoQ",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Content Security Policy (CSP) serves as an additional security measure aimed at identifying and mitigating specific attack types, such as Cross-Site Scripting (XSS) and data injection attacks. These malicious activities encompass a wide range of objectives, including data theft, site vandalism, and malware distribution."
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4ofF1oImxsFI3kaeThOYPf": {
+      "key": "4ofF1oImxsFI3kaeThOYPf",
+      "name": "Final Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6juvJ0v3K3HtxjWR5DW3Wl": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "32px"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "58YJmNEDHuiorXzZUDVJrW": true,
+        "5F18dXJSMKM13DnB7sPt2O": true,
+        "7KLUygcLi6WPa5veB05ya9": true,
+        "7DReb1QDWC6brzTiVI9HN9": true,
+        "hve0xWdBDtfof4y2LA9HM": true
+      }
+    },
+    "2x22joMQ41u39dC7LEGvCj": {
+      "key": "2x22joMQ41u39dC7LEGvCj",
+      "name": "Report Only Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1QSx45m6VIcKvisIm3m2vN": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#FFF"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "32px"
+              },
+              "gap": {
+                "value": "28px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7Fez8oipIGxSSFWvNDSnjT": true,
+        "7sNbvKc78gyYCp9z3CTY21": true,
+        "4mpNYWTBktuH5AGPQYTaD5": true,
+        "7uU9zWHdY1E7C9hyoXmWaN": true,
+        "1GmyyESWzXYzZLH1rc8I7R": true,
+        "3dNcPWAQs5VDGvOnvZPqtl": true
+      }
+    },
+    "4Y8pICZ8XbylDsKrF5mkc9": {
+      "key": "4Y8pICZ8XbylDsKrF5mkc9",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "default - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4sUciLrGOJEk5yMawXC8vK": {
+      "key": "4sUciLrGOJEk5yMawXC8vK",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "4Y8pICZ8XbylDsKrF5mkc9": true,
+        "240yacvZxUyHwhUSLXhNIr": true
+      },
+      "displayOrder": 1
+    },
+    "7Fez8oipIGxSSFWvNDSnjT": {
+      "key": "7Fez8oipIGxSSFWvNDSnjT",
+      "name": "Default Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4sUciLrGOJEk5yMawXC8vK": true,
+        "1f8LDR7LxZYqo2lEC6ORG1": true
+      },
+      "displayOrder": 1
+    },
+    "7sNbvKc78gyYCp9z3CTY21": {
+      "key": "7sNbvKc78gyYCp9z3CTY21",
+      "name": "Style Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "7oQCrXxKd7DYqz6DKic8JF": true,
+        "5hRJ9NZMZNru5rDmyfIIgN": true
+      },
+      "displayOrder": 4
+    },
+    "7oQCrXxKd7DYqz6DKic8JF": {
+      "key": "7oQCrXxKd7DYqz6DKic8JF",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "NKn9uaLxxzNpq5GPQo7fA": true,
+        "yJzAxngSj2i5byBxQC68U": true
+      },
+      "displayOrder": 1
+    },
+    "5hRJ9NZMZNru5rDmyfIIgN": {
+      "key": "5hRJ9NZMZNru5rDmyfIIgN",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4ummlgLfvcKpwDdA2XscSz": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3WlKuARbkX7Z45Hfgvkted": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.styleSrc"
+      }
+    },
+    "NKn9uaLxxzNpq5GPQo7fA": {
+      "key": "NKn9uaLxxzNpq5GPQo7fA",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "style - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3WlKuARbkX7Z45Hfgvkted": {
+      "key": "3WlKuARbkX7Z45Hfgvkted",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2mKhn4rYZly9311mdXsO3o": true
+      },
+      "displayOrder": 0
+    },
+    "2mKhn4rYZly9311mdXsO3o": {
+      "key": "2mKhn4rYZly9311mdXsO3o",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "74Zz5RBZnNi2i9WxUgk9Z1": true
+      },
+      "displayOrder": 1
+    },
+    "74Zz5RBZnNi2i9WxUgk9Z1": {
+      "key": "74Zz5RBZnNi2i9WxUgk9Z1",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "4mpNYWTBktuH5AGPQYTaD5": {
+      "key": "4mpNYWTBktuH5AGPQYTaD5",
+      "name": "Font Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "48WeNZ01pMxyTEvEwXW31j": true,
+        "vYO0B4vu1h9IHpm7nFlNr": true
+      },
+      "displayOrder": 2
+    },
+    "48WeNZ01pMxyTEvEwXW31j": {
+      "key": "48WeNZ01pMxyTEvEwXW31j",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "8L8nhEoqLTZRYb6JK9HG5": true,
+        "Rw8F9xJuIoDtIn18TCyl2": true
+      },
+      "displayOrder": 1
+    },
+    "vYO0B4vu1h9IHpm7nFlNr": {
+      "key": "vYO0B4vu1h9IHpm7nFlNr",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "7E3H0UkzzShtet2GMUueYf": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "31Gtg2vkFKFwDNH1rUyGKQ": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.fontSrc"
+      }
+    },
+    "8L8nhEoqLTZRYb6JK9HG5": {
+      "key": "8L8nhEoqLTZRYb6JK9HG5",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "font - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "31Gtg2vkFKFwDNH1rUyGKQ": {
+      "key": "31Gtg2vkFKFwDNH1rUyGKQ",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2h6KZgkN1Awwss9kUuiR7z": true
+      },
+      "displayOrder": 0
+    },
+    "2h6KZgkN1Awwss9kUuiR7z": {
+      "key": "2h6KZgkN1Awwss9kUuiR7z",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5pTy2xtUL16TJUSks8jN2T": true
+      },
+      "displayOrder": 1
+    },
+    "5pTy2xtUL16TJUSks8jN2T": {
+      "key": "5pTy2xtUL16TJUSks8jN2T",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "7uU9zWHdY1E7C9hyoXmWaN": {
+      "key": "7uU9zWHdY1E7C9hyoXmWaN",
+      "name": "Image Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "27umtHmlxGjUwQqvweDZyj": true,
+        "3rRJhcFR3nn44vL3VNINBc": true
+      },
+      "displayOrder": 3
+    },
+    "27umtHmlxGjUwQqvweDZyj": {
+      "key": "27umtHmlxGjUwQqvweDZyj",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "1ATXPO6Sa4B4gX39AETSMR": true,
+        "239IwtrgRZ0yjTq4I7x5RC": true
+      },
+      "displayOrder": 1
+    },
+    "3rRJhcFR3nn44vL3VNINBc": {
+      "key": "3rRJhcFR3nn44vL3VNINBc",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4xeA5hJqgFEDmP6UYmdMu5": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1J1Tvu814MJJkmlv6JA0SY": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.imgSrc"
+      }
+    },
+    "1ATXPO6Sa4B4gX39AETSMR": {
+      "key": "1ATXPO6Sa4B4gX39AETSMR",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "img - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1J1Tvu814MJJkmlv6JA0SY": {
+      "key": "1J1Tvu814MJJkmlv6JA0SY",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2FGpxEQGf6qmERDCnHqkbK": true
+      },
+      "displayOrder": 0
+    },
+    "2FGpxEQGf6qmERDCnHqkbK": {
+      "key": "2FGpxEQGf6qmERDCnHqkbK",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3s66JCqQI6aw3g4IzYkK1e": true
+      },
+      "displayOrder": 1
+    },
+    "3s66JCqQI6aw3g4IzYkK1e": {
+      "key": "3s66JCqQI6aw3g4IzYkK1e",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "58YJmNEDHuiorXzZUDVJrW": {
+      "key": "58YJmNEDHuiorXzZUDVJrW",
+      "name": "Default Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1oV2o4zbi0dKBXewqma6IM": true,
+        "4oCvULhKGvuMVy6RniLsOL": true
+      },
+      "displayOrder": 1
+    },
+    "1oV2o4zbi0dKBXewqma6IM": {
+      "key": "1oV2o4zbi0dKBXewqma6IM",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "28UcK3awiYcQk3XsPNbnyx": true,
+        "7oA6NS79WxT8toxvLK60w5": true
+      },
+      "displayOrder": 1
+    },
+    "4oCvULhKGvuMVy6RniLsOL": {
+      "key": "4oCvULhKGvuMVy6RniLsOL",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "DNVSWSWOC1K0wPSvJXSke": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "7px"
+              },
+              "repeaterProperties-gap": {
+                "value": "10px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6xx2KVm77PyguQKVakTSEu": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.final.defaultSrc"
+      }
+    },
+    "28UcK3awiYcQk3XsPNbnyx": {
+      "key": "28UcK3awiYcQk3XsPNbnyx",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "default - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6xx2KVm77PyguQKVakTSEu": {
+      "key": "6xx2KVm77PyguQKVakTSEu",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4A8BD3RhNoZs70PxMPJW1a": true
+      },
+      "displayOrder": 0
+    },
+    "4A8BD3RhNoZs70PxMPJW1a": {
+      "key": "4A8BD3RhNoZs70PxMPJW1a",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5ZjH59aqMyOwJYbnyZmmAn": true
+      },
+      "displayOrder": 1
+    },
+    "5ZjH59aqMyOwJYbnyZmmAn": {
+      "key": "5ZjH59aqMyOwJYbnyZmmAn",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "readOnly": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "5F18dXJSMKM13DnB7sPt2O": {
+      "key": "5F18dXJSMKM13DnB7sPt2O",
+      "name": "Font Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "5cPBoY97WAkwM2MGFsl3Dr": true,
+        "5qAuTQ0J1Sipm1PhcfGG1w": true
+      },
+      "displayOrder": 2
+    },
+    "5cPBoY97WAkwM2MGFsl3Dr": {
+      "key": "5cPBoY97WAkwM2MGFsl3Dr",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "5u8bMrTJ0K0hQJMb98jJio": true,
+        "4vKWNOAFvUKfTzoVlUaOJ9": true
+      },
+      "displayOrder": 1
+    },
+    "5qAuTQ0J1Sipm1PhcfGG1w": {
+      "key": "5qAuTQ0J1Sipm1PhcfGG1w",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "DNVSWSWOC1K0wPSvJXSke": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "7px"
+              },
+              "repeaterProperties-gap": {
+                "value": "10px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4R4lsv2BoABUr3Jol6fnOH": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.final.fontSrc"
+      }
+    },
+    "5u8bMrTJ0K0hQJMb98jJio": {
+      "key": "5u8bMrTJ0K0hQJMb98jJio",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "font - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4R4lsv2BoABUr3Jol6fnOH": {
+      "key": "4R4lsv2BoABUr3Jol6fnOH",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2xcrmiARqInDAFXhoUQppn": true
+      },
+      "displayOrder": 0
+    },
+    "2xcrmiARqInDAFXhoUQppn": {
+      "key": "2xcrmiARqInDAFXhoUQppn",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1bxocsviDJGrD0qGyngt5G": true
+      },
+      "displayOrder": 1
+    },
+    "1bxocsviDJGrD0qGyngt5G": {
+      "key": "1bxocsviDJGrD0qGyngt5G",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "readOnly": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "7KLUygcLi6WPa5veB05ya9": {
+      "key": "7KLUygcLi6WPa5veB05ya9",
+      "name": "Image Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1JBvUhIXnVrvvmnHMCONcP": true,
+        "5cFFHF5TqlKlmuE0wFL3Vu": true
+      },
+      "displayOrder": 3
+    },
+    "1JBvUhIXnVrvvmnHMCONcP": {
+      "key": "1JBvUhIXnVrvvmnHMCONcP",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "3xGXOY8pGFrXYHaS1Z5xyI": true,
+        "bN0Y7Db6rOup5cALLw7O2": true
+      },
+      "displayOrder": 1
+    },
+    "5cFFHF5TqlKlmuE0wFL3Vu": {
+      "key": "5cFFHF5TqlKlmuE0wFL3Vu",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "DNVSWSWOC1K0wPSvJXSke": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "7px"
+              },
+              "repeaterProperties-gap": {
+                "value": "10px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4fX8wnZKnjsd6TArSUFpff": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.final.imgSrc"
+      }
+    },
+    "3xGXOY8pGFrXYHaS1Z5xyI": {
+      "key": "3xGXOY8pGFrXYHaS1Z5xyI",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "img - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4fX8wnZKnjsd6TArSUFpff": {
+      "key": "4fX8wnZKnjsd6TArSUFpff",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "JYcPExCtVcmEWNVi0Mdh9": true
+      },
+      "displayOrder": 0
+    },
+    "JYcPExCtVcmEWNVi0Mdh9": {
+      "key": "JYcPExCtVcmEWNVi0Mdh9",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3MY3rJyEkRVsNeF98PrYSy": true
+      },
+      "displayOrder": 1
+    },
+    "3MY3rJyEkRVsNeF98PrYSy": {
+      "key": "3MY3rJyEkRVsNeF98PrYSy",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "readOnly": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "1GmyyESWzXYzZLH1rc8I7R": {
+      "key": "1GmyyESWzXYzZLH1rc8I7R",
+      "name": "Button Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "qUEDzjzwohCwFzp6Z98ca": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7wqqqyNPeecuXSSHpZZZ0N": true,
+        "6WY0RQr5PsJI2upSyOximC": true
+      },
+      "displayOrder": 6
+    },
+    "7wqqqyNPeecuXSSHpZZZ0N": {
+      "key": "7wqqqyNPeecuXSSHpZZZ0N",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save report"
+        },
+        "onClick": {
+          "value": "3EjmtNWHhUH60I68d0AYx0"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "7HN55VoydpYC3M6HxFIlEt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "116px"
+              },
+              "height": {
+                "value": "36px"
+              },
+              "paddingTop": {
+                "value": "0px"
+              },
+              "paddingBottom": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 3px 0px rgba(0, 0, 0, 0.10)"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "dL6ZJ2njFR87i9Zn7r1Ft": {
+      "key": "dL6ZJ2njFR87i9Zn7r1Ft",
+      "name": "Tabs",
+      "type": "Tabs",
+      "properties": {
+        "tabs": {
+          "3iFvRBg47fg0Mk7OR7Oshz": {
+            "key": "3iFvRBg47fg0Mk7OR7Oshz",
+            "order": 1,
+            "property": {
+              "value": "Report Only"
+            }
+          },
+          "5sEds41k2jvLbJgcOsDyVZ": {
+            "key": "5sEds41k2jvLbJgcOsDyVZ",
+            "order": 2,
+            "property": {
+              "value": "Final"
+            }
+          }
+        },
+        "defaultActive": {
+          "value": "Report Only"
+        },
+        "tabsPosition": {
+          "value": "_spaceEvenly"
+        },
+        "designType": {
+          "value": "_line"
+        }
+      },
+      "styleProperties": {
+        "46NXwc2pjCWX0RLO6F03KS": {
+          "resolutions": {
+            "ALL": {
+              "childContainer-backgroundColor": {
+                "value": "#FFF"
+              },
+              "tabsContainer-height": {
+                "value": "60px"
+              },
+              "tab-backgroundColor": {
+                "value": "rgba(131, 131, 131, 0.02)"
+              },
+              "tabsContainer-overflowX": {
+                "value": "hidden"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4ofF1oImxsFI3kaeThOYPf": true,
+        "2x22joMQ41u39dC7LEGvCj": true
+      },
+      "displayOrder": 3
+    },
+    "1f8LDR7LxZYqo2lEC6ORG1": {
+      "key": "1f8LDR7LxZYqo2lEC6ORG1",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "2CITQq70jlolJbBMT30fOa": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "hYaflNOyr3Lu103QudN7y": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.defaultSrc"
+      }
+    },
+    "hYaflNOyr3Lu103QudN7y": {
+      "key": "hYaflNOyr3Lu103QudN7y",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3pMFEG8aqGkyVA4LGRBjtt": true
+      },
+      "displayOrder": 0
+    },
+    "3pMFEG8aqGkyVA4LGRBjtt": {
+      "key": "3pMFEG8aqGkyVA4LGRBjtt",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2i8ObX9sVKxpJsNA9wivEo": true
+      },
+      "displayOrder": 1
+    },
+    "2i8ObX9sVKxpJsNA9wivEo": {
+      "key": "2i8ObX9sVKxpJsNA9wivEo",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": ""
+        },
+        "onEnter": {
+          "value": ""
+        },
+        "onBlur": {
+          "value": ""
+        },
+        "onFocus": {
+          "value": ""
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "3dNcPWAQs5VDGvOnvZPqtl": {
+      "key": "3dNcPWAQs5VDGvOnvZPqtl",
+      "name": "Show Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "7bbUxkDTbQr7qEmJiVn209": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Wr2om1VTYLhATRR0mkACA": true,
+        "31bKlJyndjKhNgwr4AlmVm": true,
+        "7tKHfagUubSymxelblOpDP": true
+      },
+      "displayOrder": 5
+    },
+    "2t2oHUc0MJOLz7lHHWLZDj": {
+      "key": "2t2oHUc0MJOLz7lHHWLZDj",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Show all"
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "4BwXT0komls3YoJFl8yFGz": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration": {
+                "value": "underline"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3Wr2om1VTYLhATRR0mkACA": {
+      "key": "3Wr2om1VTYLhATRR0mkACA",
+      "name": "Show All Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showAll = undefined or Page.showAll = false "
+          }
+        },
+        "onClick": {
+          "value": "5SOwqeHX8Kz5GQSpUd1LRH"
+        }
+      },
+      "styleProperties": {
+        "6GK7SCcBX8tesxr1lI58nA": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "-24px"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2t2oHUc0MJOLz7lHHWLZDj": true
+      },
+      "displayOrder": 1
+    },
+    "7trV6C0gIlVi9ISdxAz1pJ": {
+      "key": "7trV6C0gIlVi9ISdxAz1pJ",
+      "name": "Child Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "5GDoGpOD0OBmLnIGxWElwG": true,
+        "637gXXS7plUrOXywRwnd2I": true
+      },
+      "displayOrder": 1
+    },
+    "5GDoGpOD0OBmLnIGxWElwG": {
+      "key": "5GDoGpOD0OBmLnIGxWElwG",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "114qRB1Kj4EtQja8D9kVoY": true,
+        "3KqLEUqVoVfBq1UwmQlQKW": true
+      },
+      "displayOrder": 1
+    },
+    "637gXXS7plUrOXywRwnd2I": {
+      "key": "637gXXS7plUrOXywRwnd2I",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4bh3XsKW44gYtVA8iGDZ4n": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5BzoJf0wEFhyLKql6UdkPj": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.childSrc"
+      }
+    },
+    "114qRB1Kj4EtQja8D9kVoY": {
+      "key": "114qRB1Kj4EtQja8D9kVoY",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "child - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5BzoJf0wEFhyLKql6UdkPj": {
+      "key": "5BzoJf0wEFhyLKql6UdkPj",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2XfR7w5sjPni42ysdaIW0V": true
+      },
+      "displayOrder": 0
+    },
+    "2XfR7w5sjPni42ysdaIW0V": {
+      "key": "2XfR7w5sjPni42ysdaIW0V",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4SPxlUGTYeFSUE4U33uQeW": true
+      },
+      "displayOrder": 1
+    },
+    "4SPxlUGTYeFSUE4U33uQeW": {
+      "key": "4SPxlUGTYeFSUE4U33uQeW",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "31bKlJyndjKhNgwr4AlmVm": {
+      "key": "31bKlJyndjKhNgwr4AlmVm",
+      "name": "Show Less Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "1dnUu0ph5ceIUUzegkfzh8"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showAll = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "3GRB7enGWcxLSf40mSPh5H": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4O9Z9cIGvG9x9FyYnG1sVe": true
+      },
+      "displayOrder": 3
+    },
+    "4O9Z9cIGvG9x9FyYnG1sVe": {
+      "key": "4O9Z9cIGvG9x9FyYnG1sVe",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Show Less"
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "4BwXT0komls3YoJFl8yFGz": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration": {
+                "value": "underline"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "7tKHfagUubSymxelblOpDP": {
+      "key": "7tKHfagUubSymxelblOpDP",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showAll = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "7q7F7MGuol5KsVtp7Cp2Ry": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "28px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7trV6C0gIlVi9ISdxAz1pJ": true,
+        "3iob0LfCdmjuLisCU35UgJ": true,
+        "6GKOR0JDcf8oVuVAj8Pso8": true,
+        "Pzw6FZ9iYL6zai6y1CDo3": true,
+        "4Oqfb249Wl6Tr46WETqMYh": true,
+        "2KNRdg1qvnIsJONVA56Qtj": true,
+        "6gfrqXmzGyGv2znzAAYGZr": true,
+        "6AThPASZCGFCtYAK4ymYBO": true,
+        "3XUus3fq3FahZ6Tp8QNrSa": true,
+        "2Vw69sLu80BPPo13wfaFiN": true,
+        "2Z2ZQEXM6O3TByIKOATBf5": true,
+        "5pAn4Q73GQNQnc2J2ltSoh": true,
+        "6VD5Oc7pNsdEz4t0HqYcqb": true
+      },
+      "displayOrder": 2
+    },
+    "3iob0LfCdmjuLisCU35UgJ": {
+      "key": "3iob0LfCdmjuLisCU35UgJ",
+      "name": "Connect Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1Kh173DQG4h5ExRe9yyFVv": true,
+        "2zt00sHcELU809YEifS2TN": true
+      },
+      "displayOrder": 2
+    },
+    "1Kh173DQG4h5ExRe9yyFVv": {
+      "key": "1Kh173DQG4h5ExRe9yyFVv",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "6nkIBTbYKRapa66jgO1b4Y": true,
+        "2bpY5bt8H4v6CmfVeTSlrF": true
+      },
+      "displayOrder": 1
+    },
+    "2zt00sHcELU809YEifS2TN": {
+      "key": "2zt00sHcELU809YEifS2TN",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "62ktioTBnSkNdJxZ7jx3a3": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5oNczDe8J2v3kGtq9XhcHG": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.connectSrc"
+      }
+    },
+    "6nkIBTbYKRapa66jgO1b4Y": {
+      "key": "6nkIBTbYKRapa66jgO1b4Y",
+      "name": "Create Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "connect - src"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "6WexARSE2sRAKkQRSY5nzj": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5oNczDe8J2v3kGtq9XhcHG": {
+      "key": "5oNczDe8J2v3kGtq9XhcHG",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ysioRIVptBqtlk9HomdOF": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "33fotfS3SbM6XIm2sMEZgo": true
+      },
+      "displayOrder": 0
+    },
+    "33fotfS3SbM6XIm2sMEZgo": {
+      "key": "33fotfS3SbM6XIm2sMEZgo",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4l1wl9amvoXgUv9hD0p8vG": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4Y5UJeeeDm3eyt5qes43n8": true
+      },
+      "displayOrder": 1
+    },
+    "4Y5UJeeeDm3eyt5qes43n8": {
+      "key": "4Y5UJeeeDm3eyt5qes43n8",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "onChange": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "onEnter": {
+          "value": "6ebtdKfSkSj0jgl8ICbzoW"
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.value"
+      }
+    },
+    "6GKOR0JDcf8oVuVAj8Pso8": {
+      "key": "6GKOR0JDcf8oVuVAj8Pso8",
+      "name": "Frame Src Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4eG1sIrEsvOFngi1wjYZCJ": true,
+        "4NCCNBTX5eBxQMbUrpvQ2D": true
+      },
+      "displayOrder": 3
+    },
+    "4eG1sIrEsvOFngi1wjYZCJ": {
+      "key": "4eG1sIrEsvOFngi1wjYZCJ",
+      "name": "Text Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "3j4rMBWAV5zdYxwUiEfBds": true,
+        "3KkusxYY1kbuAt88P5TFmC": true
+      },
+      "displayOrder": 1
+    },
+    "4NCCNBTX5eBxQMbUrpvQ2D": {
+      "key": "4NCCNBTX5eBxQMbUrpvQ2D",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6rQ6hozQbsVcHKNbIwiETY": {
+          "resolutions": {
+            "ALL": {
+              "repeaterProperties-display": {
+                "value": "flex"
+              },
+              "repeatedComp-flex": {
+                "value": "1"
+              },
+              "iconGrid-paddingTop": {
+                "value": "9px"
+              },
+              "repeaterProperties-gap": {
+                "value": "0px"
+              },
+              "iconGrid-gap": {
+                "value": "10px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "add-marginLeft": {
+                "value": "10px"
+              },
+              "remove-marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1ozl14Jsj75XnzGgvthIMX": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reportOnly.frameSrc"
+      }
+    },
+    "240yacvZxUyHwhUSLXhNIr": {
+      "key": "240yacvZxUyHwhUSLXhNIr",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "63imM6lu5jopMdxuCZLmr1": true,
+        "6Sf5BmNvrAlT3n1eeirM58": true
+      },
+      "displayOrder": 3
+    },
+    "Rw8F9xJuIoDtIn18TCyl2": {
+      "key": "Rw8F9xJuIoDtIn18TCyl2",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1rxOLO6JaltPwdtQan7Vli": true,
+        "1XEzS3cOopAGUsPuhpntKZ": true
+      },
+      "displayOrder": 2
+    },
+    "239IwtrgRZ0yjTq4I7x5RC": {
+      "key": "239IwtrgRZ0yjTq4I7x5RC",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "61yoigTfFQI8BvLiJsL32o": true,
+        "VA6ppaFeR6rgUfQ2lou95": true
+      },
+      "displayOrder": 2
+    },
+    "yJzAxngSj2i5byBxQC68U": {
+      "key": "yJzAxngSj2i5byBxQC68U",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7WEjqtjF8TgoPQaORliNJ": true,
+        "6aZtB5pOEKjCUb8Sdulb4E": true
+      },
+      "displayOrder": 2
+    },
+    "3KkusxYY1kbuAt88P5TFmC": {
+      "key": "3KkusxYY1kbuAt88P5TFmC",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "54mXd4Q5rdVkotsyPjreVk": true,
+        "3CzRiDLocDzHcO4GpREZUF": true
+      },
+      "displayOrder": 2
+    },
+    "44g1ytYA3T5w3YDoQMC3An": {
+      "key": "44g1ytYA3T5w3YDoQMC3An",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1PdMCa6YJczzcLvDr3CXAm": true,
+        "75Sfweku09ibSL1B6drZ0e": true
+      },
+      "displayOrder": 2
+    },
+    "4H2QpRSfP56S1TyksDjsN4": {
+      "key": "4H2QpRSfP56S1TyksDjsN4",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Ls7zG9EcTYgD7qpGauOj5": true,
+        "6OUcyvOykhmuyttH09jUXh": true
+      },
+      "displayOrder": 2
+    },
+    "5VemOR00d7pFFIbM2cwRqE": {
+      "key": "5VemOR00d7pFFIbM2cwRqE",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "position": {
+          "value": "right-end"
+        },
+        "showTip": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "67J9OdqF6cz9wplmPCCpOb": true,
+        "4qeHnutR006vc8MLTpTk8a": true
+      },
+      "displayOrder": 2
+    },
+    "__truncated__": "... 342 more components omitted for corpus (kept first 80 + pinned by type ['Popover'])"
+  },
+  "name": "contentSecurityPolicy",
+  "message": "From transport : 3y8kUB0mADxyNoL5c2ujsv",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 17,
+  "updatedAt": "2024-06-10 17:53:59.824000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-27 13:51:31.426000",
+  "createdBy": "<USER>"
+}

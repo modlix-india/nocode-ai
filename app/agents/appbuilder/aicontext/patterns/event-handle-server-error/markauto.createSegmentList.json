@@ -1,0 +1,620 @@
+{
+  "_id": "63f32ca611288d1e7fb123f2",
+  "properties": {
+    "wrapShell": true,
+    "title": {
+      "name": {
+        "value": "try"
+      },
+      "append": {
+        "value": true
+      }
+    },
+    "onLoadEvent": "loadPages"
+  },
+  "eventFunctions": {
+    "loadPages": {
+      "name": "loadPages",
+      "steps": {
+        "fetchApps": {
+          "statementName": "fetchApps",
+          "namespace": "UIEngine",
+          "name": "FetchData",
+          "parameterMap": {
+            "url": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": "/api/ui/pages"
+              }
+            },
+            "queryParams": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": {
+                  "appCode": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "'markauto'?? 'markauto'"
+                    }
+                  },
+                  "page": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.pages.number ?? 0"
+                    }
+                  },
+                  "size": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.pages.size ?? 10"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "storeApps": {
+          "statementName": "storeApps",
+          "namespace": "UIEngine",
+          "name": "SetStore",
+          "parameterMap": {
+            "path": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": "Page.pages"
+              }
+            },
+            "value": {
+              "one": {
+                "key": "one",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchApps.output.data"
+              }
+            }
+          }
+        },
+        "messageFetchAppsStep": {
+          "statementName": "messageStep",
+          "namespace": "UIEngine",
+          "name": "Message",
+          "parameterMap": {
+            "msg": {
+              "value1": {
+                "key": "value1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchApps.error.data"
+              }
+            }
+          }
+        },
+        "genOutput": {
+          "statementName": "genOutput",
+          "namespace": "System",
+          "name": "GenerateEvent",
+          "dependentStatements": {
+            "Steps__d-o-t__storeApps__d-o-t__output": true
+          }
+        }
+      }
+    }
+  },
+  "rootComponent": "fbc35f6f-6100-49e4-9038-99a73207c537",
+  "componentDefinition": {
+    "fbc35f6f-6100-49e4-9038-99a73207c537": {
+      "key": "fbc35f6f-6100-49e4-9038-99a73207c537",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3e27d183-9796-4e7c-a262-c9816604ad15": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#F3F1F6"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "overflow": {
+                "value": "scroll"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "06562b5b-e172-4a6e-b9f2-d1cf4159023d": true,
+        "f8c99eb4-e6e4-4623-9558-66ca2f978932": true
+      }
+    },
+    "06562b5b-e172-4a6e-b9f2-d1cf4159023d": {
+      "key": "06562b5b-e172-4a6e-b9f2-d1cf4159023d",
+      "name": "CreateSegmentButton",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": "create segment"
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-plus"
+        }
+      },
+      "styleProperties": {
+        "d31fac23-c17a-4a12-a14d-38683c62c9bc": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "height": {
+                "value": "41px"
+              },
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "#1F3C3D"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "f8c99eb4-e6e4-4623-9558-66ca2f978932": {
+      "key": "f8c99eb4-e6e4-<PHONE>-66ca2f978932",
+      "name": "TableGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5d916a3d-11a2-47c6-bbfd-80e5a5d10cd2": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "916da13c-b761-4985-a46d-907e66bad307": true
+      },
+      "displayOrder": 2
+    },
+    "916da13c-b761-4985-a46d-907e66bad307": {
+      "key": "916da13c-b761-4985-a46d-907e66bad307",
+      "name": "table",
+      "type": "Table",
+      "properties": {
+        "selectionType": {
+          "value": "none"
+        },
+        "totalPages": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.pages.totalPages"
+          }
+        },
+        "onPagination": {
+          "value": "loadPages"
+        },
+        "paginationPosition": {
+          "value": "_RIGHT"
+        }
+      },
+      "override": false,
+      "children": {
+        "9928e342-a7d5-4667-a199-3bc27ad7a606": true
+      },
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.pages.content"
+      },
+      "bindingPath2": {
+        "type": "VALUE",
+        "value": "Page.selected"
+      },
+      "bindingPath3": {
+        "type": "VALUE",
+        "value": "Page.pages.number"
+      },
+      "bindingPath4": {
+        "type": "VALUE",
+        "value": "Page.pages.size"
+      },
+      "bindingPath5": {
+        "type": "VALUE",
+        "value": "Page.tableType"
+      }
+    },
+    "9928e342-a7d5-4667-a199-3bc27ad7a606": {
+      "key": "9928e342-a7d5-4667-a199-3bc27ad7a606",
+      "name": "tableColumns",
+      "type": "TableColumns",
+      "styleProperties": {
+        "2a249e3d-2d4f-4025-92eb-3be9cb63b44c": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#eee"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "e06c1951-425a-42af-b732-571c46cb9ee5": true,
+        "d5f19f2a-a8d0-4ece-9700-7bd05f55275b": true,
+        "a46e6fc6-f33d-45bf-b5f2-e5eec51c4513": true,
+        "4165fabe-8cac-41dd-b87d-8c4e21f098bb": true,
+        "25341179-c1d5-4f1b-93a7-1bda93090e43": true,
+        "e0f179eb-598d-451c-92d8-4cce709a1513": true
+      }
+    },
+    "e06c1951-425a-42af-b732-571c46cb9ee5": {
+      "key": "e06c1951-425a-42af-b732-571c46cb9ee5",
+      "name": "sNo",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "SI.no"
+        }
+      },
+      "override": false,
+      "children": {
+        "52fd7599-a1cc-477c-800b-93665b54e4fb": true
+      },
+      "displayOrder": 1
+    },
+    "52fd7599-a1cc-477c-800b-93665b54e4fb": {
+      "key": "52fd7599-a1cc-477c-800b-93665b54e4fb",
+      "name": "nameLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": 1
+        }
+      },
+      "styleProperties": {
+        "47b906cf-2baf-4a8e-b7ed-433f22de9601": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tablecolumnvaluefontsize"
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tableColumnValueGeneralColor"
+                }
+              },
+              "paddingLeft": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingLeftTableColumnvalue"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "d5f19f2a-a8d0-4ece-9700-7bd05f55275b": {
+      "key": "d5f19f2a-a8d0-4ece-9700-7bd05f55275b",
+      "name": "segname",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "segment name"
+        }
+      },
+      "override": false,
+      "children": {
+        "fa45171e-7c86-4879-be47-5130ef299713": true
+      },
+      "displayOrder": 2
+    },
+    "fa45171e-7c86-4879-be47-5130ef299713": {
+      "key": "fa45171e-7c86-4879-be47-5130ef299713",
+      "name": "segname",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.name"
+          }
+        }
+      },
+      "styleProperties": {
+        "47b906cf-2baf-4a8e-b7ed-433f22de9601": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tablecolumnvaluefontsize"
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tableColumnValueBlueColor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "3c46ff70-a716-4071-81a2-5687c3919ce4": {
+      "key": "3c46ff70-a716-4071-81a2-5687c3919ce4",
+      "name": "tableGridWithButton",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "a46e6fc6-f33d-45bf-b5f2-e5eec51c4513": true,
+        "887af8bb-2ff6-4ef1-a08a-a2c193bb48bf": true
+      }
+    },
+    "a46e6fc6-f33d-45bf-b5f2-e5eec51c4513": {
+      "key": "a46e6fc6-f33d-45bf-b5f2-e5eec51c4513",
+      "name": "segType",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "segment type"
+        }
+      },
+      "override": false,
+      "children": {
+        "d87f25f6-c85d-40f2-96e4-0010b042890e": true
+      },
+      "displayOrder": 3
+    },
+    "d87f25f6-c85d-40f2-96e4-0010b042890e": {
+      "key": "d87f25f6-c85d-40f2-96e4-0010b042890e",
+      "name": "segment type",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.id"
+          }
+        }
+      },
+      "styleProperties": {
+        "0791262d-4904-43b2-96a5-cd741cce843b": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tablecolumnvaluefontsize"
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tableColumnValueGeneralColor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "887af8bb-2ff6-4ef1-a08a-a2c193bb48bf": {
+      "key": "887af8bb-2ff6-4ef1-a08a-a2c193bb48bf",
+      "name": "ButtonSegmentType",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": " "
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-ellipsis-vertical"
+        }
+      },
+      "styleProperties": {
+        "a77592dd-7913-4eac-a18a-c58e743c2748": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "1px"
+              },
+              "height": {
+                "value": "2px"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "4165fabe-8cac-41dd-b87d-8c4e21f098bb": {
+      "key": "4165fabe-8cac-41dd-b87d-8c4e21f098bb",
+      "name": "segSize",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "segment size"
+        }
+      },
+      "override": false,
+      "children": {
+        "98601b51-79e3-4edf-ab4a-f7c9a5e2b690": true
+      },
+      "displayOrder": 4
+    },
+    "98601b51-79e3-4edf-ab4a-f7c9a5e2b690": {
+      "key": "98601b51-79e3-4edf-ab4a-f7c9a5e2b690",
+      "name": "segmentSize",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "parent.clientCode"
+          }
+        }
+      },
+      "styleProperties": {
+        "3bdee6f0-054f-483b-8cc6-30d7ef6e0ce4": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tablecolumnvaluefontsize"
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tableColumnValueGeneralColor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "25341179-c1d5-4f1b-93a7-1bda93090e43": {
+      "key": "25341179-c1d5-4f1b-93a7-1bda93090e43",
+      "name": "createdOn",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Created on"
+        }
+      },
+      "override": false,
+      "children": {
+        "47d7313b-891c-4eee-b81a-497b27ee81e5": true
+      },
+      "displayOrder": 5
+    },
+    "47d7313b-891c-4eee-b81a-497b27ee81e5": {
+      "key": "28c17332-a296-46e6-a9a7-161dd7ca6a8b",
+      "name": "createdon",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.appCode"
+          }
+        }
+      },
+      "styleProperties": {
+        "2dd8081e-bff3-4d07-b12c-a53f0a0d6dd3": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tablecolumnvaluefontsize"
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.tableColumnValueGeneralColor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    },
+    "e0f179eb-598d-451c-92d8-4cce709a1513": {
+      "key": "e0f179eb-598d-451c-92d8-4cce709a1513",
+      "name": "action",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Action"
+        }
+      },
+      "override": false,
+      "children": {
+        "c61f12a3-a308-4d9e-a025-95b3b3fe6371": true
+      },
+      "displayOrder": 6
+    },
+    "c61f12a3-a308-4d9e-a025-95b3b3fe6371": {
+      "key": "c61f12a3-a308-4d9e-a025-95b3b3fe6371",
+      "name": "action",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": " "
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-ellipsis-vertical"
+        }
+      },
+      "styleProperties": {
+        "2b3b22e1-4989-4ba3-b71f-bb3289533261": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "1px"
+              },
+              "height": {
+                "value": "2px"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false
+    }
+  },
+  "name": "createSegmentList",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 71,
+  "updatedAt": "2023-06-14 04:23:50.501000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-02-20 08:17:42.377000",
+  "createdBy": "<USER>"
+}

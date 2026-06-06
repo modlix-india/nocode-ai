@@ -2,10 +2,29 @@
 
 Used by AppBuilderAgent.__init__() to register all available tools.
 
-Total: 10 tools (6 CRUD + 3 version + 1 API catalog).
+Surfaces (transitional — the legacy CRUD/version/api-catalog tools coexist
+with the modlix port until Phase 3's deferred-tool model is verified end-to-
+end; only then do they retire):
+
+  - LEGACY_TOOLS    — the old 10-tool surface (CRUD + version + API catalog)
+                       + TOOL_ROUTER for the current tool-of-tools pattern
+  - MODLIX_TOOLS    — the ported modlix-mcp tools (one module per category)
+  - META_TOOLS      — search_tools + get_tool_schema (deferred-tool surface)
+  - WORKSPACE_TOOLS — code_read / code_grep / code_glob / code_ls /
+                       code_list_repos for the local code workspace
+  - KB_APP_TOOLS    — kb_app_get/_search/_history/_list_sections +
+                       propose_kb_update + commit_kb_update
+  - ALL_TOOLS       — the union (legacy still active by default; the agent
+                       loop picks which surface to expose per turn)
+
+When Phase 3 lands, the deferred surface becomes the default; the legacy
+TOOL_ROUTER stays callable as a compatibility shim until 1.4b completes.
 
 Exports:
     ALL_TOOLS: Full tool list for execution dispatch.
+    LEGACY_TOOLS / MODLIX_TOOLS / META_TOOLS / WORKSPACE_TOOLS / KB_APP_TOOLS:
+        Per-surface lists, useful for tests and for the agent loop to scope
+        which tools are eligible per turn.
     TOOL_ROUTER: Single meta-tool for LLM schema (tool-of-tools pattern).
 """
 
@@ -17,7 +36,52 @@ from app.agents.appbuilder.tools.crud import CRUD_TOOLS
 from app.agents.appbuilder.tools.version_tools import VERSION_TOOLS
 from app.agents.appbuilder.tools.api_catalog_tools import API_CATALOG_TOOLS
 
-ALL_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TOOLS
+# Modlix port surfaces — added incrementally as each category lands.
+# Currently shipped: infra (env / cache / logs). The rest of the ~195 tools
+# land in Phase 1.4b across follow-up sessions.
+from app.agents.appbuilder.tools.modlix.infra import TOOLS as _MODLIX_INFRA_TOOLS
+from app.agents.appbuilder.tools.modlix.components import TOOLS as _MODLIX_COMPONENT_TOOLS
+from app.agents.appbuilder.tools.modlix.pages import TOOLS as _MODLIX_PAGE_TOOLS
+from app.agents.appbuilder.tools.modlix.kirun import TOOLS as _MODLIX_KIRUN_TOOLS
+from app.agents.appbuilder.tools.modlix.kirun_events import TOOLS as _MODLIX_KIRUN_EVENT_TOOLS
+from app.agents.appbuilder.tools.modlix.schemas import TOOLS as _MODLIX_SCHEMA_TOOLS
+from app.agents.appbuilder.tools.modlix.visuals import TOOLS as _MODLIX_VISUAL_TOOLS
+from app.agents.appbuilder.tools.modlix.visuals_browser import TOOLS as _MODLIX_BROWSER_TOOLS
+from app.agents.appbuilder.tools.modlix.image_ops import TOOLS as _MODLIX_IMAGE_OPS_TOOLS
+from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURITY_TOOLS
+from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
+from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
+from app.agents.appbuilder.tools.modlix.runtime import TOOLS as _MODLIX_RUNTIME_TOOLS
+from app.agents.appbuilder.tools.meta_tools import META_TOOLS
+from app.agents.appbuilder.tools.code_workspace import CODE_WORKSPACE_TOOLS as WORKSPACE_TOOLS
+from app.agents.appbuilder.tools.kb_app import KB_APP_TOOLS
+from app.agents.appbuilder.tools.platform_docs import PLATFORM_DOC_TOOLS
+
+LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TOOLS
+MODLIX_TOOLS: list[ToolDefinition] = (
+    list(_MODLIX_INFRA_TOOLS)
+    + list(_MODLIX_COMPONENT_TOOLS)
+    + list(_MODLIX_PAGE_TOOLS)
+    + list(_MODLIX_KIRUN_TOOLS)
+    + list(_MODLIX_KIRUN_EVENT_TOOLS)
+    + list(_MODLIX_SCHEMA_TOOLS)
+    + list(_MODLIX_VISUAL_TOOLS)
+    + list(_MODLIX_BROWSER_TOOLS)
+    + list(_MODLIX_IMAGE_OPS_TOOLS)
+    + list(_MODLIX_SECURITY_TOOLS)
+    + list(_MODLIX_APP_ADMIN_TOOLS)
+    + list(_MODLIX_MESSAGING_TOOLS)
+    + list(_MODLIX_RUNTIME_TOOLS)
+)  # Phase 1.4b modlix port complete
+
+ALL_TOOLS: list[ToolDefinition] = (
+    LEGACY_TOOLS
+    + MODLIX_TOOLS
+    + META_TOOLS
+    + WORKSPACE_TOOLS
+    + KB_APP_TOOLS
+    + PLATFORM_DOC_TOOLS
+)
 
 # ── Tool-of-tools router ────────────────────────────────────────
 #

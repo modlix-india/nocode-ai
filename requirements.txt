@@ -21,6 +21,17 @@ aiomysql==0.2.0
 # LLM SDKs
 anthropic>=0.40.0
 openai>=1.76.0
+# Gemini — added in Phase 8 of the CFA rewrite. Becomes the default after
+# the bench (scripts/bench_providers.py) confirms tool-use + Kirun-compile
+# parity with Claude Haiku. NOTE: Google deprecated `google-generativeai`
+# in favor of `google-genai` — this still works (last release Aug 2025)
+# but should be swapped before Python 3.10+ migration. See
+# https://github.com/google-gemini/deprecated-generative-ai-python
+google-generativeai>=0.8.0
+
+# Kirun DSL compiler / decompiler — used by the modlix-mcp tool port for
+# function authoring. Provides DSLCompiler.compile/decompile/validate.
+kirun-py>=0.1
 
 # Eureka Client
 py-eureka-client==0.11.10
