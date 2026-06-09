@@ -290,7 +290,6 @@ class ProductAgent(BaseAgent):
         auth: AuthContext,
         parent_session_context: dict | None = None,
         user_message: str | None = None,
-        agent_tool_use_id: str = "",
     ) -> AnalysisOutput:
         """Run one analysis and return structured output.
 
@@ -329,8 +328,6 @@ class ProductAgent(BaseAgent):
             session=sub_session,
             event_stream=wrapped_stream,
             model_override=ANALYST_MODEL_OVERRIDE,
-            parent_tool_use_id=parent_tool_use_id,
-            agent_tool_use_id=agent_tool_use_id,
         )
 
         # Find the last assistant message's text — that's the JSON output.

@@ -163,35 +163,22 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         )
         # v4 (2026-05-25, I-1): SUMMARIZE attributes to SummaryAgent's own
         # tool_use_id, not the parent scrape tool's. See asset-picker-fixes-v4.
-        import uuid as _uuid
-        summary_tuid = _uuid.uuid4().hex[:12]
         # v6 S2 (2026-05-27): pre-emit agent_started BEFORE the first stage_emit
         # so the SUMMARIZE tool_update has an open span to route to. Otherwise
-        # the UI sees a tool_update for an unknown tuid → drop. run() never
-        # emits agent_started (caller-owned). See
-        # plans/agent-tracing/asset-picker-fixes-v6.html.
-        if stream is not None:
-            try:
-                from app.core.streaming import current_agent_id as _curr_agent_id
-                await stream.emit_agent_started(
-                    agent_id="summary_gen",
-                    label="Profile Writer",
-                    parent_id=_curr_agent_id.get(),
-                    parent_tool_use_id=context.get("tool_use_id", ""),
-                    agent_tool_use_id=summary_tuid,
-                )
-                context.setdefault("_started_tuids", set()).add(summary_tuid)
-            except Exception:
-                logger.exception("v6_pre_emit_agent_started_failed agent=summary_gen")
+        # the UI sees a tool_update for an unknown tuid → drop. The launcher
+        # owns both AgentCard ends. See plans/agent-tracing/asset-picker-fixes-v6.html.
+        from app.core.streaming import pre_emit_agent_started
+        summary_tuid = await pre_emit_agent_started(
+            stream, agent_id="summary_gen", label="Profile Writer",
+            parent_tool_use_id=context.get("tool_use_id", ""), context=context,
+        )
         await stage_emit(context, ScrapeStage.SUMMARIZE, tool_use_id=summary_tuid)
         scraped_text = _format_page_for_profile(early_page)
         state["profile_task"] = asyncio.create_task(
             _generate_business_profile(
                 scraped_text, url, stream, state["screenshot_url"], craft_id,
                 auth=context.get("auth"),
-                tool_use_id=context.get("tool_use_id", ""),
                 parent_session_context=context.get("session_context"),
-                agent_tool_use_id=summary_tuid,
             ),
             name=f"summary_{scrape_id}",
         )

@@ -181,11 +181,9 @@ class SummaryAgent(BaseAgent):
         scraped_text: str,
         url: str,
         parent_event_stream: AgentEventStream,
-        parent_tool_use_id: str,
         auth: AuthContext,
         craft_id: str,
         parent_session_context: dict | None = None,
-        agent_tool_use_id: str = "",
     ) -> SummaryOutput:
         """Run one summary pass and return the accumulated text.
 
@@ -224,8 +222,6 @@ class SummaryAgent(BaseAgent):
                 session=sub_session,
                 event_stream=wrapped_stream,
                 model_override=SUMMARY_MODEL_OVERRIDE,
-                parent_tool_use_id=parent_tool_use_id,
-                agent_tool_use_id=agent_tool_use_id,
             )
         except Exception as e:
             logger.warning(

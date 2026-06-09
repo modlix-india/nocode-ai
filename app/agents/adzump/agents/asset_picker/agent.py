@@ -443,11 +443,9 @@ class AssetPickerAgent(BaseAgent):
         summary: str,
         meta_json: str,
         parent_event_stream: AgentEventStream,
-        parent_tool_use_id: str,
         auth: AuthContext,
         parent_session_context: dict | None = None,
         full_page_screenshot_b64: str | None = None,
-        agent_tool_use_id: str = "",
     ) -> ProductAssets:
         """Run one vision pick and return resolved ``ProductAssets``.
 
@@ -487,8 +485,6 @@ class AssetPickerAgent(BaseAgent):
                 event_stream=wrapped_stream,
                 image_blocks=image_blocks,
                 model_override=PICKER_MODEL_OVERRIDE,
-                parent_tool_use_id=parent_tool_use_id,
-                agent_tool_use_id=agent_tool_use_id,
             )
         except Exception as e:
             logger.warning(

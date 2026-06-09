@@ -119,8 +119,6 @@ class BaseAgent:
         event_stream: AgentEventStream,
         image_blocks: list[dict[str, Any]] | None = None,
         model_override: str | None = None,
-        parent_tool_use_id: str = "",
-        agent_tool_use_id: str = "",
     ) -> None:
         """Execute the agentic loop for a single user request (it spans many
         internal ``turn`` iterations until done).
@@ -617,28 +615,6 @@ class BaseAgent:
             if b.get("type") == "text" and b.get("text")
         ]
         return content_blocks, tool_use_blocks
-
-    async def _process_content_blocks(
-        self,
-        content_blocks: list[dict[str, Any]],
-        assistant_text_parts: list[str],
-        event_stream: AgentEventStream,
-    ) -> list[dict[str, Any]]:
-        """Stream text blocks and collect tool_use blocks from an LLM response."""
-        tool_use_blocks = []
-        for block in content_blocks:
-            if block["type"] == "text":
-                text = block["text"]
-                if text:
-                    # Separate consecutive text messages with a markdown
-                    # paragraph break so they don't run together on the client.
-                    if assistant_text_parts:
-                        text = "\n\n" + text
-                    assistant_text_parts.append(text)
-                    await event_stream.emit_text(text)
-            elif block["type"] == "tool_use":
-                tool_use_blocks.append(block)
-        return tool_use_blocks
 
     # Tool names that pause for user confirmation before execution. The
     # confirmation *mechanism* (the registry lint above + the request_confirmation

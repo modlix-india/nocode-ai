@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 from contextvars import ContextVar
 from enum import Enum
 
@@ -444,3 +445,40 @@ class AgentEventStream:
             if item is _SENTINEL:
                 break
             yield item
+
+
+async def pre_emit_agent_started(
+    stream: AgentEventStream | None,
+    *,
+    agent_id: str,
+    label: str,
+    parent_tool_use_id: str = "",
+    context: dict[str, Any] | None = None,
+) -> str:
+    """Open a sub-agent's AgentCard span from its launch site.
+
+    Mints the sub-agent's tool_use_id, emits agent_started (parent resolved
+    from the current_agent_id ContextVar), and registers the tuid in
+    context["_started_tuids"] so stage-emit guard-rails can verify the span
+    was opened. The launcher owns BOTH lifecycle ends: this pre-emit and the
+    agent_finished after post-processing — BaseAgent.run() emits neither.
+
+    Returns the minted tuid (always, even when stream is None — callers
+    still use it to attribute stage emits). Emit failures are logged, never
+    raised: a tracing fault must not kill the sub-agent launch.
+    """
+    tuid = uuid.uuid4().hex[:12]
+    if stream is not None:
+        try:
+            await stream.emit_agent_started(
+                agent_id=agent_id,
+                label=label,
+                parent_id=current_agent_id.get(),
+                parent_tool_use_id=parent_tool_use_id,
+                agent_tool_use_id=tuid,
+            )
+            if context is not None:
+                context.setdefault("_started_tuids", set()).add(tuid)
+        except Exception:
+            logger.exception("pre_emit_agent_started_failed agent=%s", agent_id)
+    return tuid

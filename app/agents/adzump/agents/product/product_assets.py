@@ -262,25 +262,14 @@ async def select_product_assets(
     # scrape tool's row in the UI. SAVE_LOGO + SAVE_IMG (later, in tools/scrape/assets.py)
     # stay on the parent scrape's tool_use_id — they're post-pick filesystem writes by the
     # scrape tool, not picker work (Kiran's panel-review correction).
-    import uuid as _uuid
-    asset_picker_tuid = _uuid.uuid4().hex[:12]
     # v6 S2 (2026-05-27): pre-emit agent_started BEFORE DISCOVER stage_emit so
-    # the UI has an open span for the tool_update to route to. run() never
-    # emits agent_started (caller-owned). See asset-picker-fixes-v6.
-    _stream = context.get("event_stream")
-    if _stream is not None:
-        try:
-            from app.core.streaming import current_agent_id as _curr_agent_id
-            await _stream.emit_agent_started(
-                agent_id="asset_picker",
-                label="Asset Picker",
-                parent_id=_curr_agent_id.get(),
-                parent_tool_use_id=context.get("tool_use_id", ""),
-                agent_tool_use_id=asset_picker_tuid,
-            )
-            context.setdefault("_started_tuids", set()).add(asset_picker_tuid)
-        except Exception:
-            logger.exception("v6_pre_emit_agent_started_failed agent=asset_picker")
+    # the UI has an open span for the tool_update to route to. The launcher
+    # owns both AgentCard ends. See asset-picker-fixes-v6.
+    from app.core.streaming import pre_emit_agent_started
+    asset_picker_tuid = await pre_emit_agent_started(
+        context.get("event_stream"), agent_id="asset_picker", label="Asset Picker",
+        parent_tool_use_id=context.get("tool_use_id", ""), context=context,
+    )
     await stage_emit(context, ScrapeStage.DISCOVER, tool_use_id=asset_picker_tuid, n=len(candidates))
 
     # Parallel fetch + downscale. Anything that fails / is too small / isn't
@@ -337,17 +326,9 @@ async def select_product_assets(
             summary=summary or "",
             meta_json=meta_json,
             parent_event_stream=context.get("event_stream"),
-            parent_tool_use_id=context.get("tool_use_id", ""),
             auth=context["auth"],
             parent_session_context=context.get("session_context"),
             full_page_screenshot_b64=screenshot_b64 or None,
-            # v5 (2026-05-25, I-1): bind AssetPicker's row to the same UUID
-            # used by DISCOVER + SELECT stage_emit calls above, so the UI can
-            # group tool_updates correctly. See asset-picker-fixes-v5.
-            agent_tool_use_id=asset_picker_tuid,
-            # v6 S2 (2026-05-27): caller pre-emitted agent_started before
-            # DISCOVER/SELECT stage_emits so the UI had a span to route to.
-            # Tell BaseAgent.run() not to double-emit.
         )
     except Exception as e:
         logger.warning(

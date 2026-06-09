@@ -43,9 +43,7 @@ async def _generate_business_profile(
     screenshot_url: str | None,
     craft_id: str,
     auth=None,
-    tool_use_id: str = "",
     parent_session_context: dict | None = None,
-    agent_tool_use_id: str = "",
 ) -> str:
     """Generate a product profile from scraped content via SummaryAgent.
 
@@ -86,18 +84,9 @@ async def _generate_business_profile(
             scraped_text=scraped_text,
             url=url,
             parent_event_stream=stream,
-            parent_tool_use_id=tool_use_id,
             auth=auth,
             craft_id=craft_id,
             parent_session_context=parent_session_context,
-            # v5 (2026-05-25, I-1): bind Profile Writer's row to the
-            # summary_tuid so SUMMARIZE stage_emit (already using this id
-            # from v4) and the agent_started lifecycle event share an id —
-            # UI can group correctly. See asset-picker-fixes-v5.
-            agent_tool_use_id=agent_tool_use_id,
-            # v6 S2 (2026-05-27): caller pre-emitted agent_started before
-            # SUMMARIZE stage_emit so the UI had a span to route to. Tell
-            # BaseAgent.run() not to double-emit.
         )
         return result.text
     except Exception as e:
@@ -133,36 +122,19 @@ async def _get_primary_profile(
             return ""
     # v4 (2026-05-25, I-1): SUMMARIZE attributes to SummaryAgent's own
     # tool_use_id, not the parent scrape tool's. See asset-picker-fixes-v4.
-    import uuid as _uuid
-    summary_tuid = _uuid.uuid4().hex[:12]
-    # Symmetric lifecycle: the LAUNCHER pre-emits agent_started BEFORE the
-    # SUMMARIZE stage_emit so the stage's tool_update has an open span to route
-    # to — mirrors the parallel path (scrape/tool.py). run() never emits
-    # agent_started (caller-owned). (Also clears the latent
-    # stage_emit_before_agent_started guard-rail warning.)
-    if stream is not None:
-        try:
-            from app.core.streaming import current_agent_id as _curr_agent_id
-            await stream.emit_agent_started(
-                agent_id="summary_gen",
-                label="Profile Writer",
-                parent_id=_curr_agent_id.get(),
-                parent_tool_use_id=context.get("tool_use_id", ""),
-                agent_tool_use_id=summary_tuid,
-            )
-            context.setdefault("_started_tuids", set()).add(summary_tuid)
-        except Exception:
-            logger.exception("pre_emit_agent_started_failed agent=summary_gen")
+    # Symmetric lifecycle: the launcher pre-emits agent_started BEFORE the
+    # SUMMARIZE stage_emit so the stage's tool_update has an open span to
+    # route to — mirrors the parallel path (scrape/tool.py).
+    from app.core.streaming import pre_emit_agent_started
+    summary_tuid = await pre_emit_agent_started(
+        stream, agent_id="summary_gen", label="Profile Writer",
+        parent_tool_use_id=context.get("tool_use_id", ""), context=context,
+    )
     await stage_emit(context, ScrapeStage.SUMMARIZE, tool_use_id=summary_tuid)
     logger.info("stage=summary_input scrape_id=%s source=post_scroll", scrape_id)
     scraped_text = _format_page_for_profile(page)
     return await _generate_business_profile(
         scraped_text, url, stream, screenshot_url, craft_id,
         auth=context.get("auth"),
-        tool_use_id=context.get("tool_use_id", ""),
         parent_session_context=context.get("session_context"),
-        # v5: same UUID as the SUMMARIZE stage_emit above — so the UI
-        # binds Profile Writer's row to that id and DISCOVER/SELECT/etc
-        # from inside the summary don't collapse onto another row.
-        agent_tool_use_id=summary_tuid,
     )

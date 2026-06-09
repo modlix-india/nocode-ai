@@ -105,24 +105,13 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         from app.agents.adzump.agents.product.agent import get_product_agent
 
         await emit_progress(context, "Starting product analysis…")
-        # Symmetric lifecycle: the LAUNCHER owns agent_started for the
-        # product_analyst card — mirrors the asset_picker / summary launchers.
-        # run() never emits agent_started (caller-owned, like agent_finished).
-        # (Future: a generic invoke_agent would own this once — see the plan.)
-        import uuid as _uuid
-        analyst_tuid = _uuid.uuid4().hex[:12]
-        if stream is not None:
-            try:
-                from app.core.streaming import current_agent_id as _curr_agent_id
-                await stream.emit_agent_started(
-                    agent_id="product_analyst",
-                    label="Product Analyst",
-                    parent_id=_curr_agent_id.get(),
-                    parent_tool_use_id=tool_use_id,
-                    agent_tool_use_id=analyst_tuid,
-                )
-            except Exception:
-                logger.exception("pre_emit_agent_started_failed agent=product_analyst")
+        # Symmetric lifecycle: the launcher owns both AgentCard ends —
+        # agent_started here, agent_finished after post-processing.
+        from app.core.streaming import pre_emit_agent_started
+        await pre_emit_agent_started(
+            stream, agent_id="product_analyst", label="Product Analyst",
+            parent_tool_use_id=tool_use_id, context=context,
+        )
         output = await get_product_agent().analyze(
             url=url,
             parent_event_stream=stream,
@@ -137,7 +126,6 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
                 "After scraping, write the final JSON with the 'business' section filled "
                 "and an empty 'competitive' section."
             ),
-            agent_tool_use_id=analyst_tuid,
         )
 
         if not output.business:

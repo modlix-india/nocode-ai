@@ -98,15 +98,15 @@ async def stage_emit(
     # fires with a tool_use_id that hasn't been pre-emitted via
     # agent_started yet. Post-v6 this should never log. If it does, a new
     # spawn site is firing stage_emits without pre-emitting (regression).
-    # The set lives on the context dict — spawn sites add their tuid right
-    # after calling emit_agent_started. Per-scrape lifecycle, no globals.
+    # The set lives on the context dict — pre_emit_agent_started (the shared
+    # launcher helper) registers each tuid there. Per-scrape lifecycle, no globals.
     effective_id = tool_use_id or context.get("tool_use_id", "")
     started_tuids = context.get("_started_tuids") or set()
     # Only warn for sub-agent tuids (those the spawn sites explicitly pre-
-    # emitted). The parent scrape tool's own tuid is the BaseAgent.run path
-    # — its agent_started fires inside BaseAgent.run() and we don't track
-    # it on the context. Empty `started_tuids` set means no spawn has
-    # pre-emitted yet on this context — skip the check.
+    # emitted). The parent scrape tool's own tuid isn't tracked on the
+    # context — its card is opened by the parent agent's launcher, not here.
+    # Empty `started_tuids` set means no spawn has pre-emitted yet on this
+    # context — skip the check.
     if started_tuids and tool_use_id and effective_id not in started_tuids:
         logger.warning(
             "stage_emit_before_agent_started: stage=%s scrape_id=%s tuid=%s "
