@@ -187,5 +187,89 @@ class F10CustomTests(unittest.TestCase):
             CampaignContext.from_session(_session(None, "hi")).awaiting_custom_field)
 
 
+# ── v5 · set_campaign_spec retry-loop fixes ────────────────────────────────
+# Live bug (2026-06-10, cityville run): the model re-sent the whole spec with
+# the stored location paraphrased ("Bengaluru" ≠ stored full address), the
+# provenance guard rejected it as an ERROR, and the model retried the same
+# call 25+ times. Fixes: (1) untraceable re-send of an ALREADY-STORED field is
+# a kept no-op, not an error; (2) 3 identical all-rejected calls escalate to a
+# hard STOP steer; (3) an unknown ig_page id hints the ig_page_declined key.
+
+from app.agents.adzump.tools.campaign_data import _set_campaign_spec
+
+FULL_ADDR = ("302, Blk 9, Cityville Valmark, off Bannerghatta Rd, "
+             "Bengaluru, Karnataka 560076, India")
+
+
+def _spec_ctx(spec, last_user):
+    sc = {"campaign_spec": dict(spec), "_spec_set_at": {}, "product_data": dict(RE)}
+    session = types.SimpleNamespace(
+        messages=[{"role": "user", "content": last_user}], _turn_count=12,
+    )
+    return {"session_context": sc, "_session": session}, sc
+
+
+class V5RetryLoopFixTests(unittest.TestCase):
+    def test_paraphrase_of_stored_field_is_kept_not_error(self):
+        ctx, sc = _spec_ctx({"location": FULL_ADDR}, "continue")
+        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+        self.assertTrue(r.success)
+        self.assertIn("kept", (r.summary or ""))
+        self.assertIn("re-send", (r.summary or ""))
+        self.assertEqual(sc["campaign_spec"]["location"], FULL_ADDR)
+
+    def test_empty_field_untraceable_still_rejected(self):
+        ctx, sc = _spec_ctx({}, "continue")
+        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+        self.assertFalse(r.success)
+        self.assertNotIn("location", sc["campaign_spec"])
+
+    def test_third_identical_rejection_escalates_to_stop(self):
+        ctx, sc = _spec_ctx({}, "continue")
+        for _ in range(2):
+            r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+            self.assertFalse(r.success)
+            self.assertNotIn("STOP", r.error or "")
+        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+        self.assertFalse(r.success)
+        self.assertIn("STOP", r.error or "")
+
+    def test_streak_resets_on_progress(self):
+        ctx, sc = _spec_ctx({}, "continue")
+        for _ in range(2):
+            asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+        ctx["_session"].messages = [{"role": "user", "content": "90 days"}]
+        r = asyncio.run(_set_campaign_spec({"duration": "90 days"}, ctx))
+        self.assertTrue(r.success)
+        ctx["_session"].messages = [{"role": "user", "content": "continue"}]
+        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+        self.assertNotIn("STOP", r.error or "")
+
+    def test_ig_page_rejection_hints_declined_key(self):
+        ctx, sc = _spec_ctx({}, "continue")
+        r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
+        self.assertFalse(r.success)
+        self.assertIn("ig_page_declined", r.error or "")
+
+    def test_stored_account_field_unknown_id_still_rejected(self):
+        # Kiran (v5 review): the kept-noop must NOT swallow account fields —
+        # a different unknown id on a stored account is an attempted switch
+        # and stays an actionable rejection (re-fetch), never a silent keep.
+        ctx, sc = _spec_ctx({"account": "act_111"}, "switch to act_999")
+        r = asyncio.run(_set_campaign_spec({"account": "act_999"}, ctx))
+        self.assertFalse(r.success)
+        self.assertIn("fetch", r.error or "")
+        self.assertEqual(sc["campaign_spec"]["account"], "act_111")
+
+    def test_stored_ig_page_unknown_value_keeps_hint(self):
+        # With ig_page already stored, the ig_page_declined hint must still
+        # surface (kept-noop would have swallowed it before the narrowing).
+        ctx, sc = _spec_ctx({"ig_page": "12345"}, "continue")
+        r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
+        self.assertFalse(r.success)
+        self.assertIn("ig_page_declined", r.error or "")
+        self.assertEqual(sc["campaign_spec"]["ig_page"], "12345")
+
+
 if __name__ == "__main__":
     unittest.main()

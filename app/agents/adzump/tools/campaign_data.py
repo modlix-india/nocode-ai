@@ -234,6 +234,7 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
     turn = _current_turn(context)
     parts: list[str] = []
     stored_keys: list[str] = []
+    kept: list[str] = []
     rejected: list[tuple[str, Any, str]] = []
     # F2 · the whole incoming set is the "batch" — a field changed in this call
     # must never be cleared by another field's cascade in the same call.
@@ -243,13 +244,28 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         if stored:
             parts.append(info)
             stored_keys.append(k)
+        elif k not in _ACCOUNT_LIKE_FIELDS and spec.get(k) not in (None, ""):
+            # v5 · an ALREADY-STORED text field re-sent with an unverifiable
+            # paraphrase (live loop: stored full address re-sent as
+            # "Bengaluru"). Keep the stored value as a no-op SUCCESS — an
+            # error here reads as "retry me" and fueled 25+ identical calls.
+            # A genuine correction is traceable to the user's message and
+            # stores normally above. Account-like fields are EXCLUDED (Kiran):
+            # their same-id echoes are already normalized away upstream, so a
+            # different unknown id on a stored account field is an attempted
+            # switch — it must stay an actionable rejection (re-fetch / hint),
+            # never a silent keep.
+            kept.append(f"{k} (kept '{spec.get(k)}')")
         else:
             rejected.append((k, v, info))
 
-    # If everything was rejected, return a guidance error. If some valid
-    # fields remain, keep going — store them and append the rejection note
-    # to the summary so the LLM sees which fields it needs to re-ask for.
-    if not stored_keys:
+    if stored_keys or kept:
+        session_ctx.pop("_spec_reject_streak", None)
+
+    # If everything was rejected on EMPTY fields, return a guidance error. If
+    # anything was stored or kept, keep going — append the rejection note to
+    # the summary so the LLM sees which fields it needs to re-ask for.
+    if not stored_keys and not kept:
         pairs = ", ".join(f"{k}={v} ({why})" for k, v, why in rejected)
         preview = (last_user or "").replace("\n", " ")[:120]
         logger.warning(
@@ -257,6 +273,22 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
             rejected, preview,
         )
+        # v5 · circuit breaker: the same all-rejected call replayed 3+ times
+        # in a row gets a hard stop-steer — the plain error below reads as
+        # retryable and the model will replay it indefinitely.
+        sig = repr(sorted((k, str(v)) for k, v, _ in rejected))
+        streak = session_ctx.get("_spec_reject_streak") or {}
+        n = (streak.get("n", 0) + 1) if streak.get("sig") == sig else 1
+        session_ctx["_spec_reject_streak"] = {"sig": sig, "n": n}
+        if n >= 3:
+            return ToolResult(
+                success=False,
+                error=(
+                    f"STOP — this exact call was rejected {n} times. Do NOT call "
+                    "set_campaign_spec with these values again. Drop them and follow "
+                    "the missing-list, or ask the user."
+                ),
+            )
         return ToolResult(
             success=False,
             error=(
@@ -271,25 +303,45 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
     # we just stored is set.
     review_hint = _review_hint_if_complete(spec, session_ctx)
 
+    # v5 · kept no-ops get one steer line so the model stops re-sending them.
+    kept_note = (
+        f" {'; '.join(kept)} — already set: do NOT re-send stored fields, "
+        "only send NEW values the user just gave."
+    ) if kept else ""
+
     if rejected:
         # Partial-success: explicit logging so we can tune the guards. Shows
         # exactly what the LLM tried to bundle and which subset we kept.
+        # NOTE (v5, deliberate): a kept-paraphrase bundled with a rejected
+        # empty field lands here as success, so the reject-streak breaker
+        # never accumulates on these calls (the pop above fires on kept).
+        # That's intended — success doesn't read as retry-me, and the
+        # rejected note steers. Don't "fix" the breaker into firing here.
         logger.warning(
-            "campaign_spec_partial: stored=%s rejected=%s call=%s user_said=%r",
-            stored_keys, rejected,
+            "campaign_spec_partial: stored=%s kept=%s rejected=%s call=%s user_said=%r",
+            stored_keys, kept, rejected,
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
             (last_user or "").replace("\n", " ")[:120],
         )
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
+        prefix = "Campaign spec updated" if stored_keys else "No changes stored"
         return ToolResult(
             success=True,
-            summary=f"Campaign spec updated: {', '.join(summary_parts)}{review_hint}",
+            summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
         )
 
-    logger.info("campaign_spec_updated: fields=%s", stored_keys)
+    if not stored_keys:
+        # kept-only: nothing changed; say so without an error the model would retry.
+        logger.info("campaign_spec_noop_kept: kept=%s", kept)
+        return ToolResult(
+            success=True,
+            summary=f"No changes.{kept_note}{review_hint}",
+        )
+
+    logger.info("campaign_spec_updated: fields=%s kept=%s", stored_keys, kept)
     return ToolResult(
         success=True,
-        summary=f"Campaign spec updated: {', '.join(parts)}{review_hint}",
+        summary=f"Campaign spec updated: {', '.join(parts)}.{kept_note}{review_hint}",
     )
 
 
@@ -359,7 +411,12 @@ def _apply_field(
     if field in _ACCOUNT_LIKE_FIELDS:
         known_ids = set((session_ctx.get("account_names") or {}).keys())
         if str(value) not in known_ids:
-            return (False, "not returned by any fetch tool this session")
+            reason = "not returned by any fetch tool this session"
+            if field == "ig_page":
+                # v5 · live mangle: the model sent ig_page="true" meaning a
+                # Facebook-only decline. Point it at the right key.
+                reason += ' — to run Facebook-only, set ig_page_declined="true" instead'
+            return (False, reason)
     prior = spec.get(field)
     spec[field] = value
     set_at[field] = turn

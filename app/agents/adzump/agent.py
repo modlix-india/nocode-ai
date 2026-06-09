@@ -304,12 +304,17 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "`set_campaign_spec(ig_page_declined=\"true\")` and proceed to review."
                 )
             elif cctx.ig_offered:
-                # Already shown — do NOT re-fetch (that was the live loop). Read
-                # the reply: a pick is already captured; "Facebook only"/skip →
-                # decline; "connecting IG" → wait then re-fetch on 'ready'.
+                # Already FETCHED — do NOT re-fetch (that was the live loop).
+                # v5: fetch-time ≠ render-time. The marker is set when the fetch
+                # tool returns, but the model may not have rendered the choice
+                # yet — claiming "options are on screen" made it skip
+                # present_options AND tell the user to click chips that didn't
+                # exist. Prescribe the render instead of assuming it.
                 missing.append(
-                    "instagram — the Instagram options are ALREADY on screen; do NOT "
-                    "call fetch_meta_ig_accounts again. If the user picked an account it's "
+                    "instagram — Instagram accounts were already fetched; do NOT call "
+                    "fetch_meta_ig_accounts again. If you have NOT yet shown the choice, "
+                    "call present_options EXACTLY as the fetch result instructed "
+                    "(field=\"ig_page_declined\"). If the user picked an account it's "
                     "captured. If they want Facebook only, call "
                     "`set_campaign_spec(ig_page_declined=\"true\")`. If they're connecting "
                     "an Instagram account, wait and re-fetch only when they say they're ready."
