@@ -462,7 +462,9 @@ class AdzumpAgent(BaseAgent):
             f"Their last message set **{field} = {value}**. It is already stored — "
             "do NOT call set_campaign_spec for it. Acknowledge it in one short "
             "phrase, then CALL the next tool from the missing-list (a fetch tool or "
-            "present_options) — do NOT write the next question as plain text."
+            "present_options) — do NOT write the next question as plain text, and "
+            "NEVER end your turn without making that tool call (a live run stalled "
+            "on a dead-end turn that acknowledged and stopped)."
         )
 
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
