@@ -369,11 +369,7 @@ class AdzumpAgent(BaseAgent):
     # and early-exit after the first elicitation so a second widget can't stack.
     force_serial_on_elicitation = True
 
-    # Approach B (fix 1.1): keep the system prompt static (cacheable) and inject
-    # the per-turn prescription as a <system-reminder> at the messages tail.
-    # build_dynamic_context() below is re-run every agentic turn and rendered
-    # into that tail reminder (fresh from live state, never persisted).
-    tail_reminder = True
+    # ── construction ──
 
     def __init__(self) -> None:
         context = build_adzump_context()
@@ -395,34 +391,7 @@ class AdzumpAgent(BaseAgent):
             logger.info("AdzumpAgent created with %d tools", len(ALL_TOOLS))
         return cls._instance
 
-    # ── Dynamic context (called every turn, placed AFTER the static prefix
-    # so Anthropic's cache still hits the stable system prompt) ──────────
-
-    async def build_dynamic_context(self, session: BaseSession, turn: int = 1) -> str:
-        self._migrate_legacy_keys(session.context)
-        self._migrate_campaign_ids(session.context)
-        # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
-        # snapshot, so the just-answered field drops out of the missing-list
-        # this turn. AFTER the migrations (its setdefault would otherwise strand
-        # a legacy rename); gated to agentic turn==1 internally.
-        ack = self._capture_tagged_answer(session, turn)
-        cctx = CampaignContext.from_session(session)
-        last_user = _last_user_text({"_session": session})
-        missing = _next_action(cctx)
-        logger.info(
-            "next_action: turn=%d agentic=%d missing=%s user_said=%r",
-            cctx.current_turn, turn, missing, last_user[:80],
-        )
-        reminder = "\n".join(filter(None, [
-            ack,
-            self._uploaded_assets_section(session),
-            self._resume_elicitation_section(session, turn),
-            self._state_section(cctx),
-            self._user_said_section(last_user),
-            self._missing_section(missing),
-            self._how_to_respond_section(),
-        ]))
-        return reminder
+    # ── prompt-section builders (private) ──
 
     def _capture_tagged_answer(self, session: BaseSession, turn: int = 1) -> str:
         """PR2 · store the user's reply to a tagged ``present_options`` directly,
@@ -491,25 +460,6 @@ class AdzumpAgent(BaseAgent):
             "present_options) — do NOT write the next question as plain text."
         )
 
-    def _uploaded_assets_section(self, session: BaseSession) -> str:
-        """v9 I-0 · when the user attached image(s) this turn, prompt the LLM to
-        persist them via save_uploaded_assets (the bytes are stashed on the
-        session by the /chat handler). First action of the turn — otherwise the
-        upload is lost (it only lives in the pending stash)."""
-        pending = session.context.get("_pending_uploads")
-        if not pending:
-            return ""
-        n = len(pending)
-        return (
-            f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
-            "FIRST, call `save_uploaded_assets(role=...)` to persist the upload — "
-            "look at the image and pick the role: a brand mark → 'logo'; a main "
-            "building/render → 'hero'; a lifestyle/amenity photo → 'amenity'; a "
-            "floor plan → 'floor_plan'. (All pending uploads are saved under that "
-            "one role, so if they're different types, pick the best fit.) Do this "
-            "before anything else, then continue."
-        )
-
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
         """v8 Plan B WS2 · when the previous turn ended on a deferred
         elicitation, tell the LLM it is resuming so it does NOT re-ask or
@@ -556,31 +506,24 @@ class AdzumpAgent(BaseAgent):
             "previous tool's result as input — read their answer and pick the next action."
         )
 
-    @staticmethod
-    def _migrate_legacy_keys(ctx: dict) -> None:
-        """Rename ``campaign_data`` → ``campaign_spec`` for pre-rename sessions.
-
-        Lazy migration. O(1). Existing sessions survive the rename transparently.
-        """
-        if "campaign_data" in ctx and "campaign_spec" not in ctx:
-            ctx["campaign_spec"] = ctx.pop("campaign_data")
-
-    @staticmethod
-    def _migrate_campaign_ids(session_ctx: dict) -> None:
-        """Canonicalize account/page ids (strip dashes/whitespace) on read.
-
-        Lazy migration for sessions that stored dashed or fullwidth-digit IDs
-        before the write-side normalizer shipped. Idempotent.
-        """
-        spec = session_ctx.get("campaign_spec") or {}
-        for field_name in _ACCOUNT_LIKE_FIELDS:
-            v = spec.get(field_name)
-            if isinstance(v, str):
-                canonical = _normalize_id(v)
-                if canonical != v:
-                    spec[field_name] = canonical
-
-    # ── Dynamic context sections ─────────────────────────────────────────
+    def _uploaded_assets_section(self, session: BaseSession) -> str:
+        """v9 I-0 · when the user attached image(s) this turn, prompt the LLM to
+        persist them via save_uploaded_assets (the bytes are stashed on the
+        session by the /chat handler). First action of the turn — otherwise the
+        upload is lost (it only lives in the pending stash)."""
+        pending = session.context.get("_pending_uploads")
+        if not pending:
+            return ""
+        n = len(pending)
+        return (
+            f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
+            "FIRST, call `save_uploaded_assets(role=...)` to persist the upload — "
+            "look at the image and pick the role: a brand mark → 'logo'; a main "
+            "building/render → 'hero'; a lifestyle/amenity photo → 'amenity'; a "
+            "floor plan → 'floor_plan'. (All pending uploads are saved under that "
+            "one role, so if they're different types, pick the best fit.) Do this "
+            "before anything else, then continue."
+        )
 
     def _state_section(self, cctx: CampaignContext) -> str:
         lines = ["## State"]
@@ -628,6 +571,34 @@ class AdzumpAgent(BaseAgent):
             lines.append(account_block.rstrip())
 
         return "\n".join(lines)
+
+    # ── static leaf helpers — migrations ──
+
+    @staticmethod
+    def _migrate_legacy_keys(ctx: dict) -> None:
+        """Rename ``campaign_data`` → ``campaign_spec`` for pre-rename sessions.
+
+        Lazy migration. O(1). Existing sessions survive the rename transparently.
+        """
+        if "campaign_data" in ctx and "campaign_spec" not in ctx:
+            ctx["campaign_spec"] = ctx.pop("campaign_data")
+
+    @staticmethod
+    def _migrate_campaign_ids(session_ctx: dict) -> None:
+        """Canonicalize account/page ids (strip dashes/whitespace) on read.
+
+        Lazy migration for sessions that stored dashed or fullwidth-digit IDs
+        before the write-side normalizer shipped. Idempotent.
+        """
+        spec = session_ctx.get("campaign_spec") or {}
+        for field_name in _ACCOUNT_LIKE_FIELDS:
+            v = spec.get(field_name)
+            if isinstance(v, str):
+                canonical = _normalize_id(v)
+                if canonical != v:
+                    spec[field_name] = canonical
+
+    # ── static leaf helpers — prompt formatters ──
 
     @staticmethod
     def _provenance(field_name: str, set_at: dict, current_turn: int) -> str:
@@ -722,7 +693,36 @@ class AdzumpAgent(BaseAgent):
             lines.append(f"- Instagram Account: {fmt(spec.get('ig_page'))}")
         return "\n".join(lines)
 
-    # ── BaseAgent hooks ──────────────────────────────────────────────────
+    # ── public surface — BaseAgent override hooks (last, per Kiran's BaseAgent) ──
+
+    async def build_dynamic_context(self, session: BaseSession) -> str:
+        return ""  # adzump context is fully per-turn — see build_turn_reminder (Layer 2)
+
+    async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
+        self._migrate_legacy_keys(session.context)
+        self._migrate_campaign_ids(session.context)
+        # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
+        # snapshot, so the just-answered field drops out of the missing-list
+        # this turn. AFTER the migrations (its setdefault would otherwise strand
+        # a legacy rename); gated to agentic turn==1 internally.
+        ack = self._capture_tagged_answer(session, turn)
+        cctx = CampaignContext.from_session(session)
+        last_user = _last_user_text({"_session": session})
+        missing = _next_action(cctx)
+        logger.info(
+            "next_action: turn=%d agentic=%d missing=%s user_said=%r",
+            cctx.current_turn, turn, missing, last_user[:80],
+        )
+        reminder = "\n".join(filter(None, [
+            ack,
+            self._uploaded_assets_section(session),
+            self._resume_elicitation_section(session, turn),
+            self._state_section(cctx),
+            self._user_said_section(last_user),
+            self._missing_section(missing),
+            self._how_to_respond_section(),
+        ]))
+        return reminder
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         ctx = super().build_tool_context(session)

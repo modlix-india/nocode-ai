@@ -265,8 +265,8 @@ async def select_product_assets(
     import uuid as _uuid
     asset_picker_tuid = _uuid.uuid4().hex[:12]
     # v6 S2 (2026-05-27): pre-emit agent_started BEFORE DISCOVER stage_emit so
-    # the UI has an open span for the tool_update to route to. pick() runs with
-    # skip_started_emit=True to avoid double-emit. See asset-picker-fixes-v6.
+    # the UI has an open span for the tool_update to route to. run() never
+    # emits agent_started (caller-owned). See asset-picker-fixes-v6.
     _stream = context.get("event_stream")
     if _stream is not None:
         try:
@@ -348,7 +348,6 @@ async def select_product_assets(
             # v6 S2 (2026-05-27): caller pre-emitted agent_started before
             # DISCOVER/SELECT stage_emits so the UI had a span to route to.
             # Tell BaseAgent.run() not to double-emit.
-            skip_started_emit=True,
         )
     except Exception as e:
         logger.warning(

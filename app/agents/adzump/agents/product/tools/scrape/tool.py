@@ -167,8 +167,8 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         summary_tuid = _uuid.uuid4().hex[:12]
         # v6 S2 (2026-05-27): pre-emit agent_started BEFORE the first stage_emit
         # so the SUMMARIZE tool_update has an open span to route to. Otherwise
-        # the UI sees a tool_update for an unknown tuid → drop. Sub-agent runs
-        # with skip_started_emit=True to avoid double-emit. See
+        # the UI sees a tool_update for an unknown tuid → drop. run() never
+        # emits agent_started (caller-owned). See
         # plans/agent-tracing/asset-picker-fixes-v6.html.
         if stream is not None:
             try:
@@ -192,7 +192,6 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
                 tool_use_id=context.get("tool_use_id", ""),
                 parent_session_context=context.get("session_context"),
                 agent_tool_use_id=summary_tuid,
-                skip_started_emit=True,
             ),
             name=f"summary_{scrape_id}",
         )

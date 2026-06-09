@@ -13,6 +13,12 @@ is trusted by the same validation the LLM's own writes go through.
 
 from __future__ import annotations
 
+# TODO(harness): replace these hardcoded per-field parsers with context-driven
+# structured capture — code gathers (pending field + last reply), model decides
+# the canonical value (or null). Frontier models handle corrections, ₹/$ and new
+# fields without regex/_CUE upkeep. Keep a thin parser only as a last-resort net.
+# Measure how often this actually catches a drop the LLM would've missed first.
+
 import re
 
 from app.agents.adzump.platform import (

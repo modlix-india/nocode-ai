@@ -225,7 +225,6 @@ class ProductAgent(BaseAgent):
             max_turns=ANALYST_MAX_TURNS,
             max_tokens=ANALYST_MAX_TOKENS,
             provider=ANALYST_PROVIDER,
-            sequential_tools=False,
             context_management={
                 "edits": [{
                     "type": "clear_tool_uses_20250919",
@@ -291,6 +290,7 @@ class ProductAgent(BaseAgent):
         auth: AuthContext,
         parent_session_context: dict | None = None,
         user_message: str | None = None,
+        agent_tool_use_id: str = "",
     ) -> AnalysisOutput:
         """Run one analysis and return structured output.
 
@@ -330,6 +330,7 @@ class ProductAgent(BaseAgent):
             event_stream=wrapped_stream,
             model_override=ANALYST_MODEL_OVERRIDE,
             parent_tool_use_id=parent_tool_use_id,
+            agent_tool_use_id=agent_tool_use_id,
         )
 
         # Find the last assistant message's text — that's the JSON output.

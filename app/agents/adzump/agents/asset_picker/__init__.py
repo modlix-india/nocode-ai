@@ -1,8 +1,6 @@
-"""AssetPickerAgent — vision BaseAgent wrapping the logo/creative picker call.
+"""AssetPicker package — public surface for the logo/creative vision agent.
 
-Replaces the direct ``openai.beta.chat.completions.parse(...)`` call in
-``agents/product/product_assets.py`` with a properly-named agent so vision
-picks show up in trace/cost/observability surfaces alongside ProductAgent.
+Re-exports only; the agent, its rationale, and config live in ``agent.py``.
 """
 
 from app.agents.adzump.agents.asset_picker.agent import (

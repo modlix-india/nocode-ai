@@ -161,7 +161,6 @@ class SummaryAgent(BaseAgent):
             max_turns=SUMMARY_MAX_TURNS,
             max_tokens=SUMMARY_MAX_TOKENS,
             provider=SUMMARY_PROVIDER,
-            sequential_tools=False,
             context_management=None,
         )
 
@@ -187,7 +186,6 @@ class SummaryAgent(BaseAgent):
         craft_id: str,
         parent_session_context: dict | None = None,
         agent_tool_use_id: str = "",
-        skip_started_emit: bool = False,
     ) -> SummaryOutput:
         """Run one summary pass and return the accumulated text.
 
@@ -228,7 +226,6 @@ class SummaryAgent(BaseAgent):
                 model_override=SUMMARY_MODEL_OVERRIDE,
                 parent_tool_use_id=parent_tool_use_id,
                 agent_tool_use_id=agent_tool_use_id,
-                skip_started_emit=skip_started_emit,
             )
         except Exception as e:
             logger.warning(
