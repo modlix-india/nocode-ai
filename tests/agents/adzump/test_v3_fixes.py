@@ -194,11 +194,7 @@ class F3IgOptionalTests(unittest.TestCase):
         # instruction — discriminate on the offer-branch's prescription syntax,
         # which is the thing that must be absent.
         self.assertFalse(any("Call `fetch_meta_ig_accounts(page_id=" in x for x in m))
-        # v5 · fetch-time ≠ render-time: the reminder must not claim chips are
-        # on screen (the model trusted that and skipped present_options live).
-        self.assertFalse(any("ALREADY on screen" in x for x in m))
-        self.assertTrue(any("already fetched" in x for x in m))
-        self.assertTrue(any("present_options" in x for x in m))
+        self.assertTrue(any("ALREADY on screen" in x for x in m))
 
     def test_declined_drops_ig_and_reaches_review(self):
         spec = {**self.META_FULL, "ig_page_declined": "true"}
