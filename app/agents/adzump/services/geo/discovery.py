@@ -182,6 +182,7 @@ async def discover_neighborhoods(
                     "lat": final_lat,
                     "lng": final_lng,
                     "distance_km": dist,
+                    "place_id": res.get("place_id"),
                     "reason": f"High-intent local neighborhood within {dist} km radius of your confirmed location."
                     if dist > 0
                     else "Primary target locality containing your confirmed location.",

@@ -57,6 +57,24 @@ class GoogleAdsClient:
             _raise_for_google_error(response)
             return response.json()
 
+    async def post(
+        self,
+        endpoint: str,
+        client_code: str,
+        auth_headers: dict[str, str],
+        json_data: dict,
+    ) -> dict:
+        token = await self._get_api_token(client_code, auth_headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/{endpoint}"
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                url,
+                headers=self._build_auth_headers(token),
+                json=json_data,
+            )
+            _raise_for_google_error(response)
+            return response.json()
+
     async def search(
         self,
         query: str,

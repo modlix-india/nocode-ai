@@ -90,6 +90,7 @@ class GoogleMapsClient:
                         "lat": lat,
                         "lng": lng,
                         "address": results[0].get("formatted_address") or address,
+                        "place_id": results[0].get("place_id"),
                     }
                 return None
 

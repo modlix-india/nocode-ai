@@ -193,13 +193,8 @@ async def _emit_final_craft(
     )
 
 
-async def _emit_craft2(
-    stream,
-    craft_id: str,
-    business: dict,
-    spec: dict,
-) -> None:
-    """Emit the Campaign Assets card (craft-2) showing mapped targeting IDs."""
+def build_craft2_blocks(business: dict, spec: dict) -> list[dict]:
+    """Build the Campaign Assets card (craft-2) blocks list showing mapped targeting IDs."""
     from app.agents.adzump.platform import Platform
 
     platform_str = spec.get("platform")
@@ -215,6 +210,41 @@ async def _emit_craft2(
     blocks.append({"type": "heading", "text": "Targeting Areas", "level": 2})
 
     target_areas = business.get("target_areas") or []
+
+    # 1. Build map block if geocoded locations exist
+    map_locations = []
+    for area in target_areas:
+        lat = area.get("lat")
+        lng = area.get("lng")
+        if lat is not None and lng is not None:
+            radius = area.get("distance_km") or 5.0
+            meta_radial = area.get("meta_radial")
+            if meta_radial:
+                radius = meta_radial.get("radius", radius)
+            google_prox = area.get("google_proximity")
+            if google_prox:
+                radius = google_prox.get("radius", radius)
+
+            map_locations.append({
+                "name": area.get("name") or "Target Area",
+                "lat": float(lat),
+                "lng": float(lng),
+                "radius": float(radius),
+                "info": f"Targeting radius: {radius} km",
+                "place_id": area.get("place_id"),
+            })
+
+    if map_locations:
+        from app.config import settings
+        blocks.append({
+            "type": "map",
+            "api_key": settings.GOOGLE_MAPS_API_KEY,
+            "map_id": settings.GOOGLE_MAP_ID,
+            "locations": map_locations,
+            "platform": platform_str or "Google Ads"
+        })
+
+    # 2. Build table block
     if not target_areas:
         blocks.append(
             {"type": "text", "content": "No mapped targeting areas available."}
@@ -226,19 +256,16 @@ async def _emit_craft2(
             city = area.get("city")
             state = area.get("state")
 
-            # Compile structured name: e.g. "Kalasipalya, Bengaluru, KA"
             display_key = intended_name
             if city:
                 display_key += f", {city}"
             if state:
                 display_key += f", {state}"
 
-            # Check for Google mapping components
             google_id = area.get("google_id")
             google_name = area.get("google_name")
             google_prox = area.get("google_proximity")
 
-            # Check for Meta mapping components
             meta_key = area.get("meta_key")
             meta_name = area.get("meta_name")
             meta_radial = area.get("meta_radial")
@@ -260,7 +287,7 @@ async def _emit_craft2(
                         f"Meta ZIP: {meta_name or 'Resolved'} (Key: {meta_key})"
                     )
                 elif meta_radial:
-                    radius = meta_radial.get("radius", 5)
+                    radius = meta_radial.get("radius", 2.0)
                     unit = meta_radial.get("distance_unit", "kilometer")
                     target_val = f"Proximity Target: {radius} {unit}s"
                 else:
@@ -276,10 +303,21 @@ async def _emit_craft2(
                     "type": "table",
                     "headers": ["Intended Location", "Ad Platform Mapping"],
                     "rows": rows,
+                    "platform": platform_str or "Google Ads",
                 }
             )
 
-    # Emit craft-2 with title "Campaign Assets"
+    return blocks
+
+
+async def _emit_craft2(
+    stream,
+    craft_id: str,
+    business: dict,
+    spec: dict,
+) -> None:
+    """Emit the Campaign Assets card (craft-2) showing mapped targeting IDs."""
+    blocks = build_craft2_blocks(business, spec)
     await stream.emit_craft(
         craft_id,
         "Campaign Assets",

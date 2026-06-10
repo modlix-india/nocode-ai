@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.googleMapsAPIKey
     GOOGLE_MAPS_API_KEY: str = ""
 
+    # Google Maps Map ID for vector/raster features & data-driven styling
+    # Can be overridden by config server: ai.secrets.googleMapsMapId or env var GOOGLE_MAP_ID
+    GOOGLE_MAP_ID: str = ""
+
     # Prompt Caching (Anthropic-only feature)
     # Reduces token usage by ~90% for repeated system prompts
     # Automatically disabled when using OpenAI
@@ -170,6 +174,7 @@ class Settings(BaseSettings):
             ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
+            ("secrets", "googleMapsMapId"): "GOOGLE_MAP_ID",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",

@@ -50,6 +50,32 @@ class PlatformGeoMapper:
         mapped_areas = []
         for area in target_areas:
             area_copy = dict(area)
+
+            # Geocode to populate coordinates and place_id if missing
+            if (
+                area_copy.get("lat") is None
+                or area_copy.get("lng") is None
+                or area_copy.get("place_id") is None
+            ):
+                from app.agents.adzump.adapters.google.maps import google_maps_client
+
+                q = (
+                    area_copy.get("pincode")
+                    or area_copy.get("city")
+                    or area_copy.get("name")
+                )
+                if q:
+                    try:
+                        geo = await google_maps_client.geocode(q)
+                        if geo:
+                            area_copy["lat"] = geo.get("lat")
+                            area_copy["lng"] = geo.get("lng")
+                            area_copy["place_id"] = geo.get("place_id")
+                    except Exception as ge:
+                        logger.warning(
+                            "Geocoding failed for mapping target %s: %s", q, ge
+                        )
+
             if is_google(platform_name):
                 mapped_area = await self._map_google(area_copy)
             elif is_meta(platform_name):
@@ -246,15 +272,18 @@ class PlatformGeoMapper:
 
         if has_creds:
             try:
+                import json
+
                 # 1. Pincode Zip lookup
                 if pincode:
                     params = {
+                        "type": "adgeolocation",
                         "q": pincode,
-                        "location_types": ["zip"],
+                        "location_types": json.dumps(["zip"]),
                         "country_code": "IN",
                     }
                     res = await meta_client.get(
-                        "/adgeolocations",
+                        "/search",
                         self.client_code,
                         self.auth_headers,
                         params=params,
@@ -270,11 +299,13 @@ class PlatformGeoMapper:
                 # 2. City lookup
                 if city:
                     params = {
+                        "type": "adgeolocation",
                         "q": city,
-                        "location_types": ["city"],
+                        "location_types": json.dumps(["city"]),
+                        "country_code": "IN",
                     }
                     res = await meta_client.get(
-                        "/adgeolocations",
+                        "/search",
                         self.client_code,
                         self.auth_headers,
                         params=params,
