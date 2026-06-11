@@ -24,6 +24,11 @@ logger = logging.getLogger(__name__)
 class AppBuilderAgent(BaseAgent):
     """Agent that builds no-code applications via tool-use."""
 
+    # Mutating CRUD tools pause for user confirmation before executing. The
+    # confirmation mechanism lives in BaseAgent; this set + the message body
+    # below are AppBuilder-specific (page/component/app fields).
+    CONFIRMATION_TOOLS: set[str] = {"create", "update", "delete", "copy"}
+
     def __init__(
         self,
         context_builder: BaseContext,
@@ -121,3 +126,53 @@ class AppBuilderAgent(BaseAgent):
             ctx["client_code"] = session.auth.client_code
         ctx["session_context"] = session.context
         return ctx
+
+    def _build_confirmation_message(
+        self, tool_name: str, display_name: str, tool_input: dict[str, Any],
+    ) -> str:
+        """Build a human-readable confirmation message from tool input."""
+        object_type = tool_input.get("object_type", "object")
+        name = tool_input.get("name") or tool_input.get("page_name") or tool_input.get("id") or "?"
+        message = tool_input.get("message", "")
+
+        if tool_name == "create":
+            return f"Create {object_type} '{name}'" + (f" — {message}" if message else "")
+        if tool_name == "update":
+            parts = []
+            if tool_input.get("properties"):
+                parts.append(f"properties: {list(tool_input['properties'].keys())}")
+            if tool_input.get("operations"):
+                ops = tool_input["operations"]
+                op_summary = ", ".join(
+                    f"{op.get('op', '?')} '{op.get('component_key', op.get('parent_key', '?'))}'"
+                    for op in ops[:5]
+                )
+                if len(ops) > 5:
+                    op_summary += f", +{len(ops) - 5} more"
+                parts.append(f"component ops: [{op_summary}]")
+            if tool_input.get("event_function"):
+                fn_name = tool_input["event_function"].get("function_name", "?")
+                parts.append(f"event function: {fn_name}")
+            if tool_input.get("delete_event_function"):
+                parts.append(f"delete event: {tool_input['delete_event_function']}")
+            if tool_input.get("definition"):
+                parts.append("definition update")
+            detail = "; ".join(parts) if parts else message
+            return f"Update {object_type} '{name}'" + (f" — {detail}" if detail else "")
+        if tool_name == "delete":
+            return f"Delete {object_type} '{name}'"
+        if tool_name == "copy":
+            src_name = tool_input.get("source_name", "?")
+            src_app = tool_input.get("source_app_code", "?")
+            tgt_app = tool_input.get("target_app_code", "?")
+            tgt_name = tool_input.get("target_name") or src_name
+            if tool_input.get("source_component_key"):
+                return (
+                    f"Copy subtree '{tool_input['source_component_key']}' from "
+                    f"{object_type} '{src_name}' in app '{src_app}' into page "
+                    f"'{tool_input.get('target_page_name', '?')}' in app '{tgt_app}'"
+                )
+            if object_type == "application":
+                return f"Copy application '{src_app}' to new app '{tgt_app}'"
+            return f"Copy {object_type} '{src_name}' from app '{src_app}' to app '{tgt_app}' as '{tgt_name}'"
+        return f"{display_name} on {object_type} '{name}'"

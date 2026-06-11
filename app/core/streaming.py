@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 from contextvars import ContextVar
 from enum import Enum
 
@@ -173,12 +174,26 @@ class AgentEventStream:
     async def emit_agent_started(
         self, agent_id: str, label: str, parent_id: str = "root",
         parent_tool_use_id: str = "",
+        agent_tool_use_id: str = "",
     ) -> None:
         """Emit when a sub-agent begins execution.
 
         Frontend uses this to render an AgentGroup row for all subsequent
         events tagged with this agent_id, and to suppress the spawning
         tool call (`parent_tool_use_id`) from the "Used N tools" list.
+
+        ``agent_tool_use_id`` (v5 / asset-picker-fixes-v5) is the tool_use_id
+        the UI should bind to THIS agent's row for subsequent tool_updates.
+        Industry-aligned with Claude Agent SDK's parent_tool_use_id pattern
+        and OTel GenAI invoke_agent span semantics. Defaults to empty for
+        backwards compatibility — UI falls back to parent_tool_use_id
+        matching when this is empty (legacy behavior).
+
+        Race-safety invariant: SSE preserves order on this async queue, so
+        a tool_update bearing ``agent_tool_use_id`` always arrives after
+        the matching emit_agent_started. Any future caller emitting
+        tool_updates DURING the emit_agent_started await would break this
+        invariant — flag as a regression risk.
         """
         await self._queue.put(AgentEvent(
             event=AgentEventType.AGENT_STARTED,
@@ -187,6 +202,7 @@ class AgentEventStream:
                 "label": label,
                 "parent_id": parent_id,
                 "parent_tool_use_id": parent_tool_use_id,
+                "agent_tool_use_id": agent_tool_use_id,
             },
         ))
 
@@ -429,3 +445,40 @@ class AgentEventStream:
             if item is _SENTINEL:
                 break
             yield item
+
+
+async def pre_emit_agent_started(
+    stream: AgentEventStream | None,
+    *,
+    agent_id: str,
+    label: str,
+    parent_tool_use_id: str = "",
+    context: dict[str, Any] | None = None,
+) -> str:
+    """Open a sub-agent's AgentCard span from its launch site.
+
+    Mints the sub-agent's tool_use_id, emits agent_started (parent resolved
+    from the current_agent_id ContextVar), and registers the tuid in
+    context["_started_tuids"] so stage-emit guard-rails can verify the span
+    was opened. The launcher owns BOTH lifecycle ends: this pre-emit and the
+    agent_finished after post-processing — BaseAgent.run() emits neither.
+
+    Returns the minted tuid (always, even when stream is None — callers
+    still use it to attribute stage emits). Emit failures are logged, never
+    raised: a tracing fault must not kill the sub-agent launch.
+    """
+    tuid = uuid.uuid4().hex[:12]
+    if stream is not None:
+        try:
+            await stream.emit_agent_started(
+                agent_id=agent_id,
+                label=label,
+                parent_id=current_agent_id.get(),
+                parent_tool_use_id=parent_tool_use_id,
+                agent_tool_use_id=tuid,
+            )
+            if context is not None:
+                context.setdefault("_started_tuids", set()).add(tuid)
+        except Exception:
+            logger.exception("pre_emit_agent_started_failed agent=%s", agent_id)
+    return tuid
