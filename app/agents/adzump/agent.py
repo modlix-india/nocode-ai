@@ -65,6 +65,7 @@ class CampaignContext:
     # Detected location string when `confirm_location` has shown the map and
     # we're awaiting the user's reply. None when no map is in flight.
     pending_location: str | None
+    active_campaign_id: str | None = None
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -96,6 +97,7 @@ class CampaignContext:
             current_turn=int(getattr(session, "_turn_count", 0) or 0),
             last_user=_last_user_text({"_session": session}),
             pending_location=pending_location,
+            active_campaign_id=ctx.get("active_campaign_id"),
         )
 
     @property
@@ -145,6 +147,13 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     questions — so the LLM has nothing to construct, only to copy.
     """
     missing: list[str] = []
+
+    # If the user is asking about recommendations/optimization/diagnostics or we have an active campaign being optimized
+    lu = (cctx.last_user or "").strip().lower()
+    is_opt_intent = any(k in lu for k in ("recommend", "optim", "health", "audit", "diagnos", "budget"))
+    if is_opt_intent or cctx.active_campaign_id:
+        missing.append("optimization — call `optimize(campaign_id=<campaign_id_if_provided_or_omit_for_all>)`")
+        return missing
 
     if not cctx.product:
         missing.append("business URL — call `analyze_product(url=<the user's URL>)`")
@@ -391,6 +400,9 @@ class AdzumpAgent(BaseAgent):
                 lines.append(f"- {label}: {val} ✓{prov}")
             else:
                 lines.append(f"- {label}: —")
+
+        if cctx.active_campaign_id:
+            lines.append(f"- Active Campaign: {cctx.active_campaign_id}")
 
         account_block = self._ad_account_summary(cctx.spec, cctx.account_names)
         if account_block.strip():

@@ -17,6 +17,7 @@ from app.agents.adzump.tools.suggestions import SUGGESTION_TOOLS
 from app.agents.adzump.tools.research import RESEARCH_TOOLS
 from app.agents.adzump.tools.location import LOCATION_TOOLS
 from app.agents.adzump.tools.launch import LAUNCH_TOOLS
+from app.agents.adzump.tools.optimize import OPTIMIZE_TOOLS
 
 ALL_TOOLS = [
     *BUSINESS_TOOLS,
@@ -27,4 +28,6 @@ ALL_TOOLS = [
     *RESEARCH_TOOLS,
     *LOCATION_TOOLS,
     *LAUNCH_TOOLS,
+    *OPTIMIZE_TOOLS,
 ]
+__all__ = ["ALL_TOOLS"]

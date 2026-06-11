@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 LLM Provider abstraction for supporting multiple LLM backends.
 
@@ -10,7 +8,7 @@ Supports:
 
 Usage:
     from app.services.llm_provider import get_llm_provider
-    
+
     provider = get_llm_provider()
     response = await provider.create_completion(
         system_prompt="You are a helpful assistant",
@@ -18,6 +16,8 @@ Usage:
         model_tier="balanced"
     )
 """
+
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, AsyncIterator
@@ -38,7 +38,7 @@ def _extract_web_search_queries(event_or_item: Any) -> list[str]:
     if event_or_item is None:
         return []
     candidates: list[Any] = [event_or_item]
-    inner_item = getattr(event_or_item, 'item', None)
+    inner_item = getattr(event_or_item, "item", None)
     if inner_item is not None:
         candidates.append(inner_item)
 
@@ -59,18 +59,18 @@ def _extract_web_search_queries(event_or_item: Any) -> list[str]:
 
     for c in candidates:
         # Attribute-style access
-        action = getattr(c, 'action', None)
+        action = getattr(c, "action", None)
         if action is not None:
-            _add(getattr(action, 'queries', None))
-            _add(getattr(action, 'query', None))
+            _add(getattr(action, "queries", None))
+            _add(getattr(action, "query", None))
             if isinstance(action, dict):
-                _add(action.get('queries'))
-                _add(action.get('query'))
-        _add(getattr(c, 'queries', None))
-        _add(getattr(c, 'query', None))
+                _add(action.get("queries"))
+                _add(action.get("query"))
+        _add(getattr(c, "queries", None))
+        _add(getattr(c, "query", None))
         if isinstance(c, dict):
-            _add(c.get('queries'))
-            _add(c.get('query'))
+            _add(c.get("queries"))
+            _add(c.get("query"))
 
     return out
 
@@ -86,9 +86,9 @@ def _dump_attrs(obj: Any) -> str:
     if obj is None:
         return "None"
     try:
-        if hasattr(obj, 'model_dump'):
+        if hasattr(obj, "model_dump"):
             return str(obj.model_dump())[:500]
-        if hasattr(obj, '__dict__'):
+        if hasattr(obj, "__dict__"):
             return str(vars(obj))[:500]
         return str(obj)[:500]
     except Exception:
@@ -126,6 +126,7 @@ def _parse_server_tool_query(input_json: str) -> str:
     if not input_json:
         return ""
     import json as _json
+
     try:
         parsed = _json.loads(input_json)
     except (ValueError, _json.JSONDecodeError):
@@ -153,7 +154,10 @@ def _parse_web_search_hits(block: Any) -> "tuple[list[dict], str]":
     content = _get_field(block, "content")
 
     # Error variants (SDK model or dict form)
-    if isinstance(content, dict) and content.get("type") == "web_search_tool_result_error":
+    if (
+        isinstance(content, dict)
+        and content.get("type") == "web_search_tool_result_error"
+    ):
         return [], str(content.get("error_code") or "")
     if content is not None and not isinstance(content, (dict, list)):
         err_code = _get_field(content, "error_code")
@@ -191,7 +195,10 @@ def _parse_web_fetch_result(block: Any) -> "tuple[list[dict], str]":
         err_code = _get_field(content, "error_code")
         if err_code:
             return [], str(err_code)
-    if isinstance(content, dict) and content.get("type") == "web_fetch_tool_result_error":
+    if (
+        isinstance(content, dict)
+        and content.get("type") == "web_fetch_tool_result_error"
+    ):
         return [], str(content.get("error_code") or "")
 
     # Success — content is the fetched-page record (not a list)
@@ -226,15 +233,23 @@ def _summarize_messages(messages: List[Dict[str, Any]]) -> str:
                     continue
                 bt = b.get("type", "?")
                 if bt == "tool_use":
-                    blocks.append(f"tool_use(id={b.get('id','?')},name={b.get('name','?')})")
+                    blocks.append(
+                        f"tool_use(id={b.get('id', '?')},name={b.get('name', '?')})"
+                    )
                 elif bt == "tool_result":
-                    blocks.append(f"tool_result(id={b.get('tool_use_id','?')})")
+                    blocks.append(f"tool_result(id={b.get('tool_use_id', '?')})")
                 elif bt == "server_tool_use":
-                    blocks.append(f"server_tool_use(id={b.get('id','?')},name={b.get('name','?')})")
+                    blocks.append(
+                        f"server_tool_use(id={b.get('id', '?')},name={b.get('name', '?')})"
+                    )
                 elif bt == "web_search_tool_result":
-                    blocks.append(f"web_search_tool_result(id={b.get('tool_use_id','?')})")
+                    blocks.append(
+                        f"web_search_tool_result(id={b.get('tool_use_id', '?')})"
+                    )
                 elif bt == "web_fetch_tool_result":
-                    blocks.append(f"web_fetch_tool_result(id={b.get('tool_use_id','?')})")
+                    blocks.append(
+                        f"web_fetch_tool_result(id={b.get('tool_use_id', '?')})"
+                    )
                 else:
                     blocks.append(bt)
             parts.append(f"{role}:[{','.join(blocks)}]")
@@ -246,6 +261,7 @@ def _summarize_messages(messages: List[Dict[str, Any]]) -> str:
 @dataclass
 class StreamChunk:
     """Unified streaming chunk across all providers."""
+
     type: str  # "text_delta" | "reasoning_delta" | "tool_use_start" | "tool_input_delta" | "tool_use_end" | "builtin_tool_use" | "builtin_tool_result" | "message_complete" | "done"
     text: str = ""
     tool_name: str = ""
@@ -267,26 +283,26 @@ class StreamChunk:
 
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
-    
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Provider name for logging"""
         pass
-    
+
     @abstractmethod
     def get_model(self, tier: str) -> str:
         """
         Get the model name for a given tier.
-        
+
         Args:
             tier: "fast" or "balanced"
-        
+
         Returns:
             Model name string
         """
         pass
-    
+
     @abstractmethod
     async def create_completion(
         self,
@@ -294,35 +310,35 @@ class LLMProvider(ABC):
         messages: List[Dict[str, Any]],
         model_tier: str = "balanced",
         max_tokens: int = 8192,
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> Dict[str, Any]:
         """
         Create a completion using the LLM.
-        
+
         Args:
             system_prompt: System prompt text
             messages: List of message dicts with role and content
             model_tier: "fast" or "balanced"
             max_tokens: Maximum tokens in response
             use_cache: Whether to use prompt caching (if supported)
-        
+
         Returns:
             Dict with:
             - content: Response text
             - usage: Token usage info
         """
         pass
-    
+
     @abstractmethod
     def supports_vision(self) -> bool:
         """Whether this provider supports vision/image inputs"""
         pass
-    
+
     @abstractmethod
     def supports_prompt_caching(self) -> bool:
         """Whether this provider supports prompt caching"""
         pass
-    
+
     @abstractmethod
     async def create_completion_with_tools(
         self,
@@ -369,7 +385,11 @@ class LLMProvider(ABC):
         and yields the complete response as chunks.
         """
         response = await self.create_completion_with_tools(
-            system_prompt, messages, tools, model_tier, max_tokens,
+            system_prompt,
+            messages,
+            tools,
+            model_tier,
+            max_tokens,
         )
         # Emit text and tool blocks as chunks from the complete response
         for block in response.get("content", []):
@@ -377,6 +397,7 @@ class LLMProvider(ABC):
                 yield StreamChunk(type="text_delta", text=block["text"])
             elif block.get("type") == "tool_use":
                 import json as json_lib
+
                 yield StreamChunk(
                     type="tool_use_start",
                     tool_name=block["name"],
@@ -393,7 +414,17 @@ class LLMProvider(ABC):
             usage=response.get("usage", {}),
         )
 
-    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+    async def generate_embeddings(
+        self, texts: List[str], model: str = "text-embedding-3-small"
+    ) -> List[List[float]]:
+        """Generate vector embeddings for a list of texts (if supported)."""
+        raise NotImplementedError(
+            f"Embeddings are not supported by provider {self.name}."
+        )
+
+    def format_image_content(
+        self, base64_image: str, media_type: str = "image/png"
+    ) -> Dict[str, Any]:
         """
         Format image content for the provider's message format.
 
@@ -418,7 +449,7 @@ class AnthropicProvider(LLMProvider):
         self.settings = settings
         self._models = {
             "fast": settings.CLAUDE_HAIKU,
-            "balanced": settings.CLAUDE_SONNET
+            "balanced": settings.CLAUDE_SONNET,
         }
 
     @property
@@ -459,7 +490,9 @@ class AnthropicProvider(LLMProvider):
             out.append(tool)
         return out
 
-    def _beta_headers_for(self, converted_tools: List[Dict[str, Any]]) -> Dict[str, str]:
+    def _beta_headers_for(
+        self, converted_tools: List[Dict[str, Any]]
+    ) -> Dict[str, str]:
         """Return ``extra_headers`` for ``messages.create`` / ``messages.stream``.
 
         Iterates converted (Anthropic-native) tool specs and emits the
@@ -481,44 +514,48 @@ class AnthropicProvider(LLMProvider):
         messages: List[Dict[str, Any]],
         model_tier: str = "balanced",
         max_tokens: int = 8192,
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> Dict[str, Any]:
         """Create completion using Claude API"""
         model = self.get_model(model_tier)
-        
+
         # Build system prompt with caching if enabled
         if use_cache and self.settings.PROMPT_CACHING_ENABLED:
             system = [
                 {
                     "type": "text",
                     "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"}
+                    "cache_control": {"type": "ephemeral"},
                 }
             ]
         else:
             system = system_prompt
-        
+
         # Run synchronous API call in thread pool
         response = await asyncio.to_thread(
             self.client.messages.create,
             model=model,
             max_tokens=max_tokens,
             system=system,
-            messages=messages
+            messages=messages,
         )
-        
+
         return {
             "content": response.content[0].text,
             "usage": {
                 "input_tokens": response.usage.input_tokens,
                 "output_tokens": response.usage.output_tokens,
-                "cache_creation_input_tokens": getattr(response.usage, "cache_creation_input_tokens", 0),
-                "cache_read_input_tokens": getattr(response.usage, "cache_read_input_tokens", 0)
+                "cache_creation_input_tokens": getattr(
+                    response.usage, "cache_creation_input_tokens", 0
+                ),
+                "cache_read_input_tokens": getattr(
+                    response.usage, "cache_read_input_tokens", 0
+                ),
             },
             "model": model,
-            "stop_reason": response.stop_reason
+            "stop_reason": response.stop_reason,
         }
-    
+
     async def create_completion_with_tools(
         self,
         system_prompt: Any,
@@ -578,12 +615,14 @@ class AnthropicProvider(LLMProvider):
             if block.type == "text":
                 content.append({"type": "text", "text": block.text})
             elif block.type == "tool_use":
-                content.append({
-                    "type": "tool_use",
-                    "id": block.id,
-                    "name": block.name,
-                    "input": block.input,
-                })
+                content.append(
+                    {
+                        "type": "tool_use",
+                        "id": block.id,
+                        "name": block.name,
+                        "input": block.input,
+                    }
+                )
             else:
                 content.append(_block_to_dict(block))
 
@@ -592,8 +631,12 @@ class AnthropicProvider(LLMProvider):
             "usage": {
                 "input_tokens": response.usage.input_tokens,
                 "output_tokens": response.usage.output_tokens,
-                "cache_creation_input_tokens": getattr(response.usage, "cache_creation_input_tokens", 0),
-                "cache_read_input_tokens": getattr(response.usage, "cache_read_input_tokens", 0),
+                "cache_creation_input_tokens": getattr(
+                    response.usage, "cache_creation_input_tokens", 0
+                ),
+                "cache_read_input_tokens": getattr(
+                    response.usage, "cache_read_input_tokens", 0
+                ),
             },
             "model": model,
             "stop_reason": response.stop_reason,
@@ -617,7 +660,13 @@ class AnthropicProvider(LLMProvider):
 
         if isinstance(system_prompt, str):
             if self.settings.PROMPT_CACHING_ENABLED:
-                system = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
+                system = [
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ]
             else:
                 system = system_prompt
         else:
@@ -626,8 +675,11 @@ class AnthropicProvider(LLMProvider):
         logger.debug("anthropic_stream_outbound: %s", _summarize_messages(messages))
 
         stream_kwargs: Dict[str, Any] = dict(
-            model=model, max_tokens=max_tokens,
-            system=system, messages=messages, tools=tools,
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=messages,
+            tools=tools,
         )
         if context_management:
             extra_headers = extra_headers or {}
@@ -640,10 +692,12 @@ class AnthropicProvider(LLMProvider):
         if extra_headers:
             stream_kwargs["extra_headers"] = extra_headers
 
-        # Run sync streaming in a thread, bridge to async via queue.
-        # Event items are ("event", sdk_event); the fully-assembled Message
-        # arrives as ("final", Message) after the stream closes; any
-        # exception becomes ("error", e).
+        # Run sync SDK streaming in a thread, bridge to async via queue.
+        # asyncio.Queue is not thread-safe — all puts must go through
+        # loop.call_soon_threadsafe() so the event loop's waiter notification
+        # is dispatched correctly. Direct put_nowait() from a thread races
+        # against the consumer's Future.set_result() callback.
+        loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
         _sentinel = object()
 
@@ -651,16 +705,16 @@ class AnthropicProvider(LLMProvider):
             try:
                 with self.client.messages.stream(**stream_kwargs) as stream:
                     for event in stream:
-                        queue.put_nowait(("event", event))
+                        loop.call_soon_threadsafe(queue.put_nowait, ("event", event))
                     try:
-                        queue.put_nowait(("final", stream.get_final_message()))
+                        loop.call_soon_threadsafe(queue.put_nowait, ("final", stream.get_final_message()))
                     except Exception as e:
                         logger.warning("Anthropic get_final_message failed: %s", e)
             except Exception as e:
-                queue.put_nowait(("error", e))
-            queue.put_nowait(_sentinel)
+                loop.call_soon_threadsafe(queue.put_nowait, ("error", e))
+            loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
 
-        asyncio.get_event_loop().run_in_executor(None, _run_sync_stream)
+        loop.run_in_executor(None, _run_sync_stream)
 
         # Streaming path only drives UI-visible events (text, tool_use rows,
         # web_search rows). The ("final", Message) item carries the full
@@ -696,10 +750,18 @@ class AnthropicProvider(LLMProvider):
                     final_usage = {
                         "input_tokens": getattr(usage, "input_tokens", 0) or 0,
                         "output_tokens": getattr(usage, "output_tokens", 0) or 0,
-                        "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", 0) or 0,
-                        "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", 0) or 0,
+                        "cache_creation_input_tokens": getattr(
+                            usage, "cache_creation_input_tokens", 0
+                        )
+                        or 0,
+                        "cache_read_input_tokens": getattr(
+                            usage, "cache_read_input_tokens", 0
+                        )
+                        or 0,
                     }
-                final_stop_reason = getattr(payload, "stop_reason", None) or final_stop_reason
+                final_stop_reason = (
+                    getattr(payload, "stop_reason", None) or final_stop_reason
+                )
                 continue
 
             event = payload
@@ -737,7 +799,9 @@ class AnthropicProvider(LLMProvider):
                 elif dtype == "input_json_delta":
                     btype = block_types_by_index.get(idx, "")
                     if btype == "tool_use":
-                        yield StreamChunk(type="tool_input_delta", tool_input_json=delta.partial_json)
+                        yield StreamChunk(
+                            type="tool_input_delta", tool_input_json=delta.partial_json
+                        )
                     elif btype == "server_tool_use":
                         server_tool_by_index[idx]["input_json"] += delta.partial_json
 
@@ -745,7 +809,9 @@ class AnthropicProvider(LLMProvider):
                 idx = getattr(event, "index", -1)
                 btype = block_types_by_index.pop(idx, "")
                 if btype == "tool_use":
-                    yield StreamChunk(type="tool_use_end", tool_id=tool_ids_by_index.pop(idx, ""))
+                    yield StreamChunk(
+                        type="tool_use_end", tool_id=tool_ids_by_index.pop(idx, "")
+                    )
                 elif btype == "server_tool_use":
                     info = server_tool_by_index.pop(idx, {})
                     query = _parse_server_tool_query(info.get("input_json", ""))
@@ -763,19 +829,26 @@ class AnthropicProvider(LLMProvider):
                             hits, error_code = _parse_web_search_hits(result_block)
                         else:
                             hits, error_code = _parse_web_fetch_result(result_block)
-                        tool_use_id = str(_get_field(result_block, "tool_use_id", "") or "")
+                        tool_use_id = str(
+                            _get_field(result_block, "tool_use_id", "") or ""
+                        )
                         # Diagnostic: helps trace whether the stream actually
                         # carries hits at content_block_stop, or only in the
                         # final-assembled message (get_final_message path).
                         logger.info(
                             "anthropic_result_stream: type=%s tool_use_id=%s hits=%d error=%s block_content_present=%s",
-                            btype, tool_use_id, len(hits), error_code,
+                            btype,
+                            tool_use_id,
+                            len(hits),
+                            error_code,
                             _get_field(result_block, "content") is not None,
                         )
                         yield StreamChunk(
                             type="builtin_tool_result",
                             tool_name=(
-                                "web_search" if btype == "web_search_tool_result" else "web_fetch"
+                                "web_search"
+                                if btype == "web_search_tool_result"
+                                else "web_fetch"
                             ),
                             tool_id=tool_use_id,
                             hits=hits,
@@ -783,11 +856,17 @@ class AnthropicProvider(LLMProvider):
                         )
 
             elif etype == "message_delta":
-                final_stop_reason = getattr(event.delta, "stop_reason", final_stop_reason)
+                final_stop_reason = getattr(
+                    event.delta, "stop_reason", final_stop_reason
+                )
                 usage = getattr(event, "usage", None)
                 if usage is not None:
-                    for key in ("input_tokens", "output_tokens",
-                                "cache_creation_input_tokens", "cache_read_input_tokens"):
+                    for key in (
+                        "input_tokens",
+                        "output_tokens",
+                        "cache_creation_input_tokens",
+                        "cache_read_input_tokens",
+                    ):
                         val = getattr(usage, key, 0) or 0
                         if val:
                             final_usage[key] = val
@@ -800,15 +879,17 @@ class AnthropicProvider(LLMProvider):
     def supports_prompt_caching(self) -> bool:
         return True
 
-    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+    def format_image_content(
+        self, base64_image: str, media_type: str = "image/png"
+    ) -> Dict[str, Any]:
         """Format image for Anthropic's message format"""
         return {
             "type": "image",
             "source": {
                 "type": "base64",
                 "media_type": media_type,
-                "data": base64_image
-            }
+                "data": base64_image,
+            },
         }
 
 
@@ -841,7 +922,9 @@ class OpenAIProvider(LLMProvider):
         """Extract plain text from system prompt (string or Anthropic content blocks)."""
         if isinstance(system_prompt, list):
             return " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
+                block.get("text", "")
+                for block in system_prompt
+                if block.get("type") == "text"
             )
         return system_prompt or ""
 
@@ -863,17 +946,20 @@ class OpenAIProvider(LLMProvider):
                 if spec:
                     openai_tools.append(spec)
                 continue
-            openai_tools.append({
-                "type": "function",
-                "name": tool["name"],
-                "description": tool.get("description", ""),
-                "parameters": tool.get("input_schema", {}),
-            })
+            openai_tools.append(
+                {
+                    "type": "function",
+                    "name": tool["name"],
+                    "description": tool.get("description", ""),
+                    "parameters": tool.get("input_schema", {}),
+                }
+            )
         return openai_tools
 
     def _convert_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert Anthropic-format messages to Responses API input items."""
         import json as json_lib
+
         input_items: List[Dict[str, Any]] = []
 
         for msg in messages:
@@ -886,61 +972,74 @@ class OpenAIProvider(LLMProvider):
             elif role == "user" and isinstance(content, list):
                 for item in content:
                     if item.get("type") == "tool_result":
-                        input_items.append({
-                            "type": "function_call_output",
-                            "call_id": item.get("tool_use_id", ""),
-                            "output": item.get("content", ""),
-                        })
+                        input_items.append(
+                            {
+                                "type": "function_call_output",
+                                "call_id": item.get("tool_use_id", ""),
+                                "output": item.get("content", ""),
+                            }
+                        )
                     elif item.get("type") == "text":
                         input_items.append({"role": "user", "content": item["text"]})
 
             elif role == "assistant" and isinstance(content, list):
                 for item in content:
                     if item.get("type") == "text":
-                        input_items.append({"role": "assistant", "content": item["text"]})
+                        input_items.append(
+                            {"role": "assistant", "content": item["text"]}
+                        )
                     elif item.get("type") == "tool_use":
-                        input_items.append({
-                            "type": "function_call",
-                            "call_id": item["id"],
-                            "name": item["name"],
-                            "arguments": json_lib.dumps(item["input"]),
-                        })
+                        input_items.append(
+                            {
+                                "type": "function_call",
+                                "call_id": item["id"],
+                                "name": item["name"],
+                                "arguments": json_lib.dumps(item["input"]),
+                            }
+                        )
 
             elif role == "assistant" and isinstance(content, str):
                 input_items.append({"role": "assistant", "content": content})
 
             else:
-                input_items.append({"role": role, "content": str(content) if content else ""})
+                input_items.append(
+                    {"role": role, "content": str(content) if content else ""}
+                )
 
         return input_items
 
     def _convert_response(self, response) -> Dict[str, Any]:
         """Convert Responses API response to Anthropic-style content blocks."""
         import json as json_lib
+
         content_blocks: List[Dict[str, Any]] = []
 
         for item in response.output:
             if item.type == "message":
                 for part in item.content:
-                    if hasattr(part, 'text'):
+                    if hasattr(part, "text"):
                         content_blocks.append({"type": "text", "text": part.text})
             elif item.type == "function_call":
-                content_blocks.append({
-                    "type": "tool_use",
-                    "id": item.call_id,
-                    "name": item.name,
-                    "input": json_lib.loads(item.arguments),
-                })
+                content_blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": item.call_id,
+                        "name": item.name,
+                        "input": json_lib.loads(item.arguments),
+                    }
+                )
             # web_search_call items are auto-executed server-side, skip
 
-        has_function_calls = any(item.type == "function_call" for item in response.output)
+        has_function_calls = any(
+            item.type == "function_call" for item in response.output
+        )
         stop_reason = "tool_use" if has_function_calls else "end_turn"
 
         return {
             "content": content_blocks,
             "usage": {
-                "input_tokens": getattr(response.usage, 'input_tokens', 0),
-                "output_tokens": getattr(response.usage, 'output_tokens', 0),
+                "input_tokens": getattr(response.usage, "input_tokens", 0),
+                "output_tokens": getattr(response.usage, "output_tokens", 0),
                 "cache_creation_input_tokens": 0,
                 "cache_read_input_tokens": 0,
             },
@@ -949,8 +1048,12 @@ class OpenAIProvider(LLMProvider):
         }
 
     async def create_completion(
-        self, system_prompt: str, messages: List[Dict[str, Any]],
-        model_tier: str = "balanced", max_tokens: int = 8192, use_cache: bool = True,
+        self,
+        system_prompt: str,
+        messages: List[Dict[str, Any]],
+        model_tier: str = "balanced",
+        max_tokens: int = 8192,
+        use_cache: bool = True,
     ) -> Dict[str, Any]:
         """Create completion using Responses API."""
         model = self.get_model(model_tier)
@@ -968,8 +1071,8 @@ class OpenAIProvider(LLMProvider):
         return {
             "content": response.output_text,
             "usage": {
-                "input_tokens": getattr(response.usage, 'input_tokens', 0),
-                "output_tokens": getattr(response.usage, 'output_tokens', 0),
+                "input_tokens": getattr(response.usage, "input_tokens", 0),
+                "output_tokens": getattr(response.usage, "output_tokens", 0),
                 "cache_creation_input_tokens": 0,
                 "cache_read_input_tokens": 0,
             },
@@ -978,8 +1081,11 @@ class OpenAIProvider(LLMProvider):
         }
 
     async def create_completion_with_tools(
-        self, system_prompt: Any, messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]], model_tier: str = "balanced",
+        self,
+        system_prompt: Any,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_tier: str = "balanced",
         max_tokens: int = 16384,
     ) -> Dict[str, Any]:
         """Create completion with tool-use via Responses API."""
@@ -1000,15 +1106,16 @@ class OpenAIProvider(LLMProvider):
         if is_reasoning_model:
             kwargs["reasoning"] = {"effort": "medium"}
 
-        response = await asyncio.to_thread(
-            self.client.responses.create, **kwargs
-        )
+        response = await asyncio.to_thread(self.client.responses.create, **kwargs)
 
         return self._convert_response(response)
 
     async def stream_completion_with_tools(
-        self, system_prompt: Any, messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]], model_tier: str = "balanced",
+        self,
+        system_prompt: Any,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
         extra_request_kwargs: Optional[Dict[str, Any]] = None,
@@ -1024,6 +1131,7 @@ class OpenAIProvider(LLMProvider):
         input_items = self._convert_messages(messages)
         openai_tools = self._convert_tools(tools)
 
+        loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
         _sentinel = object()
 
@@ -1032,25 +1140,28 @@ class OpenAIProvider(LLMProvider):
         reasoning_config = {"effort": "medium"} if is_reasoning_model else None
 
         def _run_stream():
-            kwargs: Dict[str, Any] = {
-                "model": model,
-                "instructions": instructions,
-                "input": input_items,
-                "tools": openai_tools if openai_tools else None,
-                "max_output_tokens": max_tokens,
-                "stream": True,
-                "store": False,
-            }
-            if reasoning_config:
-                kwargs["reasoning"] = reasoning_config
-            if extra_request_kwargs:
-                kwargs.update(extra_request_kwargs)
-            stream = self.client.responses.create(**kwargs)
-            for event in stream:
-                queue.put_nowait(event)
-            queue.put_nowait(_sentinel)
+            try:
+                kwargs: Dict[str, Any] = {
+                    "model": model,
+                    "instructions": instructions,
+                    "input": input_items,
+                    "tools": openai_tools if openai_tools else None,
+                    "max_output_tokens": max_tokens,
+                    "stream": True,
+                    "store": False,
+                }
+                if reasoning_config:
+                    kwargs["reasoning"] = reasoning_config
+                if extra_request_kwargs:
+                    kwargs.update(extra_request_kwargs)
+                stream = self.client.responses.create(**kwargs)
+                for event in stream:
+                    loop.call_soon_threadsafe(queue.put_nowait, event)
+            except Exception as e:
+                loop.call_soon_threadsafe(queue.put_nowait, ("error", e))
+            loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
 
-        asyncio.get_event_loop().run_in_executor(None, _run_stream)
+        loop.run_in_executor(None, _run_stream)
 
         current_func_name = ""
         current_func_id = ""
@@ -1063,7 +1174,10 @@ class OpenAIProvider(LLMProvider):
             if event is _sentinel:
                 break
 
-            etype = getattr(event, 'type', '')
+            if isinstance(event, tuple) and len(event) == 2 and event[0] == "error":
+                raise event[1]
+
+            etype = getattr(event, "type", "")
 
             if etype == "response.output_text.delta":
                 yield StreamChunk(type="text_delta", text=event.delta)
@@ -1072,41 +1186,50 @@ class OpenAIProvider(LLMProvider):
                 yield StreamChunk(type="reasoning_delta", text=event.delta)
 
             elif etype == "response.output_item.added":
-                item = getattr(event, 'item', None)
-                item_type = getattr(item, 'type', '') if item is not None else ''
+                item = getattr(event, "item", None)
+                item_type = getattr(item, "type", "") if item is not None else ""
                 if item_type == "function_call":
                     current_func_name = item.name
                     current_func_id = item.call_id
                     func_args_buffer = ""
                     has_tool_calls = True
-                    yield StreamChunk(type="tool_use_start",
-                        tool_name=current_func_name, tool_id=current_func_id)
+                    yield StreamChunk(
+                        type="tool_use_start",
+                        tool_name=current_func_name,
+                        tool_id=current_func_id,
+                    )
                 elif item_type == "web_search_call":
                     queries = _extract_web_search_queries(item)
-                    logger.info("web_search_event: type=output_item.added id=%s queries=%r item_attrs=%s",
-                                getattr(item, 'id', ''), queries,
-                                _dump_attrs(item))
+                    logger.info(
+                        "web_search_event: type=output_item.added id=%s queries=%r item_attrs=%s",
+                        getattr(item, "id", ""),
+                        queries,
+                        _dump_attrs(item),
+                    )
                     for q in queries:
                         yield StreamChunk(
                             type="builtin_tool_use",
                             tool_name="web_search",
-                            tool_id=getattr(item, 'id', '') or '',
+                            tool_id=getattr(item, "id", "") or "",
                             text=q,
                         )
 
             elif etype == "response.output_item.done":
                 # web_search_call queries are typically populated by the
                 # time the item completes — emit one chunk per query.
-                item = getattr(event, 'item', None)
-                if item is not None and getattr(item, 'type', '') == "web_search_call":
+                item = getattr(event, "item", None)
+                if item is not None and getattr(item, "type", "") == "web_search_call":
                     queries = _extract_web_search_queries(item)
-                    logger.info("web_search_event: type=output_item.done id=%s queries=%r",
-                                getattr(item, 'id', ''), queries)
+                    logger.info(
+                        "web_search_event: type=output_item.done id=%s queries=%r",
+                        getattr(item, "id", ""),
+                        queries,
+                    )
                     for q in queries:
                         yield StreamChunk(
                             type="builtin_tool_use",
                             tool_name="web_search",
-                            tool_id=getattr(item, 'id', '') or '',
+                            tool_id=getattr(item, "id", "") or "",
                             text=q,
                             stop_reason="completed",
                         )
@@ -1115,37 +1238,48 @@ class OpenAIProvider(LLMProvider):
                 func_args_buffer += event.delta
 
             elif etype == "response.function_call_arguments.done":
-                yield StreamChunk(type="tool_input_delta",
-                    tool_id=current_func_id, tool_input_json=func_args_buffer)
+                yield StreamChunk(
+                    type="tool_input_delta",
+                    tool_id=current_func_id,
+                    tool_input_json=func_args_buffer,
+                )
                 yield StreamChunk(type="tool_use_end", tool_id=current_func_id)
                 func_args_buffer = ""
 
-            elif etype in ("response.web_search_call.searching",
-                           "response.web_search_call.in_progress",
-                           "response.web_search_call.completed"):
+            elif etype in (
+                "response.web_search_call.searching",
+                "response.web_search_call.in_progress",
+                "response.web_search_call.completed",
+            ):
                 query = _extract_web_search_query(event)
-                status = etype.rsplit('.', 1)[-1]
-                logger.info("web_search_event: type=%s query=%r event_attrs=%s",
-                            etype, query, _dump_attrs(event))
+                status = etype.rsplit(".", 1)[-1]
+                logger.info(
+                    "web_search_event: type=%s query=%r event_attrs=%s",
+                    etype,
+                    query,
+                    _dump_attrs(event),
+                )
                 yield StreamChunk(
                     type="builtin_tool_use",
                     tool_name="web_search",
-                    tool_id=getattr(event, 'item_id', '') or '',
-                    text=query or '',
+                    tool_id=getattr(event, "item_id", "") or "",
+                    text=query or "",
                     stop_reason=status,
                 )
 
             elif etype == "response.completed":
-                if hasattr(event, 'response') and hasattr(event.response, 'usage'):
+                if hasattr(event, "response") and hasattr(event.response, "usage"):
                     u = event.response.usage
                     final_usage = {
-                        "input_tokens": getattr(u, 'input_tokens', 0),
-                        "output_tokens": getattr(u, 'output_tokens', 0),
+                        "input_tokens": getattr(u, "input_tokens", 0),
+                        "output_tokens": getattr(u, "output_tokens", 0),
                     }
 
-        yield StreamChunk(type="done",
+        yield StreamChunk(
+            type="done",
             stop_reason="tool_use" if has_tool_calls else "end_turn",
-            usage=final_usage)
+            usage=final_usage,
+        )
 
     def supports_vision(self) -> bool:
         return True
@@ -1153,13 +1287,27 @@ class OpenAIProvider(LLMProvider):
     def supports_prompt_caching(self) -> bool:
         return False
 
-    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+    def format_image_content(
+        self, base64_image: str, media_type: str = "image/png"
+    ) -> Dict[str, Any]:
         return {
             "type": "image_url",
-            "image_url": {
-                "url": f"data:{media_type};base64,{base64_image}"
-            }
+            "image_url": {"url": f"data:{media_type};base64,{base64_image}"},
         }
+
+    async def generate_embeddings(
+        self, texts: List[str], model: str = "text-embedding-3-small"
+    ) -> List[List[float]]:
+        """Generate vector embeddings using OpenAI embeddings API."""
+        if not texts:
+            return []
+
+        response = await asyncio.to_thread(
+            self.client.embeddings.create,
+            model=model,
+            input=texts,
+        )
+        return [item.embedding for item in response.data]
 
 
 class DeepSeekProvider(LLMProvider):
@@ -1201,8 +1349,12 @@ class DeepSeekProvider(LLMProvider):
         return model_tier in ("balanced", self._models.get("balanced", ""))
 
     async def create_completion(
-        self, system_prompt: str, messages: List[Dict[str, Any]],
-        model_tier: str = "balanced", max_tokens: int = 8192, use_cache: bool = True,
+        self,
+        system_prompt: str,
+        messages: List[Dict[str, Any]],
+        model_tier: str = "balanced",
+        max_tokens: int = 8192,
+        use_cache: bool = True,
     ) -> Dict[str, Any]:
         """Create completion using Chat Completions API."""
         model = self.get_model(model_tier)
@@ -1213,11 +1365,15 @@ class DeepSeekProvider(LLMProvider):
             if isinstance(content, str):
                 full_messages.append({"role": role, "content": content})
             else:
-                full_messages.append({"role": role, "content": str(content) if content else ""})
+                full_messages.append(
+                    {"role": role, "content": str(content) if content else ""}
+                )
 
         response = await asyncio.to_thread(
             self.client.chat.completions.create,
-            model=model, max_tokens=max_tokens, messages=full_messages,
+            model=model,
+            max_tokens=max_tokens,
+            messages=full_messages,
         )
         return {
             "content": response.choices[0].message.content,
@@ -1258,7 +1414,9 @@ class DeepSeekProvider(LLMProvider):
         # --- Convert system prompt ---
         if isinstance(system_prompt, list):
             sys_text = " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
+                block.get("text", "")
+                for block in system_prompt
+                if block.get("type") == "text"
             )
         else:
             sys_text = system_prompt
@@ -1277,14 +1435,16 @@ class DeepSeekProvider(LLMProvider):
                     if item.get("type") == "text":
                         text_parts.append(item["text"])
                     elif item.get("type") == "tool_use":
-                        tool_calls.append({
-                            "id": item["id"],
-                            "type": "function",
-                            "function": {
-                                "name": item["name"],
-                                "arguments": json_lib.dumps(item["input"]),
-                            },
-                        })
+                        tool_calls.append(
+                            {
+                                "id": item["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": item["name"],
+                                    "arguments": json_lib.dumps(item["input"]),
+                                },
+                            }
+                        )
                 oai_msg: Dict[str, Any] = {"role": "assistant"}
                 if text_parts:
                     oai_msg["content"] = "\n".join(text_parts)
@@ -1299,15 +1459,19 @@ class DeepSeekProvider(LLMProvider):
             elif role == "user" and isinstance(content, list):
                 for item in content:
                     if item.get("type") == "tool_result":
-                        full_messages.append({
-                            "role": "tool",
-                            "tool_call_id": item.get("tool_use_id", ""),
-                            "content": item.get("content", ""),
-                        })
+                        full_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": item.get("tool_use_id", ""),
+                                "content": item.get("content", ""),
+                            }
+                        )
                     elif item.get("type") == "text":
                         full_messages.append({"role": "user", "content": item["text"]})
             else:
-                full_messages.append({"role": role, "content": str(content) if content else ""})
+                full_messages.append(
+                    {"role": role, "content": str(content) if content else ""}
+                )
 
         # --- Convert tools ---
         # Built-in tool markers (e.g. OpenAI's web_search) are OpenAI-Responses-only;
@@ -1316,17 +1480,21 @@ class DeepSeekProvider(LLMProvider):
         for tool in tools:
             if tool.get("__builtin__"):
                 continue
-            openai_tools.append({
-                "type": "function",
-                "function": {
-                    "name": tool["name"],
-                    "description": tool.get("description", ""),
-                    "parameters": tool.get("input_schema", {}),
-                },
-            })
+            openai_tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool["name"],
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("input_schema", {}),
+                    },
+                }
+            )
 
         # --- Build API kwargs ---
-        effective_max_tokens = max(max_tokens, self._THINKING_MIN_MAX_TOKENS) if thinking else max_tokens
+        effective_max_tokens = (
+            max(max_tokens, self._THINKING_MIN_MAX_TOKENS) if thinking else max_tokens
+        )
         kwargs: Dict[str, Any] = {
             "model": model,
             "max_tokens": effective_max_tokens,
@@ -1348,12 +1516,14 @@ class DeepSeekProvider(LLMProvider):
             content_blocks.append({"type": "text", "text": choice.message.content})
         if choice.message.tool_calls:
             for tc in choice.message.tool_calls:
-                content_blocks.append({
-                    "type": "tool_use",
-                    "id": tc.id,
-                    "name": tc.function.name,
-                    "input": json_lib.loads(tc.function.arguments),
-                })
+                content_blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.function.name,
+                        "input": json_lib.loads(tc.function.arguments),
+                    }
+                )
 
         stop_reason = "end_turn"
         if choice.finish_reason == "tool_calls":
@@ -1379,18 +1549,24 @@ class DeepSeekProvider(LLMProvider):
         return result
 
     async def stream_completion_with_tools(
-        self, system_prompt: Any, messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]], model_tier: str = "balanced",
+        self,
+        system_prompt: Any,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion via Chat Completions API (OpenAI-compatible)."""
         import json as json_lib
+
         model = self.get_model(model_tier)
 
         if isinstance(system_prompt, list):
             sys_text = " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
+                block.get("text", "")
+                for block in system_prompt
+                if block.get("type") == "text"
             )
         else:
             sys_text = system_prompt
@@ -1406,10 +1582,16 @@ class DeepSeekProvider(LLMProvider):
                     if item.get("type") == "text":
                         text_parts.append(item["text"])
                     elif item.get("type") == "tool_use":
-                        tool_calls.append({
-                            "id": item["id"], "type": "function",
-                            "function": {"name": item["name"], "arguments": json_lib.dumps(item["input"])},
-                        })
+                        tool_calls.append(
+                            {
+                                "id": item["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": item["name"],
+                                    "arguments": json_lib.dumps(item["input"]),
+                                },
+                            }
+                        )
                 oai_msg: Dict[str, Any] = {"role": "assistant"}
                 if text_parts:
                     oai_msg["content"] = "\n".join(text_parts)
@@ -1419,38 +1601,54 @@ class DeepSeekProvider(LLMProvider):
             elif role == "user" and isinstance(content, list):
                 for item in content:
                     if item.get("type") == "tool_result":
-                        full_messages.append({
-                            "role": "tool",
-                            "tool_call_id": item.get("tool_use_id", ""),
-                            "content": item.get("content", ""),
-                        })
+                        full_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": item.get("tool_use_id", ""),
+                                "content": item.get("content", ""),
+                            }
+                        )
                     elif item.get("type") == "text":
                         full_messages.append({"role": "user", "content": item["text"]})
             else:
-                full_messages.append({"role": role, "content": str(content) if content else ""})
+                full_messages.append(
+                    {"role": role, "content": str(content) if content else ""}
+                )
 
         openai_tools = [
-            {"type": "function", "function": {"name": t["name"], "description": t.get("description", ""), "parameters": t.get("input_schema", {})}}
+            {
+                "type": "function",
+                "function": {
+                    "name": t["name"],
+                    "description": t.get("description", ""),
+                    "parameters": t.get("input_schema", {}),
+                },
+            }
             for t in tools
             if not t.get("__builtin__")
         ]
 
+        loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
         _sentinel = object()
 
         def _run_sync_stream():
-            stream = self.client.chat.completions.create(
-                model=model, max_tokens=max_tokens,
-                messages=full_messages,
-                tools=openai_tools if openai_tools else None,
-                stream=True,
-                stream_options={"include_usage": True},
-            )
-            for c in stream:
-                queue.put_nowait(c)
-            queue.put_nowait(_sentinel)
+            try:
+                stream = self.client.chat.completions.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    messages=full_messages,
+                    tools=openai_tools if openai_tools else None,
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+                for c in stream:
+                    loop.call_soon_threadsafe(queue.put_nowait, c)
+            except Exception as e:
+                loop.call_soon_threadsafe(queue.put_nowait, ("error", e))
+            loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
 
-        asyncio.get_event_loop().run_in_executor(None, _run_sync_stream)
+        loop.run_in_executor(None, _run_sync_stream)
 
         tool_call_buffer: Dict[int, Dict[str, str]] = {}
         final_stop_reason = "end_turn"
@@ -1460,7 +1658,7 @@ class DeepSeekProvider(LLMProvider):
             chunk = await queue.get()
             if chunk is _sentinel:
                 break
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 final_usage = {
                     "input_tokens": chunk.usage.prompt_tokens or 0,
                     "output_tokens": chunk.usage.completion_tokens or 0,
@@ -1475,19 +1673,31 @@ class DeepSeekProvider(LLMProvider):
                 for tc in delta.tool_calls:
                     idx = tc.index
                     if idx not in tool_call_buffer:
-                        tool_call_buffer[idx] = {"id": tc.id or "", "name": "", "arguments": ""}
+                        tool_call_buffer[idx] = {
+                            "id": tc.id or "",
+                            "name": "",
+                            "arguments": "",
+                        }
                     if tc.function and tc.function.name:
                         tool_call_buffer[idx]["name"] = tc.function.name
-                        yield StreamChunk(type="tool_use_start",
-                            tool_name=tc.function.name, tool_id=tc.id or tool_call_buffer[idx]["id"])
+                        yield StreamChunk(
+                            type="tool_use_start",
+                            tool_name=tc.function.name,
+                            tool_id=tc.id or tool_call_buffer[idx]["id"],
+                        )
                     if tc.function and tc.function.arguments:
                         tool_call_buffer[idx]["arguments"] += tc.function.arguments
             if finish_reason:
-                final_stop_reason = "tool_use" if finish_reason == "tool_calls" else "end_turn"
+                final_stop_reason = (
+                    "tool_use" if finish_reason == "tool_calls" else "end_turn"
+                )
                 for idx, tc_data in tool_call_buffer.items():
                     if tc_data["arguments"]:
-                        yield StreamChunk(type="tool_input_delta",
-                            tool_id=tc_data["id"], tool_input_json=tc_data["arguments"])
+                        yield StreamChunk(
+                            type="tool_input_delta",
+                            tool_id=tc_data["id"],
+                            tool_input_json=tc_data["arguments"],
+                        )
                     yield StreamChunk(type="tool_use_end", tool_id=tc_data["id"])
 
         yield StreamChunk(type="done", stop_reason=final_stop_reason, usage=final_usage)
@@ -1518,19 +1728,31 @@ def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
 
     if name == "deepseek":
         if not settings.DEEPSEEK_API_KEY:
-            raise ValueError("DEEPSEEK_API_KEY is required when using the deepseek provider")
+            raise ValueError(
+                "DEEPSEEK_API_KEY is required when using the deepseek provider"
+            )
         _providers[name] = DeepSeekProvider()
-        logger.info(f"Initialized DeepSeek provider with models: {settings.DEEPSEEK_MODEL_FAST}, {settings.DEEPSEEK_MODEL_BALANCED}")
+        logger.info(
+            f"Initialized DeepSeek provider with models: {settings.DEEPSEEK_MODEL_FAST}, {settings.DEEPSEEK_MODEL_BALANCED}"
+        )
     elif name == "openai":
         if not settings.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is required when using the openai provider")
+            raise ValueError(
+                "OPENAI_API_KEY is required when using the openai provider"
+            )
         _providers[name] = OpenAIProvider()
-        logger.info(f"Initialized OpenAI provider with models: {settings.OPENAI_MODEL_FAST}, {settings.OPENAI_MODEL_BALANCED}")
+        logger.info(
+            f"Initialized OpenAI provider with models: {settings.OPENAI_MODEL_FAST}, {settings.OPENAI_MODEL_BALANCED}"
+        )
     else:
         if not settings.ANTHROPIC_API_KEY:
-            raise ValueError("ANTHROPIC_API_KEY is required when using the anthropic provider")
+            raise ValueError(
+                "ANTHROPIC_API_KEY is required when using the anthropic provider"
+            )
         _providers[name] = AnthropicProvider()
-        logger.info(f"Initialized Anthropic provider with models: {settings.CLAUDE_HAIKU}, {settings.CLAUDE_SONNET}")
+        logger.info(
+            f"Initialized Anthropic provider with models: {settings.CLAUDE_HAIKU}, {settings.CLAUDE_SONNET}"
+        )
 
     return _providers[name]
 
@@ -1553,8 +1775,13 @@ def get_available_models() -> list[dict[str, str]]:
         ("openai", "OpenAI", "fast", settings.OPENAI_MODEL_FAST, ""),
         ("openai", "OpenAI", "balanced", settings.OPENAI_MODEL_BALANCED, ""),
         ("deepseek", "DeepSeek", "fast", settings.DEEPSEEK_MODEL_FAST, ""),
-        ("deepseek", "DeepSeek", "balanced", settings.DEEPSEEK_MODEL_BALANCED,
-         " (thinking)" if settings.DEEPSEEK_THINKING_ENABLED else ""),
+        (
+            "deepseek",
+            "DeepSeek",
+            "balanced",
+            settings.DEEPSEEK_MODEL_BALANCED,
+            " (thinking)" if settings.DEEPSEEK_THINKING_ENABLED else "",
+        ),
     ]
 
     api_keys = {
@@ -1573,10 +1800,12 @@ def get_available_models() -> list[dict[str, str]]:
         if composite_id in seen:
             continue
         seen.add(composite_id)
-        models.append({
-            "id": composite_id,
-            "name": f"{display_name} - {model_name}{suffix}",
-        })
+        models.append(
+            {
+                "id": composite_id,
+                "name": f"{display_name} - {model_name}{suffix}",
+            }
+        )
 
     return models
 
@@ -1594,7 +1823,9 @@ def resolve_model_override(model_id: str) -> tuple[str, str]:
         ValueError: If the format is invalid.
     """
     if ":" not in model_id:
-        raise ValueError(f"Invalid model ID format: {model_id}. Expected 'provider:model'.")
+        raise ValueError(
+            f"Invalid model ID format: {model_id}. Expected 'provider:model'."
+        )
     provider, model = model_id.split(":", 1)
     return provider, model
 
@@ -1603,4 +1834,3 @@ def reset_provider():
     """Reset all cached providers (useful for testing)."""
     global _providers
     _providers = {}
-

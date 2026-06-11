@@ -171,10 +171,10 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     # Cross-session storage cache: same URL was analyzed in a previous session
     # (by adzump or ds/chatv2). Hydrate session.context and skip the scrape.
     try:
-        from app.agents.adzump.services.business_storage import hydrate_from_storage
+        from app.agents.adzump.services.business_storage import business_storage_service
         from app.agents.adzump.tools.competitor import _emit_final_craft
         target_ctx = parent_session.context if parent_session else session_ctx
-        hit = await hydrate_from_storage(url, target_ctx, context)
+        hit = await business_storage_service.hydrate_from_storage(url, target_ctx, context)
         if hit:
             business = target_ctx.get("product_data") or {}
             name = business.get("product_name", "product")

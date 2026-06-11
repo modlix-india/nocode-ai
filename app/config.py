@@ -137,6 +137,7 @@ class Settings(BaseSettings):
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "openai"  # AppBuilder LLM provider
     ADZUMP_PROVIDER: str = "openai"  # Adzump LLM provider
+    ADZUMP_OPTIMIZATION_MODEL: str = "openai:gpt-4o"  # Model used for optimization advisor
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:

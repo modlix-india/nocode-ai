@@ -8,6 +8,7 @@ is used by the Google Ads and Meta adapters to fetch per-user access tokens.
 from __future__ import annotations
 
 import logging
+import os
 
 import httpx
 
@@ -84,9 +85,9 @@ async def fetch_oauth_token(
         token = resp.text.strip()
 
     if not token:
-        logger.warning(
-            "token_service_returned_empty: connection=%s status=%d body=%s",
-            connection_name, resp.status_code, resp.text[:200],
+        raise RuntimeError(
+            f"Token service returned empty token for connection '{connection_name}'. "
+            f"Status: {resp.status_code}. Body: {resp.text[:200]}"
         )
     return token
 
@@ -94,6 +95,11 @@ async def fetch_oauth_token(
 async def fetch_google_api_token(
     client_code: str, auth_headers: dict[str, str],
 ) -> str:
+    # Dev/test bypass: set ADZUMP_GOOGLE_ADS_ACCESS_TOKEN in variables.sh to skip
+    # the internal token service (only reachable from deployed services).
+    override = os.environ.get("ADZUMP_GOOGLE_ADS_ACCESS_TOKEN", "").strip()
+    if override:
+        return override
     return await fetch_oauth_token("GOOGLE_API", client_code, auth_headers)
 
 

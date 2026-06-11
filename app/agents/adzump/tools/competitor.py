@@ -294,9 +294,9 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
-            from app.agents.adzump.services.business_storage import hydrate_from_storage
+            from app.agents.adzump.services.business_storage import business_storage_service
             if url:
-                hit = await hydrate_from_storage(url, session_ctx, context)
+                hit = await business_storage_service.hydrate_from_storage(url, session_ctx, context)
                 if hit:
                     existing = session_ctx.get("competitor_analysis")
                     if existing and existing.get("competitors"):

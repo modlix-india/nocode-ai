@@ -16,7 +16,7 @@ import logging
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.platform import to_enum_value as platform_enum_value
-from app.agents.adzump.services.business_storage import resolve_url, save_campaign
+from app.agents.adzump.services.business_storage import business_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             error=f"Cannot launch — missing required fields: {', '.join(missing)}.",
         )
 
-    record_id = await save_campaign(session_ctx, context)
+    record_id = await business_storage_service.save_campaign(session_ctx, context)
     if not record_id:
         return ToolResult(
             success=False,
@@ -67,7 +67,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
                 # product_profile.url, then product_data.pages_analyzed[0],
                 # so it works after a fresh scrape AND after a storage hydrate
                 # (where product_data.primary_url is not preserved).
-                "product_url": resolve_url(session_ctx),
+                "product_url": business_storage_service.resolve_url(session_ctx),
                 # Which ad platform the user picked, normalized to a stable
                 # enum ("google" / "meta" / "") so host pages can branch on
                 # it without parsing free-text variants like "Google Ads".

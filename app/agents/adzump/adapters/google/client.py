@@ -48,7 +48,10 @@ class GoogleAdsClient:
         return token
 
     async def get(
-        self, endpoint: str, client_code: str, auth_headers: dict[str, str],
+        self,
+        endpoint: str,
+        client_code: str,
+        auth_headers: dict[str, str],
     ) -> dict:
         token = await self._get_api_token(client_code, auth_headers)
         url = f"{self.BASE_URL}/{self.API_VERSION}/{endpoint}"
@@ -97,7 +100,9 @@ class GoogleAdsClient:
             return self._parse_stream(response.json())
 
     async def _get_api_token(
-        self, client_code: str, auth_headers: dict[str, str],
+        self,
+        client_code: str,
+        auth_headers: dict[str, str],
     ) -> str:
         # Priority order:
         # 1. Direct access token from config (short-lived, pasted by dev)
@@ -112,7 +117,9 @@ class GoogleAdsClient:
         return await fetch_google_api_token(client_code, auth_headers)
 
     def _build_auth_headers(
-        self, access_token: str, login_customer_id: str | None = None,
+        self,
+        access_token: str,
+        login_customer_id: str | None = None,
     ) -> dict[str, str]:
         if not access_token:
             raise RuntimeError(
@@ -176,29 +183,67 @@ async def _refresh_local_oauth_token() -> str | None:
         ) from e
 
     data = resp.json()
-    _cached_oauth_token = data["access_token"]
+    token = data.get("access_token")
+    if not token:
+        raise RuntimeError(
+            f"Google OAuth response missing access_token. Keys returned: {list(data.keys())}"
+        )
+    _cached_oauth_token = token
     _oauth_token_expiry = time.time() + data.get("expires_in", 3600) - 60
     logger.info("google_oauth_token_refreshed")
     return _cached_oauth_token
 
 
 def _raise_for_google_error(response: httpx.Response) -> None:
+    """Parse Google Ads API error response and raise structured exception."""
     if response.status_code < 400:
         return
 
-    message = f"Google Ads API {response.status_code}"
+    error_message = f"Google Ads API failed: {response.status_code}"
+    error_context = {"status_code": response.status_code}
+
     try:
-        error = response.json().get("error", {})
-        if error.get("message"):
-            message = f"Google Ads API {response.status_code}: {error['message']}"
+        # Attempt to parse Google's structured error format
+        error_payload = response.json().get("error", {})
+        if error_payload:
+            error_message = error_payload.get("message", error_message)
+
+            # Extract specific errors if available (Google Ads Failure format)
+            details_list = error_payload.get("details", [])
+            if details_list and isinstance(details_list, list):
+                # Usually the first detail contains the GoogleAdsFailure
+                failure_info = details_list[0]
+                error_context["errors"] = failure_info.get("errors", [])
+                # Extract requestId for tracing
+                if "requestId" in failure_info:
+                    error_context["google_request_id"] = failure_info["requestId"]
     except Exception:
-        pass
+        # Fallback to raw text if JSON parsing fails
+        error_context["response_text"] = response.text
 
     logger.warning(
-        "google_ads_error: status=%d body=%s",
-        response.status_code, response.text[:400],
+        "google_ads_error: status=%d message=%s context=%s",
+        response.status_code,
+        error_message,
+        error_context,
     )
-    raise RuntimeError(message)
+    raise RuntimeError(error_message)
+
+
+def _extract_retry_delay(response: httpx.Response, default_delay: float) -> float:
+    try:
+        hint = (
+            response.json()
+            .get("error", {})
+            .get("details", [{}])[0]
+            .get("quotaErrorDetails", {})
+            .get("retryDelay")
+        )
+        if hint:
+            return float(hint.rstrip("s"))
+    except (KeyError, ValueError, IndexError):
+        pass
+    return default_delay
 
 
 # Singleton instance

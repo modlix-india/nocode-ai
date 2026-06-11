@@ -124,6 +124,7 @@ class ToolDefinition:
     parameters: list[ToolParameter] = field(default_factory=list)
     execute: Optional[ToolExecuteFunc] = None
     builtin_spec: Optional[dict[str, Any]] = None
+    requires_product_mapping: bool = False
 
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""

@@ -32,7 +32,7 @@ import uuid
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
-from app.core.streaming import AgentEventStream, current_agent_id
+from app.core.streaming import AgentEventStream, PassthroughEventStream, current_agent_id
 from app.core.session import BaseSession
 from app.core.context import BaseContext
 from app.services.llm_provider import get_llm_provider
@@ -149,6 +149,9 @@ class BaseAgent:
 
         # Hold references to background tasks to prevent premature GC
         self._background_tasks: set[asyncio.Task] = set()
+
+    def get_anthropic_tools_for_session(self, session: BaseSession) -> list[dict[str, Any]]:
+        return self._anthropic_tools
 
     async def run(
         self,
@@ -309,8 +312,9 @@ class BaseAgent:
 
             # Call LLM with streaming
             effective_tier = override_model or self.model_tier
+            session_tools = self.get_anthropic_tools_for_session(session)
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
-                       turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
+                       turn, self.max_turns, effective_tier, self.max_tokens, len(session_tools))
             start_time = time.monotonic()
 
             # Stream response — accumulate into content_blocks
@@ -333,7 +337,7 @@ class BaseAgent:
             async for chunk in provider.stream_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=session.get_messages(),
-                tools=self._anthropic_tools,
+                tools=session_tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
                 context_management=self.context_management,
@@ -534,11 +538,24 @@ class BaseAgent:
                 results = await asyncio.gather(
                     *(self._run_tool_block(tb, session, event_stream)
                       for tb in tool_use_blocks),
-                    return_exceptions=False,
+                    return_exceptions=True,
                 )
-                tool_result_blocks = [r[0] for r in results]
-                for _, log_entry in results:
-                    tool_call_log.append(log_entry)
+                tool_result_blocks = []
+                for tb, result in zip(tool_use_blocks, results):
+                    if isinstance(result, BaseException):
+                        logger.warning(
+                            "parallel_tool_failed tool=%s error=%s",
+                            tb.get("name"), result,
+                        )
+                        tool_result_blocks.append({
+                            "type": "tool_result",
+                            "tool_use_id": tb["id"],
+                            "content": "Tool execution failed.",
+                            "is_error": True,
+                        })
+                    else:
+                        tool_result_blocks.append(result[0])
+                        tool_call_log.append(result[1])
 
             if event_stream.is_cancelled:
                 await event_stream.emit_text("\n\n[Stopped by user.]")
@@ -898,3 +915,72 @@ class BaseAgent:
             ("single" or "multi"), or None.
         """
         return None
+
+
+async def spawn_sub_agent(
+    agent: BaseAgent,
+    user_message: str,
+    initial_context: dict[str, Any],
+    parent_session: BaseSession,
+    parent_stream: AgentEventStream,
+    parent_tool_use_id: str,
+    auth: Any = None,
+    timeout: float = 300,
+    model_override: str | None = None,
+) -> BaseSession:
+    """Create and run a sub-agent session. Returns the sub-session for result extraction.
+
+    Handles session creation, context injection, stream wrapping, timeout, and
+    agent_finished emission. On failure, re-raises the original exception so
+    the caller can convert it to a ToolResult with domain-specific error messages.
+
+    Usage:
+        try:
+            sub_session = await spawn_sub_agent(agent, message, ctx, ...)
+        except asyncio.TimeoutError:
+            return ToolResult(success=False, error="timed out")
+        except Exception:
+            return ToolResult(success=False, error="unexpected error")
+        result = extract_results_from(sub_session)
+    """
+    sub_session = BaseSession(agent_name=agent.name)
+    await sub_session.get_or_create(None, auth)
+    sub_session.context = dict(initial_context)
+    sub_session.context["parent_session_id"] = parent_session.session_id
+
+    wrapped_stream = PassthroughEventStream(parent_stream, parent_tool_use_id)
+    agent_status = "success"
+    agent_summary = ""
+
+    try:
+        await asyncio.wait_for(
+            agent.run(
+                user_message=user_message,
+                session=sub_session,
+                event_stream=wrapped_stream,
+                model_override=model_override,
+                parent_tool_use_id=parent_tool_use_id,
+            ),
+            timeout=timeout,
+        )
+    except asyncio.TimeoutError:
+        agent_status = "failed"
+        agent_summary = f"Sub-agent timed out after {timeout:.0f}s"
+        raise
+    except Exception as e:
+        agent_status = "failed"
+        agent_summary = f"Sub-agent failed: {type(e).__name__}: {e}"
+        raise
+    finally:
+        try:
+            await wrapped_stream.emit_agent_finished(
+                agent_id=agent.name,
+                status=agent_status,
+                summary=agent_summary,
+            )
+        except Exception:
+            logger.exception(
+                "spawn_sub_agent: emit_agent_finished failed agent=%s", agent.name
+            )
+
+    return sub_session
