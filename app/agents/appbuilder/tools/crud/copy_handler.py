@@ -457,6 +457,9 @@ async def _copy_execute(params: dict[str, Any], context: dict[str, Any]) -> Tool
 copy_tool = ToolDefinition(
     name="copy",
     display_name="Copy",
+    # v8 Plan B WS4 · declarative only · blocking elicitation (request_confirmation).
+    kind="elicitation",
+    elicit_mode="blocking",
     description=(
         "Copy a definition object to another application or within the same application "
         "with a new name. Supports copying entire pages, specific component subtrees "
