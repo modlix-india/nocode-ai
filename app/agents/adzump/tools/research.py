@@ -15,7 +15,7 @@ import logging
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.tools._shared import emit_progress
+from app.agents.adzump._shared import emit_progress, short_url
 
 logger = logging.getLogger(__name__)
 
@@ -32,35 +32,6 @@ def _clean_url(url: str) -> str:
         return urlunparse(p._replace(query=urlencode(params, doseq=True)))
     except Exception:
         return url
-
-
-def _short_url(url: str, max_len: int = 55) -> str:
-    """Render a URL compactly for tool-progress display.
-
-    - Strips ``www.`` and query/fragment.
-    - Keeps host + last 1-2 path segments.
-    - Hard-caps length, ellipsises the middle.
-    """
-    if not url:
-        return ""
-    try:
-        p = urlparse(url)
-        host = (p.netloc or "").removeprefix("www.")
-        if not host:
-            return url[:max_len]
-        path = (p.path or "").rstrip("/")
-        parts = [seg for seg in path.split("/") if seg]
-        if not parts:
-            display = host
-        elif len(parts) <= 2:
-            display = f"{host}/{'/'.join(parts)}"
-        else:
-            display = f"{host}/…/{parts[-1]}"
-        if len(display) > max_len:
-            display = display[: max_len - 1] + "…"
-        return display
-    except Exception:
-        return url[:max_len]
 
 
 def _short_text(text: str, max_len: int = 60) -> str:
@@ -101,7 +72,7 @@ async def _web_fetch(params: dict, context: dict) -> ToolResult:
 
     await emit_progress(
         context,
-        f'web_fetch · {_short_url(url)} — {_short_text(question)}',
+        f'web_fetch · {short_url(url)} — {_short_text(question)}',
     )
 
     result = await fetch_and_answer(url, augmented_question)

@@ -53,4 +53,15 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
             )
 
     image_blocks = build_image_blocks(body.attachments) if body.attachments else None
+
+    # v9 I-0 · stash raw image uploads so save_uploaded_assets can persist them
+    # as campaign assets. build_image_blocks only formats them for LLM vision
+    # (then drops the bytes); the ingest tool needs the raw base64. Overwrites
+    # any prior stash — only this turn's uploads are pending ingest.
+    if body.attachments:
+        session.context["_pending_uploads"] = [
+            {"data": a.data, "mime": a.mime_type, "name": a.name}
+            for a in body.attachments if a.type == "image" and a.data
+        ]
+
     return stream_agent_response(agent, body.message, session, image_blocks, model_override=body.model)
