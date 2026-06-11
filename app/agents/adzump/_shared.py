@@ -171,13 +171,15 @@ async def upload_image(
                 upload_url = data.get("url", "")
                 if upload_url:
                     # File service returns a path relative to its own API root
-                    # (e.g. "api/files/static/file/X/creatives/foo.webp"). The
-                    # browser resolves an <img src="api/..."> against whatever
-                    # path the host page is on — `/marketingai/SYSTEM/page/X/`
-                    # — which 404s. Emit the absolute URL so consumers don't
-                    # have to know the gateway host.
-                    if not upload_url.startswith(("http://", "https://")):
-                        upload_url = f"{base.rstrip('/')}/{upload_url.lstrip('/')}"
+                    # (e.g. "api/files/static/file/X/creatives/foo.webp"). A
+                    # bare relative path 404s on deep page paths
+                    # (`/marketingai/SYSTEM/page/X/`), and prefixing
+                    # GATEWAY_URL bakes in the cluster-internal hostname on
+                    # dev (gateway-server:8080) which the browser can't reach.
+                    # Root-relative resolves against the page origin
+                    # everywhere (dev ingress + local /api proxy).
+                    if not upload_url.startswith(("http://", "https://", "/")):
+                        upload_url = f"/{upload_url}"
                     logger.info("image_uploaded: kind=%s url=%s", kind, upload_url)
                     return upload_url
             logger.warning(
