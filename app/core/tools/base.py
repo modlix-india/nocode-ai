@@ -24,7 +24,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable, Optional
+from typing import Any, Callable, Awaitable, Literal, Optional
 
 
 @dataclass(frozen=True)
@@ -124,6 +124,24 @@ class ToolDefinition:
     parameters: list[ToolParameter] = field(default_factory=list)
     execute: Optional[ToolExecuteFunc] = None
     builtin_spec: Optional[dict[str, Any]] = None
+
+    # Elicitation primitive. A "tool" is silent compute; an "elicitation" asks
+    # the user for input. The LLM cannot see this field (it never reaches the
+    # Anthropic API — see to_anthropic_tool); it is a framework hint that drives
+    # the run-loop's turn-boundary behavior.
+    #   kind="elicitation" + elicit_mode="deferred"  → the loop breaks after the
+    #       tool returns, yielding the turn to the user, who replies next turn.
+    #   kind="elicitation" + elicit_mode="blocking"  → the tool itself awaits a
+    #       Future mid-execution (e.g. a confirmation prompt); the loop is NOT
+    #       broken (it already paused in-tool). Declarative only.
+    #   elicit_expects="single" → one user reply closes it.
+    #   elicit_expects="multi"  → the reply may span several messages (e.g. file
+    #       uploads); stays open until the LLM moves on.
+    # A tool that only elicits CONDITIONALLY keeps kind="tool" and signals at
+    # runtime via ToolResult.data["elicited"]=True (+ optional "elicit_expects").
+    kind: Literal["tool", "elicitation"] = "tool"
+    elicit_mode: Literal["deferred", "blocking"] = "deferred"
+    elicit_expects: Literal["single", "multi"] = "single"
 
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""
