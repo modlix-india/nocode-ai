@@ -234,7 +234,9 @@ async def upload_and_analyze(
     from hashlib import md5
 
     ext = _ext_for_content_type(content_type)
-    filename = f"{kind}_{md5(source_url.encode()).hexdigest()[:12]}.{ext}"
+    # hash the BYTES, not source_url — every pasted upload is "image.png", so a
+    # url-hash collides across sessions and the file service keeps the old file
+    filename = f"{kind}_{md5(image_bytes).hexdigest()[:12]}.{ext}"
     url = await upload_image(image_bytes, filename, kind, context, content_type)
     if not url:
         return None
