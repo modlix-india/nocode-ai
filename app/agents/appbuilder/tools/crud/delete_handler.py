@@ -20,6 +20,9 @@ async def _delete_execute(params: dict[str, Any], context: dict[str, Any]) -> To
 delete_tool = ToolDefinition(
     name="delete",
     display_name="Delete",
+    # v8 Plan B WS4 · declarative only · blocking elicitation (request_confirmation).
+    kind="elicitation",
+    elicit_mode="blocking",
     description=(
         "Delete an object. For inherited objects (owned by another client), removes your override.\n\n"
         "For 'application': pass app_code (the application code, not the ID).\n"

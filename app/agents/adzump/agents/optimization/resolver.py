@@ -65,10 +65,10 @@ async def resolve_platform_and_account(
     mappings = None
     try:
         from app.agents.adzump.services.business_storage import (
-            business_storage_service,
+            fetch_campaign_mappings,
         )
 
-        mappings = await business_storage_service.fetch_campaign_mappings(
+        mappings = await fetch_campaign_mappings(
             client_code, auth_headers
         )
         mapping = mappings.get(campaign_id)

@@ -74,7 +74,6 @@ class OptimizationAgent(BaseAgent):
             context_builder=context,
             max_turns=OPTIMIZATION_MAX_TURNS,
             max_tokens=OPTIMIZATION_MAX_TOKENS,
-            sequential_tools=False,
         )
 
     @classmethod
@@ -98,8 +97,11 @@ class OptimizationAgent(BaseAgent):
         event_stream: AgentEventStream,
         image_blocks: list[dict[str, Any]] | None = None,
         model_override: str | None = None,
-        parent_tool_use_id: str = "",
     ) -> None:
+        # AgentCard lifecycle (agent_started/finished) is owned by the spawner
+        # (spawn_sub_agent), per BaseAgent.run's contract — we do not take a
+        # parent_tool_use_id here. This override only normalizes the platform
+        # before the LLM loop.
         platform = session.context.get("platform")
         if platform:
             session.context["platform"] = normalize_platform(platform)
@@ -109,7 +111,6 @@ class OptimizationAgent(BaseAgent):
             event_stream=event_stream,
             image_blocks=image_blocks,
             model_override=model_override,
-            parent_tool_use_id=parent_tool_use_id,
         )
 
     def _get_platform_tool_map(self, session: BaseSession) -> dict[str, Any]:

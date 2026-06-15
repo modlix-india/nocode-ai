@@ -26,7 +26,7 @@ from app.agents.adzump.agents.optimization.platform_handlers import (
 from app.agents.adzump.agents.optimization.resolver import (
     resolve_platform_and_account,
 )
-from app.agents.adzump.services.business_storage import business_storage_service
+from app.agents.adzump.services.business_storage import fetch_campaign_mappings
 from app.agents.adzump.services.recommendation_storage import (
     recommendation_storage_service,
 )
@@ -95,7 +95,7 @@ class ScheduledOptimizationRunner:
         )
 
         try:
-            campaign_mapping = await business_storage_service.fetch_campaign_mappings(client_code, auth_headers)
+            campaign_mapping = await fetch_campaign_mappings(client_code, auth_headers)
         except Exception:
             logger.exception(
                 "scheduled_runner.run_all: setup failed client=%s", client_code

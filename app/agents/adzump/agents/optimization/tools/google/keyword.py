@@ -55,12 +55,12 @@ async def _get_keyword_recommendations(params: dict, context: dict) -> ToolResul
             MetricPerformanceEvaluator,
         )
         from app.agents.adzump.services.business_storage import (
-            business_storage_service,
+            fetch_campaign_mappings,
         )
 
         mapping = session_ctx.get("resolved_mapping")
         if not mapping:
-            campaign_mapping = await business_storage_service.fetch_campaign_mappings(
+            campaign_mapping = await fetch_campaign_mappings(
                 client_code, headers
             )
             mapping = campaign_mapping.get(campaign_id)

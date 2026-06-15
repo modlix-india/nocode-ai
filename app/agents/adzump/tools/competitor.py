@@ -11,7 +11,7 @@ import logging
 from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.tools._shared import (
+from app.agents.adzump._shared import (
     AGGREGATOR_HOSTS,
     emit_progress,
     host_of,
@@ -294,9 +294,9 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
-            from app.agents.adzump.services.business_storage import business_storage_service
+            from app.agents.adzump.services.business_storage import hydrate_from_storage
             if url:
-                hit = await business_storage_service.hydrate_from_storage(url, session_ctx, context)
+                hit = await hydrate_from_storage(url, session_ctx, context)
                 if hit:
                     existing = session_ctx.get("competitor_analysis")
                     if existing and existing.get("competitors"):
@@ -321,6 +321,13 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         from app.agents.adzump.agents.product.agent import get_product_agent
 
         await emit_progress(context, "Starting competitor research…")
+        # Symmetric lifecycle: the launcher owns both AgentCard ends —
+        # agent_started here, agent_finished after post-processing.
+        from app.core.streaming import pre_emit_agent_started
+        await pre_emit_agent_started(
+            stream, agent_id="product_analyst", label="Product Analyst",
+            parent_tool_use_id=tool_use_id, context=context,
+        )
         output = await get_product_agent().analyze(
             url=url,
             parent_event_stream=stream,
@@ -453,6 +460,13 @@ async def _lookup_single_competitor(
         from app.agents.adzump.agents.product.agent import get_product_agent
 
         await emit_progress(context, f"Looking up {query}…")
+        # Symmetric lifecycle: the launcher owns both AgentCard ends —
+        # agent_started here, agent_finished after post-processing.
+        from app.core.streaming import pre_emit_agent_started
+        await pre_emit_agent_started(
+            stream, agent_id="product_analyst", label="Product Analyst",
+            parent_tool_use_id=tool_use_id, context=context,
+        )
         output = await get_product_agent().analyze(
             url="",
             parent_event_stream=stream,

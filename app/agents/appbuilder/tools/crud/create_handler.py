@@ -20,6 +20,12 @@ async def _create_execute(params: dict[str, Any], context: dict[str, Any]) -> To
 create_tool = ToolDefinition(
     name="create",
     display_name="Create",
+    # v8 Plan B WS4 · declarative only. This tool already elicits the user via
+    # request_confirmation (blocking, in-tool) — see AppBuilderAgent.CONFIRMATION_TOOLS.
+    # Marking it keeps the registry honest; zero runtime change (the run-loop
+    # break fires only for elicit_mode="deferred").
+    kind="elicitation",
+    elicit_mode="blocking",
     description=(
         "Create a new object. Returns the created object's ID.\n\n"
         "Type-specific params:\n"

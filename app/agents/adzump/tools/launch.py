@@ -16,7 +16,7 @@ import logging
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.platform import to_enum_value as platform_enum_value
-from app.agents.adzump.services.business_storage import business_storage_service
+from app.agents.adzump.services.business_storage import resolve_url, save_campaign
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
 
     spec = session_ctx.get("campaign_spec") or {}
     # Guard: refuse to save a clearly-incomplete spec. Cheap pre-check.
+    # (ig_page is intentionally absent — Instagram is optional, v3 · F3.)
     required = ("platform", "duration", "budget", "parent_account", "account")
     missing = [k for k in required if not spec.get(k)]
     if missing:
@@ -36,7 +37,29 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             error=f"Cannot launch — missing required fields: {', '.join(missing)}.",
         )
 
-    record_id = await business_storage_service.save_campaign(session_ctx, context)
+    # v3 · F2 defence-in-depth: refuse to persist an account id that belongs to a
+    # DIFFERENT ad platform than the one selected — catches a dependency-cascade
+    # miss before a stale Google id leaks into a Meta launch (or vice-versa).
+    # Only enforced for ids we actually tagged at fetch time (account_platforms);
+    # untagged ids from older sessions skip the check (back-compat safe).
+    current_platform = platform_enum_value(spec.get("platform"))
+    tagged = session_ctx.get("account_platforms") or {}
+    mismatched = [
+        f for f in ("parent_account", "account", "fb_page", "ig_page")
+        if spec.get(f) and tagged.get(str(spec[f])) and tagged[str(spec[f])] != current_platform
+    ]
+    if mismatched:
+        logger.warning("launch_platform_mismatch: platform=%s offending=%s",
+                       current_platform, {f: spec.get(f) for f in mismatched})
+        return ToolResult(
+            success=False,
+            error=(
+                f"Cannot launch — {', '.join(mismatched)} belong to a different platform "
+                f"than {spec.get('platform')}. Re-select them for the current platform."
+            ),
+        )
+
+    record_id = await save_campaign(session_ctx, context)
     if not record_id:
         return ToolResult(
             success=False,
@@ -67,7 +90,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
                 # product_profile.url, then product_data.pages_analyzed[0],
                 # so it works after a fresh scrape AND after a storage hydrate
                 # (where product_data.primary_url is not preserved).
-                "product_url": business_storage_service.resolve_url(session_ctx),
+                "product_url": resolve_url(session_ctx),
                 # Which ad platform the user picked, normalized to a stable
                 # enum ("google" / "meta" / "") so host pages can branch on
                 # it without parsing free-text variants like "Google Ads".

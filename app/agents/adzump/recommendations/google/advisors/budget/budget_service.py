@@ -49,7 +49,7 @@ from app.agents.adzump.agents.optimization.models import (
     ConstraintType,
     ScopeType,
 )
-from app.agents.adzump.tools._shared import build_ds_headers
+from app.agents.adzump._shared import build_ds_headers
 
 logger = logging.getLogger(__name__)
 

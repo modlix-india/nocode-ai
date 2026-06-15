@@ -55,7 +55,6 @@ async def _get_recommendations(params: dict, context: dict) -> ToolResult:
             ),
         )
 
-    fields = stored.fields
     summary_lines = [
         f"Campaign: {stored.campaign_name} ({stored.campaign_id})",
         f"Platform: {stored.platform}",
@@ -64,64 +63,26 @@ async def _get_recommendations(params: dict, context: dict) -> ToolResult:
         "",
     ]
 
-    if fields.conversion_health:
-        ch = fields.conversion_health
-        summary_lines.append(
-            f"Conversion Health: {ch.health_label} ({ch.health_score}/100)"
+    # Platform-agnostic summary: this tool is shared by the optimization agent
+    # across ALL platforms, so it must not reach into Google-specific fields
+    # (conversion_health / budget_bidding / keywords) directly. Each platform
+    # provider renders its own fields via summarize_fields — same delegation
+    # used by tools/optimize.py:_summarize_stored_recommendation.
+    try:
+        from app.agents.adzump.agents.optimization.platform_registry import (
+            get_provider,
         )
-        failing = [c for c in ch.checks if not c.passed]
-        if failing:
-            for c in failing:
-                summary_lines.append(f"  [{c.severity.upper()}] {c.title}")
-        if ch.fix_cards:
-            summary_lines.append(
-                f"  {len(ch.fix_cards)} fix card(s) available "
-                f"({sum(1 for fc in ch.fix_cards if fc.can_auto_apply)} auto-applicable)"
-            )
-        summary_lines.append("")
 
-    if fields.budget_bidding:
-        bb = fields.budget_bidding
-        summary_lines.append("Budget & Bidding:")
-        summary_lines.append(f"  Current strategy: {bb.current_strategy}")
-        if bb.bidding_rec_type:
-            summary_lines.append(
-                f"  Recommended: {bb.bidding_rec_type} "
-                f"(confidence: {bb.bidding_confidence})"
-            )
-            summary_lines.append(f"  Rationale: {bb.bidding_rec_rationale}")
-        if bb.recommended_budget:
-            summary_lines.append(
-                f"  Budget: {bb.current_budget:.2f} -> {bb.recommended_budget:.2f} "
-                f"(confidence: {bb.budget_confidence})"
-            )
-        if bb.learning_phase_warning:
-            summary_lines.append(f"  {bb.learning_phase_warning}")
-        if bb.blocking_issues:
-            for issue in bb.blocking_issues:
-                summary_lines.append(f"  {issue}")
-        summary_lines.append("")
-
-    if fields.keywords:
-        kws = fields.keywords
-        pause_recs = [k for k in kws if k.recommendation == "PAUSE"]
-        add_recs = [k for k in kws if k.recommendation == "ADD"]
-        summary_lines.append("Keywords:")
-        summary_lines.append(f"  {len(pause_recs)} PAUSE recommendation(s)")
-        summary_lines.append(f"  {len(add_recs)} ADD recommendation(s)")
-        if pause_recs:
-            for k in pause_recs[:3]:
-                summary_lines.append(f"    PAUSE '{k.text}' — {k.reason}")
-            if len(pause_recs) > 3:
-                summary_lines.append(f"    ... and {len(pause_recs) - 3} more")
-        if add_recs:
-            for k in add_recs[:3]:
-                summary_lines.append(
-                    f"    ADD '{k.text}' ({k.match_type}) — score: {k.score or 'N/A'}"
-                )
-            if len(add_recs) > 3:
-                summary_lines.append(f"    ... and {len(add_recs) - 3} more")
-        summary_lines.append("")
+        provider = get_provider(stored.platform)
+        if provider and stored.fields:
+            summary_lines.extend(provider.summarize_fields(stored.fields))
+    except Exception:
+        logger.warning(
+            "get_recommendations: summarize_fields failed platform=%s campaign=%s",
+            stored.platform,
+            campaign_id,
+            exc_info=True,
+        )
 
     return ToolResult(
         success=True,

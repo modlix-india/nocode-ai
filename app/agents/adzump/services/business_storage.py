@@ -3,410 +3,490 @@
 Single record per businessUrl in the shared `AISuggestedData` collection
 (appCode `marketingai`). Adds a `campaign` sub-object alongside the existing
 analysis fields. Latest-launch-wins per URL — no history (yet).
+
+Reuses:
+- `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
+- `app.agents.adzump._shared.build_ds_headers` (auth headers from tool context)
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any  # noqa: F401  (used in type hints below)
 from urllib.parse import urlparse
 
-from app.agents.adzump.tools._shared import build_ds_headers
+from app.agents.adzump.platform import is_meta as _platform_is_meta
+from app.agents.adzump._shared import build_ds_headers
+from app.agents.appbuilder.tools._shared import get_saas_client
+
+# Optimization-domain read: campaign→product mapping is consumed only by the
+# OptimizationAgent (runner / resolver / keyword tool). It reads the same
+# AISuggestedData collection but via the typed storage_service stack that
+# recommendation_storage.py also uses, so it accepts explicit auth_headers.
 from app.agents.adzump.services.storage_base import storage_service
-from app.agents.adzump.services.storage_models import (
-    StorageReadRequest,
-    StorageFilter,
-    StorageRequestWithPayload,
-    StorageUpdateWithPayload,
-)
+from app.agents.adzump.services.storage_models import StorageReadRequest
 
 logger = logging.getLogger(__name__)
 
+STORAGE_NAME = "AISuggestedData"
+APP_CODE = "marketingai"
+SCHEMA_VERSION = 1
 
-class BusinessStorageService:
-    """Handles CRUD for business data (AISuggestedData).
-    Aligned with model-driven architecture.
+READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
+CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
+UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
+
+
+def _normalize_url(url: str) -> str:
+    """Canonicalize a business URL for storage keys and lookups.
+
+    - Force ``https`` scheme so the same business doesn't end up with two
+      records keyed under ``http://`` and ``https://``.
+    - Lowercase host, strip leading ``www.``, drop trailing slash.
     """
+    if not url:
+        return ""
+    p = urlparse(url.strip())
+    host = (p.netloc or "").lower().removeprefix("www.")
+    path = (p.path or "").rstrip("/")
+    return f"https://{host}{path}"
 
-    STORAGE_NAME = "AISuggestedData"
-    APP_CODE = "marketingai"
-    SCHEMA_VERSION = 1
 
-    async def get_by_url(self, url: str, context: dict) -> dict | None:
-        """Return the AISuggestedData record for this URL, or None on miss."""
-        if not url:
-            return None
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
-        client_code = context.get("client_code", "")
-        auth_headers = build_ds_headers(context)
 
-        normalized = self._normalize_url(url)
-        request = StorageReadRequest(
-            storageName=self.STORAGE_NAME,
-            appCode=self.APP_CODE,
-            clientCode=client_code,
-            filter=StorageFilter(field="businessUrl", value=normalized),
-            size=1,
-        )
+def _storage_headers(ctx: dict) -> dict[str, str]:
+    """Auth headers for storage calls. AppCode pinned to ``marketingai``
+    because the storage collection is appCode-scoped — clientCode stays
+    from the user's session (privacy boundary)."""
+    h = build_ds_headers(ctx)
+    h["AppCode"] = APP_CODE
+    h["Content-Type"] = "application/json"
+    return h
 
-        response = await storage_service.read_page_storage(
-            request, auth_headers=auth_headers
-        )
-        if not response.success:
-            logger.info(f"business_storage_read_miss: url={url} err={response.error}")
-            return None
 
-        content = response.content
-        return content[0] if content else None
+# ── Reads ─────────────────────────────────────────────────────────────────
 
-    async def save_campaign(self, session_ctx: dict, context: dict) -> str | None:
-        """Persist the user's campaign to AISuggestedData.
-        Overwrites/merges the `campaign` sub-object.
-        """
-        url = self.resolve_url(session_ctx)
-        if not url:
-            logger.warning("save_campaign_skipped: no businessUrl in session")
-            return None
 
-        auth_headers = build_ds_headers(context)
-        record = self._build_full_record(session_ctx, url)
-        existing = await self.get_by_url(url, context)
+def _extract_records(raw: Any) -> list[dict]:
+    """Mirror ds's StorageResponse.content unwrap: gateway wraps the storage
+    result in two `result` levels, then either has `content` (paged) or
+    returns records directly. Tolerates both."""
+    if raw is None:
+        return []
+    data = raw
+    if isinstance(data, list) and data:
+        data = data[0]
+    # 2-level unwrap of the known `result.result` envelope
+    for _ in range(2):
+        if isinstance(data, dict) and "result" in data:
+            data = data["result"]
+        else:
+            break
+    if data is None:
+        return []
+    if isinstance(data, dict) and "content" in data:
+        content = data["content"]
+        return content if isinstance(content, list) else [content]
+    return data if isinstance(data, list) else [data]
 
-        if existing:
-            existing_id = existing.get("_id") or existing.get("id")
-            if existing_id:
-                request = StorageUpdateWithPayload(
-                    storageName=self.STORAGE_NAME,
-                    appCode=self.APP_CODE,
-                    dataObjectId=existing_id,
-                    dataObject=record,
-                    isPartial=True,
-                )
-                response = await storage_service.update_storage(
-                    request, auth_headers=auth_headers
-                )
-                if response.success:
-                    logger.info(
-                        f"save_campaign_ok: action=update url={url} id={existing_id}"
-                    )
-                    return existing_id
 
-                logger.warning(
-                    f"save_campaign_update_failed: url={url} err={response.error}"
-                )
-                return None
+async def get_by_url(url: str, ctx: dict) -> dict | None:
+    """Return the AISuggestedData record for this URL, or None on miss."""
+    if not url:
+        return None
+    payload = {
+        "storageName": STORAGE_NAME,
+        "appCode": APP_CODE,
+        "clientCode": ctx.get("client_code", ""),
+        "filter": {"field": "businessUrl", "value": _normalize_url(url)},
+    }
+    result = await get_saas_client().post(
+        READ_PAGE,
+        headers=_storage_headers(ctx),
+        json=payload,
+    )
+    if not result.success:
+        logger.info("business_storage_read_miss: url=%s err=%s", url, result.error)
+        return None
+    records = _extract_records(result.data)
+    return records[-1] if records else None
 
-        # Create path
-        request = StorageRequestWithPayload(
-            storageName=self.STORAGE_NAME,
-            appCode=self.APP_CODE,
-            dataObject=record,
-        )
-        response = await storage_service.write_storage(
-            request, auth_headers=auth_headers
-        )
-        if not response.success:
+
+# ── Writes ────────────────────────────────────────────────────────────────
+
+
+async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
+    """Persist the user's campaign (everything assembled in session.context).
+
+    Writes to the same per-URL record `ds/chatv2` uses, alongside the
+    business-analysis fields. The `campaign` sub-object is set/overwritten
+    on each launch. Returns the storage record id (existing or new), or
+    None on failure.
+
+    Payload shapes match ds's `oserver.services.storage_service` — the
+    gateway expects `dataObject` / `dataObjectId` / `isPartial`.
+    """
+    url = resolve_url(session_ctx)
+    if not url:
+        logger.warning("save_campaign_skipped: no businessUrl in session")
+        return None
+
+    record = _build_full_record(session_ctx, url)
+    logger.info(
+        "save_campaign_assets: url=%s logo=%s rule=%s conf=%.2f creatives=%d",
+        url,
+        bool(record.get("logoUrl")),
+        (record.get("logoMeta") or {}).get("source") or "",
+        float((record.get("logoMeta") or {}).get("confidence") or 0.0),
+        len(record.get("creativeImages") or []),
+    )
+    existing = await get_by_url(url, ctx)
+
+    if existing:
+        existing_id = existing.get("_id") or existing.get("id")
+        if not existing_id:
             logger.warning(
-                f"save_campaign_create_failed: url={url} err={response.error}"
-            )
-            return None
-
-        new_records = response.content
-        new_id = ""
-        if new_records:
-            new_id = new_records[0].get("_id") or new_records[0].get("id") or ""
-
-        logger.info(f"save_campaign_ok: action=create url={url} id={new_id}")
-        return new_id or None
-
-    async def hydrate_from_storage(
-        self, url: str, session_ctx: dict, context: dict
-    ) -> bool:
-        """Hydrate session context from stored AISuggestedData record."""
-        record = await self.get_by_url(url, context)
-        if not record:
-            return False
-
-        # Unwrap data if nested
-        d = record.get("data", record) if isinstance(record, dict) else record
-
-        if not session_ctx.get("product_data"):
-            session_ctx["product_data"] = self._record_to_business(d)
-            session_ctx.setdefault("product_profile", {}).update(
-                {
-                    "url": d.get("businessUrl") or url,
-                    "title": d.get("productName") or d.get("businessName") or url,
-                    "summary": d.get("summary", ""),
-                }
-            )
-            logger.info(f"hydrate_from_storage: business loaded url={url}")
-
-        if not session_ctx.get("competitor_analysis"):
-            competitors = d.get("competitors") or []
-            if competitors:
-                session_ctx["competitor_analysis"] = {"competitors": competitors}
-                logger.info(
-                    f"hydrate_from_storage: {len(competitors)} competitors loaded url={url}"
-                )
-
-        return True
-
-    async def fetch_campaign_mappings(
-        self, client_code: str, auth_headers: dict
-    ) -> dict[str, dict[str, Any]]:
-        """Fetch AISuggestedData and build a mapping of campaigns to products.
-
-        Returns:
-            {campaign_id: {product_id, summary, business_url, platform,
-                           account_id, login_customer_id, ...}}
-
-        Cross-platform safety: the singular ``campaign.accounts`` stores the
-        accounts for the **launch** platform.  If a linked campaign in the
-        ``campaigns[]`` array belongs to a *different* platform the account
-        IDs would be wrong.  We detect this by comparing the per-campaign
-        platform against the launch platform and leave account fields empty
-        when they differ — forcing the resolver to fall through to a live
-        platform scan.
-        """
-        from app.agents.adzump.agents.optimization.platform_registry import (
-            normalize_platform,
-        )
-
-        request = StorageReadRequest(
-            storageName=self.STORAGE_NAME,
-            appCode=self.APP_CODE,
-            clientCode=client_code,
-            size=5000,
-        )
-
-        response = await storage_service.read_page_storage(
-            request, auth_headers=auth_headers
-        )
-
-        if not response.success or not response.content:
-            logger.warning("campaign_mapping_no_data client_code=%s", client_code)
-            return {}
-
-        records = response.content
-        mapping: dict[str, dict[str, Any]] = {}
-
-        for record in records:
-            d = record.get("data", record)
-            product_id = record.get("_id") or record.get("id") or ""
-            summary = d.get("finalSummary", d.get("summary", ""))
-            business_url = d.get("businessUrl", "")
-
-            # ── Extract launch-level metadata from the singular campaign object ──
-            campaign_obj = d.get("campaign") or {}
-            launch_platform = campaign_obj.get("platform", "")
-            accounts = campaign_obj.get("accounts") or {}
-            launch_account_id = (accounts.get("ad") or {}).get("id", "")
-            launch_login_id = (accounts.get("parent") or {}).get("id", "")
-            launch_platform_norm = normalize_platform(launch_platform)
-
-            brand_info = {
-                "brand_name": d.get("productName", ""),
-                "business_type": d.get("businessType", ""),
-                "primary_location": d.get("location", ""),
-                "service_areas": d.get("serviceAreas", []),
-            }
-            unique_features = d.get("uniqueFeatures", [])
-
-            # ── Per-campaign mapping (keyed by numeric campaign ID) ──
-            for campaign in d.get("campaigns", []):
-                campaign_id = str(campaign.get("campaignId", ""))
-                camp_platform = campaign.get("platform", launch_platform)
-                camp_platform_norm = normalize_platform(camp_platform)
-
-                # Cross-platform safety: if the campaign's platform differs
-                # from the launch platform, the launch account IDs are for
-                # the wrong platform.  Leave them empty so the resolver
-                # falls through to the live API scan.
-                if camp_platform_norm and launch_platform_norm and camp_platform_norm != launch_platform_norm:
-                    camp_account_id = ""
-                    camp_login_id = ""
-                else:
-                    camp_account_id = launch_account_id
-                    camp_login_id = launch_login_id
-
-                if campaign_id:
-                    mapping[campaign_id] = {
-                        "product_id": product_id,
-                        "product_name": d.get("productName", ""),
-                        "summary": summary,
-                        "business_url": business_url,
-                        "platform": camp_platform,
-                        "name": campaign.get("name") or campaign.get("campaignName", ""),
-                        "brand_info": brand_info,
-                        "unique_features": unique_features,
-                        "account_id": camp_account_id,
-                        "login_customer_id": camp_login_id,
-                    }
-
-        return mapping
-
-    # ── Internal Helpers ───────────────────────────────────────────────────
-
-    def _normalize_url(self, url: str) -> str:
-        if not url:
-            return ""
-        p = urlparse(url.strip())
-        host = (p.netloc or "").lower().removeprefix("www.")
-        path = (p.path or "").rstrip("/")
-        if p.scheme:
-            return f"{p.scheme}://{host}{path}"
-        return f"https://{host}{path}"
-
-    def resolve_url(self, session_ctx: dict) -> str:
-        """Find the business URL across the various places it can live."""
-        profile = session_ctx.get("product_profile") or {}
-        if profile.get("url"):
-            return profile["url"]
-        product = session_ctx.get("product_data") or {}
-        pages = product.get("pages_analyzed") or []
-        return pages[0] if pages else ""
-
-    def _build_location_object(self, loc_meta: dict, spec: dict, product: dict) -> dict:
-        """Match the legacy ds-v1 location object shape so ds downstream services
-        (chatv2 confirm-location, business_service.update lookup, geo-target
-        builders) can keep reading the same keys. Map-confirmed location wins,
-        then user-typed spec, then scraped-from-website.
-        """
-        coords = (
-            {"lng": loc_meta.get("lng"), "lat": loc_meta.get("lat")}
-            if loc_meta.get("lat") is not None and loc_meta.get("lng") is not None
-            else None
-        )
-        return {
-            "area_location": "",
-            "product_location": (
-                loc_meta.get("address")
-                or spec.get("location")
-                or product.get("location", "")
-            ),
-            "product_coordinates": coords,
-        }
-
-    def _build_map_embeds(self, loc_meta: dict) -> list[dict]:
-        """Mirror ds-v1's mapEmbeds entry — empty when we have no coords."""
-        if loc_meta.get("lat") is None or loc_meta.get("lng") is None:
-            return []
-        lat = loc_meta["lat"]
-        lng = loc_meta["lng"]
-        return [
-            {
-                "src": (
-                    f"https://www.google.com/maps/embed/v1/place?q={lat},{lng}&zoom=15"
-                ),
-                "title": "",
-                "coordinates": {"lng": lng, "lat": lat},
-            }
-        ]
-
-    def _build_full_record(self, session_ctx: dict, url: str) -> dict[str, Any]:
-        product = session_ctx.get("product_data") or {}
-        profile = session_ctx.get("product_profile") or {}
-        spec = session_ctx.get("campaign_spec") or {}
-        loc_meta = session_ctx.get("_location_meta") or {}
-        account_names = session_ctx.get("account_names") or {}
-        competitive = session_ctx.get("competitor_analysis") or {}
-
-        from app.agents.adzump.platform import is_meta as _platform_is_meta
-
-        is_meta = _platform_is_meta(spec.get("platform"))
-
-        summary = profile.get("summary") or product.get("summary", "")
-
-        return {
-            "businessUrl": self._normalize_url(url),
-            "summary": summary,
-            "finalSummary": summary,
-            "businessType": product.get("business_type", ""),
-            "location": self._build_location_object(loc_meta, spec, product),
-            "mapEmbeds": self._build_map_embeds(loc_meta),
-            "screenshot": (
-                product.get("primary_screenshot_url")
-                or product.get("screenshot_url")
-                or product.get("screenshot")
-                or ""
-            ),
-            "externalLinks": product.get("external_links") or [],
-            "siteLinks": product.get("site_links") or [],
-            "productName": product.get("product_name", ""),
-            "businessName": product.get("product_name", ""),
-            "uniqueFeatures": product.get("unique_features") or [],
-            "productsServices": product.get("products_services") or [],
-            "pricing": product.get("pricing", ""),
-            "contact": product.get("contact") or {},
-            "pagesAnalyzed": product.get("pages_analyzed") or [],
-            "competitors": (competitive or {}).get("competitors") or [],
-            "lastAnalyzedAt": datetime.now(timezone.utc).isoformat(),
-            "lastAnalyzedBy": "adzump-launch",
-            "schemaVersion": self.SCHEMA_VERSION,
-            "campaign": {
-                "savedAt": datetime.now(timezone.utc).isoformat(),
-                "sessionId": session_ctx.get("_session_id", ""),
-                "status": "launched",
-                "platform": spec.get("platform", ""),
-                "duration": spec.get("duration", ""),
-                "dailyBudget": spec.get("budget", ""),
-                "location": {
-                    "address": loc_meta.get("address") or spec.get("location", ""),
-                    "lat": loc_meta.get("lat"),
-                    "lng": loc_meta.get("lng"),
-                    "displayName": loc_meta.get("displayName", ""),
-                },
-                "accounts": {
-                    "parent": self._account_pair(
-                        spec.get("parent_account"), account_names
-                    ),
-                    "ad": self._account_pair(spec.get("account"), account_names),
-                    "fbPage": self._account_pair(spec.get("fb_page"), account_names)
-                    if is_meta
-                    else None,
-                    "igPage": self._account_pair(spec.get("ig_page"), account_names)
-                    if is_meta
-                    else None,
-                },
-                "competitive": {
-                    "attempted": session_ctx.get("competitor_analysis") is not None,
-                    "declined": spec.get("competitive_analysis_declined") == "true",
-                },
-            },
-        }
-
-    def _account_pair(self, acct_id: Any, account_names: dict) -> dict | None:
-        if not acct_id:
-            return None
-        sid = str(acct_id)
-        return {"id": sid, "name": (account_names.get(sid) or "").strip()}
-
-    def _record_to_business(self, d: dict) -> dict:
-        screenshot = d.get("screenshot", "")
-        raw_loc = d.get("location") or ""
-        if isinstance(raw_loc, dict):
-            location_str = (
-                raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+                "save_campaign: existing record has no _id, falling back to create"
             )
         else:
-            location_str = raw_loc
-        return {
-            "product_name": d.get("productName") or d.get("businessName", ""),
-            "business_type": d.get("businessType", ""),
-            "summary": d.get("summary", ""),
-            "location": location_str,
-            "suggested_locations": d.get("suggestedGeoTargets") or [],
-            "primary_screenshot_url": screenshot,
-            "screenshot_url": screenshot,
-            "external_links": d.get("externalLinks") or [],
-            "unique_features": d.get("uniqueFeatures") or [],
-            "products_services": d.get("productsServices") or [],
-            "pricing": d.get("pricing", ""),
-            "contact": d.get("contact") or {},
-            "pages_analyzed": d.get("pagesAnalyzed") or [],
+            payload = {
+                "storageName": STORAGE_NAME,
+                "appCode": APP_CODE,
+                "dataObjectId": existing_id,
+                "dataObject": record,
+                "isPartial": True,  # merge — preserves existing fields not in record
+            }
+            result = await get_saas_client().post(
+                UPDATE,
+                headers=_storage_headers(ctx),
+                json=payload,
+            )
+            if not result.success:
+                logger.warning(
+                    "save_campaign_update_failed: url=%s err=%s", url, result.error
+                )
+                return None
+            logger.info(
+                "save_campaign_ok: action=update url=%s id=%s", url, existing_id
+            )
+            return existing_id
+
+    # Create path
+    payload = {
+        "storageName": STORAGE_NAME,
+        "appCode": APP_CODE,
+        "dataObject": record,
+    }
+    result = await get_saas_client().post(
+        CREATE,
+        headers=_storage_headers(ctx),
+        json=payload,
+    )
+    if not result.success:
+        logger.warning("save_campaign_create_failed: url=%s err=%s", url, result.error)
+        return None
+
+    new_records = _extract_records(result.data)
+    new_id = ""
+    if new_records:
+        new_id = new_records[0].get("_id") or new_records[0].get("id") or ""
+    logger.info("save_campaign_ok: action=create url=%s id=%s", url, new_id)
+    return new_id or None
+
+
+# ── Record construction (pure) ────────────────────────────────────────────
+
+
+def resolve_url(session_ctx: dict) -> str:
+    """Find the business URL across the various places it can live."""
+    profile = session_ctx.get("product_profile") or {}
+    if profile.get("url"):
+        return profile["url"]
+    product = session_ctx.get("product_data") or {}
+    pages = product.get("pages_analyzed") or []
+    if pages:
+        return pages[0]
+    return ""
+
+
+def _build_location_object(loc_meta: dict, spec: dict, product: dict) -> dict:
+    """Match the legacy ds-v1 location object shape so ds downstream services
+    (chatv2 confirm-location, business_service.update lookup, geo-target
+    builders) can keep reading the same keys. Map-confirmed location wins,
+    then user-typed spec, then scraped-from-website.
+    """
+    coords = (
+        {"lng": loc_meta.get("lng"), "lat": loc_meta.get("lat")}
+        if loc_meta.get("lat") is not None and loc_meta.get("lng") is not None
+        else None
+    )
+    return {
+        "area_location": "",
+        "product_location": (
+            loc_meta.get("address")
+            or spec.get("location")
+            or product.get("location", "")
+        ),
+        "product_coordinates": coords,
+    }
+
+
+def _build_map_embeds(loc_meta: dict) -> list[dict]:
+    """Mirror ds-v1's mapEmbeds entry — empty when we have no coords."""
+    if loc_meta.get("lat") is None or loc_meta.get("lng") is None:
+        return []
+    lat = loc_meta["lat"]
+    lng = loc_meta["lng"]
+    return [
+        {
+            "src": (
+                f"https://www.google.com/maps/embed/v1/place?q={lat},{lng}&zoom=15"
+            ),
+            "title": "",
+            "coordinates": {"lng": lng, "lat": lat},
         }
+    ]
+
+
+def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
+    """Build the AISuggestedData record from session.context. Pure function."""
+    product = session_ctx.get("product_data") or {}
+    profile = session_ctx.get("product_profile") or {}
+    spec = session_ctx.get("campaign_spec") or {}
+    loc_meta = session_ctx.get("_location_meta") or {}
+    account_names = session_ctx.get("account_names") or {}
+    competitive = session_ctx.get("competitor_analysis") or {}
+
+    is_meta = _platform_is_meta(spec.get("platform"))
+
+    summary = profile.get("summary") or product.get("summary", "")
+
+    return {
+        "businessUrl": _normalize_url(url),
+        # ── Analysis fields (mirror ds-v1 schema so its downstream APIs
+        #    keep working when reading rows nocode-ai writes) ──
+        "summary": summary,
+        # ds's google_kw_data_provider reads finalSummary specifically
+        "finalSummary": summary,
+        "businessType": product.get("business_type", ""),
+        # legacy ds-v1 shape: object with area_location / product_location /
+        # product_coordinates. ds chatv2 confirm_location and business_service
+        # both read from this dict.
+        "location": _build_location_object(loc_meta, spec, product),
+        "mapEmbeds": _build_map_embeds(loc_meta),
+        # `suggestedGeoTargets` and top-level `locations` are deliberately NOT
+        # written here. ds resolves them via its geo-target service (Google Ads
+        # geoTargetConstants lookup) when needed. The LLM's free-text guesses
+        # in product.suggested_locations are unreliable and would shadow the
+        # real resolution.
+        "screenshot": (
+            product.get("primary_screenshot_url")
+            or product.get("screenshot_url")
+            or product.get("screenshot")
+            or ""
+        ),
+        "externalLinks": product.get("external_links") or [],
+        # ds asset services (lead_form, call_assets, whatsapp, site_link)
+        # all read siteLinks; default empty so they no-op gracefully
+        "siteLinks": product.get("site_links") or [],
+        # Product assets — LLM-selected logo + ad-creative-suitable images,
+        # already re-hosted on our file service. Consumed by creative-gen.
+        "logoUrl": product.get("logo_url") or "",
+        "logoSourceUrl": product.get("logo_source_url") or "",
+        "logoMeta": {
+            "source": product.get("logo_source") or "",
+            "reasoning": product.get("logo_reasoning") or "",
+            "confidence": float(product.get("logo_confidence") or 0.0),
+            # Content-derived render hints (background, fit) — the agent
+            # analyzed the image at rehost time and emits these to the UI.
+            "display": product.get("logo_display") or {},
+        },
+        # The LLM returns as many real creatives as the site has — no fixed
+        # per-page cap. Across multi-page scrapes this can grow; bound the
+        # stored record at a high ceiling so a runaway page can't blow the
+        # document size, but otherwise let the selector decide.
+        "creativeImages": (product.get("creative_images") or [])[:30],
+        # Per-creative render hints, parallel-indexed with creativeImages.
+        "creativeDisplays": (product.get("creative_displays") or [])[:30],
+        # Persist scrape budget state so resume hydration can dedupe against
+        # what we've already scraped instead of resetting to 0.
+        "scrapedUrls": product.get("scraped_urls") or [],
+        "scrapeCount": int(product.get("scrape_count") or 0),
+        # ds-v1 writes/reads `businessName`; nocode-ai's analyst calls it
+        # `productName`. Mirror both so ds APIs (chatv2/confirm.py,
+        # third_party/google/.../build_google_search_ad_payload.py,
+        # tools/account_selection_tool.py, etc.) keep working.
+        "productName": product.get("product_name", ""),
+        "businessName": product.get("product_name", ""),
+        "uniqueFeatures": product.get("unique_features") or [],
+        "productsServices": product.get("products_services") or [],
+        "pricing": product.get("pricing", ""),
+        "contact": product.get("contact") or {},
+        "pagesAnalyzed": product.get("pages_analyzed") or [],
+        "competitors": (competitive or {}).get("competitors") or [],
+        # ── Provenance ──
+        "lastAnalyzedAt": _now_iso(),
+        "lastAnalyzedBy": "adzump-launch",
+        "schemaVersion": SCHEMA_VERSION,
+        # ── Campaign sub-object ──
+        "campaign": {
+            "savedAt": _now_iso(),
+            "sessionId": session_ctx.get("_session_id", ""),
+            "status": "launched",
+            "platform": spec.get("platform", ""),
+            "duration": spec.get("duration", ""),
+            "dailyBudget": spec.get("budget", ""),
+            "location": {
+                "address": loc_meta.get("address") or spec.get("location", ""),
+                "lat": loc_meta.get("lat"),
+                "lng": loc_meta.get("lng"),
+                "displayName": loc_meta.get("displayName", ""),
+            },
+            "accounts": {
+                "parent": _account_pair(spec.get("parent_account"), account_names),
+                "ad": _account_pair(spec.get("account"), account_names),
+                "fbPage": _account_pair(spec.get("fb_page"), account_names)
+                if is_meta
+                else None,
+                "igPage": _account_pair(spec.get("ig_page"), account_names)
+                if is_meta
+                else None,
+            },
+            "competitive": {
+                "attempted": session_ctx.get("competitor_analysis") is not None,
+                "declined": spec.get("competitive_analysis_declined") == "true",
+            },
+        },
+    }
+
+
+def _account_pair(acct_id: Any, account_names: dict) -> dict | None:
+    """Return ``{id, name}`` or None if no id stored."""
+    if not acct_id:
+        return None
+    sid = str(acct_id)
+    return {"id": sid, "name": (account_names.get(sid) or "").strip()}
+
+
+# ── Hydration: storage record → session.context ───────────────────────────
+
+
+def _record_data(record: dict) -> dict:
+    """Storage records nest the writable fields under `data`. Some readers
+    return them flat. Tolerate both shapes."""
+    if isinstance(record.get("data"), dict):
+        return record["data"]
+    return record
+
+
+def _record_to_business(record: dict) -> dict:
+    """Translate AISuggestedData (camelCase) → adzump's product_data shape."""
+    d = _record_data(record)
+    screenshot = d.get("screenshot", "")
+    # `location` was a plain string historically; nocode-ai now writes the
+    # ds-v1 object shape `{area_location, product_location, product_coordinates}`.
+    # Hydrate to a string for product_data.location consumers.
+    raw_loc = d.get("location") or ""
+    if isinstance(raw_loc, dict):
+        location_str = (
+            raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+        )
+    else:
+        location_str = raw_loc
+    return {
+        # Tolerate ds-v1 records that only set `businessName` (we now write
+        # both — see _build_full_record).
+        "product_name": d.get("productName") or d.get("businessName", ""),
+        "business_type": d.get("businessType", ""),
+        "summary": d.get("summary", ""),
+        "location": location_str,
+        "suggested_locations": d.get("suggestedGeoTargets") or [],
+        # Populate both keys so downstream consumers (craft renderers,
+        # competitor.py's `_emit_final_craft` etc.) find a screenshot under
+        # whichever name they expect.
+        "primary_screenshot_url": screenshot,
+        "screenshot_url": screenshot,
+        "external_links": d.get("externalLinks") or [],
+        "unique_features": d.get("uniqueFeatures") or [],
+        "products_services": d.get("productsServices") or [],
+        "pricing": d.get("pricing", ""),
+        "contact": d.get("contact") or {},
+        "pages_analyzed": d.get("pagesAnalyzed") or [],
+        # Existing latent silent losses — siteLinks / scraped state was written
+        # but never hydrated back into session_ctx on resume. Restore them so
+        # multi-turn flows (re-scrape budget, link-aware assets) survive.
+        "site_links": d.get("siteLinks") or [],
+        "scraped_urls": d.get("scrapedUrls") or [],
+        "scrape_count": int(d.get("scrapeCount") or 0),
+        # New product-asset fields (write-side: _build_full_record above).
+        "logo_url": d.get("logoUrl") or "",
+        "logo_source_url": d.get("logoSourceUrl") or "",
+        "logo_source": (d.get("logoMeta") or {}).get("source") or "",
+        "logo_reasoning": (d.get("logoMeta") or {}).get("reasoning") or "",
+        "logo_confidence": float((d.get("logoMeta") or {}).get("confidence") or 0.0),
+        "logo_display": (d.get("logoMeta") or {}).get("display") or {},
+        "creative_images": d.get("creativeImages") or [],
+        "creative_displays": d.get("creativeDisplays") or [],
+    }
+
+
+def _record_to_competitive(record: dict) -> dict | None:
+    """Pull the competitors array out of the record. Returns None if empty —
+    so callers can distinguish 'never analyzed' from 'analyzed but empty'."""
+    d = _record_data(record)
+    competitors = d.get("competitors") or []
+    if not competitors:
+        return None
+    return {"competitors": competitors}
+
+
+async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
+    """Look up the AISuggestedData record for `url`. If found, populate
+    session.context with product_data, product_profile, and (if present)
+    competitor_analysis. Returns True on hit, False on miss.
+
+    Skips overwrite when session already has the field — the caller has
+    already done a per-session cache check; we only fill empty slots.
+    """
+    record = await get_by_url(url, ctx)
+    if not record:
+        return False
+
+    if not session_ctx.get("product_data"):
+        session_ctx["product_data"] = _record_to_business(record)
+        d = _record_data(record)
+        session_ctx.setdefault("product_profile", {}).update(
+            {
+                "url": d.get("businessUrl") or url,
+                # Tolerate ds-v1 records that only set `businessName`.
+                "title": d.get("productName") or d.get("businessName", ""),
+                "summary": d.get("summary", ""),
+            }
+        )
+        logger.info("hydrate_from_storage: business loaded url=%s", url)
+
+    if not session_ctx.get("competitor_analysis"):
+        comp = _record_to_competitive(record)
+        if comp:
+            session_ctx["competitor_analysis"] = comp
+            logger.info(
+                "hydrate_from_storage: %d competitors loaded url=%s",
+                len(comp.get("competitors") or []),
+                url,
+            )
+
+    return True
+
+
+# ── Lat/lng capture from map widget callback ──────────────────────────────
+
+
+_LOCATION_UPDATE_RE = re.compile(r'"type"\s*:\s*"location_update"')
 
 
 def parse_location_update(user_message: str) -> dict | None:
@@ -417,8 +497,7 @@ def parse_location_update(user_message: str) -> dict | None:
     if not user_message:
         return None
     msg = user_message.strip()
-    # Simple regex check to see if it's a location_update JSON
-    if not msg.startswith("{") or '"type"' not in msg or '"location_update"' not in msg:
+    if not msg.startswith("{") or not _LOCATION_UPDATE_RE.search(msg):
         return None
     try:
         payload = json.loads(msg)
@@ -433,4 +512,103 @@ def parse_location_update(user_message: str) -> dict | None:
     }
 
 
-business_storage_service = BusinessStorageService()
+# ── Optimization-domain read ──────────────────────────────────────────────
+
+
+async def fetch_campaign_mappings(
+    client_code: str, auth_headers: dict
+) -> dict[str, dict[str, Any]]:
+    """Fetch AISuggestedData and build a mapping of campaigns to products.
+
+    Returns:
+        {campaign_id: {product_id, summary, business_url, platform,
+                       account_id, login_customer_id, ...}}
+
+    Cross-platform safety: the singular ``campaign.accounts`` stores the
+    accounts for the **launch** platform.  If a linked campaign in the
+    ``campaigns[]`` array belongs to a *different* platform the account
+    IDs would be wrong.  We detect this by comparing the per-campaign
+    platform against the launch platform and leave account fields empty
+    when they differ — forcing the resolver to fall through to a live
+    platform scan.
+    """
+    from app.agents.adzump.agents.optimization.platform_registry import (
+        normalize_platform,
+    )
+
+    request = StorageReadRequest(
+        storageName=STORAGE_NAME,
+        appCode=APP_CODE,
+        clientCode=client_code,
+        size=5000,
+    )
+
+    response = await storage_service.read_page_storage(
+        request, auth_headers=auth_headers
+    )
+
+    if not response.success or not response.content:
+        logger.warning("campaign_mapping_no_data client_code=%s", client_code)
+        return {}
+
+    records = response.content
+    mapping: dict[str, dict[str, Any]] = {}
+
+    for record in records:
+        d = record.get("data", record)
+        product_id = record.get("_id") or record.get("id") or ""
+        summary = d.get("finalSummary", d.get("summary", ""))
+        business_url = d.get("businessUrl", "")
+
+        # Extract launch-level metadata from the singular campaign object
+        campaign_obj = d.get("campaign") or {}
+        launch_platform = campaign_obj.get("platform", "")
+        accounts = campaign_obj.get("accounts") or {}
+        launch_account_id = (accounts.get("ad") or {}).get("id", "")
+        launch_login_id = (accounts.get("parent") or {}).get("id", "")
+        launch_platform_norm = normalize_platform(launch_platform)
+
+        brand_info = {
+            "brand_name": d.get("productName", ""),
+            "business_type": d.get("businessType", ""),
+            "primary_location": d.get("location", ""),
+            "service_areas": d.get("serviceAreas", []),
+        }
+        unique_features = d.get("uniqueFeatures", [])
+
+        # Per-campaign mapping (keyed by numeric campaign ID)
+        for campaign in d.get("campaigns", []):
+            campaign_id = str(campaign.get("campaignId", ""))
+            camp_platform = campaign.get("platform", launch_platform)
+            camp_platform_norm = normalize_platform(camp_platform)
+
+            # Cross-platform safety: if the campaign's platform differs
+            # from the launch platform, the launch account IDs are for
+            # the wrong platform.  Leave them empty so the resolver
+            # falls through to the live API scan.
+            if (
+                camp_platform_norm
+                and launch_platform_norm
+                and camp_platform_norm != launch_platform_norm
+            ):
+                camp_account_id = ""
+                camp_login_id = ""
+            else:
+                camp_account_id = launch_account_id
+                camp_login_id = launch_login_id
+
+            if campaign_id:
+                mapping[campaign_id] = {
+                    "product_id": product_id,
+                    "product_name": d.get("productName", ""),
+                    "summary": summary,
+                    "business_url": business_url,
+                    "platform": camp_platform,
+                    "name": campaign.get("name") or campaign.get("campaignName", ""),
+                    "brand_info": brand_info,
+                    "unique_features": unique_features,
+                    "account_id": camp_account_id,
+                    "login_customer_id": camp_login_id,
+                }
+
+    return mapping
