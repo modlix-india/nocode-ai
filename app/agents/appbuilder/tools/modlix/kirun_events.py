@@ -701,7 +701,28 @@ async def _execute_save_page_event_function_from_text(params: dict[str, Any], co
 
 save_page_event_function_from_text_tool = ToolDefinition(
     name="save_page_event_function_from_text",
-    description="Compile DSL and save as a page event function (create-or-update by name). Auto-layout the steps before save. Top-level FUNCTION/NAMESPACE/PARAMETERS/EVENTS in the DSL are ignored for inline use.",
+    description="""Compile DSL and save as a page event function. Create-or-update by `event_name` — if a function with that name exists on the page, update it; otherwise create.
+
+Use this to wire button onClick, page onLoad, TextBox onChange, etc. Page event functions live on a page's `eventFunctions` map (UUID-keyed). The flow is:
+1. `save_page_event_function_from_text(page_name="login", event_name="handleSignIn", text="<DSL>")` — author + save in one shot.
+2. `patch_component_props(page_name="login", component_key="signInBtn", properties={"onClick": {"value": "handleSignIn"}})` — wire it onto the button.
+
+The DSL shape is the same as a regular Kirun function (FUNCTION / NAMESPACE / PARAMETERS / EVENTS / LOGIC) — but page event functions cannot receive Arguments. They read from Store / Page / Parent contexts instead. The top-level FUNCTION/NAMESPACE/PARAMETERS/EVENTS in the DSL are ignored for inline use; only the LOGIC steps matter.
+
+Example DSL for an event that calls an API and toasts a message:
+```
+FUNCTION handleSignIn
+    NAMESPACE _
+    LOGIC
+        call: UIEngine.HTTPRequest(method = "POST", url = "/api/security/authenticate", body = Page.user)
+            output
+                toast: UIEngine.Toast(message = "Signed in", level = "success") AFTER Steps.call.output
+```
+
+Common pitfalls:
+- Page events cannot use `Arguments.X` — those don't exist. Use `Page.X` / `Store.X` / `Parent.X` instead.
+- The function's NAME in the DSL (`FUNCTION handleSignIn`) must match the `event_name` param.
+- Use `UIEngine.*` primitives for UI-side calls (HTTPRequest, Toast, SetStore, Navigate). NOT `System.*` ones (those are server-side).""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page to attach the event function to"),
         ToolParameter(name="event_name", type="string", description="Event function name (matches the inline `name` field)"),

@@ -2,6 +2,10 @@
 
 Validate an entered OTP.
 
+**Notes:**
+
+Look at: PARAMETERS taking `reference` + `otp` strings; `System.Context.Create` + `Set` staging a payload object; `CoreServices.REST.PostRequest` to an external KYC verify endpoint with auth headers; `System.GenerateEvent` on both `error` and `output` branches forwarding `Steps.postRequest.*.data`.
+
 **Entity type:** `server_function`
 
 ## Samples

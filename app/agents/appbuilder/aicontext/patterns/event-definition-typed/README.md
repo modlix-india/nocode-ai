@@ -2,6 +2,10 @@
 
 Named event with payload schema.
 
+**Notes:**
+
+Look at: top-level `schema` block declaring the payload type (`SchemaType.STRING` or `OBJECT`); `name` as the event identifier; `message` referencing the originating transport id.
+
 **Entity type:** `event_definition`
 
 ## Samples

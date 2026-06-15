@@ -58,6 +58,36 @@ def _gateway_url() -> str:
     return settings.GATEWAY_URL.rstrip("/")
 
 
+_MIME_PNG = "image/png"
+_MIME_JPEG = "image/jpeg"
+_MIME_OCTET = "application/octet-stream"
+
+_EXT_TO_MIME: dict[str, str] = {
+    "png":  _MIME_PNG,
+    "jpg":  _MIME_JPEG,
+    "jpeg": _MIME_JPEG,
+    "gif":  "image/gif",
+    "svg":  "image/svg+xml",
+    "webp": "image/webp",
+}
+
+
+def _mime_for_path(path: Path, fallback: str | None = None) -> str:
+    """Resolve MIME type from a file path's extension.
+
+    Hits the known-image whitelist first; otherwise returns the supplied
+    fallback. When fallback is None, returns `image/{ext}` for unknown
+    extensions (matching the prior inline behaviour in image-edit calls)
+    or `application/octet-stream` when the file has no extension.
+    """
+    ext = path.suffix.lower().lstrip(".")
+    if ext in _EXT_TO_MIME:
+        return _EXT_TO_MIME[ext]
+    if fallback is not None:
+        return fallback
+    return f"image/{ext}" if ext else _MIME_OCTET
+
+
 # ═════════════════════════════════════════════════════════════════════════
 #  PREVIEW (2 tools)
 # ═════════════════════════════════════════════════════════════════════════
@@ -444,8 +474,7 @@ async def _execute_image_to_base64(params: dict[str, Any], context: dict[str, An
     size_kb = p.stat().st_size // 1024
     if size_kb > max_kb:
         return ToolResult(success=False, error=f"file is {size_kb} KB; cap is {max_kb}. Upload via upload_client_file and reference the URL instead.")
-    ext = p.suffix.lstrip(".").lower()
-    mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "svg": "image/svg+xml", "webp": "image/webp"}.get(ext, "application/octet-stream")
+    mime = _mime_for_path(p, fallback=_MIME_OCTET)
     encoded = base64.b64encode(p.read_bytes()).decode("ascii")
     return ToolResult(success=True, summary=f"data:{mime};base64,{encoded}")
 
@@ -609,7 +638,7 @@ async def _upload_generated_static(
     try:
         async with httpx.AsyncClient(timeout=getattr(settings, "HTTP_TIMEOUT", 30.0)) as client:
             with open(local_path, "rb") as fh:
-                files = {"file": (filename, fh, "image/png")}
+                files = {"file": (filename, fh, _MIME_PNG)}
                 resp = await client.post(url, headers=h, files=files, params={"clientCode": client_code, "override": "true"})
     except Exception as e:  # noqa: BLE001
         return None, None, f"{type(e).__name__}: {e}"
@@ -629,9 +658,9 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
     if aspect not in _ASPECT_PROFILES:
         return ToolResult(success=False, error=f"aspect_ratio must be one of {list(_ASPECT_PROFILES)}, got {aspect!r}")
     from app.config import settings
-    api_key = getattr(settings, "GEMINI_API_KEY", "") or ""
+    api_key = getattr(settings, "GOOGLE_API_KEY", "") or ""
     if not api_key:
-        return ToolResult(success=False, error="GEMINI_API_KEY not set in nocode-ai settings. Set it and reload.")
+        return ToolResult(success=False, error="GOOGLE_API_KEY not set in nocode-ai settings. Set it and reload.")
     ac, err_result = _resolve_app_code(params, context)
     if err_result:
         return err_result
@@ -655,9 +684,7 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
             ipath = Path(ip).expanduser().resolve()
             if not ipath.exists() or not ipath.is_file():
                 return ToolResult(success=False, error=f"input_image_path not found: {ipath}")
-            ext = ipath.suffix.lower().lstrip(".")
-            mime = "image/png" if ext == "png" else "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
-            input_images.append((mime, ipath.read_bytes()))
+            input_images.append((_mime_for_path(ipath), ipath.read_bytes()))
 
     png, gen_err = await _generate_via_gemini(api_key, full_prompt, model, input_images=input_images)
     if gen_err:
@@ -690,7 +717,7 @@ generate_image_tool = ToolDefinition(
         "Generate or edit an image with Gemini Nano Banana, save locally, upload to "
         "the app's static asset space, return its public URL. Text-to-image when "
         "only `prompt` is given; image-to-image edit when input_image_paths is set. "
-        "Requires GEMINI_API_KEY in nocode-ai settings."
+        "Requires GOOGLE_API_KEY in nocode-ai settings."
     ),
     parameters=[
         ToolParameter(name="prompt", type="string", description="Natural-language description"),
@@ -705,6 +732,139 @@ generate_image_tool = ToolDefinition(
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
     ],
     execute=_execute_generate_image,
+)
+
+
+# ── describe_image ────────────────────────────────────────────────────────
+# Vision adapter: feeds an image through Gemini Flash and returns text.
+# Lets text-only providers (DeepSeek) reason about screenshots / images, and
+# gives vision-capable providers a way to journal a description for KB/audit.
+
+_DESCRIBE_DEFAULT_MODEL = "gemini-2.5-flash"
+_DESCRIBE_BASE_PROMPT = (
+    "Describe this UI screenshot for a vision-blind LLM that needs to reason "
+    "about the layout. Cover, in order:\n"
+    "1. Overall page structure — header/nav/sidebar/main/footer regions and "
+    "their positions.\n"
+    "2. Per region: visible components (buttons, inputs, tables, cards, "
+    "images) with their text labels and spatial relationships.\n"
+    "3. Color palette (primary accent, background, text contrast).\n"
+    "4. Visible content (table rows, form values, headings).\n"
+    "5. Anything visually broken — overlapping elements, cut-off text, "
+    "alignment issues, blank regions where content should be.\n"
+    "Be specific. Avoid generic phrases like 'a clean design' — describe what "
+    "is actually on screen."
+)
+
+
+async def _describe_via_gemini(
+    api_key: str, image_data: bytes, mime: str, prompt: str, model: str,
+) -> tuple[str, str]:
+    """Call Gemini generateContent with image + prompt; return (text, error)."""
+    url = f"{_GEMINI_URL_BASE}/{model}:generateContent"
+    parts: list[dict[str, Any]] = [
+        {"inline_data": {
+            "mime_type": mime,
+            "data": base64.b64encode(image_data).decode("ascii"),
+        }},
+        {"text": prompt},
+    ]
+    body = {"contents": [{"parts": parts}]}
+    headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, json=body, headers=headers)
+    except httpx.HTTPError as e:
+        return "", f"{type(e).__name__}: {e}"
+    if resp.status_code >= 400:
+        return "", f"Gemini HTTP {resp.status_code}: {resp.text[:600]}"
+    try:
+        data = resp.json()
+    except ValueError:
+        return "", f"Gemini response not JSON: {resp.text[:200]}"
+    texts: list[str] = []
+    for cand in data.get("candidates") or []:
+        for part in (cand.get("content") or {}).get("parts") or []:
+            if part.get("text"):
+                texts.append(part["text"])
+    if not texts:
+        return "", f"Gemini returned no text. Response: {str(data)[:300]}"
+    return "\n".join(texts).strip(), ""
+
+
+def _resolve_describe_image_payload(
+    params: dict[str, Any],
+) -> tuple[bytes | None, str, ToolResult | None]:
+    """Validate the describe_image input shape; return (bytes, mime, err_result).
+
+    Exactly one of `image_base64` or `image_path` must be set. On error,
+    returns (None, "", ToolResult(success=False)) so the caller can early-return.
+    """
+    img_b64 = (params.get("image_base64") or "").strip()
+    img_path = (params.get("image_path") or "").strip()
+    if not img_b64 and not img_path:
+        return None, "", ToolResult(success=False, error="One of `image_base64` or `image_path` is required.")
+    if img_b64 and img_path:
+        return None, "", ToolResult(success=False, error="Pass only one of `image_base64` or `image_path`, not both.")
+    if img_b64:
+        try:
+            data = base64.b64decode(img_b64)
+        except Exception as e:  # noqa: BLE001
+            return None, "", ToolResult(success=False, error=f"image_base64 decode failed: {e}")
+        return data, (params.get("mime_type") or _MIME_PNG).strip(), None
+    ipath = Path(img_path).expanduser().resolve()
+    if not ipath.exists() or not ipath.is_file():
+        return None, "", ToolResult(success=False, error=f"image_path not found: {ipath}")
+    return ipath.read_bytes(), _mime_for_path(ipath), None
+
+
+async def _execute_describe_image(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    image_data, mime, err_result = _resolve_describe_image_payload(params)
+    if err_result is not None:
+        return err_result
+    assert image_data is not None  # narrows for type-checkers
+
+    from app.config import settings
+    api_key = getattr(settings, "GOOGLE_API_KEY", "") or ""
+    if not api_key:
+        return ToolResult(success=False, error="GOOGLE_API_KEY not set in nocode-ai settings. Set it and reload.")
+
+    focus_hint = (params.get("focus_hint") or "").strip()
+    prompt = _DESCRIBE_BASE_PROMPT
+    if focus_hint:
+        prompt += f"\n\nFocus particularly on: {focus_hint}"
+    model = (params.get("model") or _DESCRIBE_DEFAULT_MODEL).strip()
+
+    text, err = await _describe_via_gemini(api_key, image_data, mime, prompt, model)
+    if err:
+        return ToolResult(success=False, error=err)
+    return ToolResult(
+        success=True,
+        summary=f"Image description ({len(image_data):,} bytes, model={model}):\n\n{text}",
+        data={"description": text, "model": model, "bytes": len(image_data)},
+    )
+
+
+describe_image_tool = ToolDefinition(
+    name="describe_image",
+    description=(
+        "Run a vision-capable model (Gemini Flash) over an image and return a "
+        "textual description. Use when your provider is text-only (e.g. DeepSeek) "
+        "and you need to reason about a screenshot, or when you want a written "
+        "record of an image for KB/audit. Accepts the base64 output from "
+        "screenshot_page directly via `image_base64`, OR a local `image_path`. "
+        "Optional `focus_hint` steers the description toward a specific concern "
+        "(layout, color contrast, form fields, etc.). "
+        "Requires GOOGLE_API_KEY in nocode-ai settings."
+    ),
+    parameters=[
+        ToolParameter(name="image_base64", type="string", required=False, description="Base64-encoded image bytes (e.g. screenshot_page's data['image_base64'])"),
+        ToolParameter(name="image_path", type="string", required=False, description="Absolute path to a local image file (alternative to image_base64)"),
+        ToolParameter(name="mime_type", type="string", required=False, default=_MIME_PNG, description="MIME type when using image_base64 (default image/png)"),
+        ToolParameter(name="focus_hint", type="string", required=False, description="Optional natural-language steer (e.g. 'focus on form layout and spacing')"),
+        ToolParameter(name="model", type="string", required=False, default=_DESCRIBE_DEFAULT_MODEL, description="Gemini vision model id"),
+    ],
+    execute=_execute_describe_image,
 )
 
 
@@ -728,6 +888,7 @@ TOOLS: list[ToolDefinition] = [
     # Files — secured (2)
     generate_secured_access_key_tool,
     download_secured_file_by_key_tool,
-    # Image gen (1)
+    # Image gen + vision (2)
     generate_image_tool,
+    describe_image_tool,
 ]

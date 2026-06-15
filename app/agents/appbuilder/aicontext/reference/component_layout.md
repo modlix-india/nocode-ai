@@ -64,12 +64,13 @@ applied into a SINGLE rule's `resolutions[<bp>]` block:
 }
 ```
 
-The MCP `patch_component_styles` tool was historically creating one UUID per
-leaf, which made all-but-the-last leaves invisible. Fixed 2026-05-18:
-[modlix_mcp/tools/composition_v2.py](../modlix_mcp/tools/composition_v2.py)
-now finds the existing unconditioned+matching-pseudoState rule and merges
-into its `resolutions[<bp>]` block — minting a new UUID only when no such
-rule exists.
+The CFA `patch_component_styles` tool was historically creating one UUID
+per leaf, which made all-but-the-last leaves invisible. Fixed 2026-05-18:
+the tool now finds the existing unconditioned+matching-pseudoState rule
+and merges into its `resolutions[<bp>]` block — minting a new UUID only
+when no such rule exists. Implementation lives in
+[`app/agents/appbuilder/tools/modlix/pages.py`](../../tools/modlix/pages.py)
+(the page-composition surface).
 
 When inheriting a page authored before the fix, **consolidate first**:
 group all unconditioned rules per (pseudoState) into one UUID. The on-disk
@@ -285,7 +286,8 @@ silently overridden. Use the component's typed property instead.
 
 ## ROADMAP items this surfaced
 
-- Enrich the component catalog with the missing 50+ component types (see
-  modlix_mcp/catalog.py fallback).
+- Enrich the component catalog with the missing 50+ component types (the
+  catalog is loaded at agent startup from the CDN; see
+  [`app/agents/appbuilder/catalog.py`](../../catalog.py)).
 - Add `inspect_component_in_prod(type)` tool that mines a real prod page for
   property-key examples when the catalog is incomplete.

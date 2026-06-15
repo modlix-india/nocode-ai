@@ -35,9 +35,9 @@ Why this matters:
 - **Per-page cleanup** — deleting a page becomes a clean opportunity to drop `<appCode>/<pageName>/*` as well.
 - **Discoverability** — agents authoring a page can look at `<appCode>/<pageName>/` to enumerate assets that page uses.
 
-modlix-mcp's `upload_static_asset` and `generate_image` tools default
-`page_name='global'` and accept `page_name='<pageName>'`. They construct the
-correct path automatically — the caller never sees the appCode-prefix
+The CFA's `upload_static_asset` and `generate_image` tools default
+`page_name='global'` and accept `page_name='<pageName>'`. They construct
+the correct path automatically — the caller never sees the appCode-prefix
 plumbing.
 
 ## Upload to static
@@ -97,9 +97,9 @@ So the asymmetry is:
 - Upload: `.../api/files/static/<folder>` + multipart filename
 - Download: `.../api/files/static/file/<client>/<app>/<folder>/<filename>`
 
-## Picking the right MCP tool
+## Picking the right tool
 
-modlix-mcp's files module covers each space:
+The CFA's `visuals` module covers each space:
 
 | Tool | Targets | Returns |
 |---|---|---|

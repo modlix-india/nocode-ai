@@ -349,6 +349,48 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
         f"Screenshot of {url} captured ({len(png):,} bytes).",
         f"Embed via: <img src=\"data:image/png;base64,{encoded[:32]}...\">  (base64 stored in result.data['image_base64'])",
     ]
+
+    # Auto-describe the screenshot via Gemini Flash so text-only agents
+    # (DeepSeek) get the vision signal in the SAME tool result. DeepSeek can't
+    # see the PNG; without this auto-call, the agent drills into 20+
+    # `get_component` reads trying to infer layout from definitions. Cost:
+    # ~$0.001 per screenshot (one Gemini Flash call on the image). Win:
+    # avoids the 20-30 component-read tail that follows screenshot_page on
+    # critique / clone tasks.
+    description_text: str | None = None
+    description_error: str | None = None
+    try:
+        from app.config import settings as _settings
+        from app.agents.appbuilder.tools.modlix.visuals import (
+            _MIME_PNG, _DESCRIBE_BASE_PROMPT, _DESCRIBE_DEFAULT_MODEL,
+            _describe_via_gemini,
+        )
+        api_key = getattr(_settings, "GOOGLE_API_KEY", "") or ""
+        if api_key:
+            focus = (params.get("describe_focus") or
+                     "overall page structure, layout, spacing, alignment, "
+                     "visual hierarchy, colour palette, typography, "
+                     "and any visible issues (overlapping elements, cut-off "
+                     "text, misalignment, blank regions)")
+            prompt = _DESCRIBE_BASE_PROMPT + f"\n\nFocus particularly on: {focus}"
+            description_text, description_error = await _describe_via_gemini(
+                api_key, png, _MIME_PNG, prompt, _DESCRIBE_DEFAULT_MODEL,
+            )
+    except Exception as e:  # noqa: BLE001
+        description_error = f"{type(e).__name__}: {e}"
+
+    if description_text:
+        parts.append("")
+        parts.append("## Auto-generated structural description (Gemini Flash)")
+        parts.append("Use this directly to reason about layout/appearance. Do NOT drill into")
+        parts.append("`get_component` / `get_component_styles` to re-discover what the description")
+        parts.append("already tells you — the description IS the user-visible state.")
+        parts.append("")
+        parts.append(description_text)
+    elif description_error:
+        parts.append("")
+        parts.append(f"(auto-describe skipped: {description_error}; "
+                     "call `describe_image(image_base64=...)` if you need a vision signal)")
     if effective_capture_console:
         log_text = "\n".join(console_buf) if console_buf else "(no console messages captured)"
         parts.append(f"\nConsole ({len(console_buf)} messages):\n{log_text}")

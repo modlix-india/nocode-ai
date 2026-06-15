@@ -76,12 +76,12 @@ function can still reach back to CORE functions via the chain above.
 - **HTTP boundary cost.** Every CORE function call inside a UI step graph is a round-trip. If a UI function calls `Steps.fetchA`, `Steps.fetchB`, `Steps.fetchC` sequentially against three different CORE functions, that's three HTTP requests. Batch when possible (e.g. one CORE function that does all three fetches).
 - **Authority** is checked on the server execute endpoint via `executeAuth` on the function entity. Server side enforces; browser doesn't gate the call. So a UI function calling a server function with `executeAuth='Authorities.ADMIN'` will fail at the HTTP call for non-admin users.
 
-## modlix-mcp implications
+## CFA implications
 
-- `modlix_mcp.conventions.UIENGINE_PRIMITIVES` lists browser-only namespaces (`UIEngine`, `Page`, `Theme`, `LocalStore`, …) — these MUST not appear in CORE function step graphs.
-- `function_steps.add_step` and friends accept `is_server: bool` (see [function_steps.py](../modlix_mcp/tools/function_steps.py)) — set to `True` for steps in CORE functions. Server side doesn't expose the surgical `PATCH /{id}/steps` endpoint, so the tool falls back to a full-document PUT.
-- `kirun_dsl_tools.decompile_function(name, is_server=True)` is how to round-trip a CORE function's step graph through DSL text.
-- Cross-runtime calls (UI step → CORE function or vice-versa) are valid; the agent doesn't need to mark them specially — just author the called function on the right side.
+- `_conventions.UIENGINE_PRIMITIVES` (in [`app/agents/appbuilder/tools/modlix/_conventions.py`](../../tools/modlix/_conventions.py)) lists browser-only namespaces (`UIEngine`, `Page`, `Theme`, `LocalStore`, …) — these MUST not appear in CORE function step graphs.
+- `add_step` / `update_step` / `set_dependencies` / `remove_step` accept `is_server: bool` — set to `True` for steps in CORE functions. Server side doesn't expose the surgical `PATCH /{id}/steps` endpoint, so the tool falls back to a full-document PUT.
+- `decompile_function(name, is_server=True)` is how to round-trip a CORE function's step graph through DSL text.
+- Cross-runtime calls (UI step → CORE function or vice-versa) are valid; the agent doesn't need to mark them specially — just author the called function on the right side via `create_function` (UI) vs `create_server_function` (CORE).
 
 ## File pointers
 

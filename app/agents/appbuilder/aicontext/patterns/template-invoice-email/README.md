@@ -2,6 +2,10 @@
 
 Invoice attached / linked email.
 
+> **Notes:**
+> 
+> Look at: `templateParts.en.body` holding the full inline-styled HTML receipt with `${receiptNo}`, `${bookingName}`, `${totalAmountPaid}`, `${transactionDetails.paymentMethod}` placeholders (dot-path access into nested objects); `templateType: "email"` with `subject` and `fromExpression: "<EMAIL>"` driving delivery, and `defaultLanguage: "en"` keying which `templateParts.<lang>` block is used.
+
 **Entity type:** `template`
 
 ## Samples

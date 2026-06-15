@@ -41,9 +41,16 @@ Two distinct lifetimes observed locally:
   still subject to the server-side invalidation above, so it's not a
   paste-once-forget solution.
 
-For modlix-mcp automation, the ~1-year token is more practical, but you
-still need to handle 401-mid-session. Currently `auth.py` doesn't auto-
-recover from a mid-session 401 — it just throws. ROADMAP item.
+The CFA doesn't refresh tokens on the caller's behalf — the developer JWT
+arrives via the chat request's Authorization header (extracted by
+`require_auth_context`) and is used as-is for every authoring tool. A 401
+from any platform endpoint is surfaced through the tool result and the
+caller is expected to re-authenticate. We deliberately do NOT try to
+silently re-login: the CFA never has the caller's password, and pretending
+to recover would hide an auth-context regression from the user.
+
+App-user tokens (used only by `screenshot_page` / `drive_page` /
+`call_as_app_user`) are different — see "App-user resolution" below.
 
 ## Multi-client user model — the login pre-step
 
@@ -111,23 +118,72 @@ unambiguous. The SPA always sends them; tooling should too.
 - `USER_NAME` — when userName is a username string
 - See `nocode-saas/.../AuthenticationIdentifierType.java` for the full set.
 
-## auth.py status (TODO)
+## CFA auth model — what the agent should know
 
-`modlix_mcp.auth.py._login` currently:
-- Sends `appCode` + `clientCode` headers from settings (added 2026-05-18)
-- Does NOT pre-discover the user's clients
+The CFA has TWO separate identity slots per session. They flow through
+different code paths and fail differently.
 
-For ambiguous accounts (same email across clients), the login will fail
-with 403. Workaround: use `MODLIX_TOKEN` (a pre-acquired JWT) instead of
-USERNAME/PASSWORD until auth.py learns the multi-client flow.
+### Slot 1 — Developer (the caller's JWT)
 
-ROADMAP item: extend `auth.py._login` to:
-1. First call a discovery endpoint (TBD which exact one — needs probing).
-2. If multiple registrations found, require a new setting
-   `MODLIX_LOGIN_CLIENT_CODE` (or fall back to `DEFAULT_CLIENT_CODE`) to
-   disambiguate.
-3. On 401 during normal calls, attempt one silent re-login before
-   surfacing the error to the caller.
+- **Source**: the `Authorization: Bearer …` header on the chat request,
+  validated by `app.core.base_auth.require_auth_context`.
+- **Used by**: every authoring tool (pages, components, kirun, schemas,
+  themes, security CRUD, …).
+- **Lifetime**: whatever the platform issued — we don't refresh.
+- **On 401**: surface the tool error verbatim. Don't attempt re-login —
+  we don't have the caller's password. Tell the user the auth context
+  expired and they need to re-authenticate.
+
+### Slot 2 — App-user (token OR username + password)
+
+Lives only in the chat request body's `app_user` field. Used exclusively by
+tools that need to act AS an end-user inside the customer's app:
+`screenshot_page`, `drive_page`, `call_as_app_user`.
+
+Resolution lives in `app.core.session.BaseSession.get_app_user_token()`:
+
+1. If `app_user.token` was provided, cache and return it.
+2. Else, if `app_user.{username, password}` were provided, run the
+   multi-client login flow:
+   1. `POST /api/security/users/findUserClients` with `{userName, password}`
+      and the session's `appCode` + `clientCode` headers — returns the
+      `userId` for the unambiguous (or first) registration.
+   2. `POST /api/security/authenticate` with `{userName, userId, password,
+      rememberMe: false}` and the same headers — returns the `accessToken`.
+3. Cache the resulting token on the session; future tool calls reuse it.
+4. Raise a clear `RuntimeError` if neither slot is populated, with a
+   remediation hint pointing back to the chat-request shape.
+
+This is the multi-client flow the old modlix-mcp `auth.py` did NOT
+implement — the CFA learned it from `findUserClients` + `authenticate`
+straight away. Implementation lives in
+[`app/core/session.py:158-235`](../../core/session.py#L158).
+
+### What the agent should communicate to the user
+
+- 401 on an authoring tool → "your auth context expired; please re-open the
+  chat after refreshing the page."
+- "app-user credentials required for this tool" → "this tool needs to
+  render the app as an end user; pass `app_user.{username, password}` (or
+  an already-obtained `token`) in the next chat request."
+- 403 "No registration available for the selected client on this
+  application" during app-user login → the username doesn't exist under
+  the target app/client combination. Confirm the app_code on the session.
+
+### Known limits
+
+- **No mid-session re-auth.** If the developer JWT expires mid-conversation,
+  every subsequent tool call errors out. The session has no path to refresh.
+  The user must re-authenticate at the chat surface.
+- **App-user token TTL is whatever the platform issues** (often short).
+  Long-running conversations that drive the browser repeatedly may hit a
+  401 after enough idle time. The session caches the token forever once
+  resolved — there is NO auto-invalidation on 401 today
+  ([`session.py:158-176`](../../core/session.py#L158) sets
+  `_app_user_token` only on init and after a successful login). A 401
+  from the browser-drive tools therefore needs a fresh chat request — or
+  a future improvement that clears the cached token on 401 and retries
+  the two-step login once. Same shape as the developer-JWT limit above.
 
 ## Quick decode helper
 

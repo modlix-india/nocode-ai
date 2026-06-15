@@ -216,10 +216,13 @@ Read live with `get_theme appbuildertheme`.
 
 ## How to refresh this doc
 
-```
-cd modlix-mcp
-python scripts/build_design_system_reference.py > /tmp/catalog.md
-# diff against this doc's catalog section, update inline
-```
+Re-run the build script that produced the catalog section, then PR the
+diff against this doc. The script reads each component's source files
+and the lazy-loaded `dist/styleProperties/<Component>.json` for accuracy.
 
-Run this when nocode-ui ships new components or new design-type variants. The script reads each component's source files and the lazy-loaded `dist/styleProperties/<Component>.json` for accuracy.
+The build script lives in the modlix-mcp archive (retired repo) at
+`scripts/build_design_system_reference.py`. If component drift in
+nocode-ui makes this catalog stale and the script needs to run again,
+port the script into `nocode-ai/scripts/` rather than reviving the
+modlix-mcp checkout. Run when nocode-ui ships new components or new
+design-type variants.

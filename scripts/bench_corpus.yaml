@@ -1,0 +1,254 @@
+# CFA provider bench corpus
+#
+# 12 representative conversations covering the surfaces a customer would
+# actually exercise. Each entry defines:
+#
+#   name                       — kebab-case identifier (also the CSV/summary key)
+#   description                — what this conversation tests + why it matters
+#   messages                   — user turns, fed one at a time to the agent
+#   must_call_tools            — tools the agent MUST invoke for the run to count
+#                                as converged. Order doesn't matter; presence does.
+#                                These are guardrails against "agent answered in
+#                                prose without doing the work".
+#   must_succeed_on_kirun      — Kirun DSL the agent authored must compile cleanly
+#   must_succeed_on_kb_write   — at least one propose-then-commit KB cycle must
+#                                complete end-to-end without optimistic-lock retry
+#
+# Convergence rule (oracle): every required tool got called AND every must_*
+# flag held. Anything else is a failed run.
+#
+# Coverage map:
+#   page CRUD                          → C1, C2, C8
+#   Kirun function authoring + DSL     → C3, C4 (must_succeed_on_kirun=true)
+#   Page event functions               → C5
+#   Storage definition + data query    → C6
+#   Screenshot critique + iterate      → C7  (vision-heavy; key for Gemini Flash)
+#   Per-app KB read/write              → C9  (must_succeed_on_kb_write=true)
+#   Code-workspace lookup              → C10
+#   Discovery (search_tools dance)     → C11
+#   Multi-step orchestration           → C12
+#
+# When curating new conversations, keep messages CONCISE and REAL — the bench
+# is measuring real-world turn count and tool-call accuracy, not testing the
+# LLM's ability to parse synthetic test cases.
+
+conversations:
+
+  # ── C1: smallest possible end-to-end. Confirms the deferred dance works.
+  - name: list-pages-in-app
+    description: |
+      "List the pages in my app" — the smallest possible end-to-end. Tests
+      that the agent (a) understands "my app" means the session's app_code,
+      (b) reaches search_tools / get_tool_schema if needed to find list_pages,
+      (c) actually invokes the tool rather than answering from memory.
+    messages:
+      - "What pages exist in the current app?"
+    must_call_tools:
+      - list_pages
+
+  # ── C2: read a specific page's structure. Tests component-tree summarization.
+  - name: read-page-structure
+    description: |
+      "Show me the structure of the login page" — tests get_page or
+      get_page_summary. Either tool yields the structure; summary is cheaper
+      but full get_page is functionally equivalent. We don't penalize the
+      heavier choice here (token cost shows up in the per-provider $ column).
+    messages:
+      - "Show me how the login page is structured."
+    must_call_any_of_groups:
+      - [get_page_summary, get_page]
+
+  # ── C3: Kirun authoring via DSL. The headline bench for compile pass-rate.
+  - name: kirun-author-hello-fn
+    description: |
+      "Write a server function that returns 'Hello, {name}'" — the agent
+      authors a Kirun function. Any of these tools count as "the agent did
+      the work": compile_kirun_text (compile-only), save_function_from_text
+      (compile+save in one), or create_server_function (full create flow).
+      The headline signal is `must_succeed_on_kirun` — the DSL must compile
+      cleanly via whichever path the agent picked.
+    messages:
+      - "Write a server function that takes a name and returns the string 'Hello, <name>'. Call it greet, namespace MyApp."
+    must_call_any_of_groups:
+      - [compile_kirun_text, save_function_from_text, create_server_function]
+    must_succeed_on_kirun: true
+
+  # ── C4: surgical function edit. Tests step-ops + version invariants.
+  - name: kirun-add-step-to-existing
+    description: |
+      "Add a step to an existing function" — tests the surgical write path.
+      Split into two messages: turn 1 establishes a known-baseline function
+      (single concat step), turn 2 surgically adds a lowercase step before
+      it. The two-turn shape makes the conv re-runnable: setup deletes any
+      prior MyApp.greet, turn 1 always creates a fresh baseline, turn 2
+      always sees the same shape to modify. Without this structure, prior
+      runs that already added the lowercase step turned the next run into
+      a no-op ("already there" — see DeepSeek reasoning in bench-1212.log).
+
+      Valid write paths on turn 2: add_step (surgical, preferred),
+      update_server_function, or save_function_from_text (full-text replace).
+      Compile success via `must_succeed_on_kirun` is the real signal.
+    setup_actions:
+      - tool: delete_function
+        params:
+          namespace: MyApp
+          name: greet
+    messages:
+      - "Create a UI function MyApp.greet that takes a single String parameter `name` and returns 'Hello, ' + name as the result. One step, no other transforms."
+      - "Now add a step that lowercases the name before concatenating, so the result becomes 'Hello, ' + lowercased name."
+    must_call_any_of_groups:
+      - [save_function_from_text, create_function]
+      - [add_step, update_server_function, save_function_from_text]
+    must_succeed_on_kirun: true
+
+  # ── C5: page event function. Tests the kirun_events surgical surface.
+  - name: page-event-onclick
+    description: |
+      "Add an onClick to a button" — tests authoring a page event function
+      via any of the create_/save_*_from_text tools + patch_component_props
+      to wire it onto the button. Catches providers that try to inline
+      event logic instead of authoring a named event function, AND those
+      that author the function but never wire it.
+    messages:
+      - "On the login page, add an onMouseEnter handler to the 'Sign In' button that calls a new event function 'showSignInHint' which toasts the message 'Click to sign in'. Wire the event function as the button's onMouseEnter prop."
+    must_call_tools:
+      - patch_component_props
+    must_call_any_of_groups:
+      - [get_page, get_page_summary, search_page_components, get_component]
+      - [create_page_event_function, save_page_event_function_from_text]
+
+  # ── C6: storage definition + data query. Tests the data-vs-definition split.
+  - name: storage-define-then-query
+    description: |
+      "Define a Storage and then count its rows" — create_storage on the
+      definition side, then any READ-ONLY data tool on the runtime side
+      (count_storage_rows is the dedicated one, but query_storage_rows
+      with no filter answers the same question). Validates the agent
+      understands the separation: never call a write tool against the
+      per-tenant data DB.
+    messages:
+      - "Create a storage called 'Project' with fields name (string, required) and status (enum: planning/active/done)."
+      - "How many rows are in the existing Customer storage?"
+    must_call_tools:
+      - create_storage
+    must_call_any_of_groups:
+      - [count_storage_rows, query_storage_rows]
+
+  # ── C7: screenshot critique. Vision-heavy — the hardest task for Gemini Flash to match.
+  - name: screenshot-critique-and-iterate
+    description: |
+      "Take a screenshot of the login page and critique the layout" —
+      tests screenshot_page (requires app-user identity) + the vision
+      response quality. This is the headline test for Gemini Flash's
+      vision parity against Claude. A high failure rate here is the
+      gating signal for whether to flip the default provider.
+    messages:
+      - "Take a screenshot of the login page (the existing app-user credentials are valid). Then tell me what's structurally wrong with the layout."
+    must_call_tools:
+      - screenshot_page
+
+  # ── C8: bulk component patch. Tests bulk_patch_component_props vs N single calls.
+  - name: bulk-style-update
+    description: |
+      "Change the background colour of every Button on a page" — tests
+      whether the agent picks bulk_patch_component_props (one round-trip)
+      versus N patch_component_props calls. Token + wall-clock cost
+      diverges dramatically between providers here.
+
+      Note: NO get_page/get_page_summary requirement — filter-based bulk
+      patch (`{"type": "Button"}`) doesn't need component keys, so reading
+      the page first is wasted work. An efficient agent goes straight to
+      bulk_patch_component_props.
+    messages:
+      - "On the home page, change every Button's backgroundColor to Theme.primaryColor."
+    must_call_tools:
+      - bulk_patch_component_props
+
+  # ── C9: KB propose-then-commit. The headline test for the multi-turn confirm flow.
+  - name: kb-write-with-confirmation
+    description: |
+      "Add a decision to the app's knowledge base" — tests
+      propose_kb_update returning a diff + pending_id, then user "yes",
+      then commit_kb_update. Catches providers that skip the
+      propose-confirm step and try to write directly (which the CFA
+      doesn't expose), or that lose the pending_id across turns.
+
+      Message is explicit ("call propose_kb_update") to defeat the "I'll
+      just read the existing log and reply that it's already there"
+      shortcut DeepSeek took on a prior bench (kb_app_get → end-of-turn,
+      see bench-1212.log). The wording leaves no ambiguity that the
+      agent must call the write tool.
+    messages:
+      - "Use propose_kb_update to draft a new decisions_log entry: 'We chose Mongo over Postgres for ticket storage because the schema is highly variable across customers.' Show me the diff."
+      - "Yes go ahead and commit."
+    must_call_tools:
+      - propose_kb_update
+      - commit_kb_update
+    must_succeed_on_kb_write: true
+
+  # ── C10: code-workspace lookup. Tests the read-only source-reading surface.
+  - name: code-workspace-source-lookup
+    description: |
+      "How does the platform handle XYZ in code?" — tests code_grep /
+      code_read against the bundled nocode-saas checkout. The right move
+      is to grep + read the actual source, NOT to guess from memory.
+      Catches providers that hallucinate platform behaviour.
+    messages:
+      - "How does the platform validate Kirun authority strings? Find the actual code that checks them."
+    must_call_tools:
+      - code_grep
+      - code_read
+
+  # ── C11: deferred-tool discovery. Tests the search_tools dance.
+  - name: discover-tool-by-capability
+    description: |
+      Tests the search_tools machinery directly. The agent is asked to use
+      search_tools to find a candidate, then to fetch its schema with
+      get_tool_schema. Both meta-tools must dispatch. The explicit "use
+      search_tools" phrasing keeps DeepSeek from short-circuiting on the
+      visible tool index (which is rich enough to answer most capability
+      questions without a search round-trip — but we still want the
+      machinery exercised at least once per release).
+    messages:
+      - "Use search_tools to find tools related to JWT validation, then call get_tool_schema on the most relevant match."
+    must_call_tools:
+      - search_tools
+      - get_tool_schema
+
+  # ── C12: multi-step orchestration. Tests the agent's planning + execution arc.
+  - name: end-to-end-new-page
+    description: |
+      "Build me a new Contact page" — multi-turn orchestration: page
+      creation, component composition, styling, screenshot. The hardest
+      single test in the corpus for total turn-count efficiency. A
+      provider that takes 30+ turns to do what another does in 12 shows
+      up clearly here.
+
+      Notes on the oracle:
+      - get_app is NOT required — preflight grounding (see
+        AppBuilderAgent._build_preflight_grounding) auto-injects the app
+        summary into the system prompt, so calling get_app is now
+        redundant work.
+      - Composition allows either add_component (incremental) OR
+        replace_page_definition (one big call to set the whole tree).
+        Both are valid paths; an efficient agent may pick the latter
+        for a brand-new page since there's nothing to surgically patch.
+
+      Setup deletes ContactCFA so the agent always starts from a clean
+      slate. Prior runs that succeeded leave the page populated; the next
+      run's `create_page` errors and the agent drifts into screenshotting
+      / theme-poking instead of composing (see bench-1212.log).
+    setup_actions:
+      - tool: delete_page
+        params:
+          name: ContactCFA
+    messages:
+      - "I want a new page called 'ContactCFA' on this app. It needs a form with name, email, phone, and message; submitting should call a server function we'll define later."
+      - "Use the brand theme — primaryColor for the submit button, default text styling for the inputs."
+      - "Looks good. Take a screenshot to confirm."
+    must_call_tools:
+      - create_page
+      - patch_component_styles
+      - screenshot_page
+    must_call_any_of_groups:
+      - [add_component, replace_page_definition]

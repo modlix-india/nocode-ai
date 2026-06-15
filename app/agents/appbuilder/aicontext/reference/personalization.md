@@ -27,7 +27,7 @@ Name convention: `<componentName><userId>`. Created/owned by the user (`createdB
 
 **Why:** The runtime writes these as users interact (toggle columns, drag panels). Builders don't author them.
 
-**How to apply (for modlix-mcp tooling):**
-- Read tools (`list_personalization`, `get_personalization`, `count_personalization`) are valuable — debugging, dashboards, agent inspection.
-- Write tools (`create_personalization`, `update_personalization`) should be rare — only useful for seeding defaults for new users or migrating preferences. Don't make them prominent.
-- Personalization isn't part of "building an app" — keep tools clearly tagged so agents don't waste cycles authoring them during build flows.
+**How to apply (in the CFA):**
+- Read tools (`list_personalizations`, `get_personalization`, `count_personalizations`) are exposed in the `runtime` module — useful for debugging "why does user X see this view?" or auditing personalization patterns.
+- Write tools are deliberately ABSENT from the CFA — the runtime owns the write path, and direct writes would corrupt the runtime's idea of what a user has customized.
+- Personalization isn't part of "building an app" — the CFA tagged these as a separate `runtime` group so the agent doesn't waste cycles authoring them during build flows.

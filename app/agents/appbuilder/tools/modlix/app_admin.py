@@ -134,29 +134,100 @@ get_app_tool = ToolDefinition(
 )
 
 
-async def _execute_create_app(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+_APP_TYPES = ("APP", "SITE", "POSTER")
+_APP_ACCESS_TYPES = ("OWN", "ANY", "EXPLICIT")
+
+
+def _validate_create_app_params(params: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
+    """Validate + normalize create_app params. Returns (error_message, normalized_params)."""
     app_code = (params.get("app_code") or "").strip()
     name = (params.get("name") or "").strip()
     if not app_code or not name:
-        return ToolResult(success=False, error="`app_code` and `name` are required")
+        return "`app_code` and `name` are required", None
     ne = c.validate_simple_name(app_code)
     if ne:
-        return ToolResult(success=False, error=ne)
-    cc = _resolve_client_code(params, context)
-    body: dict[str, Any] = {
-        "appCode": app_code, "name": name, "clientCode": cc,
-        "properties": params.get("properties") or {},
-        "message": params.get("message") or "Created via CFA",
+        return ne, None
+    app_type = (params.get("app_type") or "SITE").upper()
+    if app_type not in _APP_TYPES:
+        return f"app_type must be {'|'.join(_APP_TYPES)}, got {app_type!r}", None
+    app_access_type = (params.get("app_access_type") or "OWN").upper()
+    if app_access_type not in _APP_ACCESS_TYPES:
+        return f"app_access_type must be {'|'.join(_APP_ACCESS_TYPES)}, got {app_access_type!r}", None
+    return None, {
+        "app_code": app_code, "name": name,
+        "app_type": app_type, "app_access_type": app_access_type,
     }
-    if params.get("languages") is not None:
-        body["languages"] = params["languages"]
-    if params.get("translations") is not None:
-        body["translations"] = params["translations"]
+
+
+async def _maybe_upsert_ui_app(
+    params: dict[str, Any], context: dict[str, Any], app_code: str, name: str, sec_id: Any,
+) -> ToolResult:
+    """If the caller passed UI-side fields, upsert the UI override doc.
+
+    Skipped when no UI extras are present — matches what the Modlix UI button
+    does (lazy-create on first access). Returns a success ToolResult in both
+    cases (failure of step 2 is downgraded to a hint, since step 1 already
+    landed the app).
+    """
+    ui_extras = {
+        k: params[k]
+        for k in ("properties", "languages", "translations")
+        if params.get(k)
+    }
+    if not ui_extras:
+        return ToolResult(
+            success=True,
+            summary=f"Created application '{app_code}' (security id={sec_id}). UI-side record will be lazy-created on first access; use update_app to set properties.",
+        )
+    ui_body: dict[str, Any] = {
+        "appCode": app_code, "name": name,
+        "clientCode": _resolve_client_code(params, context),
+        "message": params.get("message") or "Created via CFA",
+        **ui_extras,
+    }
     client, headers = _client_and_headers(context)
-    r = await client.post(_APPS_API, headers=headers, json=body)
-    if not r.success:
-        return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created application '{app_code}' (id={(r.data or {}).get('id', '?')}).")
+    ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
+    if not ui_resp.success:
+        return ToolResult(
+            success=True,
+            summary=(
+                f"Created security app '{app_code}' (id={sec_id}), but the UI "
+                f"override write failed: {ui_resp.error}. Retry with update_app to "
+                f"set properties later."
+            ),
+        )
+    return ToolResult(
+        success=True,
+        summary=f"Created application '{app_code}' (security id={sec_id}, ui id={(ui_resp.data or {}).get('id', '?')}).",
+    )
+
+
+async def _execute_create_app(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    err, p = _validate_create_app_params(params)
+    if err or p is None:
+        return ToolResult(success=False, error=err or "invalid params")
+
+    client, headers = _client_and_headers(context)
+
+    # Step 1: register the app in the SECURITY service. This is what the Modlix
+    # UI's "Create app" button calls — without it, the AuthorizationWebFilter on
+    # /api/ui/applications rejects writes with 403 because the security service
+    # has no record of the app. The UI-side record is lazy-created on first access.
+    sec_body: dict[str, Any] = {
+        "appCode": p["app_code"],
+        "appName": p["name"],
+        "appType": p["app_type"],
+        "appAccessType": p["app_access_type"],
+    }
+    if params.get("thumb_url"):
+        sec_body["thumbUrl"] = params["thumb_url"]
+    sec_resp = await client.post(_SECURITY_APPS_API, headers=headers, json=sec_body)
+    if not sec_resp.success:
+        return ToolResult(success=False, error=f"Security app registration failed: {sec_resp.error}")
+
+    # Step 2: optionally write the UI-side override doc.
+    sec_id = (sec_resp.data or {}).get("id", "?")
+    return await _maybe_upsert_ui_app(params, context, p["app_code"], p["name"], sec_id)
 
 
 create_app_tool = ToolDefinition(

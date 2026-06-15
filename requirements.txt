@@ -47,3 +47,13 @@ playwright==1.55.0
 python-dotenv==1.0.1
 pydantic==2.10.4
 pydantic-settings==2.7.1
+
+# Test infrastructure — Tier 1+2 coverage of the modlix port + helpers + KB
+# lifecycle + platform_docs tools. Run with `pytest` from the repo root.
+pytest==8.3.4
+pytest-asyncio==0.25.2
+
+# YAML — used by the provider-bench harness (scripts/bench_providers.py +
+# scripts/bench_corpus.yaml). Already installed transitively but declared
+# explicitly so a clean venv install picks it up.
+PyYAML>=6.0

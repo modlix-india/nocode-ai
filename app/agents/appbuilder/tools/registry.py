@@ -83,11 +83,20 @@ ALL_TOOLS: list[ToolDefinition] = (
     + PLATFORM_DOC_TOOLS
 )
 
-# ── Tool-of-tools router ────────────────────────────────────────
+# ── Tool-of-tools router (DEPRECATED — retired from AppBuilderAgent) ─────────
 #
-# Instead of sending all 10 tool schemas (~1300 tokens) to the LLM,
-# send one lightweight "execute" tool (~150 tokens).  The agent
-# unwraps execute(tool="read", params={...}) into the real tool call.
+# Phase 3 of the CFA rewrite switched the AppBuilder agent to the deferred-
+# schema surface (`defer_schemas=True` in agent.py), so the LLM now sees
+# every advertised tool by name with empty params and pulls full schemas on
+# demand via `get_tool_schema`. The system prompt's tool catalog (see
+# TOOL_GROUPS_SUMMARY in app.agents.appbuilder.context) lists the 200
+# advertised tools by group.
+#
+# TOOL_ROUTER is kept exported here for any external caller that still
+# constructs a router-mode agent (e.g. a future sub-agent that wants the
+# legacy 10-verb interface). The 10 legacy CRUD verbs + version_api +
+# lookup_api remain in ALL_TOOLS as callable fallbacks but are intentionally
+# hidden from the LLM's catalog (see _INTENTIONALLY_HIDDEN in context.py).
 
 _ROUTER_DESCRIPTION = """\
 Execute an appbuilder tool.  Pass the tool name and its parameters.

@@ -1415,6 +1415,11 @@ class DeepSeekProvider(LLMProvider):
                     oai_msg["content"] = "\n".join(text_parts)
                 if tool_calls:
                     oai_msg["tool_calls"] = tool_calls
+                # Round-trip reasoning_content for V4 Pro thinking mode — the
+                # API rejects multi-turn conversations that drop it.
+                reasoning = msg.get("_reasoning_content")
+                if reasoning:
+                    oai_msg["reasoning_content"] = reasoning
                 full_messages.append(oai_msg)
             elif role == "user" and isinstance(content, list):
                 for item in content:
@@ -1455,6 +1460,13 @@ class DeepSeekProvider(LLMProvider):
         tool_call_buffer: Dict[int, Dict[str, str]] = {}
         final_stop_reason = "end_turn"
         final_usage: Dict[str, Any] = {}
+        # DeepSeek V4 Pro's thinking mode emits chain-of-thought via
+        # `delta.reasoning_content`. The API REQUIRES this text to be passed
+        # back on every follow-up turn or returns HTTP 400 with
+        # "reasoning_content in the thinking mode must be passed back".
+        # Accumulate across deltas and surface on the `done` chunk via usage
+        # so the agent loop can persist it on the assistant message.
+        reasoning_text_parts: list[str] = []
 
         while True:
             chunk = await queue.get()
@@ -1471,6 +1483,11 @@ class DeepSeekProvider(LLMProvider):
             finish_reason = chunk.choices[0].finish_reason
             if delta and delta.content:
                 yield StreamChunk(type="text_delta", text=delta.content)
+            # V4 Pro reasoning stream — buffer for round-trip, also yield for live UI.
+            reasoning_delta = getattr(delta, "reasoning_content", None) if delta else None
+            if reasoning_delta:
+                reasoning_text_parts.append(reasoning_delta)
+                yield StreamChunk(type="reasoning_delta", text=reasoning_delta)
             if delta and delta.tool_calls:
                 for tc in delta.tool_calls:
                     idx = tc.index
@@ -1490,7 +1507,64 @@ class DeepSeekProvider(LLMProvider):
                             tool_id=tc_data["id"], tool_input_json=tc_data["arguments"])
                     yield StreamChunk(type="tool_use_end", tool_id=tc_data["id"])
 
+        if reasoning_text_parts:
+            final_usage["reasoning_content"] = "".join(reasoning_text_parts)
         yield StreamChunk(type="done", stop_reason=final_stop_reason, usage=final_usage)
+
+
+# Whitelist of JSON-Schema keys Gemini's protobuf `Schema` actually accepts.
+# Source: google-generativeai's content_types.FunctionDeclaration → Schema
+# protobuf. Anything outside this set raises
+# `ValueError: Unknown field for Schema: <key>` at tool-registration time.
+# Notable exclusions: `default` (the original bug), `examples`, `$ref`,
+# `oneOf`, `anyOf`, `allOf`, `not`, `additionalProperties`, `patternProperties`.
+_GEMINI_SCHEMA_ALLOWED_KEYS: frozenset[str] = frozenset({
+    "type", "description", "properties", "items", "required",
+    "enum", "format", "nullable",
+})
+
+
+def _strip_gemini_unsupported_schema_keys(schema: Any) -> Any:
+    """Recursively drop JSON-Schema keys Gemini's protobuf `Schema` rejects.
+
+    Returns a fresh structure — does NOT mutate the input — so the same
+    ToolDefinition can be safely advertised to Anthropic + Gemini in the
+    same process. Per-key transform logic lives in
+    `_transform_gemini_schema_value` (extracted to keep this function's
+    cognitive complexity below the project's lint ceiling).
+    """
+    if isinstance(schema, list):
+        return [_strip_gemini_unsupported_schema_keys(x) for x in schema]
+    if not isinstance(schema, dict):
+        return schema
+    return {
+        k: _transform_gemini_schema_value(k, v)
+        for k, v in schema.items()
+        if k in _GEMINI_SCHEMA_ALLOWED_KEYS
+    }
+
+
+def _transform_gemini_schema_value(key: str, value: Any) -> Any:
+    """Transform a single whitelisted schema-key's value for Gemini.
+
+    Important: only filter at SCHEMA-shaped dict levels. The values of
+    `properties` are themselves a {property_name: schema} map where
+    property names are arbitrary (size, app_code, ...) — they must NOT
+    be filtered against the schema-keyword whitelist. Similarly the
+    values of `required` / `enum` are plain string/value lists, not
+    nested schemas.
+    """
+    if key == "properties" and isinstance(value, dict):
+        # Property NAMES are user-defined; keep them, strip their VALUES.
+        return {
+            prop_name: _strip_gemini_unsupported_schema_keys(prop_schema)
+            for prop_name, prop_schema in value.items()
+        }
+    if key in ("required", "enum"):
+        # Plain lists of strings/values; don't recurse-strip them.
+        return list(value) if isinstance(value, list) else value
+    # items / type / description / format / nullable: recurse normally.
+    return _strip_gemini_unsupported_schema_keys(value)
 
 
 class GeminiProvider(LLMProvider):
@@ -1515,9 +1589,9 @@ class GeminiProvider(LLMProvider):
         import google.generativeai as genai  # type: ignore[import-not-found]
         from app.config import settings
 
-        api_key = getattr(settings, "GEMINI_API_KEY", "") or ""
+        api_key = getattr(settings, "GOOGLE_API_KEY", "") or ""
         if not api_key:
-            raise ValueError("GEMINI_API_KEY is required when using the gemini provider")
+            raise ValueError("GOOGLE_API_KEY is required when using the gemini provider")
         genai.configure(api_key=api_key)
         self._genai = genai
         self.settings = settings
@@ -1553,6 +1627,14 @@ class GeminiProvider(LLMProvider):
         Skips provider-specific builtin tools (web_search etc.) — those are
         not portable across providers and the CFA doesn't surface them
         through the modlix tool catalog.
+
+        Gemini's protobuf `Schema` accepts only the OpenAPI subset it knows;
+        keys like `default`, `examples`, `$ref`, `oneOf`, etc. raise
+        `ValueError: Unknown field for Schema: <key>` at model construction
+        time. We pre-strip them recursively. Without this, every tool that
+        has a `default=` on any ToolParameter (e.g. `size=100`,
+        `max_results=8`, `lines=200`) crashes the entire Gemini bench at
+        tool-registration time.
         """
         out: list[dict[str, Any]] = []
         for t in tools:
@@ -1564,10 +1646,11 @@ class GeminiProvider(LLMProvider):
                 if spec:
                     out.append(spec)
                 continue
+            schema = t.get("input_schema") or {"type": "object", "properties": {}}
             out.append({
                 "name": t["name"],
                 "description": t.get("description", ""),
-                "parameters": t.get("input_schema") or {"type": "object", "properties": {}},
+                "parameters": _strip_gemini_unsupported_schema_keys(schema),
             })
         if not out:
             return []
@@ -1629,6 +1712,46 @@ class GeminiProvider(LLMProvider):
         return contents
 
     @staticmethod
+    def _proto_to_plain(value: Any) -> Any:
+        """Recursively convert Gemini's proto-plus types to plain Python.
+
+        Gemini wraps response payloads in `MapComposite` (dict-like) and
+        `RepeatedComposite` (list-like) proto types. The top-level conversion
+        `dict(fc.args)` only flattens one layer — nested objects stay as proto
+        types, which `json.dumps` chokes on with
+        "Object of type MapComposite is not JSON serializable".
+
+        Walks the structure once at response-shaping time so every downstream
+        consumer (stream chunks, session persistence, tool dispatch) sees
+        plain dicts/lists.
+        """
+        # Plain primitives pass through.
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        # dict-like: MapComposite, plain dict, and any subclass.
+        if isinstance(value, dict):
+            return {k: GeminiProvider._proto_to_plain(v) for k, v in value.items()}
+        # list/tuple-like: RepeatedComposite, plain list/tuple.
+        if isinstance(value, (list, tuple)):
+            return [GeminiProvider._proto_to_plain(v) for v in value]
+        # Last-resort: anything iterable that maps (MapComposite isn't
+        # always a dict subclass depending on proto-plus version) gets the
+        # items() treatment; anything iterable that's sequence-like gets
+        # listified. Fall back to str() so the agent never crashes on an
+        # unexpected proto shape.
+        if hasattr(value, "items"):
+            try:
+                return {k: GeminiProvider._proto_to_plain(v) for k, v in value.items()}
+            except (TypeError, AttributeError):
+                pass
+        if hasattr(value, "__iter__"):
+            try:
+                return [GeminiProvider._proto_to_plain(v) for v in value]
+            except (TypeError, AttributeError):
+                pass
+        return str(value)
+
+    @staticmethod
     def _gemini_part_to_anthropic_block(part: Any) -> Dict[str, Any] | None:
         """Map one Gemini response part to its Anthropic content-block equivalent.
 
@@ -1640,9 +1763,8 @@ class GeminiProvider(LLMProvider):
             return {"type": "text", "text": text}
         fc = getattr(part, "function_call", None)
         if fc and getattr(fc, "name", None):
-            try:
-                args = dict(fc.args) if fc.args else {}
-            except (TypeError, ValueError):
+            args = GeminiProvider._proto_to_plain(fc.args) if fc.args else {}
+            if not isinstance(args, dict):
                 args = {}
             return {
                 "type": "tool_use",
@@ -1778,8 +1900,8 @@ def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
         _providers[name] = DeepSeekProvider()
         logger.info(f"Initialized DeepSeek provider with models: {settings.DEEPSEEK_MODEL_FAST}, {settings.DEEPSEEK_MODEL_BALANCED}")
     elif name == "gemini":
-        if not getattr(settings, "GEMINI_API_KEY", ""):
-            raise ValueError("GEMINI_API_KEY is required when using the gemini provider")
+        if not getattr(settings, "GOOGLE_API_KEY", ""):
+            raise ValueError("GOOGLE_API_KEY is required when using the gemini provider")
         _providers[name] = GeminiProvider()
         gemini_fast = getattr(settings, "GEMINI_MODEL_FAST", "gemini-2.5-flash-lite")
         gemini_balanced = getattr(settings, "GEMINI_MODEL_BALANCED", "gemini-2.5-flash")

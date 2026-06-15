@@ -219,11 +219,26 @@ async def _execute_get_page(params: dict[str, Any], context: dict[str, Any]) -> 
 
 get_page_tool = ToolDefinition(
     name="get_page",
-    description="Read a page by name. Default returns the component tree outline. include: 'tree' | 'properties' | 'events' | 'full' (huge — avoid on real pages).",
+    description="""Read a page by name. The default `include="tree"` returns the component tree outline with keys + types — fast, cheap, the right choice for navigating to a specific component.
+
+Choose `include` based on what you need:
+- `tree` (default) — component tree summary (key, type, parent, name). Use to find which component to edit.
+- `properties` — page-level properties (title, layout, permissions). Use when editing page-level config.
+- `events` — list of page-level event functions (onLoad, etc.). Use when wiring page lifecycle events.
+- `full` — entire page document including every component's full props/styles/bindings. EXPENSIVE on real pages (10-100KB). Avoid unless you need to introspect every component at once.
+
+Typical flow:
+1. `get_page(name="contact")` (default tree) — find the component key you need to edit.
+2. `get_component(page_name="contact", component_key="emailInput")` — read just that one component if you need its current props before patching.
+3. `patch_component_props` / `patch_component_styles` — make the edit.
+
+Don't reach for `include="full"` reflexively — it returns 10× the data of `tree` and you almost never need it. If the agent's task is "modify component X", get the tree, find X's key, then `get_component` X.
+
+For finding components by TYPE or NAME instead of navigating the tree, use `search_page_components` — that's the inverse lookup.""",
     parameters=[
         ToolParameter(name="name", type="string", description="Page name (case-sensitive)"),
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
-        ToolParameter(name="include", type="string", required=False, default="tree", description="tree|properties|events|full"),
+        ToolParameter(name="include", type="string", required=False, default="tree", description="tree (default, cheapest) | properties | events | full (expensive — last resort)"),
     ],
     execute=_execute_get_page,
 )
@@ -255,12 +270,26 @@ async def _execute_create_page(params: dict[str, Any], context: dict[str, Any]) 
 
 create_page_tool = ToolDefinition(
     name="create_page",
-    description="Create a new page with a single root Grid component.",
+    description="""Create a new empty page in the current app. The page is created with a single root Grid container component (key=`root`); you populate it with `add_component` calls afterwards.
+
+Use this as the FIRST call when building a new page from scratch — never try to author the full page in one shot. The flow is:
+1. `create_page(name="contact", title="Contact Us")` — empty page exists.
+2. `add_component(page_name="contact", parent_key="root", component_key="form", type="Grid", properties={...})` — add layout.
+3. `add_component(page_name="contact", parent_key="form", component_key="emailInput", type="TextBox", properties={...})` — add children.
+4. … and so on for each component.
+5. Optional: `patch_component_styles` for theme-aware styling, `create_page_event_function` + `patch_component_props` to wire onClick handlers.
+
+IMPORTANT — page name rules:
+- Letters and digits only. No hyphens, no underscores, no spaces. `contactUs` ✓ , `contact-us` ✗
+- Must be unique within the app. If a page with the same name exists, this fails — use a different name or call `update_page` to modify the existing one.
+- The name is the URL slug (the path component the user types) AND the internal reference. Keep it short + meaningful.
+
+The optional `title` is the browser tab text. Defaults to the page name if omitted; set it explicitly to a human-readable phrase when the page name is camelCase (`title="Contact Us"` for `name="contactUs"`).""",
     parameters=[
-        ToolParameter(name="name", type="string", description="Page name (letters/digits only)"),
+        ToolParameter(name="name", type="string", description="Page name (letters/digits only — used as URL slug + internal key)"),
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
         ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode"),
-        ToolParameter(name="title", type="string", required=False, description="Browser title; defaults to name"),
+        ToolParameter(name="title", type="string", required=False, description="Browser title; defaults to name. Set for camelCase page names ('Contact Us' for 'contactUs')."),
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
     execute=_execute_create_page,
@@ -808,7 +837,42 @@ async def _execute_add_component(params: dict[str, Any], context: dict[str, Any]
 
 add_component_tool = ToolDefinition(
     name="add_component",
-    description="Add a new component under parent_key. Returns the new component's key. Properties wrap automatically into {value:...} or the multi-valued dict-of-entries shape.",
+    description="""Add a new component under `parent_key` on a page. Returns the new component's key. Use this to populate a freshly-created page or to insert a new component into an existing layout.
+
+Common shapes:
+
+Add a Button under the root Grid:
+```
+add_component(
+    page_name="contact",
+    parent_key="root",
+    component_type="Button",
+    component_key="submitBtn",
+    properties={"label": "Submit", "onClick": "handleSubmit"}
+)
+```
+
+Add a TextBox with two-way data binding (the input writes into Page.user.email):
+```
+add_component(
+    page_name="contact",
+    parent_key="formGrid",
+    component_type="TextBox",
+    component_key="emailInput",
+    properties={"label": "Email", "placeholder": "you@example.com"},
+    binding_paths={"bindingPath": {"value": "Page.user.email"}}
+)
+```
+
+Key rules:
+- `parent_key="root"` is the top of the page tree. `root` always exists after `create_page`. Other valid parents are any Grid/Container/etc. you've already added.
+- `component_type` is the catalog name: `Button`, `TextBox`, `Grid`, `Dropdown`, `Table`, `Image`, etc. Use the `components` group to look up unfamiliar types via `list_component_types` or `get_component_schema`.
+- `component_key` is optional — provide a meaningful slug (`submitBtn`, `emailInput`) for readability. If omitted, a UUID is generated.
+- `properties` values are auto-wrapped: pass plain values like `{"label": "Submit"}` and the tool wraps them into `{"label": {"value": "Submit"}}`. For expression bindings, pass the dict shape directly: `{"label": {"location": {"type": "EXPRESSION", "value": "Page.formTitle"}}}`.
+- `binding_paths` is for `bindingPath` / `bindingPath2`…`bindingPath6` ONLY — see the component-types reference for which components need binding (TextBox, Dropdown, ArrayRepeater, Table, etc.).
+- `style_properties` follows the same nested shape as `patch_component_styles` — see the styling walkthrough for the exact structure.
+
+For multiple sibling components, call `add_component` once per component. There's no bulk-add — but each call is cheap (single PATCH).""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page to modify"),
         ToolParameter(name="parent_key", type="string", description="Parent component key (use 'root' for page root)"),
@@ -1219,7 +1283,31 @@ async def _execute_bulk_patch_component_props(params: dict[str, Any], context: d
 
 bulk_patch_component_props_tool = ToolDefinition(
     name="bulk_patch_component_props",
-    description="Apply the same properties patch to every component matching filter (type, keys[], key_pattern regex, name_contains). One atomic save. Pass dry_run=true to preview matches.",
+    description="""Apply ONE properties patch to EVERY component on a page that matches a filter. One atomic save, one network round-trip. The right tool when changing the same prop on N components.
+
+Filter shapes (combine as needed — all matchers AND together):
+- `{"type": "Button"}` — every Button on the page
+- `{"keys": ["btn1", "btn2", "btn3"]}` — explicit list of component keys
+- `{"key_pattern": "^primary"}` — regex over keys (anchor with `^` / `$` as needed)
+- `{"name_contains": "submit"}` — substring match on the component's display name
+- Combined: `{"type": "Button", "name_contains": "primary"}` — every Button whose name contains "primary"
+
+Example — set every Button's backgroundColor to the theme primary:
+```
+bulk_patch_component_props(
+    page_name="home",
+    filter={"type": "Button"},
+    properties={"backgroundColor": {"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}}
+)
+```
+
+IMPORTANT — use `dry_run=true` FIRST when you're unsure which components will match. It returns the matched keys without saving so you can sanity-check. Then re-call without `dry_run` to apply.
+
+Use this INSTEAD OF N `patch_component_props` calls:
+- 10 Buttons via 10 `patch_component_props` calls = 10 network round-trips = 10× the latency.
+- 10 Buttons via 1 `bulk_patch_component_props` call = 1 round-trip = same outcome, 10× faster.
+
+NOT the right tool when each component needs a DIFFERENT properties patch (e.g. "make button1 red and button2 blue") — for that, you need N `patch_component_props` calls, one per component.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
         ToolParameter(name="filter", type="object", description="Any of: type, keys[], key_pattern, name_contains"),
@@ -1255,8 +1343,10 @@ async def _patch_component_on_server(
     if not page_id:
         return False, "Fetched page has no id"
     expected = c.component_version_for(page, component_key)
+    # Platform body shape: ComponentPatchRequest expects `componentData`, not `component`.
+    # Sending the wrong key NPEs the platform at PageService.patchComponent (updated is null).
     body = {
-        "component": updated_comp,
+        "componentData": updated_comp,
         "expectedComponentVersion": expected,
         "message": message,
     }
@@ -1300,11 +1390,57 @@ async def _execute_patch_component_props(params: dict[str, Any], context: dict[s
 
 patch_component_props_tool = ToolDefinition(
     name="patch_component_props",
-    description="Surgical PATCH of one component's properties (optimistic-locked per component). Faster than set_styles + safer under concurrent edits.",
+    description="""Surgical PATCH of ONE component's properties. The component's other props stay untouched — only the keys in `properties` are merged.
+
+Use when changing 1-2 props on 1 component. For multiple components with the SAME patch, use `bulk_patch_component_props` instead.
+
+Common shapes:
+
+Wire a button's onClick to an event function:
+```
+patch_component_props(
+    page_name="login",
+    component_key="signInBtn",
+    properties={"onClick": {"value": "handleSignIn"}}
+)
+```
+The `value` is the event function NAME (camelCase slug), not the function's body. The function must already exist via `create_page_event_function` / `save_page_event_function_from_text`.
+
+Set a label or placeholder (literal string):
+```
+patch_component_props(
+    page_name="contact",
+    component_key="emailInput",
+    properties={"label": {"value": "Email address"}, "placeholder": {"value": "you@example.com"}}
+)
+```
+
+Reference theme color (expression):
+```
+patch_component_props(
+    page_name="contact",
+    component_key="title",
+    properties={"color": {"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}}
+)
+```
+
+Bind a property dynamically (e.g. show/hide based on store):
+```
+patch_component_props(
+    page_name="contact",
+    component_key="successPanel",
+    properties={"visibility": {"location": {"type": "EXPRESSION", "value": "Page.formSubmitted"}}}
+)
+```
+
+Hard rules:
+- EVERY value MUST be a ComponentProperty object (`{"value": ...}` or `{"location": {...}}`). Bare strings/booleans WILL be rejected.
+- Static literal → `{"value": "Submit"}`. Expression → `{"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}`. NEVER mix them at the same level except for static-with-dynamic-override (advanced).
+- `visibility` is visible-when-true. To HIDE based on a condition, the expression must evaluate to false (the `not` keyword is NOT supported — invert the condition).""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
-        ToolParameter(name="component_key", type="string", description="Component key"),
-        ToolParameter(name="properties", type="object", description="Raw prop values to merge"),
+        ToolParameter(name="component_key", type="string", description="Component key (find via `get_page_summary` or `search_page_components`)"),
+        ToolParameter(name="properties", type="object", description="Map of {propName: ComponentProperty} — see description for shape"),
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
@@ -1420,7 +1556,35 @@ async def _execute_patch_component_styles(params: dict[str, Any], context: dict[
 
 patch_component_styles_tool = ToolDefinition(
     name="patch_component_styles",
-    description="Surgical PATCH of CSS leaves on one component. Bundles all input leaves under ONE rule per (condition=∅, pseudoState) — avoids the silent-overwrite trap from multiple unconditioned rules.",
+    description="""Surgical PATCH of CSS props on one component. Pass a FLAT `css_props` map — the tool builds the nested resolutions/breakpoint structure internally.
+
+Example — theme-aware button styling:
+```
+patch_component_styles(
+    page_name="contact",
+    component_key="submitBtn",
+    css_props={
+        "backgroundColor": {"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}},
+        "color": {"value": "#FFFFFF"},
+        "paddingLeft": {"value": "24px"},
+        "borderRadius": {"value": "8px"}
+    }
+)
+```
+
+Shape rules:
+- `css_props` keys are camelCase CSS prop names: `backgroundColor`, `paddingLeft`, `fontSize`. NEVER kebab-case (`background-color`) or shorthand (`padding`).
+- Each VALUE is a ComponentProperty:
+  - Literal: `{"value": "16px"}`
+  - Expression: `{"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}`
+  - NEVER `"16px"` or `Theme.primaryColor` as a bare string.
+
+For scoped styling, use the dedicated params (don't bake them into css_props keys):
+- `sub_component="label"` → applies to the inner `label` sub-component of the target.
+- `pseudo_state="hover"` → hover-state override.
+- `breakpoint="DESKTOP_SCREEN"` → desktop-only (default `ALL` covers every breakpoint).
+
+For multi-component edits (e.g. style EVERY Button), use `bulk_patch_component_props` with a `filter` matcher instead — one round-trip, atomic.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
         ToolParameter(name="component_key", type="string", description="Component key"),

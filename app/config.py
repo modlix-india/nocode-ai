@@ -81,8 +81,8 @@ class Settings(BaseSettings):
     # DeepSeek Settings
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
-    DEEPSEEK_MODEL_FAST: str = "deepseek-chat"       # DeepSeek V3.2 (non-thinking)
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-chat"   # DeepSeek V3.2 (with thinking)
+    DEEPSEEK_MODEL_FAST: str = "deepseek-v4-flash"   # DeepSeek V4 Flash (cheap tier)
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-pro" # DeepSeek V4 Pro (higher correctness on Kirun DSL per bench 2026-06-10)
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
@@ -90,8 +90,8 @@ class Settings(BaseSettings):
     # Chosen as the CFA default after the Phase 8 bench: 1M context window,
     # native vision, ~13× cheaper than Claude Haiku on input — fits the
     # iterate-heavy generate-screenshot-fix loop.
-    # Can be overridden by config server: ai.secrets.geminiAPIKey
-    GEMINI_API_KEY: str = ""
+    # API key lives in GOOGLE_API_KEY below (shared with all other Google
+    # services — image gen, maps, etc.).
     GEMINI_MODEL_FAST: str = "gemini-2.5-flash-lite"   # Cheapest tier
     GEMINI_MODEL_BALANCED: str = "gemini-2.5-flash"    # CFA default
 
@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "openai"  # AppBuilder LLM provider
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
     ADZUMP_PROVIDER: str = "openai"  # Adzump LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     

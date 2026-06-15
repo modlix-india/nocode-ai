@@ -53,7 +53,8 @@ use SendData / FetchData / DeleteData with the relative path.
 
 Read the source. The agent should consult [platform_services.md](platform_services.md)
 to map a need ("create a user", "list workflows") to the right service
-class, then read the matching controller's `@RequestMapping` annotations to
-find the exact path. modlix-mcp does not ship a pre-built API catalog —
-the source IS the catalog. See [branch_awareness.md](branch_awareness.md)
-when working against a non-local environment.
+class, then use the `code_workspace` tools (`code_read`, `code_grep`) to
+read the matching controller's `@RequestMapping` annotations and find
+the exact path. The CFA does not ship a pre-built API catalog — the
+source IS the catalog. See [branch_awareness.md](branch_awareness.md)
+for confirming the workspace's checkout matches the target env.

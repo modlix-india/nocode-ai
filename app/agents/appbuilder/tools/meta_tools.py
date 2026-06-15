@@ -7,8 +7,9 @@ plus the kb_app / code_workspace tools, full inline schemas would burn
   2. The LLM calls `search_tools("query")` when it needs to discover.
   3. The LLM calls `get_tool_schema("name")` to pull the full schema.
   4. The agent loop caches fetched schema names in
-     `session.context["fetched_schemas"]: set[str]` so a tool used many
-     times doesn't keep re-fetching.
+     `session.context["fetched_schemas"]: list[str]` so a tool used many
+     times doesn't keep re-fetching. A list (not a set) so the whole
+     session.context stays JSON-serializable for persistence.
 
 This module only provides the two meta-tools. The agent-loop change that
 auto-injects the schema when an LLM calls a tool BEFORE fetching it (the
@@ -171,10 +172,14 @@ async def _execute_get_tool_schema(
         )
 
     # Mark the schema as fetched on this session so the agent loop's
-    # synthetic-injection pass (when added) knows not to short-circuit
-    # subsequent invocations.
-    fetched = context.setdefault("fetched_schemas", set())
-    if isinstance(fetched, set):
+    # synthetic-injection pass knows not to short-circuit subsequent
+    # invocations. Stored as a list (not a set) so session.context stays
+    # JSON-serializable for cross-request persistence — sets choke
+    # json.dumps with "Object of type set is not JSON serializable".
+    fetched = context.setdefault("fetched_schemas", [])
+    if isinstance(fetched, list) and name not in fetched:
+        fetched.append(name)
+    elif isinstance(fetched, set):  # backward-compat with any in-flight session
         fetched.add(name)
 
     anthropic_shape = tool.to_anthropic_tool()

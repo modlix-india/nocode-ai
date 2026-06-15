@@ -52,8 +52,12 @@ overrides for that env.
 
 # What this means for tools
 
-modlix-mcp does NOT ship branch-aware source-reading tools. The agent uses
-Claude Code's native `Read` / `Bash` / `Grep` for source consultation, and
-must remember to align with the target env's branch. modlix-mcp surfaces
-the current env via `which_environment`; pair that with a `git status` /
-`git log` check in `nocode-saas` before quoting source as authoritative.
+The CFA ships read-only `code_workspace` tools (`code_read`, `code_grep`,
+`code_glob`, `code_ls`, `code_list_repos`) that target the bundled
+shallow checkouts of `nocode-saas` / `nocode-ui` / `nocode-kirun` on the
+agent host. These checkouts track `master` and refresh after each deploy
+via `/api/ai/admin/code-workspace/pull` — they're NOT auto-aligned with
+the target env's branch. When quoting source as authoritative, pair
+`which_environment` with `code_list_repos` (which reports each repo's
+current SHA + last-fetched timestamp) and confirm the SHA matches what
+that env actually runs.

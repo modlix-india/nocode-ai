@@ -273,8 +273,14 @@ async def _execute_propose_kb_update(
     current_body = (current or {}).get("BODY", "") or ""
     current_version = (current or {}).get("VERSION", 0) or 0
 
-    # Skip the diff round-trip if nothing actually changed.
-    if app_kb.body_hash(body) == app_kb.body_hash(current_body):
+    is_append = section in app_kb.APPEND_ONLY_SECTIONS
+
+    # Skip the diff round-trip if nothing actually changed. Only applies to
+    # REPLACE sections — append-only sections (decisions_log) treat each
+    # propose as a fresh entry even if a prior entry had identical text,
+    # since the user's intent is "add another log line", not "edit the
+    # current one".
+    if not is_append and app_kb.body_hash(body) == app_kb.body_hash(current_body):
         return ToolResult(
             success=True,
             summary=(
@@ -294,7 +300,6 @@ async def _execute_propose_kb_update(
         "message": message,
     }
 
-    is_append = section in app_kb.APPEND_ONLY_SECTIONS
     diff_block = _make_diff(section, current_body if not is_append else "", body)
     next_version = current_version + 1
     note = (
@@ -311,8 +316,16 @@ async def _execute_propose_kb_update(
         f"  message:                {message or '(none)'}\n"
         f"  note:                   {note}\n\n"
         f"Diff:\n```diff\n{diff_block}\n```\n\n"
-        f"To commit, the user must confirm. After confirmation, call "
-        f"`commit_kb_update(pending_id=\"{pending_id}\")`."
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"NEXT STEPS — read carefully:\n"
+        f"1. Show this diff to the user and STOP. End your turn.\n"
+        f"2. Wait for the user to reply (e.g. \"yes\", \"commit\", \"go ahead\", \"approved\").\n"
+        f"3. ON THE NEXT USER TURN, call EXACTLY: `commit_kb_update(pending_id=\"{pending_id}\")`.\n"
+        f"\n"
+        f"DO NOT call `propose_kb_update` again — the proposal is already staged.\n"
+        f"DO NOT call `commit_kb_update` until the user has actually approved.\n"
+        f"The pending_id `{pending_id}` is the receipt for THIS proposal; reuse it on commit.\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     return ToolResult(success=True, summary=summary)
 

@@ -15,16 +15,40 @@ agent rewrite (plan at `~/.claude/plans/fuzzy-frolicking-badger.md`).
 | 1.4c | page_event_functions + step ops + DSL variants (10), schemas+storages+storage_data (16), visuals+image_ops+browser-sessions (24), security+transports (23), app_admin = apps+themes+styles+uri_paths (22), messaging = notifications+connections+templates+events (28), runtime = personalization (3). html_compiler intentionally skipped — granular pages/components tools cover greenfield authoring. | ✅ Done |
 | 1.5 | Registry aggregation across all tool surfaces | ✅ Done |
 | 2 | Auth bridge (caller JWT + app_user resolution) | ✅ Done |
-| 3 | Deferred tool surface (search_tools + get_tool_schema) | ✅ Done |
+| 3 | Deferred tool surface (search_tools + get_tool_schema) — meta-tools + AppBuilderAgent constructor flipped to `defer_schemas=True`; legacy `TOOL_ROUTER` retired from this agent; system prompt rewritten to list 200 advertised tools by group and teach the schema-fetch pattern. | ✅ Done |
 | 3b | Agent-loop synthetic-schema injection on first-call | ✅ Done |
 | 4 | Code workspace + code-reading tools | ✅ Done |
-| 5 | Platform docs tools + aicontext layout + content migrated (29 refs + 159 patterns + 1309 sample files: 436 JSON + 629 DSL + 244 tree.txt) | ✅ Done |
+| 5 | Platform docs tools + aicontext layout + content migrated (28 refs + 159 patterns + 1309 sample files: 436 JSON + 629 DSL + 244 tree.txt). Stale modlix-mcp framing swept across the reference docs; `modlix_mcp.md` deleted as actively misleading; remaining mentions are intentional past-tense retrospective context. | ✅ Done |
 | 6 | Per-app KB MySQL schema + tools + seed migration | ✅ Done |
 | 7 | Cross-env promotion endpoints + script | ✅ Done |
-| 8 | Gemini provider + bench scaffold | ✅ Done (bench corpus pending) |
+| 8 | Gemini provider + bench harness fully wired: 12-conversation corpus (`scripts/bench_corpus.yaml`), `_run_one` instantiates AppBuilderAgent + drives messages through `agent.run()` + captures tool events via a `BenchObserver(AgentEventStream)` subclass + auto-approves confirmations; convergence oracle classifies each `must_*` flag; two modes (`--mode live` real-gateway, `--mode dry-run` MockSaasClient). 13 unit tests cover observer / oracle / classifier / summary renderer + 5 corpus-drift tests. Actual bench runs need provider API keys + a sandbox gateway. | ✅ Done (runs pending operator keys) |
 | 9 | Retire modlix-mcp / modlix-apps | ⏳ This doc + execute checklist |
+| 10 | Test suite — Tier 1 + Tier 2 + deferred-surface regression + bench-corpus contract (191 tests across 11 files; ~0.4s run) | ✅ Done |
+| 11 | Pattern library polish — enriched 12 short READMEs with **Notes:** sections via two Workflow fan-outs; flagged `schemaform-driven` as known-issue (sample doesn't demonstrate the pattern); quantitative sweep confirmed zero legacy-router phrasing, zero broken JSON, zero modlix-mcp refs in pattern READMEs. | ✅ Done |
+| 12 | Memory sweep — rewrote 6 user-memory files (`project_modlix_mcp`, `feedback_storage_db_readonly`, `feedback_python_means_missing_tool`, `project_personalization`, `reference_leadzump_app`, `reference_leadzump_docs`) + MEMORY.md index entries. Stale "modlix-mcp is the active project" framing replaced with retirement context. | ✅ Done |
 
 **Tool surface now: 210 tools** across 6 surfaces (LEGACY=10, MODLIX=182, META=2, WORKSPACE=5, KB_APP=6, PLATFORM_DOCS=5). MODLIX breakdown: infra=5, components=3, pages=26, kirun=22, kirun_events=10, schemas=16, visuals=12, visuals_browser=4, image_ops=8, security=23, app_admin=22, messaging=28, runtime=3. PLATFORM_DOCS now includes `pattern_sample(task_name, file_name)` for fetching the page-JSON / Kirun-DSL / component-tree examples that back each pattern recipe. Zero name collisions across the whole surface.
+
+**Test suite (Phase 10):** 204 tests across 12 files in `tests/`; full suite runs in ~0.4s.
+
+| File | Tests | Coverage area |
+|---|---:|---|
+| test_helpers_conventions.py | 57 | Authority grammar, expression refs, prop wrapping, style-rule encoding (pure functions) |
+| test_modlix_endpoint_contracts.py | 24 | Each modlix submodule's representative tool dispatches to the expected (method, path) |
+| test_registry_shape.py | 21 | Full surface shape validation across all 210 tools (no name collisions; valid schemas) |
+| test_helpers_page_ops.py | 21 | Page skeleton, tree manipulation, structural validation |
+| test_platform_docs_tools.py | 15 | `pattern_read`/`pattern_sample` incl. path-traversal + extension allowlist |
+| test_helpers_kirun_layout.py | 14 | Auto-layout determinism + dependency graph |
+| test_system_prompt.py | 13 | Deferred-surface contract: every tool advertised or hidden, no legacy router phrasing, AppBuilderAgent uses `defer_schemas=True` |
+| test_kb_lifecycle.py | 11 | propose → commit, optimistic lock, append-only decisions_log, export/import roundtrip |
+| test_helpers_kirun_dsl.py | 7 | DSL compile/validate round-trip (skips cleanly if kirun-py absent) |
+| test_bench_corpus.py | 5 | Bench corpus YAML parses; every must_call_tools name resolves in ALL_TOOLS; minimum surface coverage |
+| test_bench_runner.py | 13 | Bench observer captures tool events + auto-approves confirmations; convergence oracle classifies must_call / must_succeed_on_kirun / must_succeed_on_kb_write; call classifier buckets correctly; MockSaasClient install is non-destructive; summary renderer formats per-provider blocks |
+| test_modlix_imports.py | 3 | Safety net: every modlix module imports + exports a non-empty TOOLS list |
+
+Infrastructure: `pyproject.toml` (asyncio strict), `tests/conftest.py` with `MockSaasClient` (drop-in for the gateway client; records every call, programmable response queue) + `MockExecuteQuery` (drop-in for `app.db.connection.execute_query`). Run with `pytest` from the repo root.
+
+**Tier 3 deferred** (per-module behavioural depth): one test file per modlix module exercising 2-3 representative tools with mocked happy + error paths. Add incrementally as bugs surface.
 
 ## What's actually shippable today (after `pip install -r requirements.txt`)
 
@@ -35,7 +59,7 @@ agent rewrite (plan at `~/.claude/plans/fuzzy-frolicking-badger.md`).
 - 209 tools registered: 10 legacy CRUD + 182 modlix port + 2 meta
   (search/get_schema) + 5 code-workspace + 6 KB + 4 platform-doc.
 - Three providers wired in `get_llm_provider`: anthropic (default),
-  openai, deepseek, **gemini** (new). Add `GEMINI_API_KEY` to flip default.
+  openai, deepseek, **gemini** (new). Add `GOOGLE_API_KEY` to flip default.
 - New admin endpoints under `/api/ai/admin/app-kb/{export,import}` for
   dev → stage → prod promotion. Guarded by `ADMIN_TOKEN`.
 - New MySQL table: run `migrations/V12__CFA_App_KB.sql` against the
@@ -62,7 +86,7 @@ agent rewrite (plan at `~/.claude/plans/fuzzy-frolicking-badger.md`).
 3. **Set required env**:
    ```
    ADMIN_TOKEN=<random-32-char-secret-per-env>
-   GEMINI_API_KEY=<key>          # only when flipping default
+   GOOGLE_API_KEY=<key>          # only when flipping default
    CFA_WORKSPACE_DIR=/var/cfa/workspace  # default; override if needed
    ```
 

@@ -544,7 +544,12 @@ class BaseAgent:
             session.accumulate_usage(usage)
             await session.record_token_usage(usage, request_id, resolved_model, provider.name.lower())
 
-            reasoning_content = None  # TODO: handle thinking mode streaming later
+            # Thinking-mode providers (DeepSeek V4 Pro) stash chain-of-thought
+            # in usage["reasoning_content"]. The API requires this text to be
+            # passed back on every follow-up turn — `append_assistant_message`
+            # stores it as `_reasoning_content` and the provider re-emits it.
+            # Pop here so it doesn't leak into the persisted usage record.
+            reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
 
             # Save assistant message to conversation history
             session.append_assistant_message(content_blocks, reasoning_content)
@@ -885,7 +890,9 @@ class BaseAgent:
             # Provider-executed built-ins don't go through this path anyway.
             return None
         fetched = context.get("fetched_schemas")
-        if isinstance(fetched, set) and tool_name in fetched:
+        # Membership check works on both list and set (covers in-flight
+        # sessions that still hold the legacy set shape).
+        if isinstance(fetched, (list, set)) and tool_name in fetched:
             return None
 
         # First call — inject the schema and tell the LLM to retry.
@@ -896,7 +903,10 @@ class BaseAgent:
             "description": tool.description,
             "input_schema": anthropic_shape.get("input_schema", {"type": "object", "properties": {}}),
         }
-        if isinstance(fetched, set):
+        if isinstance(fetched, list):
+            if tool_name not in fetched:
+                fetched.append(tool_name)
+        elif isinstance(fetched, set):
             fetched.add(tool_name)
         body = (
             f"NOTE: '{tool_name}' was called before its full schema was fetched. "
@@ -996,9 +1006,11 @@ class BaseAgent:
             # critical for:
             #   * fetched_schemas: tracks which tool schemas have been pulled
             #     via get_tool_schema, gating first-call dispatch (Phase 3b).
+            #     LIST (not set) so session.context stays JSON-serializable
+            #     for cross-request persistence.
             #   * pending_kb_updates: stashes propose_kb_update payloads
             #     awaiting their commit_kb_update partner.
-            "fetched_schemas": session.context.setdefault("fetched_schemas", set()),
+            "fetched_schemas": session.context.setdefault("fetched_schemas", []),
             "pending_kb_updates": session.context.setdefault("pending_kb_updates", {}),
         }
         if session.auth:

@@ -1,13 +1,13 @@
 ---
 name: platform-services
-description: Map of nocode-saas microservice service classes → responsibilities. The "why" behind each modlix-mcp tool.
+description: Map of nocode-saas microservice service classes → responsibilities. The "why" behind each CFA modlix tool.
 metadata:
   type: reference
 ---
 
 # nocode-saas service map
 
-Each modlix-mcp tool ultimately hits a Spring controller, which delegates to
+Each CFA modlix tool ultimately hits a Spring controller, which delegates to
 a *service class* that holds the business logic — override merging, version
 locking, cascade rules, authority checks. When a tool returns surprising
 results, the answer usually lives in the service class.
@@ -85,6 +85,8 @@ Path: [nocode-saas/commons-mongo/src/main/java/com/fincity/saas/commons/mongo/](
 - **A Storage create returns "relation target not found"** → `StorageService.validate` is the check.
 - **A function fails at runtime** → execution happens in `CoreFunctionService.execute` (or the JS Kirun runtime client-side); inspect the step's `parameterMap` and `dependentStatements`.
 
-Most modlix-mcp tools are thin wrappers around the controllers; the real
+Most CFA modlix tools are thin wrappers around the controllers; the real
 behaviour lives in the services above. When tool output surprises an agent,
 the answer is almost always one level down — at the service, not the tool.
+The `code_workspace` tools (`code_read`, `code_grep`) can pull the relevant
+service source directly from the nocode-saas checkout when this happens.

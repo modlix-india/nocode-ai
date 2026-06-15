@@ -427,6 +427,51 @@ delete_server_function_tool = ToolDefinition(
 # ── DSL tools ────────────────────────────────────────────────────────────
 
 
+_COMPILE_HINT_RULES: list[tuple[re.Pattern[str], str]] = [
+    (
+        re.compile(r"(?:unknown|not\s+found|undefined)\s+(?:primitive|function|namespace)\W*(\w[\w.]*)", re.IGNORECASE),
+        "Next step: call `get_kirun_primitive(namespace=\"<ns>\", name=\"<n>\")` on the named primitive to check the exact spelling + signature. The primitive is likely capitalised differently (e.g. `System.Math.Add`, not `system.math.add`) or lives in a different namespace.",
+    ),
+    (
+        re.compile(r"(?:missing|expected|required).*?:\s*(\w+)", re.IGNORECASE),
+        "Next step: the parser names the missing piece. Re-read the DSL shape in `compile_kirun_text`'s description — common gaps are the final `System.GenerateEvent` step, an EVENTS block, or a closing `}`.",
+    ),
+    (
+        re.compile(r"(?:unexpected|invalid)\s+token", re.IGNORECASE),
+        "Next step: a syntax token broke parsing. Check that schema literals use array-typed `type` (e.g. `{\"type\":[\"INTEGER\"]}`, NOT `{\"type\":\"INTEGER\"}`) and that JSON values inside parentheses are valid JSON.",
+    ),
+    (
+        re.compile(r"(?:type|schema).*?(?:invalid|mismatch|wrong)", re.IGNORECASE),
+        "Next step: a schema is malformed. ALL `type` fields MUST be arrays — `{\"type\":[\"INTEGER\"]}` is correct, `{\"type\":\"INTEGER\"}` is not.",
+    ),
+    (
+        re.compile(r"(?:step|dependency|after).*?(?:unknown|missing|invalid)", re.IGNORECASE),
+        "Next step: an `AFTER Steps.<name>.<event>` references a step or event that doesn't exist. Confirm the step name and the event name (`output`/`error`/`true`/`false`/`iteration`) match the upstream step's declared events.",
+    ),
+    (
+        re.compile(r"line\s+(\d+)(?:.*?col(?:umn)?\s+(\d+))?", re.IGNORECASE),
+        "Next step: the parser points at a specific line/column. Read that line in your DSL and check indentation (steps under `LOGIC` use spaces, nested `output` blocks indent further).",
+    ),
+]
+
+
+def _hint_for_compile_error(error_text: str) -> str:
+    """Pick the FIRST matching hint rule for a compile/validate error.
+
+    The error message itself carries the precise failure; we add one
+    `Next step:` line so the LLM doesn't have to guess which research tool
+    to reach for. Multiple matches → only the first hint surfaces; we'd
+    rather give one clear instruction than three competing ones.
+    """
+    for pattern, hint in _COMPILE_HINT_RULES:
+        if pattern.search(error_text):
+            return hint
+    return (
+        "Next step: re-read the DSL shape in `compile_kirun_text`'s description. If the "
+        "error names a primitive, call `get_kirun_primitive` to confirm its signature."
+    )
+
+
 async def _execute_compile_kirun_text(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     text = params.get("text") or ""
     if not text:
@@ -434,16 +479,47 @@ async def _execute_compile_kirun_text(params: dict[str, Any], context: dict[str,
     try:
         defn = kirun_dsl.compile_text(text)
     except Exception as e:  # noqa: BLE001
-        return ToolResult(success=False, error=f"Compile error: {type(e).__name__}: {e}")
+        raw = f"{type(e).__name__}: {e}"
+        return ToolResult(success=False, error=f"Compile error: {raw}\n\n{_hint_for_compile_error(raw)}")
     kirun_layout.auto_layout_definition(defn)
     return ToolResult(success=True, summary=json.dumps(defn, indent=2, default=str))
 
 
 compile_kirun_text_tool = ToolDefinition(
     name="compile_kirun_text",
-    description="Compile Kirun DSL text to a FunctionDefinition JSON (with positions auto-laid out). Doesn't save — preview only.",
+    description="""Compile Kirun DSL text to a FunctionDefinition JSON without saving. Returns the compiled JSON on success, or a parser/validation error with line+column on failure.
+
+IMPORTANT: Use this BEFORE `save_function_from_text` to catch DSL syntax errors fast (no network round-trip to the gateway). Once it compiles cleanly, save with `save_function_from_text`.
+
+When authoring a Kirun function:
+1. WRITE FIRST. The DSL shape below covers 80% of real functions — start from it. Don't pre-research unless the FIRST compile fails.
+2. If compile fails: the error tells you the specific issue. Look up only the named primitive (`get_kirun_primitive`) — don't re-read the whole catalog.
+3. Don't compile 10 incremental drafts. One write, one compile, fix from the error, save. DeepSeek's reasoning mode in particular tends to over-iterate — resist that here.
+
+DSL shape (minimum viable function):
+```
+FUNCTION AddNumbers
+    NAMESPACE MyApp
+    PARAMETERS
+        a AS {"type":["INTEGER"]}
+        b AS {"type":["INTEGER"]}
+    EVENTS
+        output
+            result AS {"type":["INTEGER"]}
+    LOGIC
+        add: System.Math.Add(undefined = Arguments.a, undefined = Arguments.b)
+            output
+                event: System.GenerateEvent(eventName = "output", results = {"name": "result", "value": {"isExpression": true, "value": "Steps.add.output.value"}})
+```
+
+Key production rules:
+- Each step is `<stepName>: <Namespace>.<PrimitiveName>(<param> = <value>, ...)` — one primitive per step.
+- Step dependencies are EITHER nested under the parent step's `output` block (preferred) OR explicit with `AFTER Steps.<step>.<event>` (for cross-branch wiring).
+- Pass `Arguments.<paramName>` to reference function inputs, `Steps.<stepName>.output.value` to reference prior step results, and `Context.<key>` for context variables.
+- Final `System.GenerateEvent` produces the function's output event — use `{"isExpression": true, "value": "..."}` inside `results` to reference upstream step outputs.
+- Schemas are inline JSON; `type` is ALWAYS an array (`["INTEGER"]` not `"INTEGER"`).""",
     parameters=[
-        ToolParameter(name="text", type="string", description="DSL source ('FUNCTION X NAMESPACE Y ...')"),
+        ToolParameter(name="text", type="string", description="DSL source starting with `FUNCTION <name>` then `NAMESPACE`, `PARAMETERS`, `EVENTS`, `LOGIC`"),
     ],
     execute=_execute_compile_kirun_text,
 )
@@ -515,9 +591,23 @@ async def _execute_decompile_function(params: dict[str, Any], context: dict[str,
 
 decompile_function_tool = ToolDefinition(
     name="decompile_function",
-    description="Fetch a UI Kirun function and return its DSL text. Use to read existing functions as text, edit, and save back via save_function_from_text.",
+    description="""Fetch a Kirun function from the platform and return its DSL text. The canonical way to READ an existing function — the DSL is more compact and editable than the underlying JSON.
+
+START HERE before authoring a new Kirun function. Read 1-2 similar existing functions first, then mimic their step structure, dependency pattern, and output-event shape. Authoring blind without reading prior art is the single most common cause of compile failures.
+
+Typical flow:
+1. `list_kirun_primitives(filter="MyApp\\.")` to discover similar functions in the same namespace.
+2. `decompile_function(name="MyApp.SimilarFunction")` to read the working DSL.
+3. Author your new function, then `compile_kirun_text` to validate before saving.
+4. `save_function_from_text` to persist (auto-runs compile + layout).
+
+To EDIT an existing function:
+- `decompile_function` to get its text → modify the text → `save_function_from_text` to round-trip back. This replaces the whole function in one shot.
+- For surgical step-level edits (add/remove/rewire one step), prefer `add_step`, `update_step`, `remove_step`, `set_dependencies` — those operate on the function's step map directly without rewriting other steps.
+
+Pass `is_server=True` to decompile a server (core-runtime) function. Default `false` targets the UI runtime where most app-level functions live.""",
     parameters=[
-        ToolParameter(name="name", type="string", description="Function name (full Namespace.LocalName)"),
+        ToolParameter(name="name", type="string", description="Function name (full Namespace.LocalName, e.g. 'MyApp.AddNumbers')"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="is_server", type="boolean", required=False, default=False, description="True → decompile a server (core) function instead"),
     ],
@@ -533,7 +623,8 @@ async def _execute_save_function_from_text(params: dict[str, Any], context: dict
     try:
         defn = kirun_dsl.compile_text(text)
     except Exception as e:  # noqa: BLE001
-        return ToolResult(success=False, error=f"Compile error: {type(e).__name__}: {e}")
+        raw = f"{type(e).__name__}: {e}"
+        return ToolResult(success=False, error=f"Compile error: {raw}\n\n{_hint_for_compile_error(raw)}")
     kirun_layout.auto_layout_definition(defn)
     ns = defn.get("namespace")
     nm = defn.get("name")
@@ -577,12 +668,24 @@ async def _execute_save_function_from_text(params: dict[str, Any], context: dict
 
 save_function_from_text_tool = ToolDefinition(
     name="save_function_from_text",
-    description="Compile Kirun DSL and create/update a function. Name + namespace come from the DSL. Auto-layout runs before save so the visual editor opens onto a readable DAG. Use is_server=True for the core runtime.",
+    description="""Compile Kirun DSL and create/update a function in one round-trip. Compiles, auto-lays out step positions, and either creates a new function or updates an existing one (name + namespace are taken from the DSL itself). Returns the saved function ID + name on success.
+
+IMPORTANT: ALWAYS call `compile_kirun_text` FIRST with the same DSL text to catch parser errors without hitting the gateway. Save only after the DSL compiles cleanly — otherwise you pay a network round-trip just to learn it doesn't parse.
+
+This is the right tool when:
+- You authored a new function from scratch (after reading similar functions via `decompile_function`).
+- You're replacing an existing function wholesale (decompile → edit text → save back).
+
+NOT the right tool when:
+- You only need to add/remove/edit ONE step — use `add_step` / `update_step` / `remove_step` instead (surgical, preserves other steps' layout).
+- You're tweaking just dependencies — use `set_dependencies`.
+
+If the platform rejects the save (validation error, schema mismatch, primitive doesn't exist), the error message includes the exact failure. Re-read the relevant primitive via `get_kirun_primitive` and retry.""",
     parameters=[
-        ToolParameter(name="text", type="string", description="Full DSL source"),
+        ToolParameter(name="text", type="string", description="Full DSL source starting with `FUNCTION <name>`. Must compile cleanly via `compile_kirun_text` first."),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode"),
-        ToolParameter(name="is_server", type="boolean", required=False, default=False, description="Save to server (core) runtime"),
+        ToolParameter(name="is_server", type="boolean", required=False, default=False, description="Save to server (core) runtime instead of UI"),
         ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG),
     ],
     execute=_execute_save_function_from_text,
@@ -895,7 +998,22 @@ async def _execute_add_step(params: dict[str, Any], context: dict[str, Any]) -> 
 
 add_step_tool = ToolDefinition(
     name="add_step",
-    description="Add a step to a function via surgical PATCH (UI) or full PUT (server). Active dependencies use the same format as set_dependencies. Wires position auto-set to (0,0); use auto-layout via save_function_from_text for a clean visual.",
+    description="""Add a single step to an existing function via surgical PATCH. The function's other steps stay untouched — only the new step is appended to the steps map.
+
+Use this for additive edits ("add a step that lowercases the input"); for wholesale replacement use `save_function_from_text` instead.
+
+IMPORTANT pre-flight:
+1. `decompile_function(name="<NS>.<Func>")` first to see the existing step names + their dependency wiring. Step names must be unique within the function — picking a colliding name will fail.
+2. `get_kirun_primitive(namespace="<NS>", name="<Name>")` to confirm the primitive's exact parameter names. The `params` dict you pass must match the primitive's parameter map exactly; unknown params get silently dropped by the platform.
+3. After adding the step, call `save_function_from_text` on the decompiled+rewritten DSL (or call this tool's sibling `set_dependencies`) to wire your new step into the dependency chain — `add_step` does NOT auto-wire.
+
+Parameter passing in the `params` dict:
+- Raw values: `{"name": "filter", "operator": "EQUALS"}`
+- Argument references: `{"input": "Arguments.x"}` (auto-coerced into an expression by the platform)
+- Step references: `{"value": "Steps.previousStep.output.value"}` (also auto-coerced)
+- Context references: `{"src": "Context.filter"}`
+
+Dependencies declare event-level edges. Either `["stepName"]` (default to `.output`) or `["Steps.previousStep.output"]` (explicit). Cross-event branches (e.g. error handling) use `["Steps.tryStep.error"]`.""",
     parameters=[
         ToolParameter(name="function_name", type="string", description="Full function name (Namespace.LocalName)"),
         ToolParameter(name="step_name", type="string", description="Unique step name within the function"),
