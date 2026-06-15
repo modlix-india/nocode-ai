@@ -343,9 +343,9 @@ Each dict returned by `fetch_campaign_contexts()` contains these normalised fiel
 | `conversions` | `float` | Sum of `metrics.conversions` over 30 days |
 | `conversions_value` | `float` | Sum of `metrics.conversions_value` over 30 days |
 | `clicks` | `int` | Sum of `metrics.clicks` over 30 days |
-| `search_impression_share` | `float \| None` | Latest `metrics.search_impression_share` |
-| `budget_lost_impression_share` | `float \| None` | Latest `metrics.search_budget_lost_impression_share` |
-| `rank_lost_impression_share` | `float \| None` | Latest `metrics.search_rank_lost_impression_share` |
+| `search_impression_share` | `float \| None` | Impression-weighted 30-day average of `metrics.search_impression_share` |
+| `budget_lost_impression_share` | `float \| None` | Impression-weighted 30-day average of `metrics.search_budget_lost_impression_share` |
+| `rank_lost_impression_share` | `float \| None` | Impression-weighted 30-day average of `metrics.search_rank_lost_impression_share` |
 | `metric_freshness` | `dict` | `{ is_fresh, age_days, warning }` from `_assess_metric_freshness()` |
 
 ### Impression Share Freshness Assessment
@@ -370,7 +370,7 @@ When the campaign is on a portfolio strategy, the effective tCPA and tROAS are r
 The adapter uses a single GAQL query with `segments.date DURING LAST_30_DAYS`, which returns one row per (campaign, date) pair. The adapter:
 1. Groups rows by campaign ID
 2. Sums `cost_micros`, `conversions`, `conversions_value`, and `clicks` across all dates (30-day aggregates)
-3. Keeps the latest row's impression share values (non-aggregable — campaign-level figures regardless of date)
+3. Computes impression-weighted averages for all three IS metrics: `(IS_day × impressions_day) / total_impressions`. Zero-impression campaigns get `None`. This is the correct aggregation when `segments.date` is used — the API returns per-day IS values, not a campaign-level constant (verified: https://groups.google.com/g/adwords-api/c/QvkmIcnDF3M/m/Vu5uFcESDAAJ)
 4. Attaches the freshness metadata to all rows
 
 When `campaign_ids` filter is provided, a `WHERE campaign.id IN (...)` clause is appended to the base query.

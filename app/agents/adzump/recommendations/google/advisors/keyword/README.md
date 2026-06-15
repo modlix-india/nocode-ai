@@ -100,7 +100,7 @@ async def suggest_keywords(
    - Falls back to `FALLBACK_VOLUME` (0), `FALLBACK_COMPETITION` ("UNKNOWN"), `FALLBACK_COMPETITION_INDEX` (0.0), and `FALLBACK_MATCH_TYPE` ("BROAD") where data is missing
    - Each native rec is tagged with `is_native_recommendation: True`
 
-5. **Combine and deduplicate:** Merges Google Planner suggestions with hydrated native recs; deduplicates by lowercase keyword text, keeping the first occurrence.
+5. **Combine and deduplicate:** Merges Google Planner suggestions with hydrated native recs; deduplicates by lowercase keyword text keeping the highest-quality entry: a native rec with `impact_score` beats any planner-only entry for the same text; when both are planner-only, the higher `volume` entry wins.
 
 6. **Compute semantic scores:**
    Calls `scorer.calculate_semantic_scores()` with the deduplicated suggestion texts and the top/top anchor keywords. Computes max cosine similarity (via OpenAI embeddings) against each anchor keyword, normalised to a 0-100 scale. Unmatched suggestions get `DEFAULT_SEMANTIC_SCORE` (50.0).
@@ -150,6 +150,7 @@ async def expand_seeds(
     primary_location: str,
     features_context: str,
     brand_name: str = "",
+    session: BaseSession | None = None,
 ) -> list[str]
 ```
 
@@ -159,7 +160,7 @@ async def expand_seeds(
     Loads the `recommendations/seed_expansion_prompt.txt` template and formats it with the performing keywords, business type, location, features, and brand name. Sends to the LLM (fast tier, 500 max tokens). Expects a JSON response with a `"seed_keywords"` array. Returns up to 10 seed keywords.
 
 2. **Autocomplete expansion (`_expand_with_autocomplete`):**
-   Takes the **original** good keywords and calls `batch_fetch_autocomplete_suggestions()` on each. Collects up to 5 suggestions per seed. Then does the same for the **LLM-generated** seeds. All results are aggregated.
+   Takes the **original** good keywords and calls `batch_fetch_autocomplete_suggestions()` on each. Collects up to 5 suggestions per seed. Then does the same for the **LLM-generated** seeds. All results are aggregated. Autocomplete failures are caught silently (logged as `WARNING`) and return `[]` — a network error never kills the seed expansion pipeline.
 
 3. **Deduplication:** Merges original seeds + autocomplete suggestions + LLM seeds + LLM autocomplete suggestions into a single list, removing duplicates. Returns the combined seed list.
 
