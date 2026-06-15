@@ -514,22 +514,21 @@ class AdzumpAgent(BaseAgent):
         )
 
     def _uploaded_assets_section(self, session: BaseSession) -> str:
-        """v9 I-0 · when the user attached image(s) this turn, prompt the LLM to
-        persist them via save_uploaded_assets (the bytes are stashed on the
-        session by the /chat handler). First action of the turn — otherwise the
-        upload is lost (it only lives in the pending stash)."""
+        """v9 I-0 · when the user attached image(s) this turn, hand them to the
+        Asset Manager via manage_assets (bytes are stashed on the session by the
+        /chat handler). First action of the turn — otherwise the upload is lost
+        (it only lives in the pending stash)."""
         pending = session.context.get("_pending_uploads")
         if not pending:
             return ""
         n = len(pending)
         return (
             f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
-            "FIRST, call `save_uploaded_assets(role=...)` to persist the upload — "
-            "look at the image and pick the role: a brand mark → 'logo'; a main "
-            "building/render → 'hero'; a lifestyle/amenity photo → 'amenity'; a "
-            "floor plan → 'floor_plan'. (All pending uploads are saved under that "
-            "one role, so if they're different types, pick the best fit.) Do this "
-            "before anything else, then continue."
+            "FIRST, call `manage_assets` to hand the upload(s) to the Asset "
+            "Manager — it looks at each image, decides what it is, and saves or "
+            "skips it. You do NOT classify the image yourself; if the user said "
+            "what it is, pass that as `note`. Do this before anything else, then "
+            "continue."
         )
 
     def _state_section(self, cctx: CampaignContext) -> str:
