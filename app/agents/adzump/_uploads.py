@@ -9,8 +9,10 @@ product_data lists) — that's the picker's / T-014's concern.
 from __future__ import annotations
 
 import logging
+import re
+from hashlib import md5
 
-from app.agents.adzump._shared import build_ds_headers
+from app.agents.adzump._shared import build_ds_headers, host_of
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,29 @@ def _ext_for_content_type(content_type: str) -> str:
     return _CTYPE_EXT.get(ct, "bin")
 
 
+def _asset_filename(
+    context: dict, name: str, kind: str, image_bytes: bytes, content_type: str,
+) -> str:
+    """The one place an asset filename is built: <product>_<name|kind>_<hash6>.<ext>.
+
+    `name` comes from the LLM that saw the image — slugified here, never
+    trusted raw. Product prefix = product_name (host fallback, since the
+    profile writer hasn't merged during a scrape). Hash is of the BYTES, not
+    the url — every pasted upload is "image.png", so a url-hash collided and
+    the file store served stale images.
+    """
+    def slug(s: str, n: int) -> str:  # trust boundary — LLM strings never hit the fs raw
+        return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:n].rstrip("-")
+
+    pd = (context.get("session_context") or {}).get("product_data") or {}
+    product = pd.get("product_name") or ""
+    if not product and pd.get("primary_url"):
+        product = host_of(pd["primary_url"]).split(".")[0]
+    parts = [p for p in (slug(product, 30), slug(name, 40) or kind) if p]
+    ext = _ext_for_content_type(content_type)
+    return f"{'_'.join(parts)}_{md5(image_bytes).hexdigest()[:6]}.{ext}"
+
+
 async def upload_and_analyze(
     image_bytes: bytes,
     content_type: str,
@@ -164,16 +189,18 @@ async def upload_and_analyze(
     kind: str,
     context: dict,
     hints: dict | None = None,
+    name: str = "",
 ) -> dict | None:
     """Upload bytes + attach render hints. Returns {url, format, **hints} or
     None on upload failure. Hints (`background`, `fit`) are passed in by the
     caller — typically derived from the vision LLM that already inspected the
     thumbnail to pick the asset. Empty/None hints just produce a {url, format}
-    block; the UI renders that on its neutral default tile."""
-    from hashlib import md5
+    block; the UI renders that on its neutral default tile.
 
+    `name` = semantic name from the LLM that saw the image ('project-logo',
+    'floor-plan-3bhk'); see `_asset_filename` for the scheme."""
     ext = _ext_for_content_type(content_type)
-    filename = f"{kind}_{md5(source_url.encode()).hexdigest()[:12]}.{ext}"
+    filename = _asset_filename(context, name, kind, image_bytes, content_type)
     url = await upload_image(image_bytes, filename, kind, context, content_type)
     if not url:
         return None
@@ -187,6 +214,7 @@ async def upload_and_analyze(
 
 async def rehost_image(
     source_url: str, kind: str, context: dict, hints: dict | None = None,
+    name: str = "",
 ) -> dict | None:
     """Download an image and re-host on our service, attaching render hints.
 
@@ -224,4 +252,4 @@ async def rehost_image(
         "rehost_fetched: kind=%s bytes=%d ctype=%s src=%s",
         kind, len(data), ctype, source_url[:200],
     )
-    return await upload_and_analyze(data, ctype, source_url, kind, context, hints)
+    return await upload_and_analyze(data, ctype, source_url, kind, context, hints, name=name)

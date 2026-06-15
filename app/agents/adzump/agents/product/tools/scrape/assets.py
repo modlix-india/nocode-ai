@@ -154,7 +154,10 @@ async def _persist_logos(
         hints = {"fit": "contain"}
         if pick.background in ("light", "dark"):
             hints["background"] = pick.background
-        rehosted = await _upload_picked_image(pick.url, "logo", prefetched, context, hints=hints)
+        # name from the vision pick's role: developer/project → <role>-logo,
+        # singular/unknown → plain "logo".
+        name = f"{pick.role}-logo" if pick.role in ("developer", "project") else "logo"
+        rehosted = await _upload_picked_image(pick.url, "logo", prefetched, context, hints=hints, name=name)
         if not rehosted:
             continue
         new_urls.append(rehosted["url"])
@@ -222,9 +225,19 @@ async def _persist_creatives(
     # Creatives are full-color product photos — no background-tile contrast
     # issue. `cover` fills the tile cleanly without letterboxing.
     creative_hints = {"fit": "cover"}
+    # name from the vision role map: image-<role>-<nth of its role>, e.g.
+    # image-hero-1, image-amenity-2; plain image-<i> when role is unknown.
+    role_by_url = {c.url: c.role for c in (assets.creatives_with_role or [])}
+    role_counts: dict[str, int] = {}
     for i, src in enumerate(assets.creative_image_urls, start=1):
         await stage_emit(context, ScrapeStage.SAVE_IMG, i=i, n=total)
-        rehosted = await _upload_picked_image(src, "creative", prefetched, context, hints=creative_hints)
+        role = role_by_url.get(src, "")
+        if role:
+            role_counts[role] = role_counts.get(role, 0) + 1
+            name = f"image-{role.replace('_', '-')}-{role_counts[role]}"
+        else:
+            name = f"image-{i}"
+        rehosted = await _upload_picked_image(src, "creative", prefetched, context, hints=creative_hints, name=name)
         if not rehosted:
             skipped_fail += 1
             continue
@@ -243,7 +256,7 @@ async def _persist_creatives(
 
 async def _upload_picked_image(
     source_url: str, kind: str, prefetched: dict[str, dict], context: dict,
-    hints: dict | None = None,
+    hints: dict | None = None, name: str = "",
 ) -> dict | None:
     """Upload a LLM-picked candidate. Reuses bytes the selector already
     fetched when available, falls back to a fresh network fetch otherwise.
@@ -251,6 +264,9 @@ async def _upload_picked_image(
     `hints` (`background`, `fit`) come from the caller — the vision LLM that
     picked this asset is the source of truth, not pixel sampling here. They
     flow through to the upload's `logo_displays` / `creative_displays` record.
+    `name` (e.g. "project-logo", "image-hero-1") is the semantic filename the
+    caller derived from the pick's role; threaded to both branches so cache
+    hit / miss name identically.
 
     Also uploads a 256px JPEG thumbnail variant (when the selector cached
     one) and attaches its URL as ``thumb_url`` so the receipts row can
@@ -259,10 +275,10 @@ async def _upload_picked_image(
     if cached:
         result = await upload_and_analyze(
             cached["bytes"], cached["content_type"], source_url, kind, context,
-            hints=hints,
+            hints=hints, name=name,
         )
     else:
-        result = await rehost_image(source_url, kind, context, hints=hints)
+        result = await rehost_image(source_url, kind, context, hints=hints, name=name)
     if not result:
         return None
     thumb_bytes = (cached or {}).get("thumb_bytes")
@@ -271,7 +287,7 @@ async def _upload_picked_image(
         # so the thumb render matches the full asset's tile contrast.
         thumb = await upload_and_analyze(
             thumb_bytes, "image/jpeg", source_url, f"{kind}_thumb", context,
-            hints=hints,
+            hints=hints, name=f"{name}-thumb" if name else "",
         )
         if thumb and thumb.get("url"):
             result["thumb_url"] = thumb["url"]
