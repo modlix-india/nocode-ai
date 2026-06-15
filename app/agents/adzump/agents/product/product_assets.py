@@ -545,7 +545,7 @@ async def _fetch_one(client, url: str) -> dict | None:
         return None
     if resp.status_code != 200:
         return None
-    from app.agents.adzump._shared import (
+    from app.agents.adzump._uploads import (
         looks_like_image_response, _guess_ctype_from_url,
     )
     raw_ctype = resp.headers.get("content-type") or ""

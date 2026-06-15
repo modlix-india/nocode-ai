@@ -15,7 +15,7 @@ from app.agents.adzump.agents.product.models import ProductAssets
 from app.agents.adzump.agents.product.product_assets import select_product_assets
 from .receipts import _emit_asset_receipts
 from app.agents.adzump.agents.product.scrape_stages import ScrapeStage, stage_emit
-from app.agents.adzump._shared import rehost_image, upload_and_analyze
+from app.agents.adzump._uploads import rehost_image, upload_and_analyze
 
 logger = logging.getLogger(__name__)
 

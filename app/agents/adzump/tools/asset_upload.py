@@ -18,7 +18,7 @@ import base64
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump._shared import upload_and_analyze
+from app.agents.adzump._uploads import upload_and_analyze
 from app.agents.adzump.agents.product.tools.scrape.receipts import _emit_asset_receipts
 
 logger = logging.getLogger(__name__)
