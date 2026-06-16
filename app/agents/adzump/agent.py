@@ -29,7 +29,11 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.tools.campaign_data import (
-    _ACCOUNT_LIKE_FIELDS, _apply_field, _current_turn, _last_user_text, _normalize_id,
+    _ACCOUNT_LIKE_FIELDS,
+    _apply_field,
+    _current_turn,
+    _last_user_text,
+    _normalize_id,
     is_ig_skip,
 )
 from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
@@ -43,8 +47,18 @@ logger = logging.getLogger(__name__)
 # Substrings in ``product_data.business_type`` that flag a session as
 # real-estate. Matches the scraper's metadata prompt.
 _REAL_ESTATE_KEYWORDS = (
-    "real estate", "realty", "villa", "apartment", "residential",
-    "property", "housing", "homes", "realtor", "township", "builder", "developer",
+    "real estate",
+    "realty",
+    "villa",
+    "apartment",
+    "residential",
+    "property",
+    "housing",
+    "homes",
+    "realtor",
+    "township",
+    "builder",
+    "developer",
 )
 
 
@@ -64,6 +78,7 @@ class CampaignContext:
     Shields ``_next_action`` and the renderers from raw-dict shape drift.
     Construct per turn via ``from_session``; never mutated after construction.
     """
+
     product: dict
     product_profile: dict
     competitor_names: list[str]
@@ -89,6 +104,41 @@ class CampaignContext:
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
         ctx = session.context
+
+        # Caching/hydration check: if spec has no location but product_data already has location, auto-hydrate!
+        spec = ctx.setdefault("campaign_spec", {})
+        product = ctx.get("product_data") or {}
+        if not spec.get("location") and product.get("location"):
+            from app.agents.adzump.services.geo.discovery import is_local_business
+
+            scale = (product.get("business_scale") or "national").lower().strip()
+            is_local = is_local_business(scale)
+
+            # Check if we already have mapped advertising targets (returning session)
+            has_resolved_targets = bool(product.get("google_mapped_locations")) or bool(
+                product.get("meta_mapped_locations")
+            )
+
+            # Auto-hydrate ONLY if it is a non-local business or a returning local business with resolved targets
+            if not is_local or has_resolved_targets:
+                spec["location"] = product["location"]
+                loc_meta = ctx.setdefault("_location_meta", {})
+                loc_meta["address"] = product["location"]
+                if product.get("product_coordinates"):
+                    coords = product["product_coordinates"]
+                    loc_meta["lat"] = coords.get("lat")
+                    loc_meta["lng"] = coords.get("lng")
+                if "google_mapped_locations" in product:
+                    loc_meta["google_mapped_locations"] = product[
+                        "google_mapped_locations"
+                    ]
+                if "meta_mapped_locations" in product:
+                    loc_meta["meta_mapped_locations"] = product["meta_mapped_locations"]
+                logger.info(
+                    "auto_hydrated_location_from_product_data: location=%s",
+                    product["location"],
+                )
+
         competitive_raw = ctx.get("competitor_analysis")
         competitive = competitive_raw or {}
         marker = ctx.get("_pending_location_confirm")
@@ -108,7 +158,8 @@ class CampaignContext:
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
             competitor_names=[
-                c.get("name") for c in (competitive.get("competitors") or [])
+                c.get("name")
+                for c in (competitive.get("competitors") or [])
                 if c.get("name")
             ],
             # True iff `analyze_competitors` ran this session — even if it
@@ -188,36 +239,59 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     if intent is not None:
         intent_field, value = intent
         missing.append(
-            f"{intent_field} — user said \"{cctx.last_user[:40]}\". "
+            f'{intent_field} — user said "{cctx.last_user[:40]}". '
             f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
         )
 
-    if cctx.is_real_estate and not cctx.spec.get("location"):
+    from app.agents.adzump.services.geo.discovery import is_local_business
+
+    scale = (cctx.product.get("business_scale") or "national").lower().strip()
+    is_local = is_local_business(scale)
+
+    if is_local and not cctx.spec.get("location"):
         if cctx.pending_location:
-            # Map shown last turn. Branch on the user's reply.
+            # Map shown last turn. Branch on user reply.
             detected = cctx.pending_location
             missing.append(
                 f"location — map shown for **'{detected}'**. "
-                f"If user said `\"confirm\"` → `set_campaign_spec(location=\"{detected}\")`. "
-                f"If JSON `{{\"type\":\"location_update\",\"address\":\"X\",...}}` → "
-                f"`set_campaign_spec(location=\"X\")` (use address; fall back to "
-                f"`\"{detected}\"`). "
+                f'If user said `"confirm"` → `set_campaign_spec(location="{detected}")`. '
+                f'If JSON `{{"type":"location_update","address":"X",...}}` → '
+                f'`set_campaign_spec(location="X")` (use address; fall back to '
+                f'`"{detected}"`). '
                 f"If user said WRONG/INCORRECT/NOT RIGHT → call `confirm_location()` again. "
                 f"If user named a DIFFERENT city → `set_campaign_spec(location=<what they said>)`."
             )
         else:
-            missing.append("location — call `confirm_location()` (real-estate)")
+            missing.append(
+                "location — call `confirm_location()` (local physical business)"
+            )
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform — call `present_options(question=\"Which platform should we run this on?\", "
-            "options=[{\"label\":\"Google Ads\",\"value\":\"Google Ads\",\"answer\":\"Google Ads\"}, "
-            "{\"label\":\"Meta\",\"value\":\"Meta\",\"answer\":\"Meta\"}], field=\"platform\")`"
+            'platform — call `present_options(question="Which platform should we run this on?", '
+            'options=[{"label":"Google Ads","value":"Google Ads","answer":"Google Ads"}, '
+            '{"label":"Meta","value":"Meta","answer":"Meta"}], field="platform")`'
         )
 
-    if (cctx.is_google
-            and not cctx.competitor_analysis_attempted
-            and "competitive_analysis_declined" not in cctx.spec):
+    # Architectural compliance: Explicitly call discover_geo_targets via the LLM tool loop
+    has_platform = bool(cctx.spec.get("platform"))
+    has_location = bool(cctx.spec.get("location"))
+    if has_platform and has_location:
+        has_mapped_targets = (
+            bool(cctx.product.get("google_mapped_locations"))
+            or bool(cctx.product.get("meta_mapped_locations"))
+            or bool(cctx.product.get("target_areas"))
+        )
+        if not has_mapped_targets:
+            missing.append(
+                f"target_areas — call `discover_geo_targets(location_name={cctx.spec.get('location')!r})`"
+            )
+
+    if (
+        cctx.is_google
+        and not cctx.competitor_analysis_attempted
+        and "competitive_analysis_declined" not in cctx.spec
+    ):
         # Pending-aware: if user just said no/skip, drop the question and
         # store the declined flag. If user said yes (or anything else), the
         # LLM follows the prescription.
@@ -225,14 +299,14 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         if lu in ("no", "n", "no thanks", "skip", "no need"):
             missing.append(
                 "competitive analysis — user said NO. Call "
-                "`set_campaign_spec(competitive_analysis_declined=\"true\")` and proceed."
+                '`set_campaign_spec(competitive_analysis_declined="true")` and proceed.'
             )
         else:
             missing.append(
-                "competitive analysis — call `present_options(question=\"Want me to analyze "
-                "competitors before we set things up?\", options=[\"Yes\", "
-                "{\"label\":\"No\",\"value\":\"No\",\"answer\":\"true\"}], "
-                "field=\"competitive_analysis_declined\")`. "
+                'competitive analysis — call `present_options(question="Want me to analyze '
+                'competitors before we set things up?", options=["Yes", '
+                '{"label":"No","value":"No","answer":"true"}], '
+                'field="competitive_analysis_declined")`. '
                 "If the user just said YES, call `analyze_competitors()` instead."
             )
 
@@ -242,17 +316,17 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             # The elicitation is kept open, so their typed reply is captured.
             missing.append(
                 "duration — the user chose Custom. Ask them in one short line to "
-                "TYPE the exact duration (e.g. \"45 days\", \"6 weeks\"). Do NOT call "
+                'TYPE the exact duration (e.g. "45 days", "6 weeks"). Do NOT call '
                 "present_options or show chips again — their typed reply is captured "
                 "automatically."
             )
         else:
             missing.append(
-                "duration — call `present_options(question=\"How long should the campaign run?\", "
-                "options=[{\"label\":\"30 days\",\"value\":\"30 days\",\"answer\":\"30 days\"}, "
-                "{\"label\":\"60 days\",\"value\":\"60 days\",\"answer\":\"60 days\"}, "
-                "{\"label\":\"90 days\",\"value\":\"90 days\",\"answer\":\"90 days\"}, \"Custom\"], "
-                "field=\"duration\")`"
+                'duration — call `present_options(question="How long should the campaign run?", '
+                'options=[{"label":"30 days","value":"30 days","answer":"30 days"}, '
+                '{"label":"60 days","value":"60 days","answer":"60 days"}, '
+                '{"label":"90 days","value":"90 days","answer":"90 days"}, "Custom"], '
+                'field="duration")`'
             )
     if not cctx.spec.get("budget"):
         if cctx.awaiting_custom_field == "budget":
@@ -260,23 +334,27 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
                 "budget — the user chose Custom. Ask them in one short line to TYPE "
-                f"the exact daily budget (e.g. \"{currency}7,500/day\"). Do NOT call "
+                f'the exact daily budget (e.g. "{currency}7,500/day"). Do NOT call '
                 "present_options or show chips again — their typed reply is captured "
                 "automatically."
             )
         else:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
-                "budget — call `present_options(question=\"What's your daily budget?\", "
+                'budget — call `present_options(question="What\'s your daily budget?", '
                 f"options=[<platform-tuned presets as {{label,value,answer}} dicts with answer==value, "
-                f"e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day>, \"Custom\"], "
-                "field=\"budget\")`"
+                f'e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day>, "Custom"], '
+                'field="budget")`'
             )
     # Account-block lines depend on the platform pick — skip until platform
     # is set so we don't suggest the wrong fetch tool.
     if cctx.spec.get("platform"):
         if not cctx.spec.get("parent_account"):
-            fetch = "fetch_google_parent_accounts" if cctx.is_google else "fetch_meta_parent_accounts"
+            fetch = (
+                "fetch_google_parent_accounts"
+                if cctx.is_google
+                else "fetch_meta_parent_accounts"
+            )
             missing.append(
                 f"parent_account — call `{fetch}()` first; the result tells you "
                 "the present_options call to make next."
@@ -301,7 +379,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             if is_ig_skip(cctx.last_user):
                 missing.append(
                     "instagram — user is skipping Instagram (it's OPTIONAL). Call "
-                    "`set_campaign_spec(ig_page_declined=\"true\")` and proceed to review."
+                    '`set_campaign_spec(ig_page_declined="true")` and proceed to review.'
                 )
             elif cctx.ig_offered:
                 # Already FETCHED — do NOT re-fetch (that was the live loop).
@@ -314,16 +392,16 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "instagram — Instagram accounts were already fetched; do NOT call "
                     "fetch_meta_ig_accounts again. If you have NOT yet shown the choice, "
                     "call present_options EXACTLY as the fetch result instructed "
-                    "(field=\"ig_page_declined\"). If the user picked an account it's "
+                    '(field="ig_page_declined"). If the user picked an account it\'s '
                     "captured. If they want Facebook only, call "
-                    "`set_campaign_spec(ig_page_declined=\"true\")`. If they're connecting "
+                    '`set_campaign_spec(ig_page_declined="true")`. If they\'re connecting '
                     "an Instagram account, wait and re-fetch only when they say they're ready."
                 )
             else:
                 missing.append(
                     "ig_page — Instagram is OPTIONAL. Call "
                     "`fetch_meta_ig_accounts(page_id=<stored fb_page>)`; the result tells you "
-                    "the present_options call (it includes a \"Continue with Facebook only\" "
+                    'the present_options call (it includes a "Continue with Facebook only" '
                     "option). If none are linked, the tool says so — offer Facebook-only."
                 )
 
@@ -354,8 +432,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
             "if competitive_analysis_declined='true'>\n\n"
-            "Then call `present_options(question=\"Ready to launch the campaign?\", "
-            "options=[\"Yes, launch\", \"No, make changes\"])`. EVERY bullet must be "
+            'Then call `present_options(question="Ready to launch the campaign?", '
+            'options=["Yes, launch", "No, make changes"])`. EVERY bullet must be '
             "present — do not omit any. "
             "**On the user's 'Yes, launch' reply, call `launch_campaign()` "
             "(no params) — that's the one tool that persists the campaign.**"
@@ -420,9 +498,11 @@ class AdzumpAgent(BaseAgent):
         last_user = _last_user_text({"_session": session})
         if not last_user:
             return ""
-        value = answers.get(last_user)                       # (a) exact chip match
+        value = answers.get(last_user)  # (a) exact chip match
         if value is None and field in ("duration", "budget", "platform"):
-            value = parse_typed_answer(field, last_user, currency_for(session.context))  # (b) typed
+            value = parse_typed_answer(
+                field, last_user, currency_for(session.context)
+            )  # (b) typed
         if value is None:
             # v4 · F10 — the user picked the "Custom" escape on a duration/budget
             # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
@@ -430,23 +510,38 @@ class AdzumpAgent(BaseAgent):
             # free-text ask instead of re-rendering the same chips (the live loop,
             # bug #11). The mark also drives _next_action (awaiting_custom_field)
             # and tells _resume_elicitation_section not to pop.
-            if field in ("duration", "budget") and _is_custom_reply(last_user) \
-                    and not pe.get("awaiting_custom"):
+            if (
+                field in ("duration", "budget")
+                and _is_custom_reply(last_user)
+                and not pe.get("awaiting_custom")
+            ):
                 pe["awaiting_custom"] = True
-                logger.info("tagged_capture: custom escape for field=%s — awaiting typed value", field)
+                logger.info(
+                    "tagged_capture: custom escape for field=%s — awaiting typed value",
+                    field,
+                )
                 return (
                     "## The user chose a custom value\n"
                     f"They want to enter their own {field}. Ask them in ONE short line "
-                    f"to TYPE it (e.g. \"45 days\" / \"₹7,500/day\") — do NOT call "
+                    f'to TYPE it (e.g. "45 days" / "₹7,500/day") — do NOT call '
                     f"present_options or show chips. Their typed reply is captured automatically."
                 )
-            return ""                                        # Yes / off-topic / unparseable → LLM
+            return ""  # Yes / off-topic / unparseable → LLM
         stored, info = _apply_field(
-            field, value, last_user, session.context, _current_turn({"_session": session}),
+            field,
+            value,
+            last_user,
+            session.context,
+            _current_turn({"_session": session}),
         )
         if not stored:
-            logger.info("tagged_capture: rejected field=%s value=%r reason=%s user_said=%r",
-                        field, value, info, last_user[:80])
+            logger.info(
+                "tagged_capture: rejected field=%s value=%r reason=%s user_said=%r",
+                field,
+                value,
+                info,
+                last_user[:80],
+            )
             return ""
         session.context.pop("_pending_elicitation", None)
         # v3 · F4 — one-run marker: a tagged answer was captured this turn. Read
@@ -455,8 +550,12 @@ class AdzumpAgent(BaseAgent):
         # (its chips would carry no field tag → silent drop → re-ask). Lives in
         # session.context but is popped on read, so it never leaks to next turn.
         session.context["_captured_this_turn"] = field
-        logger.info("tagged_capture: stored field=%s value=%r user_said=%r",
-                    field, value, last_user[:80])
+        logger.info(
+            "tagged_capture: stored field=%s value=%r user_said=%r",
+            field,
+            value,
+            last_user[:80],
+        )
         return (
             "## You just captured the user's answer\n"
             f"Their last message set **{field} = {value}**. It is already stored — "
@@ -547,17 +646,26 @@ class AdzumpAgent(BaseAgent):
 
         # Surface the analyzed URL so the review summary can include it
         # without the LLM hunting for it across nested structures.
-        url = (cctx.product_profile.get("url")
-               or (cctx.product.get("pages_analyzed") or [None])[0]
-               or "")
+        url = (
+            cctx.product_profile.get("url")
+            or (cctx.product.get("pages_analyzed") or [None])[0]
+            or ""
+        )
         if url:
             lines.append(f"- Website: {url}")
 
         if cctx.competitor_names:
             names = ", ".join(cctx.competitor_names[:5])
-            suffix = f" (+{len(cctx.competitor_names) - 5} more)" if len(cctx.competitor_names) > 5 else ""
+            suffix = (
+                f" (+{len(cctx.competitor_names) - 5} more)"
+                if len(cctx.competitor_names) > 5
+                else ""
+            )
             lines.append(f"- Competitors: {names}{suffix} ✓")
-        elif cctx.competitor_analysis_attempted or "competitive_analysis_declined" in cctx.spec:
+        elif (
+            cctx.competitor_analysis_attempted
+            or "competitive_analysis_declined" in cctx.spec
+        ):
             lines.append("- Competitors: none analyzed")
 
         for key, label in (
@@ -572,6 +680,11 @@ class AdzumpAgent(BaseAgent):
                 lines.append(f"- {label}: {val} ✓{prov}")
             else:
                 lines.append(f"- {label}: —")
+
+        target_areas = cctx.product.get("target_areas") or []
+        if target_areas:
+            area_names = [a.get("name") for a in target_areas if a.get("name")]
+            lines.append(f"- Target Areas: {', '.join(area_names)} ✓")
 
         account_block = self._ad_account_summary(cctx.spec, cctx.account_names)
         if account_block.strip():
@@ -649,10 +762,10 @@ class AdzumpAgent(BaseAgent):
             "2. Correction → `set_campaign_spec(<field>=<new>)`, acknowledge, then re-check Next action.\n"
             "3. **New data** (typed or chip-clicked) → `set_campaign_spec(<field>=<value>)` IMMEDIATELY, "
             "even if the value is for a different field than Next action. "
-            "Examples: user says \"Google Ads\" → `set_campaign_spec(platform=\"Google Ads\")`. "
-            "User says \"₹10,000/day\" → `set_campaign_spec(budget=\"₹10,000/day\")`. "
+            'Examples: user says "Google Ads" → `set_campaign_spec(platform="Google Ads")`. '
+            'User says "₹10,000/day" → `set_campaign_spec(budget="₹10,000/day")`. '
             "Then acknowledge in one short sentence and re-check Next action.\n"
-            "4. Ambient (\"ok\", \"continue\", \"next\") → just do Next action.\n"
+            '4. Ambient ("ok", "continue", "next") → just do Next action.\n'
             "5. Otherwise → do Next action.\n"
             "\n**One ask per turn.** Never call two question-asking tools "
             "(`confirm_location`, `present_options`) in the same turn — ask one, "
@@ -668,13 +781,17 @@ class AdzumpAgent(BaseAgent):
         is_meta_platform = platform is Platform.META
         is_google_platform = platform is Platform.GOOGLE
         parent_label = (
-            "Meta Business" if is_meta_platform
-            else "Google Manager" if is_google_platform
+            "Meta Business"
+            if is_meta_platform
+            else "Google Manager"
+            if is_google_platform
             else "Parent Account"
         )
         account_label = (
-            "Meta Ad Account" if is_meta_platform
-            else "Google Ad Account" if is_google_platform
+            "Meta Ad Account"
+            if is_meta_platform
+            else "Google Ad Account"
+            if is_google_platform
             else "Ad Account"
         )
 
@@ -703,7 +820,9 @@ class AdzumpAgent(BaseAgent):
     # ── public surface — BaseAgent override hooks (last, per Kiran's BaseAgent) ──
 
     async def build_dynamic_context(self, session: BaseSession) -> str:
-        return ""  # adzump context is fully per-turn — see build_turn_reminder (Layer 2)
+        return (
+            ""  # adzump context is fully per-turn — see build_turn_reminder (Layer 2)
+        )
 
     async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
         self._migrate_legacy_keys(session.context)
@@ -718,17 +837,25 @@ class AdzumpAgent(BaseAgent):
         missing = _next_action(cctx)
         logger.info(
             "next_action: turn=%d agentic=%d missing=%s user_said=%r",
-            cctx.current_turn, turn, missing, last_user[:80],
+            cctx.current_turn,
+            turn,
+            missing,
+            last_user[:80],
         )
-        reminder = "\n".join(filter(None, [
-            ack,
-            self._uploaded_assets_section(session),
-            self._resume_elicitation_section(session, turn),
-            self._state_section(cctx),
-            self._user_said_section(last_user),
-            self._missing_section(missing),
-            self._how_to_respond_section(),
-        ]))
+        reminder = "\n".join(
+            filter(
+                None,
+                [
+                    ack,
+                    self._uploaded_assets_section(session),
+                    self._resume_elicitation_section(session, turn),
+                    self._state_section(cctx),
+                    self._user_said_section(last_user),
+                    self._missing_section(missing),
+                    self._how_to_respond_section(),
+                ],
+            )
+        )
         return reminder
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
@@ -745,7 +872,9 @@ class AdzumpAgent(BaseAgent):
         return ctx
 
     async def get_pending_suggestions(
-        self, session: BaseSession, assistant_text: str = "",
+        self,
+        session: BaseSession,
+        assistant_text: str = "",
     ) -> dict[str, Any] | None:
         # v3 · F4 — pop the one-run capture marker FIRST, before any early
         # return, so it can never leak into the next turn (it rides the

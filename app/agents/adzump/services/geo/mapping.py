@@ -1,0 +1,187 @@
+"""Geo-targeting ad platform mapping service.
+
+Maps resolved locations to platform-specific keys (Google Ads Criteria IDs
+or Proximity coordinates, Meta Ads ZIP codes or location keys).
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from app.agents.adzump.platform import is_google, is_meta
+from app.agents.adzump.adapters.google.client import google_ads_client
+from app.agents.adzump.adapters.meta.client import meta_client
+from app.agents.adzump._shared import build_ds_headers
+
+logger = logging.getLogger(__name__)
+
+
+class PlatformGeoMapper:
+    """Orchestrates location mapping for Google Ads and Meta Ads platforms."""
+
+    def __init__(
+        self, session_context: dict[str, Any], tool_context: dict[str, Any]
+    ) -> None:
+        self.session_ctx = session_context
+        self.client_code = tool_context.get("client_code", "")
+        self.auth_headers = build_ds_headers(tool_context)
+
+    async def map_target_areas(
+        self,
+        target_areas: list[dict[str, Any]],
+        platform_name: str,
+        country_code: str = "IN",
+    ) -> list[dict[str, Any]]:
+        """Map generic targets to platform-specific geolocation fields."""
+        if not target_areas:
+            return []
+
+        mapped_areas = []
+
+        for area in target_areas:
+            # Create a clean copy to avoid in-place side effects
+            area_copy = dict(area)
+
+            if is_google(platform_name):
+                mapped_area = await self._map_google(area_copy, country_code)
+            elif is_meta(platform_name):
+                mapped_area = await self._map_meta(area_copy, country_code)
+            else:
+                mapped_area = area_copy
+
+            mapped_areas.append(mapped_area)
+
+        return mapped_areas
+
+    async def _map_google(
+        self, area: dict[str, Any], country_code: str = "IN"
+    ) -> dict[str, Any]:
+        """Resolve generic target area to Google Ads Criteria ID or Proximity structure."""
+        pincode = area.get("pincode")
+        city = area.get("city")
+        lat = area.get("lat")
+        lng = area.get("lng")
+        distance_km = area.get("distance_km") or area.get("radius") or 15.0
+
+        google_id = None
+        google_name = None
+
+        # Try Google Ads constant lookup if customer ID details are present
+        spec = self.session_ctx.get("campaign_spec") or {}
+        customer_id = spec.get("account")
+        login_customer_id = spec.get("parent_account")
+
+        if customer_id and login_customer_id:
+            try:
+                if pincode:
+                    query = (
+                        "SELECT geo_target_constant.id, geo_target_constant.canonical_name "
+                        "FROM geo_target_constant "
+                        f"WHERE geo_target_constant.postal_code = '{pincode}' "
+                        f"AND geo_target_constant.country_code = '{country_code}' "
+                        "AND geo_target_constant.status = 'ENABLED'"
+                    )
+                    results = await google_ads_client.search(
+                        query,
+                        customer_id,
+                        login_customer_id,
+                        self.client_code,
+                        self.auth_headers,
+                    )
+                    if results:
+                        const = results[0].get("geoTargetConstant") or {}
+                        google_id = const.get("id")
+                        google_name = const.get("canonicalName") or const.get("name")
+
+                elif city:
+                    escaped_city = city.replace("'", "\\'")
+                    query = (
+                        "SELECT geo_target_constant.id, geo_target_constant.canonical_name "
+                        "FROM geo_target_constant "
+                        f"WHERE geo_target_constant.name = '{escaped_city}' "
+                        f"AND geo_target_constant.country_code = '{country_code}' "
+                        "AND geo_target_constant.status = 'ENABLED'"
+                    )
+                    results = await google_ads_client.search(
+                        query,
+                        customer_id,
+                        login_customer_id,
+                        self.client_code,
+                        self.auth_headers,
+                    )
+                    if results:
+                        const = results[0].get("geoTargetConstant") or {}
+                        google_id = const.get("id")
+                        google_name = const.get("canonicalName") or const.get("name")
+
+            except Exception as e:
+                logger.warning("Google Ads API geo target search lookup failed: %s", e)
+
+        # Apply mapped values or fallback to proximity targets for local scans
+        if google_id:
+            area["google_id"] = str(google_id)
+            area["google_name"] = google_name or area.get("name")
+            
+        area.pop("google_proximity", None)
+        return area
+
+    async def _map_meta(
+        self, area: dict[str, Any], country_code: str = "IN"
+    ) -> dict[str, Any]:
+        """Resolve generic target area to Meta Ads ZIP key, City key, or Radial object."""
+        pincode = area.get("pincode")
+        city = area.get("city")
+        lat = area.get("lat")
+        lng = area.get("lng")
+        distance_km = area.get("distance_km") or area.get("radius") or 15.0
+
+        meta_key = None
+        meta_type = None
+        meta_name = None
+
+        try:
+            if pincode:
+                params = {
+                    "type": "adgeolocation",
+                    "q": pincode,
+                    "location_types": json.dumps(["zip"]),
+                    "country_code": country_code,
+                }
+                res = await meta_client.get(
+                    "/search", self.client_code, self.auth_headers, params=params
+                )
+                data = res.get("data") or []
+                if data:
+                    meta_key = data[0].get("key")
+                    meta_type = "zip"
+                    meta_name = data[0].get("name")
+
+            elif city:
+                params = {
+                    "type": "adgeolocation",
+                    "q": city,
+                    "location_types": json.dumps(["city"]),
+                    "country_code": country_code,
+                }
+                res = await meta_client.get(
+                    "/search", self.client_code, self.auth_headers, params=params
+                )
+                data = res.get("data") or []
+                if data:
+                    meta_key = data[0].get("key")
+                    meta_type = "city"
+                    meta_name = data[0].get("name")
+
+        except Exception as e:
+            logger.warning("Meta Geolocation search lookup failed: %s", e)
+
+        # Apply mapped values or fallback to radial structures
+        if meta_key:
+            area["meta_key"] = str(meta_key)
+            area["meta_type"] = meta_type
+            area["meta_name"] = meta_name or area.get("name")
+            
+        area.pop("meta_radial", None)
+        return area

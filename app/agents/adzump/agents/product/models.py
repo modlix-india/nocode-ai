@@ -140,6 +140,7 @@ class WebsiteMetadata(BaseModel):
     """Pass 1 LLM extraction — cheap structured extraction."""
     product_name: str
     business_type: str
+    business_scale: str = "national"
     location: LocationInfo = LocationInfo()
 
 
@@ -147,6 +148,7 @@ class BusinessProfile(BaseModel):
     """Aggregate — full extracted business data."""
     product_name: str
     business_type: str
+    business_scale: str = "national"
     location: LocationInfo = LocationInfo()
     summary: str
     unique_features: list[str] = []

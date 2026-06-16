@@ -75,6 +75,7 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
         "business": {
             "product_name": host or "(unknown)",
             "business_type": "",
+            "business_scale": "national",
             "location": "",
             "suggested_locations": [],
             "summary": (

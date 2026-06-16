@@ -258,6 +258,7 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # ds's google_kw_data_provider reads finalSummary specifically
         "finalSummary": summary,
         "businessType": product.get("business_type", ""),
+        "businessScale": product.get("business_scale", "national"),
         # legacy ds-v1 shape: object with area_location / product_location /
         # product_coordinates. ds chatv2 confirm_location and business_service
         # both read from this dict.
@@ -383,6 +384,7 @@ def _record_to_business(record: dict) -> dict:
         # both — see _build_full_record).
         "product_name": d.get("productName") or d.get("businessName", ""),
         "business_type": d.get("businessType", ""),
+        "business_scale": d.get("businessScale", "national"),
         "summary": d.get("summary", ""),
         "location": location_str,
         "suggested_locations": d.get("suggestedGeoTargets") or [],

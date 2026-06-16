@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context
@@ -61,7 +61,38 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
     if body.attachments:
         session.context["_pending_uploads"] = [
             {"data": a.data, "mime": a.mime_type, "name": a.name}
-            for a in body.attachments if a.type == "image" and a.data
+            for a in body.attachments
+            if a.type == "image" and a.data
         ]
 
-    return stream_agent_response(agent, body.message, session, image_blocks, model_override=body.model)
+    return stream_agent_response(
+        agent, body.message, session, image_blocks, model_override=body.model
+    )
+
+
+@router.get("/sessions/{session_id}/target-locations/search")
+async def search_target_locations(
+    session_id: str,
+    q: str,
+    platform: str = "google",
+    auth: AuthContext = Depends(require_auth_context),
+):
+    session = BaseSession(agent_name="adzump")
+    await session.get_or_create(session_id, auth)
+
+    from app.agents.adzump.services.geo.search import search_autocomplete_locations
+
+    loc_meta = session.context.get("_location_meta") or {}
+    country_code = loc_meta.get("country_code") or "IN"
+
+    try:
+        return await search_autocomplete_locations(
+            q=q,
+            platform=platform,
+            client_code=auth.client_code,
+            auth_headers=auth.to_headers(),
+            session_context=session.context,
+            country_code=country_code,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
