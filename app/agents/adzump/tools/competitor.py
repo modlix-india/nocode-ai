@@ -168,15 +168,52 @@ async def _emit_final_craft(
         kv_items.append({"key": "Pricing", "value": str(business["pricing"])[:100]})
 
     blocks: list[dict] = []
+
+    # 1. Screenshot image block
     if screenshot_url:
-        blocks.append({"type": "image", "url": screenshot_url})
+        blocks.append({"id": "panel_image", "type": "image", "url": screenshot_url})
+
+    # 2. Assets (logos and creative images)
+    logo_urls = list(business.get("logo_urls") or [])
+    if not logo_urls and business.get("logo_url"):
+        logo_urls = [business["logo_url"]]
+    logo_displays = list(business.get("logo_displays") or [])
+    if not logo_displays and business.get("logo_display"):
+        logo_displays = [business["logo_display"]]
+
+    creative_image_urls = list(business.get("creative_images") or [])
+    creative_displays = list(business.get("creative_displays") or [])
+
+    if logo_urls or creative_image_urls:
+        from app.agents.adzump.agents.product.tools.scrape.receipts import (
+            _asset_label,
+            _build_thumbnail_row,
+        )
+
+        summary = _asset_label(len(logo_urls), len(creative_image_urls))
+        thumbnail_row = _build_thumbnail_row(
+            logo_urls, logo_displays
+        ) + _build_thumbnail_row(creative_image_urls, creative_displays)
+        blocks.append({"id": "assets_label", "type": "text", "content": summary})
+        blocks.append({"id": "assets_row", "type": "row", "children": thumbnail_row})
+        blocks.append({"id": "assets_divider", "type": "divider"})
+
+    # 3. Badge/Metadata
     if business.get("business_type"):
         blocks.append({"type": "badge", "label": business["business_type"]})
     if kv_items:
         blocks.append({"type": "key_value", "items": kv_items})
 
-    # Targeting Map Block (placed above the product summary)
-    target_areas = business.get("target_areas") or []
+    # 4. Targeting Locations Map
+    from app.agents.adzump.platform import is_google as check_is_google, is_meta as check_is_meta
+    if check_is_google(platform):
+        target_areas = business.get("google_mapped_locations") or []
+    elif check_is_meta(platform):
+        target_areas = business.get("meta_mapped_locations") or []
+    else:
+        target_areas = business.get("target_areas") or []
+    business["target_areas"] = target_areas
+
     coords = business.get("product_coordinates") or {}
     lat = coords.get("lat")
     lng = coords.get("lng")
@@ -184,7 +221,6 @@ async def _emit_final_craft(
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Targeting Locations"})
         from app.config import settings
-
         from app.agents.adzump.services.geo.discovery import is_local_business
 
         scale = business.get("business_scale", "local")
@@ -203,11 +239,15 @@ async def _emit_final_craft(
             }
         )
 
+    # 5. Product Summary
     if baked_summary:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "heading", "text": "Product Summary"})
-        blocks.append({"type": "text", "content": baked_summary})
+        blocks.append({"id": "assets_divider", "type": "divider"})
+        blocks.append(
+            {"id": "summary_heading", "type": "heading", "text": "Product Summary"}
+        )
+        blocks.append({"id": "summary_text", "type": "text", "content": baked_summary})
 
+    # 6. Competitors
     _render_competitors(blocks, competitive)
 
     await stream.emit_craft(

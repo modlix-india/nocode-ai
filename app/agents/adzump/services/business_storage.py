@@ -344,6 +344,10 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
                 "attempted": session_ctx.get("competitor_analysis") is not None,
                 "declined": spec.get("competitive_analysis_declined") == "true",
             },
+            # Persist target areas + platform mappings so they survive session restarts
+            "targetAreas": product.get("target_areas") or [],
+            "googleMappedLocations": loc_meta.get("google_mapped_locations") or [],
+            "metaMappedLocations": loc_meta.get("meta_mapped_locations") or [],
         },
     }
 
@@ -414,6 +418,11 @@ def _record_to_business(record: dict) -> dict:
         "logo_display": (d.get("logoMeta") or {}).get("display") or {},
         "creative_images": d.get("creativeImages") or [],
         "creative_displays": d.get("creativeDisplays") or [],
+        # Persisted target areas + platform mappings (written inside campaign sub-object)
+        "_campaign": d.get("campaign") or {},
+        "target_areas": (d.get("campaign") or {}).get("targetAreas") or [],
+        "google_mapped_locations": (d.get("campaign") or {}).get("googleMappedLocations") or [],
+        "meta_mapped_locations": (d.get("campaign") or {}).get("metaMappedLocations") or [],
     }
 
 

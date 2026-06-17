@@ -61,69 +61,37 @@ class PlatformGeoMapper:
         """Resolve generic target area to Google Ads Criteria ID or Proximity structure."""
         pincode = area.get("pincode")
         city = area.get("city")
-        lat = area.get("lat")
-        lng = area.get("lng")
-        distance_km = area.get("distance_km") or area.get("radius") or 15.0
 
-        google_id = None
-        google_name = None
+        # Initialize from existing values if present
+        google_id = area.get("google_id")
+        google_name = area.get("google_name")
 
-        # Try Google Ads constant lookup if customer ID details are present
-        spec = self.session_ctx.get("campaign_spec") or {}
-        customer_id = spec.get("account")
-        login_customer_id = spec.get("parent_account")
-
-        if customer_id and login_customer_id:
+        # Query suggest_geo_targets without needing account/parent_account IDs
+        lookup_query = pincode or city
+        if lookup_query and not google_id:
             try:
-                if pincode:
-                    query = (
-                        "SELECT geo_target_constant.id, geo_target_constant.canonical_name "
-                        "FROM geo_target_constant "
-                        f"WHERE geo_target_constant.postal_code = '{pincode}' "
-                        f"AND geo_target_constant.country_code = '{country_code}' "
-                        "AND geo_target_constant.status = 'ENABLED'"
-                    )
-                    results = await google_ads_client.search(
-                        query,
-                        customer_id,
-                        login_customer_id,
-                        self.client_code,
-                        self.auth_headers,
-                    )
-                    if results:
-                        const = results[0].get("geoTargetConstant") or {}
-                        google_id = const.get("id")
-                        google_name = const.get("canonicalName") or const.get("name")
-
-                elif city:
-                    escaped_city = city.replace("'", "\\'")
-                    query = (
-                        "SELECT geo_target_constant.id, geo_target_constant.canonical_name "
-                        "FROM geo_target_constant "
-                        f"WHERE geo_target_constant.name = '{escaped_city}' "
-                        f"AND geo_target_constant.country_code = '{country_code}' "
-                        "AND geo_target_constant.status = 'ENABLED'"
-                    )
-                    results = await google_ads_client.search(
-                        query,
-                        customer_id,
-                        login_customer_id,
-                        self.client_code,
-                        self.auth_headers,
-                    )
-                    if results:
-                        const = results[0].get("geoTargetConstant") or {}
-                        google_id = const.get("id")
-                        google_name = const.get("canonicalName") or const.get("name")
-
+                results = await google_ads_client.suggest_geo_targets(
+                    query=lookup_query,
+                    country_code=country_code,
+                    client_code=self.client_code,
+                    auth_headers=self.auth_headers,
+                )
+                suggestions = results.get("geoTargetConstantSuggestions") or []
+                if suggestions:
+                    const = suggestions[0].get("geoTargetConstant") or {}
+                    google_id = const.get("resourceName") or const.get("id")
+                    google_name = const.get("canonicalName") or const.get("name")
             except Exception as e:
-                logger.warning("Google Ads API geo target search lookup failed: %s", e)
+                logger.warning("Google Ads API geo target suggest lookup failed: %s", e)
 
         # Apply mapped values or fallback to proximity targets for local scans
         if google_id:
-            area["google_id"] = str(google_id)
+            str_id = str(google_id)
+            if not str_id.startswith("geoTargetConstants/"):
+                str_id = f"geoTargetConstants/{str_id}"
+            area["google_id"] = str_id
             area["google_name"] = google_name or area.get("name")
-            
+
         area.pop("google_proximity", None)
         return area
 
@@ -182,6 +150,6 @@ class PlatformGeoMapper:
             area["meta_key"] = str(meta_key)
             area["meta_type"] = meta_type
             area["meta_name"] = meta_name or area.get("name")
-            
+
         area.pop("meta_radial", None)
         return area

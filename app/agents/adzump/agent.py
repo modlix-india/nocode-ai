@@ -277,11 +277,16 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     has_platform = bool(cctx.spec.get("platform"))
     has_location = bool(cctx.spec.get("location"))
     if has_platform and has_location:
-        has_mapped_targets = (
-            bool(cctx.product.get("google_mapped_locations"))
-            or bool(cctx.product.get("meta_mapped_locations"))
-            or bool(cctx.product.get("target_areas"))
-        )
+        if cctx.is_google:
+            google_locs = cctx.product.get("google_mapped_locations") or []
+            has_mapped_targets = bool(google_locs) and all(
+                loc.get("google_id") for loc in google_locs
+            )
+        elif cctx.is_meta:
+            has_mapped_targets = bool(cctx.product.get("meta_mapped_locations"))
+        else:
+            has_mapped_targets = bool(cctx.product.get("target_areas"))
+
         if not has_mapped_targets:
             missing.append(
                 f"target_areas — call `discover_geo_targets(location_name={cctx.spec.get('location')!r})`"
@@ -832,6 +837,58 @@ class AdzumpAgent(BaseAgent):
         # this turn. AFTER the migrations (its setdefault would otherwise strand
         # a legacy rename); gated to agentic turn==1 internally.
         ack = self._capture_tagged_answer(session, turn)
+
+        # Auto-map target areas on-the-fly if platform changed but locations aren't mapped yet
+        spec = session.context.get("campaign_spec") or {}
+        platform = spec.get("platform")
+        product = session.context.get("product_data") or {}
+        target_areas = product.get("target_areas") or []
+
+        if platform and target_areas:
+            from app.agents.adzump.platform import is_google, is_meta
+            from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+
+            loc_meta = session.context.setdefault("_location_meta", {})
+            cc = loc_meta.get("country_code") or "IN"
+
+            if is_google(platform):
+                google_locs = product.get("google_mapped_locations") or []
+                if not google_locs or not all(
+                    loc.get("google_id") for loc in google_locs
+                ):
+                    try:
+                        ctx = self.build_tool_context(session)
+                        mapper = PlatformGeoMapper(session.context, ctx)
+                        mapped = await mapper.map_target_areas(
+                            target_areas, platform, cc
+                        )
+                        if mapped:
+                            product["google_mapped_locations"] = mapped
+                            loc_meta["google_mapped_locations"] = mapped
+                            product["target_areas"] = mapped
+                    except Exception as e:
+                        logger.warning(
+                            "Auto-mapping to Google failed in build_turn_reminder: %s",
+                            e,
+                        )
+            elif is_meta(platform):
+                meta_locs = product.get("meta_mapped_locations") or []
+                if not meta_locs or not all(loc.get("meta_key") for loc in meta_locs):
+                    try:
+                        ctx = self.build_tool_context(session)
+                        mapper = PlatformGeoMapper(session.context, ctx)
+                        mapped = await mapper.map_target_areas(
+                            target_areas, platform, cc
+                        )
+                        if mapped:
+                            product["meta_mapped_locations"] = mapped
+                            loc_meta["meta_mapped_locations"] = mapped
+                            product["target_areas"] = mapped
+                    except Exception as e:
+                        logger.warning(
+                            "Auto-mapping to Meta failed in build_turn_reminder: %s", e
+                        )
+
         cctx = CampaignContext.from_session(session)
         last_user = _last_user_text({"_session": session})
         missing = _next_action(cctx)

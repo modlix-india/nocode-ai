@@ -328,7 +328,9 @@ async def _set_campaign_spec(
     product_data = session_ctx.get("product_data") or {}
     has_platform = bool(spec.get("platform"))
 
-    if "platform" in stored_keys or "location" in stored_keys:
+    if any(
+        k in stored_keys for k in ("platform", "location", "account", "parent_account")
+    ):
         business_scale = (product_data.get("business_scale") or "").strip()
         from app.agents.adzump.services.geo.discovery import is_local_business
 
