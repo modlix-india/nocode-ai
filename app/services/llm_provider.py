@@ -884,15 +884,48 @@ class OpenAIProvider(LLMProvider):
                 input_items.append({"role": "user", "content": content})
 
             elif role == "user" and isinstance(content, list):
+                # User content can be a mix of: text, tool_result, image
+                # (Anthropic-format). The Responses API takes either a flat
+                # string per message OR a list of typed parts under a single
+                # `content` array — so we accumulate the multimodal parts and
+                # emit one input item per logical chunk.
+                multimodal_parts: list[dict[str, Any]] = []
                 for item in content:
                     if item.get("type") == "tool_result":
+                        # tool_result must be its own top-level input item.
+                        if multimodal_parts:
+                            input_items.append({"role": "user", "content": multimodal_parts})
+                            multimodal_parts = []
                         input_items.append({
                             "type": "function_call_output",
                             "call_id": item.get("tool_use_id", ""),
                             "output": item.get("content", ""),
                         })
                     elif item.get("type") == "text":
-                        input_items.append({"role": "user", "content": item["text"]})
+                        multimodal_parts.append({"type": "input_text", "text": item.get("text", "")})
+                    elif item.get("type") == "image":
+                        # Anthropic image source → Responses API input_image.
+                        src = item.get("source") or {}
+                        if src.get("type") == "base64":
+                            media = src.get("media_type", "image/jpeg")
+                            data = src.get("data", "")
+                            multimodal_parts.append({
+                                "type": "input_image",
+                                "image_url": f"data:{media};base64,{data}",
+                            })
+                        elif src.get("type") == "url":
+                            multimodal_parts.append({
+                                "type": "input_image",
+                                "image_url": src.get("url", ""),
+                            })
+                    elif item.get("type") == "image_url":
+                        # OpenAI Chat-Completions shape — passed through for
+                        # callers that already build OpenAI image blocks.
+                        url = (item.get("image_url") or {}).get("url") or item.get("image_url")
+                        if isinstance(url, str) and url:
+                            multimodal_parts.append({"type": "input_image", "image_url": url})
+                if multimodal_parts:
+                    input_items.append({"role": "user", "content": multimodal_parts})
 
             elif role == "assistant" and isinstance(content, list):
                 for item in content:

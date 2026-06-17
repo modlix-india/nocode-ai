@@ -20,6 +20,7 @@ Conventions:
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 
 
@@ -36,13 +37,19 @@ class Platform(str, Enum):
         Matches whichever keyword appears first in ``value``. Order matters
         only for hypothetical ambiguous strings ("google meta") — first
         match wins, which is fine in practice.
+
+        v9 I-2 fix: match keywords on WORD BOUNDARIES, not raw substrings.
+        The old ``k in v`` test let the 2-char Meta abbreviations "ig"/"fb"
+        false-match inside ordinary words — e.g. "ig" ∈ "r**ig**ht" made
+        "let's continue, right now" parse as Meta, mis-prescribing a platform
+        the user never picked. ``\\b`` requires the keyword to stand alone.
         """
         v = (value or "").strip().lower()
         if not v:
             return None
-        if any(k in v for k in _GOOGLE_KEYWORDS):
+        if any(re.search(rf"\b{re.escape(k)}\b", v) for k in _GOOGLE_KEYWORDS):
             return cls.GOOGLE
-        if any(k in v for k in _META_KEYWORDS):
+        if any(re.search(rf"\b{re.escape(k)}\b", v) for k in _META_KEYWORDS):
             return cls.META
         return None
 

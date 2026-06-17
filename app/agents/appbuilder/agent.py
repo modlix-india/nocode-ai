@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 class AppBuilderAgent(BaseAgent):
     """Agent that builds no-code applications via tool-use."""
 
+    # Mutating CRUD tools pause for user confirmation before executing. The
+    # confirmation mechanism lives in BaseAgent; this set + the message body
+    # below are AppBuilder-specific (page/component/app fields).
+    CONFIRMATION_TOOLS: set[str] = {"create", "update", "delete", "copy"}
+
     def __init__(
         self,
         context_builder: BaseContext,
@@ -285,4 +290,3 @@ class AppBuilderAgent(BaseAgent):
         except Exception as e:
             logger.debug("Prompt enhancement skipped: %s", e)
             return ""
-

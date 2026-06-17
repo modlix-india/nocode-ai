@@ -6,7 +6,7 @@ analysis fields. Latest-launch-wins per URL — no history (yet).
 
 Reuses:
 - `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
-- `app.agents.adzump.tools._shared.build_ds_headers` (auth headers from tool context)
+- `app.agents.adzump._shared.build_ds_headers` (auth headers from tool context)
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from typing import Any  # noqa: F401  (used in type hints below)
 from urllib.parse import urlparse
 
 from app.agents.adzump.platform import is_meta as _platform_is_meta
-from app.agents.adzump.tools._shared import build_ds_headers
+from app.agents.adzump._shared import build_ds_headers
 from app.agents.appbuilder.tools._shared import get_saas_client
 
 logger = logging.getLogger(__name__)
@@ -129,6 +129,14 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         return None
 
     record = _build_full_record(session_ctx, url)
+    logger.info(
+        "save_campaign_assets: url=%s logo=%s rule=%s conf=%.2f creatives=%d",
+        url,
+        bool(record.get("logoUrl")),
+        (record.get("logoMeta") or {}).get("source") or "",
+        float((record.get("logoMeta") or {}).get("confidence") or 0.0),
+        len(record.get("creativeImages") or []),
+    )
     existing = await get_by_url(url, ctx)
 
     if existing:
@@ -270,6 +278,29 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # ds asset services (lead_form, call_assets, whatsapp, site_link)
         # all read siteLinks; default empty so they no-op gracefully
         "siteLinks": product.get("site_links") or [],
+        # Product assets — LLM-selected logo + ad-creative-suitable images,
+        # already re-hosted on our file service. Consumed by creative-gen.
+        "logoUrl": product.get("logo_url") or "",
+        "logoSourceUrl": product.get("logo_source_url") or "",
+        "logoMeta": {
+            "source": product.get("logo_source") or "",
+            "reasoning": product.get("logo_reasoning") or "",
+            "confidence": float(product.get("logo_confidence") or 0.0),
+            # Content-derived render hints (background, fit) — the agent
+            # analyzed the image at rehost time and emits these to the UI.
+            "display": product.get("logo_display") or {},
+        },
+        # The LLM returns as many real creatives as the site has — no fixed
+        # per-page cap. Across multi-page scrapes this can grow; bound the
+        # stored record at a high ceiling so a runaway page can't blow the
+        # document size, but otherwise let the selector decide.
+        "creativeImages": (product.get("creative_images") or [])[:30],
+        # Per-creative render hints, parallel-indexed with creativeImages.
+        "creativeDisplays": (product.get("creative_displays") or [])[:30],
+        # Persist scrape budget state so resume hydration can dedupe against
+        # what we've already scraped instead of resetting to 0.
+        "scrapedUrls": product.get("scraped_urls") or [],
+        "scrapeCount": int(product.get("scrape_count") or 0),
         # ds-v1 writes/reads `businessName`; nocode-ai's analyst calls it
         # `productName`. Mirror both so ds APIs (chatv2/confirm.py,
         # third_party/google/.../build_google_search_ad_payload.py,
@@ -366,6 +397,21 @@ def _record_to_business(record: dict) -> dict:
         "pricing": d.get("pricing", ""),
         "contact": d.get("contact") or {},
         "pages_analyzed": d.get("pagesAnalyzed") or [],
+        # Existing latent silent losses — siteLinks / scraped state was written
+        # but never hydrated back into session_ctx on resume. Restore them so
+        # multi-turn flows (re-scrape budget, link-aware assets) survive.
+        "site_links": d.get("siteLinks") or [],
+        "scraped_urls": d.get("scrapedUrls") or [],
+        "scrape_count": int(d.get("scrapeCount") or 0),
+        # New product-asset fields (write-side: _build_full_record above).
+        "logo_url": d.get("logoUrl") or "",
+        "logo_source_url": d.get("logoSourceUrl") or "",
+        "logo_source": (d.get("logoMeta") or {}).get("source") or "",
+        "logo_reasoning": (d.get("logoMeta") or {}).get("reasoning") or "",
+        "logo_confidence": float((d.get("logoMeta") or {}).get("confidence") or 0.0),
+        "logo_display": (d.get("logoMeta") or {}).get("display") or {},
+        "creative_images": d.get("creativeImages") or [],
+        "creative_displays": d.get("creativeDisplays") or [],
     }
 
 

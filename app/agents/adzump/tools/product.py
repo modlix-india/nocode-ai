@@ -1,138 +1,21 @@
-"""Product analysis tools — website scraping and product profiling.
-
-``analyze_product`` is the primary tool — it runs the ProductAnalyst sub-agent
-for enhanced scraping, and falls back to the deterministic ``ScrapePipeline``
-pipeline if the sub-agent fails.
-
-``scrape_website`` remains exported as a lower-level fallback.
-"""
+"""Product analysis tool — runs the ProductAnalyst sub-agent to scrape + profile
+a business website. The sub-agent owns the live scrape (Playwright + gpt-4o
+profile generation streamed to the craft panel)."""
 
 from __future__ import annotations
 
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.tools._shared import emit_progress, upload_screenshot
+from app.agents.adzump._shared import emit_progress
 
 logger = logging.getLogger(__name__)
-
-
-# ── Tool implementations (bottom-up: fallback first, primary second) ──
-
-async def _scrape_website(params: dict, context: dict) -> ToolResult:
-    """Scrape a website and extract business information using LLM."""
-    url = params.get("url", "").strip()
-    if not url:
-        return ToolResult(success=False, error="URL is required.")
-
-    if not url.startswith("http"):
-        url = f"https://{url}"
-
-    stream = context.get("event_stream")
-    tool_use_id = context.get("tool_use_id", "")
-
-    async def progress(message: str) -> None:
-        if stream and tool_use_id:
-            await stream.emit_tool_update(tool_use_id, message)
-
-    try:
-        from app.agents.adzump.agents.product.scrape_pipeline import get_scrape_pipeline
-
-        session_ctx = context.get("session_context", {})
-        craft_id = session_ctx.get("craft_id", "")
-
-        craft_title = ""
-
-        async def on_craft(stage: str, data, _unused) -> None:
-            nonlocal craft_title
-            if not stream:
-                return
-
-            if stage == "screenshot" and data:
-                import base64
-                screenshot_bytes = base64.b64decode(data)
-                screenshot_url = await upload_screenshot(
-                    screenshot_bytes, f"{craft_id}.jpg", context,
-                )
-                if screenshot_url:
-                    await stream.emit_craft(craft_id, url, [
-                        {"type": "image", "url": screenshot_url},
-                        {"type": "callout", "text": "Analyzing website...", "variant": "info"},
-                    ])
-                    logger.info("Craft screenshot: id=%s url=%s", craft_id, screenshot_url[:80])
-
-            elif stage == "metadata" and data:
-                craft_title = data.product_name
-                kv_items = [{"key": "Website", "value": url}]
-                if data.location.location:
-                    kv_items.append({"key": "Location", "value": data.location.location})
-                if data.location.suggested_locations:
-                    kv_items.append({"key": "Target Areas", "value": ", ".join(data.location.suggested_locations)})
-                blocks = [
-                    {"type": "badge", "label": data.business_type},
-                    {"type": "key_value", "items": kv_items},
-                    {"type": "divider"},
-                    {"type": "callout", "text": "Generating marketing summary...", "variant": "info"},
-                ]
-                await stream.emit_craft(craft_id, craft_title, blocks, append=True)
-                logger.info("Craft metadata: id=%s", craft_id)
-
-            elif stage == "summary_delta" and data:
-                await stream.emit_craft_text(craft_id, data)
-
-            elif stage == "complete":
-                logger.info("Craft complete: id=%s", craft_id)
-
-        agent = get_scrape_pipeline()
-        profile = await agent.run(url, progress_callback=progress, craft_callback=on_craft)
-
-        # Store business info in session context
-        session_ctx = context.get("session_context", {})
-        session_ctx["product_data"] = profile.model_dump()
-        session_ctx["_craft_id"] = craft_id
-
-        # Build a concise summary for the LLM
-        summary_parts = [
-            f"Business: {profile.product_name}",
-            f"Type: {profile.business_type}",
-        ]
-        if profile.location.location:
-            summary_parts.append(f"Location: {profile.location.location}")
-        if profile.location.suggested_locations:
-            summary_parts.append(f"Suggested Ad Locations: {', '.join(profile.location.suggested_locations)}")
-        if profile.unique_features:
-            summary_parts.append(f"USPs: {', '.join(profile.unique_features[:5])}")
-        if profile.products_services:
-            summary_parts.append(f"Products/Services: {', '.join(profile.products_services[:10])}")
-        if profile.contact:
-            contact_parts = []
-            if profile.contact.phone:
-                contact_parts.append(f"Phone: {profile.contact.phone}")
-            if profile.contact.email:
-                contact_parts.append(f"Email: {profile.contact.email}")
-            if contact_parts:
-                summary_parts.append(f"Contact: {', '.join(contact_parts)}")
-
-        summary_parts.append(f"\nFull Summary:\n{profile.summary}")
-
-        return ToolResult(
-            success=True,
-            data=profile.model_dump(),
-            summary="\n".join(summary_parts),
-        )
-
-    except RuntimeError as e:
-        return ToolResult(success=False, error=str(e))
-    except Exception as e:
-        logger.exception("scrape_website failed: url=%s", url)
-        return ToolResult(success=False, error=f"Scraping failed: {type(e).__name__}: {e}")
 
 
 async def _analyze_product(params: dict, context: dict) -> ToolResult:
     """Spawn the Product Analyst agent to scrape + generate product profile.
 
     Thin bridge: cache check → spawn agent → persist → return.
-    Falls back to _scrape_website if auth is missing or agent fails.
     """
     import time as _time
     _run_start = _time.monotonic()
@@ -213,13 +96,22 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         logger.warning("storage_hydrate_skipped: %s: %s", type(e).__name__, str(e)[:200])
 
     if auth is None:
-        logger.warning("analyze_product: no auth in context, falling back to scrape_website")
-        return await _scrape_website(params, context)
+        return ToolResult(
+            success=False,
+            error="No auth context — the ProductAnalyst sub-agent needs auth to run.",
+        )
 
     try:
         from app.agents.adzump.agents.product.agent import get_product_agent
 
         await emit_progress(context, "Starting product analysis…")
+        # Symmetric lifecycle: the launcher owns both AgentCard ends —
+        # agent_started here, agent_finished after post-processing.
+        from app.core.streaming import pre_emit_agent_started
+        await pre_emit_agent_started(
+            stream, agent_id="product_analyst", label="Product Analyst",
+            parent_tool_use_id=tool_use_id, context=context,
+        )
         output = await get_product_agent().analyze(
             url=url,
             parent_event_stream=stream,
@@ -285,11 +177,12 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             summary_lines.append(f"Product: {business['product_name']}")
         if business.get("business_type"):
             summary_lines.append(f"Type: {business['business_type']}")
-        loc = business.get("location") or ""
-        if isinstance(loc, dict):
-            loc = loc.get("location", "")
-        if loc:
-            summary_lines.append(f"Location: {loc}")
+        # v8 Plan B WS3 (Bug B) · deliberately OMIT the detected location from
+        # this tool-result summary. Including it primed the LLM to echo
+        # "please confirm the location for X" as free text before
+        # confirm_location's own widget fired (the hiranandani duplicate). The
+        # location stays in product_data; confirm_location reads it from there,
+        # and the dynamic-context _missing_section still drives the location step.
         if business.get("summary"):
             summary_lines.append(f"\n{business['summary']}")
 
@@ -305,9 +198,24 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             except Exception:
                 pass
 
+        # Shift 3 Stage 1 chat prompt (v9 live-test fix 2 · 2026-05-22).
+        # Reads the decline signal that _persist_product_assets stashed on
+        # product_data and emits the chat-text + structured data event on the
+        # AdPilot PARENT stream — bypassing the sub-agent's
+        # _PassthroughEventStream which drops emit_text.
+        elicited = await _emit_asset_upload_prompt(stream, target_ctx, url)
+
+        result_data: dict = {"business": business}
+        if elicited:
+            # v8 Plan B WS3 · conditional deferred elicitation. We asked the
+            # user to upload missing assets — signal the run loop to break and
+            # yield the turn. expects="multi": uploads may span several messages.
+            result_data["elicited"] = True
+            result_data["elicit_expects"] = "multi"
+
         return ToolResult(
             success=True,
-            data={"business": business},
+            data=result_data,
             summary="\n".join(summary_lines) or "Product analysis complete.",
         )
 
@@ -323,11 +231,74 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
                 )
             except Exception:
                 pass
-        await emit_progress(context, "Using simpler pipeline…")
-        return await _scrape_website(params, context)
+        return ToolResult(
+            success=False,
+            error=f"Product analysis failed: {type(e).__name__}: {e}",
+        )
 
 
-# ── Tool definitions ──────────────────────────────────────────────────
+# ── Shift 3 Stage 1 · upload-request chat prompt (orchestrator layer) ─────
+#
+# v9 live-test surfaced that the picker's inner _emit_asset_request_prompt
+# was being dropped by ProductAgent._PassthroughEventStream.emit_text. The
+# prompt is now emitted here, at the AdPilot tool wrapper layer, where
+# `stream` IS the user-visible chat stream. _persist_product_assets stashes
+# the signal on product_data["_shift3_signal"]; we read it and emit.
+
+async def _emit_asset_upload_prompt(stream, target_ctx: dict, url: str) -> bool:
+    """Emit Shift 3 Stage 1 chat prompt if picker left gaps. No-op when
+    nothing missing or no stream. Telemetry event #1 of 4 (Lance's panel
+    ask) — events 2-4 are nocode-ui responsibility.
+
+    Returns True iff a user-facing upload prompt was actually emitted — the
+    caller uses this to flag the tool result as a (deferred, multi) elicitation
+    so the run loop yields the turn (v8 Plan B WS3)."""
+    if stream is None:
+        return False
+    signal = (target_ctx.get("product_data") or {}).get("_shift3_signal") or {}
+    missing_logo = bool(signal.get("logo_missing"))
+    missing_creatives = list(signal.get("creative_missing_categories") or [])
+    if not missing_logo and not missing_creatives:
+        return False  # nothing to ask · picker output is complete
+
+    # Reuse the composer from the picker layer · pure function, unit-tested.
+    from app.agents.adzump.agents.product.tools.scrape.assets import (
+        _compose_asset_request_text,
+    )
+    text = _compose_asset_request_text(missing_logo, missing_creatives)
+    try:
+        await stream.emit_text(f"\n\n{text}\n")
+        await stream.emit_data("asset_upload_request", {
+            "stage": "1",
+            "url": url,
+            "logo_missing": missing_logo,
+            "creative_missing_categories": missing_creatives,
+            "blocking": False,
+        })
+    except Exception:
+        logger.exception("asset_request_prompt_emit_failed url=%s", url)
+        return False
+
+    # v3 · F7 — give the asset gate a quick-action chip so the user isn't forced
+    # to type to continue (uploading is optional). Untagged, single-select;
+    # clicking it sends the text and the LLM proceeds. Set on target_ctx (the
+    # session context) so get_pending_suggestions returns it this turn — it's
+    # popped before the _pending_elicitation guard, so the open multi-upload
+    # elicitation doesn't suppress it.
+    target_ctx["_pending_suggestions"] = {
+        "options": [{"label": "Continue without uploading",
+                     "value": "Continue without uploading"}],
+        "mode": "single",
+    }
+
+    logger.info(
+        "asset_request_prompt_shown: url=%s stage=1 missing_logo=%s missing_creatives=%s",
+        url, missing_logo, missing_creatives,
+    )
+    return True
+
+
+# ── Tool definition ───────────────────────────────────────────────────
 
 analyze_business = ToolDefinition(
     name="analyze_product",
@@ -344,14 +315,4 @@ analyze_business = ToolDefinition(
     execute=_analyze_product,
 )
 
-scrape_website = ToolDefinition(
-    name="scrape_website",
-    description="Scrape a website to extract basic business information (name, type, description, products/services, USPs, contact info, location). Lower-level than analyze_business — prefer analyze_business unless you only need raw site content.",
-    display_name="Scrape Website",
-    parameters=[
-        ToolParameter(name="url", type="string", description="The website URL to analyze", required=True),
-    ],
-    execute=_scrape_website,
-)
-
-BUSINESS_TOOLS = [analyze_business, scrape_website]
+BUSINESS_TOOLS = [analyze_business]
