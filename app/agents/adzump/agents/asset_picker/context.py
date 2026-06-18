@@ -73,11 +73,57 @@ def _load_picker_prompt() -> str:
 
 
 def build_asset_picker_context() -> BaseContext:
-    """Build the BaseContext for AssetPickerAgent.
+    """Build the BaseContext for the select-subset (scrape) mode.
 
     Single-shot vision task. No tools, no iteration, no dynamic context.
     """
     return BaseContext(
         doc_paths=[],
         static_prefix=_load_picker_prompt(),
+    )
+
+
+# ── judge-each mode (upload path) ───────────────────────────────────────────
+# Select-subset PICKS from scraped candidates; judge-each returns a verdict per
+# image. Different task → different prompt. The key behavior: never guess when
+# unsure — flag needs_user and ask.
+_JUDGE_PROMPT = """You are a vision judge for advertising assets. You will be \
+shown N images (pasted by a user for their product/service). For EACH image, in \
+order, decide:
+- role: 'logo' | 'hero' | 'amenity' | 'floor_plan' | 'unused' | 'unknown'.
+- relevant: is this usable for the product's ads at all? (a meme, a screenshot, \
+an unrelated stock photo → relevant=false).
+- confidence: 0.0..1.0 in your own verdict.
+- needs_user: if you are NOT confident what the image is or whether to use it, \
+set true and write a short question for the user. Do NOT guess — asking is \
+better than a wrong silent choice.
+
+Judge every image independently. Do not select a subset; emit one verdict per \
+image."""
+
+_JUDGE_JSON_CONTRACT = """
+
+## Output contract
+
+Your FINAL message MUST be a single fenced ```json block and nothing else, with \
+exactly one verdict per input image, in input order:
+
+```json
+{
+  "verdicts": [
+    {"idx": 0, "role": "logo", "relevant": true, "confidence": 0.95, "needs_user": false, "question": "", "reasoning": "clean brand wordmark"},
+    {"idx": 1, "role": "unknown", "relevant": true, "confidence": 0.4, "needs_user": true, "question": "Is image 2 a floor plan or a site map?", "reasoning": "ambiguous line drawing"}
+  ]
+}
+```
+
+Emit a verdict for every image. Use empty string / 0.0 / false when there's no signal — do not invent."""
+
+
+def build_judge_context() -> BaseContext:
+    """BaseContext for judge-each (upload) mode. Same single-shot engine,
+    different instruction + output shape than select-subset."""
+    return BaseContext(
+        doc_paths=[],
+        static_prefix=_JUDGE_PROMPT + _JUDGE_JSON_CONTRACT,
     )

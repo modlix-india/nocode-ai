@@ -96,3 +96,42 @@ class AssetSelection(BaseModel):
         default="",
         description="One sentence when logos=[] or a logo-looking candidate was rejected.",
     )
+
+
+class ImageVerdict(BaseModel):
+    """Judge-each verdict for ONE image (the upload path). Where select-subset
+    mode PICKS a subset, judge-each returns a verdict per image — so the model
+    can say 'not relevant' or 'unsure, ask the user' instead of being forced to
+    choose."""
+    idx: int = Field(description="Index into the images list (verdict order = input order).")
+    role: str = Field(
+        default="",
+        description="'logo' | 'hero' | 'amenity' | 'floor_plan' | 'unused' | 'unknown'.",
+    )
+    relevant: bool = Field(
+        default=True,
+        description="Is this image usable for the product's ads at all?",
+    )
+    confidence: float = Field(
+        default=0.0,
+        description="0.0..1.0 self-assessed confidence in THIS verdict.",
+    )
+    needs_user: bool = Field(
+        default=False,
+        description="True when unsure — the orchestrator should ask the user, not guess.",
+    )
+    question: str = Field(
+        default="",
+        description="What to ask the user when needs_user is true.",
+    )
+    name: str = Field(
+        default="",
+        description="2-4 word descriptive name for the stored file, e.g. 'logo-dark', "
+                    "'floor-plan-3bhk'. Slugified downstream; '' falls back to the role.",
+    )
+    reasoning: str = Field(default="", description="<= 120 chars on why.")
+
+
+class JudgeResult(BaseModel):
+    """Judge-each output: one verdict per input image, in input order."""
+    verdicts: list[ImageVerdict] = Field(default_factory=list)

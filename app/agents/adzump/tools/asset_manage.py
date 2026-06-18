@@ -1,16 +1,15 @@
 """manage_assets — the ONE asset front door (replaces save_uploaded_assets).
 
-The orchestrator recognises "this is asset work" and hands over; this tool is
-thin — it gathers the pending uploads + a context brief, launches the
-AssetManagerAgent (agent-as-tool, same shape as analyze_product → Product
-Analyst), runs the completion oracle, and relays the agent's summary. The
-Asset Agent decides per image: relevant? role? name? — not the orchestrator.
+Design C: the orchestrator hands over; this tool gathers the pending uploads,
+runs the VisionJudge ONCE (judge-each), then CODE dispositions each verdict —
+store the confident-relevant, reject the off-product, and escalate the unsure
+back to the orchestrator to ask the user. No tool-loop, no completion oracle.
+The judge decides per image (relevant? role? name? unsure?); code executes.
 """
 
 from __future__ import annotations
 
 import logging
-import time
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
@@ -35,6 +34,8 @@ def _build_brief(sctx: dict) -> str:
 
 
 async def _manage_assets(params: dict, context: dict) -> ToolResult:
+    import base64
+
     session = context.get("_session")
     sctx = session.context if session else (context.get("session_context") or {})
     pending = sctx.get("_pending_uploads") or []
@@ -46,70 +47,112 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
     auth = context.get("auth")
     if auth is None:
         return ToolResult(success=False, error=(
-            "No auth context — the Asset Manager sub-agent needs auth to run."
+            "No auth context — the vision judge needs auth to run."
         ))
 
     stream = context.get("event_stream")
     tool_use_id = context.get("tool_use_id", "")
 
-    from app.agents.adzump.agents.asset_manager.agent import get_asset_manager_agent
+    from app.agents.adzump.agents.asset_picker.agent import get_vision_judge
+    from app.agents.adzump._asset_store import (
+        classify_verdict, dedup_by_content, store_logo, store_creative,
+    )
+    from app.agents.adzump._uploads import upload_and_analyze
     from app.core.streaming import pre_emit_agent_started
+
+    # Decode pending bytes + drop content-duplicates (same paste twice → once).
+    images: list[dict] = []
+    for up in pending:
+        try:
+            raw = base64.b64decode(up.get("data") or "")
+        except Exception:
+            raw = b""
+        if raw:
+            images.append({"data": raw, "content_type": up.get("mime") or "image/png"})
+    images = dedup_by_content(images)
+    sctx["_pending_uploads"] = []  # consumed — never re-ingest next turn
+    if not images:
+        return ToolResult(success=False, error=(
+            "Uploaded image bytes are unreadable; ask the user to retry."
+        ))
 
     await emit_progress(context, "Reviewing your uploaded image(s)…")
     if stream:
+        # The judge emits its own agent_finished; the launcher only opens the card.
         await pre_emit_agent_started(
-            stream, agent_id="asset_manager", label="Asset Manager",
+            stream, agent_id="vision_judge", label="Vision Judge",
             parent_tool_use_id=tool_use_id, context=context,
         )
 
-    run_start = time.monotonic()
-    result = await get_asset_manager_agent().handle(
-        pending=pending,
-        brief=_build_brief(sctx),
-        parent_sctx=sctx,
-        auth=auth,
-        parent_event_stream=stream,
+    judged = await get_vision_judge().judge(
+        images=images, parent_event_stream=stream, auth=auth,
+        summary=_build_brief(sctx),
+        parent_session_context={
+            "url": sctx.get("primary_url") or sctx.get("url", ""),
+            "craft_id": sctx.get("craft_id", ""),
+        },
     )
-    sctx["_pending_uploads"] = []  # consumed — never re-ingest next turn
 
-    dispositions = result["dispositions"]
-    stored = [d for d in dispositions if d["action"] == "store"]
-    rejected = [d for d in dispositions if d["action"] == "reject"]
-    missing = result["missing"]
+    # CODE disposition over the verdicts (model decides, code executes).
+    product_data = sctx.setdefault("product_data", {})
+    up_ctx = {**context, "session_context": sctx}  # _asset_filename reads product_data here
+    stored: list[dict] = []
+    rejected: list[dict] = []
+    ambiguous: list[dict] = []   # → orchestrator asks the user (slice 4 surfaces these)
+
+    for v in judged.verdicts:
+        if not (0 <= v.idx < len(images)):
+            continue
+        img = images[v.idx]
+        role = (v.role or "").strip().lower()
+        action = classify_verdict(v)
+        if action == "store":
+            kind = "logo" if role == "logo" else "creative"
+            hints = {"fit": "contain" if kind == "logo" else "cover"}
+            res = await upload_and_analyze(
+                img["data"], img["content_type"], f"user_upload:{v.name}",
+                kind, up_ctx, hints=hints, name=v.name,
+            )
+            if not res:
+                ambiguous.append({"idx": v.idx, "question": (
+                    f"Upload failed for image {v.idx + 1} — ask the user to retry."
+                )})
+                continue
+            if role == "logo":
+                store_logo(product_data, res, v.name, sctx)
+            else:
+                store_creative(product_data, res, role, v.name)
+            stored.append({"role": role, "name": v.name or role})
+        elif action == "reject":
+            rejected.append({"idx": v.idx, "reason": v.reasoning or "not relevant to the product"})
+        else:  # escalate
+            ambiguous.append({"idx": v.idx, "question": v.question or f"What is image {v.idx + 1}?"})
 
     if stream:
-        try:
-            usage = result.get("usage") or {}
-            await stream.emit_agent_finished(
-                agent_id="asset_manager",
-                status="success" if not missing else "error",
-                duration_ms=int((time.monotonic() - run_start) * 1000),
-                tokens_in=int(usage.get("input_tokens") or 0),
-                tokens_out=int(usage.get("output_tokens") or 0),
-                summary=f"stored {len(stored)}, rejected {len(rejected)}",
-            )
-        except Exception:
-            logger.exception("asset_manager: agent_finished emit failed")
+        craft_id = sctx.get("craft_id", "")
+        if craft_id:
+            try:
+                from app.agents.adzump.agents.product.tools.scrape.receipts import _emit_asset_receipts
+                await _emit_asset_receipts(stream, craft_id, sctx.get("primary_url", ""), product_data)
+            except Exception:
+                logger.exception("manage_assets: receipts emit failed")
 
-    # User-facing summary text. The tool owns the wording (tool-text contract);
-    # the orchestrator only adds a lead-in.
+    # User-facing summary (tool-text contract — the orchestrator only adds a lead-in).
     parts: list[str] = []
     if stored:
         parts.append("Saved " + ", ".join(f"{d['name']} ({d['role']})" for d in stored) + ".")
     if rejected:
-        parts.append("Skipped " + ", ".join(f"image {d['id']} ({d['reason']})" for d in rejected) + ".")
-    if missing:
-        # Oracle escalation (decided: report, don't auto-reject — see notes).
-        parts.append(
-            f"Couldn't classify {len(missing)} image(s) — ask the user to describe them."
-        )
+        parts.append("Skipped " + ", ".join(f"image {d['idx'] + 1} ({d['reason']})" for d in rejected) + ".")
+    if ambiguous:
+        parts.append("Need your help on " + ", ".join(
+            f"image {d['idx'] + 1} — {d['question']}" for d in ambiguous) + "")
     summary = " ".join(parts) or "No assets were changed."
 
-    logger.info("manage_assets: stored=%d rejected=%d missing=%d",
-                len(stored), len(rejected), len(missing))
+    logger.info("manage_assets: stored=%d rejected=%d ambiguous=%d",
+                len(stored), len(rejected), len(ambiguous))
     return ToolResult(
-        success=not missing,
-        data={"stored": len(stored), "rejected": len(rejected), "missing": missing},
+        success=True,
+        data={"stored": len(stored), "rejected": len(rejected), "needs_input": ambiguous},
         summary=summary,
     )
 
@@ -121,9 +164,10 @@ manage_assets = ToolDefinition(
         "the user attaches one or more images (a logo, a building/render shot, a "
         "floor plan, lifestyle photos) — for the first upload, a correction, or a "
         "replacement. You do NOT pick what each image is or pass the file: the "
-        "Asset Manager looks at each pending image, decides its role and name, "
-        "rejects anything off-product, and saves the rest. Optionally pass "
-        "`note` to relay what the user said about the image(s)."
+        "vision judge looks at each pending image and decides its role; code then "
+        "saves the relevant ones, skips off-product ones, and flags anything "
+        "unclear for you to ask about. Optionally pass `note` to relay what the "
+        "user said about the image(s)."
     ),
     display_name="Manage Assets",
     parameters=[
