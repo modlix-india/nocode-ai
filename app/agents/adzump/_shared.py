@@ -6,8 +6,6 @@ import logging
 import re as _re
 from typing import Any
 
-from app.core.tools.base import ToolResult
-
 logger = logging.getLogger(__name__)
 
 
@@ -98,22 +96,6 @@ def extract_json(text: str) -> dict | None:
         return _json.loads(candidate)
     except _json.JSONDecodeError:
         return None
-
-
-def require_campaign_spec(context: dict, *fields: str) -> ToolResult | None:
-    """Validate that required campaign-spec fields exist in session context.
-
-    Returns a ToolResult error if any field is missing, or None if all present.
-    """
-    spec = context.get("session_context", {}).get("campaign_spec", {})
-    missing = [f for f in fields if not spec.get(f)]
-    if missing:
-        return ToolResult(
-            success=False,
-            error=f"Missing required campaign-spec fields: {', '.join(missing)}. "
-                  "Collect this information from the user first.",
-        )
-    return None
 
 
 # ─── Shared URL / host helpers ────────────────────────────────────────────

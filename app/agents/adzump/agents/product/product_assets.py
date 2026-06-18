@@ -37,7 +37,6 @@ from app.agents.adzump.agents.product.models import (
     ProductAssets,
     SiteImage,
 )
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 

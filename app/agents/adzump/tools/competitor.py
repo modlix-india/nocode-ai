@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import (
-    AGGREGATOR_HOSTS,
     emit_progress,
     host_of,
     is_aggregator_host,

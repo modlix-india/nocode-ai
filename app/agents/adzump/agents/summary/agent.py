@@ -27,7 +27,7 @@ from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 
 from app.agents.adzump.agents.summary.context import build_summary_context
-from app.agents.adzump.agents.summary.models import SummaryInput, SummaryOutput
+from app.agents.adzump.agents.summary.models import SummaryOutput
 
 logger = logging.getLogger(__name__)
 
