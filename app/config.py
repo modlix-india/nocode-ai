@@ -86,6 +86,19 @@ class Settings(BaseSettings):
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
+    # MiniMax Settings — OpenAI-compatible Chat Completions API.
+    # Can be overridden by config server: ai.secrets.minimaxAPIKey.
+    # Default base URL is the international endpoint; the China endpoint
+    # is `https://api.minimaxi.chat/v1` if the user prefers that.
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_BASE_URL: str = "https://api.minimax.io/v1"
+    # Available models as of 2026-06: M2, M2.1, M2.5, M2.7, M3 (each with
+    # an optional `-highspeed` low-latency variant). M3 is the current
+    # flagship; the `-highspeed` variants trade some quality for speed
+    # and lower cost.
+    MINIMAX_MODEL_FAST: str = "MiniMax-M2.7-highspeed"  # Fast/cheap tier
+    MINIMAX_MODEL_BALANCED: str = "MiniMax-M3"           # Flagship — tool use + reasoning
+
     # Gemini Settings
     # Chosen as the CFA default after the Phase 8 bench: 1M context window,
     # native vision, ~13× cheaper than Claude Haiku on input — fits the
@@ -194,6 +207,7 @@ class Settings(BaseSettings):
             ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
+            ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
@@ -298,6 +312,10 @@ async def initialize_settings():
         if settings.APPBUILDER_PROVIDER == "deepseek":
             logger.info(f"DeepSeek API Key: {'*' * 20 + settings.DEEPSEEK_API_KEY[-8:] if settings.DEEPSEEK_API_KEY else 'NOT SET'}")
             logger.info(f"DeepSeek Models: Fast={settings.DEEPSEEK_MODEL_FAST}, Balanced={settings.DEEPSEEK_MODEL_BALANCED}")
+        elif settings.APPBUILDER_PROVIDER == "minimax":
+            logger.info(f"MiniMax API Key: {'*' * 20 + settings.MINIMAX_API_KEY[-8:] if settings.MINIMAX_API_KEY else 'NOT SET'}")
+            logger.info(f"MiniMax Base URL: {settings.MINIMAX_BASE_URL}")
+            logger.info(f"MiniMax Models: Fast={settings.MINIMAX_MODEL_FAST}, Balanced={settings.MINIMAX_MODEL_BALANCED}")
     
     logger.info(f"Google API Key: {'*' * 20 + settings.GOOGLE_API_KEY[-8:] if settings.GOOGLE_API_KEY else 'NOT SET'}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")

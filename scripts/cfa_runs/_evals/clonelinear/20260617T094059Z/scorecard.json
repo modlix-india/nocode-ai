@@ -1,0 +1,306 @@
+{
+  "app_code": "clonelinear",
+  "client_code": "SYSTEM",
+  "timestamp": "20260617T094059Z",
+  "overall_ok": false,
+  "gates": {
+    "structural": {
+      "gate": "structural",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "ok": true,
+          "detail": "Page 'home' looks structurally valid: 52 components, 0 event functions, rootComponent='root'. (This is a STATIC structural check \u2014 it doesn't run the page in a browser, so semantic errors like 'this expression refers to Page.x but x is never set' won't be caught here.)"
+        }
+      ]
+    },
+    "inventory": {
+      "gate": "inventory",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "components": 52,
+          "ok": true
+        }
+      ],
+      "min_components_per_page": 2
+    },
+    "render": {
+      "gate": "render",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "url": "https://apps.local.modlix.com/clonelinear/SYSTEM/page/home",
+          "title": "Linear \u2014 The product development system",
+          "body_text_chars": 1203,
+          "input_count": 0,
+          "button_count": 2,
+          "page_errors": [],
+          "ok": true,
+          "screenshot_b64_len": 65556,
+          "screenshot_path": "scripts/cfa_runs/_evals/clonelinear/20260617T094059Z/render_home.png"
+        }
+      ],
+      "thresholds": {
+        "min_body_text_chars": 50,
+        "min_interactive_elements": 1
+      }
+    },
+    "visual": {
+      "gate": "visual",
+      "ok": false,
+      "source_url": "https://linear.app",
+      "page_name": "home",
+      "viewport_width": 1440,
+      "aggregate_severity": {
+        "high": 13,
+        "medium": 3,
+        "low": 0
+      },
+      "severity_budget": {
+        "high": 0,
+        "medium": 4
+      },
+      "shots": [
+        {
+          "scroll": 0.0,
+          "ok": true,
+          "severity_counts": {
+            "high": 5,
+            "medium": 0,
+            "low": 0
+          },
+          "diff_count": 5,
+          "top_diffs": [
+            {
+              "section": "navbar",
+              "severity": "high",
+              "copy_diff": "",
+              "layout_diff": "The entire navigation bar with logo, menu items (Product, Resources, Customers, Pricing, Now, Contact), Log in link, and Sign up button is completely absent from the build.",
+              "color_diff": "",
+              "missing_elements": [
+                "Linear logo",
+                "Product nav link",
+                "Resources nav link",
+                "Customers nav link",
+                "Pricing nav link",
+                "Now nav link",
+                "Contact nav link",
+                "Log in link",
+                "Sign up button",
+                "navbar container"
+              ],
+              "fix_suggestion": "Use add_component to insert a fixed top navbar with the Linear logo on the left, navigation links centered/right, and 'Log in' + 'Sign up' CTA on the far right against a dark (#0a0a0a) background."
+            },
+            {
+              "section": "hero",
+              "severity": "high",
+              "copy_diff": "SOURCE heading is left-aligned; BUILD heading is center-aligned. SOURCE subtitle 'Purpose-built for planning and building products. Designed for the AI era.' is left-aligned; BUILD has it center-aligned and broken across two lines.",
+              "layout_diff": "In the source the hero text is left-aligned with the 'New \u00b7 Coding Sessions \u2192' badge positioned inline to the right of the subtitle at the same vertical level; in the build all content is center-aligned and the badge appears above the heading.",
+              "color_diff": "SOURCE heading uses a plain white sans-serif font; BUILD uses a heavy serif font which differs from the source.",
+              "missing_elements": [
+                "'Contact sales' button is not in source hero",
+                "left-aligned layout"
+              ],
+              "fix_suggestion": "Use patch_component_styles to set hero text alignment to left, reorder elements so heading comes before subtitle, move the 'New \u00b7 Coding Sessions \u2192' badge inline to the right of the subtitle, remove the 'Contact sales' and 'Sign up' CTA buttons from the hero, and switch the heading font to a sans-serif matching the source (e.g., font-family: 'Inter', sans-serif; font-weight: 700)."
+            },
+            {
+              "section": "hero-badge",
+              "severity": "high",
+              "copy_diff": "SOURCE shows 'New' as a separate styled label followed by 'Coding Sessions \u2192' as a link; BUILD combines them as 'New \u00b7 Coding Sessions \u2192' inside a pill button.",
+              "layout_diff": "In the source the badge sits to the far right aligned with the subtitle text row; in the build it appears centered above the heading.",
+              "color_diff": "SOURCE badge uses plain inline text styling; BUILD wraps it in a bordered rounded pill with dark fill.",
+              "missing_elements": [],
+              "fix_suggestion": "Use patch_component_styles to reposition the badge to the right side of the subtitle row, render 'New' as a distinct yellow/white label and 'Coding Sessions \u2192' as a plain link, and remove the pill border styling."
+            },
+            {
+              "section": "hero-cta-buttons",
+              "severity": "high",
+              "copy_diff": "SOURCE has no CTA buttons in the hero section; BUILD shows 'Contact sales' and 'Sign up' buttons.",
+              "layout_diff": "BUILD adds two CTA buttons below the subtitle that do not exist in the source hero.",
+              "color_diff": "",
+              "missing_elements": [],
+              "fix_suggestion": "Use patch_component_styles or replace_page_definition to remove the 'Contact sales' and 'Sign up' buttons from the hero section entirely."
+            },
+            {
+              "section": "hero-app-screenshot",
+              "severity": "high",
+              "copy_diff": "",
+              "layout_diff": "The source shows a large, detailed dark UI screenshot of the Linear app interface below the hero text; the build shows only a broken image placeholder icon.",
+              "color_diff": "",
+              "missing_elements": [
+                "Linear app UI screenshot",
+                "sidebar with Inbox/My issues/Reviews/Pulse/Initiatives/Projects/More/Favorites",
+                "Faster app launch issue detail panel",
+                "ENG-2703 right panel with status/priority/assignee",
+                "AI chat overlay panel"
+              ],
+              "fix_suggestion": "Use patch_component_styles to replace the broken image src with the correct Linear app screenshot asset URL, ensuring it spans the full width of the hero container as shown in the source."
+            }
+          ]
+        },
+        {
+          "scroll": 0.5,
+          "ok": true,
+          "severity_counts": {
+            "high": 4,
+            "medium": 2,
+            "low": 0
+          },
+          "diff_count": 6,
+          "top_diffs": [
+            {
+              "section": "navbar",
+              "severity": "high",
+              "copy_diff": "SOURCE has nav links: Product, Resources, Customers, Pricing, Now, Contact | Log in | Sign up. BUILD shows no navbar at all.",
+              "layout_diff": "The entire top navigation bar is missing from the build; only CTA buttons appear without a nav container.",
+              "color_diff": "",
+              "missing_elements": [
+                "Linear logo",
+                "Product nav link",
+                "Resources nav link",
+                "Customers nav link",
+                "Pricing nav link",
+                "Now nav link",
+                "Contact nav link",
+                "Log in link",
+                "Sign up button in nav"
+              ],
+              "fix_suggestion": "Use add_component to insert a full horizontal navbar at the top with the Linear logo on the left, nav links in the center, and 'Log in' + 'Sign up' buttons on the right with a dark background (#0d0d0d)."
+            },
+            {
+              "section": "hero",
+              "severity": "high",
+              "copy_diff": "SOURCE heading: 'Move work forward across teams and agents' (large, left-aligned, two lines). BUILD heading: 'Move work forward across teams and agents' (centered, single line). SOURCE subtext is right-column only: 'Build and deploy AI agents that work alongside your team. Work on complex tasks together or delegate entire issues end-to-end.' BUILD subtext includes extra text: 'Linear brings together issues, projects, cycles, and goals in one unified workspace.'",
+              "layout_diff": "SOURCE uses a two-column layout (heading left, description + CTA right); BUILD uses a single centered column stacking description above heading, which is incorrect order and wrong alignment.",
+              "color_diff": "",
+              "missing_elements": [
+                "3.0 Build \u2192 link/badge",
+                "Two-column hero layout"
+              ],
+              "fix_suggestion": "Use patch_component_styles to restructure the hero into a two-column CSS grid: left column contains the large left-aligned heading, right column contains the description paragraph and '3.0  Build \u2192' badge link; remove the extra subtext sentence not present in source."
+            },
+            {
+              "section": "hero-cta",
+              "severity": "medium",
+              "copy_diff": "SOURCE shows '3.0   Build \u2192' as a text badge/link. BUILD shows 'Contact sales' and 'Sign up' buttons instead (these belong in the navbar, not here).",
+              "layout_diff": "BUILD places CTA buttons at the very top of the page outside any nav, whereas source places them in the navbar and shows only the '3.0 Build \u2192' badge in the hero body.",
+              "color_diff": "",
+              "missing_elements": [
+                "3.0 Build \u2192 badge"
+              ],
+              "fix_suggestion": "Remove the standalone 'Contact sales' / 'Sign up' buttons from the hero body area and add the '3.0  Build \u2192' text badge beneath the right-column description text."
+            },
+            {
+              "section": "hero-demo-panel",
+              "severity": "high",
+              "copy_diff": "",
+              "layout_diff": "SOURCE shows a large dark UI demo panel with a Codex terminal on the left and an 'Assign to\u2026' dropdown panel on the right; BUILD shows only a broken/missing image tag ('linear app interface') with no visible panel.",
+              "color_diff": "",
+              "missing_elements": [
+                "Codex terminal panel",
+                "Assign to dropdown panel",
+                "Agent badges (Codex Agent, GitHub Copilot Agent, Cursor Agent)",
+                "User avatars (Steven, Ema, Meg)",
+                "Terminal text content",
+                "Thinking\u2026 indicator"
+              ],
+              "fix_suggestion": "Use add_component to insert the full two-pane demo UI card below the hero text: left pane renders the Codex terminal session text, right pane renders the 'Assign to\u2026' list with avatar rows and Agent badges, all inside a rounded dark (#111) card."
+            },
+            {
+              "section": "feature-cards",
+              "severity": "high",
+              "copy_diff": "SOURCE does not show a feature-cards section in this viewport. BUILD renders 'Issues', 'Build momentum with fixed-length sprints\u2026', and 'Group issues into cross-team projects\u2026' cards that are not visible in the source screenshot.",
+              "layout_diff": "BUILD introduces a three-column feature card grid that does not appear in the source view at this scroll position.",
+              "color_diff": "",
+              "missing_elements": [],
+              "fix_suggestion": "Move the feature-cards section lower in the page so it appears after the demo panel, matching the source page scroll order; verify these cards belong to a section further down in the source."
+            }
+          ]
+        },
+        {
+          "scroll": 1.0,
+          "ok": true,
+          "severity_counts": {
+            "high": 4,
+            "medium": 1,
+            "low": 0
+          },
+          "diff_count": 5,
+          "top_diffs": [
+            {
+              "section": "hero",
+              "severity": "high",
+              "copy_diff": "SOURCE: 'Available today.' | BUILD: 'Move work forward across teams and agents'",
+              "layout_diff": "BUILD shows a feature-cards section content instead of the 'Available today.' hero heading with CTA buttons.",
+              "color_diff": "",
+              "missing_elements": [
+                "'Available today.' heading",
+                "'Get started' button",
+                "'Contact sales' button"
+              ],
+              "fix_suggestion": "Replace the hero section heading with 'Available today.' and add two CTA buttons: 'Get started' (white filled) and 'Contact sales' (dark outlined) using patch_component_styles or replace_page_definition."
+            },
+            {
+              "section": "feature-cards",
+              "severity": "high",
+              "copy_diff": "",
+              "layout_diff": "BUILD displays feature cards (Issues, Cycles, Projects, Views, Roadmaps, Insights) which belong to a different page section and should not appear in this viewport at all \u2014 the source shows only the hero CTA and footer.",
+              "color_diff": "",
+              "missing_elements": [],
+              "fix_suggestion": "Remove or relocate the feature-cards grid from this page section so it does not appear between the hero and footer; this content is not present in the source screenshot at this scroll position."
+            },
+            {
+              "section": "logo-strip",
+              "severity": "high",
+              "copy_diff": "",
+              "layout_diff": "BUILD shows a 'TRUSTED BY WORLD'S BEST PRODUCT TEAMS' logo strip with brand names (Vercel, Loom, Ramp, etc.) which does not appear in the source screenshot at this position.",
+              "color_diff": "",
+              "missing_elements": [],
+              "fix_suggestion": "Remove the logo-strip section from between the hero and footer, or reorder page sections to match the source layout using replace_page_definition."
+            },
+            {
+              "section": "footer",
+              "severity": "high",
+              "copy_diff": "",
+              "layout_diff": "Footer is completely missing from the BUILD; source shows a full multi-column footer with Product, Features, Company, Resources, Connect columns and bottom links (Privacy, Terms, DPA, AUP).",
+              "color_diff": "",
+              "missing_elements": [
+                "Linear logo (footer)",
+                "Product column (Intake, Plan, Build, Diffs, Monitor, Pricing, Security)",
+                "Features column (Asks, Agents, Coding Sessions, Customer Requests, Insights, Mobile, Integrations, Changelog)",
+                "Company column (About, Customers, Careers, Blog, Method, Quality, Brand)",
+                "Resources column (Switch, Download, Documentation, Developers, Status, Enterprise, Startups)",
+                "Connect column (Contact us, Community, X (Twitter), GitHub, YouTube)",
+                "Bottom bar: Privacy, Terms, DPA, AUP links"
+              ],
+              "fix_suggestion": "Add a full footer component with five link columns (Product, Features, Company, Resources, Connect) plus bottom legal links (Privacy, Terms, DPA, AUP) and the Linear logo mark using add_component with dark background (#0a0a0a) to match the source."
+            },
+            {
+              "section": "navbar",
+              "severity": "medium",
+              "copy_diff": "",
+              "layout_diff": "BUILD does not show a navbar; source has a sticky top navigation bar with Linear logo, Product, Resources, Customers, Pricing, Now, Contact links, plus Log in and Sign up buttons.",
+              "color_diff": "",
+              "missing_elements": [
+                "Linear logo + wordmark",
+                "Product nav link",
+                "Resources nav link",
+                "Customers nav link",
+                "Pricing nav link",
+                "Now nav link",
+                "Contact nav link",
+                "Log in link",
+                "Sign up button"
+              ],
+              "fix_suggestion": "Add a sticky navbar component at the top with the Linear logo, all navigation links, and Log in / Sign up CTAs using add_component matching the dark translucent style of the source."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

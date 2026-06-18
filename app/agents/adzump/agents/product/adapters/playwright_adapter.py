@@ -14,6 +14,8 @@ Enhancements:
   rendering. The browser knows what was loaded; we listen for it directly.
 """
 
+from __future__ import annotations
+
 import asyncio
 import base64
 import logging

@@ -252,3 +252,147 @@ conversations:
       - screenshot_page
     must_call_any_of_groups:
       - [add_component, replace_page_definition]
+
+# ─────────────────────────────────────────────────────────────────────────
+  # real_world_proof — five end-to-end build conversations sourced from
+  # scripts/cfa_scenarios/. Single-message-per-turn flattening of the real
+  # scenarios so bench mode can run them through whatever provider is being
+  # benched. Convergence rule for these: every scenario completes 11/11
+  # (or 7/7) turns with 0 SSE errors AND `validate_page` on every named
+  # page returns success. Failure modes surface as triage signal.
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - name: real-world-taskmate
+    description: |
+      Full taskmate app build (mirrors scripts/cfa_scenarios/taskmate.yaml).
+      Tests: create_app, role/profile setup, customer signup, server fns,
+      login + 3 authenticated pages, per-app KB writes. Convergence demands
+      the agent NOT short-circuit later turns (Haiku 4.5 frequently quits
+      after the login page; that counts as a fail).
+    setup_actions:
+      - tool: delete_app
+        params:
+          app_code: taskmate
+    messages:
+      - "Build a task-tracker called 'taskmate' in SYSTEM client. Create the app (APP, OWN), pick a blue/neutral theme and bind it, confirm via whoami + get_app."
+      - "Create 3 storages on taskmate with role-gated CRUD: Project { id, name, ownerId(USER) }, Task { id, projectId, title, status(BACKLOG|IN_PROGRESS|REVIEW|DONE), assigneeId(USER) }, Comment { id, taskId, authorId(USER), body }."
+      - "Create 3 roles: taskmateAdmin, taskmateOwner, taskmateMember via create_role."
+      - "Configure taskmate for customer signup: create_profile TaskmateMember, configure_app_for_customer_signup."
+      - "Author 2 server-side Kirun functions: assignTaskWithNotification(taskId, assigneeId), completeTaskAndArchive(taskId). Validate each via compile + execute on fake input."
+      - "Build the LOGIN page per the persona recipe: create_page, add card grid, email + password TextBox with bare-string binding, Sign In Button, handleLogin event fn. Then update_app to set loginPage + defaultPage."
+      - "Build the HOME page: header with Taskmate + Logout, main section with 'Your Projects' + ArrayRepeater bound to project storage."
+      - "Build the projectDetail page: header with back btn, 4-column kanban grid (BACKLOG / IN_PROGRESS / REVIEW / DONE), each with ArrayRepeater filtered by status."
+      - "Build the taskDetail page: header with back, task title/description, assignee section, comments ArrayRepeater."
+      - "Per-app KB writes: propose+commit `overview` (one paragraph), propose+commit one `decisions_log` entry."
+      - "Final summary: confirm app + theme bound, 3 storages, 3 roles + customer signup config, 2 server fns, 4 pages, 2 KB entries."
+    must_call_tools:
+      - create_app
+      - create_storage
+      - create_role
+      - configure_app_for_customer_signup
+      - save_server_function_from_text
+      - create_page
+      - add_component
+      - save_page_event_function_from_text
+      - update_app
+      - propose_kb_update
+      - commit_kb_update
+
+  - name: real-world-shopkeep
+    description: |
+      Full shopkeep POS app build (mirrors scripts/cfa_scenarios/shopkeep.yaml).
+      Same shape as taskmate but with 4 storages, transactional server fns,
+      and role-gated UI visibility expressions on the products page.
+    setup_actions:
+      - tool: delete_app
+        params:
+          app_code: shopkeep
+    messages:
+      - "Build an inventory + POS app 'shopkeep' in SYSTEM. APP, OWN, warm-orange retail theme bound."
+      - "Create 4 storages: Product { sku unique, name, price, stock }, Customer { name, phone, email }, Sale { customerId, total, tax, cashierId(USER) }, SaleLine { saleId, productId, quantity, lineTotal }."
+      - "Create 3 roles: Admin, Cashier, Manager via create_role."
+      - "Customer signup: create_profile ShopkeepCustomer, configure_app_for_customer_signup."
+      - "Author 2 server fns: calculateCartTotal(lines) computing subtotal/tax/total, recordSale(customerId, lines) transactional with stock decrement."
+      - "LOGIN page per persona recipe. update_app for loginPage + defaultPage."
+      - "HOME page (POS terminal): header with Shopkeep POS + Logout, 2-column layout (LEFT product search + clickable cards, RIGHT cart table + total + Complete sale button)."
+      - "PRODUCTS page: inventory table with role-gated edit-price + adjust-stock actions (visibility expression on Manager/Admin authority)."
+      - "SALES HISTORY page: Sale table with drill-in to SaleLine breakdown."
+      - "Per-app KB: propose+commit overview + one decisions_log."
+      - "Final summary."
+    must_call_tools:
+      - create_app
+      - create_storage
+      - create_role
+      - configure_app_for_customer_signup
+      - save_server_function_from_text
+      - create_page
+      - add_component
+      - patch_component_props
+      - update_app
+      - propose_kb_update
+      - commit_kb_update
+
+  - name: real-world-clone-linear
+    description: |
+      linear.app clone via the screenshot-relay path. Tests
+      screenshot_external_url + section-by-section build from Gemini
+      structural description; NO HTML parsing.
+    setup_actions:
+      - tool: delete_app
+        params:
+          app_code: clonelinear
+    messages:
+      - "Bootstrap clonelinear: create_app(SITE, OWN), pick a dark-neutral theme."
+      - "screenshot_external_url(url='https://linear.app', scroll_positions=[0.0, 0.5, 1.0]) to capture the source. Read the REGIONS/COPY/PALETTE/TYPOGRAPHY description."
+      - "Author the HOME hero: gradient background, headline 'Issue tracking that scales with your team', sub-copy, two CTA buttons."
+      - "Add the feature cards row from REGIONS — three columns, equal width, dark backgrounds with hover lift."
+      - "Add the animated brand-logo strip below the cards."
+      - "screenshot_page the build, compare against the source description, patch one style mismatch."
+    must_call_tools:
+      - create_app
+      - screenshot_external_url
+      - create_page
+      - add_component
+      - patch_component_styles
+      - screenshot_page
+
+  - name: real-world-clone-stripe
+    description: |
+      stripe.com clone — heavy on mesh-gradient hero and 3D hover-tilt card.
+    setup_actions:
+      - tool: delete_app
+        params:
+          app_code: clonestripe
+    messages:
+      - "Bootstrap clonestripe: create_app(SITE, OWN), pick a blue/purple gradient theme."
+      - "screenshot_external_url('https://stripe.com', [0.0, 0.5, 1.0])."
+      - "Author the hero: animated mesh-gradient background (create_style with @keyframes), headline 'Payments infrastructure for the internet', sub-copy, two CTA buttons."
+      - "Hover-tilt 3D feature card: create_style with transform: perspective() rotateX/Y on hover."
+      - "Animated code-block component (Pre + Text scrolling)."
+      - "3-column pricing comparison + footer."
+    must_call_tools:
+      - create_app
+      - screenshot_external_url
+      - create_page
+      - add_component
+      - create_style
+
+  - name: real-world-clone-vercel
+    description: |
+      vercel.com clone — animated triangle hero + deploy-preview block.
+    setup_actions:
+      - tool: delete_app
+        params:
+          app_code: clonevercel
+    messages:
+      - "Bootstrap clonevercel: create_app(SITE, OWN), pick a black/dark theme."
+      - "screenshot_external_url('https://vercel.com', [0.0, 0.5, 1.0])."
+      - "Hero: animated triangle/particle background (create_style with keyframes), 'Deploy in seconds with zero downtime', CTA."
+      - "Animated deploy-preview block: a card mimicking Vercel's deploy UI."
+      - "Three-tier pricing/comparison block + footer with multi-column links."
+    must_call_tools:
+      - create_app
+      - screenshot_external_url
+      - create_page
+      - add_component
+      - create_style

@@ -1,0 +1,5 @@
+{"event": "setup_action", "result": {"action": "delete_app", "app_code": "shopkeep", "security_app_id": 676, "ui_doc_id": null, "security_status": 204, "status": "deleted"}}
+{"event": "setup_action", "result": {"action": "mongo_purge", "app_code": "shopkeep", "status": "ok"}}
+{"event": "setup_action", "result": {"action": "mysql_purge_archived", "app_code": "shopkeep", "status": "ok"}}
+{"event": "setup_action", "result": {"action": "evict_cache", "app_code": "shopkeep", "evicted": ["cmn-appReadAccess/shopkeep:SYSTEM", "cmn-appWriteAccess/shopkeep:SYSTEM", "cmn-byAppCode/shopkeep", "cmn-byAppCodeExplicit/shopkeep", "cmn-appDependencies/shopkeep"], "status": "ok"}}
+{"event": "turn_start", "turn": 1, "message": "Build me an inventory + POS app called \"shopkeep\" in the SYSTEM client.\nFirst turn only:\n1. create_app (appCode=shopkeep, name=\"Shopkeep\", appType=APP, accessType=OWN).\n2. Pick or create a warm-orange retail theme (primary ~#F97316, secondary ~#FB923C) and bind it via update_app.\n3. Confirm with get_app + get_theme.\nNo pages / storages / functions yet.", "session_id": null}

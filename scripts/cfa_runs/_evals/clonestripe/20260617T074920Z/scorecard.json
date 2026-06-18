@@ -1,0 +1,53 @@
+{
+  "app_code": "clonestripe",
+  "client_code": "SYSTEM",
+  "timestamp": "20260617T074920Z",
+  "overall_ok": true,
+  "gates": {
+    "structural": {
+      "gate": "structural",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "ok": true,
+          "detail": "Page 'home' looks structurally valid: 42 components, 0 event functions, rootComponent='root'. (This is a STATIC structural check \u2014 it doesn't run the page in a browser, so semantic errors like 'this expression refers to Page.x but x is never set' won't be caught here.)"
+        }
+      ]
+    },
+    "inventory": {
+      "gate": "inventory",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "components": 42,
+          "ok": true
+        }
+      ],
+      "min_components_per_page": 2
+    },
+    "render": {
+      "gate": "render",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "url": "https://apps.local.modlix.com/clonestripe/SYSTEM/page/home",
+          "title": "Stripe \u2014 Payments Infrastructure for the Internet",
+          "body_text_chars": 995,
+          "input_count": 0,
+          "button_count": 3,
+          "page_errors": [],
+          "ok": true,
+          "screenshot_b64_len": 29432,
+          "screenshot_path": "scripts/cfa_runs/_evals/clonestripe/20260617T074920Z/render_home.png"
+        }
+      ],
+      "thresholds": {
+        "min_body_text_chars": 50,
+        "min_interactive_elements": 1
+      }
+    }
+  }
+}

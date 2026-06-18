@@ -130,34 +130,7 @@ get_preview_url_tool = ToolDefinition(
 )
 
 
-async def _execute_validate_page(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    page_name = (params.get("page_name") or "").strip()
-    if not page_name:
-        return ToolResult(success=False, error="`page_name` is required")
-    ac, err_result = _resolve_app_code(params, context)
-    if err_result:
-        return err_result
-    client, headers = _client_and_headers(context)
-    page, err = await p_ops.fetch_page_by_name(client, page_name, ac, headers)
-    if err:
-        return ToolResult(success=False, error=err)
-    assert page is not None
-    issues = p_ops.validate_page_structure(page)
-    if not issues:
-        n = len(page.get("componentDefinition") or {})
-        return ToolResult(success=True, summary=f"No structural issues on page '{page_name}' ({n} components).")
-    return ToolResult(success=True, summary=f"Found {len(issues)} issue(s) on '{page_name}':\n" + "\n".join(f"- {i}" for i in issues))
-
-
-validate_page_tool = ToolDefinition(
-    name="validate_page",
-    description="Check a page's structure: orphan components (unreachable from root), missing references in children maps, missing rootComponent.",
-    parameters=[
-        ToolParameter(name="page_name", type="string", description="Page name"),
-        ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
-    ],
-    execute=_execute_validate_page,
-)
+# (validate_page_tool moved to pages.py, now does a deeper shape check incl. property/style/binding wraps + event-fn refs. See pages._execute_validate_page.)
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -874,7 +847,7 @@ describe_image_tool = ToolDefinition(
 TOOLS: list[ToolDefinition] = [
     # Preview (2)
     get_preview_url_tool,
-    validate_page_tool,
+    # validate_page_tool — moved to pages.py
     # Files — URL builders (2)
     build_static_asset_url_tool,
     build_secured_asset_url_tool,

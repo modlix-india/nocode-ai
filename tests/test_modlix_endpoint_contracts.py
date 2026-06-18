@@ -112,7 +112,7 @@ async def test_modlix_endpoint_contract(
 
 @pytest.mark.asyncio
 async def test_create_role_carries_payload(mock_client, tool_context):
-    """create_role POSTs to /api/security/rolesV2 with name + description.
+    """create_role POSTs to /api/security/rolev2 with name + description.
 
     Verifies the payload reaches the wire — not just the URL — so future
     refactors of the body shape stay caught.
@@ -141,7 +141,7 @@ async def test_create_role_carries_payload(mock_client, tool_context):
     assert len(mock_client.calls) == 1
     call = mock_client.calls.last()
     assert call.method == "POST"
-    assert "/api/security/rolesV2" in call.path
+    assert "/api/security/rolev2" in call.path
     assert isinstance(call.json, dict)
     assert call.json.get("name") == "Reviewer"
     assert call.json.get("description") == "Reviews submissions"

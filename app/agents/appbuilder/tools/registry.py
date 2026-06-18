@@ -48,6 +48,7 @@ from app.agents.appbuilder.tools.modlix.schemas import TOOLS as _MODLIX_SCHEMA_T
 from app.agents.appbuilder.tools.modlix.visuals import TOOLS as _MODLIX_VISUAL_TOOLS
 from app.agents.appbuilder.tools.modlix.visuals_browser import TOOLS as _MODLIX_BROWSER_TOOLS
 from app.agents.appbuilder.tools.modlix.image_ops import TOOLS as _MODLIX_IMAGE_OPS_TOOLS
+from app.agents.appbuilder.tools.modlix.clone_ops import TOOLS as _MODLIX_CLONE_TOOLS
 from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURITY_TOOLS
 from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
 from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
@@ -58,6 +59,22 @@ from app.agents.appbuilder.tools.kb_app import KB_APP_TOOLS
 from app.agents.appbuilder.tools.platform_docs import PLATFORM_DOC_TOOLS
 
 LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TOOLS
+# Vision routing — hide the Gemini-only `describe_image` tool when the
+# AppBuilder runs on a vision-capable provider (Anthropic, OpenAI). The
+# screenshot tools already short-circuit Gemini-describe for these providers;
+# unregistering `describe_image` prevents the agent from reaching for it as
+# a redundant secondary call.
+def _filter_visual_tools(tools: list[ToolDefinition]) -> list[ToolDefinition]:
+    try:
+        from app.config import settings as _settings
+        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
+    except Exception:  # noqa: BLE001
+        provider = ""
+    if provider in {"anthropic", "openai"}:
+        return [t for t in tools if t.name != "describe_image"]
+    return tools
+
+
 MODLIX_TOOLS: list[ToolDefinition] = (
     list(_MODLIX_INFRA_TOOLS)
     + list(_MODLIX_COMPONENT_TOOLS)
@@ -65,9 +82,10 @@ MODLIX_TOOLS: list[ToolDefinition] = (
     + list(_MODLIX_KIRUN_TOOLS)
     + list(_MODLIX_KIRUN_EVENT_TOOLS)
     + list(_MODLIX_SCHEMA_TOOLS)
-    + list(_MODLIX_VISUAL_TOOLS)
+    + _filter_visual_tools(list(_MODLIX_VISUAL_TOOLS))
     + list(_MODLIX_BROWSER_TOOLS)
     + list(_MODLIX_IMAGE_OPS_TOOLS)
+    + list(_MODLIX_CLONE_TOOLS)
     + list(_MODLIX_SECURITY_TOOLS)
     + list(_MODLIX_APP_ADMIN_TOOLS)
     + list(_MODLIX_MESSAGING_TOOLS)

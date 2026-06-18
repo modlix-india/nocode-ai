@@ -1,0 +1,27 @@
+{
+  "scenario": "_create_app_smoke",
+  "app_code": "taskmate",
+  "session_id": "SYSTEM_3f6eb393",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_3f6eb393",
+      "elapsed_s": 18.58,
+      "events": {
+        "thinking": 263,
+        "tool_start": 4,
+        "tool_result": 4,
+        "text": 164,
+        "keepalive": 1,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 4,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 4,
+  "total_errors": 0,
+  "started_at": "20260616T031448Z",
+  "finished_at": "20260616T031506Z"
+}

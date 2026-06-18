@@ -347,7 +347,10 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     encoded = base64.b64encode(png).decode("ascii")
     parts: list[str] = [
         f"Screenshot of {url} captured ({len(png):,} bytes).",
-        f"Embed via: <img src=\"data:image/png;base64,{encoded[:32]}...\">  (base64 stored in result.data['image_base64'])",
+        "The PNG is attached to this tool result as an image content block — "
+        "look at it directly with your vision. Do NOT drill into "
+        "`get_component` / `get_component_styles` to re-discover what the "
+        "image already shows.",
     ]
 
     # Auto-describe the screenshot via Gemini Flash so text-only agents
@@ -357,27 +360,35 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     # ~$0.001 per screenshot (one Gemini Flash call on the image). Win:
     # avoids the 20-30 component-read tail that follows screenshot_page on
     # critique / clone tasks.
+    # Vision-routing rule: Anthropic + OpenAI models see the PNG natively via
+    # `result.data['image_base64']`. Gemini auto-describe was added for text-only
+    # providers (DeepSeek). When the appbuilder runs on a vision-capable provider,
+    # the describe is wasted cost + latency + a translation that loses information.
     description_text: str | None = None
-    description_error: str | None = None
     try:
         from app.config import settings as _settings
-        from app.agents.appbuilder.tools.modlix.visuals import (
-            _MIME_PNG, _DESCRIBE_BASE_PROMPT, _DESCRIBE_DEFAULT_MODEL,
-            _describe_via_gemini,
-        )
-        api_key = getattr(_settings, "GOOGLE_API_KEY", "") or ""
-        if api_key:
-            focus = (params.get("describe_focus") or
-                     "overall page structure, layout, spacing, alignment, "
-                     "visual hierarchy, colour palette, typography, "
-                     "and any visible issues (overlapping elements, cut-off "
-                     "text, misalignment, blank regions)")
-            prompt = _DESCRIBE_BASE_PROMPT + f"\n\nFocus particularly on: {focus}"
-            description_text, description_error = await _describe_via_gemini(
-                api_key, png, _MIME_PNG, prompt, _DESCRIBE_DEFAULT_MODEL,
+        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
+        vision_capable = provider in {"anthropic", "openai"}
+        if not vision_capable:
+            # Text-only providers (DeepSeek) need the Gemini-described version;
+            # vision-capable providers see the PNG natively via image_base64.
+            from app.agents.appbuilder.tools.modlix.visuals import (
+                _MIME_PNG, _DESCRIBE_BASE_PROMPT, _DESCRIBE_DEFAULT_MODEL,
+                _describe_via_gemini,
             )
-    except Exception as e:  # noqa: BLE001
-        description_error = f"{type(e).__name__}: {e}"
+            api_key = getattr(_settings, "GOOGLE_API_KEY", "") or ""
+            if api_key:
+                focus = (params.get("describe_focus") or
+                         "overall page structure, layout, spacing, alignment, "
+                         "visual hierarchy, colour palette, typography, "
+                         "and any visible issues (overlapping elements, cut-off "
+                         "text, misalignment, blank regions)")
+                prompt = _DESCRIBE_BASE_PROMPT + f"\n\nFocus particularly on: {focus}"
+                description_text, _ = await _describe_via_gemini(
+                    api_key, png, _MIME_PNG, prompt, _DESCRIBE_DEFAULT_MODEL,
+                )
+    except Exception:  # noqa: BLE001
+        pass  # describe is best-effort; vision-capable agents have the PNG anyway
 
     if description_text:
         parts.append("")
@@ -387,10 +398,6 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
         parts.append("already tells you — the description IS the user-visible state.")
         parts.append("")
         parts.append(description_text)
-    elif description_error:
-        parts.append("")
-        parts.append(f"(auto-describe skipped: {description_error}; "
-                     "call `describe_image(image_base64=...)` if you need a vision signal)")
     if effective_capture_console:
         log_text = "\n".join(console_buf) if console_buf else "(no console messages captured)"
         parts.append(f"\nConsole ({len(console_buf)} messages):\n{log_text}")
@@ -790,6 +797,231 @@ list_browser_sessions_tool = ToolDefinition(
 )
 
 
+# ── screenshot_external_url ──────────────────────────────────────────────
+
+
+_CLONE_DESCRIBE_PROMPT = (
+    "You are helping a code-generation agent CLONE this page into a no-code "
+    "platform. Describe what you see with structural detail the agent can "
+    "translate directly into components. Return the answer as labeled "
+    "sections (no markdown headers — use the labels verbatim):\n"
+    "\n"
+    "REGIONS: A numbered list of the visible regions top-to-bottom (e.g. "
+    "1. nav bar, 2. hero with headline + sub + CTA, 3. three-column feature "
+    "row, 4. logo strip, 5. footer). For each, give a one-sentence layout "
+    "description (\"row of 3 cards, equal width, padded\").\n"
+    "\n"
+    "COPY: Every piece of visible text, region-tagged. Verbatim, including "
+    "headlines, sub-copy, button labels, link labels. Skip nothing visible.\n"
+    "\n"
+    "PALETTE: Background, primary text, secondary text, accent/CTA, any "
+    "gradients or special backgrounds. Use hex or named CSS colors.\n"
+    "\n"
+    "TYPOGRAPHY: Per region — font family family (sans-serif/serif/display), "
+    "weight, approximate size (small/regular/large/display), tracking if "
+    "notable.\n"
+    "\n"
+    "ANIMATIONS: Anything that looks animated (rotating headline words, "
+    "gradient sweeps, scroll-fade reveals, hover-tilts). State whether the "
+    "motion is visible in this still or implied by the layout.\n"
+    "\n"
+    "INTERACTIVE STATES: Anything hover/focus visible — outlined buttons, "
+    "highlighted cards, etc.\n"
+    "\n"
+    "Be exhaustive. The cloning agent has no other vision input."
+)
+
+
+async def _execute_screenshot_external_url(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    """Screenshot any external URL at multiple scroll positions; return Gemini-described structure.
+
+    No platform auth — uses a fresh Chromium context with no init script.
+    Designed for site-cloning: visit linear.app / stripe.com / vercel.com,
+    capture top/mid/bottom at one or more viewport widths, and return a
+    structured description per shot so the cloning agent can author Modlix
+    components section-by-section without parsing HTML.
+    """
+    url = (params.get("url") or "").strip()
+    if not url:
+        return ToolResult(success=False, error="`url` is required")
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return ToolResult(success=False, error="`url` must start with http:// or https://")
+
+    scroll_positions = params.get("scroll_positions") or [0.0, 0.5, 1.0]
+    if not isinstance(scroll_positions, list) or not all(isinstance(x, (int, float)) for x in scroll_positions):
+        return ToolResult(success=False, error="`scroll_positions` must be a list of numbers (each 0.0-1.0)")
+    scroll_positions = [max(0.0, min(1.0, float(x))) for x in scroll_positions]
+
+    viewport_widths = params.get("viewport_widths") or [1440]
+    if not isinstance(viewport_widths, list) or not all(isinstance(x, int) for x in viewport_widths):
+        return ToolResult(success=False, error="`viewport_widths` must be a list of integers (CSS px, 320-3840)")
+    viewport_widths = [max(320, min(3840, int(w))) for w in viewport_widths]
+
+    height = int(params.get("height") or 900)
+    wait_ms = int(params.get("wait_ms") or 2500)
+
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        return ToolResult(success=False, error="playwright not installed; pip install playwright && python -m playwright install chromium")
+
+    # Vision-routing rule (same as screenshot_page): vision-capable providers
+    # see the PNG natively via image_base64; only fall back to Gemini-describe
+    # for text-only providers (DeepSeek). Saves real cost when running on
+    # Anthropic/OpenAI for what would otherwise be a free vision read.
+    try:
+        from app.config import settings as _settings
+        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
+        vision_capable = provider in {"anthropic", "openai"}
+        gemini_key = "" if vision_capable else (getattr(_settings, "GOOGLE_API_KEY", "") or "")
+    except Exception:  # noqa: BLE001
+        vision_capable = False
+        gemini_key = ""
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals import (
+            _MIME_PNG, _DESCRIBE_DEFAULT_MODEL, _describe_via_gemini,
+        )
+    except Exception as e:  # noqa: BLE001
+        return ToolResult(success=False, error=f"describer import failed: {type(e).__name__}: {e}")
+
+    shots: list[dict[str, Any]] = []
+    text_parts: list[str] = [f"Captured {len(viewport_widths) * len(scroll_positions)} screenshot(s) of {url}.\n"]
+
+    # Build a stable, human-readable source_handle slug from the URL host+path.
+    # Format: <hostslug>__<pathslug>  (e.g. "linear-app__/").
+    import re as _re
+    from urllib.parse import urlparse as _urlparse
+    _u = _urlparse(url)
+    _host_slug = _re.sub(r"[^a-z0-9]+", "-", (_u.netloc or "host").lower()).strip("-") or "host"
+    _path_slug = _re.sub(r"[^a-z0-9]+", "-", (_u.path or "/").lower()).strip("-") or "root"
+    _url_slug = f"{_host_slug}__{_path_slug}"
+
+    # Session-context cache for compare_to_source. We bound it at 24 entries
+    # (oldest evicted) so a long clone session doesn't grow the JSON context
+    # without limit. The cache key is the handle string returned to the agent.
+    session_context = context.get("session_context") if isinstance(context, dict) else None
+    cache: dict[str, dict[str, Any]] | None = None
+    if isinstance(session_context, dict):
+        cache = session_context.setdefault("_clone_source_shots", {})
+        if not isinstance(cache, dict):
+            cache = {}
+            session_context["_clone_source_shots"] = cache
+
+    try:
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch()
+            for width in viewport_widths:
+                ctx = await browser.new_context(
+                    viewport={"width": width, "height": height},
+                    ignore_https_errors=True,
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                )
+                page = await ctx.new_page()
+                try:
+                    await page.goto(url, wait_until="networkidle", timeout=30000)
+                except Exception:  # noqa: BLE001
+                    pass  # ad-heavy sites never reach networkidle; continue
+                await page.wait_for_timeout(wait_ms)
+                doc_height = await page.evaluate("document.documentElement.scrollHeight")
+                view_h = height
+                for pos in scroll_positions:
+                    y = int(max(0.0, pos) * max(0, doc_height - view_h))
+                    await page.evaluate(f"window.scrollTo({{top: {y}, behavior: 'instant'}})")
+                    await page.wait_for_timeout(400)
+                    png = await page.screenshot(full_page=False, type="png")
+                    encoded = base64.b64encode(png).decode("ascii")
+                    label = f"w{width}_y{int(pos * 100):03d}"
+                    desc_text: str | None = None
+                    desc_err: str | None = None
+                    if gemini_key:
+                        desc_text, desc_err = await _describe_via_gemini(
+                            gemini_key, png, _MIME_PNG, _CLONE_DESCRIBE_PROMPT, _DESCRIBE_DEFAULT_MODEL,
+                        )
+                    source_handle = f"{_url_slug}:{label}"
+                    shot_record = {
+                        "label": label,
+                        "source_handle": source_handle,
+                        "viewport_width": width,
+                        "scroll_fraction": pos,
+                        "scroll_y": y,
+                        "doc_height": doc_height,
+                        "image_base64": encoded,
+                        "image_mime": _MIME_PNG,
+                        "description": desc_text,
+                        "description_error": desc_err,
+                    }
+                    shots.append(shot_record)
+                    if cache is not None:
+                        # Evict oldest if cache too large
+                        if len(cache) >= 24:
+                            try:
+                                _oldest = next(iter(cache))
+                                cache.pop(_oldest, None)
+                            except StopIteration:
+                                pass
+                        cache[source_handle] = {
+                            "url": url,
+                            "viewport_width": width,
+                            "scroll_fraction": pos,
+                            "image_base64": encoded,
+                            "image_mime": _MIME_PNG,
+                        }
+                    text_parts.append(f"## {label}  source_handle={source_handle}  (width={width}px, scroll={int(pos * 100)}%)")
+                    if desc_text:
+                        text_parts.append(desc_text)
+                    elif desc_err:
+                        text_parts.append(f"(describe failed: {desc_err})")
+                    elif vision_capable:
+                        text_parts.append(
+                            "(this screenshot is attached as an image content block — "
+                            "look at it directly with your vision; the description "
+                            "below is reserved for text-only providers)"
+                        )
+                    else:
+                        text_parts.append("(no GOOGLE_API_KEY in settings — set it to get structured descriptions)")
+                    text_parts.append("")
+                await ctx.close()
+            await browser.close()
+    except Exception as e:  # noqa: BLE001
+        return ToolResult(success=False, error=f"render error: {type(e).__name__}: {e}")
+
+    return ToolResult(
+        success=True,
+        summary="\n".join(text_parts).strip(),
+        data={"url": url, "shots": shots},
+    )
+
+
+screenshot_external_url_tool = ToolDefinition(
+    name="screenshot_external_url",
+    description="""Visit an external (non-Modlix) URL in headless Chromium, screenshot at multiple scroll positions and viewport widths. Each PNG is ATTACHED to the tool result as an image content block — you see the source pixels DIRECTLY in your next turn. You do NOT need a textual description to reason about the layout; trust your own eyes.
+
+Use for cloning external sites (linear.app, stripe.com, vercel.com) into Modlix. NEVER reach for HTML parsing — the platform is component-based, not DOM-based; you build Modlix components section-by-section from what you SEE in the source screenshots.
+
+Each shot in the result carries a `source_handle` (a stable slug like `linear-app__root:w1440_y000`). REMEMBER these handles — you pass them to `compare_to_source(page_name, source_handle)` after each section build to get a structured diff vs the source.
+
+The standard clone flow (REQUIRED — do not skip steps):
+1. `screenshot_external_url(url=...)` once. Note the returned `source_handle` per shot.
+2. `extract_site_assets(url=...)` once. Bind the returned `modlix_url` values into Image components — never invent placeholder URLs.
+3. For each visible region top-to-bottom (hero first, footer LAST):
+   a. Author components with `add_component`, COPY verbatim from the source screenshot, colors sampled from the image, assets from the manifest.
+   b. `compare_to_source(page_name=<page>, source_handle=<handle for this region>)`. Read the diff list.
+   c. For every entry with severity=high, apply ONE targeted fix (patch_component_styles / update_component_props / move_component). Re-compare. Stop iterating this section when high-severity diffs reach 0 (or after 5 rounds).
+4. Animations: `create_style` ONE global doc with `@keyframes` rules; reference from styleProperties.
+
+ANTI-PATTERN: Building all sections then calling compare_to_source once at the end. compare_to_source is per-section.
+ANTI-PATTERN: Skipping compare_to_source because you "think it looks fine". You must run the gate — your own confidence does not count.""",
+    parameters=[
+        ToolParameter(name="url", type="string", description="Absolute URL to clone (must start with http:// or https://)"),
+        ToolParameter(name="scroll_positions", type="array", required=False, default=[0.0, 0.5, 1.0], description="Fractions of full scroll height (0.0=top, 1.0=bottom). Default [0, 0.5, 1.0] for top/mid/bottom.", items={"type": "number"}),
+        ToolParameter(name="viewport_widths", type="array", required=False, default=[1440], description="Viewport widths to capture (CSS px). Default [1440]; pass e.g. [1440, 768, 375] for desktop/tablet/mobile.", items={"type": "integer"}),
+        ToolParameter(name="height", type="integer", required=False, default=900, description="Viewport height in CSS px"),
+        ToolParameter(name="wait_ms", type="integer", required=False, default=2500, description="Milliseconds to wait after page load before first screenshot (lets above-the-fold animations settle)"),
+    ],
+    execute=_execute_screenshot_external_url,
+)
+
+
 # ── close_browser_session ────────────────────────────────────────────────
 
 
@@ -819,6 +1051,7 @@ close_browser_session_tool = ToolDefinition(
 
 TOOLS: list[ToolDefinition] = [
     screenshot_page_tool,
+    screenshot_external_url_tool,
     drive_page_tool,
     list_browser_sessions_tool,
     close_browser_session_tool,

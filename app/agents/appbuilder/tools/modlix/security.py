@@ -309,7 +309,10 @@ get_client_by_code_tool = ToolDefinition(
 
 async def _execute_list_security_apps(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     client, headers = _client_and_headers(context)
-    r = await client.get("/api/security/applications", headers=headers, params={"page": _page_num(params), "size": _page_size(params)})
+    qp: dict[str, Any] = {"page": _page_num(params), "size": _page_size(params)}
+    if params.get("app_code"):
+        qp["appCode"] = params["app_code"]
+    r = await client.get("/api/security/applications", headers=headers, params=qp)
     if not r.success:
         return ToolResult(success=False, error=r.error)
     content = (r.data or {}).get("content", []) if isinstance(r.data, dict) else []
@@ -325,9 +328,11 @@ list_security_apps_tool = ToolDefinition(
     name="list_security_apps",
     description=(
         "List app records in the SECURITY service (distinct from /api/ui/applications which lists UI Application definitions). "
-        "This is the security-side registration: appCode, owner, appAccessType (OWN/ANY/EXPLICIT), status."
+        "This is the security-side registration: appCode, owner, appAccessType (OWN/ANY/EXPLICIT), status. "
+        "Pass `app_code` for an exact-match lookup (returns 0 or 1 row) — much faster than paginating through hundreds of apps."
     ),
     parameters=[
+        ToolParameter(name="app_code", type="string", required=False, description="Exact appCode filter — returns just that app's security row"),
         ToolParameter(name="size", type="integer", required=False, default=100, description=_DESC_SIZE),
         ToolParameter(name="page", type="integer", required=False, default=0, description=_DESC_PAGE),
     ],
@@ -374,7 +379,7 @@ async def _execute_list_roles(params: dict[str, Any], context: dict[str, Any]) -
     p: dict[str, Any] = {"page": 0, "size": _page_size(params, 100, 500)}
     if params.get("app_code"):
         p["appCode"] = params["app_code"]
-    r = await client.get("/api/security/rolesV2", headers=headers, params=p)
+    r = await client.get("/api/security/rolev2", headers=headers, params=p)
     if not r.success:
         return ToolResult(success=False, error=r.error)
     content = (r.data or {}).get("content", []) if isinstance(r.data, dict) else []
@@ -409,7 +414,7 @@ async def _execute_create_role(params: dict[str, Any], context: dict[str, Any]) 
     if params.get("parent_role_id"):
         body["parentRoleId"] = params["parent_role_id"]
     client, headers = _client_and_headers(context)
-    r = await client.post("/api/security/rolesV2", headers=headers, json=body)
+    r = await client.post("/api/security/rolev2", headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
     role_id = (r.data or {}).get("id", "?") if isinstance(r.data, dict) else "?"
@@ -436,10 +441,14 @@ create_role_tool = ToolDefinition(
 
 async def _execute_list_profiles(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     client, headers = _client_and_headers(context)
+    app_id = params.get("app_id")
+    if not app_id:
+        return ToolResult(
+            success=False,
+            error="`app_id` is required — the platform exposes profiles per-app at /api/security/app/{appId}/profiles",
+        )
     p: dict[str, Any] = {"page": 0, "size": _page_size(params, 100, 500)}
-    if params.get("app_id"):
-        p["appId"] = params["app_id"]
-    r = await client.get("/api/security/profile", headers=headers, params=p)
+    r = await client.get(f"/api/security/app/{app_id}/profiles", headers=headers, params=p)
     if not r.success:
         return ToolResult(success=False, error=r.error)
     content = (r.data or {}).get("content", []) if isinstance(r.data, dict) else []
@@ -647,6 +656,464 @@ apply_transport_by_code_tool = ToolDefinition(
 )
 
 
+# ═════════════════════════════════════════════════════════════════════════
+#  APP PROPERTIES + APP-REGISTRATION (customer-signup machinery)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# Customer-facing apps need MORE than just create_app to be usable:
+#
+#  • appUsageType on the security_app row must be one of B2C/B2B/B2X (NOT S which
+#    blocks all customer registration), set via update_security_app.
+#  • REGISTRATION_TYPE app property must be set to REGISTRATION_TYPE_NO_VERIFICATION
+#    (or _VERIFICATION / _CODE_IMMEDIATE_LOGIN_IMMEDIATE) via set_app_property.
+#  • A user-profile entry in security_app_reg_user_profile must exist so a
+#    profile gets auto-assigned on registration — without it the registered user
+#    has zero permissions in the app.
+#  • A file-access entry in security_app_reg_file_access grants the registered
+#    user STATIC/SECURED file paths — typically Authorities.Logged_IN.
+#  • An app-access entry in security_app_reg_access lets the registered user
+#    actually reach the app (allow_app_id pointing back to the app itself).
+#
+# The convenience tool `configure_app_for_customer_signup` does ALL of this in
+# one call. Prefer it over the granular set_/add_ tools for the common case;
+# fall back to the granular tools for special shapes (B2B, multi-profile, etc.).
+
+
+_REG_OBJECT_TYPES = ("userProfile", "userRole", "fileAccess", "appAccess",
+                     "department", "designation", "userDesignation", "profileRestriction")
+_LEVELS = ("CLIENT", "CUSTOMER", "CONSUMER")
+_USAGE_TYPES = ("S", "B", "B2C", "B2B", "B2X", "X")
+_REG_TYPES = (
+    "REGISTRATION_TYPE_NO_REGISTRATION",
+    "REGISTRATION_TYPE_NO_VERIFICATION",
+    "REGISTRATION_TYPE_VERIFICATION",
+    "REGISTRATION_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE",
+)
+_APP_PROPERTY_API = "/api/security/applications/property"
+_DESC_TARGET_APP_CODE = "Target appCode"
+
+
+async def _execute_set_app_property(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    app_id = (params.get("app_id") or "").strip()
+    name = (params.get("name") or "").strip()
+    value = params.get("value")
+    if not app_id or not name:
+        return ToolResult(success=False, error="`app_id` and `name` are required")
+    body: dict[str, Any] = {"appId": app_id, "name": name, "value": value}
+    if params.get("client_id"):
+        body["clientId"] = params["client_id"]
+    client, headers = _client_and_headers(context)
+    r = await client.post(_APP_PROPERTY_API, headers=headers, json=body)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    return ToolResult(success=True, summary=f"Set property {name}={value!r} on app id={app_id}.")
+
+
+set_app_property_tool = ToolDefinition(
+    name="set_app_property",
+    description=(
+        "Set a security-app property (security_app_property table) — distinct from `update_app` "
+        "which patches the UI-side application override doc.\n\n"
+        "Common property names:\n"
+        "  • REGISTRATION_TYPE — REGISTRATION_TYPE_NO_VERIFICATION | _VERIFICATION | _CODE_IMMEDIATE_LOGIN_IMMEDIATE | _NO_REGISTRATION.\n"
+        "    Required for customer signup. Without it, /api/security/clients/register returns 'Feature not supported'.\n"
+        "  • Anything else app-team-defined (read first via list_app_properties to see what's already set).\n\n"
+        "Prefer `configure_app_for_customer_signup` for the common case — it sets REGISTRATION_TYPE "
+        "along with the other 4 pieces customer onboarding needs."
+    ),
+    parameters=[
+        ToolParameter(name="app_id", type="string", description="security_app id (numeric, from list_security_apps or list_apps)"),
+        ToolParameter(name="name", type="string", description="Property name, e.g. REGISTRATION_TYPE"),
+        ToolParameter(name="value", type="string", description="Property value"),
+        ToolParameter(name="client_id", type="string", required=False, description="Owning client_id (defaults to the app's owning client)"),
+    ],
+    execute=_execute_set_app_property,
+)
+
+
+async def _execute_list_app_properties(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    qp: dict[str, Any] = {}
+    if params.get("app_id"):
+        qp["appId"] = params["app_id"]
+    if params.get("app_code"):
+        qp["appCode"] = params["app_code"]
+    if params.get("client_id"):
+        qp["clientId"] = params["client_id"]
+    if params.get("name"):
+        qp["propName"] = params["name"]
+    client, headers = _client_and_headers(context)
+    r = await client.get(_APP_PROPERTY_API, headers=headers, params=qp)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    return ToolResult(success=True, summary=f"App properties:\n{json.dumps(r.data, indent=2, default=str)}")
+
+
+list_app_properties_tool = ToolDefinition(
+    name="list_app_properties",
+    description=(
+        "Read security_app_property rows. Filter by `app_code`, `app_id`, and/or property `name`. "
+        "Use to confirm REGISTRATION_TYPE etc. before configuring."
+    ),
+    parameters=[
+        ToolParameter(name="app_code", type="string", required=False, description="App code filter"),
+        ToolParameter(name="app_id", type="string", required=False, description="App id filter"),
+        ToolParameter(name="name", type="string", required=False, description="Specific property name"),
+        ToolParameter(name="client_id", type="string", required=False, description="Client id filter"),
+    ],
+    execute=_execute_list_app_properties,
+)
+
+
+async def _execute_update_security_app(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    app_id = (params.get("app_id") or "").strip()
+    if not app_id:
+        return ToolResult(success=False, error="`app_id` is required")
+    patch: dict[str, Any] = {}
+    if params.get("app_usage_type"):
+        ut = params["app_usage_type"].upper()
+        if ut not in _USAGE_TYPES:
+            return ToolResult(success=False, error=f"app_usage_type must be one of {_USAGE_TYPES}")
+        patch["appUsageType"] = ut
+    if params.get("app_access_type"):
+        patch["appAccessType"] = params["app_access_type"].upper()
+    if params.get("app_type"):
+        patch["appType"] = params["app_type"].upper()
+    if params.get("app_name"):
+        patch["appName"] = params["app_name"]
+    if not patch:
+        return ToolResult(success=False, error="No mutable fields supplied (app_usage_type / app_access_type / app_type / app_name)")
+    client, headers = _client_and_headers(context)
+    r = await client.patch(f"/api/security/applications/{app_id}", headers=headers, json=patch)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    return ToolResult(success=True, summary=f"Patched security app id={app_id} with {list(patch.keys())}.")
+
+
+update_security_app_tool = ToolDefinition(
+    name="update_security_app",
+    description=(
+        "PATCH the security_app row's metadata. Use this to flip `app_usage_type` from the create_app default "
+        "(S=Standalone, rejects registration) to a multi-tenant variant:\n"
+        "  • B2C — individual consumers register themselves (typical for customer-facing apps like POS, e-commerce, social)\n"
+        "  • B2B — businesses register (each customer is itself a business)\n"
+        "  • B2X — open to both individuals and businesses\n"
+        "  • B — business-only, INTERNAL (still blocks registration; only valid for sub-tenants admins onboard manually)\n"
+        "  • S — standalone (sites, internal tools — no signup possible)\n"
+        "  • X — wildcard / any\n\n"
+        "Distinct from `update_app` which patches the UI override doc (themes, properties.defaultPage, languages)."
+    ),
+    parameters=[
+        ToolParameter(name="app_id", type="string", description="security_app id (numeric)"),
+        ToolParameter(name="app_usage_type", type="string", required=False, description="S | B | B2C | B2B | B2X | X"),
+        ToolParameter(name="app_access_type", type="string", required=False, description="OWN | ANY | EXPLICIT"),
+        ToolParameter(name="app_type", type="string", required=False, description="APP | SITE | POSTER"),
+        ToolParameter(name="app_name", type="string", required=False, description="Internal display name (must equal app_code)"),
+    ],
+    execute=_execute_update_security_app,
+)
+
+
+async def _execute_add_app_reg_entry(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    app_code = (params.get("app_code") or "").strip()
+    kind = (params.get("kind") or "").strip()
+    body = params.get("body")
+    if not app_code or kind not in _REG_OBJECT_TYPES:
+        return ToolResult(success=False, error=f"`app_code` and `kind` (one of {_REG_OBJECT_TYPES}) are required")
+    if not isinstance(body, dict):
+        return ToolResult(success=False, error="`body` must be an object — see description for required fields per kind")
+    client, headers = _client_and_headers(context)
+    r = await client.post(f"/api/security/applications/reg/{app_code}/{kind}", headers=headers, json=body)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    return ToolResult(success=True, summary=f"Added app reg {kind} for {app_code}: id={(r.data or {}).get('id', '?')}")
+
+
+add_app_reg_entry_tool = ToolDefinition(
+    name="add_app_reg_entry",
+    description=(
+        "Add a row to one of the app-registration tables — used to set up what an app does on registration "
+        "(auto-assign profile/role, grant file paths, grant cross-app access, etc.).\n\n"
+        "Endpoint: POST /api/security/applications/reg/{appCode}/{kind}\n\n"
+        "Body shape varies by kind. Required common fields: `clientId`, `appId`, `clientType` ('BUS' or 'IND'), "
+        "`level` (CLIENT/CUSTOMER/CONSUMER), `businessType` (default 'COMMON').\n\n"
+        "Per-kind extras (top-level in body):\n"
+        "  • userProfile      → `profileId`\n"
+        "  • userRole         → `roleId`\n"
+        "  • fileAccess       → `resourceType` (STATIC|SECURED), `accessName`, `writeAccess` (bool), `path` (string), `allowSubPathAccess` (bool)\n"
+        "  • appAccess        → `allowAppId`, `writeAccess`, `register` (bool — can register users into the target app)\n"
+        "  • department       → `name`, optional `parentDepartmentId`\n"
+        "  • designation      → `name`, optional parent/next/department ids\n"
+        "  • userDesignation  → `designationId`\n"
+        "  • profileRestriction → `profileId`, restriction fields\n\n"
+        "Prefer `configure_app_for_customer_signup` for the standard customer-signup set; this raw tool is for unusual shapes."
+    ),
+    parameters=[
+        ToolParameter(name="app_code", type="string", description=_DESC_TARGET_APP_CODE),
+        ToolParameter(name="kind", type="string", description=f"One of {_REG_OBJECT_TYPES}"),
+        ToolParameter(name="body", type="object", description="Full registration record body — see description for per-kind fields"),
+    ],
+    execute=_execute_add_app_reg_entry,
+)
+
+
+async def _execute_list_app_reg_entries(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    app_code = (params.get("app_code") or "").strip()
+    kind = (params.get("kind") or "").strip()
+    if not app_code or kind not in _REG_OBJECT_TYPES:
+        return ToolResult(success=False, error=f"`app_code` and `kind` (one of {_REG_OBJECT_TYPES}) are required")
+    query: dict[str, Any] = {"page": _page_num(params), "size": _page_size(params, 50, 200)}
+    for k_src, k_dst in (("client_code", "clientCode"), ("client_id", "clientId"), ("client_type", "clientType"),
+                        ("level", "level"), ("business_type", "businessType")):
+        if params.get(k_src):
+            query[k_dst] = params[k_src]
+    client, headers = _client_and_headers(context)
+    r = await client.post(f"/api/security/applications/reg/{app_code}/{kind}/query", headers=headers, json=query)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    content = (r.data or {}).get("content", []) if isinstance(r.data, dict) else []
+    return ToolResult(success=True, summary=f"{kind} entries for {app_code} ({len(content)}):\n{json.dumps(content, indent=2, default=str)}")
+
+
+list_app_reg_entries_tool = ToolDefinition(
+    name="list_app_reg_entries",
+    description="List app-registration rows of a given kind. Useful to confirm what's already configured before adding more.",
+    parameters=[
+        ToolParameter(name="app_code", type="string", description=_DESC_TARGET_APP_CODE),
+        ToolParameter(name="kind", type="string", description=f"One of {_REG_OBJECT_TYPES}"),
+        ToolParameter(name="client_code", type="string", required=False, description="Filter by client"),
+        ToolParameter(name="client_id", type="string", required=False, description="Filter by client id"),
+        ToolParameter(name="client_type", type="string", required=False, description="BUS | IND"),
+        ToolParameter(name="level", type="string", required=False, description="CLIENT | CUSTOMER | CONSUMER"),
+        ToolParameter(name="business_type", type="string", required=False, default="COMMON", description="Business type code, default COMMON"),
+        ToolParameter(name="size", type="integer", required=False, default=50, description=_DESC_SIZE),
+        ToolParameter(name="page", type="integer", required=False, default=0, description=_DESC_PAGE),
+    ],
+    execute=_execute_list_app_reg_entries,
+)
+
+
+async def _execute_delete_app_reg_entry(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    kind = (params.get("kind") or "").strip()
+    entry_id = (params.get("entry_id") or "").strip()
+    if kind not in _REG_OBJECT_TYPES or not entry_id:
+        return ToolResult(success=False, error=f"`kind` (one of {_REG_OBJECT_TYPES}) and `entry_id` are required")
+    client, headers = _client_and_headers(context)
+    r = await client.delete(f"/api/security/applications/reg/{kind}/{entry_id}", headers=headers)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    return ToolResult(success=True, summary=f"Deleted {kind} entry id={entry_id}.")
+
+
+delete_app_reg_entry_tool = ToolDefinition(
+    name="delete_app_reg_entry",
+    description="Delete an app-registration row by kind + id. Destructive — confirm before calling.",
+    parameters=[
+        ToolParameter(name="kind", type="string", description=f"One of {_REG_OBJECT_TYPES}"),
+        ToolParameter(name="entry_id", type="string", description="Registration row id"),
+    ],
+    execute=_execute_delete_app_reg_entry,
+)
+
+
+# ── Profile creation ─────────────────────────────────────────────────────
+
+
+def _build_profile_body(name: str, app_id: str, params: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    # The platform's hasReadAccess(appId, entity.clientId) runs BEFORE the late-fixup
+    # that sets clientId from the caller. If clientId is null on the entity, the access
+    # check returns empty Mono → 403 "Cannot create Profile for the selected client".
+    # Default to the caller's clientId (SYSTEM=1). `arrangement` is also required to
+    # avoid an NPE in ProfileDAO.getRoleIdsFromArrangements; empty {} is fine.
+    body: dict[str, Any] = {
+        "name": name,
+        "appId": app_id,
+        "clientId": params.get("client_id") or context.get("client_id") or "1",
+        "arrangement": params.get("arrangement") or {},
+    }
+    if params.get("description"):
+        body["description"] = params["description"]
+    if params.get("root_role_id"):
+        body["rootProfileId"] = params["root_role_id"]
+    if params.get("default_profile") is not None:
+        body["defaultProfile"] = bool(params["default_profile"])
+    return body
+
+
+async def _find_existing_profile(client: Any, headers: dict, app_id: str, name: str) -> dict | None:
+    existing = await client.get(f"/api/security/app/{app_id}/profiles", headers=headers, params={"page": 0, "size": 200})
+    if not (existing.success and isinstance(existing.data, dict)):
+        return None
+    for p in existing.data.get("content") or []:
+        if p.get("name") == name and str(p.get("appId")) == str(app_id):
+            return p
+    return None
+
+
+async def _execute_create_profile(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    name = (params.get("name") or "").strip()
+    app_id = (params.get("app_id") or "").strip()
+    if not name or not app_id:
+        return ToolResult(success=False, error="`name` and `app_id` are required")
+    client, headers = _client_and_headers(context)
+    found = await _find_existing_profile(client, headers, app_id, name)
+    if found is not None:
+        return ToolResult(
+            success=True,
+            summary=f"Profile '{name}' already exists (id={found.get('id')}) for app_id={app_id} — reusing.",
+        )
+    body = _build_profile_body(name, app_id, params, context)
+    r = await client.post("/api/security/app/profiles", headers=headers, json=body)
+    if not r.success:
+        return ToolResult(success=False, error=r.error)
+    return ToolResult(success=True, summary=f"Created profile '{name}' (id={(r.data or {}).get('id', '?')}) for app_id={app_id} (clientId={body['clientId']}).")
+
+
+create_profile_tool = ToolDefinition(
+    name="create_profile",
+    description=(
+        "Create a profile (bundle of roles) for an app. Profiles are app-scoped and assigned to users via "
+        "`assign_profile` (post-registration) OR via `add_app_reg_entry(kind=userProfile)` "
+        "(auto-assigned on registration).\n\n"
+        "Endpoint: POST /api/security/app"
+    ),
+    parameters=[
+        ToolParameter(name="name", type="string", description="Profile name"),
+        ToolParameter(name="app_id", type="string", description="security_app id this profile belongs to"),
+        ToolParameter(name="description", type="string", required=False, description="Profile description"),
+        ToolParameter(name="default_profile", type="boolean", required=False, description="Mark as default-on-registration"),
+    ],
+    execute=_execute_create_profile,
+)
+
+
+# ── Convenience: configure app for customer signup ───────────────────────
+
+
+def _validate_signup_params(params: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
+    app_code = (params.get("app_code") or "").strip()
+    app_id = (params.get("app_id") or "").strip()
+    profile_id = (params.get("profile_id") or "").strip()
+    usage_type = (params.get("app_usage_type") or "B2C").upper()
+    reg_type = params.get("registration_type") or "REGISTRATION_TYPE_NO_VERIFICATION"
+    level = (params.get("level") or ("CONSUMER" if usage_type == "B2C" else "CUSTOMER")).upper()
+    if not app_code or not app_id or not profile_id:
+        return "`app_code`, `app_id` (security_app id), and `profile_id` are all required", None
+    if usage_type not in _USAGE_TYPES:
+        return f"app_usage_type must be one of {_USAGE_TYPES}", None
+    if reg_type not in _REG_TYPES:
+        return f"registration_type must be one of {_REG_TYPES}", None
+    return None, {
+        "app_code": app_code, "app_id": app_id, "profile_id": profile_id,
+        "usage_type": usage_type, "reg_type": reg_type, "level": level,
+        "client_id": (params.get("client_id") or "1").strip(),
+        "client_type": (params.get("client_type") or "INDV").upper(),
+        "business_type": (params.get("business_type") or "COMMON").upper(),
+    }
+
+
+async def _signup_step_set_usage_type(client: Any, headers: dict, p: dict[str, Any]) -> str | None:
+    r = await client.patch(f"/api/security/applications/{p['app_id']}", headers=headers, json={"appUsageType": p["usage_type"]})
+    return None if r.success else f"step 1 (PATCH appUsageType): {r.error}"
+
+
+async def _signup_step_set_reg_property(client: Any, headers: dict, p: dict[str, Any]) -> str | None:
+    r = await client.post(_APP_PROPERTY_API, headers=headers,
+        json={"appId": p["app_id"], "clientId": p["client_id"], "name": "REGISTRATION_TYPE", "value": p["reg_type"]})
+    return None if r.success else f"step 2 (REGISTRATION_TYPE): {r.error}"
+
+
+async def _signup_step_add_user_profile(client: Any, headers: dict, p: dict[str, Any], common: dict[str, Any]) -> str | None:
+    r = await client.post(f"/api/security/applications/reg/{p['app_code']}/userProfile", headers=headers,
+        json={**common, "profileId": p["profile_id"]})
+    return None if r.success else f"step 3 (userProfile reg): {r.error}"
+
+
+async def _signup_step_add_file_access(client: Any, headers: dict, app_code: str, common: dict[str, Any]) -> str | None:
+    for resource_type in ("STATIC", "SECURED"):
+        r = await client.post(f"/api/security/applications/reg/{app_code}/fileAccess", headers=headers,
+            json={**common, "resourceType": resource_type, "accessName": "Authorities.Logged_IN",
+                  "writeAccess": True, "path": "", "allowSubPathAccess": True})
+        if not r.success:
+            return f"step 4 (fileAccess {resource_type}): {r.error}"
+    return None
+
+
+async def _signup_step_add_self_access(client: Any, headers: dict, p: dict[str, Any], common: dict[str, Any]) -> str | None:
+    r = await client.post(f"/api/security/applications/reg/{p['app_code']}/appAccess", headers=headers,
+        json={**common, "allowAppId": p["app_id"], "writeAccess": False, "register": False})
+    return None if r.success else f"step 5 (appAccess self): {r.error}"
+
+
+async def _execute_configure_app_for_customer_signup(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    err, p = _validate_signup_params(params)
+    if err or p is None:
+        return ToolResult(success=False, error=err or "invalid params")
+    client, headers = _client_and_headers(context)
+    common = {
+        "clientId": p["client_id"], "appId": p["app_id"], "clientType": p["client_type"],
+        "level": p["level"], "businessType": p["business_type"],
+    }
+    steps = (
+        lambda: _signup_step_set_usage_type(client, headers, p),
+        lambda: _signup_step_set_reg_property(client, headers, p),
+        lambda: _signup_step_add_user_profile(client, headers, p, common),
+        lambda: _signup_step_add_file_access(client, headers, p["app_code"], common),
+        lambda: _signup_step_add_self_access(client, headers, p, common),
+    )
+    for step_fn in steps:
+        e = await step_fn()
+        if e:
+            return ToolResult(success=False, error=e)
+    done = [
+        f"appUsageType → {p['usage_type']}",
+        f"REGISTRATION_TYPE → {p['reg_type']}",
+        f"userProfile reg → profile_id={p['profile_id']} @ level={p['level']}",
+        "fileAccess reg → STATIC + SECURED Authorities.Logged_IN",
+        f"appAccess reg → self-allow ({p['app_code']})",
+    ]
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Configured '{p['app_code']}' for customer signup ({p['usage_type']}/{p['reg_type']}/level={p['level']}):\n  - "
+            + "\n  - ".join(done)
+            + f"\n\nUsers can now self-register via POST /api/security/clients/register with appCode={p['app_code']}; "
+              f"they'll be auto-assigned profile_id={p['profile_id']}."
+        ),
+    )
+
+
+configure_app_for_customer_signup_tool = ToolDefinition(
+    name="configure_app_for_customer_signup",
+    description=(
+        "**Required step for any customer-facing app** — after `create_app` + `create_profile`, call this to "
+        "enable self-service registration. Does all 5 platform-side wires in one call:\n"
+        "  1. PATCH appUsageType → B2C (or whatever you pass)\n"
+        "  2. Set REGISTRATION_TYPE app property (default: REGISTRATION_TYPE_NO_VERIFICATION)\n"
+        "  3. Add `userProfile` reg entry → auto-assigns the given profile to every new registrant\n"
+        "  4. Add `fileAccess` reg entries (STATIC + SECURED, Authorities.Logged_IN)\n"
+        "  5. Add `appAccess` reg entry (self-reference) so the user can reach the app\n\n"
+        "Without this, the app's `create_app` defaults leave it as appUsageType=S (Standalone), which "
+        "BLOCKS /api/security/clients/register with 'Not allowed for Standalone Applications'. The only "
+        "users who can log in are pre-provisioned sysadmins, which is fine for marketing sites but "
+        "fundamentally broken for any product with customers.\n\n"
+        "When to skip: only for internal tools / marketing sites / appbuilder-class apps. If the user "
+        "describes anything customer-facing (POS, ticketing, e-commerce, social, etc.), call this."
+    ),
+    parameters=[
+        ToolParameter(name="app_code", type="string", description=_DESC_TARGET_APP_CODE),
+        ToolParameter(name="app_id", type="string", description="security_app id (numeric) — get from list_security_apps"),
+        ToolParameter(name="profile_id", type="string", description="Profile to auto-assign on registration"),
+        ToolParameter(name="app_usage_type", type="string", required=False, default="B2C", description="B2C (individuals) | B2B (business clients) | B2X (both) | X"),
+        ToolParameter(name="registration_type", type="string", required=False, default="REGISTRATION_TYPE_NO_VERIFICATION", description="One of REGISTRATION_TYPE_NO_VERIFICATION | _VERIFICATION | _CODE_IMMEDIATE_LOGIN_IMMEDIATE"),
+        ToolParameter(name="level", type="string", required=False, description="CLIENT | CUSTOMER | CONSUMER — defaults from usage_type (B2C→CONSUMER, others→CUSTOMER)"),
+        ToolParameter(name="client_id", type="string", required=False, default="1", description="Owning client_id (default 1 = SYSTEM)"),
+        ToolParameter(name="client_type", type="string", required=False, default="INDV", description="IND for individual consumers, BUS for business clients"),
+        ToolParameter(name="business_type", type="string", required=False, default="COMMON", description="Business type code, default COMMON"),
+    ],
+    execute=_execute_configure_app_for_customer_signup,
+)
+
+
 # ── Module export ────────────────────────────────────────────────────────
 
 
@@ -672,6 +1139,15 @@ TOOLS: list[ToolDefinition] = [
     list_roles_tool,
     create_role_tool,
     list_profiles_tool,
+    create_profile_tool,
+    # App properties + app-registration (customer-signup machinery)
+    set_app_property_tool,
+    list_app_properties_tool,
+    update_security_app_tool,
+    add_app_reg_entry_tool,
+    list_app_reg_entries_tool,
+    delete_app_reg_entry_tool,
+    configure_app_for_customer_signup_tool,
     # Org structure
     list_departments_tool,
     list_designations_tool,

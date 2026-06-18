@@ -267,7 +267,13 @@ class StreamChunk:
 
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
-    
+
+    # Whether this provider accepts image content blocks inside `tool_result`
+    # content arrays. Anthropic does (Claude 3+). OpenAI Responses-API does NOT
+    # — its function_call_output is a plain string. DeepSeek/Gemini default
+    # False unless they later add equivalent support. Overridden in subclasses.
+    supports_image_in_tool_result: bool = False
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -409,6 +415,8 @@ class LLMProvider(ABC):
 
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude provider"""
+
+    supports_image_in_tool_result = True
 
     def __init__(self):
         import anthropic
@@ -1545,6 +1553,40 @@ class DeepSeekProvider(LLMProvider):
         yield StreamChunk(type="done", stop_reason=final_stop_reason, usage=final_usage)
 
 
+class MiniMaxProvider(DeepSeekProvider):
+    """MiniMax provider — OpenAI-compatible Chat Completions API.
+
+    Reuses DeepSeekProvider's machinery (streaming, tool use, message
+    shape conversion) since MiniMax exposes the same Chat Completions
+    surface via its OpenAI-compatible endpoint. The only differences:
+    different API key, base URL, model defaults, and no `thinking`
+    extra_body (MiniMax doesn't support DeepSeek's thinking flag).
+    """
+
+    def __init__(self):
+        from openai import OpenAI
+        from app.config import settings
+
+        self.client = OpenAI(
+            api_key=settings.MINIMAX_API_KEY,
+            base_url=settings.MINIMAX_BASE_URL,
+        )
+        self.settings = settings
+        self._models = {
+            "fast": settings.MINIMAX_MODEL_FAST,
+            "balanced": settings.MINIMAX_MODEL_BALANCED,
+        }
+
+    @property
+    def name(self) -> str:
+        return "MiniMax"
+
+    def _is_thinking_tier(self, model_tier: str) -> bool:
+        # MiniMax doesn't expose DeepSeek's `thinking` extra_body flag —
+        # always return False so the OpenAI client doesn't send it.
+        return False
+
+
 # Whitelist of JSON-Schema keys Gemini's protobuf `Schema` actually accepts.
 # Source: google-generativeai's content_types.FunctionDeclaration → Schema
 # protobuf. Anything outside this set raises
@@ -1944,6 +1986,11 @@ def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
             raise ValueError("OPENAI_API_KEY is required when using the openai provider")
         _providers[name] = OpenAIProvider()
         logger.info(f"Initialized OpenAI provider with models: {settings.OPENAI_MODEL_FAST}, {settings.OPENAI_MODEL_BALANCED}")
+    elif name == "minimax":
+        if not getattr(settings, "MINIMAX_API_KEY", ""):
+            raise ValueError("MINIMAX_API_KEY is required when using the minimax provider")
+        _providers[name] = MiniMaxProvider()
+        logger.info(f"Initialized MiniMax provider at {settings.MINIMAX_BASE_URL} with models: {settings.MINIMAX_MODEL_FAST}, {settings.MINIMAX_MODEL_BALANCED}")
     else:
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError("ANTHROPIC_API_KEY is required when using the anthropic provider")

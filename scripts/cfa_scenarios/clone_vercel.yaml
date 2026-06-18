@@ -1,0 +1,88 @@
+name: clone_vercel
+description: |
+  Clone the vercel.com marketing page via the screenshot relay. Heaviest
+  motion content of the three: particle/triangle hero animation,
+  animated deploy-preview block, hover-state comparison grid.
+
+client_code: SYSTEM
+app_code: clonevercel
+app_user:
+  username: sysadmin@modlix.com
+  password: Pass@1234
+
+clone_target:
+  url: https://vercel.com
+  page_name: home
+  scroll_positions: [0.0, 0.5, 1.0]
+  viewport_width: 1440
+  severity_budget:
+    high: 0
+    medium: 4
+
+setup_actions:
+  - type: delete_app
+    app_code: clonevercel
+  - type: mongo_purge_ui
+    app_code: clonevercel
+  - type: mysql_purge_archived
+    app_code: clonevercel
+  - type: evict_app_cache
+    app_code: clonevercel
+    client_code: SYSTEM
+
+turns:
+  - |-
+    Bootstrap clonevercel:
+    1. create_app(app_code="clonevercel", app_type="SITE", default_page="home").
+    2. Theme: very-dark / black background, sharp white text, occasional accent colors. Bind it.
+    Stop. No pages.
+  - |-
+    Capture: `screenshot_external_url(url="https://vercel.com", scroll_positions=["top","middle","bottom"], viewport_widths=[1440])`.
+    Vercel's hero uses WebGL particles — describe in the Gemini structured output what the visible result LOOKS like, then commit one decisions_log entry noting that we'll approximate WebGL particles with CSS animated radial gradients + transform keyframes.
+  - |-
+    Author the HOME hero:
+    - create_page(name="home")
+    - Hero with the animated triangle/particle approximation: stack 5-10 absolutely-positioned small triangle SVGs / divs, each with its own @keyframes orbit/drift animation in the global style doc.
+    - Hero headline + sub-copy + CTA.
+    - screenshot_page to verify.
+    ≤15 tool calls. End turn.
+  - |-
+    Author the middle:
+    - "Animated deploy-preview" block: a Grid mimicking a card with a fake terminal log animating line-by-line via @keyframes typeReveal applied to each row sequentially (animation-delay).
+    - Hover-state feature grid: 3-column grid where each cell has a :hover transform (scale + colored border) defined in the global style doc and referenced from styleProperties.
+    - screenshot_page to verify.
+  - |-
+    Finish HOME — comparison + footer:
+    - Three-tier pricing/comparison block.
+    - Multi-column dark footer.
+    - screenshot_page full-page to verify.
+    - Set defaultPage=home if needed.
+  - |-
+    KB writes:
+    1. propose+commit `overview` for the clonevercel app.
+    2. propose+commit `decisions_log` with ONE entry on the WebGL→CSS approximation, ONE on the hover-state approach.
+  - |-
+    Final summary, no more authoring.
+    Confirm: hero + deploy-preview + hover grid + comparison + footer; global style doc with ≥4 @keyframes; theme bound; KB filled.
+
+kb_expectations:
+  overview: 1
+  decisions_log: 2
+
+verify:
+  - description: Page loads, hero with motion
+    drive_actions:
+      - { type: goto, page_name: home, app_code: clonevercel }
+      - { type: screenshot, label: hero }
+      - { type: wait, ms: 1000 }
+      - { type: screenshot, label: hero-1s }
+  - description: Deploy-preview + hover grid
+    drive_actions:
+      - { type: scroll, by: 900 }
+      - { type: screenshot, label: middle }
+      - { type: hover, selector: "[data-testid=feature-cell], .feature-cell" }
+      - { type: screenshot, label: hover-active }
+  - description: Footer
+    drive_actions:
+      - { type: scroll, to: bottom }
+      - { type: screenshot, label: footer }

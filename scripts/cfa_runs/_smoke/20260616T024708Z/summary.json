@@ -1,0 +1,26 @@
+{
+  "scenario": "_smoke",
+  "app_code": "appbuilder",
+  "session_id": "SYSTEM_338c9d0e",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_338c9d0e",
+      "elapsed_s": 8.41,
+      "events": {
+        "thinking": 43,
+        "tool_start": 2,
+        "tool_result": 2,
+        "text": 29,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 2,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 2,
+  "total_errors": 0,
+  "started_at": "20260616T024708Z",
+  "finished_at": "20260616T024716Z"
+}

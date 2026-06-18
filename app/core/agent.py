@@ -793,10 +793,30 @@ class BaseAgent:
         if not result.success:
             await self._on_tool_error(tool_name, tool_input, result.error or "Unknown error")
 
+        # Multimodal tool_result: when the active provider accepts image
+        # content blocks inside `tool_result.content` (Anthropic does), forward
+        # any screenshot bytes the tool produced as actual image blocks. Without
+        # this the agent on a vision-capable provider only sees a text summary
+        # like "PNG in result.data['image_base64']" — useless. Other providers
+        # keep the plain-string content path.
+        result_content: Any = tool_content
+        try:
+            from app.services.llm_provider import get_llm_provider as _get_llm_provider
+            _provider = _get_llm_provider(self._provider_name)
+            if getattr(_provider, "supports_image_in_tool_result", False):
+                image_blocks = result.extract_anthropic_image_blocks()
+                if image_blocks:
+                    result_content = [
+                        {"type": "text", "text": tool_content},
+                        *image_blocks,
+                    ]
+        except Exception:  # noqa: BLE001
+            pass  # best-effort; fall back to plain text on any provider lookup error
+
         result_block = {
             "type": "tool_result",
             "tool_use_id": tool_use_id,
-            "content": tool_content,
+            "content": result_content,
             "is_error": not result.success,
         }
         # Stamp the elicitation signal on the INTERNAL log_entry (never on

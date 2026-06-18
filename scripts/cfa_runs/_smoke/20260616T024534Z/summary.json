@@ -1,0 +1,19 @@
+{
+  "scenario": "_smoke",
+  "app_code": "appbuilder",
+  "session_id": null,
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": null,
+      "elapsed_s": null,
+      "events": {},
+      "tool_call_count": 0,
+      "error_count": 1
+    }
+  ],
+  "total_tool_calls": 0,
+  "total_errors": 1,
+  "started_at": "20260616T024534Z",
+  "finished_at": "20260616T024534Z"
+}

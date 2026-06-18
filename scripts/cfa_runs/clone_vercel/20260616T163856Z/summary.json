@@ -1,0 +1,113 @@
+{
+  "scenario": "clone_vercel",
+  "app_code": "clonevercel",
+  "session_id": "SYSTEM_2a347cc6",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 40.24,
+      "events": {
+        "text": 35,
+        "tool_start": 16,
+        "tool_result": 16,
+        "keepalive": 2,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 16,
+      "error_count": 0
+    },
+    {
+      "turn": 2,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 20.71,
+      "events": {
+        "text": 46,
+        "tool_start": 3,
+        "tool_result": 3,
+        "keepalive": 1,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 3,
+      "error_count": 0
+    },
+    {
+      "turn": 3,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 63.17,
+      "events": {
+        "text": 38,
+        "keepalive": 4,
+        "tool_start": 46,
+        "tool_result": 46,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 46,
+      "error_count": 0
+    },
+    {
+      "turn": 4,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 67.98,
+      "events": {
+        "text": 55,
+        "tool_start": 40,
+        "tool_result": 40,
+        "keepalive": 4,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 40,
+      "error_count": 0
+    },
+    {
+      "turn": 5,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 78.29,
+      "events": {
+        "keepalive": 5,
+        "tool_start": 100,
+        "tool_result": 100,
+        "text": 35,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 100,
+      "error_count": 0
+    },
+    {
+      "turn": 6,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 15.35,
+      "events": {
+        "text": 20,
+        "tool_start": 2,
+        "tool_result": 2,
+        "keepalive": 1,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 2,
+      "error_count": 0
+    },
+    {
+      "turn": 7,
+      "session_id": "SYSTEM_2a347cc6",
+      "elapsed_s": 4.87,
+      "events": {
+        "text": 18,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 207,
+  "total_errors": 0,
+  "started_at": "20260616T163857Z",
+  "finished_at": "20260616T164348Z"
+}

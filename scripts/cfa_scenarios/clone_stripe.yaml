@@ -1,0 +1,89 @@
+name: clone_stripe
+description: |
+  Clone the stripe.com marketing page via the screenshot relay. Pushes
+  mouse-event interactions (3D card tilt on hover), mesh gradient hero,
+  and animated code-block.
+
+client_code: SYSTEM
+app_code: clonestripe
+app_user:
+  username: sysadmin@modlix.com
+  password: Pass@1234
+
+clone_target:
+  url: https://stripe.com
+  page_name: home
+  scroll_positions: [0.0, 0.5, 1.0]
+  viewport_width: 1440
+  severity_budget:
+    high: 0
+    medium: 4
+
+setup_actions:
+  - type: delete_app
+    app_code: clonestripe
+  - type: mongo_purge_ui
+    app_code: clonestripe
+  - type: mysql_purge_archived
+    app_code: clonestripe
+  - type: evict_app_cache
+    app_code: clonestripe
+    client_code: SYSTEM
+
+turns:
+  - |-
+    Bootstrap clonestripe:
+    1. create_app(app_code="clonestripe", app_type="SITE", default_page="home").
+    2. Create a Stripe-inspired theme (white background, indigo/violet accents around #635bff, well-spaced typography). Bind via update_app.
+    Stop here. No pages yet.
+  - |-
+    Capture: `screenshot_external_url(url="https://stripe.com", scroll_positions=["top","middle","bottom"], viewport_widths=[1440])`.
+    Then propose+commit one decisions_log entry summarizing what the structured description revealed about Stripe's hero gradient + card hover + code block.
+  - |-
+    Author the HOME page hero:
+    - create_page(name="home")
+    - Hero with animated mesh-gradient background (multi-stop linear gradient that animates via @keyframes meshShift in the global style doc).
+    - Hero headline + sub-copy as theme-styled TextLabels.
+    - CTA row below.
+    - screenshot_page to verify the hero against the description.
+    ≤15 tool calls. End turn.
+  - |-
+    Author the middle of HOME — the hover-tilt 3D card:
+    - Add a feature card with the 3D-tilt-on-hover behaviour. The transform live in @keyframes (idle drift) + a :hover transform in the global style doc. Component styleProperties references the named animations.
+    - Author one animated code-block panel below (a Grid with a TextLabel containing the code, and a fake "typing" animation via @keyframes typeReveal).
+    - screenshot_page to verify.
+  - |-
+    Finish HOME — footer + comparison block:
+    - Add a 3-column comparison block (Plus / Lite / Starter) per the description.
+    - Add the multi-column footer.
+    - screenshot_page full-page to verify.
+    - update_app to set defaultPage=home if not already.
+  - |-
+    KB writes:
+    1. propose+commit `overview` describing the clonestripe app.
+    2. propose+commit `decisions_log` with ONE entry on the hover-tilt approach (CSS-only :hover transform vs JS pointermove) and ONE entry on the typing-effect approximation.
+  - |-
+    Final summary, no more authoring:
+    - hero + 3D card + code-block + comparison + footer all present
+    - global style doc with ≥3 @keyframes
+    - theme bound
+    - KB has overview + at least 2 decisions_log entries
+
+kb_expectations:
+  overview: 1
+  decisions_log: 2
+
+verify:
+  - description: Hero gradient renders
+    drive_actions:
+      - { type: goto, page_name: home, app_code: clonestripe }
+      - { type: screenshot, label: hero }
+  - description: Mouse-hover triggers 3D tilt
+    drive_actions:
+      - { type: scroll, by: 600 }
+      - { type: hover, selector: "[data-testid=feature-card], .feature-card" }
+      - { type: screenshot, label: card-tilted }
+  - description: Footer at bottom
+    drive_actions:
+      - { type: scroll, to: bottom }
+      - { type: screenshot, label: footer }

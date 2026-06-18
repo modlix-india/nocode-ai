@@ -1,0 +1,187 @@
+{
+  "scenario": "taskmate",
+  "app_code": "taskmate",
+  "session_id": "SYSTEM_56442620",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 46.35,
+      "events": {
+        "thinking": 702,
+        "text": 455,
+        "tool_start": 9,
+        "tool_result": 9,
+        "keepalive": 3,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 9,
+      "error_count": 0
+    },
+    {
+      "turn": 2,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 186.47,
+      "events": {
+        "thinking": 3639,
+        "text": 664,
+        "keepalive": 12,
+        "tool_start": 32,
+        "tool_result": 32,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 32,
+      "error_count": 0
+    },
+    {
+      "turn": 3,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 49.02,
+      "events": {
+        "thinking": 710,
+        "tool_start": 9,
+        "tool_result": 9,
+        "keepalive": 3,
+        "text": 327,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 9,
+      "error_count": 0
+    },
+    {
+      "turn": 4,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 69.92,
+      "events": {
+        "thinking": 767,
+        "tool_start": 18,
+        "tool_result": 18,
+        "keepalive": 4,
+        "text": 336,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 18,
+      "error_count": 0
+    },
+    {
+      "turn": 5,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 282.49,
+      "events": {
+        "thinking": 8896,
+        "tool_start": 38,
+        "tool_result": 38,
+        "keepalive": 18,
+        "text": 984,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 38,
+      "error_count": 0
+    },
+    {
+      "turn": 6,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 61.27,
+      "events": {
+        "thinking": 1395,
+        "tool_start": 10,
+        "tool_result": 10,
+        "keepalive": 3,
+        "text": 389,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 10,
+      "error_count": 0
+    },
+    {
+      "turn": 7,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 146.39,
+      "events": {
+        "thinking": 2654,
+        "tool_start": 34,
+        "tool_result": 34,
+        "keepalive": 9,
+        "text": 346,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 34,
+      "error_count": 0
+    },
+    {
+      "turn": 8,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 258.34,
+      "events": {
+        "thinking": 4696,
+        "keepalive": 17,
+        "text": 714,
+        "tool_start": 57,
+        "tool_result": 57,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 57,
+      "error_count": 0
+    },
+    {
+      "turn": 9,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 163.3,
+      "events": {
+        "thinking": 1665,
+        "keepalive": 10,
+        "tool_start": 42,
+        "tool_result": 42,
+        "text": 617,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 42,
+      "error_count": 0
+    },
+    {
+      "turn": 10,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 22.25,
+      "events": {
+        "thinking": 131,
+        "tool_start": 3,
+        "tool_result": 3,
+        "text": 556,
+        "keepalive": 1,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 3,
+      "error_count": 0
+    },
+    {
+      "turn": 11,
+      "session_id": "SYSTEM_56442620",
+      "elapsed_s": 50.09,
+      "events": {
+        "thinking": 764,
+        "tool_start": 9,
+        "tool_result": 9,
+        "keepalive": 3,
+        "text": 349,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 9,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 261,
+  "total_errors": 0,
+  "started_at": "20260616T132114Z",
+  "finished_at": "20260616T134330Z"
+}

@@ -1,0 +1,53 @@
+{
+  "app_code": "clonelinear",
+  "client_code": "SYSTEM",
+  "timestamp": "20260617T074914Z",
+  "overall_ok": true,
+  "gates": {
+    "structural": {
+      "gate": "structural",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "ok": true,
+          "detail": "Page 'home' looks structurally valid: 69 components, 0 event functions, rootComponent='root'. (This is a STATIC structural check \u2014 it doesn't run the page in a browser, so semantic errors like 'this expression refers to Page.x but x is never set' won't be caught here.)"
+        }
+      ]
+    },
+    "inventory": {
+      "gate": "inventory",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "components": 69,
+          "ok": true
+        }
+      ],
+      "min_components_per_page": 2
+    },
+    "render": {
+      "gate": "render",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "url": "https://apps.local.modlix.com/clonelinear/SYSTEM/page/home",
+          "title": "Linear \u2014 Project Management for High-Performance Teams",
+          "body_text_chars": 842,
+          "input_count": 0,
+          "button_count": 1,
+          "page_errors": [],
+          "ok": true,
+          "screenshot_b64_len": 289008,
+          "screenshot_path": "scripts/cfa_runs/_evals/clonelinear/20260617T074914Z/render_home.png"
+        }
+      ],
+      "thresholds": {
+        "min_body_text_chars": 50,
+        "min_interactive_elements": 1
+      }
+    }
+  }
+}

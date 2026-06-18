@@ -28,6 +28,13 @@ _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_COMMIT_MSG = "Commit message"
 _DESC_SIZE = "Max rows"
 
+# Default commit messages stamped on create_* / update_* tool writes.
+_DEFAULT_CREATE_MESSAGE = "Created via CFA"
+_DEFAULT_UPDATE_MESSAGE = "Updated via CFA"
+
+# Common validation error messages.
+_ERR_NAME_REQUIRED = "`name` is required"
+
 
 def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
     from app.agents.appbuilder.tools._shared import get_saas_client
@@ -83,8 +90,12 @@ _SECURITY_APPS_API = "/api/security/applications"
 
 async def _execute_list_apps(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     client, headers = _client_and_headers(context)
-    p: dict[str, Any] = {"page": max(0, int(params.get("page") or 0)), "size": _page_size(params, 50, 500)}
-    if params.get("name_filter"):
+    p: dict[str, Any] = {"page": max(0, int(params.get("page") or 0)), "size": _page_size(params, 20, 500)}
+    # Exact-match filter takes precedence — appCode is unique on the server side,
+    # so when the caller knows it there's no reason to paginate.
+    if params.get("app_code"):
+        p["appCode"] = params["app_code"]
+    elif params.get("name_filter"):
         p["name"] = params["name_filter"]
     r = await client.get(_SECURITY_APPS_API, headers=headers, params=p)
     if not r.success:
@@ -101,11 +112,21 @@ async def _execute_list_apps(params: dict[str, Any], context: dict[str, Any]) ->
 
 list_apps_tool = ToolDefinition(
     name="list_apps",
-    description="List applications visible to the caller (via ClientHierarchy). Returns appCode + name + type + accessType.",
+    description="""List applications visible to the caller. Returns appCode + display name + type + accessType.
+
+Choose your lookup path BEFORE calling — most agent waste here is asking for 50 rows then scanning the response:
+
+- **If you already know the appCode** → call `get_app(app_code="…")` instead. Direct fetch, one row, no scanning. `list_apps` is for discovery, not for verifying an app you just created.
+- **If you have the appCode but want a quick "does it exist?" check** → pass `app_code` here for an exact-match lookup (returns 0 or 1 row).
+- **If you only have a partial display name** (e.g. user said "Stalin's Victim" but you don't know the slug) → pass `name_filter`. This is a substring match on the DISPLAY name (`APP_NAME`), not on appCode — fuzzy hits are expected.
+- **Browsing what's available** → no filter; lower the `size` (default 20) if you only need a sample.
+
+Don't paginate to find a specific app you already named in this session. Save its appCode in your reasoning instead.""",
     parameters=[
+        ToolParameter(name="app_code", type="string", required=False, description="Exact appCode to look up (unique key). Returns 0 or 1 row — use this when you already know the appCode."),
+        ToolParameter(name="name_filter", type="string", required=False, description="Substring match on the DISPLAY name (APP_NAME). Fuzzy — returns every match."),
         ToolParameter(name="page", type="integer", required=False, default=0, description="Zero-indexed page"),
-        ToolParameter(name="size", type="integer", required=False, default=50, description=_DESC_SIZE),
-        ToolParameter(name="name_filter", type="string", required=False, description="Server-side substring filter on appCode/name"),
+        ToolParameter(name="size", type="integer", required=False, default=20, description=_DESC_SIZE),
     ],
     execute=_execute_list_apps,
 )
@@ -139,18 +160,27 @@ _APP_ACCESS_TYPES = ("OWN", "ANY", "EXPLICIT")
 
 
 def _validate_create_app_params(params: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
-    """Validate + normalize create_app params. Returns (error_message, normalized_params)."""
+    """Validate + normalize create_app params. Returns (error_message, normalized_params).
+
+    Platform constraint (ApplicationService.java:71-76): name MUST equal appCode,
+    and appCode MUST be alphabet-only (no digits, no separators). We enforce both
+    here so the agent gets a clear error before hitting the gateway.
+    """
     app_code = (params.get("app_code") or "").strip()
-    name = (params.get("name") or "").strip()
-    if not app_code or not name:
-        return "`app_code` and `name` are required", None
-    ne = c.validate_simple_name(app_code)
-    if ne:
-        return ne, None
+    if not app_code:
+        return "`app_code` is required", None
+    if not app_code.isalpha():
+        return (
+            f"`app_code` must be alphabet-only (no digits, no underscores, no dashes); got {app_code!r}",
+            None,
+        )
+    # Platform enforces name == appCode. The `name` param is accepted for backwards
+    # compatibility but is always overridden — never silently accept a different value.
+    name = app_code
     app_type = (params.get("app_type") or "SITE").upper()
     if app_type not in _APP_TYPES:
         return f"app_type must be {'|'.join(_APP_TYPES)}, got {app_type!r}", None
-    app_access_type = (params.get("app_access_type") or "OWN").upper()
+    app_access_type = (params.get("app_access_type") or params.get("access_type") or "OWN").upper()
     if app_access_type not in _APP_ACCESS_TYPES:
         return f"app_access_type must be {'|'.join(_APP_ACCESS_TYPES)}, got {app_access_type!r}", None
     return None, {
@@ -159,47 +189,141 @@ def _validate_create_app_params(params: dict[str, Any]) -> tuple[str | None, dic
     }
 
 
-async def _maybe_upsert_ui_app(
+def _coerce_to_lang_map(value: Any) -> dict[str, dict[str, str]] | None:
+    """Normalize languages input to `Map<String, Map<String, String>>`.
+
+    Accepts either a list of language codes (`["en", "fr"]`) — coerced into
+    `{"en": {}, "fr": {}}` — or an already-shaped dict; returns None for anything
+    else so the field is dropped instead of crashing the platform's Jackson parse.
+    """
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list):
+        out: dict[str, dict[str, str]] = {}
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                out[item.strip()] = {}
+        return out or None
+    return None
+
+
+async def _upsert_ui_app(
     params: dict[str, Any], context: dict[str, Any], app_code: str, name: str, sec_id: Any,
 ) -> ToolResult:
-    """If the caller passed UI-side fields, upsert the UI override doc.
+    """Create the UI-side application override doc. ALWAYS called after the
+    security registration, with at minimum an empty `properties: {}`.
 
-    Skipped when no UI extras are present — matches what the Modlix UI button
-    does (lazy-create on first access). Returns a success ToolResult in both
-    cases (failure of step 2 is downgraded to a hint, since step 1 already
-    landed the app).
+    Why this is mandatory (not optional) — the UI service refuses every
+    /api/ui/applications and /api/ui/pages READ for an app whose UI doc
+    doesn't exist (returns 403 even though the security row is there). The
+    agent then can't list its own pages or update the app definition. The
+    Modlix UI button calls only the security endpoint and relies on the IDE
+    to create the UI doc on first save — that path doesn't exist for the
+    CFA, so it owns both writes.
+
+    Optional UI extras (properties / languages / translations / default_page)
+    layer on top of the empty defaults. `default_page` is a convenience that
+    sets `properties.defaultPage` so the app becomes browser-reachable as
+    soon as the matching page exists.
     """
-    ui_extras = {
-        k: params[k]
-        for k in ("properties", "languages", "translations")
-        if params.get(k)
-    }
-    if not ui_extras:
-        return ToolResult(
-            success=True,
-            summary=f"Created application '{app_code}' (security id={sec_id}). UI-side record will be lazy-created on first access; use update_app to set properties.",
-        )
+    properties = dict(params.get("properties") or {})
+    default_page = (params.get("default_page") or "").strip()
+    if default_page and "defaultPage" not in properties:
+        properties["defaultPage"] = default_page
+
+    # Platform shell (RenderEngineContainer + App.tsx) crashes on missing
+    # `fontPacks` / `iconPacks` — `Cannot read properties of undefined
+    # (reading 'fontPacks')` from src/App/App.tsx:204. Bootstrap an empty
+    # map for both so the shell renders. If the agent later wants real
+    # font packs, it can patch via update_app.
+    properties.setdefault("fontPacks", {})
+    properties.setdefault("iconPacks", {})
+
+    # Platform enforces name == appCode (ApplicationService.java:71-76). Override
+    # whatever caller passed in `name` — never let a different value reach the POST.
     ui_body: dict[str, Any] = {
-        "appCode": app_code, "name": name,
+        "appCode": app_code, "name": app_code,
         "clientCode": _resolve_client_code(params, context),
-        "message": params.get("message") or "Created via CFA",
-        **ui_extras,
+        "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
+        "properties": properties,
     }
+    # `languages` / `translations` are Map<String, Map<String, String>> on the
+    # platform Application bean. List-shaped values (e.g. ["en"]) crash Jackson
+    # with "Failed to read HTTP message". Coerce list -> {code: {}} per item;
+    # silently drop anything else that isn't already a dict.
+    lang = _coerce_to_lang_map(params.get("languages"))
+    if lang:
+        ui_body["languages"] = lang
+    tr = params.get("translations")
+    if isinstance(tr, dict):
+        ui_body["translations"] = tr
+
     client, headers = _client_and_headers(context)
     ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
     if not ui_resp.success:
+        # 409 means a UI doc with this appCode already exists from a prior partial
+        # create — fine, the app is now fully present in both layers. Reads will
+        # succeed against the existing doc. The caller can layer additional
+        # properties via update_app if needed.
+        err_text = str(ui_resp.error or "")
+        if "409" in err_text or "already exists" in err_text.lower():
+            return ToolResult(
+                success=True,
+                summary=(
+                    f"Created security app '{app_code}' (id={sec_id}); UI override "
+                    f"doc was already present from a prior run (409). The app is "
+                    f"fully usable — reads will succeed against the existing UI doc. "
+                    f"If you need to tweak properties/languages/translations, call "
+                    f"update_app."
+                ),
+            )
         return ToolResult(
             success=True,
             summary=(
                 f"Created security app '{app_code}' (id={sec_id}), but the UI "
-                f"override write failed: {ui_resp.error}. Retry with update_app to "
-                f"set properties later."
+                f"override write failed: {ui_resp.error}. The app is "
+                f"PARTIALLY CREATED — listing pages or visiting the app URL "
+                f"will 403 until you retry the UI write via update_app."
             ),
         )
+    next_step = (
+        ""
+        if default_page
+        else " Next: create the first page, then call update_app to set defaultPage so the app becomes browser-reachable."
+    )
     return ToolResult(
         success=True,
-        summary=f"Created application '{app_code}' (security id={sec_id}, ui id={(ui_resp.data or {}).get('id', '?')}).",
+        summary=f"Created application '{app_code}' (security id={sec_id}, ui id={(ui_resp.data or {}).get('id', '?')}).{next_step}",
     )
+
+
+async def _find_security_app_by_code(client: Any, headers: dict, app_code: str) -> dict | None:
+    """Return the existing ACTIVE security_app row for app_code, or None.
+
+    Lets create_app be idempotent: a re-invocation with the same appCode skips
+    the POST (which would 500 on duplicate-key — the platform doesn't map
+    IntegrityConstraintViolationException to 409) and proceeds straight to
+    step 2 (UI doc creation).
+
+    DELETE on the security row soft-archives it (status=ARCHIVED) — the row
+    stays findable but is dead. Treat those as "not found" so the create path
+    can mint a fresh row. The platform's POST will fail on the unique-key if
+    it disagrees; that surfaces as a clear duplicate error rather than the
+    silent "row exists but it's a zombie" trap.
+    """
+    r = await client.get(_SECURITY_APPS_API, headers=headers, params={"appCode": app_code, "size": 5})
+    if not r.success or not isinstance(r.data, dict):
+        return None
+    content = r.data.get("content") or []
+    for row in content:
+        if row.get("appCode") != app_code:
+            continue
+        if (row.get("status") or "").upper() == "ARCHIVED":
+            continue
+        return row
+    return None
 
 
 async def _execute_create_app(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
@@ -209,10 +333,32 @@ async def _execute_create_app(params: dict[str, Any], context: dict[str, Any]) -
 
     client, headers = _client_and_headers(context)
 
-    # Step 1: register the app in the SECURITY service. This is what the Modlix
-    # UI's "Create app" button calls — without it, the AuthorizationWebFilter on
-    # /api/ui/applications rejects writes with 403 because the security service
-    # has no record of the app. The UI-side record is lazy-created on first access.
+    # Step 0: existence check. Without this, a retry after a transient 500
+    # (e.g. duplicate-key returned as 500 by the platform's ControllerAdvice)
+    # makes the LLM think the create failed and pick a new appCode — leaving
+    # orphan rows behind. A bench run created 4 such orphans in one session.
+    existing = await _find_security_app_by_code(client, headers, p["app_code"])
+    if existing:
+        sec_id = existing.get("id", "?")
+        ui_result = await _upsert_ui_app(params, context, p["app_code"], p["name"], sec_id)
+        # Prepend an explicit "already existed" marker so the LLM doesn't
+        # try to pick a different appCode on the next turn.
+        return ToolResult(
+            success=ui_result.success,
+            summary=(
+                f"Security app '{p['app_code']}' already existed (id={sec_id}); "
+                f"skipped re-create. {ui_result.summary or ''}".strip()
+            ),
+            error=ui_result.error,
+            data=ui_result.data,
+        )
+
+    # Step 1: register the app in the SECURITY service. The Modlix UI's "Create
+    # app" button only calls this endpoint; the UI-side override doc gets
+    # written separately when the IDE first saves the app. Without this row,
+    # the AuthorizationWebFilter on /api/ui/applications and /api/ui/pages
+    # rejects every write with 403 because the security service has no
+    # record of the app.
     sec_body: dict[str, Any] = {
         "appCode": p["app_code"],
         "appName": p["name"],
@@ -223,24 +369,61 @@ async def _execute_create_app(params: dict[str, Any], context: dict[str, Any]) -
         sec_body["thumbUrl"] = params["thumb_url"]
     sec_resp = await client.post(_SECURITY_APPS_API, headers=headers, json=sec_body)
     if not sec_resp.success:
+        # 500 on duplicate-key is a platform bug (should be 409). Detect it,
+        # surface a clear "already exists" message instead of a generic 500,
+        # and DO NOT retry with a different appCode.
+        err_text = (sec_resp.error or "").lower()
+        if "duplicate" in err_text and p["app_code"].lower() in err_text:
+            return ToolResult(
+                success=False,
+                error=(
+                    f"App '{p['app_code']}' already exists (security duplicate-key). "
+                    f"DO NOT retry with a different appCode — call create_app again "
+                    f"with the SAME appCode to fall into the idempotent path that "
+                    f"resumes from step 2 (UI doc upsert)."
+                ),
+            )
         return ToolResult(success=False, error=f"Security app registration failed: {sec_resp.error}")
 
-    # Step 2: optionally write the UI-side override doc.
+    # Step 2: write the UI-side override doc. ALWAYS — without it the UI
+    # service rejects every read for this app (including listing its own
+    # pages) and the app stays invisible.
     sec_id = (sec_resp.data or {}).get("id", "?")
-    return await _maybe_upsert_ui_app(params, context, p["app_code"], p["name"], sec_id)
+    return await _upsert_ui_app(params, context, p["app_code"], p["name"], sec_id)
 
 
 create_app_tool = ToolDefinition(
     name="create_app",
-    description="Create a new application. After creation, future tools default to this appCode if set in context.",
+    description="""Create a new application end-to-end. Writes BOTH the security registration AND the UI-side application override doc in one call — both are required for the app to be usable; the security row alone leaves the app invisible (every /api/ui/* read 403s).
+
+Required: `app_code` — letters only (no digits, no underscores, no dashes — the platform enforces `onlyAlphabetAllowed`).
+
+**Important platform rule:** the UI document's `name` MUST equal `app_code` exactly. The `name` parameter is accepted for compatibility but always overridden to match `app_code` — you cannot give the app a separate display name through this tool. If you want a display label, set it via translations later.
+
+Optional but important:
+- `default_page` — the page name to set as `properties.defaultPage`. The app needs a defaultPage to be browser-reachable; pass this if you already know which page will be the landing one. Otherwise, create your first page next, then call `update_app` (or `set_app_page_reference`) to set it.
+- `app_type` — APP (default-routing) | SITE (the common one, default) | POSTER.
+- `app_access_type` — OWN (only the creating client, default) | ANY (every tenant) | EXPLICIT (requires `grant_app_access` per client).
+
+Two-step flow this tool runs:
+1. POST /api/security/applications — registers the app in the security DB so subsequent writes pass authorization.
+2. POST /api/ui/applications — writes the UI override doc (properties / languages / translations). Without this, GET on the app returns 403 even though the security row exists.
+
+After this tool succeeds, the typical next moves are:
+- `create_page(name="home", ...)` — your landing page.
+- If you didn't pass `default_page`, `update_app(app_code=..., properties={"defaultPage": "home"})` — wires the app's entry route.""",
     parameters=[
-        ToolParameter(name="app_code", type="string", description="Unique appCode (letters/digits)"),
-        ToolParameter(name="name", type="string", description="Display name"),
-        ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode"),
-        ToolParameter(name="properties", type="object", required=False, description="App properties (defaultPage, loginPage, shellPage, themes, etc.) — top-level fields, not wrapped in {value:...}"),
+        ToolParameter(name="app_code", type="string", description="Unique appCode (letters ONLY — no digits, no underscores, no dashes — used in URLs and security checks)"),
+        ToolParameter(name="name", type="string", required=False, description="Accepted but always overridden to equal app_code (platform requirement). Pass app_code or omit."),
+        ToolParameter(name="default_page", type="string", required=False, description="Page name to set as properties.defaultPage. Convenience — equivalent to setting it via `properties` later. The page itself doesn't need to exist yet; create it next and the routing links up."),
+        ToolParameter(name="app_type", type="string", required=False, default="SITE", description="APP | SITE | POSTER. SITE is the usual choice for a customer-facing app."),
+        ToolParameter(name="app_access_type", type="string", required=False, default="OWN", description="OWN | ANY | EXPLICIT. OWN restricts to the creating client."),
+        ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode for the UI doc (defaults to session)"),
+        ToolParameter(name="properties", type="object", required=False, description="UI app properties: defaultPage, loginPage, shellPage, forbiddenPage, notFoundPage, signUp, etc. Top-level field names, NOT wrapped in {value:...}."),
         ToolParameter(name="languages", type="array", required=False, description="Supported locale codes, e.g. ['en','hi','ar']"),
         ToolParameter(name="translations", type="object", required=False, description="Translation map: {locale: {translationKey: translatedString}}"),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Created via CFA"),
+        ToolParameter(name="thumb_url", type="string", required=False, description="Thumbnail URL stored on the security app record"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_app,
 )
@@ -249,24 +432,62 @@ create_app_tool = ToolDefinition(
 _VALID_SLOTS = ("defaultPage", "loginPage", "shellPage", "forbiddenPage")
 
 
-async def _execute_set_app_page_reference(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+def _validate_page_ref_params(params: dict[str, Any]) -> tuple[str | None, str, str, str]:
+    """Return (error, slot, page_name, app_code). On error the other fields are empty."""
     slot = (params.get("slot") or "").strip()
     page_name = (params.get("page_name") or "").strip()
     if slot not in _VALID_SLOTS:
-        return ToolResult(success=False, error=f"`slot` must be one of {_VALID_SLOTS}")
+        return f"`slot` must be one of {_VALID_SLOTS}", "", "", ""
     if not page_name:
-        return ToolResult(success=False, error="`page_name` is required")
-    ac = _resolve_app_code(params, context)
-    if not ac:
-        return _err_app_code()
-    client, headers = _client_and_headers(context)
-    listing = await client.get(_APPS_API, headers=headers, params={"page": 0, "size": 50})
+        return "`page_name` is required", "", "", ""
+    return None, slot, page_name, ""
+
+
+async def _lookup_ui_app_by_code(client: Any, headers: dict, app_code: str) -> tuple[dict | None, str | None]:
+    """Find the UI app doc by exact appCode. Returns (row, error_text)."""
+    listing = await client.get(_APPS_API, headers=headers, params={"appCode": app_code, "size": 1})
     if not listing.success:
-        return ToolResult(success=False, error=listing.error)
+        return None, listing.error
     rows = (listing.data or {}).get("content", []) if isinstance(listing.data, dict) else []
-    match = next((a for a in rows if a.get("appCode") == ac), None)
-    if not match:
-        return ToolResult(success=False, error=f"application '{ac}' not found.")
+    match = next((a for a in rows if a.get("appCode") == app_code), None)
+    return match, None
+
+
+async def _create_ui_doc_with_page_ref(
+    client: Any, headers: dict, params: dict[str, Any], context: dict[str, Any],
+    app_code: str, slot: str, page_name: str, message: str,
+) -> ToolResult:
+    """Fallback when the UI doc is missing — create it with the slot pre-set."""
+    ui_body: dict[str, Any] = {
+        "appCode": app_code, "name": app_code,
+        "clientCode": _resolve_client_code(params, context),
+        "message": message,
+        "properties": {slot: page_name},
+    }
+    create_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
+    if not create_resp.success:
+        default_page_hint = page_name if slot == "defaultPage" else ""
+        return ToolResult(
+            success=False,
+            error=(
+                f"UI doc for '{app_code}' was missing AND the auto-create fallback "
+                f"failed: {create_resp.error}. Run `create_app(app_code=\"{app_code}\", "
+                f"name=\"{app_code}\", default_page=\"{default_page_hint}\") "
+                f"first; it has clearer error reporting if the platform "
+                f"authorization is the blocker."
+            ),
+        )
+    return ToolResult(
+        success=True,
+        summary=f"Created missing UI doc for '{app_code}' with {slot}='{page_name}'.",
+    )
+
+
+async def _update_ui_doc_slot(
+    client: Any, headers: dict, match: dict,
+    app_code: str, slot: str, page_name: str, message: str,
+) -> ToolResult:
+    """UI doc exists — fetch detail, merge slot, PUT back."""
     detail = await client.get(f"{_APPS_API}/{match.get('id')}", headers=headers)
     if not detail.success:
         return ToolResult(success=False, error=detail.error)
@@ -274,11 +495,38 @@ async def _execute_set_app_page_reference(params: dict[str, Any], context: dict[
     props = dict(doc.get("properties") or {})
     props[slot] = page_name
     doc["properties"] = props
-    doc["message"] = params.get("message") or "Updated app page reference via CFA"
+    doc["message"] = message
     save = await client.put(f"{_APPS_API}/{match.get('id')}", headers=headers, json=doc)
     if not save.success:
         return ToolResult(success=False, error=save.error)
-    return ToolResult(success=True, summary=f"Set {slot}='{page_name}' on '{ac}'.")
+    return ToolResult(success=True, summary=f"Set {slot}='{page_name}' on '{app_code}'.")
+
+
+async def _execute_set_app_page_reference(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    err, slot, page_name, _ = _validate_page_ref_params(params)
+    if err:
+        return ToolResult(success=False, error=err)
+    ac = _resolve_app_code(params, context)
+    if not ac:
+        return _err_app_code()
+
+    client, headers = _client_and_headers(context)
+    msg = params.get("message") or _DEFAULT_UPDATE_MESSAGE
+
+    # Look up the UI app doc by exact appCode. If not present, FALL BACK to
+    # POST /api/ui/applications with the slot already set — the app may have
+    # only a security row (orphan from a prior session or from the
+    # security-only create flow). Without this fallback the agent gets stuck
+    # in a "403 on update, no path forward" loop.
+    match, lookup_err = await _lookup_ui_app_by_code(client, headers, ac)
+    if lookup_err:
+        return ToolResult(success=False, error=lookup_err)
+
+    if not match:
+        return await _create_ui_doc_with_page_ref(
+            client, headers, params, context, ac, slot, page_name, msg,
+        )
+    return await _update_ui_doc_slot(client, headers, match, ac, slot, page_name, msg)
 
 
 set_app_page_reference_tool = ToolDefinition(
@@ -306,14 +554,25 @@ async def _execute_update_app(params: dict[str, Any], context: dict[str, Any]) -
     if params.get("name") is not None:
         body["name"] = params["name"]
     if params.get("properties") is not None:
-        body.setdefault("properties", {}).update(params["properties"])
+        # App-level properties are stored as RAW values (e.g. loginPage: "login")
+        # — not wrapped in {value: "..."} like component properties. Auto-unwrap
+        # any over-wrapped scalars the agent passes so we don't end up with
+        # properties.loginPage = {value: "login"}, which the platform reads as
+        # a truthy dict and skips the login-page substitution.
+        cleaned: dict[str, Any] = {}
+        for k, v in params["properties"].items():
+            if isinstance(v, dict) and set(v.keys()) == {"value"} and not isinstance(v["value"], (dict, list)):
+                cleaned[k] = v["value"]
+            else:
+                cleaned[k] = v
+        body.setdefault("properties", {}).update(cleaned)
     if params.get("languages") is not None:
         body["languages"] = params["languages"]
     if params.get("default_language") is not None:
         body["defaultLanguage"] = params["default_language"]
     if params.get("version") is not None:
         body["version"] = params["version"]
-    body["message"] = params.get("message") or "Updated via CFA"
+    body["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
     r = await client.put(f"{_APPS_API}/{app_id}", headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
@@ -330,7 +589,7 @@ update_app_tool = ToolDefinition(
         ToolParameter(name="languages", type="array", required=False, description="Supported languages"),
         ToolParameter(name="default_language", type="string", required=False, description="Default language code"),
         ToolParameter(name="version", type="integer", required=False, description="Expected version (optimistic lock)"),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Updated via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_UPDATE_MESSAGE),
     ],
     execute=_execute_update_app,
 )
@@ -421,7 +680,7 @@ async def _execute_get_theme(params: dict[str, Any], context: dict[str, Any]) ->
         return _err_app_code()
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     client, headers = _client_and_headers(context)
     doc, err = await _find_by_name(client, headers, _THEMES_API, ac, name)
     if err:
@@ -474,7 +733,7 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     cc = _resolve_client_code(params, context)
     body = {
         "name": name, "appCode": ac, "clientCode": cc,
-        "variables": variables, "message": params.get("message") or "Created via CFA",
+        "variables": variables, "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
     }
     client, headers = _client_and_headers(context)
     r = await client.post(_THEMES_API, headers=headers, json=body)
@@ -491,7 +750,7 @@ create_theme_tool = ToolDefinition(
         ToolParameter(name="variables", type="object", description="Per-breakpoint variables: {ALL: {colorOne: '#50BC9B'}, MOBILE_POTRAIT_SCREEN_ONLY: {messageContainerWidth: '100vw'}, ...}"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Created via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_theme,
 )
@@ -514,7 +773,7 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     if err or doc is None:
         return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
     doc["variables"] = variables
-    doc["message"] = params.get("message") or "Updated via CFA"
+    doc["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
     save = await client.put(f"{_THEMES_API}/{doc.get('id')}", headers=headers, json=doc)
     if not save.success:
         return ToolResult(success=False, error=save.error)
@@ -528,7 +787,7 @@ update_theme_tool = ToolDefinition(
         ToolParameter(name="name", type="string", description="Theme name to update"),
         ToolParameter(name="variables", type="object", description="Replacement per-breakpoint variable map"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Updated via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_UPDATE_MESSAGE),
     ],
     execute=_execute_update_theme,
 )
@@ -537,7 +796,7 @@ update_theme_tool = ToolDefinition(
 async def _execute_delete_theme(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     ac = _resolve_app_code(params, context)
     if not ac:
         return _err_app_code()
@@ -602,7 +861,7 @@ async def _execute_get_style(params: dict[str, Any], context: dict[str, Any]) ->
         return _err_app_code()
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     client, headers = _client_and_headers(context)
     doc, err = await _find_by_name(client, headers, _STYLES_API, ac, name)
     if err or doc is None:
@@ -641,7 +900,7 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     name = (params.get("name") or "").strip()
     css = params.get("css") or ""
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     ne = c.validate_simple_name(name)
     if ne:
         return ToolResult(success=False, error=ne)
@@ -651,7 +910,7 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     cc = _resolve_client_code(params, context)
     body = {
         "name": name, "appCode": ac, "clientCode": cc, "styleString": css,
-        "message": params.get("message") or "Created via CFA",
+        "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
     }
     client, headers = _client_and_headers(context)
     r = await client.post(_STYLES_API, headers=headers, json=body)
@@ -668,7 +927,7 @@ create_style_tool = ToolDefinition(
         ToolParameter(name="css", type="string", description="Raw CSS string"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Created via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_style,
 )
@@ -687,7 +946,7 @@ async def _execute_update_style(params: dict[str, Any], context: dict[str, Any])
     if err or doc is None:
         return ToolResult(success=False, error=f"style '{name}' {err or 'not found'}")
     doc["styleString"] = css
-    doc["message"] = params.get("message") or "Updated via CFA"
+    doc["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
     save = await client.put(f"{_STYLES_API}/{doc.get('id')}", headers=headers, json=doc)
     if not save.success:
         return ToolResult(success=False, error=save.error)
@@ -701,7 +960,7 @@ update_style_tool = ToolDefinition(
         ToolParameter(name="name", type="string", description="Style name to update"),
         ToolParameter(name="css", type="string", description="Replacement raw CSS string"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Updated via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_UPDATE_MESSAGE),
     ],
     execute=_execute_update_style,
 )
@@ -710,7 +969,7 @@ update_style_tool = ToolDefinition(
 async def _execute_delete_style(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     ac = _resolve_app_code(params, context)
     if not ac:
         return _err_app_code()
@@ -778,7 +1037,7 @@ async def _execute_get_uri_path(params: dict[str, Any], context: dict[str, Any])
         return _err_app_code()
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     client, headers = _client_and_headers(context)
     doc, err = await _find_by_name(client, headers, _URI_PATHS_API, ac, name)
     if err or doc is None:
@@ -820,7 +1079,7 @@ async def _execute_create_uri_path(params: dict[str, Any], context: dict[str, An
     body = {
         "name": name, "appCode": ac, "clientCode": cc,
         "pathString": path_string, "pathDefinitions": path_definitions,
-        "message": params.get("message") or "Created via CFA",
+        "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
     }
     client, headers = _client_and_headers(context)
     r = await client.post(_URI_PATHS_API, headers=headers, json=body)
@@ -838,7 +1097,7 @@ create_uri_path_tool = ToolDefinition(
         ToolParameter(name="path_definitions", type="object", description="Per-method bindings: {GET: {uriType: 'KIRUN_FUNCTION', kiRunFxDefinition: {name, namespace, pathParamMapping: {pathParam: functionParam}}}, POST: {...}, ...}"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Created via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_uri_path,
 )
@@ -847,7 +1106,7 @@ create_uri_path_tool = ToolDefinition(
 async def _execute_update_uri_path(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     ac = _resolve_app_code(params, context)
     if not ac:
         return _err_app_code()
@@ -869,7 +1128,7 @@ async def _execute_update_uri_path(params: dict[str, Any], context: dict[str, An
         changed.append("pathDefinitions")
     if not changed:
         return ToolResult(success=True, summary="No-op: nothing to update.")
-    doc["message"] = params.get("message") or "Updated via CFA"
+    doc["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
     save = await client.put(f"{_URI_PATHS_API}/{doc.get('id')}", headers=headers, json=doc)
     if not save.success:
         return ToolResult(success=False, error=save.error)
@@ -884,7 +1143,7 @@ update_uri_path_tool = ToolDefinition(
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="path_string", type="string", required=False, description="New URL template"),
         ToolParameter(name="path_definitions", type="object", required=False, description="Replacement per-method bindings"),
-        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Updated via CFA"),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_UPDATE_MESSAGE),
     ],
     execute=_execute_update_uri_path,
 )
@@ -893,7 +1152,7 @@ update_uri_path_tool = ToolDefinition(
 async def _execute_delete_uri_path(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     name = (params.get("name") or "").strip()
     if not name:
-        return ToolResult(success=False, error="`name` is required")
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
     ac = _resolve_app_code(params, context)
     if not ac:
         return _err_app_code()

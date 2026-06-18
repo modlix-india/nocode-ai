@@ -395,12 +395,48 @@ async def _execute_replace_page_definition(params: dict[str, Any], context: dict
         return ToolResult(success=False, error="`name`, `component_definition` (dict), and `root_component` are required")
     if root_component not in component_definition:
         return ToolResult(success=False, error=f"root_component={root_component!r} is not a key in component_definition")
+
+    # Coerce per-component property + binding + style shapes so the agent can
+    # write the friendly shapes (bare-string Page.x bindings, flat CSS maps).
+    coerced_defn: dict[str, Any] = {}
+    coercion_errors: list[str] = []
+    for k, comp in component_definition.items():
+        if not isinstance(comp, dict):
+            coerced_defn[k] = comp
+            continue
+        new_comp = dict(comp)
+        # Properties
+        if isinstance(new_comp.get("properties"), dict):
+            new_comp["properties"] = {
+                pk: c.coerce_property_value(pv) for pk, pv in new_comp["properties"].items()
+            }
+        # bindingPath* slots (flat on the component, not nested)
+        bp_map = {bk: bv for bk, bv in new_comp.items() if bk.startswith("bindingPath")}
+        if bp_map:
+            wrapped, errs = c.coerce_binding_paths_map(bp_map)
+            if errs:
+                coercion_errors.extend([f"{k}.{e}" for e in errs])
+            elif wrapped is not None:
+                for bk in bp_map:
+                    new_comp.pop(bk, None)
+                new_comp.update(wrapped)
+        # styleProperties
+        if "styleProperties" in new_comp:
+            wrapped_styles, serr = c.coerce_style_properties(new_comp["styleProperties"])
+            if serr:
+                coercion_errors.append(f"{k}.styleProperties: {serr}")
+            else:
+                new_comp["styleProperties"] = wrapped_styles or {}
+        coerced_defn[k] = new_comp
+    if coercion_errors:
+        return ToolResult(success=False, error="; ".join(coercion_errors))
+
     event_functions = params.get("event_functions")
     properties = params.get("properties")
 
     def mutate(page: dict[str, Any]) -> str | None:
         page["rootComponent"] = root_component
-        page["componentDefinition"] = component_definition
+        page["componentDefinition"] = coerced_defn
         if event_functions is not None:
             page["eventFunctions"] = event_functions
         if properties is not None:
@@ -427,6 +463,180 @@ replace_page_definition_tool = ToolDefinition(
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
     execute=_execute_replace_page_definition,
+)
+
+
+# ── validate_page ─────────────────────────────────────────────────────────
+
+
+def _check_property_value(comp_key: str, prop: str, val: Any) -> list[str]:
+    """Return list of violations for one component property value."""
+    if not isinstance(val, dict):
+        return [f"{comp_key}.properties.{prop}: not a dict; expected {{value: ...}} or {{location: ...}}"]
+    if "value" in val:
+        return []  # literal — anything wrapped is acceptable
+    if "location" in val:
+        loc = val["location"]
+        if not isinstance(loc, dict):
+            return [f"{comp_key}.properties.{prop}.location: not a dict"]
+        t = loc.get("type")
+        if t not in ("VALUE", "EXPRESSION"):
+            return [f"{comp_key}.properties.{prop}.location.type: expected VALUE|EXPRESSION, got {t!r}"]
+        if "value" not in loc and "expression" not in loc:
+            return [f"{comp_key}.properties.{prop}.location: missing both `value` and `expression`"]
+        return []
+    return [f"{comp_key}.properties.{prop}: missing both `value` and `location`"]
+
+
+def _check_style_properties(comp_key: str, sp: Any) -> list[str]:
+    """Return list of violations for one component's styleProperties map."""
+    if sp is None or sp == {}:
+        return []
+    if not isinstance(sp, dict):
+        return [f"{comp_key}.styleProperties: not a dict"]
+    errs: list[str] = []
+    for rule_id, rule in sp.items():
+        if not isinstance(rule, dict):
+            errs.append(f"{comp_key}.styleProperties[{rule_id}]: not a dict")
+            continue
+        if "resolutions" not in rule and "condition" not in rule:
+            errs.append(f"{comp_key}.styleProperties[{rule_id}]: missing `resolutions`")
+            continue
+        res = rule.get("resolutions")
+        if not isinstance(res, dict):
+            errs.append(f"{comp_key}.styleProperties[{rule_id}].resolutions: not a dict")
+            continue
+        for bp, leaves in res.items():
+            if not isinstance(leaves, dict):
+                errs.append(f"{comp_key}.styleProperties[{rule_id}].resolutions.{bp}: not a dict")
+                continue
+            for prop, leaf in leaves.items():
+                if not isinstance(leaf, dict):
+                    errs.append(f"{comp_key}.styleProperties[{rule_id}].resolutions.{bp}.{prop}: not wrapped as {{value: ...}}")
+                elif "value" not in leaf and "location" not in leaf:
+                    errs.append(f"{comp_key}.styleProperties[{rule_id}].resolutions.{bp}.{prop}: missing both `value` and `location`")
+    return errs
+
+
+def _check_binding_paths(comp_key: str, comp: dict[str, Any]) -> list[str]:
+    """Return list of violations for bindingPath* slots."""
+    errs: list[str] = []
+    for k, v in comp.items():
+        if not k.startswith("bindingPath"):
+            continue
+        if not isinstance(v, dict):
+            errs.append(f"{comp_key}.{k}: not a dict; expected {{type: 'VALUE', value: 'Page.x'}}")
+            continue
+        if "type" not in v:
+            errs.append(f"{comp_key}.{k}: missing `type` key (must be VALUE or EXPRESSION)")
+        if "value" not in v and "expression" not in v:
+            errs.append(f"{comp_key}.{k}: missing both `value` and `expression`")
+        path = v.get("value") or v.get("expression")
+        if isinstance(path, str):
+            m = c._BINDING_PATH_HEAD_RE.match(path.strip())
+            if m and m.group(1) not in c.EXPRESSION_PREFIXES:
+                errs.append(f"{comp_key}.{k}: '{path}' has invalid prefix '{m.group(1)}'")
+    return errs
+
+
+async def _execute_validate_page(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    """Walk a page's stored definition; report every shape violation in one go."""
+    name = (params.get("name") or "").strip()
+    if not name:
+        return ToolResult(success=False, error="`name` is required")
+    ac, err_result = _resolve_app_code(params, context)
+    if err_result:
+        return err_result
+    client, headers = _client_and_headers(context)
+    page, err = await p_ops.fetch_page_by_name(client, name, ac, headers)
+    if err:
+        return ToolResult(success=False, error=err)
+    assert page is not None
+
+    violations: list[str] = []
+    # Structural checks (orphans, dangling children, missing root) come
+    # from the shared validate_page_structure helper.
+    violations.extend(p_ops.validate_page_structure(page))
+
+    root_key = page.get("rootComponent")
+    comp_def = page.get("componentDefinition") or {}
+
+    for comp_key, comp in comp_def.items():
+        if not isinstance(comp, dict):
+            violations.append(f"componentDefinition[{comp_key}]: not a dict")
+            continue
+        if not comp.get("type"):
+            violations.append(f"{comp_key}: missing `type`")
+        # Children references must resolve.
+        children = comp.get("children")
+        if isinstance(children, dict):
+            for child_key in children:
+                if child_key not in comp_def:
+                    violations.append(f"{comp_key}.children: '{child_key}' is not a key in componentDefinition")
+        # Properties shape.
+        props = comp.get("properties")
+        if isinstance(props, dict):
+            for pk, pv in props.items():
+                violations.extend(_check_property_value(comp_key, pk, pv))
+        # styleProperties shape.
+        violations.extend(_check_style_properties(comp_key, comp.get("styleProperties")))
+        # bindingPath* shape.
+        violations.extend(_check_binding_paths(comp_key, comp))
+
+    # Event-fn name references in onClick/onChange/etc properties resolve.
+    event_fns = page.get("eventFunctions") or {}
+    event_fn_names = {(v or {}).get("name") for v in event_fns.values() if isinstance(v, dict)}
+    event_fn_names.discard(None)
+    event_fn_keys = set(event_fns.keys())
+    for comp_key, comp in comp_def.items():
+        if not isinstance(comp, dict):
+            continue
+        for prop_name in ("onClick", "onChange", "onBlur", "onFocus", "onLoad", "onSubmit"):
+            v = (comp.get("properties") or {}).get(prop_name)
+            if not isinstance(v, dict):
+                continue
+            ref = v.get("value")
+            if not isinstance(ref, str) or not ref:
+                continue
+            if ref not in event_fn_names and ref not in event_fn_keys:
+                violations.append(f"{comp_key}.{prop_name}: '{ref}' does not match any eventFunctions name or key")
+
+    if violations:
+        body = "\n".join(f"- {v}" for v in violations[:200])
+        more = f"\n...(+{len(violations) - 200} more)" if len(violations) > 200 else ""
+        return ToolResult(
+            success=False,
+            error=f"Found {len(violations)} shape violation(s) on page '{name}':\n{body}{more}",
+        )
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Page '{name}' looks structurally valid: {len(comp_def)} components, "
+            f"{len(event_fns)} event functions, rootComponent='{root_key}'. "
+            "(This is a STATIC structural check — it doesn't run the page in a browser, "
+            "so semantic errors like 'this expression refers to Page.x but x is never set' "
+            "won't be caught here.)"
+        ),
+    )
+
+
+validate_page_tool = ToolDefinition(
+    name="validate_page",
+    description="""Walk a page's stored definition and report every shape violation in one go. Use after composing a page (and before saying \"done\") to catch the failure modes the renderer would only surface in browser console:
+
+- Unwrapped CSS leaves (e.g. `display: "flex"` instead of `display: {value: "flex"}`) — the engine parses naked values as Modlix expressions and fails (`"8px"` → "unexpected token px").
+- Bare-string `bindingPath` slots not wrapped as `{type: "VALUE", value: "..."}`.
+- Property values missing both `value` and `location`.
+- Child component references that don't resolve (`children: {x: true}` where x is missing).
+- `onClick` / `onChange` values that don't match any event-function name or key.
+- `rootComponent` pointing at a key that's not in componentDefinition.
+
+Returns success with a clean summary if no violations, or a failure with a numbered violation list (capped at 200) when something is broken. Caveat: this is structural — it does NOT execute the page, so semantic bugs (e.g. an expression that refers to Page state that's never initialized) will pass validation here and only show up in the browser.""",
+    parameters=[
+        ToolParameter(name="name", type="string", description="Page name to validate"),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+    ],
+    execute=_execute_validate_page,
 )
 
 
@@ -808,12 +1018,32 @@ async def _execute_add_component(params: dict[str, Any], context: dict[str, Any]
     if not page_name or not parent_key or not component_type:
         return ToolResult(success=False, error="`page_name`, `parent_key`, `component_type` are required")
 
-    properties = params.get("properties")
-    verr = _validate_properties(component_type, properties)
+    raw_properties = params.get("properties")
+    verr = _validate_properties(component_type, raw_properties)
     if verr:
         return ToolResult(success=False, error=verr)
 
-    wrapped_properties = c.wrap_props_catalog_aware(component_type, properties, None) if properties else None
+    # Auto-detect Page.x / Store.x strings in raw properties and wrap them
+    # as expression-shape instead of literals — eliminates the failure mode
+    # where the agent writes {text: "Page.title"} expecting interpolation.
+    if isinstance(raw_properties, dict):
+        coerced_properties = {k: c.coerce_property_value(v) for k, v in raw_properties.items()}
+    else:
+        coerced_properties = None
+    wrapped_properties = c.wrap_props_catalog_aware(component_type, coerced_properties, None) if coerced_properties else None
+
+    # Inline style_properties: accept flat OR canonical shape; emit canonical.
+    style_props_in = params.get("style_properties")
+    coerced_styles, style_err = c.coerce_style_properties(style_props_in)
+    if style_err:
+        return ToolResult(success=False, error=f"style_properties: {style_err}")
+
+    # binding_paths: bare strings allowed; auto-wrap.
+    raw_bindings = params.get("binding_paths")
+    coerced_bindings, bind_errs = c.coerce_binding_paths_map(raw_bindings)
+    if bind_errs:
+        return ToolResult(success=False, error="binding_paths: " + "; ".join(bind_errs))
+
     key = (params.get("component_key") or "").strip() or str(uuid.uuid4())
 
     def mutate(page: dict[str, Any]) -> str | None:
@@ -824,8 +1054,8 @@ async def _execute_add_component(params: dict[str, Any], context: dict[str, Any]
             component_type=component_type,
             name=params.get("name") or component_type.lower(),
             properties=wrapped_properties,
-            style_properties=params.get("style_properties"),
-            binding_paths=params.get("binding_paths"),
+            style_properties=coerced_styles,
+            binding_paths=coerced_bindings,
             display_order=int(params.get("display_order") or 0),
         )
 
@@ -839,40 +1069,49 @@ add_component_tool = ToolDefinition(
     name="add_component",
     description="""Add a new component under `parent_key` on a page. Returns the new component's key. Use this to populate a freshly-created page or to insert a new component into an existing layout.
 
-Common shapes:
-
-Add a Button under the root Grid:
 ```
 add_component(
     page_name="contact",
     parent_key="root",
     component_type="Button",
     component_key="submitBtn",
-    properties={"label": "Submit", "onClick": "handleSubmit"}
+    properties={"label": "Submit", "onClick": "handleSubmit"},
 )
 ```
 
-Add a TextBox with two-way data binding (the input writes into Page.user.email):
+A TextBox with two-way data binding — pass `binding_paths` as bare strings; the tool wraps them:
 ```
 add_component(
-    page_name="contact",
-    parent_key="formGrid",
+    page_name="login",
+    parent_key="card",
     component_type="TextBox",
     component_key="emailInput",
-    properties={"label": "Email", "placeholder": "you@example.com"},
-    binding_paths={"bindingPath": {"value": "Page.user.email"}}
+    properties={"label": "Email", "placeholder": "you@example.com", "updateStoreImmediately": True},
+    binding_paths={"bindingPath": "Page.user.email"},
 )
 ```
 
-Key rules:
-- `parent_key="root"` is the top of the page tree. `root` always exists after `create_page`. Other valid parents are any Grid/Container/etc. you've already added.
-- `component_type` is the catalog name: `Button`, `TextBox`, `Grid`, `Dropdown`, `Table`, `Image`, etc. Use the `components` group to look up unfamiliar types via `list_component_types` or `get_component_schema`.
-- `component_key` is optional — provide a meaningful slug (`submitBtn`, `emailInput`) for readability. If omitted, a UUID is generated.
-- `properties` values are auto-wrapped: pass plain values like `{"label": "Submit"}` and the tool wraps them into `{"label": {"value": "Submit"}}`. For expression bindings, pass the dict shape directly: `{"label": {"location": {"type": "EXPRESSION", "value": "Page.formTitle"}}}`.
-- `binding_paths` is for `bindingPath` / `bindingPath2`…`bindingPath6` ONLY — see the component-types reference for which components need binding (TextBox, Dropdown, ArrayRepeater, Table, etc.).
-- `style_properties` follows the same nested shape as `patch_component_styles` — see the styling walkthrough for the exact structure.
+Inline styles — pass a FLAT CSS dict; the tool wraps it into the canonical {rule_uuid:{resolutions:{ALL:{prop:{value:...}}}}} shape:
+```
+add_component(
+    ...,
+    style_properties={"display": "flex", "padding": "16px", "backgroundColor": "#fff"},
+)
+```
 
-For multiple sibling components, call `add_component` once per component. There's no bulk-add — but each call is cheap (single PATCH).""",
+Auto-coercions the tool applies for you (you DON'T have to spell the shape yourself):
+- `properties` values: bare strings are wrapped as `{value: "..."}`; strings that start with a Modlix expression prefix (Page/Store/LocalStore/Parent/Theme/Url/Filler) become `{location: {type: "EXPRESSION", value: "..."}}` automatically.
+- `binding_paths` values: bare strings like `"Page.email"` become `{type: "VALUE", value: "Page.email"}`. Invalid prefixes are rejected with a clear error — the platform would silently store garbage otherwise.
+- `style_properties`: flat `{cssProp: cssValue}` map gets wrapped to the canonical shape (one auto-uuid rule under the ALL breakpoint, each leaf wrapped as `{value: ...}`).
+
+Key rules:
+- `parent_key="root"` is the top of the page tree (always exists after `create_page`). Otherwise, pass any Grid/Container key you've already added.
+- `component_type` is the catalog name: `Button`, `TextBox`, `Grid`, `Dropdown`, `Table`, `Image`, etc. Use `list_component_types` / `get_component_schema` for unfamiliar types.
+- `component_key` is optional — provide a meaningful slug (`submitBtn`, `emailInput`) for readability; UUID auto-assigned if omitted.
+- `binding_paths` is for `bindingPath` / `bindingPath2`…`bindingPath6` ONLY (TextBox, Dropdown, ArrayRepeater, Table need them).
+- For BREAKPOINT-specific styles or pseudo-states (`:hover`), use `patch_component_styles` after the add. `add_component`'s inline shape is for the common single-breakpoint case.
+
+There's no bulk-add — call once per component. Each call is a single PATCH on the page.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page to modify"),
         ToolParameter(name="parent_key", type="string", description="Parent component key (use 'root' for page root)"),
@@ -900,6 +1139,8 @@ async def _execute_update_component_props(params: dict[str, Any], context: dict[
     if not page_name or not component_key or not isinstance(properties, dict):
         return ToolResult(success=False, error="`page_name`, `component_key`, `properties` (dict) are required")
 
+    coerced_props = {k: c.coerce_property_value(v) for k, v in properties.items()}
+
     def mutate(page: dict[str, Any]) -> str | None:
         comp = (page.get("componentDefinition") or {}).get(component_key)
         if comp is None:
@@ -907,7 +1148,7 @@ async def _execute_update_component_props(params: dict[str, Any], context: dict[
         verr = _validate_properties(comp.get("type") or "", properties)
         if verr:
             return verr
-        wrapped = c.wrap_props_catalog_aware(comp.get("type") or "", properties, comp.get("properties") or {})
+        wrapped = c.wrap_props_catalog_aware(comp.get("type") or "", coerced_props, comp.get("properties") or {})
         return p_ops.update_component(page, component_key=component_key, properties=wrapped)
 
     ok, err = await _load_save(page_name, context, params, mutate, params.get("message") or "Updated component props via CFA")
@@ -1036,9 +1277,14 @@ delete_style_rule_tool = ToolDefinition(
 async def _execute_set_bindings(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     page_name = (params.get("page_name") or "").strip()
     component_key = (params.get("component_key") or "").strip()
-    binding_paths = params.get("binding_paths") or {}
-    if not page_name or not component_key or not isinstance(binding_paths, dict):
-        return ToolResult(success=False, error="`page_name`, `component_key`, `binding_paths` (dict) are required")
+    # Allow legacy `binding_paths` AND the more natural single `binding_path` arg.
+    bp_single = params.get("binding_path")
+    raw_paths = params.get("binding_paths") or ({"bindingPath": bp_single} if bp_single is not None else {})
+    if not page_name or not component_key or not isinstance(raw_paths, dict) or not raw_paths:
+        return ToolResult(success=False, error="`page_name`, `component_key`, and either `binding_path` (bare string) or `binding_paths` (dict) are required")
+    binding_paths, errs = c.coerce_binding_paths_map(raw_paths)
+    if errs:
+        return ToolResult(success=False, error="; ".join(errs))
 
     def mutate(page: dict[str, Any]) -> str | None:
         return p_ops.update_component(page, component_key=component_key, binding_paths=binding_paths)
@@ -1051,11 +1297,27 @@ async def _execute_set_bindings(params: dict[str, Any], context: dict[str, Any])
 
 set_bindings_tool = ToolDefinition(
     name="set_bindings",
-    description="Set one or more bindingPath* keys on a component (bindingPath, bindingPath2, ...).",
+    description="""Set bindingPath* keys on a component. The tool auto-wraps bare strings into the canonical {type:"VALUE", value:"..."} shape — pass `binding_path="Page.email"` and it just works. Paths must start with one of Page / Store / LocalStore / Parent / Theme / Url / Filler.
+
+Common single-slot use (TextBox, Dropdown):
+```
+set_bindings(page_name="login", component_key="emailInput", binding_path="Page.email")
+```
+
+Multi-slot use (Table, ArrayRepeater — slots 2-6 carry pagination, sort, selection state):
+```
+set_bindings(page_name="users", component_key="usersTable", binding_paths={
+    "bindingPath": "Page.users",
+    "bindingPath3": "Page.usersTable.pageNumber",
+})
+```
+
+Errors loudly if the path's head isn't a Modlix expression prefix — the platform would silently store garbage otherwise.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
         ToolParameter(name="component_key", type="string", description="Component key"),
-        ToolParameter(name="binding_paths", type="object", description="Map of {bindingPath: {type, value/expression}}"),
+        ToolParameter(name="binding_path", type="string", required=False, description="Single bare-string binding path for slot `bindingPath` (e.g. 'Page.email'). Use this OR binding_paths."),
+        ToolParameter(name="binding_paths", type="object", required=False, description="Map of {bindingPath|bindingPath2|...: 'Page.x' OR {type, value}}. Bare strings get auto-wrapped."),
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
@@ -1249,9 +1511,10 @@ async def _execute_bulk_patch_component_props(params: dict[str, Any], context: d
         matched_keys.extend(k for k, _ in matches)
         if dry_run:
             return None
+        coerced = {pk: c.coerce_property_value(pv) for pk, pv in properties.items()}
         for _key, comp in matches:
             existing_props = dict(comp.get("properties") or {})
-            wrapped = c.wrap_props_catalog_aware(comp.get("type") or "", properties, existing_props)
+            wrapped = c.wrap_props_catalog_aware(comp.get("type") or "", coerced, existing_props)
             existing_props.update(wrapped)
             comp["properties"] = existing_props
         return None
@@ -1377,9 +1640,10 @@ async def _execute_patch_component_props(params: dict[str, Any], context: dict[s
     verr = _validate_properties(comp.get("type") or "", properties)
     if verr:
         return ToolResult(success=False, error=verr)
+    coerced_props = {k: c.coerce_property_value(v) for k, v in properties.items()}
     existing = dict(comp)
     existing_props = dict(existing.get("properties") or {})
-    wrapped = c.wrap_props_catalog_aware(comp.get("type") or "", properties, existing_props)
+    wrapped = c.wrap_props_catalog_aware(comp.get("type") or "", coerced_props, existing_props)
     existing_props.update(wrapped)
     existing["properties"] = existing_props
     ok, err = await _patch_component_on_server(page_name, component_key, existing, context, params.get("message") or "Patched props via CFA")
@@ -1451,9 +1715,13 @@ Hard rules:
 async def _execute_patch_component_bindings(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     page_name = (params.get("page_name") or "").strip()
     component_key = (params.get("component_key") or "").strip()
-    binding_paths = params.get("binding_paths") or {}
-    if not page_name or not component_key or not isinstance(binding_paths, dict):
-        return ToolResult(success=False, error="`page_name`, `component_key`, `binding_paths` (dict) are required")
+    bp_single = params.get("binding_path")
+    raw_paths = params.get("binding_paths") or ({"bindingPath": bp_single} if bp_single is not None else {})
+    if not page_name or not component_key or not isinstance(raw_paths, dict) or not raw_paths:
+        return ToolResult(success=False, error="`page_name`, `component_key`, and either `binding_path` (bare string) or `binding_paths` (dict) are required")
+    binding_paths, errs = c.coerce_binding_paths_map(raw_paths)
+    if errs:
+        return ToolResult(success=False, error="; ".join(errs))
     ac, err_result = _resolve_app_code(params, context)
     if err_result:
         return err_result
@@ -1476,11 +1744,16 @@ async def _execute_patch_component_bindings(params: dict[str, Any], context: dic
 
 patch_component_bindings_tool = ToolDefinition(
     name="patch_component_bindings",
-    description="Surgical PATCH of one component's bindingPath* keys (optimistic-locked per component).",
+    description="""Surgical PATCH of one component's bindingPath* keys (optimistic-locked per component). Bare-string paths auto-wrap; same surface as `set_bindings` but uses the optimistic-lock PATCH endpoint (lower contention if other writers are touching the page).
+
+```
+patch_component_bindings(page_name="login", component_key="emailInput", binding_path="Page.email")
+```""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
         ToolParameter(name="component_key", type="string", description="Component key"),
-        ToolParameter(name="binding_paths", type="object", description="Map of {bindingPath: {type, value/expression}}"),
+        ToolParameter(name="binding_path", type="string", required=False, description="Single bare-string binding path for slot `bindingPath` (e.g. 'Page.email')"),
+        ToolParameter(name="binding_paths", type="object", required=False, description="Map of {bindingPath|bindingPath2|...: 'Page.x' OR {type, value}}"),
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
@@ -1694,6 +1967,7 @@ TOOLS: list[ToolDefinition] = [
     update_page_tool,
     reset_page_composition_tool,
     replace_page_definition_tool,
+    validate_page_tool,
     delete_page_tool,
     get_page_summary_tool,
     get_component_subtree_tool,

@@ -23,6 +23,7 @@ is wrong, fix it in one place and every tool benefits.
 from __future__ import annotations
 
 import re
+import secrets
 import uuid as _uuid
 from typing import Any
 
@@ -170,6 +171,206 @@ _STEPS_REF_RE = re.compile(r"\bSteps\.([A-Za-z_$][\w$]*)")
 def extract_expression_refs(expr: str) -> list[str]:
     """Return every <Prefix>.<path> reference found in an expression."""
     return _EXPRESSION_REF_RE.findall(expr)
+
+
+# ── Binding-path coercion ────────────────────────────────────────────────
+#
+# Agent-friendly write helpers accept bare strings like "Page.email" and
+# emit the canonical Modlix shape {"type": "VALUE", "value": "Page.email"}.
+# Anything that doesn't look like a Modlix expression-prefix path is
+# rejected with a clear error spelling out the valid prefixes.
+
+_BINDING_PATH_HEAD_RE = re.compile(r"^([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$\.]*)$")
+
+
+def coerce_binding_path(raw: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """Normalize one bindingPath value to the canonical {type:VALUE, value:'...'}.
+
+    Returns (wrapped, error). Exactly one is non-None.
+
+    Inputs accepted:
+      - "Page.email"                            → {"type":"VALUE","value":"Page.email"}
+      - {"type":"VALUE","value":"Page.email"}   → passthrough
+      - {"value":"Page.email"}                  → {"type":"VALUE","value":"Page.email"} (adds type)
+      - {"type":"EXPRESSION","expression":"..."} → passthrough (rare)
+    Rejected:
+      - Empty / whitespace strings
+      - Strings whose head isn't a Modlix expression prefix (Page / Store /
+        LocalStore / Parent / Theme / Url / Filler / Arguments / Steps / Context)
+      - Dicts missing both `value` and `expression`
+    """
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None, "Empty binding path"
+
+    if isinstance(raw, dict):
+        if "type" in raw and ("value" in raw or "expression" in raw):
+            return raw, None  # already canonical
+        if "value" in raw:
+            inner = raw["value"]
+            if isinstance(inner, str):
+                w, e = coerce_binding_path(inner)
+                if w:
+                    return w, None
+                return None, e
+            return {"type": "VALUE", "value": inner}, None
+        if "expression" in raw:
+            return {"type": "EXPRESSION", "expression": raw["expression"]}, None
+        return None, (
+            "bindingPath dict must include `value` or `expression`. "
+            "Got keys: " + ", ".join(sorted(raw.keys())) + ". Pass a bare "
+            "string like 'Page.email' and the tool will wrap it."
+        )
+
+    if not isinstance(raw, str):
+        return None, f"bindingPath must be a string or dict, got {type(raw).__name__}"
+
+    path = raw.strip()
+    m = _BINDING_PATH_HEAD_RE.match(path)
+    if not m:
+        return None, (
+            f"bindingPath '{path}' is not a Modlix expression path. "
+            f"Expected format: <Prefix>.<dotted.path>, where Prefix ∈ "
+            f"{{Page, Store, LocalStore, Parent, Theme, Url, Filler}}."
+        )
+    head = m.group(1)
+    if head not in EXPRESSION_PREFIXES:
+        return None, (
+            f"bindingPath prefix '{head}' is not valid. Use one of: "
+            f"{sorted(EXPRESSION_PREFIXES)}."
+        )
+    return {"type": "VALUE", "value": path}, None
+
+
+def coerce_binding_paths_map(
+    raw: dict[str, Any] | None,
+) -> tuple[dict[str, dict[str, Any]] | None, list[str]]:
+    """Normalize a binding_paths map (`{bindingPath: '...', bindingPath2: '...'}`).
+
+    Returns (wrapped_map, errors). `errors` is a list — one entry per slot
+    that failed coercion. On any error, `wrapped_map` is None.
+    """
+    if not raw:
+        return {}, []
+    if not isinstance(raw, dict):
+        return None, [f"binding_paths must be a dict, got {type(raw).__name__}"]
+    out: dict[str, dict[str, Any]] = {}
+    errs: list[str] = []
+    for slot, value in raw.items():
+        if not isinstance(slot, str) or not slot.startswith("bindingPath"):
+            errs.append(f"binding_paths key '{slot}' must start with 'bindingPath' (e.g. bindingPath, bindingPath2)")
+            continue
+        wrapped, err = coerce_binding_path(value)
+        if err:
+            errs.append(f"{slot}: {err}")
+            continue
+        out[slot] = wrapped  # type: ignore[assignment]
+    if errs:
+        return None, errs
+    return out, []
+
+
+# ── styleProperties coercion ─────────────────────────────────────────────
+#
+# Agent-friendly inline styling: accept either a flat CSS dict
+# (`{"backgroundColor": "#fff"}`) or the canonical nested shape
+# (`{<uuid>: {resolutions: {ALL: {<prop>: {value: "..."}}}}}`).
+# Always emits the canonical shape so the renderer accepts it.
+
+_RESERVED_RULE_FIELDS = {"resolutions", "condition", "pseudoState"}
+
+
+def coerce_style_properties(raw: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """Normalize an inline styleProperties payload.
+
+    Inputs accepted:
+      - Flat: `{"backgroundColor": "#fff", "padding": "16px"}` → one
+        auto-generated rule under ALL breakpoint with `{value: ...}` wraps.
+      - Nested-but-unwrapped: `{<uuid>: {resolutions: {ALL: {bg: "#fff"}}}}`
+        → leaves get auto-wrapped to `{value: "#fff"}`.
+      - Canonical (fully-wrapped): passthrough.
+    Rejected:
+      - Mixed top-level (some flat CSS, some uuid-rules).
+      - Unknown nested shape (no `resolutions`, no `condition`, etc.).
+    """
+    if raw is None:
+        return None, None
+    if not isinstance(raw, dict):
+        return None, f"style_properties must be a dict, got {type(raw).__name__}"
+    if not raw:
+        return {}, None
+
+    # Distinguish "flat CSS dict" vs "rule dict". A rule-shape entry
+    # is a dict with at least one of `resolutions`/`condition`/`pseudoState`.
+    flat_keys: list[str] = []
+    rule_keys: list[str] = []
+    for k, v in raw.items():
+        if isinstance(v, dict) and (set(v.keys()) & _RESERVED_RULE_FIELDS):
+            rule_keys.append(k)
+        else:
+            flat_keys.append(k)
+
+    if flat_keys and rule_keys:
+        return None, (
+            f"style_properties mixes flat CSS keys ({flat_keys}) with rule "
+            f"objects ({rule_keys}). Pass EITHER a flat {{cssProp: cssValue}} "
+            f"map OR the canonical {{<uuid>: {{resolutions: ...}}}} shape, "
+            f"not both."
+        )
+
+    if flat_keys:
+        # Flat-shape: wrap into one auto-generated rule under ALL.
+        rule_id = secrets.token_hex(16)
+        wrapped_leaves = {prop: {"value": val} for prop, val in raw.items()}
+        return {rule_id: {"resolutions": {"ALL": wrapped_leaves}}}, None
+
+    # Nested-shape: walk rules + ensure every leaf is wrapped.
+    out: dict[str, Any] = {}
+    for rule_id, rule in raw.items():
+        if not isinstance(rule, dict):
+            return None, f"style_properties rule '{rule_id}' must be a dict"
+        new_rule: dict[str, Any] = {}
+        for field, body in rule.items():
+            if field == "resolutions":
+                if not isinstance(body, dict):
+                    return None, f"styleProperties[{rule_id}].resolutions must be a dict"
+                new_res: dict[str, Any] = {}
+                for bp, leaves in body.items():
+                    if not isinstance(leaves, dict):
+                        return None, f"styleProperties[{rule_id}].resolutions.{bp} must be a dict"
+                    new_leaves: dict[str, Any] = {}
+                    for prop, val in leaves.items():
+                        if isinstance(val, dict) and ("value" in val or "location" in val):
+                            new_leaves[prop] = val  # already wrapped
+                        else:
+                            new_leaves[prop] = {"value": val}
+                    new_res[bp] = new_leaves
+                new_rule["resolutions"] = new_res
+            else:
+                new_rule[field] = body
+        out[rule_id] = new_rule
+    return out, None
+
+
+# ── Properties coercion ──────────────────────────────────────────────────
+#
+# Auto-detect expression-path strings in raw properties so the agent can
+# write {text: "Page.greeting"} and have it become the canonical
+# {text: {location: {type: "EXPRESSION", value: "Page.greeting"}}}.
+
+def coerce_property_value(raw: Any) -> Any:
+    """Wrap a single property value into Modlix's stored shape.
+
+    - Already-wrapped ({value: ...} or {location: ...}): passthrough
+    - String starting with a Modlix expression prefix: expression-shape
+    - Otherwise: literal {value: raw}
+    """
+    if isinstance(raw, dict) and ("value" in raw or "location" in raw):
+        return raw
+    if isinstance(raw, str):
+        m = _BINDING_PATH_HEAD_RE.match(raw.strip())
+        if m and m.group(1) in EXPRESSION_PREFIXES:
+            return {"location": {"type": "EXPRESSION", "value": raw.strip()}}
+    return {"value": raw}
 
 
 def steps_referenced(expr: str) -> set[str]:

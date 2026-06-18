@@ -1,0 +1,53 @@
+{
+  "app_code": "clonelinear",
+  "client_code": "SYSTEM",
+  "timestamp": "20260617T074853Z",
+  "overall_ok": false,
+  "gates": {
+    "structural": {
+      "gate": "structural",
+      "ok": false,
+      "pages": [
+        {
+          "name": "home",
+          "ok": false,
+          "detail": "Failed to list pages: HTTP 403: Forbidden access to the application with code clonelinear"
+        }
+      ]
+    },
+    "inventory": {
+      "gate": "inventory",
+      "ok": false,
+      "pages": [
+        {
+          "name": "home",
+          "components": 0,
+          "ok": false
+        }
+      ],
+      "min_components_per_page": 2
+    },
+    "render": {
+      "gate": "render",
+      "ok": true,
+      "pages": [
+        {
+          "name": "home",
+          "url": "https://apps.local.modlix.com/clonelinear/SYSTEM/page/home",
+          "title": "Linear \u2014 Project Management for High-Performance Teams",
+          "body_text_chars": 842,
+          "input_count": 0,
+          "button_count": 1,
+          "page_errors": [],
+          "ok": true,
+          "screenshot_b64_len": 289008,
+          "screenshot_path": "scripts/cfa_runs/_evals/clonelinear/20260617T074853Z/render_home.png"
+        }
+      ],
+      "thresholds": {
+        "min_body_text_chars": 50,
+        "min_interactive_elements": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "scenario": "taskmate",
+  "app_code": "taskmate",
+  "session_id": "SYSTEM_abdf39c2",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 67.1,
+      "events": {
+        "text": 90,
+        "tool_start": 26,
+        "tool_result": 26,
+        "keepalive": 4,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 26,
+      "error_count": 0
+    },
+    {
+      "turn": 2,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 46.66,
+      "events": {
+        "text": 36,
+        "tool_start": 19,
+        "tool_result": 19,
+        "keepalive": 3,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 19,
+      "error_count": 0
+    },
+    {
+      "turn": 3,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 22.99,
+      "events": {
+        "tool_start": 8,
+        "tool_result": 8,
+        "text": 23,
+        "keepalive": 1,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 8,
+      "error_count": 0
+    },
+    {
+      "turn": 4,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 66.32,
+      "events": {
+        "tool_start": 31,
+        "tool_result": 31,
+        "text": 118,
+        "keepalive": 4,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 31,
+      "error_count": 0
+    },
+    {
+      "turn": 5,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 50.44,
+      "events": {
+        "text": 71,
+        "tool_start": 23,
+        "tool_result": 23,
+        "keepalive": 3,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 23,
+      "error_count": 0
+    },
+    {
+      "turn": 6,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 93.87,
+      "events": {
+        "tool_start": 94,
+        "tool_result": 94,
+        "text": 103,
+        "keepalive": 6,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 94,
+      "error_count": 0
+    },
+    {
+      "turn": 7,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 60.88,
+      "events": {
+        "tool_start": 44,
+        "tool_result": 44,
+        "text": 65,
+        "keepalive": 4,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 44,
+      "error_count": 0
+    },
+    {
+      "turn": 8,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 6.44,
+      "events": {
+        "text": 26,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    },
+    {
+      "turn": 9,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 7.98,
+      "events": {
+        "text": 33,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    },
+    {
+      "turn": 10,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 8.91,
+      "events": {
+        "text": 36,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    },
+    {
+      "turn": 11,
+      "session_id": "SYSTEM_abdf39c2",
+      "elapsed_s": 5.27,
+      "events": {
+        "text": 18,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 245,
+  "total_errors": 0,
+  "started_at": "20260616T165221Z",
+  "finished_at": "20260616T165938Z"
+}

@@ -1,0 +1,27 @@
+{
+  "scenario": "_taskmate_signup_fix",
+  "app_code": "taskmate",
+  "session_id": "SYSTEM_51ff08ae",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_51ff08ae",
+      "elapsed_s": 308.67,
+      "events": {
+        "thinking": 7312,
+        "tool_start": 62,
+        "tool_result": 62,
+        "keepalive": 20,
+        "text": 926,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 62,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 62,
+  "total_errors": 0,
+  "started_at": "20260616T071935Z",
+  "finished_at": "20260616T072443Z"
+}

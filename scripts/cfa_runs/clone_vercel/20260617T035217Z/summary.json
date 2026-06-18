@@ -1,0 +1,88 @@
+{
+  "scenario": "clone_vercel",
+  "app_code": "clonevercel",
+  "session_id": "SYSTEM_817721bd",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 132.62,
+      "events": {
+        "tool_start": 26,
+        "tool_result": 26,
+        "text": 121,
+        "keepalive": 8,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 26,
+      "error_count": 0
+    },
+    {
+      "turn": 2,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 70.25,
+      "events": {
+        "text": 69,
+        "tool_start": 3,
+        "tool_result": 3,
+        "keepalive": 4,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 3,
+      "error_count": 0
+    },
+    {
+      "turn": 3,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 192.1,
+      "events": {
+        "text": 90,
+        "keepalive": 12,
+        "tool_start": 43,
+        "tool_result": 43,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 43,
+      "error_count": 0
+    },
+    {
+      "turn": 4,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 600.01,
+      "events": {},
+      "tool_call_count": 0,
+      "error_count": 1
+    },
+    {
+      "turn": 5,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 600.0,
+      "events": {},
+      "tool_call_count": 0,
+      "error_count": 1
+    },
+    {
+      "turn": 6,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 600.0,
+      "events": {},
+      "tool_call_count": 0,
+      "error_count": 1
+    },
+    {
+      "turn": 7,
+      "session_id": "SYSTEM_817721bd",
+      "elapsed_s": 600.0,
+      "events": {},
+      "tool_call_count": 0,
+      "error_count": 1
+    }
+  ],
+  "total_tool_calls": 72,
+  "total_errors": 4,
+  "started_at": "20260617T035218Z",
+  "finished_at": "20260617T043853Z"
+}

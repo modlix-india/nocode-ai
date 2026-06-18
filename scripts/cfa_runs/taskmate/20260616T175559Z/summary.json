@@ -1,0 +1,167 @@
+{
+  "scenario": "taskmate",
+  "app_code": "taskmate",
+  "session_id": "SYSTEM_4db6a50b",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 121.02,
+      "events": {
+        "text": 93,
+        "tool_start": 26,
+        "tool_result": 26,
+        "keepalive": 8,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 26,
+      "error_count": 0
+    },
+    {
+      "turn": 2,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 59.47,
+      "events": {
+        "text": 52,
+        "tool_start": 18,
+        "tool_result": 18,
+        "keepalive": 3,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 18,
+      "error_count": 0
+    },
+    {
+      "turn": 3,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 15.95,
+      "events": {
+        "text": 30,
+        "tool_start": 6,
+        "tool_result": 6,
+        "keepalive": 1,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 6,
+      "error_count": 0
+    },
+    {
+      "turn": 4,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 87.79,
+      "events": {
+        "tool_start": 27,
+        "tool_result": 27,
+        "text": 163,
+        "keepalive": 5,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 27,
+      "error_count": 0
+    },
+    {
+      "turn": 5,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 34.79,
+      "events": {
+        "tool_start": 8,
+        "tool_result": 8,
+        "text": 49,
+        "keepalive": 2,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 8,
+      "error_count": 0
+    },
+    {
+      "turn": 6,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 26.26,
+      "events": {
+        "tool_start": 14,
+        "tool_result": 14,
+        "keepalive": 1,
+        "text": 28,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 14,
+      "error_count": 0
+    },
+    {
+      "turn": 7,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 11.01,
+      "events": {
+        "text": 26,
+        "tool_start": 2,
+        "tool_result": 2,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 2,
+      "error_count": 0
+    },
+    {
+      "turn": 8,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 4.73,
+      "events": {
+        "text": 17,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    },
+    {
+      "turn": 9,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 4.6,
+      "events": {
+        "text": 15,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    },
+    {
+      "turn": 10,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 12.1,
+      "events": {
+        "tool_start": 1,
+        "tool_result": 1,
+        "text": 27,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 1,
+      "error_count": 0
+    },
+    {
+      "turn": 11,
+      "session_id": "SYSTEM_4db6a50b",
+      "elapsed_s": 8.42,
+      "events": {
+        "text": 23,
+        "tool_start": 3,
+        "tool_result": 3,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 3,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 105,
+  "total_errors": 0,
+  "started_at": "20260616T175600Z",
+  "finished_at": "20260616T180226Z"
+}

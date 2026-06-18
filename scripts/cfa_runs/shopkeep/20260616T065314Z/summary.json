@@ -1,0 +1,184 @@
+{
+  "scenario": "shopkeep",
+  "app_code": "shopkeep",
+  "session_id": "SYSTEM_1f262453",
+  "turns": [
+    {
+      "turn": 1,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 179.51,
+      "events": {
+        "thinking": 616,
+        "text": 411,
+        "tool_start": 5,
+        "tool_result": 5,
+        "keepalive": 2,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 5,
+      "error_count": 0
+    },
+    {
+      "turn": 2,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 338.25,
+      "events": {
+        "thinking": 7380,
+        "text": 884,
+        "keepalive": 22,
+        "tool_start": 48,
+        "tool_result": 48,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 48,
+      "error_count": 0
+    },
+    {
+      "turn": 3,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 33.61,
+      "events": {
+        "thinking": 308,
+        "text": 223,
+        "tool_start": 5,
+        "tool_result": 5,
+        "keepalive": 2,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 5,
+      "error_count": 0
+    },
+    {
+      "turn": 4,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 241.02,
+      "events": {
+        "thinking": 4695,
+        "text": 808,
+        "tool_start": 45,
+        "tool_result": 45,
+        "keepalive": 16,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 45,
+      "error_count": 0
+    },
+    {
+      "turn": 5,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 608.93,
+      "events": {
+        "thinking": 14017,
+        "text": 1596,
+        "tool_start": 82,
+        "tool_result": 82,
+        "keepalive": 40,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 82,
+      "error_count": 0
+    },
+    {
+      "turn": 6,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 123.54,
+      "events": {
+        "thinking": 1609,
+        "keepalive": 8,
+        "text": 456,
+        "tool_start": 24,
+        "tool_result": 24,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 24,
+      "error_count": 0
+    },
+    {
+      "turn": 7,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 256.19,
+      "events": {
+        "thinking": 3224,
+        "text": 987,
+        "keepalive": 17,
+        "tool_start": 50,
+        "tool_result": 50,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 50,
+      "error_count": 0
+    },
+    {
+      "turn": 8,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 78.21,
+      "events": {
+        "thinking": 1052,
+        "text": 620,
+        "tool_start": 16,
+        "tool_result": 16,
+        "keepalive": 5,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 16,
+      "error_count": 0
+    },
+    {
+      "turn": 9,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 167.64,
+      "events": {
+        "thinking": 1775,
+        "text": 598,
+        "tool_start": 41,
+        "tool_result": 41,
+        "keepalive": 11,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 41,
+      "error_count": 0
+    },
+    {
+      "turn": 10,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 43.19,
+      "events": {
+        "thinking": 248,
+        "keepalive": 2,
+        "tool_start": 4,
+        "tool_result": 4,
+        "text": 159,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 4,
+      "error_count": 0
+    },
+    {
+      "turn": 11,
+      "session_id": "SYSTEM_1f262453",
+      "elapsed_s": 11.11,
+      "events": {
+        "thinking": 31,
+        "text": 350,
+        "feedback_request": 1,
+        "done": 1
+      },
+      "tool_call_count": 0,
+      "error_count": 0
+    }
+  ],
+  "total_tool_calls": 320,
+  "total_errors": 0,
+  "started_at": "20260616T065314Z",
+  "finished_at": "20260616T072756Z"
+}
