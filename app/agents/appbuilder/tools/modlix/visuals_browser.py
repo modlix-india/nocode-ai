@@ -368,7 +368,7 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     try:
         from app.config import settings as _settings
         provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
-        vision_capable = provider in {"anthropic", "openai"}
+        vision_capable = provider in {"anthropic", "openai", "minimax"}
         if not vision_capable:
             # Text-only providers (DeepSeek) need the Gemini-described version;
             # vision-capable providers see the PNG natively via image_base64.
@@ -872,7 +872,7 @@ async def _execute_screenshot_external_url(params: dict[str, Any], context: dict
     try:
         from app.config import settings as _settings
         provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
-        vision_capable = provider in {"anthropic", "openai"}
+        vision_capable = provider in {"anthropic", "openai", "minimax"}
         gemini_key = "" if vision_capable else (getattr(_settings, "GOOGLE_API_KEY", "") or "")
     except Exception:  # noqa: BLE001
         vision_capable = False

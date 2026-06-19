@@ -116,6 +116,42 @@ async def _upload_bytes_as_static(
     return True, public_url, None
 
 
+async def _ensure_style_doc(
+    ac: str, cc: str, headers: dict[str, str], name: str, css: str,
+) -> tuple[bool, str | None]:
+    """Create (or update if it exists) a global-CSS style doc. Idempotent so a
+    re-run of a clone doesn't 409. Mirrors the /api/ui/styles contract used by
+    the create_style / update_style tools."""
+    from app.config import settings
+    base = _gateway_url() + "/api/ui/styles"
+    req_headers = dict(headers or {})
+    req_headers["clientCode"] = cc
+    req_headers["appCode"] = ac
+    req_headers.setdefault("Content-Type", "application/json")
+    try:
+        async with httpx.AsyncClient(timeout=getattr(settings, "HTTP_TIMEOUT", 30.0)) as client:
+            existing = None
+            try:
+                gr = await client.get(base, headers=req_headers, params={"appCode": ac, "name": name, "size": 50})
+                if gr.status_code < 400:
+                    for s in (gr.json() or {}).get("content", []) or []:
+                        if s.get("name") == name:
+                            existing = s
+                            break
+            except Exception:  # noqa: BLE001
+                pass
+            if existing:
+                existing["styleString"] = css
+                existing["message"] = "Clone fonts via CFA"
+                pr = await client.put(f"{base}/{existing.get('id')}", headers=req_headers, json=existing)
+                return (pr.status_code < 400), (None if pr.status_code < 400 else f"PUT {pr.status_code}: {pr.text[:200]}")
+            body = {"name": name, "appCode": ac, "clientCode": cc, "styleString": css, "message": "Clone fonts via CFA"}
+            pr = await client.post(base, headers=req_headers, json=body)
+            return (pr.status_code < 400), (None if pr.status_code < 400 else f"POST {pr.status_code}: {pr.text[:200]}")
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}: {e}"
+
+
 # ═════════════════════════════════════════════════════════════════════════
 #  extract_site_assets
 # ═════════════════════════════════════════════════════════════════════════
@@ -175,6 +211,19 @@ _HARVEST_JS = r"""
       });
     }
   }
+  // Fonts: the page's primary font-family + every loaded font-file URL, so a
+  // clone can reproduce typography instead of falling back to a system font.
+  try {
+    const bodyCS = getComputedStyle(document.body);
+    const fontFiles = [];
+    for (const e of performance.getEntriesByType('resource')) {
+      if (/\.(woff2?|ttf|otf)(\?|$)/i.test(e.name)) {
+        const u = abs(e.name);
+        if (u && !fontFiles.includes(u)) fontFiles.push(u);
+      }
+    }
+    out.fonts = { family: bodyCS.fontFamily || '', files: fontFiles.slice(0, 8) };
+  } catch (_) { out.fonts = { family: '', files: [] }; }
   return out;
 }
 """
@@ -184,6 +233,28 @@ async def _execute_extract_site_assets(params: dict[str, Any], context: dict[str
     url = (params.get("url") or "").strip()
     if not url or not (url.startswith("http://") or url.startswith("https://")):
         return ToolResult(success=False, error="`url` must be an absolute http(s) URL")
+
+    # Per-session cache: extracting assets is slow (headless render + N uploads)
+    # and agents tend to re-call it. If this URL was already harvested in this
+    # session, return the cached manifest instantly instead of re-rendering.
+    session_context = context.get("session_context") if isinstance(context, dict) else None
+    assets_cache = (
+        session_context.setdefault("_clone_assets", {})
+        if isinstance(session_context, dict) else None
+    )
+    if assets_cache is not None and url in assets_cache:
+        cached = assets_cache[url]
+        n = len(cached.get("originals") or [])
+        return ToolResult(
+            success=True,
+            summary=(
+                f"[cached] {url} was already extracted this session ({n} asset(s) uploaded). "
+                "Reusing the manifest — NOT re-rendering. Bind the `modlix_url` values from "
+                "result.data.originals. Do NOT call extract_site_assets again for this URL."
+            ),
+            data=cached,
+        )
+
     max_assets = max(1, min(int(params.get("max_assets") or 50), 200))
     wait_ms = max(500, min(int(params.get("wait_ms") or 2500), 30000))
     viewport_width = max(320, min(int(params.get("viewport_width") or 1440), 3840))
@@ -340,10 +411,68 @@ async def _execute_extract_site_assets(params: dict[str, Any], context: dict[str
         for f in failures[:5]:
             lines.append(f"  {f.get('src','?')[:80]}  → {f.get('error','?')[:80]}")
 
+    # ---- Fonts: download the source's web fonts, host them, and create a
+    # global @font-face style doc so the clone reproduces typography instead of
+    # falling back to a system font. Best-effort: any failure never blocks the
+    # asset manifest (the tool's primary job).
+    font_info: dict[str, Any] = {}
+    _GENERIC = {"", "monospace", "sans-serif", "serif", "system-ui", "ui-monospace", "ui-sans-serif", "cursive", "fantasy", "inherit", "initial"}
+    try:
+        fonts = harvest.get("fonts") or {}
+        family_raw = (fonts.get("family") or "").strip()
+        first = family_raw.split(",")[0].strip().strip('"').strip("'") if family_raw else ""
+        primary = first if first.lower() not in _GENERIC else ""
+        uploaded: list[dict[str, Any]] = []
+        for furl in [f for f in (fonts.get("files") or []) if isinstance(f, str)][:8]:
+            try:
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 ModlixCloneBot/1.0"}) as fc:
+                    fr = await fc.get(furl)
+                if fr.status_code >= 400 or not fr.content:
+                    continue
+                fname = (furl.split("/")[-1].split("?")[0]) or "font.ttf"
+                fmime = (fr.headers.get("content-type") or "").split(";")[0].strip().lower() or "font/ttf"
+                ok_u, public_url, _u_err = await _upload_bytes_as_static(
+                    ac=ac, cc=cc, headers=headers, payload=fr.content,
+                    filename=fname, mime=fmime, page_name="global", folder="fonts",
+                )
+                if ok_u and public_url:
+                    rel = public_url
+                    gw = _gateway_url()
+                    if rel.startswith(gw):
+                        rel = rel[len(gw):]  # root-relative so it works on any host
+                    uploaded.append({"url": rel, "filename": fname})
+            except Exception:  # noqa: BLE001
+                continue
+        if uploaded and primary:
+            faces = []
+            for uf in uploaded:
+                low = uf["filename"].lower()
+                fmt = "woff2" if low.endswith(".woff2") else "woff" if low.endswith(".woff") else "opentype" if low.endswith(".otf") else "truetype"
+                faces.append(
+                    f"@font-face{{font-family:'{primary}';src:url('{uf['url']}') format('{fmt}');"
+                    f"font-weight:100 900;font-style:{'italic' if 'italic' in low else 'normal'};font-display:swap;}}"
+                )
+            global_rule = f"*{{font-family:{family_raw or repr(primary)} !important;}}"
+            css = "\n".join(faces) + "\n" + global_rule
+            ok_s, s_err = await _ensure_style_doc(ac, cc, headers, "cloneFonts", css)
+            font_info = {"family": primary, "files": [u["url"] for u in uploaded], "style_doc": "cloneFonts" if ok_s else None}
+            if ok_s:
+                lines.append(f"Fonts: hosted {len(uploaded)} font file(s) and applied '{primary}' app-wide via the 'cloneFonts' style doc. Do NOT set per-component fontFamily — the global rule handles it.")
+            else:
+                font_info["error"] = s_err
+                lines.append(f"Fonts: hosted {len(uploaded)} file(s) but the style doc failed ({s_err}); call create_style(name='cloneFonts', ...) with the @font-face CSS to finish.")
+        elif fonts.get("files"):
+            font_info = {"note": "source fonts found but primary family was generic/undetected; left as-is", "family_raw": family_raw}
+    except Exception as e:  # noqa: BLE001
+        font_info = {"error": f"{type(e).__name__}: {e}"}
+
+    result_data = {"url": url, "originals": originals, "failures": failures, "fonts": font_info}
+    if assets_cache is not None:
+        assets_cache[url] = result_data
     return ToolResult(
         success=True,
         summary="\n".join(lines),
-        data={"url": url, "originals": originals, "failures": failures},
+        data=result_data,
     )
 
 
@@ -352,10 +481,15 @@ extract_site_assets_tool = ToolDefinition(
     description=(
         "Harvest every <img>, inline <svg>, and CSS background-image from an "
         "external page; fetch the bytes; upload each to the active app's "
-        "static-asset space; return a manifest. Use this BEFORE authoring "
-        "imagery on a clone — bind the returned modlix_url values straight "
-        "into Image components. Never invent placeholder URLs and never "
-        "generate AI imagery for content photos when cloning."
+        "static-asset space; return a manifest. ALSO harvests the page's web "
+        "FONTS: it downloads the source's font files, hosts them, and creates a "
+        "global 'cloneFonts' @font-face style doc that applies the real font "
+        "family app-wide (result.data.fonts reports what was done). Because of "
+        "this, do NOT set per-component fontFamily on a clone and do NOT worry "
+        "about typography — calling this once handles it. Use this BEFORE "
+        "authoring a clone: bind the returned modlix_url values straight into "
+        "Image components. Never invent placeholder URLs and never generate AI "
+        "imagery for content photos when cloning."
     ),
     parameters=[
         ToolParameter(name="url", type="string", description="Absolute http(s) URL of the page to harvest"),

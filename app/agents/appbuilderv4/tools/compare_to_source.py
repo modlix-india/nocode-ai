@@ -1,5 +1,6 @@
 """`compare_to_source` — diff a built Modlix page against a cached source
-screenshot via Claude vision; return structured JSON the agent can act on.
+screenshot via MiniMax-M3 vision; return structured JSON the agent can
+act on.
 
 Workflow:
   1. `screenshot_external_url(...)` captures source frames and caches each
@@ -8,14 +9,16 @@ Workflow:
   3. The agent calls `compare_to_source(page_name, source_handle)`. We:
      - Render the Modlix page via Playwright (anonymous).
      - Fetch the cached source PNG by handle.
-     - Send both images to Claude with a strict-JSON diff prompt.
+     - Send both images to MiniMax-M3 with a strict-JSON diff prompt
+       (OpenAI-compatible `image_url` data-URI shape).
      - Return `[{section, severity, copy_diff, layout_diff, color_diff,
                  missing_elements, fix_suggestion}, ...]`.
   4. Agent reads the diff, fixes severity=high issues, re-compares.
 
 The compare LLM call is independent of the agent's main turn loop — it's
 a separate API request inside the tool, billed alongside the agent's
-budget.
+budget. We reuse the MiniMaxProvider's cached OpenAI client so the API
+key and base URL stay in one place.
 """
 
 from __future__ import annotations
@@ -90,6 +93,9 @@ def _parse_diff_json(raw: str) -> tuple[list[dict] | None, str | None]:
     if not raw:
         return None, "empty response"
     text = raw.strip()
+    # MiniMax-M3 emits a `<think>...</think>` reasoning preamble before
+    # the answer. Strip it before searching for the JSON array.
+    text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
     start = text.find("[")
@@ -148,40 +154,57 @@ async def _execute_compare_to_source(params: dict[str, Any], context: dict[str, 
 
     try:
         from app.config import settings
-        import anthropic  # type: ignore[import-not-found]
+        from app.services.llm_provider import get_llm_provider
     except Exception as e:  # noqa: BLE001
         return ToolResult(success=False, error=f"compare import failed: {type(e).__name__}: {e}")
 
-    if not getattr(settings, "ANTHROPIC_API_KEY", ""):
-        return ToolResult(success=False, error="ANTHROPIC_API_KEY not configured")
+    if not getattr(settings, "MINIMAX_API_KEY", ""):
+        return ToolResult(success=False, error="MINIMAX_API_KEY not configured")
 
-    model = getattr(settings, "CLAUDE_SONNET", "claude-sonnet-4-6")
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        provider = get_llm_provider("minimax")
+    except Exception as e:  # noqa: BLE001
+        return ToolResult(success=False, error=f"MiniMax provider init failed: {type(e).__name__}: {e}")
+
+    model = getattr(settings, "MINIMAX_MODEL_BALANCED", "MiniMax-M3")
+    src_mime = src.get("image_mime") or _MIME_PNG
 
     try:
         msg = await asyncio.to_thread(
-            client.messages.create,
+            provider.client.chat.completions.create,
             model=model,
             max_tokens=4096,
-            system="You produce strict JSON diff arrays for site-clone QA. Reply with ONLY the JSON array.",
-            messages=[{
-                "role": "user",
-                "content": [
+            messages=[
+                {"role": "system", "content": (
+                    "You produce strict JSON diff arrays for site-clone QA. "
+                    "Reply with ONLY the JSON array, no prose, no markdown fences."
+                )},
+                {"role": "user", "content": [
                     {"type": "text", "text": "SOURCE (target to clone):"},
-                    {"type": "image", "source": {"type": "base64", "media_type": src.get("image_mime") or _MIME_PNG, "data": src_b64}},
+                    {"type": "image_url", "image_url": {"url": f"data:{src_mime};base64,{src_b64}"}},
                     {"type": "text", "text": "MODLIX BUILD (current state):"},
-                    {"type": "image", "source": {"type": "base64", "media_type": _MIME_PNG, "data": build_b64}},
+                    {"type": "image_url", "image_url": {"url": f"data:{_MIME_PNG};base64,{build_b64}"}},
                     {"type": "text", "text": _COMPARE_PROMPT},
-                ],
-            }],
+                ]},
+            ],
         )
     except Exception as e:  # noqa: BLE001
-        return ToolResult(success=False, error=f"Anthropic compare call failed: {type(e).__name__}: {e}")
+        return ToolResult(success=False, error=f"MiniMax compare call failed: {type(e).__name__}: {e}")
 
     raw = ""
-    for block in (msg.content or []):
-        if getattr(block, "type", "") == "text":
-            raw += getattr(block, "text", "")
+    try:
+        for choice in (msg.choices or []):
+            content = getattr(choice.message, "content", "") or ""
+            if isinstance(content, str):
+                raw += content
+            elif isinstance(content, list):
+                # OpenAI-compat servers occasionally return content as a
+                # list of parts; harvest text parts only.
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        raw += part.get("text", "")
+    except Exception as e:  # noqa: BLE001
+        return ToolResult(success=False, error=f"MiniMax response shape unexpected: {type(e).__name__}: {e}")
     diffs, parse_err = _parse_diff_json(raw)
     if diffs is None:
         return ToolResult(

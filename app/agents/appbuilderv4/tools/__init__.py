@@ -6,10 +6,8 @@ WHY it was added (which scenario failed without it).
 """
 
 from app.agents.appbuilderv4.tools.code_run import code_run_tool
-from app.agents.appbuilderv4.tools.screenshot_external import screenshot_external_url_tool
 from app.agents.appbuilderv4.tools.compare_to_source import compare_to_source_tool
 from app.agents.appbuilderv4.tools.extract_site_assets import extract_site_assets_tool
-from app.agents.appbuilderv4.tools.extract_site_fonts import extract_site_fonts_tool
 from app.agents.appbuilderv4.tools.platform_kb import TOOLS as _PLATFORM_KB_TOOLS
 
 # Per-app KB tools — re-exported VERBATIM from v3 (same `cfa_app_kb`
@@ -26,10 +24,11 @@ from app.agents.appbuilder.tools.kb_app import (
 
 TOOLS = [
     code_run_tool,
-    # Clone-loop tools.
-    screenshot_external_url_tool,
+    # Clone-loop tools. extract_site_assets is the unified recon: it does
+    # screenshots + asset harvest + font harvest + section/hover/animation
+    # recon in ONE Playwright pass. The standalone screenshot_external_url
+    # and extract_site_fonts tools were folded into it (2026-06-18).
     extract_site_assets_tool,
-    extract_site_fonts_tool,
     compare_to_source_tool,
     # Platform KB (file-backed, refreshed on deploy).
     *_PLATFORM_KB_TOOLS,

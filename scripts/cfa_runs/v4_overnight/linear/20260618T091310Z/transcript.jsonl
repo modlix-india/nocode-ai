@@ -1,4 +1,0 @@
-{"event": "run_start", "url": "https://linear.app", "page_name": "home", "app_code": "vclone", "ts": "20260618T091310Z"}
-{"message": "Agent error: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-07-01 at 00:00 UTC.'}, 'request_id': 'req_011CcAU8e9zDCL1kknBmUtLt'}", "_etype": "error"}
-{"session_id": "SYSTEM_a0ef6e4f", "usage": {"input_tokens": 0, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}, "_etype": "done"}
-{"event": "run_end", "elapsed_seconds": 0.48822049999999995, "tool_counts": {}, "severity_history": [], "errors": 1}

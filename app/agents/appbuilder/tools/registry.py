@@ -70,7 +70,7 @@ def _filter_visual_tools(tools: list[ToolDefinition]) -> list[ToolDefinition]:
         provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
     except Exception:  # noqa: BLE001
         provider = ""
-    if provider in {"anthropic", "openai"}:
+    if provider in {"anthropic", "openai", "minimax"}:
         return [t for t in tools if t.name != "describe_image"]
     return tools
 
@@ -85,7 +85,7 @@ MODLIX_TOOLS: list[ToolDefinition] = (
     + _filter_visual_tools(list(_MODLIX_VISUAL_TOOLS))
     + list(_MODLIX_BROWSER_TOOLS)
     + list(_MODLIX_IMAGE_OPS_TOOLS)
-    + list(_MODLIX_CLONE_TOOLS)
+    + [t for t in _MODLIX_CLONE_TOOLS if t.name != "compare_to_source"]  # compare_to_source dropped — self-QA is the model's native vision now
     + list(_MODLIX_SECURITY_TOOLS)
     + list(_MODLIX_APP_ADMIN_TOOLS)
     + list(_MODLIX_MESSAGING_TOOLS)

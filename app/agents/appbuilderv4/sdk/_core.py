@@ -360,6 +360,26 @@ class _Pages:
         merged["appCode"] = ac
         if message:
             merged["message"] = message
+        # Pre-PUT shape validation — catches the styleProperty UUID bloat
+        # that breaks clones (and other shape mistakes) BEFORE the platform
+        # silently persists them.
+        from app.agents.appbuilderv4.sdk._validators import (
+            ModlixShapeError, format_issues, validate_page,
+        )
+        issues = validate_page(merged)
+        if issues:
+            raise ModlixShapeError(format_issues(
+                f"page {name!r}",
+                issues,
+                hint=(
+                    "Use `modlix.components.set_style(component, {...css...})` "
+                    "to write component style (replaces all UUID entries with "
+                    "ONE canonical entry), or `modlix.components.merge_style"
+                    "(component, {...})` to update a few keys without erasing "
+                    "the rest. Pass the COMPONENT dict (e.g. `cd[component_key]`), "
+                    "NOT the whole componentDefinition map."
+                ),
+            ))
         return put(f"/api/ui/pages/{match['id']}", body=merged)
 
 

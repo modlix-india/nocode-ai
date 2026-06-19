@@ -168,8 +168,8 @@ class Settings(BaseSettings):
 
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
-    MAX_AGENT_TURNS: int = 100  # Max tool-use loop iterations per request
-    AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
+    MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
+    AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).

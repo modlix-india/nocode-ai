@@ -1203,6 +1203,94 @@ class OpenAIProvider(LLMProvider):
         }
 
 
+class _StreamError:
+    """Queue-passable wrapper for exceptions raised inside the streaming
+    worker thread of `DeepSeekProvider.stream_completion` (and
+    MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
+    leaves the consumer's `await queue.get()` hung forever.
+    """
+
+    __slots__ = ("exc",)
+
+    def __init__(self, exc: BaseException):
+        self.exc = exc
+
+
+def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
+    """Split an Anthropic-shaped tool_result `content` into (text, image_parts).
+
+    tool_result content is either a plain string or a list of blocks — text
+    blocks plus (when the provider accepts vision) Anthropic image blocks
+    `{"type":"image","source":{"type":"base64","media_type":..,"data":..}}`.
+
+    OpenAI-compatible `tool` messages are TEXT-ONLY, so images cannot ride in
+    the tool message. We return the text for the tool message and the images
+    as OpenAI `image_url` parts, which the caller re-emits in a following
+    `user` message so the model actually sees the screenshot.
+    """
+    if isinstance(content, str):
+        return content, []
+    if not isinstance(content, list):
+        return ("" if content is None else str(content)), []
+    text_chunks: list[str] = []
+    image_parts: list[dict] = []
+    for block in content:
+        if not isinstance(block, dict):
+            continue
+        btype = block.get("type")
+        if btype == "text":
+            text_chunks.append(block.get("text", ""))
+        elif btype == "image":
+            src = block.get("source") or {}
+            if src.get("type") == "base64" and src.get("data"):
+                media = src.get("media_type", "image/png")
+                image_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{media};base64,{src['data']}"},
+                })
+            elif src.get("type") == "url" and src.get("url"):
+                image_parts.append({"type": "image_url", "image_url": {"url": src["url"]}})
+        elif btype == "image_url":  # already OpenAI-shaped
+            iu = block.get("image_url")
+            url = iu.get("url") if isinstance(iu, dict) else iu
+            if url:
+                image_parts.append({"type": "image_url", "image_url": {"url": url}})
+    return "\n".join(t for t in text_chunks if t), image_parts
+
+
+def _append_user_list_content(full_messages: list, content: list) -> None:
+    """Convert an Anthropic user-role content list into OpenAI chat messages.
+
+    Emits all `tool` messages first (each keyed to its tool_call_id), then a
+    single `user` message carrying any screenshot image parts harvested from
+    those tool results — interleaving a user message between tool messages
+    would violate the OpenAI tool-call message ordering. Plain text blocks
+    become standalone user messages.
+    """
+    pending_image_parts: list[dict] = []
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "tool_result":
+            tool_text, image_parts = _split_tool_result_content(item.get("content", ""))
+            full_messages.append({
+                "role": "tool",
+                "tool_call_id": item.get("tool_use_id", ""),
+                "content": tool_text or "(screenshot attached in the following message)",
+            })
+            pending_image_parts.extend(image_parts)
+        elif item.get("type") == "text":
+            full_messages.append({"role": "user", "content": item["text"]})
+    if pending_image_parts:
+        full_messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Screenshot(s) from the tool result(s) above:"},
+                *pending_image_parts,
+            ],
+        })
+
+
 class DeepSeekProvider(LLMProvider):
     """DeepSeek provider — OpenAI-compatible Chat Completions API.
 
@@ -1338,15 +1426,7 @@ class DeepSeekProvider(LLMProvider):
                 full_messages.append(oai_msg)
 
             elif role == "user" and isinstance(content, list):
-                for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
-                            "role": "tool",
-                            "tool_call_id": item.get("tool_use_id", ""),
-                            "content": item.get("content", ""),
-                        })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                _append_user_list_content(full_messages, content)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -1463,15 +1543,7 @@ class DeepSeekProvider(LLMProvider):
                     oai_msg["reasoning_content"] = reasoning
                 full_messages.append(oai_msg)
             elif role == "user" and isinstance(content, list):
-                for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
-                            "role": "tool",
-                            "tool_call_id": item.get("tool_use_id", ""),
-                            "content": item.get("content", ""),
-                        })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                _append_user_list_content(full_messages, content)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -1485,15 +1557,23 @@ class DeepSeekProvider(LLMProvider):
         _sentinel = object()
 
         def _run_sync_stream():
-            stream = self.client.chat.completions.create(
-                model=model, max_tokens=max_tokens,
-                messages=full_messages,
-                tools=openai_tools if openai_tools else None,
-                stream=True,
-                stream_options={"include_usage": True},
-            )
-            for c in stream:
-                queue.put_nowait(c)
+            try:
+                stream = self.client.chat.completions.create(
+                    model=model, max_tokens=max_tokens,
+                    messages=full_messages,
+                    tools=openai_tools if openai_tools else None,
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+                for c in stream:
+                    queue.put_nowait(c)
+            except Exception as e:  # noqa: BLE001
+                # Without this, a TLS drop or 5xx mid-stream leaves the
+                # consumer's `await queue.get()` hung forever ("Future
+                # exception was never retrieved"). Box the error so the
+                # consumer can re-raise it on its own thread.
+                queue.put_nowait(_StreamError(e))
+                return
             queue.put_nowait(_sentinel)
 
         asyncio.get_event_loop().run_in_executor(None, _run_sync_stream)
@@ -1513,6 +1593,11 @@ class DeepSeekProvider(LLMProvider):
             chunk = await queue.get()
             if chunk is _sentinel:
                 break
+            if isinstance(chunk, _StreamError):
+                # Re-raise on the consumer side so the agent's turn loop
+                # gets the actual error (APIConnectionError, RateLimit,
+                # …) instead of hanging on an empty queue.
+                raise chunk.exc
             if hasattr(chunk, 'usage') and chunk.usage:
                 final_usage = {
                     "input_tokens": chunk.usage.prompt_tokens or 0,
@@ -1561,7 +1646,15 @@ class MiniMaxProvider(DeepSeekProvider):
     surface via its OpenAI-compatible endpoint. The only differences:
     different API key, base URL, model defaults, and no `thinking`
     extra_body (MiniMax doesn't support DeepSeek's thinking flag).
+
+    Unlike DeepSeek (text-only), MiniMax M3 accepts image input, so we opt
+    into the multimodal tool_result path: screenshots the agent captures are
+    forwarded to the model as image_url parts (see _append_user_list_content
+    / _split_tool_result_content). The base DeepSeek converter leaves this
+    flag False, so its text-only behaviour is unchanged.
     """
+
+    supports_image_in_tool_result = True
 
     def __init__(self):
         from openai import OpenAI

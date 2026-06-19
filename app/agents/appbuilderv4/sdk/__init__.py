@@ -18,6 +18,7 @@ code_run tool just before the subprocess is spawned. Nothing is fetched
 across requests — every call hits the gateway fresh.
 """
 
+from app.agents.appbuilderv4.sdk import _components as components  # noqa: F401
 from app.agents.appbuilderv4.sdk._core import (  # noqa: F401
     config,
     post,
@@ -29,4 +30,9 @@ from app.agents.appbuilderv4.sdk._core import (  # noqa: F401
     apps,
     uuid,
     _try_refresh_token as refresh_token,
+)
+from app.agents.appbuilderv4.sdk._validators import (  # noqa: F401
+    ModlixShapeError,
+    validate_page,
+    validate_app_ui,
 )

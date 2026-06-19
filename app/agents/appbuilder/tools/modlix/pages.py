@@ -1464,6 +1464,16 @@ rename_component_tool = ToolDefinition(
 # ── bulk_patch_component_props ───────────────────────────────────────────
 
 
+def _filter_has_matcher(filt: Any) -> bool:
+    """True if a bulk filter actually narrows the set. An empty filter matches
+    EVERY component, which silently restyles/repatches the whole page — almost
+    never intended, so callers reject it."""
+    return bool(
+        isinstance(filt, dict)
+        and (filt.get("type") or filt.get("keys") or filt.get("key_pattern") or filt.get("name_contains"))
+    )
+
+
 async def _execute_bulk_patch_component_props(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     page_name = (params.get("page_name") or "").strip()
     filt = params.get("filter") or {}
@@ -1471,6 +1481,8 @@ async def _execute_bulk_patch_component_props(params: dict[str, Any], context: d
     dry_run = bool(params.get("dry_run", False))
     if not page_name or not isinstance(filt, dict) or not isinstance(properties, dict):
         return ToolResult(success=False, error="`page_name`, `filter` (dict), `properties` (dict) are required")
+    if not _filter_has_matcher(filt):
+        return ToolResult(success=False, error="`filter` must narrow the set with at least one of: keys, key_pattern, type, name_contains. An EMPTY filter would patch every component on the page. To patch one component use patch_component_props.")
 
     try:
         key_re = re.compile(filt["key_pattern"]) if filt.get("key_pattern") else None
@@ -1580,6 +1592,175 @@ NOT the right tool when each component needs a DIFFERENT properties patch (e.g. 
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
     execute=_execute_bulk_patch_component_props,
+)
+
+
+# ── bulk_patch_component_styles ──────────────────────────────────────────
+
+
+def _merge_css_into_styleprops(
+    style_props: dict[str, Any], css_props: dict[str, Any],
+    breakpoint_str: str, sub_component: str, pseudo_state: str,
+) -> list[str]:
+    """Merge a flat css_props map into a component's styleProperties in place
+    (reuse-or-create the rule for this pseudoState). Returns applied leaf keys.
+    Same wrapping logic as patch_component_styles, factored for bulk reuse."""
+    target_pseudo = pseudo_state or ""
+    rule_key: str | None = None
+    for rk, rv in style_props.items():
+        if not isinstance(rv, dict) or rv.get("condition"):
+            continue
+        if (rv.get("pseudoState") or "") == target_pseudo:
+            rule_key = rk
+            break
+    if rule_key is None:
+        rule_key = uuid.uuid4().hex
+        style_props[rule_key] = {"resolutions": {}}
+        if pseudo_state:
+            style_props[rule_key]["pseudoState"] = pseudo_state
+    rule = dict(style_props[rule_key])
+    resolutions = dict(rule.get("resolutions") or {})
+    bp_block = dict(resolutions.get(breakpoint_str) or {})
+    applied: list[str] = []
+    for css_prop, css_value in css_props.items():
+        leaf = c.make_css_prop_key(css_prop, sub_component, "")
+        bp_block[leaf] = {"value": css_value}
+        applied.append(leaf)
+    resolutions[breakpoint_str] = bp_block
+    rule["resolutions"] = resolutions
+    style_props[rule_key] = rule
+    return applied
+
+
+# Safety cap: a single bulk style patch should target one sibling group / a
+# section's elements, never most of the page. If a filter matches more than
+# this, it's almost certainly too broad (the model passed no filter or an
+# inverted pattern) — reject with guidance instead of restyling the whole page.
+_BULK_STYLE_MATCH_CAP = 60
+
+
+async def _execute_bulk_patch_component_styles(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    page_name = (params.get("page_name") or "").strip()
+    filt = params.get("filter") or {}
+    css_props = params.get("css_props") or {}
+    breakpoint_str = (params.get("breakpoint") or "ALL").strip()
+    sub_component = (params.get("sub_component") or "").strip()
+    pseudo_state = (params.get("pseudo_state") or "").strip()
+    dry_run = bool(params.get("dry_run", False))
+    if not page_name or not isinstance(filt, dict) or not isinstance(css_props, dict) or not css_props:
+        return ToolResult(success=False, error="`page_name`, `filter` (dict) and `css_props` (non-empty dict) are required")
+    # Defensive guards — this tool restyles MANY components, so a wrong/empty
+    # filter silently nukes the whole page. Reject those with a corrective hint.
+    if params.get("component_key") and not _filter_has_matcher(filt):
+        return ToolResult(success=False, error="This is the BULK styler: pass `filter` (e.g. {\"keys\":[\"k1\",\"k2\"]} or {\"key_pattern\":\"^dConsole\"}), NOT `component_key`. For a single component use patch_component_styles.")
+    if not _filter_has_matcher(filt):
+        return ToolResult(success=False, error="`filter` must narrow the set with at least one of: keys, key_pattern, type, name_contains. An EMPTY filter would match every component on the page. To style one component use patch_component_styles.")
+    be = c.validate_breakpoint(breakpoint_str)
+    if be:
+        return ToolResult(success=False, error=be)
+
+    try:
+        key_re = re.compile(filt["key_pattern"]) if filt.get("key_pattern") else None
+    except re.error as e:
+        return ToolResult(success=False, error=f"Invalid key_pattern regex: {e}")
+    wanted_type = filt.get("type")
+    wanted_keys = set(filt.get("keys") or [])
+    name_substr = (filt.get("name_contains") or "").lower()
+
+    def _matches(key: str, comp: dict[str, Any]) -> bool:
+        if wanted_type and comp.get("type") != wanted_type:
+            return False
+        if wanted_keys and key not in wanted_keys:
+            return False
+        if key_re and not key_re.search(key):
+            return False
+        if name_substr and name_substr not in (comp.get("name") or "").lower():
+            return False
+        return True
+
+    matched_keys: list[str] = []
+
+    def mutate(page: dict[str, Any]) -> str | None:
+        comp_def = page.get("componentDefinition") or {}
+        matches = [(k, v) for k, v in comp_def.items() if isinstance(v, dict) and _matches(k, v)]
+        if not matches:
+            return "No components matched the filter."
+        matched_keys.extend(k for k, _ in matches)
+        if dry_run:
+            return None
+        if len(matches) > _BULK_STYLE_MATCH_CAP:
+            return (f"filter matched {len(matches)} components — too broad (cap {_BULK_STYLE_MATCH_CAP}); it would "
+                    "restyle most of the page. Narrow the filter (anchor key_pattern to this section, e.g. "
+                    "'^dConsole'), or run dry_run=true first to inspect the matches.")
+        for _key, comp in matches:
+            sp = dict(comp.get("styleProperties") or {})
+            _merge_css_into_styleprops(sp, css_props, breakpoint_str, sub_component, pseudo_state)
+            comp["styleProperties"] = sp
+        return None
+
+    if dry_run:
+        ac, err_result = _resolve_app_code(params, context)
+        if err_result:
+            return err_result
+        client, headers = _client_and_headers(context)
+        page, err = await p_ops.fetch_page_by_name(client, page_name, ac, headers)
+        if err:
+            return ToolResult(success=False, error=err)
+        assert page is not None
+        merr = mutate(page)
+        if merr:
+            return ToolResult(success=False, error=merr)
+        preview = ", ".join(matched_keys[:20])
+        more = f" (+{len(matched_keys) - 20} more)" if len(matched_keys) > 20 else ""
+        return ToolResult(success=True, summary=f"[dry-run] Would style {len(matched_keys)} component(s) on '{page_name}': {preview}{more}")
+
+    ok, err = await _load_save(page_name, context, params, mutate, params.get("message") or "Bulk styled via CFA")
+    if not ok:
+        return ToolResult(success=False, error=err)
+    scope = [breakpoint_str]
+    if sub_component:
+        scope.append(f"sub={sub_component}")
+    if pseudo_state:
+        scope.append(f":{pseudo_state}")
+    preview = ", ".join(matched_keys[:20])
+    more = f" (+{len(matched_keys) - 20} more)" if len(matched_keys) > 20 else ""
+    return ToolResult(success=True, summary=f"Styled {len(matched_keys)} component(s) [{', '.join(scope)}] on '{page_name}': {preview}{more}")
+
+
+bulk_patch_component_styles_tool = ToolDefinition(
+    name="bulk_patch_component_styles",
+    description="""Apply ONE flat css_props patch to EVERY component matching a filter, in a single atomic save. Use this INSTEAD OF N `patch_component_styles` calls whenever repeated/sibling components share identical styling (every row label, every card, every nav link, every progress bar). This is the #1 way to avoid burning turns styling siblings one at a time.
+
+Filter shapes (all matchers AND together):
+- `{"keys": ["dQ1Name","dQ2Name","dQ3Name"]}` — explicit key list
+- `{"key_pattern": "Name$"}` — regex over keys
+- `{"type": "Text"}` — every component of a type
+- `{"name_contains": "pill"}` — substring on display name
+
+Supports `breakpoint`, `sub_component`, and `pseudo_state` (e.g. "hover") exactly like `patch_component_styles`.
+
+Examples:
+```
+bulk_patch_component_styles(page_name="home", filter={"keys":["dQ1Name","dQ2Name","dQ3Name"]},
+    css_props={"fontFamily":"monospace","fontSize":"13px","color":"#e5e5e5"})
+
+bulk_patch_component_styles(page_name="home", filter={"key_pattern":"^navLink"},
+    css_props={"color":"#ff5b2e"}, pseudo_state="hover")
+```
+
+Use `dry_run=true` first if unsure which keys match. NOT for per-component DIFFERENT styling — use `patch_component_styles` for those.""",
+    parameters=[
+        ToolParameter(name="page_name", type="string", description="Page name"),
+        ToolParameter(name="filter", type="object", description="Any of: keys[], key_pattern, type, name_contains"),
+        ToolParameter(name="css_props", type="object", description="Flat {cssProp: value} applied to every match"),
+        ToolParameter(name="breakpoint", type="string", required=False, default="ALL", description="Breakpoint (default ALL)"),
+        ToolParameter(name="sub_component", type="string", required=False, description="Sub-component style slot, if any"),
+        ToolParameter(name="pseudo_state", type="string", required=False, description="e.g. 'hover' for :hover styling"),
+        ToolParameter(name="dry_run", type="boolean", required=False, default=False, description="Preview matched keys, no save"),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="message", type="string", required=False, description="Commit message"),
+    ],
+    execute=_execute_bulk_patch_component_styles,
 )
 
 
@@ -1985,6 +2166,7 @@ TOOLS: list[ToolDefinition] = [
     remove_component_tool,
     rename_component_tool,
     bulk_patch_component_props_tool,
+    bulk_patch_component_styles_tool,
     # Composition v2 (surgical PATCH)
     patch_component_props_tool,
     patch_component_bindings_tool,

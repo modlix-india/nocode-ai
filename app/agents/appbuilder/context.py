@@ -57,6 +57,16 @@ Read the page structure first, then read ONLY the specific component or event yo
 then read and update only those specific components.
 - For bulk component edits, prefer `bulk_patch_component_props` over many \
 `patch_component_props` calls — one round-trip beats N.
+- STYLE SIBLINGS IN BULK (CRITICAL for build/clone speed): when several components share \
+identical styling (every row label, every card, every nav link, every pill/progress bar), \
+apply it with ONE `bulk_patch_component_styles` call (filter by `keys`/`key_pattern`/`type`/\
+`name_contains`), NOT one `patch_component_styles` per sibling. Styling 30 siblings one-at-a-\
+time is the #1 way to exhaust the turn budget before the page is done.
+- Set props AND styles INLINE in `add_component` (it takes `properties` + `style_properties`) \
+so you don't add-then-patch the same component in two calls.
+- Self-QA budget: after building a section, `screenshot_page` and fix at most TWICE, then move \
+on. Do NOT loop pixel-chasing one property at a time — get it roughly right and proceed; you \
+can polish at the end if turns remain.
 - NEVER do exploratory reads "for deeper understanding" — only read what you need for the current task.
 
 Vision (CRITICAL):
@@ -311,8 +321,9 @@ Cloning an external site (CRITICAL — never reach for HTML parsing):
 - The CFA does NOT have an HTML→Modlix translator. Site cloning is a VISION job: you SEE the source
   screenshots directly (attached as image content blocks) and author components from what you see.
   Call `screenshot_external_url(url="https://linear.app", scroll_positions=[0.0, 0.5, 1.0])` to capture
-  the source at multiple scroll positions. Scroll positions are numeric fractions of document height
-  (0.0=top, 1.0=bottom). NOT strings. The PNGs come back attached — look at them.
+  the source at multiple scroll positions, AND repeat at multiple widths (desktop ~1440, tablet ~768,
+  mobile ~390) so you can reproduce the responsive layout. Scroll positions are numeric fractions of
+  document height (0.0=top, 1.0=bottom). NOT strings. The PNGs come back attached — look at them.
 - Use `extract_site_assets(url=...)` BEFORE authoring imagery — it downloads every `<img>`, inline
   `<svg>`, and CSS background-image from the source page, uploads them to Modlix files, and returns
   a manifest of `original_url → modlix_url`. Bind the Modlix URLs straight into Image components.
@@ -320,17 +331,23 @@ Cloning an external site (CRITICAL — never reach for HTML parsing):
 - The build flow per section (top-to-bottom in visual order — hero first, footer LAST):
   look at the source shot → ONE `add_component` for the section container, then child components
   with COPY verbatim from the screenshot, colors sampled from the image, layout matching what you
-  see → `screenshot_page` the just-built section → `compare_to_source(page_name, source_handle)`
-  to get a structured diff vs the original → fix the listed diffs in ONE round, re-screenshot,
-  re-compare. ONE section at a time. Do not declare the clone done until compare_to_source
-  reports all severities as `low` (or you've burned 5 compare rounds on the same section).
+  see → `screenshot_page` the just-built section and LOOK at the returned PNG with your own vision →
+  compare it yourself against the source shot you captured and fix what differs (spacing, color,
+  font size/weight, alignment, missing elements) in ONE round, then re-screenshot. ONE section at a
+  time. There is NO separate compare tool: your own eyes on the two screenshots ARE the comparison.
+  Move on when the section visually matches (or you've spent ~5 screenshot rounds on it).
 - Sibling parity (CRITICAL): if card-1 in a row has icon+title+description, ALL siblings in that row
   must have icon+title+description. Populate every sibling slot before moving on — never leave the
   row half-populated.
-- Animations from the source site get reproduced by looking at the source screenshot for movement
-  cues, then authoring `@keyframes` in a global `create_style` doc + wiring component-level
-  `animation:` references. If something doesn't have a direct CSS equivalent (e.g. WebGL particles),
-  pick the closest CSS approximation and note the simplification in `decisions_log`.
+- Reproduce interactivity, not just the static layout:
+  * Hover states (color/scale/shadow/underline changes on buttons, cards, nav links) via `:hover`
+    style rules on the component.
+  * Hover/dropdown menus (nav menus that open on hover) via the navigation component's menu state
+    + the appropriate hover/open styling.
+  * Animations: look at the source for movement cues, then author `@keyframes` in a global
+    `create_style` doc and wire component-level `animation:` references. Per-component
+    styleProperties cannot host `@keyframes`. If something has no direct CSS equivalent (e.g. WebGL
+    particles), pick the closest CSS approximation and note the simplification in `decisions_log`.
 - `screenshot_page` is for MODLIX pages only — it cannot capture external URLs. Always use
   `screenshot_external_url` for source-site captures and `screenshot_page` only to verify your build.
 
@@ -459,15 +476,16 @@ _GROUPS, _ADVERTISED_NAMES = _collect_group_tool_names()
 # (cached after turn 1 by DeepSeek's automatic prefix caching).
 HOT_TOOLS: frozenset[str] = frozenset({
     # Apps + pages — every conversation touches at least one
-    "list_apps", "get_app", "update_app",
+    "list_apps", "get_app", "update_app", "create_app",
     "list_pages", "get_page", "get_page_summary",
     "search_page_components", "search_pages",
     # Components — every write to a page goes through these
     "get_component", "add_component", "patch_component_props",
-    "patch_component_styles", "bulk_patch_component_props",
+    "patch_component_styles", "bulk_patch_component_props", "bulk_patch_component_styles",
     "create_page", "update_page",
-    # Themes + styles
-    "list_themes", "get_theme",
+    # Themes + styles (create_theme/create_style are clone entry points —
+    # global colors + @keyframes animation docs)
+    "list_themes", "get_theme", "create_theme", "create_style",
     # Kirun authoring
     "compile_kirun_text", "save_function_from_text", "create_server_function",
     "decompile_function", "add_step", "update_step",
@@ -483,9 +501,10 @@ HOT_TOOLS: frozenset[str] = frozenset({
     # Visuals
     "screenshot_page", "get_preview_url", "describe_image",
     # Clone loop — must be in HOT_TOOLS so the agent sees the schema without
-    # a search_tools / get_tool_schema detour. Without this the agent skips
-    # compare_to_source entirely (observed on 2026-06-17 clonelinear run).
-    "screenshot_external_url", "extract_site_assets", "compare_to_source",
+    # a search_tools / get_tool_schema detour. Self-QA is the model's native
+    # vision (screenshot_page → look at it → compare to the source shot it
+    # captured), so there is no separate compare tool here.
+    "screenshot_external_url", "extract_site_assets",
     # Component catalog
     "list_component_types", "get_component_schema",
     # Validation
@@ -1031,12 +1050,12 @@ manifest `{originals: [{src, modlix_url, mime, width, height, sha256, role}, ...
 Call this BEFORE authoring imagery on a clone. Bind the returned `modlix_url`
 straight into Image components — never invent placeholder URLs.
 
-Compare to source: `compare_to_source(page_name, source_handle, region?)` opens the
-just-rendered Modlix page, screenshots it, fetches the cached source screenshot under
-`source_handle`, sends both to your vision model with a strict diff prompt, and
-returns JSON `[{section, severity, copy_diff, layout_diff, color_diff,
-missing_elements, fix_suggestion}, ...]`. After every section build, call this and
-fix the listed diffs in ONE round before moving to the next section.
+Self-compare with your own vision (there is NO compare tool): after building a section,
+`screenshot_page(page_name=...)` to render your build — the PNG attaches to the tool result.
+Look at it next to the source shot you captured with `screenshot_external_url` and judge the
+differences yourself: copy, layout, spacing, color, typography, missing elements, and hover/
+animation fidelity. Fix what differs in ONE round, then re-screenshot. You ARE the comparison
+engine — trust your eyes; don't ask for a diff tool.
 
 Vision (you can SEE images natively): screenshot tools attach the PNG(s) as image
 content blocks to the tool result. Look at them with your own eyes. The legacy
@@ -1101,14 +1120,16 @@ The flow:
    (heading, sub-copy, CTA, hero image, etc.) using COPY verbatim from the source screenshot,
    colors sampled from the image, asset URLs from the extracted manifest. Sibling parity is
    mandatory — if one card has icon+title+description, all sibling cards must too.
-5. After each region: `screenshot_page(page_name="<target>")` to see your build, then
-   `compare_to_source(page_name="<target>", source_handle="<from step 1>")` to get the
-   structured diff. Fix every diff with `severity=high` in ONE round before the next section.
-6. For any ANIMATIONS you see, `create_style` ONE global doc with `@keyframes` rules, then
+5. After each region: `screenshot_page(page_name="<target>")` to see your build, then LOOK at the
+   returned PNG and compare it yourself against the source shot from step 1. Fix the differences you
+   see (copy, layout, spacing, color, typography, hover states) in ONE round before the next section.
+   There is no compare tool — your own vision on the two screenshots is the diff.
+6. For HOVER states + dropdown/hover menus, add `:hover` style rules and wire the nav menu state.
+   For any ANIMATIONS you see, `create_style` ONE global doc with `@keyframes` rules, then
    reference the class on the relevant component via `styleProperties`. Per-component
    styleProperties cannot host `@keyframes`.
 
-Target: 25-40 tool calls for a typical landing-page clone (one extract + one compare per region).
+Target: 25-40 tool calls for a typical landing-page clone (one extract + one screenshot per region).
 NOT 50+ uncoordinated tweaks. Each component you add is informed by what you SEE in the source
 screenshot, not by re-reading the source over and over.
 
@@ -1117,7 +1138,7 @@ Anti-patterns specific to cloning:
 - Authoring sections in the wrong order (start at top, work down).
 - Inventing placeholder image URLs — use the manifest from `extract_site_assets`.
 - Generating AI imagery for content photos when cloning — use the real assets.
-- Declaring the clone done before `compare_to_source` returns clean — never skip the compare gate.
+- Declaring the clone done before you've screenshot your build and visually confirmed it matches the source.
 - Passing `screenshot_page` an external URL — that tool builds a Modlix URL internally and will 404. Use `screenshot_external_url` for source captures.""",
 }
 

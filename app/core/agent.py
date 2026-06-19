@@ -494,8 +494,13 @@ class BaseAgent:
                 "Please continue the conversation to proceed.]"
             )
 
-        # Persist the turn summary, tool call log, and context
+        # Persist the turn summary, tool call log, and context. Cap the summary
+        # well under the ASSISTANT_SUMMARY column width (TEXT, ~64KB): a verbose
+        # M3 turn can otherwise overflow it, failing the whole turn upsert
+        # (MySQL error 1406) and silently dropping conversation history.
         assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
+        if len(assistant_summary) > 60000:
+            assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
@@ -738,8 +743,17 @@ class BaseAgent:
 
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
-        # Request user confirmation for mutating operations (master's flow)
-        if tool_name in self.CONFIRMATION_TOOLS:
+        # Request user confirmation for mutating operations (master's flow).
+        # Headless/harness callers set session.context["auto_confirm"]=True to
+        # pre-approve mutations: skip the SSE pause (which would otherwise block
+        # on a /confirm resolver that no headless client provides) AND stamp
+        # confirmed=true so the in-tool gate (e.g. theme creation in
+        # _handlers.py) passes too. Interactive UI sessions leave auto_confirm
+        # unset and keep the normal confirmation flow.
+        if tool_name in self.CONFIRMATION_TOOLS and session.context.get("auto_confirm"):
+            if isinstance(tool_input, dict):
+                tool_input.setdefault("confirmed", True)
+        elif tool_name in self.CONFIRMATION_TOOLS:
             confirmation_id = f"confirm_{tool_use_id}"
             confirm_msg = self._build_confirmation_message(tool_name, display_name, tool_input)
             confirmation = await event_stream.request_confirmation(
@@ -880,6 +894,20 @@ class BaseAgent:
             context["event_stream"] = event_stream
         if tool_use_id:
             context["tool_use_id"] = tool_use_id
+        # `progress(msg)` lets a long-running tool stream status lines back
+        # to the UI as `tool_update` SSE frames. Fire-and-forget so tool
+        # bodies stay synchronous (`progress("...")`, not `await progress(...)`).
+        # Tools opt in with `progress = context.get("progress") or (lambda m: None)`.
+        if event_stream and tool_use_id:
+            def _progress(msg: str) -> None:
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(event_stream.emit_tool_update(tool_use_id, str(msg)))
+                except Exception:  # noqa: BLE001
+                    pass
+            context["progress"] = _progress
+        else:
+            context["progress"] = lambda _m: None
 
         # Phase 3b: deferred-schema gate. When defer_schemas is on and the
         # LLM calls a non-meta tool whose full schema hasn't been fetched

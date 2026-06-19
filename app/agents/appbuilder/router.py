@@ -73,6 +73,11 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     app_code: Optional[str] = None
     model: Optional[str] = None
+    # Headless/harness callers set this to pre-approve all mutating tools
+    # (create/update/delete/copy) so the agent runs fully autonomous without
+    # waiting on the interactive confirmation flow. Defaults to the normal
+    # interactive behaviour.
+    auto_confirm: bool = False
     attachments: Optional[List[ChatAttachment]] = None
     # Optional app-user identity. Required only when a tool that interacts
     # with the customer's live app (screenshot_page / drive_page /
@@ -92,6 +97,8 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
     session = BaseSession(agent_name="appbuilder")
     if body.app_code:
         session.context["app_code"] = body.app_code
+    # Pre-approve mutating tools for headless/harness callers (see agent loop).
+    session.context["auto_confirm"] = body.auto_confirm
 
     # Stash app-user credentials (token OR username+password) on the session.
     # Consumed lazily by tools that need an end-user identity (screenshot_page,

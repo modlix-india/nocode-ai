@@ -17,7 +17,10 @@ from typing import Any
 _CACHES: dict[str, dict[str, dict[str, Any]]] = {}
 
 # Cap per-session cache size so a long-running session can't OOM the process.
-MAX_SHOTS_PER_SESSION = 32
+# One `extract_site_assets` call now caches ~30-50 shots (3 viewports ×
+# {1 full-page + ~10 sections + ~5 hovers}) and the agent still needs
+# `compare_to_source` shots of its build during compare cycles.
+MAX_SHOTS_PER_SESSION = 128
 
 
 def get_shot_cache(session_id: str) -> dict[str, dict[str, Any]]:
