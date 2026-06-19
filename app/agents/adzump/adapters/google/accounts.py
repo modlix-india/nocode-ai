@@ -7,6 +7,7 @@ ContextVar.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from app.agents.adzump.adapters.google.client import google_ads_client
@@ -64,11 +65,21 @@ class GoogleAccountsAdapter:
         all_accounts: list[dict] = []
         seen_ids: set[str] = set()
 
-        for entry in top_level:
-            cid = entry["customer_id"]
-            acct_name = entry["name"]
-            if entry["is_manager"]:
-                for acc in await self._list_sub_accounts(cid, client_code, auth_headers):
+        managers = [(e["customer_id"], e["name"]) for e in top_level if e["is_manager"]]
+        non_managers = [(e["customer_id"], e["name"]) for e in top_level if not e["is_manager"]]
+
+        if managers:
+            sub_results = await asyncio.gather(
+                *[self._list_sub_accounts(cid, client_code, auth_headers) for cid, _ in managers],
+                return_exceptions=True,
+            )
+            for (cid, acct_name), result in zip(managers, sub_results):
+                if isinstance(result, Exception):
+                    logger.warning(
+                        "google_sub_accounts_failed manager=%s error=%s", cid, result
+                    )
+                    continue
+                for acc in result:
                     if acc["customer_id"] not in seen_ids:
                         seen_ids.add(acc["customer_id"])
                         all_accounts.append(
@@ -80,18 +91,19 @@ class GoogleAccountsAdapter:
                                 "is_manager": True,
                             }
                         )
-            else:
-                if cid not in seen_ids:
-                    seen_ids.add(cid)
-                    all_accounts.append(
-                        {
-                            "customer_id": cid,
-                            "name": acct_name,
-                            "login_customer_id": cid,
-                            "login_customer_name": acct_name,
-                            "is_manager": False,
-                        }
-                    )
+
+        for cid, acct_name in non_managers:
+            if cid not in seen_ids:
+                seen_ids.add(cid)
+                all_accounts.append(
+                    {
+                        "customer_id": cid,
+                        "name": acct_name,
+                        "login_customer_id": cid,
+                        "login_customer_name": acct_name,
+                        "is_manager": False,
+                    }
+                )
 
         logger.info(
             "google_accounts_fetched: client_code=%s count=%d",
@@ -125,8 +137,15 @@ class GoogleAccountsAdapter:
             customer = results[0].get("customer", {})
             return bool(customer.get("manager", False)), customer.get("descriptiveName", "")
         except Exception as e:
+            err_str = str(e)
+            if any(k in err_str for k in ("401", "403", "UNAUTHENTICATED", "PERMISSION_DENIED")):
+                logger.error(
+                    "google_account_info_auth_error: customer_id=%s err=%s",
+                    customer_id, err_str[:300],
+                )
+                raise
             logger.warning("google_account_info_failed: customer_id=%s err=%s",
-                           customer_id, str(e)[:200])
+                           customer_id, err_str[:200])
             return False, ""
 
     async def _list_sub_accounts(

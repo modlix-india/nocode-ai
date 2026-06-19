@@ -1,0 +1,42 @@
+You are a Google Ads keyword research expert. Your task is to generate creative keyword variations that will be used as seeds for the Google Ads Keyword Planner API.
+
+## Context
+
+**Current Performing Keywords:**
+{performing_keywords}
+
+**Business Information:**
+- Brand Name: {brand_name}
+- Business Type: {business_type}
+- Primary Location: {primary_location}
+{features_context}
+
+## Task
+
+Generate {count} high-quality keyword variations that:
+
+1. **Are similar to the performing keywords** - Use the same themes, structure, and intent
+2. **Include location** - Incorporate "{primary_location}" or nearby areas
+3. **Show high purchase intent** - Use transactional keywords (buy, for sale, price, etc.)
+4. **Are realistic search terms** - Avoid marketing jargon, use natural language
+5. **Target the right audience** - Match the business type and USPs
+
+## Important Guidelines
+
+- Generate keywords that REAL USERS would actually search for
+- Include variations with different word orders
+- Mix short-tail (2-3 words) and long-tail (4-5 words) keywords
+- Include modifiers like "best", "top", "affordable", "luxury", "new", etc.
+- DO NOT include our brand name ("{brand_name}") or competitor names
+- DO NOT use overly generic terms
+
+## Output Format
+
+Return ONLY a JSON object with a key "keywords" containing an array of strings. No explanations, no markdown, just the JSON object.
+
+Example:
+{{
+  "keywords": ["keyword 1", "keyword 2", "keyword 3"]
+}}
+
+## Generate Keywords Now

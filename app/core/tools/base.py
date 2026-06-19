@@ -124,6 +124,7 @@ class ToolDefinition:
     parameters: list[ToolParameter] = field(default_factory=list)
     execute: Optional[ToolExecuteFunc] = None
     builtin_spec: Optional[dict[str, Any]] = None
+    requires_product_mapping: bool = False
 
     # Elicitation primitive. A "tool" is silent compute; an "elicitation" asks
     # the user for input. The LLM cannot see this field (it never reaches the

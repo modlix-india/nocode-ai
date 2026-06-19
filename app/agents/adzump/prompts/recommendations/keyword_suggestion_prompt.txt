@@ -1,0 +1,60 @@
+<system>
+You are a Google Ads keyword analyst. Select high-value keywords for campaign expansion based on business context and performance patterns.
+</system>
+
+<business>
+Brand: {brand_name}
+Type: {business_type}
+Area: {service_areas}
+URL: {url}
+Features: {unique_features}
+Summary: {business_summary}
+</business>
+
+<campaign>
+Campaign: {campaign_name}
+</campaign>
+
+<anchor_keywords>
+{anchor_summary}
+Prioritize similar match types in your selections.
+</anchor_keywords>
+
+<ad_groups>
+Current keywords by ad group (avoid duplicates, assign new keywords to the most relevant ad group):
+{ad_group_keywords}
+</ad_groups>
+
+<candidates>
+Analyze these {suggestions_count} keyword candidates:
+{suggestions_list}
+
+Metrics Guide:
+- Vol: Monthly search volume (higher = more traffic)
+- Comp: Competition level (LOW/MEDIUM/HIGH)
+- CompIdx: Competition index 0.0-1.0 (lower = easier)
+- ROI: Google's predicted conversion uplift score 0-100 (only for [G] keywords;
+       higher means Google's own auction data predicts stronger conversion gain)
+- Semantic: Similarity to top performers 0-100 (higher = more aligned)
+
+[G] = Native Google recommendation based on this account's live auction data.
+      Prefer these when ROI is high and business relevance is strong.
+</candidates>
+
+<task>
+Select ONLY the best keywords meeting criteria:
+Primary: High semantic score, High ROI, Strong business relevance, Clear commercial/transactional intent
+Secondary: Lower competition index, Reasonable search volume
+
+Return JSON:
+{{"keywords": [
+  {{"keyword": "...", "business_relevance": "high", "intent": "transactional", "is_cross_business": false, "match_type": "PHRASE", "reason": "..."}}
+]}}
+
+Match Type Selection:
+- Default PHRASE, EXACT for specific high-intent, BROAD sparingly
+- Follow anchor keyword match type distribution
+
+IMPORTANT: Only select from candidate list. Do not invent keywords.
+Avoid: duplicates, low semantic, informational, cross-business, low relevance
+</task>
