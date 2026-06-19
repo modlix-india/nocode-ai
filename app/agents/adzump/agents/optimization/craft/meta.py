@@ -37,7 +37,7 @@ from app.agents.adzump.agents.optimization.craft.builders import (
     text_block,
 )
 from app.agents.adzump.agents.optimization.craft.google import _safe_float_format
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     CampaignRecommendation,
     CheckSeverity,
 )

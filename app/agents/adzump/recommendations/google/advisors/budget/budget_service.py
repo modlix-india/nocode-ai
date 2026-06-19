@@ -42,13 +42,14 @@ from app.agents.adzump.adapters.google.recommendations import (
 from app.agents.adzump.recommendations.google.advisors.budget.diagnosis_service import (
     diagnose_budget,
 )
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     BiddingStrategyType,
     BudgetBiddingRecommendation,
     ConfidenceLevel,
     ConstraintType,
     ScopeType,
 )
+from app.agents.adzump.recommendations.google.capabilities import get_capabilities
 from app.agents.adzump._shared import build_ds_headers
 
 logger = logging.getLogger(__name__)
@@ -173,6 +174,7 @@ def _score_bidding_recommendation(
     strategy_type = campaign_context.get("bidding_strategy_type", "")
     is_portfolio = campaign_context.get("is_portfolio", False)
     target_roas = campaign_context.get("target_roas")
+    caps = get_capabilities(campaign_context.get("campaign_type", "UNKNOWN"))
 
     # Map native recs by type for O(1) lookup
     native_by_type: Dict[str, Dict[str, Any]] = {}
@@ -196,28 +198,51 @@ def _score_bidding_recommendation(
         RecommendationType.MAXIMIZE_CLICKS_OPT_IN,
     ]
     for rec_type in priority_order:
-        if rec_type.value in native_by_type:
-            confidence = _conversion_confidence(conversions, rec_type)
-            rationale = (
-                f"Google's recommendation engine suggests switching to "
-                f"{rec_type.value.replace('_', ' ').title()}. "
+        if rec_type.value not in native_by_type:
+            continue
+        # F4 safety belt: only surface native recs valid for this channel type
+        # (e.g. PMax can't switch to standalone Target CPA/ROAS strategies).
+        if rec_type.value not in caps.allowed_bidding_rec_types:
+            logger.info(
+                "bidding: skipping native rec %s — not valid for %s campaigns",
+                rec_type.value, caps.display_label,
             )
-            if confidence == ConfidenceLevel.LOW:
-                rationale += (
-                    f"Note: conversion volume ({conversions:.0f}/month) is "
-                    f"below the recommended threshold for reliable "
-                    f"Smart Bidding performance."
-                )
-            return {
-                "bidding_rec_type": rec_type.value,
-                "bidding_rec_rationale": rationale,
-                "bidding_confidence": confidence,
-                "bidding_blocked_reason": None,
-                "google_rec_confirmed": True,
-            }
+            continue
+        confidence = _conversion_confidence(conversions, rec_type)
+        rationale = (
+            f"Google's recommendation engine suggests switching to "
+            f"{rec_type.value.replace('_', ' ').title()}. "
+        )
+        if confidence == ConfidenceLevel.LOW:
+            rationale += (
+                f"Note: conversion volume ({conversions:.0f}/month) is "
+                f"below the recommended threshold for reliable "
+                f"Smart Bidding performance."
+            )
+        return {
+            "bidding_rec_type": rec_type.value,
+            "bidding_rec_rationale": rationale,
+            "bidding_confidence": confidence,
+            "bidding_blocked_reason": None,
+            "google_rec_confirmed": True,
+        }
 
     # Priority 2: No native rec — apply strategy maturity decision tree.
     # Thresholds are practitioner conventions defined above.
+
+    # F4: the tree is Search-calibrated; channels it doesn't apply to
+    # (PMax/Shopping/Display/Video) get no tree-based change — native recs only.
+    if not caps.supports_bidding_decision_tree:
+        return {
+            "bidding_rec_type": None,
+            "bidding_rec_rationale": (
+                f"Bidding analysis for {caps.display_label} campaigns relies on "
+                "Google's native recommendations only."
+            ),
+            "bidding_confidence": ConfidenceLevel.LOW,
+            "bidding_blocked_reason": None,
+            "google_rec_confirmed": False,
+        }
 
     rec_type: Optional[RecommendationType] = None
     rationale = ""

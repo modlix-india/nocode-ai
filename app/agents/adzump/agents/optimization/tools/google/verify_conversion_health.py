@@ -6,13 +6,17 @@ import logging
 from datetime import datetime, timezone
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     ConversionFixCard,
     ConversionHealthCheck,
     ConversionHealthReport,
     HealthLabel,
     CheckSeverity,
     ConversionSignal,
+)
+from app.agents.adzump.agents.optimization.tools.google._conversion_fixes import (
+    build_implementation_guide,
+    build_mutation_payload,
 )
 
 from app.agents.adzump.adapters.google.conversion_metrics import (
@@ -36,12 +40,24 @@ from app.agents.adzump.adapters.google.conversion_enums import (
 
 logger = logging.getLogger(__name__)
 
-# Checks that can be resolved via a direct API mutation (no manual action needed).
-_AUTO_APPLY_CHECKS: set[str] = {
-    "deprecated_attribution_model",
-    "wrong_counting_type",
-    "primary_goal_not_biddable",
-}
+
+def _auto_fix(operation: str, updates: list[dict]) -> dict:
+    """A per-entity mutation an auto-applyable check attaches to its metadata as
+    ``auto_fix``; build_mutation_payload validates and surfaces it as the payload."""
+    return {"operation": operation, "updates": updates}
+
+
+def _scope_ok(resource_name: str, customer_id: str, campaign_id: str) -> bool:
+    """In scope iff a customer/campaign segment the resource name carries matches
+    ours (names without the segment pass). Guards both the displayed ids and the
+    mutation write targets — never surface or mutate another customer's resource."""
+    rn = str(resource_name or "")
+    if customer_id and "customers/" in rn and f"customers/{customer_id}" not in rn:
+        return False
+    if campaign_id and "campaigns/" in rn and f"campaigns/{campaign_id}" not in rn:
+        return False
+    return True
+
 
 # Estimated Optimisation Score delta per failing check.
 # These are internal estimates — not from Google's API.
@@ -170,6 +186,20 @@ def _check_primary_not_biddable(data: dict) -> ConversionHealthCheck:
             f"'{excluded[0]['name']}' is set as the primary goal but is excluded "
             "from the conversions metric. Smart Bidding is optimising toward nothing.",
             affected_entity_ids=[action["id"] for action in excluded],
+            metadata={
+                # include_in_conversions_metric is mutable — re-include each action.
+                "auto_fix": _auto_fix(
+                    "MutateConversionActions",
+                    [
+                        {
+                            "resource_name": action["resource_name"],
+                            "field": "include_in_conversions_metric",
+                            "value": True,
+                        }
+                        for action in excluded
+                    ],
+                ),
+            },
         )
 
     primary_cats = {action["category"] for action in primary}
@@ -186,6 +216,21 @@ def _check_primary_not_biddable(data: dict) -> ConversionHealthCheck:
             "Primary conversion goal not biddable for this campaign",
             "The primary conversion goal is not set as biddable for this campaign. "
             "Smart Bidding is active but has no goal to optimise toward.",
+            affected_entity_ids=[goal["resource_name"] for goal in non_biddable],
+            metadata={
+                # campaign_conversion_goal.biddable is mutable — turn it on.
+                "auto_fix": _auto_fix(
+                    "MutateCampaignConversionGoals",
+                    [
+                        {
+                            "resource_name": goal["resource_name"],
+                            "field": "biddable",
+                            "value": True,
+                        }
+                        for goal in non_biddable
+                    ],
+                ),
+            },
         )
 
     return _check(
@@ -386,7 +431,21 @@ def _check_deprecated_attribution(data: dict) -> ConversionHealthCheck:
             "Deprecated attribution model in use",
             f"{count} active conversion action(s) use deprecated attribution models: {', '.join(readable_models)}. Consider switching to data-driven or last-click attribution models for better performance and support.",
             affected_entity_ids=[action["id"] for action in affected],
-            metadata={"deprecated_models_in_use": models},
+            metadata={
+                "deprecated_models_in_use": models,
+                # attribution_model is mutable — switch each to data-driven.
+                "auto_fix": _auto_fix(
+                    "MutateConversionActions",
+                    [
+                        {
+                            "resource_name": action["resource_name"],
+                            "field": "attribution_model_settings.attribution_model",
+                            "value": AttributionModel.GOOGLE_SEARCH_ATTRIBUTION_DATA_DRIVEN.value,
+                        }
+                        for action in affected
+                    ],
+                ),
+            },
         )
     return _check(
         check_id,
@@ -434,6 +493,24 @@ def _check_wrong_counting(data: dict) -> ConversionHealthCheck:
             "Inconsistent counting types detected",
             details,
             affected_entity_ids=[action["id"] for action, _ in issues],
+            metadata={
+                # counting_type is mutable — ecommerce counts every event, leads one.
+                "auto_fix": _auto_fix(
+                    "MutateConversionActions",
+                    [
+                        {
+                            "resource_name": action["resource_name"],
+                            "field": "counting_type",
+                            "value": (
+                                ConversionActionCountingType.MANY_PER_CLICK.value
+                                if action.get("category") in ECOMMERCE_CATEGORIES
+                                else ConversionActionCountingType.ONE_PER_CLICK.value
+                            ),
+                        }
+                        for action, _ in issues
+                    ],
+                ),
+            },
         )
     return _check(
         check_id,
@@ -580,31 +657,38 @@ def _build_fix_cards(
         if check.passed:
             continue
 
-        # Defensively validate that affected entities belong to this customer and campaign
-        validated_entity_ids = []
+        # Defensively drop displayed entity ids outside this customer/campaign.
         if check.affected_entity_ids:
+            kept_ids = []
             for eid in check.affected_entity_ids:
-                eid_str = str(eid)
-                # Google resource names look like:
-                # customers/{customer_id}/conversionActions/{action_id} or campaignConversionGoals
-                if customer_id and "customers/" in eid_str:
-                    if f"customers/{customer_id}" not in eid_str:
-                        logger.warning(
-                            "verify_conversion_health: filtering affected entity ID not belonging to customer %s: %s",
-                            customer_id,
-                            eid_str,
-                        )
-                        continue
-                if campaign_id and "campaigns/" in eid_str:
-                    if f"campaigns/{campaign_id}" not in eid_str:
-                        logger.warning(
-                            "verify_conversion_health: filtering affected entity ID not belonging to campaign %s: %s",
-                            campaign_id,
-                            eid_str,
-                        )
-                        continue
-                validated_entity_ids.append(eid)
-            check.affected_entity_ids = validated_entity_ids
+                if _scope_ok(eid, customer_id, campaign_id):
+                    kept_ids.append(eid)
+                else:
+                    logger.warning(
+                        "verify_conversion_health: filtering out-of-scope entity id "
+                        "%s (customer=%s campaign=%s)",
+                        eid,
+                        customer_id,
+                        campaign_id,
+                    )
+            check.affected_entity_ids = kept_ids
+
+        # Same guard on the mutation WRITE targets — the higher-stakes path. Any
+        # out-of-scope target is dropped; if that empties the update set,
+        # build_mutation_payload returns None and the card falls back to a guide.
+        auto_fix = check.metadata.get("auto_fix")
+        if isinstance(auto_fix, dict) and customer_id:
+            kept_updates = []
+            for upd in auto_fix.get("updates", []):
+                if _scope_ok(upd.get("resource_name", ""), customer_id, campaign_id):
+                    kept_updates.append(upd)
+                else:
+                    logger.warning(
+                        "verify_conversion_health: dropping out-of-scope mutation "
+                        "target %s",
+                        upd.get("resource_name", ""),
+                    )
+            auto_fix["updates"] = kept_updates
 
         tag_snippet = None
         if check.check_id == "tag_snippets_missing" and tag_snippets_by_action:
@@ -620,28 +704,14 @@ def _build_fix_cards(
             if tag_snippet is None:
                 tag_snippet = next(iter(tag_snippets_by_action.values()))
 
-        mutation_payload = None
-        if check.check_id == "primary_goal_not_biddable":
-            mutation_payload = {
-                "operation": "MutateCampaignConversionGoals",
-                "biddable": True,
-                "affected_entity_ids": check.affected_entity_ids,
-            }
-        elif check.check_id == "deprecated_attribution_model":
-            mutation_payload = {
-                "operation": "MutateConversionActions",
-                "affected_entity_ids": check.affected_entity_ids,
-                "fields_to_update": ["attributionModelSettings.attributionModel"],
-                # Migrate to data-driven — the only recommended supported model.
-                # Source: https://developers.google.com/google-ads/api/docs/conversions/troubleshooting
-                "new_value": AttributionModel.GOOGLE_SEARCH_ATTRIBUTION_DATA_DRIVEN.value,
-            }
-        elif check.check_id == "wrong_counting_type":
-            mutation_payload = {
-                "operation": "MutateConversionActions",
-                "affected_entity_ids": check.affected_entity_ids,
-                "fields_to_update": ["countingType"],
-            }
+        # A check is auto-applyable iff we can build a complete mutation payload;
+        # everything else gets a manual step-by-step guide. Single source — the
+        # flag can never claim "auto" for a fix we can't actually execute.
+        mutation_payload = build_mutation_payload(check)
+        can_auto_apply = mutation_payload is not None
+        implementation_guide = (
+            None if can_auto_apply else build_implementation_guide(check, tag_snippet)
+        )
 
         cards.append(
             ConversionFixCard(
@@ -652,9 +722,10 @@ def _build_fix_cards(
                 severity=check.severity,
                 fix_type=fix_type_map.get(check.check_id, "config"),
                 optiscore_delta=_OPTISCORE_DELTA.get(check.check_id, 0.0),
-                can_auto_apply=check.check_id in _AUTO_APPLY_CHECKS,
+                can_auto_apply=can_auto_apply,
                 tag_snippet=tag_snippet,
                 mutation_payload=mutation_payload,
+                implementation_guide=implementation_guide,
             )
         )
 
@@ -666,32 +737,23 @@ def _build_fix_cards(
 async def _verify_conversion_health(params: dict, context: dict) -> ToolResult:
     """Run 8 conversion tracking health checks for a campaign."""
     campaign_id = str(params.get("campaign_id") or "").strip()
-    if not campaign_id:
-        return ToolResult(
-            success=False,
-            error="I need a campaign ID to check conversion health. Please provide one.",
-        )
-
     logger.info("verify_conversion_health: START campaign=%s", campaign_id)
+
+    from app.agents.adzump.agents.optimization.tools.google._channel import (
+        prepare_google_campaign_tool,
+    )
+
+    prep = await prepare_google_campaign_tool(
+        context, campaign_id, section="conversion_health"
+    )
+    if isinstance(prep, ToolResult):
+        return prep
 
     headers = context.get("headers", {})
     client_code = context.get("client_code", "")
     session_ctx = context.get("session_context", {})
-    customer_id = session_ctx.get("account_id", "")
-    login_customer_id = session_ctx.get("login_customer_id", "")
-
-    if not customer_id:
-        logger.warning(
-            "verify_conversion_health: BLOCKED — no account_id in session campaign=%s",
-            campaign_id,
-        )
-        return ToolResult(
-            success=False,
-            error=(
-                "The ad account for this campaign couldn't be determined. "
-                "Please make sure the campaign is linked to a Google Ads account."
-            ),
-        )
+    customer_id = prep.account_id
+    login_customer_id = prep.login_customer_id
 
     try:
         data = await conversion_metrics_adapter.fetch_conversion_health(
@@ -766,7 +828,7 @@ async def _verify_conversion_health(params: dict, context: dict) -> ToolResult:
         try:
             conversion_signal = ConversionSignal(**signal_raw)
         except Exception:
-            pass
+            logger.info("conversion_signal parse failed", exc_info=True)
 
     report = ConversionHealthReport(
         campaign_id=campaign_id,
@@ -785,6 +847,7 @@ async def _verify_conversion_health(params: dict, context: dict) -> ToolResult:
     ] = report.model_dump()
 
     failing = [check for check in checks if not check.passed]
+    auto_apply_ids = {card.check_id for card in fix_cards if card.can_auto_apply}
     summary_lines = [
         f"Conversion Health: {label} ({score}/100)",
         f"Checks: {len(checks) - len(failing)} passed, {len(failing)} failing",
@@ -793,7 +856,7 @@ async def _verify_conversion_health(params: dict, context: dict) -> ToolResult:
     for check in failing:
         summary_lines.append(f"[{check.severity.upper()}] {check.title}")
         summary_lines.append(f"  {check.description}")
-        if check.check_id in _AUTO_APPLY_CHECKS:
+        if check.check_id in auto_apply_ids:
             summary_lines.append("Can be auto-applied via API")
         summary_lines.append("")
 

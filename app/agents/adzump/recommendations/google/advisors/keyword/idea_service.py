@@ -16,7 +16,7 @@ from app.agents.adzump.adapters.google.recommendations import (
     google_recommendations_adapter,
     RecommendationType,
 )
-from app.agents.adzump.agents.optimization.models import GoogleKeywordRecommendation
+from app.agents.adzump.recommendations.models import GoogleKeywordRecommendation
 from app.agents.adzump.recommendations.google.advisors._utils import clean_and_load_json
 from app.agents.adzump.recommendations.google.advisors.keyword.seed_expander import (
     KeywordSeedExpander,

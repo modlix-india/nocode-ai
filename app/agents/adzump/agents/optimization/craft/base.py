@@ -16,7 +16,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Type
 
-from app.agents.adzump.agents.optimization.models import CampaignRecommendation
+from app.agents.adzump.recommendations.models import CampaignRecommendation
 
 logger = logging.getLogger(__name__)
 

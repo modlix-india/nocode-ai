@@ -23,7 +23,7 @@ from app.agents.adzump.agents.optimization.provider_base import (
     PlatformCapabilities,
     PlatformProvider,
 )
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     BaseOptimizationFields,
     CampaignOverview,
     MetaOptimizationFields,

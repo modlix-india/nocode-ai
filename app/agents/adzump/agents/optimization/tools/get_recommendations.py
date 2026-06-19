@@ -1,12 +1,13 @@
 """Read stored campaign recommendations from storage."""
 
 from __future__ import annotations
+from pydantic import TypeAdapter
 
 import logging
 
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.agents.optimization.models import CampaignRecommendation
+from app.agents.adzump.recommendations.models import CampaignRecommendation
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,11 @@ async def _get_recommendations(params: dict, context: dict) -> ToolResult:
             client_code=client_code,
             auth_headers=headers,
         )
-        from pydantic import TypeAdapter
-        stored = TypeAdapter(CampaignRecommendation).validate_python(stored_dict) if stored_dict else None
+        stored = (
+            TypeAdapter(CampaignRecommendation).validate_python(stored_dict)
+            if stored_dict
+            else None
+        )
     except Exception as e:
         logger.exception(
             "get_recommendations: storage read failed campaign=%s", campaign_id

@@ -14,15 +14,18 @@ Reference
   https://developers.google.com/google-ads/api/fields/v22/metrics (field definitions for all campaign metrics)
   https://developers.google.com/google-ads/api/docs/reporting/segmentation (GAQL segmentation — which segments are compatible with which metrics)
   https://groups.google.com/g/adwords-api/c/QvkmIcnDF3M/m/Vu5uFcESDAAJ (search_impression_share returns per-day values when segments.date is used; correct aggregation is impression-weighted average)
+  https://support.google.com/google-ads/answer/2497703 (content/Display IS = received ÷ eligible on the Display Network — same structure as search IS, so same impression-weighted aggregation)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from app.agents.adzump.adapters.google.client import google_ads_client
+from app.agents.adzump.adapters.google.gaql import safe_ids
 from app.agents.adzump.adapters.google.conversion_enums import (
     MAX_FRESHNESS_DAYS,
     QueryWindow,
@@ -38,6 +41,8 @@ SELECT
   campaign.id,
   campaign.name,
   campaign.status,
+  campaign.advertising_channel_type,
+  campaign.advertising_channel_sub_type,
   campaign.bidding_strategy,
   campaign.bidding_strategy_type,
   campaign.target_cpa.target_cpa_micros,
@@ -60,6 +65,9 @@ SELECT
   metrics.search_impression_share,
   metrics.search_budget_lost_impression_share,
   metrics.search_rank_lost_impression_share,
+  metrics.content_impression_share,
+  metrics.content_budget_lost_impression_share,
+  metrics.content_rank_lost_impression_share,
   segments.date
 FROM campaign
 WHERE campaign.status = 'ENABLED'
@@ -164,6 +172,9 @@ def _normalise_row(row: dict, freshness: Dict[str, Any]) -> Dict[str, Any]:
         "campaign_id": str(campaign.get("id", "")),
         "campaign_name": campaign.get("name", ""),
         "campaign_status": campaign.get("status", ""),
+        # advertising_channel_type → honest UNKNOWN when absent (not "SEARCH").
+        "campaign_type": campaign.get("advertisingChannelType", "UNKNOWN"),
+        "campaign_sub_type": campaign.get("advertisingChannelSubType", ""),
         "currency_code": row.get("customer", {}).get("currencyCode", "INR"),
         # Bidding
         "bidding_strategy_type": campaign.get("biddingStrategyType", ""),
@@ -184,10 +195,16 @@ def _normalise_row(row: dict, freshness: Dict[str, Any]) -> Dict[str, Any]:
         "conversions": float(metrics.get("conversions", 0)),
         "conversions_value": float(metrics.get("conversionsValue", 0)),
         "clicks": int(metrics.get("clicks", 0)),
-        # Impression share (may be stale — see freshness gate)
+        # Impression share (may be stale — see freshness gate). Both families are
+        # emitted raw; the advisor resolves which applies per channel via
+        # capabilities (SEARCH → search_*, DISPLAY → content_*, PMax → search IS
+        # only, others → none).
         "search_impression_share": metrics.get("searchImpressionShare"),
         "budget_lost_impression_share": metrics.get("searchBudgetLostImpressionShare"),
         "rank_lost_impression_share": metrics.get("searchRankLostImpressionShare"),
+        "content_impression_share": metrics.get("contentImpressionShare"),
+        "content_budget_lost_impression_share": metrics.get("contentBudgetLostImpressionShare"),
+        "content_rank_lost_impression_share": metrics.get("contentRankLostImpressionShare"),
         # Freshness metadata — attached so advisors can downgrade confidence
         "metric_freshness": freshness,
     }
@@ -211,7 +228,7 @@ class CampaignMetricsAdapter:
         """Fetch and aggregate campaign performance, bidding, and freshness metrics from Google Ads."""
         query = _CAMPAIGN_METRICS_QUERY.format(window=window.value)
         if campaign_ids:
-            id_list = ", ".join(f"'{cid}'" for cid in campaign_ids)
+            id_list = ", ".join(f"'{cid}'" for cid in safe_ids(campaign_ids, "campaign_id"))
             query += f"\n  AND campaign.id IN ({id_list})"
 
         logger.info(
@@ -268,6 +285,9 @@ class CampaignMetricsAdapter:
                     "_wtd_is_sum": 0.0,
                     "_wtd_budget_lost_sum": 0.0,
                     "_wtd_rank_lost_sum": 0.0,
+                    "_wtd_content_is_sum": 0.0,
+                    "_wtd_content_budget_lost_sum": 0.0,
+                    "_wtd_content_rank_lost_sum": 0.0,
                 }
             else:
                 # Always update campaign/budget config from the latest row so we
@@ -293,6 +313,13 @@ class CampaignMetricsAdapter:
                 agg["_wtd_budget_lost_sum"] += impressions_for_day * float(v)
             if (v := m.get("searchRankLostImpressionShare")) is not None:
                 agg["_wtd_rank_lost_sum"] += impressions_for_day * float(v)
+            # Content (Display) IS family — same impression-weighted treatment.
+            if (v := m.get("contentImpressionShare")) is not None:
+                agg["_wtd_content_is_sum"] += impressions_for_day * float(v)
+            if (v := m.get("contentBudgetLostImpressionShare")) is not None:
+                agg["_wtd_content_budget_lost_sum"] += impressions_for_day * float(v)
+            if (v := m.get("contentRankLostImpressionShare")) is not None:
+                agg["_wtd_content_rank_lost_sum"] += impressions_for_day * float(v)
 
         last_segment_date = max(segment_dates) if segment_dates else None
         freshness = _assess_metric_freshness(last_segment_date)
@@ -305,14 +332,23 @@ class CampaignMetricsAdapter:
             wtd_is = agg.pop("_wtd_is_sum", None)
             wtd_bl = agg.pop("_wtd_budget_lost_sum", None)
             wtd_rl = agg.pop("_wtd_rank_lost_sum", None)
+            wtd_c_is = agg.pop("_wtd_content_is_sum", None)
+            wtd_c_bl = agg.pop("_wtd_content_budget_lost_sum", None)
+            wtd_c_rl = agg.pop("_wtd_content_rank_lost_sum", None)
             if total_imp > 0:
                 agg["searchImpressionShare"] = wtd_is / total_imp if wtd_is is not None else None
                 agg["searchBudgetLostImpressionShare"] = wtd_bl / total_imp if wtd_bl is not None else None
                 agg["searchRankLostImpressionShare"] = wtd_rl / total_imp if wtd_rl is not None else None
+                agg["contentImpressionShare"] = wtd_c_is / total_imp if wtd_c_is is not None else None
+                agg["contentBudgetLostImpressionShare"] = wtd_c_bl / total_imp if wtd_c_bl is not None else None
+                agg["contentRankLostImpressionShare"] = wtd_c_rl / total_imp if wtd_c_rl is not None else None
             else:
                 agg["searchImpressionShare"] = None
                 agg["searchBudgetLostImpressionShare"] = None
                 agg["searchRankLostImpressionShare"] = None
+                agg["contentImpressionShare"] = None
+                agg["contentBudgetLostImpressionShare"] = None
+                agg["contentRankLostImpressionShare"] = None
             ctx = _normalise_row(row, freshness)
             normalised.append(ctx)
 
@@ -332,58 +368,82 @@ class CampaignMetricsAdapter:
         auth_headers: dict,
         campaign_ids: Optional[List[str]] = None,
     ) -> Dict[str, Dict[str, int]]:
-        """Fetch total ad group and ad counts for the given campaigns.
+        """Fetch ad group + ad counts per campaign.
         Returns: { campaign_id: {"adset_count": int, "ad_count": int} }
-        """
-        counts = {}
-        if not campaign_ids:
-            return counts
-            
-        # Initialize counts
-        for cid in campaign_ids:
-            counts[str(cid)] = {"adset_count": 0, "ad_count": 0}
 
-        id_list = ", ".join(f"'{cid}'" for cid in campaign_ids)
-        
-        # We can fetch this from the ad_group_ad resource.
-        # It's lighter than fetching full metrics. We just need the IDs to count unique ones.
-        query = f"""
+        Runs two queries concurrently — ``ad_group_ad`` (Search / Shopping /
+        Display) and ``asset_group`` (Performance Max, which has no ad groups or
+        individual ads). A campaign appears in only one; for PMax the ad/adset
+        counts are the asset-group count (PMax exposes no individual ads by API
+        design).
+        """
+        ids = [str(c) for c in (campaign_ids or [])]
+        counts: Dict[str, Dict[str, int]] = {
+            cid: {"adset_count": 0, "ad_count": 0} for cid in ids
+        }
+        if not ids:
+            return counts
+
+        id_list = ", ".join(f"'{cid}'" for cid in safe_ids(ids, "campaign_id"))
+        ad_group_query = f"""
             SELECT campaign.id, ad_group.id, ad_group_ad.ad.id
             FROM ad_group_ad
             WHERE campaign.id IN ({id_list})
               AND ad_group.status = 'ENABLED'
               AND ad_group_ad.status = 'ENABLED'
         """
-        
-        try:
-            results = await self.client.search(
-                query=query,
-                customer_id=customer_id,
-                login_customer_id=login_customer_id,
-                client_code=client_code,
-                auth_headers=auth_headers,
-            )
-            
-            # Count unique ad groups and total ads
-            unique_adsets: Dict[str, set] = {cid: set() for cid in campaign_ids}
-            ad_counts: Dict[str, int] = {cid: 0 for cid in campaign_ids}
-            
-            for row in results:
-                cid = str(row.get("campaign", {}).get("id", ""))
-                agid = str(row.get("adGroup", {}).get("id", ""))
-                if cid in unique_adsets and agid:
-                    unique_adsets[cid].add(agid)
-                    ad_counts[cid] += 1
-                    
-            for cid in campaign_ids:
+        asset_group_query = f"""
+            SELECT campaign.id, asset_group.id
+            FROM asset_group
+            WHERE campaign.id IN ({id_list})
+              AND asset_group.status = 'ENABLED'
+        """
+
+        async def _run(query: str) -> list:
+            try:
+                return await self.client.search(
+                    query=query,
+                    customer_id=customer_id,
+                    login_customer_id=login_customer_id,
+                    client_code=client_code,
+                    auth_headers=auth_headers,
+                )
+            except Exception:
+                logger.exception(
+                    "fetch_campaign_counts query failed: customer=%s", customer_id
+                )
+                return []
+
+        ad_rows, ag_rows = await asyncio.gather(
+            _run(ad_group_query), _run(asset_group_query)
+        )
+
+        # ad_group_ad → unique ad groups (adsets) + total ads
+        unique_adsets: Dict[str, set] = {cid: set() for cid in ids}
+        ad_counts: Dict[str, int] = {cid: 0 for cid in ids}
+        for row in ad_rows:
+            cid = str(row.get("campaign", {}).get("id", ""))
+            agid = str(row.get("adGroup", {}).get("id", ""))
+            if cid in unique_adsets and agid:
+                unique_adsets[cid].add(agid)
+                ad_counts[cid] += 1
+
+        # asset_group → asset-group count (Performance Max)
+        asset_group_counts: Dict[str, int] = {cid: 0 for cid in ids}
+        for row in ag_rows:
+            cid = str(row.get("campaign", {}).get("id", ""))
+            if cid in asset_group_counts and row.get("assetGroup", {}).get("id"):
+                asset_group_counts[cid] += 1
+
+        for cid in ids:
+            ag = asset_group_counts[cid]
+            if ag > 0:
+                counts[cid] = {"adset_count": ag, "ad_count": ag}
+            else:
                 counts[cid] = {
                     "adset_count": len(unique_adsets[cid]),
                     "ad_count": ad_counts[cid],
                 }
-                
-        except Exception:
-            logger.exception("fetch_campaign_counts failed: customer=%s", customer_id)
-            
         return counts
 
 

@@ -6,7 +6,7 @@ import logging
 from datetime import date, datetime, timezone
 from typing import Any
 
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     ConversionSignal,
     ConversionSignalStatus,
 )

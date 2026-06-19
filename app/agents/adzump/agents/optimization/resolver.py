@@ -64,7 +64,7 @@ async def resolve_platform_and_account(
     # Step 1: AISuggestedData mapping (exact match by campaign_id)
     mappings = None
     try:
-        from app.agents.adzump.services.business_storage import (
+        from app.agents.adzump.agents.optimization.mapping_service import (
             fetch_campaign_mappings,
         )
 

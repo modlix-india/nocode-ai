@@ -16,6 +16,7 @@ from datetime import date
 from typing import Optional
 
 from app.agents.adzump.adapters.google.client import google_ads_client
+from app.agents.adzump.adapters.google.gaql import safe_id, safe_ids
 from app.agents.adzump.adapters.google.conversion_enums import QueryWindow
 
 logger = logging.getLogger(__name__)
@@ -97,14 +98,18 @@ class GoogleReportingAdapter:
         campaign_ids: Optional[list[str]] = None,
     ) -> str:
         date_clause = f"segments.date DURING {duration}" if duration else ""
-        ad_group_filter = f"AND ad_group.id = {ad_group_id}" if ad_group_id else ""
-        
+        ad_group_filter = (
+            f"AND ad_group.id = {safe_id(ad_group_id, 'ad_group_id')}"
+            if ad_group_id
+            else ""
+        )
+
         campaign_filter = ""
         if campaign_ids:
-            ids_str = ", ".join(f"'{cid}'" for cid in campaign_ids)
+            ids_str = ", ".join(f"'{cid}'" for cid in safe_ids(campaign_ids, "campaign_id"))
             campaign_filter = f"AND campaign.id IN ({ids_str})"
         elif campaign_id:
-            campaign_filter = f"AND campaign.id = {campaign_id}"
+            campaign_filter = f"AND campaign.id = {safe_id(campaign_id, 'campaign_id')}"
 
         negative_filter = (
             "" if include_negatives else "AND ad_group_criterion.negative = FALSE"
@@ -159,7 +164,7 @@ def _transform_row(row: dict) -> dict:
         "ad_group_name": ad_group.get("name", ""),
         "campaign_id": str(campaign.get("id", "")),
         "campaign_name": campaign.get("name", ""),
-        "campaign_type": campaign.get("advertisingChannelType", "SEARCH"),
+        "campaign_type": campaign.get("advertisingChannelType", "UNKNOWN"),
         "status": criterion.get("status", "UNKNOWN"),
         "is_negative": criterion.get("negative", False),
         "quality_score": criterion.get("qualityInfo", {}).get("qualityScore"),

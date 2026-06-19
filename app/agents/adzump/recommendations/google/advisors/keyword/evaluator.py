@@ -2,6 +2,10 @@
 
 Evaluates keyword performance metrics against predefined thresholds to classify
 keywords into 'good', 'poor', or 'top' performers.
+
+Thresholds (CTR, Quality Score) are Search-calibrated. Keyword analysis is gated
+to Search campaigns by the provider, so only Search rows reach here; per-channel
+calibration for other channel types is a later phase.
 """
 
 from dataclasses import dataclass, field

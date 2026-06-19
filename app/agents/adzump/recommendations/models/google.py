@@ -1,48 +1,29 @@
-"""Pydantic output models for optimization recommendations."""
+"""Google Ads recommendation models, enums, and conversion-health cluster.
+
+Imports from base.py only. Conversion-health models live here (not base) because
+each platform's conversion concepts differ — Meta gets its own in meta.py.
+"""
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional, Literal, Union, Annotated
-from pydantic import BaseModel, Field
-from pydantic.alias_generators import to_camel
+from typing import Annotated, Any, Optional, Literal
+from pydantic import AfterValidator, Field
 
-
-# 1. Platform-Agnostic Common Types and Enums
-
-
-class Platform(str, Enum):
-    GOOGLE = "GOOGLE"
-    META = "META"
-
-
-class RecommendationStatus(str, Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-    APPLYING = "applying"
-    APPLIED = "applied"
-    FAILED = "failed"
-    DISMISSED = "dismissed"
-    STALE = "stale"
-    SUPERSEDED = "superseded"
-
-
-class CheckSeverity(str, Enum):
-    CRITICAL = "critical"
-    WARNING = "warning"
-    INFO = "info"
-
-
-class ConfidenceLevel(str, Enum):
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-
-
-class ScopeType(str, Enum):
-    CAMPAIGN = "CAMPAIGN"
-    PORTFOLIO = "PORTFOLIO"
+from app.agents.adzump.adapters.google.google_ads_limits import (
+    KEYWORD_MAX_LENGTH,
+    LIMITS,
+)
+from app.agents.adzump.recommendations.models.base import (
+    CamelModel,
+    WorkflowItem,
+    BaseOptimizationFields,
+    BaseCampaignRecommendation,
+    CheckSeverity,
+    ConfidenceLevel,
+    ScopeType,
+    Platform,
+)
 
 
 class HealthLabel(str, Enum):
@@ -54,88 +35,52 @@ class HealthLabel(str, Enum):
     HEALTHY = "HEALTHY"
 
 
-# 2. Base Model Classes
+def _validate_age_range(v: str) -> str:
+    if v not in LIMITS.AGE.VALID_RANGES:
+        raise ValueError(
+            f"Invalid age range '{v}'. Must be one of: {sorted(LIMITS.AGE.VALID_RANGES)}"
+        )
+    return v
 
 
-class CamelModel(BaseModel):
-    model_config = {
-        "populate_by_name": True,
-        "alias_generator": to_camel,
-    }
+def _validate_gender(v: str) -> str:
+    if v not in LIMITS.GENDER.VALID_TYPES:
+        raise ValueError(
+            f"Invalid gender '{v}'. Must be one of: {sorted(LIMITS.GENDER.VALID_TYPES)}"
+        )
+    return v
 
 
-class WorkflowItem(CamelModel):
-    """Base class for recommendation items carrying a workflow state."""
-
-    status: RecommendationStatus = Field(
-        default=RecommendationStatus.PENDING, kw_only=True
-    )
-    reviewed_at: str = Field(default="", kw_only=True)
-    reviewed_by: str = Field(default="", kw_only=True)
-    applied_at: str = Field(default="", kw_only=True)
-    failure_reason: str = Field(default="", kw_only=True)
-    fingerprint: str = Field(default="", kw_only=True)
-    applied: bool = Field(default=False, kw_only=True)
-    reason: Optional[str] = Field(default="", kw_only=True)
-    recommendation: Optional[str] = Field(default=None, kw_only=True)
-
-    def compute_fingerprint(self, campaign_id: str) -> str:
-        """Return a deterministic identity string for this item.
-
-        Each concrete subclass overrides this. An empty string means the item
-        has no stable identity and will always be treated as new on re-runs.
-        """
-        return ""
+# Validated against google_ads_limits SSOT — change values there, not here.
+AgeRangeType = Annotated[str, AfterValidator(_validate_age_range)]
+GenderType = Annotated[str, AfterValidator(_validate_gender)]
 
 
-class BaseOptimizationFields(CamelModel):
-    """Base fields class for platform-specific recommendation fields."""
+class ChannelType(str, Enum):
+    """Google ``advertising_channel_type`` values; UNKNOWN is the safe default
+    for old or unrecognized records. Consumed by the channel capability matrix."""
 
-    pass
+    SEARCH = "SEARCH"
+    PERFORMANCE_MAX = "PERFORMANCE_MAX"
+    SHOPPING = "SHOPPING"
+    DISPLAY = "DISPLAY"
+    VIDEO = "VIDEO"
+    DEMAND_GEN = "DEMAND_GEN"
+    MULTI_CHANNEL = "MULTI_CHANNEL"  # App campaigns report as MULTI_CHANNEL
+    HOTEL = "HOTEL"
+    LOCAL_SERVICES = "LOCAL_SERVICES"
+    TRAVEL = "TRAVEL"
+    UNKNOWN = "UNKNOWN"
 
-
-class BaseCampaignRecommendation(CamelModel):
-    """Base stored campaign recommendation bundle."""
-
-    id: Optional[str] = Field(None, alias="_id")
-    platform: str
-    parent_account_id: Optional[str] = ""
-    account_id: Optional[str] = ""
-    product_id: str = ""
-    product_name: str = ""
-    campaign_id: str
-    campaign_name: str
-    campaign_type: str = "SEARCH"
-    campaign_status: str = "UNKNOWN"
-    adset_count: int = 0
-    ad_count: int = 0
-    completed: bool = False
-    active: bool = True
-    source: str = "scheduler"
-    fields: BaseOptimizationFields = Field(default_factory=BaseOptimizationFields)
-    generated_at: str = ""
-    schema_version: str = "1.0"
-    # OCC token — populated by the mutation endpoint when it fetches this record from storage
-    # before calling apply_mutation_results(). Set it to the DB's updatedAt value so
-    # sync_mutation_result() can detect if another process wrote to the record between
-    # the fetch and the apply. Leave empty to skip the OCC check (scheduler path).
-    record_version: str = ""
-
-
-# 3. Google Ads Specific Types, Enums and Models
-
-
-AgeRangeType = Literal[
-    "AGE_RANGE_18_24",
-    "AGE_RANGE_25_34",
-    "AGE_RANGE_35_44",
-    "AGE_RANGE_45_54",
-    "AGE_RANGE_55_64",
-    "AGE_RANGE_65_UP",
-    "AGE_RANGE_UNDETERMINED",
-]
-
-GenderType = Literal["MALE", "FEMALE", "UNDETERMINED"]
+    @classmethod
+    def _missing_(cls, value: Any) -> ChannelType:
+        if not value:
+            return cls.UNKNOWN
+        val_upper = str(value).strip().upper()
+        for member in cls:
+            if member.value == val_upper:
+                return member
+        return cls.UNKNOWN
 
 
 class CampaignStatus(str, Enum):
@@ -147,6 +92,16 @@ class CampaignStatus(str, Enum):
     PAUSED = "PAUSED"
     REMOVED = "REMOVED"
 
+    @classmethod
+    def _missing_(cls, value: Any) -> CampaignStatus:
+        if not value:
+            return cls.UNKNOWN
+        val_upper = str(value).strip().upper()
+        for member in cls:
+            if member.value == val_upper:
+                return member
+        return cls.UNKNOWN
+
 
 class ConversionSignalStatus(str, Enum):
     """Light indicator showing recent conversion volume trends in Google Ads."""
@@ -155,6 +110,16 @@ class ConversionSignalStatus(str, Enum):
     DROPPING = "dropping"
     UNTRACKED = "untracked"
     INSUFFICIENT_HISTORY = "insufficient_history"
+
+    @classmethod
+    def _missing_(cls, value: Any) -> ConversionSignalStatus:
+        if not value:
+            return cls.INSUFFICIENT_HISTORY
+        val_lower = str(value).strip().lower()
+        for member in cls:
+            if member.value == val_lower:
+                return member
+        return cls.INSUFFICIENT_HISTORY
 
 
 class ConstraintType(str, Enum):
@@ -165,6 +130,16 @@ class ConstraintType(str, Enum):
     MIXED_CONSTRAINT = "MIXED_CONSTRAINT"
     NONE = "NONE"
 
+    @classmethod
+    def _missing_(cls, value: Any) -> ConstraintType:
+        if not value:
+            return cls.NONE
+        val_upper = str(value).strip().upper()
+        for member in cls:
+            if member.value == val_upper:
+                return member
+        return cls.NONE
+
 
 class MatchType(str, Enum):
     """Google Ads keyword match types."""
@@ -174,6 +149,16 @@ class MatchType(str, Enum):
     BROAD = "BROAD"
     NEAR_EXACT = "NEAR_EXACT"
     NEAR_PHRASE = "NEAR_PHRASE"
+
+    @classmethod
+    def _missing_(cls, value: Any) -> MatchType:
+        if not value:
+            return cls.PHRASE
+        val_upper = str(value).strip().upper()
+        for member in cls:
+            if member.value == val_upper:
+                return member
+        return cls.PHRASE
 
 
 class BiddingStrategyType(str, Enum):
@@ -189,6 +174,16 @@ class BiddingStrategyType(str, Enum):
     TARGET_ROAS = "TARGET_ROAS"
     TARGET_SPEND = "TARGET_SPEND"
     TARGET_IMPRESSION_SHARE = "TARGET_IMPRESSION_SHARE"
+
+    @classmethod
+    def _missing_(cls, value: Any) -> BiddingStrategyType:
+        if not value:
+            return cls.UNKNOWN
+        val_upper = str(value).strip().upper()
+        for member in cls:
+            if member.value == val_upper:
+                return member
+        return cls.UNKNOWN
 
 
 class ConversionSignal(CamelModel):
@@ -206,7 +201,7 @@ class ConversionSignal(CamelModel):
     def to_context_line(self) -> str:
         """Render as a single passive line for the agent's dynamic context."""
         if self.status == ConversionSignalStatus.UNTRACKED:
-            return "Conversion tracking: ✗ untracked — no conversion actions configured"
+            return "Conversion tracking: untracked — no conversion actions configured"
         if self.status == ConversionSignalStatus.INSUFFICIENT_HISTORY:
             age = (
                 f" (campaign {self.campaign_age_days}d old)"
@@ -216,18 +211,19 @@ class ConversionSignal(CamelModel):
             return f"Conversion tracking: — insufficient history{age}"
         if self.status == ConversionSignalStatus.DROPPING:
             return (
-                f"Conversion tracking: ⚠ dropping — "
+                f"Conversion tracking: dropping — "
                 f"{self.conversions_recent:.0f} conv last 14d vs "
                 f"{self.conversions_prior:.0f} prior 14d "
                 f"({self.delta_pct:+.0f}%)"
             )
         return (
-            f"Conversion tracking: ✓ stable — "
-            f"{self.conversions_recent:.0f} conv last 14d"
+            f"Conversion tracking: stable — {self.conversions_recent:.0f} conv last 14d"
         )
 
 
 class ConversionHealthCheck(CamelModel):
+    """Single diagnostic rule evaluation result."""
+
     check_id: str
     passed: bool
     severity: CheckSeverity
@@ -238,12 +234,16 @@ class ConversionHealthCheck(CamelModel):
 
 
 class ConversionFixStep(CamelModel):
+    """Sequential instruction step for applying a manual recommendation."""
+
     step_number: int
     instruction: str
     code: Optional[str] = None
 
 
 class ConversionFixGuide(CamelModel):
+    """Detailed troubleshooting manual for non-automated recommendations."""
+
     title: str
     summary: str
     steps: list[ConversionFixStep] = []
@@ -252,17 +252,17 @@ class ConversionFixGuide(CamelModel):
 
 
 class ConversionFixCard(WorkflowItem):
-    """UI fix card for a failing conversion health check."""
+    """Actionable ticket resolving a failing conversion check."""
 
     check_id: str
     campaign_id: str
     title: str
     rationale: str
     severity: CheckSeverity
-    fix_type: str
+    fix_type: str  # tag, goal, config, signal
     optiscore_delta: float = 0.0
     can_auto_apply: bool = False
-    tag_snippet: Optional[dict[str, str]] = None
+    tag_snippet: Optional[dict[str, Any]] = None
     mutation_payload: Optional[dict[str, Any]] = None
     implementation_guide: Optional[ConversionFixGuide] = None
 
@@ -271,7 +271,7 @@ class ConversionFixCard(WorkflowItem):
 
 
 class ConversionHealthReport(CamelModel):
-    """Conversion health tool output stored inside campaign recommendations."""
+    """Aggregate report containing all conversion-health checks and tickets."""
 
     campaign_id: str
     health_label: HealthLabel
@@ -295,7 +295,7 @@ class ConversionHealthReport(CamelModel):
 
 
 class GoogleKeywordRecommendation(WorkflowItem):
-    text: str
+    text: str = Field(..., max_length=KEYWORD_MAX_LENGTH)
     match_type: Optional[MatchType] = Field(default=MatchType.PHRASE, kw_only=True)
     recommendation: Optional[str] = Field(default="ADD", kw_only=True)
     ad_group_id: Optional[str] = None
@@ -321,22 +321,22 @@ class GoogleKeywordRecommendation(WorkflowItem):
 class BudgetBiddingRecommendation(WorkflowItem):
     campaign_id: str
     campaign_name: str
-    scope: str
+    scope: ScopeType
     portfolio_strategy_id: Optional[str] = None
     portfolio_strategy_name: Optional[str] = None
-    current_strategy: str
+    current_strategy: BiddingStrategyType
     bidding_rec_type: Optional[str] = None
     bidding_rec_rationale: Optional[str] = None
-    bidding_confidence: str = "low"
+    bidding_confidence: ConfidenceLevel = ConfidenceLevel.LOW
     bidding_blocked_reason: Optional[str] = None
     current_budget: float = 0.0
     recommended_budget: Optional[float] = None
     budget_rec_type: Optional[str] = None
     budget_rec_rationale: Optional[str] = None
-    budget_confidence: str = "low"
+    budget_confidence: ConfidenceLevel = ConfidenceLevel.LOW
     apply_order: list[str] = []
     learning_phase_warning: Optional[str] = None
-    constraint_type: str = "NONE"
+    constraint_type: ConstraintType = ConstraintType.NONE
     google_rec_confirmed: bool = False
     blocking_issues: list[str] = []
     pacing_warning: Optional[str] = None
@@ -391,6 +391,7 @@ class CampaignOverview(CamelModel):
 
     campaign_id: str = ""
     status: CampaignStatus = CampaignStatus.UNKNOWN
+    campaign_type: ChannelType = ChannelType.UNKNOWN
     currency_code: str = "INR"
     spend: float = 0.0
     conversions: float = 0.0
@@ -411,81 +412,9 @@ class GoogleOptimizationFields(BaseOptimizationFields):
     gender: list[GoogleGenderRecommendation] = []
 
 
-# 4. Meta Ads Specific Types, Enums and Models
-
-
-class MetaCampaignOverview(CamelModel):
-    """Meta-specific top-level campaign overview/metadata."""
-
-    status: str = "UNKNOWN"
-    spend: float = 0.0
-    impressions: int = 0
-    clicks: int = 0
-    conversions: float = 0.0
-
-
-class MetaAgeRecommendation(WorkflowItem):
-    adset_id: Optional[str] = None
-    adset_name: Optional[str] = None
-    action: Optional[str] = None
-    current_min: Optional[int] = None
-    current_max: Optional[int] = None
-    recommended_min: Optional[int] = None
-    recommended_max: Optional[int] = None
-    recommendation: Optional[str] = Field(default="REMOVE", kw_only=True)
-
-    def compute_fingerprint(self, campaign_id: str) -> str:
-        return (
-            f"age:META:{campaign_id}"
-            f":{self.adset_id or ''}"
-            f":{self.current_min or ''}_{self.current_max or ''}"
-            f":{str(self.recommendation or '').upper()}"
-        )
-
-
-class MetaGenderRecommendation(WorkflowItem):
-    adset_id: Optional[str] = None
-    adset_name: Optional[str] = None
-    action: Optional[str] = None
-    recommendation: Optional[str] = Field(default="REMOVE", kw_only=True)
-
-    def compute_fingerprint(self, campaign_id: str) -> str:
-        return (
-            f"gender:META:{campaign_id}"
-            f":{self.adset_id or ''}"
-            f":{str(self.action or '').upper()}"
-            f":{str(self.recommendation or '').upper()}"
-        )
-
-
-class MetaOptimizationFields(BaseOptimizationFields):
-    """Meta-specific campaign recommendation fields."""
-
-    overview: Optional[MetaCampaignOverview] = None
-    age: list[MetaAgeRecommendation] = []
-    gender: list[MetaGenderRecommendation] = []
-
-
-# 5. Top-Level Bundles, Unions and Aliases
-
-
 class GoogleCampaignRecommendation(BaseCampaignRecommendation):
     """Stored Google campaign recommendation bundle."""
 
-    platform: Literal["GOOGLE"] = "GOOGLE"
+    platform: Literal[Platform.GOOGLE] = Platform.GOOGLE
     campaign_status: CampaignStatus = CampaignStatus.UNKNOWN
     fields: GoogleOptimizationFields = Field(default_factory=GoogleOptimizationFields)
-
-
-class MetaCampaignRecommendation(BaseCampaignRecommendation):
-    """Stored Meta campaign recommendation bundle."""
-
-    platform: Literal["META"] = "META"
-    fields: MetaOptimizationFields = Field(default_factory=MetaOptimizationFields)
-
-
-# Discriminated Union type alias for standard validation
-CampaignRecommendation = Annotated[
-    Union[GoogleCampaignRecommendation, MetaCampaignRecommendation],
-    Field(discriminator="platform"),
-]

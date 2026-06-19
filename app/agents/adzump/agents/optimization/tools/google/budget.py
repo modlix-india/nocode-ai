@@ -15,33 +15,23 @@ logger = logging.getLogger(__name__)
 async def _get_budget_bidding_recommendations(params: dict, context: dict) -> ToolResult:
     """Run a fresh budget and bidding strategy analysis for one Google Ads campaign."""
     campaign_id = str(params.get("campaign_id") or "").strip()
-    if not campaign_id:
-        return ToolResult(
-            success=False,
-            error="I need a campaign ID to run budget analysis. Please provide one.",
-        )
-
     logger.info("budget_bidding: START campaign=%s", campaign_id)
+
+    from app.agents.adzump.agents.optimization.tools.google._channel import (
+        prepare_google_campaign_tool,
+    )
+
+    prep = await prepare_google_campaign_tool(
+        context, campaign_id, section="budget_bidding"
+    )
+    if isinstance(prep, ToolResult):
+        return prep
 
     headers = context.get("headers", {})
     client_code = context.get("client_code", "")
     session_ctx = context.get("session_context", {})
-
-    account_id = session_ctx.get("account_id", "")
-    login_customer_id = session_ctx.get("login_customer_id", "")
-
-    if not account_id:
-        logger.warning(
-            "budget_bidding: BLOCKED — no account_id in session campaign=%s",
-            campaign_id,
-        )
-        return ToolResult(
-            success=False,
-            error=(
-                "The ad account for this campaign couldn't be determined. "
-                "Please make sure the campaign is linked to a Google Ads account."
-            ),
-        )
+    account_id = prep.account_id
+    login_customer_id = prep.login_customer_id
 
     try:
         from app.agents.adzump.recommendations.google.advisors.budget import (

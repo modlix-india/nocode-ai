@@ -20,6 +20,7 @@ from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
 from app.agents.adzump.adapters.google.client import google_ads_client
+from app.agents.adzump.adapters.google.gaql import safe_id
 from app.agents.adzump.adapters.google.conversion_enums import (
     AttributionModel,
     ConversionActionCategory,
@@ -107,6 +108,7 @@ WHERE conversion_action.status != 'REMOVED'
 # {campaign_id} filled at call time.
 _CONVERSION_GOAL_QUERY = """
 SELECT
+  campaign_conversion_goal.resource_name,
   campaign_conversion_goal.campaign,
   campaign_conversion_goal.category,
   campaign_conversion_goal.origin,
@@ -166,6 +168,8 @@ def _parse_conversion_actions(actions_rows: List[dict]) -> List[dict]:
             {
                 "id": str(ca.get("id", "")),
                 "name": ca.get("name", ""),
+                # Mutation target for auto-apply (e.g. attribution / counting fixes).
+                "resource_name": ca.get("resourceName", ""),
                 "status": ca.get("status", ConversionActionStatus.UNKNOWN.value),
                 "type": ca.get("type", ConversionActionType.UNKNOWN.value),
                 "category": ca.get("category", ConversionActionCategory.UNKNOWN.value),
@@ -205,6 +209,8 @@ def _parse_conversion_goals(goal_rows: List[dict], campaign_id: str) -> List[dic
         goals.append(
             {
                 "campaign_id": campaign_id,
+                # Mutation target for the biddable auto-apply.
+                "resource_name": ccg.get("resourceName", ""),
                 "category": ccg.get("category", ConversionActionCategory.UNKNOWN.value),
                 "origin": ccg.get("origin", "UNKNOWN"),
                 "biddable": bool(ccg.get("biddable", False)),
@@ -237,7 +243,7 @@ class ConversionMetricsAdapter:
         """
         start_date, end_date = date_range_28d()
         signal_query = _CONVERSION_SIGNAL_QUERY.format(
-            campaign_id=campaign_id,
+            campaign_id=safe_id(campaign_id, "campaign_id"),
             start_date=start_date,
             end_date=end_date,
         )
@@ -294,7 +300,9 @@ class ConversionMetricsAdapter:
         auth_headers: dict,
     ) -> Dict[str, Any]:
         """Fetch active conversion actions, customer tracking status, and campaign goals in parallel."""
-        goal_query = _CONVERSION_GOAL_QUERY.format(campaign_id=campaign_id)
+        goal_query = _CONVERSION_GOAL_QUERY.format(
+            campaign_id=safe_id(campaign_id, "campaign_id")
+        )
 
         logger.info(
             "fetch_conversion_health: campaign=%s customer=%s",

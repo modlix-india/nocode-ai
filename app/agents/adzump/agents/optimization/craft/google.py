@@ -27,7 +27,7 @@ from app.agents.adzump.agents.optimization.craft.builders import (
     suggestion_list_block,
     suggestion_section,
 )
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     CampaignRecommendation,
 )
 
@@ -390,6 +390,17 @@ class GoogleCraftRenderer(PlatformCraftRenderer):
                 key_value_block(kv_meta_2)
             ])
         )
+
+        # Honest "not applicable for this campaign type" callouts next to the type.
+        for skip in rec.skipped_analyses:
+            blocks.append(
+                callout_block(
+                    f"{skip.section.replace('_', ' ').title()}: not applicable for "
+                    f"{skip.campaign_type.replace('_', ' ').title()} campaigns — "
+                    f"{skip.reason}",
+                    variant="info",
+                )
+            )
 
         ov = rec.fields.overview
         if ov:

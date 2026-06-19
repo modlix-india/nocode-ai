@@ -15,7 +15,7 @@ from app.core.session import BaseSession
 from app.agents.adzump.recommendations.google.advisors.keyword.idea_service import (
     idea_service,
 )
-from app.agents.adzump.agents.optimization.models import GoogleKeywordRecommendation
+from app.agents.adzump.recommendations.models import GoogleKeywordRecommendation
 
 logger = logging.getLogger(__name__)
 

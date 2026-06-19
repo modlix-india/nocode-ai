@@ -2,12 +2,15 @@
 
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from pydantic import TypeAdapter
 
-if TYPE_CHECKING:
-    from app.agents.adzump.agents.optimization.models import CampaignRecommendation
+from app.agents.adzump.recommendations.models import (
+    CampaignRecommendation,
+    RecommendationStatus,
+    WorkflowItem,
+)
 from app.agents.adzump.services.storage_base import storage_service
 from app.agents.adzump.services.storage_models import (
     StorageReadRequest,
@@ -197,10 +200,6 @@ class RecommendationStorageService:
         existing_fields = None
         if base_fields:
             try:
-                from app.agents.adzump.agents.optimization.models import (
-                    CampaignRecommendation,
-                )
-
                 # Wrap fields inside a mock recommendation for polymorphic parsing
                 mock_rec = {
                     "platform": rec.platform,
@@ -327,11 +326,6 @@ class RecommendationStorageService:
         is_partial: True if the user selected a subset of recommendations; False means
             the full record is complete and should be retired (active=False).
         """
-        from app.agents.adzump.agents.optimization.models import (
-            RecommendationStatus,
-            WorkflowItem,
-        )
-
         fields = recommendation.fields
         updated_data = {}
 

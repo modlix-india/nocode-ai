@@ -15,34 +15,32 @@ logger = logging.getLogger(__name__)
 async def _get_keyword_recommendations(params: dict, context: dict) -> ToolResult:
     """Run a fresh keyword analysis for one Google Ads campaign."""
     campaign_id = str(params.get("campaign_id") or "").strip()
-    if not campaign_id:
-        return ToolResult(
-            success=False,
-            error="I need a campaign ID to run keyword analysis. Please provide one.",
-        )
-
     logger.info("keyword_recommendations: START campaign=%s", campaign_id)
+
+    # One call resolves account + product mapping AND gates on channel type
+    # (PMax/Shopping/etc. have no keywords → honest not-applicable). Returns a
+    # ToolResult to hand straight back on any failure or skip.
+    from app.agents.adzump.agents.optimization.tools.google._channel import (
+        prepare_google_campaign_tool,
+    )
+
+    prep = await prepare_google_campaign_tool(
+        context,
+        campaign_id,
+        section="keywords",
+        requires_capability=lambda caps: caps.supports_keywords,
+        requires_mapping=True,
+    )
+    if isinstance(prep, ToolResult):
+        return prep
 
     headers = context.get("headers", {})
     client_code = context.get("client_code", "")
     session_ctx = context.get("session_context", {})
     session = context.get("_session")
-
-    account_id = session_ctx.get("account_id", "")
-    login_customer_id = session_ctx.get("login_customer_id", "")
-
-    if not account_id:
-        logger.warning(
-            "keyword_recommendations: BLOCKED — no account_id in session campaign=%s",
-            campaign_id,
-        )
-        return ToolResult(
-            success=False,
-            error=(
-                "The ad account for this campaign couldn't be determined. "
-                "Please make sure the campaign is linked to a Google Ads account."
-            ),
-        )
+    account_id = prep.account_id
+    login_customer_id = prep.login_customer_id
+    mapping = prep.mapping
 
     try:
         from app.agents.adzump.adapters.google.reporting import (
@@ -54,31 +52,6 @@ async def _get_keyword_recommendations(params: dict, context: dict) -> ToolResul
         from app.agents.adzump.recommendations.google.advisors.keyword.evaluator import (
             MetricPerformanceEvaluator,
         )
-        from app.agents.adzump.services.business_storage import (
-            fetch_campaign_mappings,
-        )
-
-        mapping = session_ctx.get("resolved_mapping")
-        if not mapping:
-            campaign_mapping = await fetch_campaign_mappings(
-                client_code, headers
-            )
-            mapping = campaign_mapping.get(campaign_id)
-        if not mapping:
-            logger.warning(
-                "keyword_recommendations: NO product mapping for campaign=%s — "
-                "campaign not linked to any product in AISuggestedData",
-                campaign_id,
-            )
-            return ToolResult(
-                success=False,
-                error=(
-                    f"Campaign {campaign_id} is not linked to any product yet. "
-                    "Keywords analysis needs product details (business info, brand, etc.) "
-                    "to generate meaningful recommendations. Please link this campaign "
-                    "to a product first."
-                ),
-            )
 
         logger.info(
             "keyword_recommendations: mapping found campaign=%s product=%s",

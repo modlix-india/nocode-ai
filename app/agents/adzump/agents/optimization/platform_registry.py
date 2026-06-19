@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolDefinition
+from app.agents.adzump.recommendations.models import Platform
 from app.agents.adzump.agents.optimization.tools.get_recommendations import (
     get_recommendations,
 )
@@ -48,16 +49,12 @@ REGISTERED_PLATFORMS = ("GOOGLE", "META")
 
 
 def normalize_platform(platform: str | None) -> str | None:
-    """Normalize user/storage platform names to registry keys.
-
-    Returns None when the platform string is missing or not recognized.
+    """Normalize user/storage platform names to registry keys (the string form
+    PROVIDERS/storage are keyed by). Delegates to ``Platform.coerce`` — the single
+    source of the matching rules. Returns None when missing or unrecognized.
     """
-    value = (platform or "").strip().lower()
-    if "meta" in value or "facebook" in value:
-        return "META"
-    if "google" in value:
-        return "GOOGLE"
-    return None
+    matched = Platform.coerce(platform)
+    return matched.value if matched else None
 
 
 def get_provider(platform: str | None) -> PlatformProvider | None:
@@ -69,8 +66,7 @@ def get_provider(platform: str | None) -> PlatformProvider | None:
 
 def get_platform_tools(platform: str | None) -> tuple[dict[str, ToolDefinition], bool]:
     """Return platform-specific tools and whether the platform is implemented."""
-    normalized = normalize_platform(platform)
-    provider = get_provider(normalized)
+    provider = get_provider(platform)  # get_provider normalizes internally
     if provider:
         tools = {t.name: t for t in provider.tools}
         return tools, True

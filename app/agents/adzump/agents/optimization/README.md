@@ -29,42 +29,47 @@ agents/optimization/
 ├── __init__.py              Exports {OptimizationAgent, ScheduledOptimizationRunner}
 ├── agent.py                 OptimizationAgent — singleton, two execution modes
 ├── context.py               System prompt + dynamic per-turn context builder
-├── models.py                Pydantic models (discriminated union CampaignRecommendation,
-│                            WorkflowItem, RecommendationStatus, PlatformCapabilities)
 ├── platform_registry.py     Platform registry: PROVIDERS, SHARED_TOOLS, helper resolvers
 ├── platform_handlers.py     PlatformHandler ABC + lazy account-discovery factory
-├── provider_base.py         PlatformProvider ABC + PlatformCapabilities + generic_merge_fields()
+├── provider_base.py         PlatformProvider ABC + PlatformCapabilities (level 1) +
+│                            applicable_tools_for_campaign() gate + ToolSkip + generic_merge_fields()
+├── mapping_service.py       fetch_campaign_mappings() — campaign→product map (relocated from services/)
 ├── resolver.py              resolve_platform_and_account() — 4-step resolution
 ├── runner.py                ScheduledOptimizationRunner (nightly batch)
 │
-├── craft/                   Visual presentation — decoupled from optimize.py
-│   ├── __init__.py          Route to platform-specific presenter
-│   ├── google.py            Google Ads: metric cards, budget slider, keyword grids, health checks
-│   ├── meta.py              Meta Ads: placement cards, budget pacing (partial)
-│   └── common.py            Multi-campaign: platform tabs, accordions, checklist trees
+├── craft/                   Visual presentation — decoupled from the optimize tool
+│   ├── google.py · meta.py · common.py
 │
 ├── platforms/
-│   ├── google/
-│   │   ├── provider.py      Full Google implementation: tools, merge, build, summarize, fingerprints
-│   │   └── handler.py       GooglePlatformHandler (account discovery)
-│   └── meta/
-│       ├── provider.py      Stub: capabilities=False, raises NotImplementedError on analysis calls
-│       └── handler.py       MetaPlatformHandler (account discovery — implemented)
+│   ├── google/{provider.py, handler.py}   Full Google impl (incl. channel gate + _assemble_fields)
+│   └── meta/{provider.py, handler.py}      Stub provider (capabilities=False) + working handler
 │
 └── tools/
     ├── get_recommendations.py   Shared read-only tool (platform-agnostic DB lookup)
     └── google/
+        ├── _channel.py          get_campaign_channel_type() + prepare_google_campaign_tool() entry guard
         ├── keyword.py           Keyword analysis + idea service + semantic scorer
         ├── budget.py            Budget/bidding analysis
-        ├── verify_conversion_health.py   8 GAQL conversion tracking checks
+        ├── verify_conversion_health.py   8 conversion-tracking checks → auto-apply / manual fix cards
+        ├── _conversion_fixes.py          Remediation: API mutation payloads + manual guides
         └── conversion_signal.py          compute_signal() — pre-fetch utility (not an LLM tool)
 ```
+
+**Domain models & capabilities (relocated to lower layers so everyone imports downward):**
+
+| Path | Role |
+|------|------|
+| `adapters/google/google_ads_limits.py` | **SSOT** for Google API system limits (leaf — imports nothing of ours) |
+| `adapters/google/gaql.py` | GAQL id safety (`safe_id`/`is_numeric_id`) — closes injection at query boundaries |
+| `recommendations/models/{base,google,meta}.py` | Pydantic models hub (was `optimization/models.py`); `Platform` enum, `WorkflowItem`, `CampaignRecommendation`, `SkippedAnalysis`, Google/Meta models |
+| `recommendations/google/capabilities.py` | **Level-2** `ChannelCapabilities` matrix — what each Google campaign type supports |
 
 **Related files:**
 
 | File | Role |
 |------|------|
-| `app/agents/adzump/tools/optimize.py` | Chat bridge — resolves context, spawns sub-agent, assembles + stores results |
+| `app/agents/adzump/tools/optimize.py` | Chat bridge — thin dispatcher: builds `OptimizationRequest`, routes to a flow, runs the cooldown gate |
+| `app/agents/adzump/tools/_optimize_flows.py` | Storage-read + fresh-analysis flows and the typed `OptimizationRequest` |
 | `app/agents/adzump/services/recommendation_storage.py` | MongoDB persistence layer |
 | `app/core/streaming.py` | `AgentEventStream`, `PassthroughEventStream` |
 | `app/agents/adzump/adapters/google/` | Google Ads API adapters (client, metrics, recommendations, planner, conversion) |
@@ -110,11 +115,13 @@ Scheduler path (no LLM, no streaming):
 
 **Request-scoped tool schemas** — `get_anthropic_tools_for_session(session)` builds a fresh tool map per request on both `BaseAgent` (formal hook) and `OptimizationAgent` (override). The singleton never mutates shared state — concurrency-safe under parallel Google and Meta requests.
 
-**Graceful degradation** — If a campaign has no product mapping, `get_keyword_recommendations` is hidden from the LLM via the `requires_product_mapping` flag on `ToolDefinition`. Budget and health tools still run. The LLM never sees a tool it cannot safely call.
+**One applicability gate, two flows** — `provider.applicable_tools_for_campaign(campaign_type, has_product_mapping)` is the single source of "which tools apply to this campaign", consulted by BOTH the scheduler and the chat flow. It combines the product-mapping rule with channel-capability rules; a skipped tool returns a `ToolSkip(reason, section)`. The LLM never sees, and the scheduler never runs, a tool that doesn't apply.
 
-**Capability boundary** — `PlatformCapabilities` explicitly declares what each platform supports. Unsupported paths (Meta fresh analysis, Meta scheduler) fail cleanly with clear log messages instead of tool errors.
+**Two capability levels** — *Level 1* `PlatformCapabilities` declares what a platform (Google/Meta) supports at all (Meta fresh analysis/scheduler fail cleanly here). *Level 2* `ChannelCapabilities` declares what a campaign type *within Google* supports (keywords, IS family, bidding tree, creative kind). The provider bridges the two — see [Campaign-Type Awareness](#campaign-type-awareness-level-2).
 
-**Fingerprint-based merge** — Every `WorkflowItem` has a stable `fingerprint` (deterministic hash). On re-analysis, `generic_merge_fields()` preserves existing workflow state (`status`, `applied`, `reviewed_at`) for unchanged items and marks missing old items as `superseded`.
+**Honest skips** — a tool that doesn't apply to a campaign type produces a `SkippedAnalysis` (campaign-level, refreshed each run), surfaced in the craft dashboard and the stored bundle — never a silent empty result.
+
+**Fingerprint-based merge with bounded retention** — Every `WorkflowItem` has a stable `fingerprint`. On re-analysis, `generic_merge_fields()` carries forward workflow state for unchanged items via the single `WorkflowItem.WORKFLOW_STATE_FIELDS` source. A vanished `PENDING` item is kept one cycle as `superseded`, then pruned; resolved items are pruned on vanish — so the stored bundle never grows unbounded.
 
 **Dynamic context injection** — `context.py` defines only universal agent rules. Platform-specific diagnostics (Google GAQL conversion logic, bidding confidence rules) are fetched via `get_platform_instructions(platform)` and injected into the system prompt per turn.
 
@@ -133,8 +140,13 @@ class PlatformProvider(ABC):
     platform_name: str                # "GOOGLE" | "META"
     tools: list[ToolDefinition]       # LLM-callable tools for this platform
     system_instructions: str          # Injected into system prompt each turn
-    capabilities: PlatformCapabilities
-    scheduler_tool_order: list[str]   # Headless execution sequence
+    capabilities: PlatformCapabilities    # level 1 — what the platform supports
+    scheduler_tool_order: list[str]       # Headless execution sequence
+
+    # The applicability gate — one source for scheduler AND chat (base default
+    # honors product-mapping only; Google overrides to add channel rules).
+    applicable_tools_for_campaign(campaign_type, has_product_mapping)
+        -> list[tuple[str, ToolSkip | None]]
 
     # Platform-blind assembly contracts
     merge_fields(existing, new, run_id, campaign_id) -> fields
@@ -148,7 +160,7 @@ class PlatformProvider(ABC):
     calculate_fingerprint(item, campaign_id) -> str
 ```
 
-### PlatformCapabilities
+### PlatformCapabilities (Level 1 — `provider_base.py`)
 
 ```python
 class PlatformCapabilities(BaseModel):
@@ -157,7 +169,47 @@ class PlatformCapabilities(BaseModel):
     has_scheduler: bool = False         # Scheduler is safe to route here
 ```
 
-### Discriminated Union Models (`models.py`)
+<a name="campaign-type-awareness-level-2"></a>
+### Campaign-Type Awareness (Level 2 — `recommendations/google/capabilities.py`)
+
+The engine must work for **any** `advertising_channel_type` — Search, Performance Max, Shopping, Display, Video, … — not just Search. Level-2 `ChannelCapabilities` is **Google-internal knowledge** (Meta/TikTok never import it) describing what each campaign type supports:
+
+```python
+@dataclass(frozen=True)
+class ChannelCapabilities:
+    channel: ChannelType
+    display_label: str                      # "Performance Max" — for honest skip messages
+    supports_keywords: bool = False         # all fields default to the CONSERVATIVE
+    supports_search_terms: bool = False     # baseline, so a row sets only what differs
+    supports_quality_score: bool = False    # and a new field needs editing only the
+    is_metric_family: ISMetricFamily = NONE # rows where it differs — not all of them
+    supports_is_constraint_diagnosis: bool = False
+    valid_bidding_strategies: frozenset[str] = frozenset()
+    allowed_bidding_rec_types: frozenset[str] = frozenset()
+    creative_kind: CreativeKind = NONE
+    supports_bidding_decision_tree: bool = False
+
+get_capabilities(campaign_type) -> ChannelCapabilities   # unknown → conservative default
+```
+
+Each value carries a source in the file's docstring, and a unit test (`test_capabilities.py`) asserts every bidding-strategy / rec-type string is a real Google API enum member, so the matrix can never silently drift. Verified rows: **SEARCH** (everything on), **PERFORMANCE_MAX** (no keywords; campaign-level IS only; asset-group creative; only Maximize Conversions/Value), **SHOPPING**, **DISPLAY** (`content_*` IS family); everything else → conservative default (universal efficiency + conversion health only).
+
+**Threading `campaign_type` through both flows:**
+
+```
+campaign.advertising_channel_type  (already SELECTed once per campaign)
+        │  scheduler: ctx_data → run_headless(campaign_type=…)
+        │  chat:      overview → session_context["campaign_type"]  (+ _channel.get_campaign_channel_type for other ids)
+        ▼
+get_capabilities(campaign_type)
+        ▼
+provider.applicable_tools_for_campaign(campaign_type, has_product_mapping)   ← ONE gate, both flows
+        ▼
+skipped tool → SkippedAnalysis  (campaign-level, rendered in craft + stored)
+advisors branch on caps (budget bidding tree, IS-family resolution) — never fake a Search signal
+```
+
+### Discriminated Union Models (`recommendations/models/`)
 
 The `CampaignRecommendation` type is a Pydantic discriminated union — the `platform` field routes to the correct concrete model automatically. Storage, the agent, and the runner all accept `CampaignRecommendation` without knowing which platform is active.
 
@@ -195,7 +247,7 @@ class BaseCampaignRecommendation(CamelModel):
     active: bool = True
 ```
 
-### WorkflowItem Lifecycle (`models.py`)
+### WorkflowItem Lifecycle (`recommendations/models/base.py`)
 
 Every recommendation item inherits `WorkflowItem`. This is the per-item state machine for the human review workflow:
 
@@ -674,6 +726,19 @@ Steps in detail:
 
 `validate_platform_tools()` (called at startup) will import the new package and surface any missing dependencies immediately.
 
+> **Level-2 capabilities are per-platform and optional.** The base `applicable_tools_for_campaign` honors only the product-mapping rule, so a new platform works without a capability matrix. If the platform has its own campaign-type concepts (Meta objectives, TikTok ad formats), give it its **own** level-2 file and override the gate — never reuse Google's matrix.
+
+### Adding a Tool (to the Google provider)
+
+A tool that runs but whose output isn't wired into the fields bundle will **silently fail to persist**. The checklist (also in `platforms/google/provider.py`):
+
+1. Create `tools/google/<tool>.py` using `prepare_google_campaign_tool` as the entry guard.
+2. Add it to `provider.tools` and `scheduler_tool_order`.
+3. If it's channel-gated, add one `_CHANNEL_GATES` entry (the `supports`/`reason`/`section` rule).
+4. Add its output field to `GoogleOptimizationFields` (`recommendations/models/google.py`).
+5. Wire its payload into `_assemble_fields` + **both** `build_fields_*` extractors (one normalizes from `tool_results`, the other from `_fresh_recommendations`).
+6. Render it in `craft/google.py`.
+
 ---
 
 ## Constants & Configuration
@@ -727,6 +792,15 @@ If the `get_latest()` lookup itself fails (network error, storage outage), the g
 
 ---
 
+## Known Limitations
+
+Intentional, known gaps at the time of this PR — listed so they read as *scoped*, not missed:
+
+- **Campaign name → id resolution is exact-match + mapped-only.** `resolver.py` Step 3 resolves a user-typed campaign *name* to its id only by exact (case-insensitive) match against Modlix launch-record mappings, and **picks the first on a tie**. Not yet handled: (a) **ambiguous names** — should return a disambiguation prompt (candidate list → user picks) instead of silently choosing one; (b) **campaigns not launched via Modlix** (no mapping) — would need a live "search by name" against the platform API (`WHERE campaign.name LIKE …`); (c) typos / partial names. The fix is a disambiguation flow (resolver returns candidates → tool returns a "needs disambiguation" result → agent renders choice buttons → re-invoke with the chosen id). Tracked for Phase 2.
+- **`store()` write path has no OCC.** Optimistic-concurrency is only on the apply path (`apply_mutation_results`); concurrent scheduler + chat writes of the same campaign are last-writer-wins. Low risk today (the cooldown gate makes overlap rare); lands with the P5 apply loop.
+
+---
+
 ## What We Are Building Next
 
 ### 1. Meta Recommendation Tools
@@ -736,7 +810,7 @@ Create the full `tools/meta/` package and fill in `MetaPlatformProvider`:
 - Implement budget/pacing tool using Meta Graph API
 - Implement placement analysis tool
 - Implement `compute_signal()` for Meta conversion signal
-- Fill in `MetaOptimizationFields` (currently a placeholder in `models.py`)
+- Fill in `MetaOptimizationFields` (currently a placeholder in `recommendations/models/meta.py`)
 - Implement `MetaPlatformProvider.merge_fields()`, `build_fields_from_headless_results()`, `build_fields_from_session_context()`
 - Set `capabilities.has_recommendations=True, has_scheduler=True`
 - Register `CONVERSION_SIGNALS["META"] = meta_compute_signal`
@@ -856,7 +930,7 @@ Show users whether the recommendations they applied actually improved their camp
 
 #### Design: lazy-fetch, no new collection
 
-- Add `post_apply_overview: Optional[dict]` field to `BaseCampaignRecommendation` (in `models.py`).
+- Add `post_apply_overview: Optional[dict]` field to `BaseCampaignRecommendation` (in `recommendations/models/base.py`).
   - Populated lazily (never at generation time).
   - Stores the same shape as `fields.overview` (CPA, conversions, spend, ROAS) — the "after" snapshot.
 - The "before" snapshot is already captured in `fields.overview` at analysis time. No schema change needed there.

@@ -6,7 +6,7 @@ from app.agents.adzump.agents.optimization.platform_handlers import PlatformHand
 from app.agents.adzump.adapters.meta.accounts import MetaAccountsAdapter
 from app.agents.adzump.adapters.meta.client import meta_client
 from app.agents.adzump.agents.optimization.agent import get_optimization_agent
-from app.agents.adzump.agents.optimization.models import CampaignOverview
+from app.agents.adzump.recommendations.models import CampaignOverview
 
 logger = logging.getLogger(__name__)
 

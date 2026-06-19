@@ -1,9 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Optional, Any
 from pydantic import BaseModel
 from app.core.tools.base import ToolDefinition
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     BaseOptimizationFields,
     CampaignOverview,
     RecommendationStatus,
@@ -14,6 +15,23 @@ class PlatformCapabilities(BaseModel):
     has_recommendations: bool = False
     has_conversion_signal: bool = False
     has_scheduler: bool = False
+
+
+# Shared skip reason so the base default and platform overrides never drift.
+NEEDS_PRODUCT_MAPPING_REASON = (
+    "This analysis needs the campaign linked to a product (business details) first."
+)
+
+
+@dataclass
+class ToolSkip:
+    """Why a tool won't run for a campaign. ``section`` is set only for
+    channel-applicability skips (so they become a SkippedAnalysis record) — it is
+    None for setup skips like a missing product mapping, which aren't a comment on
+    the campaign type."""
+
+    reason: str
+    section: Optional[str] = None
 
 class PlatformProvider(ABC):
     @property
@@ -65,6 +83,23 @@ class PlatformProvider(ABC):
         session_context: dict[str, Any],
     ) -> BaseOptimizationFields:
         pass
+
+    def applicable_tools_for_campaign(
+        self, campaign_type: str, has_product_mapping: bool
+    ) -> list[tuple[str, Optional[ToolSkip]]]:
+        """``[(tool_name, ToolSkip_or_None)]`` — the single source of truth for
+        which tools apply to a campaign, consulted by BOTH the scheduler and the
+        chat flows. The base honors only ``requires_product_mapping``; a platform
+        subclass overrides to add channel-capability rules. Meta has no override,
+        so its behavior is unchanged.
+        """
+        applicable: list[tuple[str, Optional[ToolSkip]]] = []
+        for tool in self.tools:
+            skip = None
+            if getattr(tool, "requires_product_mapping", False) and not has_product_mapping:
+                skip = ToolSkip(reason=NEEDS_PRODUCT_MAPPING_REASON)
+            applicable.append((tool.name, skip))
+        return applicable
 
     def summarize_fields(self, fields: BaseOptimizationFields) -> list[str]:
         """Return human-readable summary lines for a stored recommendation's fields.
@@ -185,21 +220,24 @@ def generic_merge_fields(
                     fp = getattr(item, "fingerprint", None)
                     if fp and fp in existing_map:
                         ex_item = existing_map[fp]
-                        # Copy workflow state
-                        for field in ["status", "applied", "reviewed_at", "reviewed_by", "applied_at", "failure_reason"]:
-                            if hasattr(item, field) and hasattr(ex_item, field):
-                                setattr(item, field, getattr(ex_item, field))
+                        if isinstance(item, WorkflowItem) and isinstance(ex_item, WorkflowItem):
+                            item.copy_workflow_state_from(ex_item)
                         merged_fps.add(fp)
                     merged_list.append(item)
                 
-                # Add back missing existing items as superseded
+                # Retention (bounds the bundle across nightly runs): a vanished
+                # PENDING rec is kept one cycle as SUPERSEDED (UI shows "no longer
+                # recommended"), then pruned; already-superseded or user-resolved
+                # items are pruned on vanish.
                 for fp, ex_item in existing_map.items():
-                    if fp not in merged_fps:
-                        if hasattr(ex_item, "status") and getattr(ex_item, "status") == RecommendationStatus.PENDING:
-                            setattr(ex_item, "status", RecommendationStatus.SUPERSEDED)
+                    if fp in merged_fps:
+                        continue
+                    if getattr(ex_item, "status", None) == RecommendationStatus.PENDING:
+                        ex_item.status = RecommendationStatus.SUPERSEDED
                         if hasattr(ex_item, "applied"):
-                            setattr(ex_item, "applied", False)
+                            ex_item.applied = False
                         merged_list.append(ex_item)
+                    # else: resolved or already superseded → prune (drop)
                 return merged_list
             else:
                 return new_val
@@ -214,9 +252,8 @@ def generic_merge_fields(
                 new_fp = getattr(new_val, "fingerprint")
                 ex_fp = getattr(ex_val, "fingerprint", None)
                 if new_fp == ex_fp:
-                    for field in ["status", "applied", "reviewed_at", "reviewed_by", "applied_at", "failure_reason"]:
-                        if hasattr(new_val, field) and hasattr(ex_val, field):
-                            setattr(new_val, field, getattr(ex_val, field))
+                    if isinstance(new_val, WorkflowItem) and isinstance(ex_val, WorkflowItem):
+                        new_val.copy_workflow_state_from(ex_val)
                 return new_val
 
             # Recursively merge child attributes

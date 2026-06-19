@@ -5,8 +5,9 @@ from app.core.session import AuthContext
 from app.agents.adzump.agents.optimization.platform_handlers import PlatformHandler
 from app.agents.adzump.adapters.google.accounts import GoogleAccountsAdapter
 from app.agents.adzump.adapters.google.client import google_ads_client
+from app.agents.adzump.adapters.google.gaql import is_numeric_id
 from app.agents.adzump.agents.optimization.agent import get_optimization_agent
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     CampaignOverview,
     CampaignStatus,
 )
@@ -46,9 +47,9 @@ class GooglePlatformHandler(PlatformHandler):
         chunk_size = 100
         for start in range(0, len(campaign_ids), chunk_size):
             chunk = [
-                cid.strip()
+                str(cid).strip()
                 for cid in campaign_ids[start : start + chunk_size]
-                if cid and str(cid).strip().isdigit()
+                if is_numeric_id(cid)
             ]
             if not chunk:
                 continue
@@ -169,6 +170,7 @@ class GooglePlatformHandler(PlatformHandler):
 
             overview = CampaignOverview(
                 status=status,
+                campaign_type=ctx_data.get("campaign_type", "UNKNOWN"),
                 currency_code=ctx_data.get("currency_code", "INR"),
                 spend=ctx_data.get("cost", 0.0),
                 conversions=ctx_data.get("conversions", 0.0),
@@ -188,6 +190,7 @@ class GooglePlatformHandler(PlatformHandler):
             platform="GOOGLE",
             product_id=mapping.get("product_id", ""),
             product_name=mapping.get("product_name", ""),
+            campaign_type=(ctx_data or {}).get("campaign_type", "UNKNOWN"),
             campaign_name=campaign_name_from_api
             if "campaign_name_from_api" in locals()
             else mapping.get("name", campaign_id),
@@ -221,6 +224,7 @@ class GooglePlatformHandler(PlatformHandler):
 
         return CampaignOverview(
             status=status,
+            campaign_type=ctx_data.get("campaign_type", "UNKNOWN"),
             currency_code=ctx_data.get("currency_code", "INR"),
             spend=ctx_data.get("cost", 0.0),
             conversions=ctx_data.get("conversions", 0.0),

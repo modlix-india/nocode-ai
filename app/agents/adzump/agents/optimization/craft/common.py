@@ -16,7 +16,7 @@ from app.agents.adzump.agents.optimization.craft.builders import (
     heading_block,
     tabs_block,
 )
-from app.agents.adzump.agents.optimization.models import CampaignRecommendation
+from app.agents.adzump.recommendations.models import CampaignRecommendation
 from app.core.streaming import AgentEventStream
 
 logger = logging.getLogger(__name__)

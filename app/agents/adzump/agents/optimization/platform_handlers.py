@@ -20,7 +20,7 @@ from typing import Callable
 # Native types used throughout (dict, list, set, str | None)
 
 from app.core.session import AuthContext
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     CampaignOverview,
 )
 from app.agents.adzump.agents.optimization.platform_registry import (

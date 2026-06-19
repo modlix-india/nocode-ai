@@ -26,7 +26,7 @@ from app.agents.adzump.agents.optimization.platform_handlers import (
 from app.agents.adzump.agents.optimization.resolver import (
     resolve_platform_and_account,
 )
-from app.agents.adzump.services.business_storage import fetch_campaign_mappings
+from app.agents.adzump.agents.optimization.mapping_service import fetch_campaign_mappings
 from app.agents.adzump.services.recommendation_storage import (
     recommendation_storage_service,
 )
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 _MAX_CONCURRENT_CAMPAIGNS = 5
 _GLOBAL_OPTIMIZATION_SEMAPHORE: asyncio.Semaphore | None = None
+
 
 def _get_semaphore() -> asyncio.Semaphore:
     global _GLOBAL_OPTIMIZATION_SEMAPHORE
@@ -497,7 +498,6 @@ class ScheduledOptimizationRunner:
                     exc,
                     exc_info=exc,
                 )
-
 
 
 _scheduled_optimization_runner: ScheduledOptimizationRunner | None = None

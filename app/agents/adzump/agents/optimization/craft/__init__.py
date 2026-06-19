@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.adzump.agents.optimization.models import CampaignRecommendation
+from app.agents.adzump.recommendations.models import CampaignRecommendation
 from app.core.streaming import AgentEventStream
 
 from .base import PlatformCraftRegistry

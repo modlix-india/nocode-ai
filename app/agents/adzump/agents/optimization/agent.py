@@ -37,7 +37,7 @@ from app.agents.adzump.agents.optimization.platform_registry import (
     is_platform_implemented,
     normalize_platform,
 )
-from app.agents.adzump.agents.optimization.models import (
+from app.agents.adzump.recommendations.models import (
     CampaignOverview,
     CampaignRecommendation,
     ConversionHealthReport,
@@ -117,15 +117,24 @@ class OptimizationAgent(BaseAgent):
         return build_optimization_tool_map(session.context.get("platform"))
 
     def _get_filtered_tools(self, session: BaseSession) -> list[dict[str, Any]]:
-        """Expose only the shared + current platform tools for this run."""
+        """Expose only the shared + applicable platform tools for this run.
+        Applicability (product mapping AND channel capability) comes from the
+        provider — the SAME source the scheduler uses — so the LLM never sees a
+        tool that can't run for this campaign's type."""
         platform = session.context.get("platform")
         if not is_platform_implemented(platform):
             return [t.to_anthropic_tool() for t in SHARED_TOOLS]
 
         tools = self._get_platform_tool_map(session)
-        # Graceful degradation: Hide product-dependent tools if no mapping exists
-        if not session.context.get("mapping_exists"):
-            tools = {k: v for k, v in tools.items() if not getattr(v, "requires_product_mapping", False)}
+        from app.agents.adzump.agents.optimization.platform_registry import get_provider
+
+        provider = get_provider(platform)
+        if provider:
+            campaign_type = session.context.get("campaign_type", "UNKNOWN")
+            has_mapping = bool(session.context.get("mapping_exists"))
+            skips = dict(provider.applicable_tools_for_campaign(campaign_type, has_mapping))
+            # Drop skipped platform tools; shared tools (absent from the map) pass.
+            tools = {k: v for k, v in tools.items() if skips.get(k) is None}
 
         return [tool.to_anthropic_tool() for tool in tools.values()]
 
@@ -209,6 +218,23 @@ class OptimizationAgent(BaseAgent):
         if account_id:
             lines.append(f"Account: {account_id}")
 
+        # Campaign type + any analyses it rules out, so the LLM explains skips
+        # naturally instead of staying silent about a hidden tool.
+        campaign_type = ctx.get("campaign_type")
+        if campaign_type and campaign_type != "UNKNOWN":
+            lines.append(f"Campaign type: {campaign_type}")
+            from app.agents.adzump.agents.optimization.platform_registry import (
+                get_provider,
+            )
+
+            provider = get_provider(platform) if platform else None
+            if provider:
+                for _name, skip in provider.applicable_tools_for_campaign(
+                    campaign_type, bool(ctx.get("mapping_exists"))
+                ):
+                    if skip is not None and skip.section is not None:
+                        lines.append(f"- Not applicable for {campaign_type}: {skip.reason}")
+
         # Conversion signal — the PR 1 cheap signal, always shown
         signal_raw = ctx.get("conversion_signal")
         if signal_raw:
@@ -216,7 +242,9 @@ class OptimizationAgent(BaseAgent):
                 signal = ConversionSignal(**signal_raw)
                 lines.append(signal.to_context_line())
             except Exception:
-                pass
+                logger.info(
+                    "dynamic_context: conversion_signal render failed", exc_info=True
+                )
 
         # Last conversion health summary if tool was called this session
         health_raw = ctx.get("_last_conversion_health")
@@ -225,7 +253,9 @@ class OptimizationAgent(BaseAgent):
                 report = ConversionHealthReport(**health_raw)
                 lines.append(report.to_context_summary())
             except Exception:
-                pass
+                logger.info(
+                    "dynamic_context: conversion_health render failed", exc_info=True
+                )
 
         # Storage status
         has_stored = ctx.get("_has_stored_recommendations", False)
@@ -294,6 +324,7 @@ class OptimizationAgent(BaseAgent):
         platform: str = "GOOGLE",
         product_id: str = "",
         product_name: str = "",
+        campaign_type: str = "UNKNOWN",
         campaign_name: str = "",
         overview: CampaignOverview | None = None,
         auth: AuthContext = None,
@@ -330,6 +361,7 @@ class OptimizationAgent(BaseAgent):
                 "active_campaign_id": campaign_id,
                 "product_id": product_id,
                 "campaign_name": campaign_name,
+                "campaign_type": campaign_type,
             },
         }
 
@@ -381,15 +413,34 @@ class OptimizationAgent(BaseAgent):
                 )
                 return tool_name, exc
 
+        # Single source of truth for which tools apply (product mapping AND
+        # channel capability). Skipped tools cost no API/LLM call.
+        applicable = dict(
+            provider.applicable_tools_for_campaign(campaign_type, bool(product_id))
+        )
+        skipped_analyses: list[dict] = []
         tools_to_run = []
         for t in provider.scheduler_tool_order:
-            tool_def = tools.get(t)
-            if tool_def and tool_def.requires_product_mapping and not product_id:
+            skip = applicable.get(t)
+            if skip is not None:
                 logger.info(
-                    "run_headless: skipping %s for campaign=%s (no product mapping)",
-                    t,
-                    campaign_id,
+                    "run_headless: skipping %s for campaign=%s (%s)",
+                    t, campaign_id, skip.reason,
                 )
+                # Channel-applicability skips become an honest SkippedAnalysis +
+                # a synthetic result (so build_fields sees an empty section, not
+                # an absent key). Setup skips (no section) just don't run.
+                if skip.section is not None:
+                    tool_results[t] = {
+                        "success": True,
+                        "data": {"not_applicable": True},
+                        "error": None,
+                    }
+                    skipped_analyses.append({
+                        "section": skip.section,
+                        "campaign_type": campaign_type,
+                        "reason": skip.reason,
+                    })
                 continue
             tools_to_run.append(t)
 
@@ -420,7 +471,7 @@ class OptimizationAgent(BaseAgent):
 
         # Ensure overview carries campaign_id so populate_fingerprints can fire
         if overview is None:
-            from app.agents.adzump.agents.optimization.models import CampaignOverview
+            from app.agents.adzump.recommendations.models import CampaignOverview
             overview = CampaignOverview(campaign_id=campaign_id)
         elif not overview.campaign_id:
             overview = overview.model_copy(update={"campaign_id": campaign_id})
@@ -443,6 +494,8 @@ class OptimizationAgent(BaseAgent):
             "product_name": product_name,
             "campaign_id": campaign_id,
             "campaign_name": campaign_name or campaign_id,
+            "campaign_type": campaign_type,
+            "skipped_analyses": skipped_analyses,
             "completed": False,
             "active": True,
             "source": "scheduler",
