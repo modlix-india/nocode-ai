@@ -183,6 +183,10 @@ class ParserTableTests(unittest.TestCase):
 
 def _untagged_present_options(missing: list[str]) -> list[str]:
     """Audit: a data-ask present_options prescription that forgot field=."""
+    # Flags a present_options CALL (paren syntax) missing field= — catches a
+    # doctored leak-style prescription. F16-reframed asks use prose ("use the
+    # present_options tool (field \"x\")"), not call syntax, so field-presence
+    # for those is asserted separately below.
     return [m for m in missing if "present_options(" in m and "field=" not in m]
 
 
@@ -198,16 +202,16 @@ class PrescriptionAuditTests(unittest.TestCase):
     def test_platform_ask_is_tagged(self):
         missing = _next_action(_cctx({}))
         self.assertEqual(_untagged_present_options(missing), [])
-        self.assertTrue(any("field=\"platform\"" in m for m in missing))
+        self.assertTrue(any('field "platform"' in m for m in missing))
 
     def test_google_asks_are_tagged(self):
         # platform set → competitor + duration + budget asks render
         missing = _next_action(_cctx({"platform": "Google Ads"}))
         self.assertEqual(_untagged_present_options(missing), [])
         joined = "\n".join(missing)
-        self.assertIn("field=\"competitive_analysis_declined\"", joined)
-        self.assertIn("field=\"duration\"", joined)
-        self.assertIn("field=\"budget\"", joined)
+        self.assertIn('field "competitive_analysis_declined"', joined)
+        self.assertIn('field "duration"', joined)
+        self.assertIn('field "budget"', joined)
 
     def test_audit_has_teeth(self):
         doctored = ["duration — call `present_options(question=\"How long?\", options=[...])`"]

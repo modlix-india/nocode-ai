@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
@@ -576,10 +577,13 @@ class BaseAgent:
                     await on_builtin_tool_result(builtin_rows, chunk, event_stream)
 
                 elif chunk.type == "tool_use_start":
-                    # Flush text block if any
+                    # Flush text block if any (F16: scrub leaked tool-call syntax
+                    # so a leaked prescription never persists / re-renders).
                     if current_text:
-                        content_blocks.append({"type": "text", "text": current_text})
-                        assistant_text_parts.append(current_text)
+                        cleaned = self._clean_assistant_text(current_text)
+                        if cleaned:
+                            content_blocks.append({"type": "text", "text": cleaned})
+                            assistant_text_parts.append(cleaned)
                         current_text = ""
                     current_tool = {
                         "type": "tool_use",
@@ -626,15 +630,17 @@ class BaseAgent:
             # In a finally so a mid-stream raise can't leave a row spinning.
             await close_builtin_rows(builtin_rows, event_stream)
 
-        # Flush any remaining text
+        # Flush any remaining text (F16: scrub leaked tool-call syntax).
         if current_text:
-            content_blocks.append({"type": "text", "text": current_text})
-            assistant_text_parts.append(current_text)
+            cleaned = self._clean_assistant_text(current_text)
+            if cleaned:
+                content_blocks.append({"type": "text", "text": cleaned})
+                assistant_text_parts.append(cleaned)
 
         return content_blocks, tool_use_blocks, stop_reason, usage, text_chunks
 
-    @staticmethod
     def _adopt_final_blocks(
+        self,
         blocks: list[dict[str, Any]],
         assistant_text_parts: list[str],
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -642,8 +648,14 @@ class BaseAgent:
 
         Returns ``(content_blocks, tool_use_blocks)`` and mutates
         ``assistant_text_parts`` in place so persistence/summaries stay in sync.
+        F16: scrub leaked tool-call syntax from text blocks here too — this is the
+        Anthropic message_complete path and rebuilds the parts authoritatively, so
+        it must scrub or the event-path scrub is bypassed.
         """
         content_blocks = [dict(b) for b in blocks]
+        for b in content_blocks:
+            if b.get("type") == "text" and b.get("text"):
+                b["text"] = self._clean_assistant_text(b["text"])
         tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
         assistant_text_parts[:] = [
             b["text"] for b in content_blocks
@@ -742,6 +754,40 @@ class BaseAgent:
         if sig and n >= n_threshold:
             return None, 0, {e.get("tool", "") for e in stuck if e.get("tool")}
         return sig, n, set()
+
+    @staticmethod
+    def _strip_tool_syntax(text: str, tool_names: set[str]) -> tuple[str, int]:
+        """F16 · remove standalone leaked tool-call-syntax lines from user-facing
+        assistant text — e.g. a model echoing the internal prescription
+        `present_options(question=…, field="duration")` into chat. Returns
+        ``(cleaned, n_stripped)``. Pure → unit-tested below the model.
+
+        Tight to avoid eating legit prose: a line is stripped ONLY if it is, on
+        its own line, ``<known_tool>(`` followed by a kwarg (``foo=``) or an empty
+        call ``()``. So registered tool names only (not generic ``foo(``), and
+        "I'll use present_options for you" (no paren/kwarg) survives untouched."""
+        if not text or not tool_names:
+            return text, 0
+        names = "|".join(re.escape(n) for n in sorted(tool_names))
+        # ^ line start (+ optional backticks/bullet) · known tool name · "(" ·
+        # then a kwarg (word=) OR close-paren · rest of the (possibly wrapped) line.
+        pat = re.compile(
+            rf"(?im)^[ \t]*`{{0,3}}[ \t]*(?:{names})\([ \t]*(?:[a-z_]+[ \t]*=|\))[^\n]*$\n?"
+        )
+        cleaned, n = pat.subn("", text)
+        if n:
+            cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+        return cleaned, n
+
+    def _clean_assistant_text(self, text: str) -> str:
+        """Scrub leaked tool-call syntax from one assistant text block, keyed off
+        the live tool registry. Logs when it fires (telemetry on prompt-guard
+        decay) so the leak is a counted alarm, not a silent spot-check (F16)."""
+        cleaned, n = self._strip_tool_syntax(text, set(self.tools))
+        if n:
+            logger.warning("stripped_tool_syntax_leak: removed %d line(s) of "
+                           "tool-call syntax from assistant text", n)
+        return cleaned
 
     @staticmethod
     def _chat_receipt_text(result: ToolResult, turn_text: str) -> str | None:

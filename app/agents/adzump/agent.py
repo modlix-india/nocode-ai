@@ -210,9 +210,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform — call `present_options(question=\"Which platform should we run this on?\", "
-            "options=[{\"label\":\"Google Ads\",\"value\":\"Google Ads\",\"answer\":\"Google Ads\"}, "
-            "{\"label\":\"Meta\",\"value\":\"Meta\",\"answer\":\"Meta\"}], field=\"platform\")`"
+            "platform — use the present_options tool (field \"platform\") to ask "
+            "\"Which platform should we run this on?\" with chip choices: Google Ads, "
+            "Meta. CALL the tool — never type the call into your reply."
         )
 
     if (cctx.is_google
@@ -225,17 +225,17 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         # is never read as a decline. The _field_traceable guard backstops it.
         missing.append(
             "competitive analysis — read the user's LAST message as a reply to the "
-            "competitor-analysis offer:\n"
-            "  • declines it (no / skip / not now / maybe later) → "
-            "`set_campaign_spec(competitive_analysis_declined=\"true\")`, then do the "
-            "single next missing item below by ASKING — never set a field the user "
+            "competitor-analysis offer, then act:\n"
+            "  • declines it (no / skip / not now / maybe later) → set "
+            "competitive_analysis_declined to \"true\" via set_campaign_spec, then do "
+            "the single next missing item below by ASKING — never set a field the user "
             "hasn't stated (F12: don't invent duration/budget to 'proceed').\n"
-            "  • wants it (yes / go ahead) → `analyze_competitors()`.\n"
-            "  • the 'no' is about something ELSE (budget, a named competitor), or "
-            "it's unclear → ask `present_options(question=\"Want me to analyze "
-            "competitors before we set things up?\", options=[\"Yes\", "
-            "{\"label\":\"No\",\"value\":\"No\",\"answer\":\"true\"}], "
-            "field=\"competitive_analysis_declined\")`. Do NOT set declined on doubt."
+            "  • wants it (yes / go ahead) → run analyze_competitors.\n"
+            "  • the 'no' is about something ELSE (budget, a named competitor), or it's "
+            "unclear → ask via the present_options tool (field \"competitive_analysis_declined\"): "
+            "\"Want me to analyze competitors before we set things up?\" with chips Yes / No "
+            "(No maps to \"true\"). Do NOT set declined on doubt.\n"
+            "(These are instructions to CALL tools — never type tool-call syntax into your reply.)"
         )
 
     if not cctx.spec.get("duration"):
@@ -250,11 +250,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         else:
             missing.append(
-                "duration — call `present_options(question=\"How long should the campaign run?\", "
-                "options=[{\"label\":\"30 days\",\"value\":\"30 days\",\"answer\":\"30 days\"}, "
-                "{\"label\":\"60 days\",\"value\":\"60 days\",\"answer\":\"60 days\"}, "
-                "{\"label\":\"90 days\",\"value\":\"90 days\",\"answer\":\"90 days\"}, \"Custom\"], "
-                "field=\"duration\")`"
+                "duration — use the present_options tool (field \"duration\") to ask "
+                "\"How long should the campaign run?\" with chip choices: 30 days, "
+                "60 days, 90 days, Custom. CALL the tool — never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
         if cctx.awaiting_custom_field == "budget":
@@ -269,10 +267,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
-                "budget — call `present_options(question=\"What's your daily budget?\", "
-                f"options=[<platform-tuned presets as {{label,value,answer}} dicts with answer==value, "
-                f"e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day>, \"Custom\"], "
-                "field=\"budget\")`"
+                "budget — use the present_options tool (field \"budget\") to ask "
+                "\"What's your daily budget?\" with platform-tuned chip choices "
+                f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day) "
+                "plus Custom. CALL the tool — never type the call into your reply."
             )
     # Account-block lines depend on the platform pick — skip until platform
     # is set so we don't suggest the wrong fetch tool.
@@ -667,7 +665,12 @@ class AdzumpAgent(BaseAgent):
             "\n**One ask per turn.** Never call two question-asking tools "
             "(`confirm_location`, `present_options`) in the same turn — ask one, "
             "wait for the reply, then ask the next. (The runtime also enforces "
-            "this, but don't rely on it.)"
+            "this, but don't rely on it.)\n"
+            "\n**Tool syntax is INTERNAL — never print it.** The `tool(question=…, "
+            "options=[…], field=…)` forms in '## What's still missing' are "
+            "instructions for YOU to CALL — never text to show the user. CALL the "
+            "tool; your visible reply is natural prose only. NEVER write a tool "
+            "name or `tool(...)` call syntax into the chat."
         )
 
     @staticmethod
