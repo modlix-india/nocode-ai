@@ -30,7 +30,7 @@ from app.agents.adzump.platform import (
 )
 from app.agents.adzump.tools.campaign_data import (
     _ACCOUNT_LIKE_FIELDS, _apply_field, _current_turn, _last_user_text, _normalize_id,
-    is_ig_skip,
+    is_clear_decline_reply, is_ig_skip,
 )
 from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 from app.agents.adzump.tools.registry import ALL_TOOLS
@@ -224,17 +224,17 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         # biased to re-ask on doubt so a polarity-flip ("no, change the budget")
         # is never read as a decline. The _field_traceable guard backstops it.
         missing.append(
-            "competitive analysis — read the user's LAST message as a reply to the "
-            "competitor-analysis offer, then act:\n"
-            "  • declines it (no / skip / not now / maybe later) → set "
-            "competitive_analysis_declined to \"true\" via set_campaign_spec, then do "
-            "the single next missing item below by ASKING — never set a field the user "
-            "hasn't stated (F12: don't invent duration/budget to 'proceed').\n"
-            "  • wants it (yes / go ahead) → run analyze_competitors.\n"
-            "  • the 'no' is about something ELSE (budget, a named competitor), or it's "
-            "unclear → ask via the present_options tool (field \"competitive_analysis_declined\"): "
-            "\"Want me to analyze competitors before we set things up?\" with chips Yes / No "
-            "(No maps to \"true\"). Do NOT set declined on doubt.\n"
+            "competitive analysis — offer it ONCE as a Yes/No question, then react:\n"
+            "  • if you have not offered competitor analysis yet → ask via the "
+            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
+            "analyze competitors before we set things up?\" with chips Yes / No. A No "
+            "(or a clear typed decline) is recorded for you automatically — do NOT call "
+            "set_campaign_spec for it, and never set a field the user hasn't stated "
+            "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
+            "  • they want it (yes / go ahead) → run analyze_competitors.\n"
+            "  • the reply is unclear or about something ELSE (budget, a named competitor) "
+            "→ re-ask the same Yes/No present_options; do NOT treat a doubtful reply as a "
+            "decline.\n"
             "(These are instructions to CALL tools — never type tool-call syntax into your reply.)"
         )
 
@@ -423,6 +423,9 @@ class AdzumpAgent(BaseAgent):
         value = answers.get(last_user)                       # (a) exact chip match
         if value is None and field in ("duration", "budget", "platform"):
             value = parse_typed_answer(field, last_user, currency_for(session.context))  # (b) typed
+        if value is None and field == "competitive_analysis_declined" \
+                and is_clear_decline_reply(last_user):
+            value = "true"                                    # (c) F17 · typed clear decline
         if value is None:
             # v4 · F10 — the user picked the "Custom" escape on a duration/budget
             # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their

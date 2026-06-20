@@ -126,6 +126,27 @@ def is_decline(text: str) -> bool:
     return any(p in lu for p in _DECLINE_PHRASES) or lu in ("no", "n", "skip", "later")
 
 
+# F17 — markers that a "decline-looking" reply is actually a request/question for
+# something else, so it must NOT be auto-recorded as declined (it goes to the LLM
+# instead). is_decline is substring-based and over-fires on these: "not now, first
+# tell me about the audience" (defer+ask), "no competitors named yet" (informing).
+_DECLINE_AMBIG_MARKERS = (
+    "?", "first", "tell me", "what ", "what'", "how ", "which ", "why ",
+    "named", "instead", "before we", "about the", "explain", " vs ",
+)
+
+
+def is_clear_decline_reply(text: str) -> bool:
+    """True only for a TYPED reply that is an unambiguous decline (no follow-up
+    request). Tighter than is_decline — used to auto-record the decline in code
+    (deterministic) while leaving doubtful replies for the model to judge. Chip
+    clicks are captured separately by exact option match; this covers free text."""
+    lu = (text or "").strip().lower()
+    if not lu or not is_decline(lu):
+        return False
+    return not any(m in lu for m in _DECLINE_AMBIG_MARKERS)
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")
@@ -333,13 +354,14 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
     ) if kept else ""
 
     if rejected:
-        # Partial-success: explicit logging so we can tune the guards. Shows
-        # exactly what the LLM tried to bundle and which subset we kept.
-        # NOTE (v5, deliberate): a kept-paraphrase bundled with a rejected
-        # empty field lands here as success, so the reject-streak breaker
-        # never accumulates on these calls (the pop above fires on kept).
-        # That's intended — success doesn't read as retry-me, and the
-        # rejected note steers. Don't "fix" the breaker into firing here.
+        # Partial: log + steer. F17c — if this call stored NOTHING new (only kept
+        # paraphrases + rejected invents), it made no forward progress, so flag
+        # no_progress and let the core stuck-step breaker count it. A kept+rejected
+        # bleed that stores nothing is the same retry-me loop as an all-failed turn
+        # (live: 18 consecutive calls; the 'kept' silently disarmed both breakers).
+        # When something WAS stored this call it's real progress → no flag.
+        # (Supersedes the v5 "don't fire the breaker here" note — that was about the
+        # separate reject-streak breaker, not this no_progress/stuck-step path.)
         logger.warning(
             "campaign_spec_partial: stored=%s kept=%s rejected=%s call=%s user_said=%r",
             stored_keys, kept, rejected,
@@ -351,6 +373,7 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         return ToolResult(
             success=True,
             summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
+            data=None if stored_keys else {"no_progress": True},
         )
 
     if not stored_keys:
