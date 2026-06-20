@@ -141,6 +141,57 @@ class ClearDeclineReplyTableTests(unittest.TestCase):
             self.assertFalse(is_clear_decline_reply(t), f"should NOT auto-record: {t!r}")
 
 
+# ── F18 — record a prose-offer typed decline in code (no elicitation needed) ──
+def _prose_session(user, *, spec=None, pe=None, turn=1):
+    s = types.SimpleNamespace()
+    s.context = {
+        "_pending_elicitation": dict(pe) if pe else None,
+        "campaign_spec": dict(spec or {"platform": "Google Ads"}),
+        "_spec_set_at": {},
+        "product_data": dict(RE),
+    }
+    s.messages = [{"role": "user", "content": user}]
+    s._turn_count = turn
+    return s
+
+
+def _record(s, turn=1):
+    cctx = CampaignContext.from_session(s)
+    return AdzumpAgent._record_prose_decline(
+        None, s, cctx, s.messages[-1]["content"], turn)
+
+
+class ProseDeclineRecorderTests(unittest.TestCase):
+    def test_clear_typed_decline_recorded(self):
+        s = _prose_session("no thanks, skip it")               # Google, no elicitation
+        self.assertTrue(_record(s))
+        self.assertEqual(s.context["campaign_spec"].get("competitive_analysis_declined"), "true")
+
+    def test_ambiguous_defer_not_recorded(self):
+        s = _prose_session("not now, first tell me about the audience")
+        self.assertFalse(_record(s))
+        self.assertNotIn("competitive_analysis_declined", s.context["campaign_spec"])
+
+    def test_informing_no_competitors_not_recorded(self):
+        s = _prose_session("no competitors named yet")
+        self.assertFalse(_record(s))
+        self.assertNotIn("competitive_analysis_declined", s.context["campaign_spec"])
+
+    def test_pending_competitor_elicitation_defers_to_tagged_capture(self):
+        s = _prose_session("no", pe={"tool": "present_options", "expects": "single",
+                                     "field": "competitive_analysis_declined", "answers": {"No": "true"}})
+        self.assertFalse(_record(s))                           # tagged-capture owns it
+
+    def test_not_recorded_when_already_attempted(self):
+        s = _prose_session("no thanks", spec={"platform": "Google Ads",
+                                              "competitive_analysis_declined": "true"})
+        self.assertFalse(_record(s))                           # already set → no-op
+
+    def test_turn2_is_noop(self):
+        s = _prose_session("no thanks, skip it")
+        self.assertFalse(_record(s, turn=2))
+
+
 def _full_google_cctx():
     spec = {
         "platform": "Google Ads", "location": "Bengaluru", "duration": "30 days",

@@ -472,6 +472,39 @@ class AdzumpAgent(BaseAgent):
             "on a dead-end turn that acknowledged and stopped)."
         )
 
+    def _record_prose_decline(
+        self, session: BaseSession, cctx: "CampaignContext", last_user: str, turn: int,
+    ) -> bool:
+        """F18 · the competitor offer is non-deterministically asked as PROSE (no
+        tagged ``present_options``), so a typed decline has no elicitation for
+        ``_capture_tagged_answer`` to match — and the model often just advances
+        without recording it, leaving ``competitive_analysis_declined`` unset and
+        the prescription re-firing every turn. Record it in code at turn-start,
+        with a NARROW guard (Kiran): only the competitor-offer state, only a
+        clear-decline reply (``is_clear_decline_reply`` excludes ambiguous "no…"
+        like "no competitors named yet" / "not now, first tell me about X"), and
+        never when a competitor elicitation is already pending (tagged-capture
+        owns that). Gated agentic ``turn == 1``. Returns True iff it stored."""
+        if turn != 1 or not last_user:
+            return False
+        pe = session.context.get("_pending_elicitation")
+        if pe and pe.get("field") == "competitive_analysis_declined":
+            return False                                     # tagged-capture owns it
+        if not (cctx.is_google
+                and not cctx.competitor_analysis_attempted
+                and "competitive_analysis_declined" not in cctx.spec):
+            return False
+        if not is_clear_decline_reply(last_user):
+            return False                                     # ambiguous → let the LLM judge
+        stored, _ = _apply_field(
+            "competitive_analysis_declined", "true", last_user,
+            session.context, _current_turn({"_session": session}),
+        )
+        if stored:
+            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+                        last_user[:80])
+        return bool(stored)
+
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
         """v8 Plan B WS2 · when the previous turn ended on a deferred
         elicitation, tell the LLM it is resuming so it does NOT re-ask or
@@ -733,6 +766,12 @@ class AdzumpAgent(BaseAgent):
         ack = self._capture_tagged_answer(session, turn)
         cctx = CampaignContext.from_session(session)
         last_user = _last_user_text({"_session": session})
+        # F18 · when the competitor offer was asked as PROSE (not a tagged
+        # present_options), a clear typed decline has no capture rail — record it
+        # in code at turn-start so competitive_analysis_declined doesn't persist
+        # in `missing` forever. Re-derive cctx since the spec changed.
+        if self._record_prose_decline(session, cctx, last_user, turn):
+            cctx = CampaignContext.from_session(session)
         missing = _next_action(cctx)
         logger.info(
             "next_action: turn=%d agentic=%d missing=%s user_said=%r",
