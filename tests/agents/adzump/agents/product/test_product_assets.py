@@ -1,107 +1,42 @@
-"""Regression tests for the product-assets prefilter.
-
-Run:
-    cd nocode-ai && ./venv/bin/python -m unittest tests.test_product_assets -v
-"""
+"""Prefilter goldens (real parse_html candidates → _prefilter_candidates) + the
+image-response / filename predicates. svgs never reach the prefilter (parser drops them).
+Bless: BLESS_FIXTURES=1 venv/bin/python -m unittest <this module>"""
 
 from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.agents.product.models import SiteImage
-from app.agents.adzump.agents.product.product_assets import _prefilter_candidates
+from app.agents.adzump.agents.product.product_assets import (
+    TOP_N_CANDIDATES,
+    _prefilter_candidates,
+)
+from tests.agents.adzump import fixtures
 
 
-def _img(src: str, source: str = "img") -> SiteImage:
-    return SiteImage(src=src, source=source)
+class PrefilterGoldenTests(unittest.TestCase):
+    pass  # one test per fixture, added below
 
 
-class PrefilterTests(unittest.TestCase):
+def _add_tests() -> None:
+    for fx_path in fixtures.inputs():
+        name = fixtures.name(fx_path)
 
-    # STALE: v9 (2026-05-22) retired the prefilter SVG-penalty — html_parser now
-    # filters SVGs upstream, so they never reach _prefilter_candidates. This feeds
-    # SVGs straight in (an input that can't occur) and asserts a path that's gone.
-    # The crowding concern needs re-homing to a html_parser SVG-filter test (untested today).
-    @unittest.skip("v9 retired the prefilter SVG-penalty; SVGs filtered upstream in html_parser")
-    def test_svg_icons_do_not_crowd_out_real_photos(self):
-        """The subhavillamor failure pattern: 30+ decorative SVG icons live
-        as <img> in the DOM alongside a handful of real product photos.
-        With a top_n=25 cap, all the real photos must still surface — the
-        SVG icons must sit behind them in the sort."""
-        candidates = []
-        # 30 SVG decorative icons — all in 'img' source.
-        for n in range(30):
-            candidates.append(_img(f"https://x.com/icon_{n}.svg"))
-        # 8 real product photos sprinkled later in DOM order (positions 30-37).
-        photo_urls = [
-            "https://x.com/masterplan.webp",
-            "https://x.com/clubhouse.webp",
-            "https://x.com/3bhk_floor.webp",
-            "https://x.com/3bhk_floor_2.webp",
-            "https://x.com/herobg.jpg",
-            "https://x.com/entrance.jpg",
-            "https://x.com/exterior.png",
-            "https://x.com/garden.jpg",
-        ]
-        for url in photo_urls:
-            candidates.append(_img(url, source="img"))
-        # 2 network-source SVG noise at the end.
-        candidates.append(_img("https://x.com/network_icon.svg", source="network"))
-        candidates.append(_img("https://x.com/network_real.webp", source="network"))
+        def test(self, fx_path=fx_path):
+            kept = _prefilter_candidates(fixtures.parsed(fx_path).images, TOP_N_CANDIDATES)
+            got = [{"src": c.src, "source": c.source} for c in kept]
+            fixtures.check(self, got, fx_path, "prefilter")
+            # cap is the prefilter's whole job — never exceed it.
+            self.assertLessEqual(len(got), TOP_N_CANDIDATES, f"{name}: over TOP_N cap")
 
-        kept = _prefilter_candidates(candidates, top_n=25)
-        kept_srcs = {c.src for c in kept}
-        for photo in photo_urls:
-            self.assertIn(photo, kept_srcs,
-                          f"real photo {photo} was crowded out by SVG icons")
-        # Network non-SVG also makes it (penalty 0, source priority lower).
-        self.assertIn("https://x.com/network_real.webp", kept_srcs)
+        setattr(PrefilterGoldenTests, f"test_{name}", test)
 
-    def test_jsonld_and_link_svgs_are_not_penalized(self):
-        """Brand-logo SVGs from JSON-LD / og / link sources are legitimate
-        vector logos — they must NOT get the SVG icon penalty."""
-        candidates = [
-            _img("https://x.com/photo1.jpg", source="img"),
-            _img("https://x.com/photo2.jpg", source="img"),
-            _img("https://x.com/logo.svg", source="jsonld"),    # brand logo
-            _img("https://x.com/og_logo.svg", source="og"),     # brand logo
-            _img("https://x.com/apple-touch.svg", source="link"),  # brand logo
-            _img("https://x.com/icon.svg", source="img"),       # decorative
-        ]
-        # Cap at 4 so we force a ranking decision.
-        kept = _prefilter_candidates(candidates, top_n=4)
-        kept_srcs = {c.src for c in kept}
-        # JSON-LD beats img — both photos AND the jsonld SVG should be in.
-        self.assertIn("https://x.com/logo.svg", kept_srcs)
-        # Decorative img-source SVG should sit behind everything else and
-        # get dropped at top_n=4.
-        self.assertNotIn("https://x.com/icon.svg", kept_srcs)
 
-    def test_preserves_insertion_order_within_kept(self):
-        """The kept candidates should appear in their original DOM/insertion
-        order so the LLM sees them roughly as the page laid them out."""
-        candidates = [
-            _img("https://x.com/a.jpg"),
-            _img("https://x.com/b.svg"),
-            _img("https://x.com/c.jpg"),
-        ]
-        kept = _prefilter_candidates(candidates, top_n=3)
-        self.assertEqual(
-            [c.src for c in kept],
-            ["https://x.com/a.jpg", "https://x.com/b.svg", "https://x.com/c.jpg"],
-        )
-
-    def test_no_op_when_under_cap(self):
-        candidates = [_img(f"https://x.com/{n}.jpg") for n in range(5)]
-        kept = _prefilter_candidates(candidates, top_n=10)
-        self.assertEqual(len(kept), 5)
-        self.assertEqual([c.src for c in kept], [c.src for c in candidates])
+_add_tests()
 
 
 class LooksLikeImageResponseTests(unittest.TestCase):
-    """Regression: some CDNs (cdn.modlix.com on earthen) serve image bytes
-    without setting a Content-Type header. Browsers fall back to the URL
-    extension; we must too, or we drop perfectly valid images."""
+    """Some CDNs serve image bytes with no Content-Type; fall back to URL ext or
+    we drop valid images. Type edge-cases real fixtures don't carry — kept as units."""
 
     def test_proper_image_content_type_passes(self):
         from app.agents.adzump._uploads import looks_like_image_response
@@ -111,7 +46,7 @@ class LooksLikeImageResponseTests(unittest.TestCase):
 
     def test_missing_content_type_falls_back_to_url_extension(self):
         from app.agents.adzump._uploads import looks_like_image_response
-        # The earthen case: HTTP 200, no Content-Type header, URL ends in .jpg.
+        # HTTP 200, no Content-Type header, URL ends in .jpg.
         self.assertTrue(looks_like_image_response("", "https://cdn.x/A01-8K-Entrance-copy.jpg"))
         self.assertTrue(looks_like_image_response("", "https://cdn.x/Banner-Image%201.jpg"))
         self.assertTrue(looks_like_image_response(None, "https://cdn.x/photo.webp"))
@@ -130,8 +65,7 @@ class LooksLikeImageResponseTests(unittest.TestCase):
 
 
 class FilenameSuggestsLogoTests(unittest.TestCase):
-    """The post-LLM-pick safety net for the 'creative accidentally includes
-    a sub-brand wordmark' pattern (clublogo.png / partnerlogo.svg / etc.)."""
+    """Safety net: creative whose filename is a sub-brand wordmark (clublogo.png etc.)."""
 
     def test_logo_substring_matches(self):
         from app.agents.adzump.agents.product.product_assets import (

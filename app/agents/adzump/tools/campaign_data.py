@@ -106,6 +106,26 @@ def is_ig_skip(text: str) -> bool:
     return any(p in lu for p in _IG_SKIP_PHRASES) or lu in ("skip", "later", "no", "n")
 
 
+# F11 — phrases that mean "skip competitor analysis". Substring-based, so it's
+# comma-robust ("No, skip competitor analysis for now" matches) — unlike the old
+# `"no" in lu.split()` which broke on the trailing comma in "no,". Bare no/n/skip
+# only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
+# decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
+_DECLINE_PHRASES = (
+    "skip competitor", "skip competitors", "skip the competitor", "no competitor",
+    "not now", "maybe later", "do it later", "no need", "no thanks",
+    "don't bother", "dont bother", "skip it", "skip this", "skip that",
+)
+
+
+def is_decline(text: str) -> bool:
+    """True if the user clearly declines the competitor-analysis offer."""
+    lu = (text or "").strip().lower()
+    if not lu:
+        return False
+    return any(p in lu for p in _DECLINE_PHRASES) or lu in ("no", "n", "skip", "later")
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")
@@ -150,13 +170,11 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flag — accept "true" (any case) when the user said no/skip.
+    # Decline flag — accept "true" when the user declines (chip or typed). Uses
+    # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
+    # silently rejected "no, skip competitor analysis for now" → re-ask loop).
     if field == "competitive_analysis_declined":
-        if v in ("true", "yes", "1") and (
-            "no" in lu.split() or lu in ("n", "skip", "no thanks", "no need")
-        ):
-            return True
-        return False
+        return v in ("true", "yes", "1") and is_decline(lu)
 
     # v3 · F3 — Instagram-skip flag. Accept "true" when the user opts out of
     # linking IG, by chip ("Continue with Facebook only") or typed ("skip insta",
@@ -273,10 +291,14 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
             rejected, preview,
         )
-        # v5 · circuit breaker: the same all-rejected call replayed 3+ times
-        # in a row gets a hard stop-steer — the plain error below reads as
-        # retryable and the model will replay it indefinitely.
-        sig = repr(sorted((k, str(v)) for k, v, _ in rejected))
+        # v5 · circuit breaker: the same FIELD-SET rejected 3+ times in a row
+        # gets a hard stop-steer. F12: key on the field set, NOT (field,value) —
+        # a model inventing FRESH values each retry (30d→45d→60d) would otherwise
+        # reset the streak every turn and evade the breaker forever. Safe to
+        # collapse across values: this path is all-rejected (nothing stored), and
+        # any traceable correction stores → pops the streak at :280-281, so a real
+        # varied correction never accumulates here.
+        sig = repr(sorted(k for k, _, _ in rejected))
         streak = session_ctx.get("_spec_reject_streak") or {}
         n = (streak.get("n", 0) + 1) if streak.get("sig") == sig else 1
         session_ctx["_spec_reject_streak"] = {"sig": sig, "n": n}
@@ -284,16 +306,17 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             return ToolResult(
                 success=False,
                 error=(
-                    f"STOP — this exact call was rejected {n} times. Do NOT call "
-                    "set_campaign_spec with these values again. Drop them and follow "
-                    "the missing-list, or ask the user."
+                    f"STOP — {pairs} rejected {n} times: these values are NOT traceable "
+                    "to anything the user said (you may be inventing them). Do NOT call "
+                    "set_campaign_spec again — ASK the user via present_options."
                 ),
             )
         return ToolResult(
             success=False,
             error=(
-                f"Cannot set {pairs}. User's last message: '{preview}'. "
-                "Ask the user for the missing pieces, then store what they actually say."
+                f"Cannot set {pairs} — NOT traceable to the user's last message "
+                f"('{preview}'); do not invent or default these. ASK the user via "
+                "present_options, then store only what they actually say."
             ),
         )
 

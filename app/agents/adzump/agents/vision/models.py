@@ -1,4 +1,4 @@
-"""Wire-shape models for the AssetPickerAgent's LLM output.
+"""Wire-shape models for the VisionAnalyst's LLM output.
 
 These mirror the private ``_LogoChoice`` / ``_AssetSelection`` classes that
 lived inside ``agents/product/product_assets.py``. Moved here so the agent
@@ -41,7 +41,7 @@ class CreativeChoice(BaseModel):
     """One creative-image role assignment in the LLM's JSON output.
 
     Shift 2 addition (post-v7 redesign · 2026-05-21). Mirrors ``LogoChoice``
-    shape so the picker has a consistent contract: model emits per-candidate
+    shape so the analyst has a consistent contract: model emits per-candidate
     role, code derives the aggregate ``creative_completeness`` shape.
 
     Roles are intentionally a tight enum (3 ad-usable categories plus
@@ -99,8 +99,8 @@ class AssetSelection(BaseModel):
 
 
 class ImageVerdict(BaseModel):
-    """Judge-each verdict for ONE image (the upload path). Where select-subset
-    mode PICKS a subset, judge-each returns a verdict per image — so the model
+    """Review-each verdict for ONE image (the upload path). Where select-subset
+    mode PICKS a subset, review-each returns a verdict per image — so the model
     can say 'not relevant' or 'unsure, ask the user' instead of being forced to
     choose."""
     idx: int = Field(description="Index into the images list (verdict order = input order).")
@@ -132,6 +132,6 @@ class ImageVerdict(BaseModel):
     reasoning: str = Field(default="", description="<= 120 chars on why.")
 
 
-class JudgeResult(BaseModel):
-    """Judge-each output: one verdict per input image, in input order."""
+class ReviewResult(BaseModel):
+    """Review-each output: one verdict per input image, in input order."""
     verdicts: list[ImageVerdict] = Field(default_factory=list)

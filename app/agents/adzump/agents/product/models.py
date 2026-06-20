@@ -9,12 +9,6 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 
-class ContactInfo(BaseModel):
-    phone: str | None = None
-    email: str | None = None
-    address: str | None = None
-
-
 class SiteLink(BaseModel):
     """A single anchor extracted from a page (text + href)."""
     text: str = ""
@@ -130,31 +124,6 @@ class PageContent(BaseModel):
     structured_data: dict | None = None
 
 
-class LocationInfo(BaseModel):
-    """Business location with suggested ad targeting areas."""
-    location: str = ""
-    suggested_locations: list[str] = []
-
-
-class WebsiteMetadata(BaseModel):
-    """Pass 1 LLM extraction — cheap structured extraction."""
-    product_name: str
-    business_type: str
-    location: LocationInfo = LocationInfo()
-
-
-class BusinessProfile(BaseModel):
-    """Aggregate — full extracted business data."""
-    product_name: str
-    business_type: str
-    location: LocationInfo = LocationInfo()
-    summary: str
-    unique_features: list[str] = []
-    products_services: list[str] = []
-    contact: ContactInfo | None = None
-    pages_analyzed: list[str] = []
-
-
 class ScrapeTimings(BaseModel):
     """Per-stage scrape timing in ms, populated by the Playwright adapter.
 
@@ -192,34 +161,6 @@ class ScrapeResult(BaseModel):
     # Optional per-stage timing (Playwright adapter only); None on adapters that
     # don't track it. Read by the eval harness; ignored by the production caller.
     timings: ScrapeTimings | None = None
-
-
-class CompetitorProfile(BaseModel):
-    """A single competitor discovered and analyzed by the BusinessAnalyst."""
-    name: str
-    url: str
-    business_type: str = ""
-    location: str = ""
-    pricing: str | None = None
-    key_usps: list[str] = []         # top differentiators
-    trust_signals: list[str] = []    # e.g. "500+ reviews", "Since 2005"
-    weakness: str | None = None      # inferred gap, optional
-
-
-class CompetitiveAnalysis(BaseModel):
-    """Aggregate competitive landscape output of the BusinessAnalyst agent."""
-    competitors: list[CompetitorProfile] = []
-    our_usps: list[str] = []              # things we do that competitors don't
-    competitive_threats: list[str] = []   # things competitors do better
-    keyword_opportunities: list[str] = [] # keyword angles worth targeting
-    positioning: str = ""                 # one-line positioning statement
-
-
-class BusinessAnalysisResult(BaseModel):
-    """Top-level result returned by the BusinessAnalyst agent."""
-    business: BusinessProfile
-    competitive: CompetitiveAnalysis = CompetitiveAnalysis()
-    notes: list[str] = []  # agent-visible caveats (e.g. "skipped reviews: API error")
 
 
 @dataclass

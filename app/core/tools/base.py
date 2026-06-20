@@ -65,6 +65,11 @@ class ToolResult:
     data: Any = None
     summary: str = ""
     error: str = ""
+    # When True, the run loop also posts `summary` to chat as assistant text
+    # (and persists it), de-duped against text the model already wrote this
+    # turn. For tools whose result IS the user-facing message (manage_assets,
+    # analyze_competitors); the LLM then writes only a lead-in.
+    relay_summary: bool = False
 
     # Hard cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.

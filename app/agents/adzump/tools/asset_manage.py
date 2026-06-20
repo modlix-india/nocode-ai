@@ -1,10 +1,10 @@
 """manage_assets — the ONE asset front door (replaces save_uploaded_assets).
 
 Design C: the orchestrator hands over; this tool gathers the pending uploads,
-runs the VisionJudge ONCE (judge-each), then CODE dispositions each verdict —
+runs the VisionAnalyst ONCE (review-each), then CODE dispositions each verdict —
 store the confident-relevant, reject the off-product, and escalate the unsure
 back to the orchestrator to ask the user. No tool-loop, no completion oracle.
-The judge decides per image (relevant? role? name? unsure?); code executes.
+The reviewer decides per image (relevant? role? name? unsure?); code executes.
 """
 
 from __future__ import annotations
@@ -17,20 +17,42 @@ from app.agents.adzump._shared import emit_progress
 logger = logging.getLogger(__name__)
 
 
-def _build_brief(sctx: dict) -> str:
-    """Context the Asset Agent judges relevance against: what the product is +
-    what's already on file."""
+def _build_brief(sctx: dict, note: str = "") -> str:
+    """Context the VisionAnalyst reviews relevance against: what the product is,
+    what's already on file, and what the user said about THIS upload (note) — the
+    user's own claim is the strongest identity signal we have (PR1)."""
     pd = sctx.get("product_data") or {}
     name = pd.get("product_name") or "(unknown product)"
     summary = (pd.get("summary") or "").strip()
     logos = len(pd.get("logo_urls") or ([pd["logo_url"]] if pd.get("logo_url") else []))
     creatives = len(pd.get("creative_images") or [])
     lines = [
-        f"Product: {name}",
+        f"Product (these uploads are claimed to be for THIS product): {name}",
         f"Summary: {summary[:1500]}" if summary else "Summary: (none yet)",
         f"Already on file: {logos} logo(s), {creatives} product image(s).",
     ]
+    note = (note or "").strip()
+    if note:
+        lines.append(f'The user said about these image(s): "{note[:300]}"')
     return "\n".join(lines)
+
+
+def _saved_summary(stored: list[dict]) -> list[str]:
+    """The 'Saved …' receipt line(s) for stored assets + a non-blocking hedge on
+    brand-defining assets (hero/logo) the model can't verify are THIS project's
+    (PR1a). Pure → unit-tested below the model."""
+    if not stored:
+        return []
+
+    def _label(d: dict) -> str:  # PR4: drop redundant "(role)" when name == role / empty
+        r, n = d.get("role", ""), (d.get("name") or "").strip()
+        return f"your {r}" if (not n or n.lower() == r) else f"{n} ({r})"
+
+    parts = ["Saved " + ", ".join(_label(d) for d in stored) + "."]
+    brand = sorted({d.get("role") for d in stored if d.get("role") in ("hero", "logo")})
+    if brand:
+        parts.append(f"If the {' or '.join(brand)} isn't from this project, tell me and I'll swap it.")
+    return parts
 
 
 async def _manage_assets(params: dict, context: dict) -> ToolResult:
@@ -47,13 +69,13 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
     auth = context.get("auth")
     if auth is None:
         return ToolResult(success=False, error=(
-            "No auth context — the vision judge needs auth to run."
+            "No auth context — the vision reviewer needs auth to run."
         ))
 
     stream = context.get("event_stream")
     tool_use_id = context.get("tool_use_id", "")
 
-    from app.agents.adzump.agents.asset_picker.agent import get_vision_judge
+    from app.agents.adzump.agents.vision.agent import get_reviewer
     from app.agents.adzump._asset_store import (
         classify_verdict, dedup_by_content, store_logo, store_creative,
     )
@@ -78,15 +100,15 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
 
     await emit_progress(context, "Reviewing your uploaded image(s)…")
     if stream:
-        # The judge emits its own agent_finished; the launcher only opens the card.
+        # The reviewer emits its own agent_finished; the launcher only opens the card.
         await pre_emit_agent_started(
-            stream, agent_id="vision_judge", label="Vision Judge",
+            stream, agent_id="vision_review", label="Vision Analyst",
             parent_tool_use_id=tool_use_id, context=context,
         )
 
-    judged = await get_vision_judge().judge(
+    reviewed = await get_reviewer().review(
         images=images, parent_event_stream=stream, auth=auth,
-        summary=_build_brief(sctx),
+        summary=_build_brief(sctx, params.get("note") or ""),
         parent_session_context={
             "url": sctx.get("primary_url") or sctx.get("url", ""),
             "craft_id": sctx.get("craft_id", ""),
@@ -100,7 +122,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
     rejected: list[dict] = []
     ambiguous: list[dict] = []   # → orchestrator asks the user (slice 4 surfaces these)
 
-    for v in judged.verdicts:
+    for v in reviewed.verdicts:
         if not (0 <= v.idx < len(images)):
             continue
         img = images[v.idx]
@@ -139,8 +161,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
 
     # User-facing summary (tool-text contract — the orchestrator only adds a lead-in).
     parts: list[str] = []
-    if stored:
-        parts.append("Saved " + ", ".join(f"{d['name']} ({d['role']})" for d in stored) + ".")
+    parts += _saved_summary(stored)
     if rejected:
         parts.append("Skipped " + ", ".join(f"image {d['idx'] + 1} ({d['reason']})" for d in rejected) + ".")
     if ambiguous:
@@ -150,10 +171,19 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
 
     logger.info("manage_assets: stored=%d rejected=%d ambiguous=%d",
                 len(stored), len(rejected), len(ambiguous))
+    result_data = {"stored": len(stored), "rejected": len(rejected), "needs_input": ambiguous}
+    if ambiguous:
+        # Unsure image(s): yield the turn so the question is actually ASKED.
+        # Without this the loop rolls on to the next missing field and the ask
+        # is swallowed (F1 Step 3). One batched question per turn; the reply is
+        # handled conversationally (no elicit_field — the re-review round-trip
+        # for consumed bytes is a separate follow-up).
+        result_data["elicited"] = True
     return ToolResult(
         success=True,
-        data={"stored": len(stored), "rejected": len(rejected), "needs_input": ambiguous},
+        data=result_data,
         summary=summary,
+        relay_summary=True,  # the saved/skipped/ask text IS the user-facing message
     )
 
 
@@ -164,7 +194,7 @@ manage_assets = ToolDefinition(
         "the user attaches one or more images (a logo, a building/render shot, a "
         "floor plan, lifestyle photos) — for the first upload, a correction, or a "
         "replacement. You do NOT pick what each image is or pass the file: the "
-        "vision judge looks at each pending image and decides its role; code then "
+        "vision reviewer looks at each pending image and decides its role; code then "
         "saves the relevant ones, skips off-product ones, and flags anything "
         "unclear for you to ask about. Optionally pass `note` to relay what the "
         "user said about the image(s)."
@@ -175,7 +205,7 @@ manage_assets = ToolDefinition(
             name="note", type="string", required=False,
             description="Optional: what the user said about the upload(s), e.g. "
                         "'this is our logo' or 'replace the hero shot'. A hint for "
-                        "the Asset Manager — it still judges each image itself.",
+                        "the VisionAnalyst — it still reviews each image itself.",
         ),
     ],
     execute=_manage_assets,

@@ -1,44 +1,56 @@
 """Characterization golden for _resolve_picks — the deterministic seam
 BELOW the vision model (real logic, no mocks, no model call).
 
-The picker's model returns an AssetSelection (indices + roles); _resolve_picks
+The analyst's model returns an AssetSelection (indices + roles); _resolve_picks
 maps that onto ProductAssets (urls + derived completeness). We hand-author the
 selection (the model's hypothetical output) and lock the mapping, so design C's
-"generalize the picker" step can't silently change scrape's picks.
+"generalize the select" step can't silently change scrape's picks.
+
+Fixture = a real scrape of **Purva Sparkling Springs** (purvasparklingspring.com,
+our canonical real-estate test product): developer + project logos, a lakefront
+elevation hero, a clubhouse amenity, a 3BHK floor plan, and a RERA disclaimer
+banner (the quintessential real-estate "unused" creative). idx 6 re-lists the
+developer logo url to exercise dedup. Raster-only: html_parser drops every SVG
+at the parser (v9 — _is_svg_src, "raster-only candidates by contract"), so an
+.svg never reaches _resolve_picks; logos here are png/webp accordingly.
 
 Run:
     cd nocode-ai && ./venv/bin/python -m unittest \
-        tests.agents.adzump.agents.asset_picker.test_resolve_picks -v
+        tests.agents.adzump.agents.vision.test_resolve_picks -v
 """
 
 from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.agents.asset_picker.agent import _resolve_picks
-from app.agents.adzump.agents.asset_picker.models import (
+from app.agents.adzump.agents.vision.agent import _resolve_picks
+from app.agents.adzump.agents.vision.models import (
     AssetSelection, LogoChoice, CreativeChoice,
 )
 from app.agents.adzump.agents.product.models import SiteImage
+
+_SITE = "https://purvasparklingspring.com/img"
+
+DEV_LOGO = f"{_SITE}/puravankara-logo.png"          # 0 — developer (parent) logo
+PROJ_LOGO = f"{_SITE}/sparkling-springs-logo.webp"  # 1 — project logo
+HERO = f"{_SITE}/lakefront-elevation.webp"          # 2 — hero render
+AMENITY = f"{_SITE}/clubhouse-infinity-pool.jpg"    # 3 — amenity
+FLOOR_PLAN = f"{_SITE}/3bhk-villa-floor-plan.png"   # 4 — floor plan
+RERA_BANNER = f"{_SITE}/rera-disclaimer-banner.jpg" # 5 — unused (RERA junk)
 
 
 def _img(src: str, source: str = "img") -> SiteImage:
     return SiteImage(src=src, source=source)
 
 
-# A realistic candidate list: 2 logos (one a dup-url to exercise dedup),
-# hero/amenity/floor_plan/unused creatives. Index order is the contract.
-# Raster-only: html_parser drops every SVG at the parser (v9 — _is_svg_src,
-# html_parser.py:159, "raster-only candidates by contract"), so an .svg can
-# never reach _resolve_picks. Logos here are png/webp accordingly.
 CANDS = [
-    _img("https://x.com/dev-logo.png", "jsonld"),      # 0 — developer logo
-    _img("https://x.com/project-logo.webp", "og"),     # 1 — project logo
-    _img("https://x.com/hero.webp"),                   # 2 — hero
-    _img("https://x.com/pool.jpg"),                    # 3 — amenity
-    _img("https://x.com/floorplan.png"),               # 4 — floor plan
-    _img("https://x.com/promo-banner.jpg"),            # 5 — unused
-    _img("https://x.com/dev-logo.png"),                # 6 — DUP url of idx 0
+    _img(DEV_LOGO, "jsonld"),    # 0 — developer logo (Organization.logo)
+    _img(PROJ_LOGO, "og"),       # 1 — project logo (og:image)
+    _img(HERO),                  # 2 — hero
+    _img(AMENITY),               # 3 — amenity
+    _img(FLOOR_PLAN),            # 4 — floor plan
+    _img(RERA_BANNER),           # 5 — unused
+    _img(DEV_LOGO),              # 6 — DUP url of idx 0
 ]
 
 
@@ -62,17 +74,14 @@ class ResolvePicksGoldenTests(unittest.TestCase):
         out = _resolve_picks(sel, CANDS)
 
         # Logos: dup-url idx 6 dropped → 2 kept, with derived format + background.
-        self.assertEqual([l.url for l in out.logos],
-                         ["https://x.com/dev-logo.png", "https://x.com/project-logo.webp"])
+        self.assertEqual([l.url for l in out.logos], [DEV_LOGO, PROJ_LOGO])
         self.assertEqual([l.role for l in out.logos], ["developer", "project"])
         self.assertEqual([l.format for l in out.logos], ["png", "webp"])
         self.assertEqual([l.background for l in out.logos], ["dark", "light"])
         self.assertEqual([l.source for l in out.logos], ["jsonld", "og"])
 
-        # creative_image_urls excludes the 'unused' creative.
-        self.assertEqual(out.creative_image_urls,
-                         ["https://x.com/hero.webp", "https://x.com/pool.jpg",
-                          "https://x.com/floorplan.png"])
+        # creative_image_urls excludes the 'unused' RERA banner.
+        self.assertEqual(out.creative_image_urls, [HERO, AMENITY, FLOOR_PLAN])
         # creatives_with_role keeps ALL four (incl. unused), in order.
         self.assertEqual([(c.role) for c in out.creatives_with_role],
                          ["hero", "amenity", "floor_plan", "unused"])
@@ -95,8 +104,8 @@ class ResolvePicksGoldenTests(unittest.TestCase):
             confidence=0.5,
         )
         out = _resolve_picks(sel, CANDS)
-        self.assertEqual([l.url for l in out.logos], ["https://x.com/dev-logo.png"])
-        self.assertEqual(out.creative_image_urls, ["https://x.com/hero.webp"])
+        self.assertEqual([l.url for l in out.logos], [DEV_LOGO])
+        self.assertEqual(out.creative_image_urls, [HERO])
         self.assertEqual([c.role for c in out.creatives_with_role], ["hero"])
 
 

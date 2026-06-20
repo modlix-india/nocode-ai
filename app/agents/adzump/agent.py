@@ -218,23 +218,25 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     if (cctx.is_google
             and not cctx.competitor_analysis_attempted
             and "competitive_analysis_declined" not in cctx.spec):
-        # Pending-aware: if user just said no/skip, drop the question and
-        # store the declined flag. If user said yes (or anything else), the
-        # LLM follows the prescription.
-        lu = cctx.last_user.strip().lower()
-        if lu in ("no", "n", "no thanks", "skip", "no need"):
-            missing.append(
-                "competitive analysis — user said NO. Call "
-                "`set_campaign_spec(competitive_analysis_declined=\"true\")` and proceed."
-            )
-        else:
-            missing.append(
-                "competitive analysis — call `present_options(question=\"Want me to analyze "
-                "competitors before we set things up?\", options=[\"Yes\", "
-                "{\"label\":\"No\",\"value\":\"No\",\"answer\":\"true\"}], "
-                "field=\"competitive_analysis_declined\")`. "
-                "If the user just said YES, call `analyze_competitors()` instead."
-            )
+        # F11 · agentic, not a hardcoded phrase ladder: the MODEL interprets the
+        # user's reply to THIS competitor offer (the old `lu in (...)` exact-match
+        # missed "No, skip competitor analysis for now" → re-ask loop). Scoped +
+        # biased to re-ask on doubt so a polarity-flip ("no, change the budget")
+        # is never read as a decline. The _field_traceable guard backstops it.
+        missing.append(
+            "competitive analysis — read the user's LAST message as a reply to the "
+            "competitor-analysis offer:\n"
+            "  • declines it (no / skip / not now / maybe later) → "
+            "`set_campaign_spec(competitive_analysis_declined=\"true\")`, then do the "
+            "single next missing item below by ASKING — never set a field the user "
+            "hasn't stated (F12: don't invent duration/budget to 'proceed').\n"
+            "  • wants it (yes / go ahead) → `analyze_competitors()`.\n"
+            "  • the 'no' is about something ELSE (budget, a named competitor), or "
+            "it's unclear → ask `present_options(question=\"Want me to analyze "
+            "competitors before we set things up?\", options=[\"Yes\", "
+            "{\"label\":\"No\",\"value\":\"No\",\"answer\":\"true\"}], "
+            "field=\"competitive_analysis_declined\")`. Do NOT set declined on doubt."
+        )
 
     if not cctx.spec.get("duration"):
         if cctx.awaiting_custom_field == "duration":
@@ -635,7 +637,12 @@ class AdzumpAgent(BaseAgent):
         # marked as the immediate next action; the rest let the LLM keep
         # going within the same agentic-loop turn (e.g. after storing
         # platform, call confirm_location for location).
-        lines = ["\n## What's still missing (in order — do the top item first)"]
+        lines = [
+            "\n## What's still missing (in order — do the top item first)",
+            "Example values below (e.g. \"30 days\", \"₹5,000/day\") are OPTIONS to "
+            "SHOW the user via present_options — NEVER values to store. Only "
+            "`set_campaign_spec` a field after the user actually states it (F12).",
+        ]
         for i, item in enumerate(missing, 1):
             lines.append(f"{i}. {item}")
         return "\n".join(lines)
@@ -653,6 +660,10 @@ class AdzumpAgent(BaseAgent):
             "Then acknowledge in one short sentence and re-check Next action.\n"
             "4. Ambient (\"ok\", \"continue\", \"next\") → just do Next action.\n"
             "5. Otherwise → do Next action.\n"
+            "\n**A tool already spoke?** When a tool posts its own result to the "
+            "user (assets saved/skipped/corrected, competitors added/skipped — these "
+            "now appear in chat automatically), do NOT repeat it; write only a short "
+            "one-line lead-in to the Next action.\n"
             "\n**One ask per turn.** Never call two question-asking tools "
             "(`confirm_location`, `present_options`) in the same turn — ask one, "
             "wait for the reply, then ask the next. (The runtime also enforces "

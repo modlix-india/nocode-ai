@@ -242,6 +242,18 @@ class BaseAgent:
         tool_call_log: list[dict[str, Any]] = []
         # Track the model used (from the first LLM response)
         model_used: str | None = None
+        # F13 · deterministic stuck-loop breaker (run-scoped). When a turn's tool
+        # calls ALL fail with the same tool-name signature N turns running, the
+        # offending tool(s) are quarantined (withdrawn from the tool set) for the
+        # rest of THIS run — so the model is forced onto a different action (e.g.
+        # asking the user) instead of re-calling a tool that keeps rejecting (the
+        # v5 advisory STOP-steer the model ignores). Signature = tool NAMES, not
+        # inputs (a model inventing fresh values each turn keeps the same names);
+        # any success resets it. N=4 sits one above the domain advisory's n>=3.
+        STUCK_N = 4
+        stuck_sig: tuple[str, ...] | None = None
+        stuck_n = 0
+        quarantined: set[str] = set()
 
         while turn < self.max_turns:
             # Check for user-initiated cancellation
@@ -265,10 +277,16 @@ class BaseAgent:
             # Stream the turn + assemble the provider chunks into blocks. Mutates
             # assistant_text_parts (run-scoped) in place; always drains builtin
             # rows, even on a mid-stream raise. See _stream_turn.
+            # F13 · withdraw any quarantined tools for this call (filtered COPY —
+            # never mutate the shared self._anthropic_tools).
+            call_tools = (
+                [t for t in self._anthropic_tools if t.get("name") not in quarantined]
+                if quarantined else None
+            )
             content_blocks, tool_use_blocks, stop_reason, usage, _text_chunk_count = (
                 await self._stream_turn(
                     provider, system_prompt, call_messages, effective_tier,
-                    event_stream, assistant_text_parts,
+                    event_stream, assistant_text_parts, tools=call_tools,
                 )
             )
 
@@ -375,7 +393,7 @@ class BaseAgent:
                         })
                         continue
                     result_block, log_entry = await self._run_tool_block(
-                        tb, session, event_stream
+                        tb, session, event_stream, assistant_text_parts
                     )
                     tool_result_blocks.append(result_block)
                     tool_call_log.append(log_entry)
@@ -383,7 +401,7 @@ class BaseAgent:
                         stop_batch = True
             else:
                 results = await asyncio.gather(
-                    *(self._run_tool_block(tb, session, event_stream)
+                    *(self._run_tool_block(tb, session, event_stream, assistant_text_parts)
                       for tb in tool_use_blocks),
                     return_exceptions=False,
                 )
@@ -443,6 +461,22 @@ class BaseAgent:
                 )
                 break
 
+            # F13 · stuck-loop detection (pure step, see _stuck_step). On trip,
+            # quarantine the offending tools for the rest of the run; the next
+            # call can't emit them, forcing the model onto a different missing
+            # item (e.g. asking the user) instead of re-calling a tool that keeps
+            # rejecting (the v5 advisory STOP-steer the model ignores).
+            stuck_sig, stuck_n, to_quarantine = self._stuck_step(
+                new_entries, stuck_sig, stuck_n, STUCK_N
+            )
+            newly = to_quarantine - quarantined
+            if newly:
+                quarantined |= newly
+                logger.warning(
+                    "stuck_loop_quarantine: turn=%d tools=%s — withdrawing for the "
+                    "rest of this run so the model must ask/move on", turn, sorted(newly),
+                )
+
         else:
             # while/else: reached ONLY when the loop ends without a break —
             # i.e. true max-turns exhaustion. Every break above (cancel, no
@@ -484,6 +518,7 @@ class BaseAgent:
         effective_tier: str,
         event_stream: AgentEventStream,
         assistant_text_parts: list[str],
+        tools: list[dict[str, Any]] | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str, dict[str, Any], int]:
         """Stream one LLM turn and assemble the provider chunks into blocks.
 
@@ -513,7 +548,7 @@ class BaseAgent:
             async for chunk in provider.stream_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=call_messages,
-                tools=self._anthropic_tools,
+                tools=self._anthropic_tools if tools is None else tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
                 context_management=self.context_management,
@@ -675,13 +710,59 @@ class BaseAgent:
         """
         return f"Confirm: {display_name}"
 
+    @staticmethod
+    def _stuck_step(
+        new_entries: list[dict[str, Any]],
+        prev_sig: tuple[str, ...] | None,
+        prev_n: int,
+        n_threshold: int,
+    ) -> tuple[tuple[str, ...] | None, int, set[str]]:
+        """F13 · one stuck-loop step (pure → unit-tested below the model).
+
+        A turn is "stuck" when EVERY tool call in it failed; its signature is the
+        sorted tool-name tuple (NOT inputs — a model inventing fresh values keeps
+        the same names). Returns ``(sig, n, to_quarantine)``: the running
+        signature + consecutive count, and — once the SAME stuck signature has
+        repeated ``n_threshold`` turns — the set of failed tool names to withdraw
+        (and resets the streak so a different tool can re-trip). Any success in
+        the turn (incl. a domain partial/kept no-op, which returns success=True)
+        breaks the streak, preserving the normal self-heal path."""
+        failed = [e for e in new_entries if not e.get("success")]
+        sig = (
+            tuple(sorted(e.get("tool", "") for e in new_entries))
+            if new_entries and len(failed) == len(new_entries) else None
+        )
+        n = (prev_n + 1) if (sig and sig == prev_sig) else (1 if sig else 0)
+        if sig and n >= n_threshold:
+            return None, 0, {e.get("tool", "") for e in failed if e.get("tool")}
+        return sig, n, set()
+
+    @staticmethod
+    def _chat_receipt_text(result: ToolResult, turn_text: str) -> str | None:
+        """The text a ``relay_summary`` tool should post to chat as assistant
+        text — or ``None`` to skip. Skips when: not opted in, failed, no summary,
+        or the model already wrote it this turn (normalized substring de-dup, the
+        same guard present_options uses). Pure → unit-tested below the model."""
+        if not (result.relay_summary and result.success and result.summary):
+            return None
+        receipt = " ".join(result.summary.lower().split())
+        streamed = " ".join((turn_text or "").lower().split())
+        if not receipt or receipt in streamed:
+            return None
+        return result.summary
+
     async def _run_tool_block(
         self,
         tool_block: dict[str, Any],
         session: BaseSession,
         event_stream: AgentEventStream,
+        assistant_text_parts: list[str],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Execute one tool_use block, emit SSE events, and return (result_block, log_entry)."""
+        """Execute one tool_use block, emit SSE events, and return (result_block, log_entry).
+
+        ``assistant_text_parts`` is the run-scoped list the persisted turn is
+        built from; a tool with ``relay_summary`` appends its summary here so the
+        receipt survives refresh (see the relay block below)."""
         tool_name = tool_block["name"]
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
@@ -746,6 +827,16 @@ class BaseAgent:
         display_summary = result.summary or result.error or tool_content
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
+
+        # F1 · relay_summary: the tool's result IS the user-facing message, so
+        # post it to chat as assistant text AND persist it (append to the
+        # run-scoped parts the saved turn is built from). De-duped against text
+        # the model already wrote this turn so we never double-render (same
+        # guard present_options uses). The LLM then writes only a lead-in.
+        _receipt = self._chat_receipt_text(result, getattr(session, "_turn_assistant_text", ""))
+        if _receipt is not None:
+            await event_stream.emit_text(_receipt)
+            assistant_text_parts.append(_receipt)
 
         # Learning loop: track tool errors for pitfall detection
         if not result.success:

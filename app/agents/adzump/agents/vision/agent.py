@@ -1,4 +1,4 @@
-"""AssetPickerAgent — single-shot vision BaseAgent for logo + creative picks.
+"""VisionAnalyst — single-shot vision BaseAgent for logo + creative picks.
 
 Replaces the direct ``client.beta.chat.completions.parse(...)`` call in
 ``agents/product/product_assets.py:494-507`` with a properly-named agent
@@ -31,14 +31,14 @@ from app.core.agent import BaseAgent
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 
-from app.agents.adzump.agents.asset_picker.context import (
-    build_asset_picker_context,
-    build_judge_context,
+from app.agents.adzump.agents.vision.context import (
+    build_select_context,
+    build_review_context,
 )
-from app.agents.adzump.agents.asset_picker.models import (
+from app.agents.adzump.agents.vision.models import (
     AssetSelection,
     ImageVerdict,
-    JudgeResult,
+    ReviewResult,
     LogoChoice,
 )
 
@@ -61,16 +61,16 @@ logger = logging.getLogger(__name__)
 # Staying with gpt-4o-mini for cost parity with the existing direct call
 # (~$0.15/1M in, vision-capable). Sonnet 4.6 would be a 20× cost bump for
 # the same task. See D5b in implementation-notes.md.
-PICKER_PROVIDER = "openai"
-PICKER_MODEL_TIER = "fast"
-PICKER_MODEL_OVERRIDE = "openai:gpt-4o-mini"
+VISION_PROVIDER = "openai"
+VISION_MODEL_TIER = "fast"
+VISION_MODEL_OVERRIDE = "openai:gpt-4o-mini"
 
 # Old direct call used max_tokens=600. Keeping the same ceiling — the
 # output is just a small JSON object.
-PICKER_MAX_TOKENS = 600
+VISION_MAX_TOKENS = 600
 
 # Single-shot LLM call.
-PICKER_MAX_TURNS = 1
+VISION_MAX_TURNS = 1
 
 
 # Regex matches the FIRST ```json … ``` fence in the assistant text.
@@ -114,29 +114,29 @@ def _parse_selection(final_text: str) -> AssetSelection:
     """
     payload = _extract_json_from_text(final_text)
     if not payload:
-        logger.warning("asset_picker_no_json final_text=%r", final_text[:300])
+        logger.warning("vision_select_no_json final_text=%r", final_text[:300])
         return AssetSelection()
     try:
         return AssetSelection.model_validate(payload)
     except ValidationError as e:
-        logger.warning("asset_picker_validation_failed err=%s payload=%r",
+        logger.warning("vision_select_validation_failed err=%s payload=%r",
                        str(e)[:200], payload)
         return AssetSelection()
 
 
-def _parse_judge(final_text: str) -> JudgeResult:
-    """Parse the judge-each final JSON as a ``JudgeResult``. Empty on any
+def _parse_review(final_text: str) -> ReviewResult:
+    """Parse the review-each final JSON as a ``ReviewResult``. Empty on any
     parse/validation failure (caller treats empty as 'no usable verdicts')."""
     payload = _extract_json_from_text(final_text)
     if not payload:
-        logger.warning("vision_judge_no_json final_text=%r", final_text[:300])
-        return JudgeResult()
+        logger.warning("vision_review_no_json final_text=%r", final_text[:300])
+        return ReviewResult()
     try:
-        return JudgeResult.model_validate(payload)
+        return ReviewResult.model_validate(payload)
     except ValidationError as e:
-        logger.warning("vision_judge_validation_failed err=%s payload=%r",
+        logger.warning("vision_review_validation_failed err=%s payload=%r",
                        str(e)[:200], payload)
-        return JudgeResult()
+        return ReviewResult()
 
 
 def _resolve_picks(
@@ -263,7 +263,7 @@ def _build_user_message_and_images(
     order so the model correlates by position.
 
     SVG candidates appear as text-only entries (no thumbnail) — the LLM
-    judges them by metadata + filename.
+    reviews them by metadata + filename.
 
     Emits image blocks in **Anthropic format** per the
     ``session.append_user_message`` docstring contract — the OpenAI provider
@@ -278,7 +278,7 @@ def _build_user_message_and_images(
     # developer logo, project logo, hero photo, etc. Candidate thumbnails
     # still ship in their original index order (image blocks #1..N).
     # When the screenshot is missing (defensive — should only happen on
-    # adapter failure), the picker falls back to the v7 candidate-only shape.
+    # adapter failure), the agent falls back to the v7 candidate-only shape.
     screenshot_present = bool(full_page_screenshot_b64)
 
     intro_lines = [
@@ -334,16 +334,16 @@ def _build_user_message_and_images(
             # SVG / no thumbnail — text-only entry, no image block.
             intro_lines.append(
                 f"  · [Candidate {idx}] source={cand.source} format=SVG "
-                f"file={filename} — no thumbnail; judge by metadata + filename"
+                f"file={filename} — no thumbnail; review by metadata + filename"
             )
 
     return "\n".join(intro_lines), image_blocks
 
 
-def _build_judge_message(
+def _build_review_message(
     images: list[dict[str, Any]], summary: str = "",
 ) -> tuple[str, list[dict[str, Any]]]:
-    """Judge-each user message: brief intro + one image block per input image,
+    """Review-each user message: brief intro + one image block per input image,
     in order. Each ``images`` entry is ``{"data": bytes, "content_type": str}``
     (the upload path holds raw bytes). Mirrors the Anthropic image-block shape
     the provider already translates.
@@ -355,7 +355,7 @@ def _build_judge_message(
 
     intro = [
         (summary or "").strip()[:1000],
-        f"Judge each of the {len(images)} image(s) below, in order — one verdict per image.",
+        f"Review each of the {len(images)} image(s) below, in order — one verdict per image.",
     ]
     blocks: list[dict[str, Any]] = []
     for img in images:
@@ -374,7 +374,7 @@ def _build_judge_message(
 class _SilentEventStream(AgentEventStream):
     """Drops every event except agent lifecycle + data.
 
-    The asset-picker call doesn't surface text or thinking to the user —
+    The VisionAnalyst call doesn't surface text or thinking to the user —
     output is just the parsed JSON, consumed by the caller. We still
     forward ``emit_agent_started/finished`` so the agent card lifecycle
     works.
@@ -410,7 +410,7 @@ class _SilentEventStream(AgentEventStream):
         return
 
     async def emit_error(self, message: str) -> None:
-        logger.debug("asset_picker_substream_error: %s", message[:200])
+        logger.debug("vision_select_substream_error: %s", message[:200])
 
     async def emit_done(self, *a, **kw) -> None:
         return
@@ -444,7 +444,7 @@ class _SilentEventStream(AgentEventStream):
         await self._parent.emit_agent_usage(agent_id, tokens_in, tokens_out)
 
     async def emit_craft(self, *a, **kw) -> None:
-        return  # AssetPicker doesn't render to the craft itself.
+        return  # VisionAnalyst doesn't render to the craft itself.
 
     async def emit_craft_text(self, *a, **kw) -> None:
         return
@@ -453,42 +453,42 @@ class _SilentEventStream(AgentEventStream):
         return
 
 
-class VisionJudge(BaseAgent):
+class VisionAnalyst(BaseAgent):
     """Single-shot vision agent. Two modes, one engine:
 
     - select-subset (scrape): pick logos + creatives from scraped candidates
       → ``AssetSelection`` → ``_resolve_picks`` → ``ProductAssets`` (``pick()``).
-    - judge-each (upload): one verdict per image → ``JudgeResult`` (``judge()``).
+    - review-each (upload): one verdict per image → ``ReviewResult`` (``review()``).
 
     The system prompt can't be swapped per ``run()`` (it's built from the
     context at construction), so each mode is its own configured instance:
-    ``get_asset_picker_agent()`` (select) and ``get_vision_judge()`` (judge)."""
+    ``get_selector()`` (select) and ``get_reviewer()`` (review)."""
 
-    display_name = "Vision Judge"
+    display_name = "Vision Analyst"
 
-    _instance: "VisionJudge | None" = None
+    _instance: "VisionAnalyst | None" = None
 
-    def __init__(self, *, name: str = "asset_picker", context_builder=None) -> None:
-        context = context_builder or build_asset_picker_context()
+    def __init__(self, *, name: str = "vision_select", context_builder=None) -> None:
+        context = context_builder or build_select_context()
         context._cached_static_text = context._static_prefix
 
         super().__init__(
             name=name,
             tools=[],
             context_builder=context,
-            model_tier=PICKER_MODEL_TIER,
-            max_turns=PICKER_MAX_TURNS,
-            max_tokens=PICKER_MAX_TOKENS,
-            provider=PICKER_PROVIDER,
+            model_tier=VISION_MODEL_TIER,
+            max_turns=VISION_MAX_TURNS,
+            max_tokens=VISION_MAX_TOKENS,
+            provider=VISION_PROVIDER,
             context_management=None,
         )
 
     @classmethod
-    def get_instance(cls) -> "VisionJudge":
+    def get_instance(cls) -> "VisionAnalyst":
         # The select-subset (scrape) singleton — unchanged behavior.
         if cls._instance is None:
             cls._instance = cls()
-            logger.info("VisionJudge created (select-subset / scrape, single-shot)")
+            logger.info("VisionAnalyst created (select-subset / scrape, single-shot)")
         return cls._instance
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
@@ -520,7 +520,7 @@ class VisionJudge(BaseAgent):
         import time as _time
         run_start = _time.monotonic()
 
-        sub_session = BaseSession(agent_name="asset_picker")
+        sub_session = BaseSession(agent_name="vision_select")
         await sub_session.get_or_create(None, auth)
 
         if parent_session_context is not None:
@@ -542,11 +542,11 @@ class VisionJudge(BaseAgent):
                 session=sub_session,
                 event_stream=wrapped_stream,
                 image_blocks=image_blocks,
-                model_override=PICKER_MODEL_OVERRIDE,
+                model_override=VISION_MODEL_OVERRIDE,
             )
         except Exception as e:
             logger.warning(
-                "asset_picker_run_failed: %s: %s",
+                "vision_select_run_failed: %s: %s",
                 type(e).__name__, str(e)[:200],
             )
             await self._emit_finished(parent_event_stream, run_start, sub_session, status="error", summary=type(e).__name__)
@@ -576,23 +576,23 @@ class VisionJudge(BaseAgent):
         )
         return result
 
-    async def judge(
+    async def review(
         self,
         images: list[dict[str, Any]],
         parent_event_stream: AgentEventStream,
         auth: AuthContext,
         summary: str = "",
         parent_session_context: dict | None = None,
-    ) -> JudgeResult:
-        """Judge-each: one verdict per image (the upload path). Returns an empty
-        ``JudgeResult`` if the LLM call fails or the JSON is unparseable.
+    ) -> ReviewResult:
+        """Review-each: one verdict per image (the upload path). Returns an empty
+        ``ReviewResult`` if the LLM call fails or the JSON is unparseable.
 
         Each ``images`` entry is ``{"data": bytes, "content_type": str}``. Use
-        the judge-each instance (``get_vision_judge()``) — it carries the
-        judge-each system prompt.
+        the review-each instance (``get_reviewer()``) — it carries the
+        review-each system prompt.
         """
         if not images:
-            return JudgeResult()
+            return ReviewResult()
 
         import time as _time
         run_start = _time.monotonic()
@@ -605,7 +605,7 @@ class VisionJudge(BaseAgent):
                 "craft_id": parent_session_context.get("craft_id", ""),
             }
 
-        user_message, image_blocks = _build_judge_message(images, summary)
+        user_message, image_blocks = _build_review_message(images, summary)
         wrapped_stream = _SilentEventStream(parent_event_stream)
 
         try:
@@ -614,14 +614,14 @@ class VisionJudge(BaseAgent):
                 session=sub_session,
                 event_stream=wrapped_stream,
                 image_blocks=image_blocks,
-                model_override=PICKER_MODEL_OVERRIDE,
+                model_override=VISION_MODEL_OVERRIDE,
             )
         except Exception as e:
-            logger.warning("vision_judge_run_failed: %s: %s",
+            logger.warning("vision_review_run_failed: %s: %s",
                            type(e).__name__, str(e)[:200])
             await self._emit_finished(parent_event_stream, run_start, sub_session,
                                       status="error", summary=type(e).__name__)
-            return JudgeResult()
+            return ReviewResult()
 
         # Last assistant message = the JSON output. (Same shape as pick(); kept
         # inline rather than shared so pick()'s hot path stays byte-identical.)
@@ -639,7 +639,7 @@ class VisionJudge(BaseAgent):
                     final_text = "\n".join(p for p in parts if p)
                     break
 
-        result = _parse_judge(final_text)
+        result = _parse_review(final_text)
         await self._emit_finished(
             parent_event_stream, run_start, sub_session,
             status="success", summary=f"verdicts={len(result.verdicts)}",
@@ -656,9 +656,9 @@ class VisionJudge(BaseAgent):
     ) -> None:
         """Emit agent_finished with token usage from sub_session.total_usage.
 
-        Adds the observability hook the asset_picker call previously lacked —
+        Adds the observability hook the VisionAnalyst call previously lacked —
         production tool wrappers and the eval CapturingEventStream both
-        consume this. Defensive: the asset_picker has historically run in
+        consume this. Defensive: the VisionAnalyst has historically run in
         contexts where parent_event_stream is None (eval before the
         2026-05-21 CapturingEventStream).
         """
@@ -682,23 +682,23 @@ class VisionJudge(BaseAgent):
             pass
 
 
-# Back-compat alias — existing importers and telemetry still say "AssetPickerAgent".
-AssetPickerAgent = VisionJudge
+# Back-compat alias — existing importers and telemetry still say "VisionAnalyst".
+VisionAnalyst = VisionAnalyst
 
-_JUDGE_INSTANCE: "VisionJudge | None" = None
+_REVIEW_INSTANCE: "VisionAnalyst | None" = None
 
 
-def get_asset_picker_agent() -> VisionJudge:
+def get_selector() -> VisionAnalyst:
     """Accessor for the shared select-subset (scrape) singleton — unchanged."""
-    return VisionJudge.get_instance()
+    return VisionAnalyst.get_instance()
 
 
-def get_vision_judge() -> VisionJudge:
-    """Accessor for the shared judge-each (upload) singleton. Its own instance
-    because judge-each needs a different system prompt than select-subset (the
+def get_reviewer() -> VisionAnalyst:
+    """Accessor for the shared review-each (upload) singleton. Its own instance
+    because review-each needs a different system prompt than select-subset (the
     prompt can't be swapped per run)."""
-    global _JUDGE_INSTANCE
-    if _JUDGE_INSTANCE is None:
-        _JUDGE_INSTANCE = VisionJudge(name="vision_judge", context_builder=build_judge_context())
-        logger.info("VisionJudge created (judge-each / upload, single-shot)")
-    return _JUDGE_INSTANCE
+    global _REVIEW_INSTANCE
+    if _REVIEW_INSTANCE is None:
+        _REVIEW_INSTANCE = VisionAnalyst(name="vision_review", context_builder=build_review_context())
+        logger.info("VisionAnalyst created (review-each / upload, single-shot)")
+    return _REVIEW_INSTANCE

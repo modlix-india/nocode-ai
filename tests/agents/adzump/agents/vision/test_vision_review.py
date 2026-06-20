@@ -1,13 +1,13 @@
-"""Slice 2 — the judge-each capability of VisionJudge, below the model.
+"""Slice 2 — the review-each capability of VisionAnalyst, below the model.
 
-We never call the LLM: we hand-build the judge's JSON output (what the model
+We never call the LLM: we hand-build the reviewer's JSON output (what the model
 WOULD return) and assert the parse, and we assert the message builder turns N
 images into N image blocks. Judgment quality (did it call #0 a logo?) is the
 manual eval/smoke, never a unit test.
 
 Run:
     cd nocode-ai && ./venv/bin/python -m unittest \
-        tests.agents.adzump.agents.asset_picker.test_vision_judge -v
+        tests.agents.adzump.agents.vision.test_vision_review -v
 """
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ from __future__ import annotations
 import base64
 import unittest
 
-from app.agents.adzump.agents.asset_picker.agent import (
-    _build_judge_message, _parse_judge,
+from app.agents.adzump.agents.vision.agent import (
+    _build_review_message, _parse_review,
 )
 
 
-class ParseJudgeTests(unittest.TestCase):
-    """_parse_judge: judge-each final JSON → JudgeResult (empty on failure)."""
+class ParseReviewTests(unittest.TestCase):
+    """_parse_review: review-each final JSON → ReviewResult (empty on failure)."""
 
     def test_parses_one_verdict_per_image(self):
         text = (
@@ -33,7 +33,7 @@ class ParseJudgeTests(unittest.TestCase):
             '"needs_user":true,"question":"floor plan or site map?","reasoning":"ambiguous"}'
             "]}\n```"
         )
-        res = _parse_judge(text)
+        res = _parse_review(text)
         self.assertEqual([v.idx for v in res.verdicts], [0, 1])
         self.assertEqual(res.verdicts[0].role, "logo")
         self.assertTrue(res.verdicts[0].relevant)
@@ -42,7 +42,7 @@ class ParseJudgeTests(unittest.TestCase):
         self.assertEqual(res.verdicts[1].question, "floor plan or site map?")
 
     def test_defaults_applied_for_sparse_verdict(self):
-        res = _parse_judge('{"verdicts": [{"idx": 0}]}')
+        res = _parse_review('{"verdicts": [{"idx": 0}]}')
         v = res.verdicts[0]
         self.assertEqual(v.role, "")
         self.assertTrue(v.relevant)        # default True
@@ -50,18 +50,18 @@ class ParseJudgeTests(unittest.TestCase):
         self.assertFalse(v.needs_user)     # default False
 
     def test_garbage_returns_empty(self):
-        self.assertEqual(_parse_judge("the model said nothing useful").verdicts, [])
+        self.assertEqual(_parse_review("the model said nothing useful").verdicts, [])
 
 
-class BuildJudgeMessageTests(unittest.TestCase):
-    """_build_judge_message: N image specs (bytes) → N image blocks, in order."""
+class BuildReviewMessageTests(unittest.TestCase):
+    """_build_review_message: N image specs (bytes) → N image blocks, in order."""
 
     def test_one_block_per_image_in_order(self):
         images = [
             {"data": b"AAAA", "content_type": "image/png"},
             {"data": b"BBBB"},                                  # no content_type → default
         ]
-        text, blocks = _build_judge_message(images, summary="a product")
+        text, blocks = _build_review_message(images, summary="a product")
         self.assertEqual(len(blocks), 2)
         self.assertEqual(blocks[0]["source"]["data"], base64.b64encode(b"AAAA").decode())
         self.assertEqual(blocks[0]["source"]["media_type"], "image/png")
@@ -70,7 +70,7 @@ class BuildJudgeMessageTests(unittest.TestCase):
         self.assertIn("2 image(s)", text)
 
     def test_empty_images_empty_blocks(self):
-        text, blocks = _build_judge_message([], summary="")
+        text, blocks = _build_review_message([], summary="")
         self.assertEqual(blocks, [])
         self.assertIn("0 image(s)", text)
 

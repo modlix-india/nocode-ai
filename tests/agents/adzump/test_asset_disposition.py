@@ -1,5 +1,5 @@
-"""Slice 3 — code disposition for judged uploads (design C step 2), below the
-model. Construct verdicts (the judge's hypothetical output) and assert the
+"""Slice 3 — code disposition for reviewed uploads (design C step 2), below the
+model. Construct verdicts (the reviewer's hypothetical output) and assert the
 store/reject/escalate call, the content-hash dedup, and the product_data write
 shape. No model, no upload I/O.
 
@@ -15,7 +15,7 @@ import unittest
 from app.agents.adzump._asset_store import (
     classify_verdict, dedup_by_content, store_logo, store_creative,
 )
-from app.agents.adzump.agents.asset_picker.models import ImageVerdict
+from app.agents.adzump.agents.vision.models import ImageVerdict
 
 
 def _v(**kw) -> ImageVerdict:

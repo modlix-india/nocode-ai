@@ -1,9 +1,9 @@
-"""System prompt for AssetPickerAgent.
+"""System prompt for VisionAnalyst.
 
 The prompt lives in ``agents/product/prompts/product_assets.txt`` today.
 The agent reads it from there to preserve byte-for-byte parity with the
 existing direct-call shape. A v2 refactor can move the file under
-``agents/asset_picker/prompts/``.
+``agents/vision/prompts/``.
 
 The prompt is extended at build time with an explicit JSON-shape contract.
 The original direct call enforced output shape via OpenAI's strict
@@ -20,7 +20,7 @@ from app.core.context import BaseContext
 
 # DRAFT-NOTE · prompt currently lives in the product agent's prompt folder.
 # When we move it (D3 in implementation-notes.md), change this path.
-_PICKER_PROMPT_PATH = (
+_SELECT_PROMPT_PATH = (
     Path(__file__).resolve().parent.parent
     / "product" / "prompts" / "product_assets.txt"
 )
@@ -66,28 +66,28 @@ Hard caps: at most 3 logos. Use empty list/string/0 when there's no signal — d
 """
 
 
-def _load_picker_prompt() -> str:
-    """Read the gpt-4o-mini asset-picker prompt + append the JSON contract."""
-    base = _PICKER_PROMPT_PATH.read_text(encoding="utf-8")
+def _load_select_prompt() -> str:
+    """Read the gpt-4o-mini select prompt + append the JSON contract."""
+    base = _SELECT_PROMPT_PATH.read_text(encoding="utf-8")
     return base + _JSON_OUTPUT_CONTRACT
 
 
-def build_asset_picker_context() -> BaseContext:
+def build_select_context() -> BaseContext:
     """Build the BaseContext for the select-subset (scrape) mode.
 
     Single-shot vision task. No tools, no iteration, no dynamic context.
     """
     return BaseContext(
         doc_paths=[],
-        static_prefix=_load_picker_prompt(),
+        static_prefix=_load_select_prompt(),
     )
 
 
-# ── judge-each mode (upload path) ───────────────────────────────────────────
-# Select-subset PICKS from scraped candidates; judge-each returns a verdict per
+# ── review-each mode (upload path) ───────────────────────────────────────────
+# Select-subset PICKS from scraped candidates; review-each returns a verdict per
 # image. Different task → different prompt. The key behavior: never guess when
 # unsure — flag needs_user and ask.
-_JUDGE_PROMPT = """You are a vision judge for advertising assets. You will be \
+_REVIEW_PROMPT = """You are a vision reviewer for advertising assets. You will be \
 shown N images (pasted by a user for their product/service). For EACH image, in \
 order, decide:
 - role: 'logo' | 'hero' | 'amenity' | 'floor_plan' | 'unused' | 'unknown'.
@@ -98,10 +98,18 @@ an unrelated stock photo → relevant=false).
 set true and write a short question for the user. Do NOT guess — asking is \
 better than a wrong silent choice.
 
-Judge every image independently. Do not select a subset; emit one verdict per \
+You CANNOT confirm from an image alone that it belongs to the user's specific \
+project (two real-estate projects look alike) — do NOT try, and do NOT reject a \
+plausible asset just because you can't verify the project. BUT if an image \
+clearly shows a DIFFERENT brand or project than the brief (a competitor's name \
+or logo, or content that contradicts the product), set needs_user=true and ask \
+the user to confirm it's their own. The user's note, if given, is their claim of \
+ownership — weigh it.
+
+Review every image independently. Do not select a subset; emit one verdict per \
 image."""
 
-_JUDGE_JSON_CONTRACT = """
+_REVIEW_JSON_CONTRACT = """
 
 ## Output contract
 
@@ -120,10 +128,10 @@ exactly one verdict per input image, in input order:
 Emit a verdict for every image. Use empty string / 0.0 / false when there's no signal — do not invent."""
 
 
-def build_judge_context() -> BaseContext:
-    """BaseContext for judge-each (upload) mode. Same single-shot engine,
+def build_review_context() -> BaseContext:
+    """BaseContext for review-each (upload) mode. Same single-shot engine,
     different instruction + output shape than select-subset."""
     return BaseContext(
         doc_paths=[],
-        static_prefix=_JUDGE_PROMPT + _JUDGE_JSON_CONTRACT,
+        static_prefix=_REVIEW_PROMPT + _REVIEW_JSON_CONTRACT,
     )
