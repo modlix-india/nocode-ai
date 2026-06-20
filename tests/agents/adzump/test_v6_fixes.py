@@ -22,7 +22,7 @@ import asyncio
 import types
 import unittest
 
-from app.agents.adzump.agent import AdzumpAgent
+from app.agents.adzump.agent import AdzumpAgent, _next_action, CampaignContext
 from app.agents.adzump.tools.campaign_data import (
     _set_campaign_spec, is_clear_decline_reply,
 )
@@ -139,6 +139,35 @@ class ClearDeclineReplyTableTests(unittest.TestCase):
             self.assertTrue(is_clear_decline_reply(t), f"should be a clear decline: {t!r}")
         for t in ambiguous:
             self.assertFalse(is_clear_decline_reply(t), f"should NOT auto-record: {t!r}")
+
+
+def _full_google_cctx():
+    spec = {
+        "platform": "Google Ads", "location": "Bengaluru", "duration": "30 days",
+        "budget": "₹10,000/day", "competitive_analysis_declined": "true",
+        "parent_account": "1234567890", "account": "4461972633",
+    }
+    return CampaignContext(
+        product={"business_type": "real estate", "product_name": "Sumadhura Solea"},
+        product_profile={}, competitor_names=[], competitor_analysis_attempted=True,
+        spec=spec, account_names={"1234567890": "MCC", "4461972633": "Acct"},
+        set_at={}, current_turn=1, last_user="", pending_location=None,
+    )
+
+
+# ── F20 — the review/publish prescription must not leak tool-call syntax ──
+class ReviewPublishPrescriptionTests(unittest.TestCase):
+    def test_review_publish_has_no_raw_tool_call_syntax(self):
+        missing = _next_action(_full_google_cctx())
+        review = next((m for m in missing if "review & publish" in m), None)
+        self.assertIsNotNone(review, f"review&publish should appear; got: {missing}")
+        # F20: the live leak was the model echoing this prescription's copyable
+        # present_options(...)/launch_campaign() syntax into the launch bubble.
+        self.assertNotIn("present_options(", review)
+        self.assertNotIn("launch_campaign(", review)
+        # but it must still instruct CALLING those tools (intent prose form)
+        self.assertIn("present_options tool", review)
+        self.assertIn("launch_campaign tool", review)
 
 
 if __name__ == "__main__":
