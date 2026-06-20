@@ -20,6 +20,14 @@ def _ok(tool):
     return {"tool": tool, "success": True}
 
 
+def _noop(tool):  # F15: success but stored nothing new (kept-noop)
+    return {"tool": tool, "success": True, "no_progress": True}
+
+
+def _elicit(tool):  # asked the user — progress
+    return {"tool": tool, "success": True, "elicited": True}
+
+
 def _drive(turns, n_threshold=N):
     """Replay a sequence of turns (each a list of log entries) through the pure
     step; return the list of quarantine-sets emitted per turn."""
@@ -43,8 +51,8 @@ class StuckStepTests(unittest.TestCase):
         turns = [[_fail("set_campaign_spec")] for _ in range(N)]
         self.assertEqual(_drive(turns)[N - 1], {"set_campaign_spec"})
 
-    def test_success_resets_streak(self):
-        # 3 fails, then a success (e.g. partial/kept no-op), then fails → no trip
+    def test_real_success_resets_streak(self):
+        # 3 fails, then a REAL store (success, no no_progress), then fails → no trip
         turns = [[_fail("set_campaign_spec")]] * 3 + [[_ok("set_campaign_spec")]] \
             + [[_fail("set_campaign_spec")]] * 2
         self.assertTrue(all(q == set() for q in _drive(turns)))
@@ -67,6 +75,36 @@ class StuckStepTests(unittest.TestCase):
         out = _drive(turns)
         self.assertEqual(out[N - 1], {"a"})
         self.assertEqual(out[2 * N - 1], {"b"})
+
+
+class F15NoProgressTests(unittest.TestCase):
+    def test_kept_noop_turns_trip_at_N(self):  # the F15 regression
+        turns = [[_noop("set_campaign_spec")]] * N
+        out = _drive(turns)
+        self.assertEqual(out[:N - 1], [set()] * (N - 1))
+        self.assertEqual(out[N - 1], {"set_campaign_spec"})  # quarantines the noop tool
+
+    def test_real_store_midstreak_resets(self):
+        turns = [[_noop("set_campaign_spec")]] * 3 + [[_ok("set_campaign_spec")]] \
+            + [[_noop("set_campaign_spec")]] * 3
+        self.assertTrue(all(q == set() for q in _drive(turns)))
+
+    def test_elicitation_resets(self):  # asking the user is progress
+        turns = [[_noop("set_campaign_spec")]] * 3 + [[_elicit("present_options")]] \
+            + [[_noop("set_campaign_spec")]] * 3
+        self.assertTrue(all(q == set() for q in _drive(turns)))
+
+    def test_mixed_failed_and_noop_same_sig_trips(self):
+        # model alternating reject/kept-noop on the same tool must not dodge it
+        turns = [[_fail("set_campaign_spec")], [_noop("set_campaign_spec")]] * N
+        self.assertIn("set_campaign_spec", _drive(turns)[-1] | _drive(turns)[-2])
+
+    def test_noop_bundled_with_real_store_is_not_stuck(self):
+        turns = [[_noop("a"), _ok("b")]] * (N + 2)
+        self.assertTrue(all(q == set() for q in _drive(turns)))
+
+    def test_bare_success_never_stuck(self):
+        self.assertTrue(all(q == set() for q in _drive([[_ok("x")]] * (N + 1))))
 
 
 if __name__ == "__main__":

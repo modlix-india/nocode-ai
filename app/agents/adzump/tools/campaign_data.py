@@ -355,10 +355,15 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
 
     if not stored_keys:
         # kept-only: nothing changed; say so without an error the model would retry.
+        # F15: data["no_progress"]=True — this success stored NOTHING new, so the
+        # core stuck-loop breaker counts it (a model that ignores the "do NOT
+        # re-send" steer and loops kept-noops gets the tool quarantined, same as
+        # an all-failed loop). Distinct from the v5 reject-streak (all-rejected).
         logger.info("campaign_spec_noop_kept: kept=%s", kept)
         return ToolResult(
             success=True,
             summary=f"No changes.{kept_note}{review_hint}",
+            data={"no_progress": True},
         )
 
     logger.info("campaign_spec_updated: fields=%s kept=%s", stored_keys, kept)

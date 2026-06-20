@@ -44,6 +44,16 @@ class F12InventionLoopTests(unittest.TestCase):
             self.assertFalse(last.success)
         self.assertIn("STOP", last.error or "")  # fires on 3rd despite different values
 
+    def test_kept_noop_emits_no_progress(self):
+        # F15: re-sending an already-stored field (paraphrase) → kept-noop success
+        # must flag data["no_progress"] so the core stuck-loop breaker counts it.
+        full = ("302, Blk 9, Cityville Valmark, off Bannerghatta Rd, "
+                "Bengaluru, Karnataka 560076, India")
+        ctx, sc = _spec_ctx({"location": full}, "continue")
+        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
+        self.assertTrue(r.success)
+        self.assertTrue(isinstance(r.data, dict) and r.data.get("no_progress"))
+
     def test_legit_varied_correction_does_not_trip_breaker(self):
         # a TRACEABLE correction stores → resets the streak → never accumulates,
         # so re-keying on field-set can't hard-STOP a real user correction.

@@ -717,24 +717,30 @@ class BaseAgent:
         prev_n: int,
         n_threshold: int,
     ) -> tuple[tuple[str, ...] | None, int, set[str]]:
-        """F13 · one stuck-loop step (pure → unit-tested below the model).
+        """F13/F15 · one stuck-loop step (pure → unit-tested below the model).
 
-        A turn is "stuck" when EVERY tool call in it failed; its signature is the
-        sorted tool-name tuple (NOT inputs — a model inventing fresh values keeps
-        the same names). Returns ``(sig, n, to_quarantine)``: the running
-        signature + consecutive count, and — once the SAME stuck signature has
-        repeated ``n_threshold`` turns — the set of failed tool names to withdraw
-        (and resets the streak so a different tool can re-trip). Any success in
-        the turn (incl. a domain partial/kept no-op, which returns success=True)
-        breaks the streak, preserving the normal self-heal path."""
-        failed = [e for e in new_entries if not e.get("success")]
+        A turn is "stuck" when EVERY tool call in it made NO PROGRESS — either it
+        failed, OR it succeeded but stored nothing new (a kept-noop, flagged
+        ``no_progress``; F15). Both read as "retry-me" to a model that ignores the
+        steer. Signature is the sorted tool-name tuple (NOT inputs — a model
+        inventing fresh values keeps the same names). Returns
+        ``(sig, n, to_quarantine)``: the running signature + consecutive count,
+        and — once the SAME stuck signature repeats ``n_threshold`` turns — the
+        set of no-progress tool names to withdraw (resets so a different tool can
+        re-trip). RESETS on real progress: any success that stored new work, OR
+        any elicitation (asking the user advanced the conversation), OR an empty
+        turn — preserving the normal self-heal path."""
+        # Asking the user IS progress — a turn that elicits is never stuck.
+        if any(e.get("elicited") for e in new_entries):
+            return None, 0, set()
+        stuck = [e for e in new_entries if (not e.get("success")) or e.get("no_progress")]
         sig = (
             tuple(sorted(e.get("tool", "") for e in new_entries))
-            if new_entries and len(failed) == len(new_entries) else None
+            if new_entries and len(stuck) == len(new_entries) else None
         )
         n = (prev_n + 1) if (sig and sig == prev_sig) else (1 if sig else 0)
         if sig and n >= n_threshold:
-            return None, 0, {e.get("tool", "") for e in failed if e.get("tool")}
+            return None, 0, {e.get("tool", "") for e in stuck if e.get("tool")}
         return sig, n, set()
 
     @staticmethod
@@ -873,6 +879,11 @@ class BaseAgent:
             # capture the reply. Inert (None) for every other tool and agent.
             "elicit_field": (result.data.get("elicit_field") if isinstance(result.data, dict) else None),
             "elicit_answers": (result.data.get("elicit_answers") if isinstance(result.data, dict) else None),
+            # F15 · a success that stored nothing new (kept-noop). The stuck-loop
+            # breaker treats it like a failure so a re-send loop the model won't
+            # break out of gets the tool quarantined. Generic + inert (False) for
+            # every other tool. Domain-agnostic pass-through, same as elicited.
+            "no_progress": bool(isinstance(result.data, dict) and result.data.get("no_progress")),
         }
         return result_block, log_entry
 
