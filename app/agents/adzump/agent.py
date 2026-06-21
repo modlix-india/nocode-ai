@@ -811,14 +811,27 @@ class AdzumpAgent(BaseAgent):
         + deterministic (no extra LLM call), per the panel. Returns the chip dict or
         None."""
         lt = (text or "").lower()
+        if not lt:
+            return None
+        # F27 · evaluate the TRAILING line (the actual ask), NOT the whole blob —
+        # a launch/review summary lists a "Location:" bullet and contains "ready
+        # to" (in "Ready to launch"), which made this fire a "Confirm location"
+        # chip at the launch step. The genuine advance ask is always its own short
+        # trailing line, so anchoring there fixes the over-match.
+        tail = next((ln for ln in reversed(lt.splitlines()) if ln.strip()), "")
         markers = (
             "let's confirm", "lets confirm", "confirm the location", "shall i",
             "shall we", "ready to", "ready when you", "go ahead", "look good",
             "looks good", "proceed", "all set",
         )
-        if not lt or not any(m in lt for m in markers):
+        if not any(m in tail for m in markers):
             return None
-        if "location" in lt:
+        # Label precedence: launch → location → generic (launch must win — the
+        # launch ask's trailing line is "…Ready to launch the campaign?").
+        if "launch" in tail:                                   # F27 · launch step
+            return {"options": [{"label": "Yes, launch",
+                                 "value": "yes, launch"}], "mode": "single"}
+        if "location" in tail:
             return {"options": [{"label": "Confirm location",
                                  "value": "yes, confirm the location"}], "mode": "single"}
         return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}

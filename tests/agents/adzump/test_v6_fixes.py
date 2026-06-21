@@ -276,5 +276,55 @@ class AdvanceChipTests(unittest.TestCase):
         self.assertIsNone(AdzumpAgent._advance_chip(""))
 
 
+# ── F27 · launch-step summary must NOT yield a "Confirm location" chip ─────
+# Live bug (run M3): at the launch step the model wrote the summary + "Ready to
+# launch the campaign?" as PROSE; the whole-blob match saw "ready to" + the
+# "Location:" summary bullet → emitted a misleading "Confirm location" chip with
+# NO "make changes" option. Fix: evaluate the TRAILING line + launch→location→
+# generic precedence.
+_LAUNCH_SUMMARY = (
+    "Here's your campaign summary:\n\n"
+    "- Product: Concorde Neo\n"
+    "- Location: Thanisandra Main Rd, Bengaluru, Karnataka, India\n"
+    "- Platform: Meta\n"
+    "- Duration: 60 days\n"
+    "- Daily Budget: ₹7,500/day\n\n"
+    "Ready to launch the campaign?"
+)
+
+
+class AdvanceChipLaunchTests(unittest.TestCase):
+    def test_launch_summary_not_confirm_location(self):           # THE F27 lock
+        chip = AdzumpAgent._advance_chip(_LAUNCH_SUMMARY)
+        self.assertIsNotNone(chip)
+        opt = chip["options"][0]
+        self.assertNotEqual(opt["label"], "Confirm location")
+        self.assertNotEqual(opt["value"], "yes, confirm the location")
+
+    def test_launch_summary_yields_yes_launch(self):
+        opt = AdzumpAgent._advance_chip(_LAUNCH_SUMMARY)["options"][0]
+        self.assertEqual(opt["value"], "yes, launch")
+        self.assertEqual(opt["label"], "Yes, launch")
+        self.assertNotIn("field", opt)                           # F4: still value-only
+        self.assertNotIn("answer", opt)
+
+    def test_launch_beats_location_keyword(self):
+        # a single line containing BOTH must resolve to launch
+        opt = AdzumpAgent._advance_chip("Location set. Ready to launch?")["options"][0]
+        self.assertEqual(opt["value"], "yes, launch")
+
+    def test_location_in_lead_line_not_trailing_generic_ask(self):
+        # "location" only in an earlier line; trailing line is a generic advance →
+        # "Go ahead", NOT "Confirm location" (proves last-line anchoring)
+        opt = AdzumpAgent._advance_chip("I've noted the location.\n\nShall I proceed?")["options"][0]
+        self.assertEqual(opt["value"], "yes, go ahead")
+
+    def test_genuine_location_ask_with_lead_in_still_confirms(self):
+        # F23 preserved: a lead-in line + trailing location-confirm prose
+        opt = AdzumpAgent._advance_chip(
+            "Great, almost done.\n\nLet's confirm the location for the campaign.")["options"][0]
+        self.assertEqual(opt["value"], "yes, confirm the location")
+
+
 if __name__ == "__main__":
     unittest.main()
