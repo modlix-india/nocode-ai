@@ -341,7 +341,12 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
             },
             "competitive": {
                 "attempted": session_ctx.get("competitor_analysis") is not None,
-                "declined": spec.get("competitive_analysis_declined") == "true",
+                # F26 backstop — never persist declined=true alongside attempted
+                # (analysis having run voids a prior decline; clear_competitor_decline
+                # handles the realistic paths, this keeps the durable record honest
+                # even if a stale flag survives an un-instrumented path).
+                "declined": (spec.get("competitive_analysis_declined") == "true"
+                             and session_ctx.get("competitor_analysis") is None),
             },
         },
     }

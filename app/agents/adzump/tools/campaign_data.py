@@ -25,7 +25,9 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.platform import Platform
-from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
+from app.agents.adzump.answer_parse import (
+    parse_typed_answer, currency_for, field_candidates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -227,9 +229,14 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         # legitimate case it used to cover — a typed bare number meaning days —
         # is now handled CANONICALLY: parse_typed_answer reads bare "30" → "30
         # days" (duration-only), so both sides parse equal and match above.
+        # F24 — read the user's message for ALL values it supports for this field
+        # (corrections with a cue word, multi-number volunteered messages), then
+        # accept iff the model's canonical value is one of them. The anti-invention
+        # property is this canonical equality, NOT a digit-substring — so F1 (a
+        # stored "5 days" tracing to "15 properties") stays closed.
         cur = currency_for(session_ctx)
-        pv = parse_typed_answer(field, str(value), cur)
-        if pv is not None and pv == parse_typed_answer(field, last_user, cur):
+        cand = parse_typed_answer(field, str(value), cur)
+        if cand is not None and cand in field_candidates(field, last_user, cur):
             return True
     return False
 
@@ -441,6 +448,20 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     if field in ("platform", "parent_account", "fb_page"):
         session_ctx.pop("_ig_offered", None)
     return cleared
+
+
+def clear_competitor_decline(session_ctx: dict) -> bool:
+    """F26 — competitors are now present (analyzed / looked-up), so a PRIOR
+    "declined" is void: a launched/reviewed campaign must never report
+    'declined' alongside a populated competitor list (the contradictory state
+    reachable via decline→reverse). Pop the flag AND its provenance, mirroring
+    _clear_dependents' spec/set_at lockstep. Idempotent. Returns whether it
+    popped (for logging)."""
+    spec = session_ctx.get("campaign_spec") or {}
+    if spec.pop("competitive_analysis_declined", None) is None:
+        return False
+    (session_ctx.get("_spec_set_at") or {}).pop("competitive_analysis_declined", None)
+    return True
 
 
 def _apply_field(

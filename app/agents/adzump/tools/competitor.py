@@ -11,6 +11,7 @@ import logging
 from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.tools.campaign_data import clear_competitor_decline
 from app.agents.adzump._shared import (
     emit_progress,
     host_of,
@@ -369,6 +370,9 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         _filter_self_references(business, competitive, primary_url=url)
 
         session_ctx["competitor_analysis"] = competitive
+        # F26 — fresh analysis ran (even if 0 found): a prior decline is void.
+        if clear_competitor_decline(session_ctx):
+            logger.info("competitor_decline_cleared: analyze_competitors ran")
 
         # Append competitor blocks to the existing craft panel. This is the
         # first batch, so show the "Competitors" heading.
@@ -515,6 +519,10 @@ async def _lookup_single_competitor(
         skipped = (output.competitive or {}).get("skipped") or []
 
         competitors_list.extend(new_competitors)
+        # F26 — competitors were ADDED by name → a prior decline is void. (Not on
+        # a pure removal: zeroing the list isn't a reversal of the decline.)
+        if new_competitors and clear_competitor_decline(session_ctx):
+            logger.info("competitor_decline_cleared: competitors added by name")
 
     # ── Nothing happened ──
     if not removed_names and not new_competitors and not skipped:
