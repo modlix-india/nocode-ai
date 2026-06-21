@@ -801,6 +801,28 @@ class AdzumpAgent(BaseAgent):
             ctx["auth"] = session.auth
         return ctx
 
+    @staticmethod
+    def _advance_chip(text: str) -> dict[str, Any] | None:
+        """F23 · a prose advance/confirm ask (e.g. "Let's confirm the location for
+        the campaign") with no live widget gets ONE value-only quick-reply chip so
+        the user can click instead of having to type to proceed. Value-only (no
+        ``field``/``answer``) → the click just sends "yes …" text that routes to the
+        model, so it CANNOT reintroduce the F4 untagged-capture loop. Keyword-gated
+        + deterministic (no extra LLM call), per the panel. Returns the chip dict or
+        None."""
+        lt = (text or "").lower()
+        markers = (
+            "let's confirm", "lets confirm", "confirm the location", "shall i",
+            "shall we", "ready to", "ready when you", "go ahead", "look good",
+            "looks good", "proceed", "all set",
+        )
+        if not lt or not any(m in lt for m in markers):
+            return None
+        if "location" in lt:
+            return {"options": [{"label": "Confirm location",
+                                 "value": "yes, confirm the location"}], "mode": "single"}
+        return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
+
     async def get_pending_suggestions(
         self, session: BaseSession, assistant_text: str = "",
     ) -> dict[str, Any] | None:
@@ -830,6 +852,13 @@ class AdzumpAgent(BaseAgent):
         # chips would carry no field tag (a click wouldn't be captured → re-ask
         # loop). The user can type the answer (typed-capture handles
         # duration/budget/platform); next turn the LLM re-asks via a tagged tool.
+        # F23 · a prose advance/confirm ask (no live widget) gets one value-only
+        # "Go ahead"/"Confirm location" chip so the user needn't type to proceed.
+        # BEFORE the captured-guard so it fires even right after a chip answer (the
+        # dead-end case). Value-only → can't reintroduce the F4 untagged-capture loop.
+        adv = AdzumpAgent._advance_chip(assistant_text)
+        if adv:
+            return adv
         if captured:
             return None
         return await infer_suggestions(assistant_text, session.context)

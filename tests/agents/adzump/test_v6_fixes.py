@@ -221,5 +221,60 @@ class ReviewPublishPrescriptionTests(unittest.TestCase):
         self.assertIn("launch_campaign tool", review)
 
 
+# ── F23 — value-only "advance" chip for prose asks (no F4 re-ask regression) ──
+class AdvanceChipTests(unittest.TestCase):
+    def _ses(self, extra=None):
+        s = types.SimpleNamespace()
+        s.context = {"campaign_spec": {"platform": "Google Ads"}, "product_data": dict(RE)}
+        if extra:
+            s.context.update(extra)
+        s.messages = [{"role": "user", "content": "30 days"}]
+        s._turn_count = 1
+        return s
+
+    def _call(self, s, text):
+        agent = AdzumpAgent.__new__(AdzumpAgent)
+        return asyncio.run(agent.get_pending_suggestions(s, text))
+
+    def test_advance_chip_fires_even_after_capture(self):
+        # THE dead-end case + F4 no-regression in one: user just answered a chip
+        # (_captured_this_turn set), model asks the next step as prose → one
+        # VALUE-ONLY chip, and the capture marker is still popped.
+        s = self._ses({"_captured_this_turn": "platform"})
+        res = self._call(s, "Got it. Let's confirm the location for the campaign.")
+        self.assertIsNotNone(res)
+        self.assertEqual(len(res["options"]), 1)
+        opt = res["options"][0]
+        self.assertNotIn("field", opt)                       # value-only → can't reintroduce F4
+        self.assertNotIn("answer", opt)
+        self.assertEqual(opt["value"], "yes, confirm the location")
+        self.assertNotIn("_captured_this_turn", s.context)   # popped (no leak to next turn)
+
+    def test_generic_advance_chip(self):
+        s = self._ses()
+        res = self._call(s, "Shall I go ahead and set this up for you?")
+        self.assertEqual(res["options"][0]["value"], "yes, go ahead")
+
+    def test_no_chip_on_data_prose_after_capture(self):
+        # a data-collection prose re-ask (NOT an advance ask) after a capture → None
+        # (F4 protection preserved; the model re-asks via a tagged tool next turn).
+        s = self._ses({"_captured_this_turn": "platform"})
+        res = self._call(s, "What's your daily budget?")
+        self.assertIsNone(res)
+        self.assertNotIn("_captured_this_turn", s.context)   # still popped
+
+    def test_no_advance_chip_when_widget_pending(self):
+        # a live elicitation owns the turn → no competing advance chip
+        s = self._ses({"_pending_elicitation": {"tool": "present_options", "field": "duration"}})
+        self.assertIsNone(self._call(s, "Let's confirm the location for the campaign."))
+
+    def test_helper_value_only_and_gated(self):
+        chip = AdzumpAgent._advance_chip("Let's confirm the location")
+        self.assertEqual(chip["mode"], "single")
+        self.assertTrue(all("field" not in o and "answer" not in o for o in chip["options"]))
+        self.assertIsNone(AdzumpAgent._advance_chip("What is your daily budget?"))  # not an advance ask
+        self.assertIsNone(AdzumpAgent._advance_chip(""))
+
+
 if __name__ == "__main__":
     unittest.main()
