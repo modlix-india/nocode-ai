@@ -49,6 +49,7 @@ from app.agents.appbuilder.tools.modlix.visuals import TOOLS as _MODLIX_VISUAL_T
 from app.agents.appbuilder.tools.modlix.visuals_browser import TOOLS as _MODLIX_BROWSER_TOOLS
 from app.agents.appbuilder.tools.modlix.image_ops import TOOLS as _MODLIX_IMAGE_OPS_TOOLS
 from app.agents.appbuilder.tools.modlix.clone_ops import TOOLS as _MODLIX_CLONE_TOOLS
+from app.agents.appbuilder.tools.modlix.build_page import TOOLS as _MODLIX_BUILD_PAGE_TOOLS
 from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURITY_TOOLS
 from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
 from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
@@ -86,6 +87,7 @@ MODLIX_TOOLS: list[ToolDefinition] = (
     + list(_MODLIX_BROWSER_TOOLS)
     + list(_MODLIX_IMAGE_OPS_TOOLS)
     + [t for t in _MODLIX_CLONE_TOOLS if t.name != "compare_to_source"]  # compare_to_source dropped — self-QA is the model's native vision now
+    + list(_MODLIX_BUILD_PAGE_TOOLS)  # deterministic URL -> Modlix page (build_page_from_url)
     + list(_MODLIX_SECURITY_TOOLS)
     + list(_MODLIX_APP_ADMIN_TOOLS)
     + list(_MODLIX_MESSAGING_TOOLS)
