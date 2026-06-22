@@ -36,6 +36,7 @@ from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream, current_agent_id
 from app.core.session import BaseSession
 from app.core.context import BaseContext
+from app.services import billing
 from app.core.builtin_tools import (
     close_builtin_rows, on_builtin_tool_result, on_builtin_tool_use,
 )
@@ -262,6 +263,18 @@ class BaseAgent:
         logger.info("Message history: %d messages", len(session.get_messages()))
         session.start_turn()
         await session.persist_turn_incremental(user_message, "", None)
+
+        # Billing — AI is a metered, gated action. Gate this turn against the
+        # consumer's wallet before any LLM call, and snapshot usage so the
+        # finished turn can be charged. ai_turn_allowed fails open.
+        usage_before = dict(session.total_usage)
+        if not await billing.ai_turn_allowed(session.auth):
+            out_msg = "You're out of tokens. Top up your wallet to keep using AI."
+            await event_stream.emit_error(out_msg)
+            await session.persist_turn(user_message, out_msg, None)
+            await session.complete()
+            await event_stream.emit_done(session_id=session.session_id, usage=session.get_usage_summary())
+            return
 
         # Layer 1 — system-prompt context: build_dynamic_context runs ONCE per
         # request and is folded into the (cacheable) system prompt. Agents whose
@@ -503,6 +516,15 @@ class BaseAgent:
             assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
+
+        # Billing — charge this turn's AI token usage. Best-effort; the server
+        # debits allow-negative and is idempotent per (session, turn).
+        await billing.charge_ai_turn(
+            session.auth,
+            billing.turn_token_delta(usage_before, session.total_usage),
+            session.session_id,
+            session._turn_count,
+        )
 
         # Emit pending suggestions (e.g. quick reply buttons) if any
         suggestions = await self.get_pending_suggestions(session, assistant_summary)
