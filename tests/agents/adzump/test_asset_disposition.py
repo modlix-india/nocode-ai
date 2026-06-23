@@ -86,8 +86,8 @@ class StoreShapeTests(unittest.TestCase):
 
     def test_store_creative_appends_and_dedups_url(self):
         pd = {}
-        self.assertTrue(store_creative(pd, {"url": "https://s/hero.png"}, "hero", "hero"))
-        self.assertFalse(store_creative(pd, {"url": "https://s/hero.png"}, "hero", "hero"))  # dup url
+        self.assertTrue(store_creative(pd, {"url": "https://s/hero.png"}, "hero", "hero", {}))
+        self.assertFalse(store_creative(pd, {"url": "https://s/hero.png"}, "hero", "hero", {}))  # dup url
         self.assertEqual(pd["creative_images"], ["https://s/hero.png"])
 
 

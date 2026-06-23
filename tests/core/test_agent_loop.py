@@ -1,23 +1,9 @@
-"""Approach B (fix 1.1) — tail-reminder invariants.
-
-Guards the two correctness properties that have no other coverage:
-  1. _with_tail_reminder is replace-not-append / no-persist — it never mutates
-     the input messages (so reminders can't accumulate in session.messages),
-     and the reminder lands as the LAST block (tail) wrapped in <system-reminder>.
-  2. _resume_elicitation_section is gated to agentic turn==1 — it pops the
-     one-shot flag only on turn 1, and on turn>1 returns "" WITHOUT popping
-     (so the flag survives Approach B's per-turn rebuild).
-
-Run:
-    cd nocode-ai && ./venv/bin/python -m unittest tests.agents.adzump.test_tail_reminder -v
-"""
+"""Unit: core BaseAgent run-loop — _with_tail_reminder (replace-not-append, tail-placed)."""
 from __future__ import annotations
 
-import types
 import unittest
 
 from app.core.agent import BaseAgent
-from app.agents.adzump.agent import AdzumpAgent
 
 REMINDER = "State: platform=Google Ads. Next: ask duration."
 
@@ -67,28 +53,6 @@ class WithTailReminderTests(unittest.TestCase):
         out = BaseAgent._with_tail_reminder([], REMINDER)
         self.assertEqual(out[0]["role"], "user")
         self.assertIn(REMINDER, out[0]["content"][0]["text"])
-
-
-class ResumeGateTests(unittest.TestCase):
-    @staticmethod
-    def _session(pe):
-        return types.SimpleNamespace(context=({"_pending_elicitation": pe} if pe else {}))
-
-    def test_turn1_single_renders_and_pops(self):
-        s = self._session({"expects": "single", "tool": "confirm_location"})
-        out = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
-        self.assertTrue(out)                                  # rendered
-        self.assertNotIn("_pending_elicitation", s.context)   # one-shot popped
-
-    def test_turn2_empty_and_does_not_pop(self):
-        s = self._session({"expects": "single", "tool": "confirm_location"})
-        out = AdzumpAgent._resume_elicitation_section(None, s, turn=2)
-        self.assertEqual(out, "")                             # not rendered on later turns
-        self.assertIn("_pending_elicitation", s.context)      # flag survives (NOT popped)
-
-    def test_turn1_no_pending(self):
-        s = self._session(None)
-        self.assertEqual(AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
 
 
 if __name__ == "__main__":

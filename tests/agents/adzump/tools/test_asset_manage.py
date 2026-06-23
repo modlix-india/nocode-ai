@@ -1,10 +1,5 @@
-"""PR1a · project-identity grounding (below the model).
-
-- `_build_brief` now carries the user's `note` (their ownership claim) + an
-  explicit "claimed to be for THIS product" anchor.
-- `_saved_summary` drops the redundant "(role)" when name==role (PR4) and adds a
-  non-blocking hedge on brand-defining assets (hero/logo) the model can't verify.
-Pure functions → no agent, no live model."""
+"""asset_manage pure text builders: _build_brief, _saved_summary (below the model).
+Regression: PR1a project-identity grounding — story in plans/asset-upload-qa-findings.md."""
 import unittest
 
 from app.agents.adzump.tools.asset_manage import _build_brief, _saved_summary

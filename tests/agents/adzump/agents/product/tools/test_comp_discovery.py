@@ -1,16 +1,4 @@
-"""Lock #5 (partial) — comp_discovery pure helpers.
-
-`_normalize_name` (brand dedup: lowercase, suffix-strip, punctuation) and
-`_is_specific_geography` (the geo hard-floor heuristic — marker words + compound
-locality suffixes that fire for real-estate/local verticals, not SaaS/D2C).
-The `_score_code_signals` scoring golden (dedup + self-reference) is a focused
-follow-up (needs the full scoring/return-shape fixture).
-
-Run:
-    cd nocode-ai && ./venv/bin/python -m unittest \\
-        tests.agents.adzump.test_comp_discovery_helpers -v
-"""
-
+"""comp_discovery pure helpers: _normalize_name (brand dedup), _is_specific_geography (geo hard-floor)."""
 from __future__ import annotations
 
 import unittest
