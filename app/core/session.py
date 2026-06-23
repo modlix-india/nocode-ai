@@ -31,6 +31,21 @@ from app.db.models import AiTokenUsageCreate
 logger = logging.getLogger(__name__)
 
 
+# Transient runtime/tracing keys that live for one turn only — rebuilt each turn,
+# never meant to persist. _started_tuids in particular is a *set* (opened
+# sub-agent card ids), which JSON can't serialize at all; left in, it sinks the
+# whole context save and the conversation loses its memory on the next message.
+_EPHEMERAL_CONTEXT_KEYS = {"_started_tuids"}
+
+
+def _serialize_context(context: dict) -> str:
+    """JSON-encode session context for persistence. Drops ephemeral runtime keys,
+    and degrades any stray non-JSON value (e.g. a set) to a list/str so one bad
+    value can never again sink the entire context."""
+    persistable = {k: v for k, v in context.items() if k not in _EPHEMERAL_CONTEXT_KEYS}
+    return json.dumps(persistable, default=lambda o: list(o) if isinstance(o, set) else str(o))
+
+
 @dataclass
 class AuthContext:
     """Authentication context passed from the HTTP request.
@@ -400,7 +415,7 @@ class BaseSession:
 
         try:
             from app.services.session_manager import get_session_manager
-            context_json = json.dumps(self.context)
+            context_json = _serialize_context(self.context)
             await get_session_manager().update_session_context(
                 self.session_id, context_json, self.auth.user_id if self.auth else None
             )
@@ -415,7 +430,7 @@ class BaseSession:
         try:
             from app.services.session_manager import get_session_manager
             session_manager = get_session_manager()
-            context_json = json.dumps(self.context) if self.context else None
+            context_json = _serialize_context(self.context) if self.context else None
             session = await session_manager.create_session(
                 client_code=self.auth.client_code,
                 client_id=self.auth.client_id,
