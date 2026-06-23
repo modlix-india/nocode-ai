@@ -10,120 +10,71 @@ from app.agents.adzump._shared import emit_progress
 
 logger = logging.getLogger(__name__)
 
-_ANALYST_USER_MESSAGE = (
-    "Analyze this business website: {url}\n\n"
-    "SCOPE: Scrape the homepage ONCE and generate a product profile. "
-    "Do NOT scrape sub-pages — one scrape_url call only. "
-    "Do NOT call web_search or web_fetch. "
-    "After scraping, write the final JSON with the 'business' section filled "
-    "and an empty 'competitive' section."
-)
 
 async def _analyze_product(params: dict, context: dict) -> ToolResult:
     """Spawn the Product Analyst agent to scrape + generate a product profile.
     Thin bridge: cache check → spawn agent → persist → return."""
-    import time as _time
-    _run_start = _time.monotonic()
 
-    url = (params.get("url") or "").strip()
+    url = _normalize_url(params.get("url", ""))
     if not url:
         return ToolResult(success=False, error="url is required.")
-    # Force https:// so storage keys / event payloads / API calls stay consistent
-    # (mixed http+https double-keyed the same business).
-    if url.startswith("http://"):
-        url = "https://" + url[len("http://"):]
-    elif not url.startswith("https://"):
-        url = f"https://{url}"
 
     stream = context.get("event_stream")
     tool_use_id = context.get("tool_use_id", "")
     auth = context.get("auth")
-    session_ctx = context.get("session_context", {}) or {}
-    parent_session = context.get("_session")
-    target_ctx = parent_session.context if parent_session else session_ctx
+    # memory arrives as live obj (_session) or snapshot dict (session_context);
+    # use _session.context (the one that persists), else snapshot.
+    session_obj = context.get("_session")
+    session_memory = session_obj.context if session_obj else (context.get("session_context") or {})
 
-    # Already analyzed this session → return cached.
-    existing_business = (
-        (parent_session.context.get("product_data") if parent_session else None)
-        or session_ctx.get("product_data")
-    )
-    
-    if existing_business:
-        name = existing_business.get("product_name", "product")
+    # already analyzed this session → return stored product, no re-scrape.
+    existing_product = session_memory.get("product_data")
+
+    if existing_product:
+        name = existing_product.get("product_name", "product")
         return ToolResult(
             success=True,
-            data={"business": existing_business},
+            data={"product": existing_product},
             summary=f"Already analyzed: {name}. No need to re-analyze.",
         )
 
     # Cross-session cache: URL analyzed in a prior session → skip the scrape.
-    cached_result = await _serve_from_storage(url, stream, context, target_ctx)
+    cached_result = await _serve_from_storage(url, stream, context, session_memory)
     if cached_result is not None:
         return cached_result
 
     try:
-        from app.agents.adzump.agents.product.agent import get_product_agent
-        from app.core.streaming import pre_emit_agent_started
+        analysis = await _run_product_agent(url, stream, tool_use_id, auth, session_memory)
 
-        await emit_progress(context, "Starting product analysis…")
-        # Launcher owns both AgentCard ends: agent_started here, agent_finished after.
-        await pre_emit_agent_started(
-            stream, agent_id="product_analyst", label="Product Analyst",
-            parent_tool_use_id=tool_use_id, context=context,
-        )
-        output = await get_product_agent().analyze(
-            url=url,
-            parent_event_stream=stream,
-            parent_tool_use_id=tool_use_id,
-            auth=auth,
-            parent_session_context=session_ctx,
-            user_message=_ANALYST_USER_MESSAGE.format(url=url),
-        )
-
-        if not output.business:
+        # analysis.product = scraped profile dict; None/{} if scrape found nothing → abort below.
+        product = analysis.product
+        if not product:
             raise RuntimeError("Agent produced no usable result")
 
-        business = output.business
-        if output.screenshot_url:
-            business["screenshot_url"] = output.screenshot_url
+        _merge_product_into_context(session_memory, analysis, url)
 
-        # Persist to parent session. Ownership:
-        #   product_data: MERGE not replace — the sub-agent put runtime artifacts here
-        #     (site_links, screenshot, scrape_count); wholesale replace wipes them.
-        #     JSON keys (product_name, summary, …) win on conflict.
-        #   product_profile: sub-agent owns .summary — only refresh url + title here.
-        #   competitor_analysis: owned here, set when competitive output exists.
-        target_ctx["product_data"] = {**(target_ctx.get("product_data") or {}), **business}
-        profile = target_ctx.setdefault("product_profile", {})
-        profile["url"] = url
-        profile["title"] = business.get("product_name", "") or profile.get("title", "")
-        # Fallback: seed summary only if the sub-agent didn't run (legacy bypass).
-        if not profile.get("summary"):
-            profile["summary"] = business.get("summary", "")
-        if output.competitive and output.competitive.get("competitors"):
-            target_ctx["competitor_analysis"] = output.competitive
-
-        duration_ms = int((_time.monotonic() - _run_start) * 1000)
         await _safe_emit_finished(
-            stream, status="success", duration_ms=duration_ms,
-            summary=f"Analyzed {business.get('product_name', 'product')}",
+            stream, status="success",
+            summary=f"Analyzed {product.get('product_name', 'product')}",
         )
 
-        # Emit the asset-upload prompt on the PARENT stream (the sub-agent's
-        # _PassthroughEventStream drops emit_text, so the picker can't ask here).
-        elicited = await _emit_asset_upload_prompt(stream, target_ctx, url)
+        # upload prompt fires on PARENT stream (picker can't: _PassthroughEventStream
+        # drops emit_text). reads typed analysis.asset_gaps, not a product_data key.
+        elicited = await _emit_asset_upload_prompt(stream, analysis.asset_gaps, session_memory, url)
 
-        result_data: dict = {"business": business}
+        result_data: dict = {"product": product}
         if elicited:
-            # Deferred elicitation: asked for uploads → break the run loop, yield
-            # the turn. expects="multi": uploads may span several messages.
+            # deferred elicit → break loop, yield turn. multi = uploads span msgs.
+            # gaps ride elicit_payload → _pending_elicitation.payload; _asset_store decrements.
             result_data["elicited"] = True
             result_data["elicit_expects"] = "multi"
+            if analysis.asset_gaps:
+                result_data["elicit_payload"] = analysis.asset_gaps.to_dict()
 
         return ToolResult(
             success=True,
             data=result_data,
-            summary=_build_llm_summary(business),
+            summary=_build_llm_summary(product),
         )
 
     except Exception as e:
@@ -135,40 +86,115 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             error=f"Product analysis failed: {type(e).__name__}: {e}",
         )
 
+# ── Tool definition ───────────────────────────────────────────────────────────
+analyze_business = ToolDefinition(
+    name="analyze_product",
+    description=(
+        "Scrape a business website and generate a product profile: what they sell "
+        "(all variants), location, pricing, USPs, target customer. This is the FIRST "
+        "step when the user gives a URL. Does NOT do competitor research — that "
+        "happens separately later. Returns a structured product profile."
+    ),
+    display_name="Analyze Product",
+    parameters=[
+        ToolParameter(name="url", type="string", description="The business website URL to analyze.", required=True),
+    ],
+    execute=_analyze_product,
+)
 
-async def _serve_from_storage(url: str, stream, context: dict, target_ctx: dict) -> ToolResult | None:
-    """Cross-session cache: if this URL was analyzed before, hydrate target_ctx +
+BUSINESS_TOOLS = [analyze_business]
+
+async def _run_product_agent(
+    url: str,
+    stream,
+    tool_use_id: str,
+    auth,
+    session_ctx: dict,
+):
+    """Spawn the ProductAnalyst sub-agent and return its output.
+    Peripheral I/O: agent startup, streaming events, and the user message."""
+    from app.agents.adzump.agents.product.agent import get_product_agent
+    from app.core.streaming import pre_emit_agent_started
+
+    await emit_progress(session_ctx, "Starting product analysis…")
+    # Launcher owns both AgentCard ends: agent_started here, agent_finished after.
+    await pre_emit_agent_started(
+        stream, agent_id="product_analyst", label="Product Analyst",
+        parent_tool_use_id=tool_use_id, context=session_ctx,
+    )
+    return await get_product_agent().analyze(
+        url=url,
+        parent_event_stream=stream,
+        parent_tool_use_id=tool_use_id,
+        auth=auth,
+        parent_session_context=session_ctx,
+        user_message=f"Analyze this business website: {url}\n\n"
+            f"SCOPE: Scrape the homepage ONCE and generate a product profile. "
+            f"Do NOT scrape sub-pages — one scrape_url call only. "
+            f"Do NOT call web_search or web_fetch. "
+            f"After scraping, write the final JSON with the 'business' section filled "
+            f"and an empty 'competitive' section.",
+    )
+
+# ── Context merge
+def _merge_product_into_context(
+    session_memory: dict,
+    analysis,
+    url: str,
+) -> None:
+    """Write analysis into session_memory:
+    - product_data: merge not replace (keep runtime artifacts; JSON wins).
+    - product_profile: url+title only (sub-agent owns .summary).
+    - competitor_analysis: set if any."""
+    product = analysis.product or {}
+    session_memory["product_data"] = {**(session_memory.get("product_data") or {}), **product}
+    profile = session_memory.setdefault("product_profile", {})
+    profile["url"] = url
+    profile["title"] = product.get("product_name", "") or profile.get("title", "")
+    if not profile.get("summary"):   # seed only if sub-agent didn't run (legacy bypass)
+        profile["summary"] = product.get("summary", "")
+    if analysis.competitive and analysis.competitive.get("competitors"):
+        session_memory["competitor_analysis"] = analysis.competitive
+
+
+# ── Cross-session cache ──────────────────────────────────────────────────────
+
+# TODO: no force-refresh path — both caches short-circuit unconditionally + the
+# tool has no `force` param, so "re-scrape this site" can't bypass the cache.
+# Add `force` → skip both caches + upsert (don't dup) the stored record.
+async def _serve_from_storage(url: str, stream, context: dict, session_memory: dict) -> ToolResult | None:
+    """Cross-session cache: if this URL was analyzed before, hydrate session_memory +
     re-render the craft panel (same UI as a fresh scrape) and return the reuse
     ToolResult. Returns None on miss/error — caller falls through to a fresh scrape."""
     try:
         from app.agents.adzump.services.business_storage import hydrate_from_storage
         from app.agents.adzump.tools.competitor import _emit_final_craft
-        if not await hydrate_from_storage(url, target_ctx, context):
+        if not await hydrate_from_storage(url, session_memory, context):
             return None
-        business = target_ctx.get("product_data") or {}
-        name = business.get("product_name", "product")
+        product = session_memory.get("product_data") or {}
+        name = product.get("product_name", "product")
         await emit_progress(context, f"Reused stored analysis for {name}")
 
-        craft_id = target_ctx.get("craft_id", "")
+        craft_id = session_memory.get("craft_id", "")
         if stream and craft_id:
-            competitive = target_ctx.get("competitor_analysis") or {"competitors": []}
+            competitive = session_memory.get("competitor_analysis") or {"competitors": []}
             try:
                 await _emit_final_craft(
-                    stream, craft_id, url, business, competitive,
-                    screenshot_url=(business.get("primary_screenshot_url")
-                                    or business.get("screenshot_url")),
-                    baked_summary=business.get("summary", ""),
+                    stream, craft_id, url, product, competitive,
+                    screenshot_url=(product.get("primary_screenshot_url")
+                                    or product.get("screenshot_url")),
+                    baked_summary=product.get("summary", ""),
                 )
             except Exception as e:
                 logger.warning("storage_hydrate_craft_failed: %s: %s",
                                type(e).__name__, str(e)[:200])
         return ToolResult(
             success=True,
-            data={"business": business, "from_storage": True},
+            data={"product": product, "from_storage": True},
             summary=(
                 f"Reused prior analysis for {name} from storage. "
-                f"Type: {business.get('business_type', '')}. "
-                f"Location: {business.get('location', '')}. "
+                f"Type: {product.get('business_type', '')}. "
+                f"Location: {product.get('location', '')}. "
                 "Tell the user we're picking up where things left off."
             ),
         )
@@ -177,45 +203,18 @@ async def _serve_from_storage(url: str, stream, context: dict, target_ctx: dict)
         return None
 
 
-async def _safe_emit_finished(stream, **kwargs) -> None:
-    """emit_agent_finished for product_analyst, swallowing stream errors."""
-    if stream is None:
-        return
-    try:
-        await stream.emit_agent_finished(agent_id="product_analyst", **kwargs)
-    except Exception:
-        pass
-
-
-def _build_llm_summary(business: dict) -> str:
-    """The tool-result summary the orchestrator LLM sees. Deliberately OMITs location
-    — echoing it made the LLM ask "confirm location?" as free text before
-    confirm_location's widget fired (dup question); it stays in product_data."""
-    lines: list[str] = []
-    if business.get("product_name"):
-        lines.append(f"Product: {business['product_name']}")
-    if business.get("business_type"):
-        lines.append(f"Type: {business['business_type']}")
-    if business.get("summary"):
-        lines.append(f"\n{business['summary']}")
-    return "\n".join(lines) or "Product analysis complete."
-
-
-# ── Asset-upload prompt (orchestrator layer) ──────────────────────────
-# Emitted here, not in the picker: the sub-agent's _PassthroughEventStream drops
-# emit_text. Signal stashed on product_data["_shift3_signal"] by the picker.
-
-async def _emit_asset_upload_prompt(stream, target_ctx: dict, url: str) -> bool:
+async def _emit_asset_upload_prompt(stream, gaps, session_memory: dict, url: str) -> bool:
     """Emit the asset-upload prompt if the picker left gaps; no-op otherwise.
-    Returns True iff a prompt was emitted — caller flags the result as a
-    (deferred, multi) elicitation so the run loop yields the turn."""
+    `gaps` is the typed AnalysisOutput.asset_gaps. Returns True iff a prompt was
+    emitted — caller flags the result as a (deferred, multi) elicitation so the
+    run loop yields the turn."""
     if stream is None:
         return False
-    signal = (target_ctx.get("product_data") or {}).get("_shift3_signal") or {}
-    missing_logo = bool(signal.get("logo_missing"))
-    missing_creatives = list(signal.get("creative_missing_categories") or [])
-    if not missing_logo and not missing_creatives:
-        return False  # picker output complete — nothing to ask
+    if not (gaps and gaps.any_open()):   # no gaps object, or nothing missing → nothing to ask
+        return False
+
+    missing_logo = gaps.logo_missing
+    missing_creatives = list(gaps.missing_categories)
 
     from app.agents.adzump.agents.product.tools.scrape.assets import (
         _compose_asset_request_text,  # pure, unit-tested composer
@@ -235,9 +234,9 @@ async def _emit_asset_upload_prompt(stream, target_ctx: dict, url: str) -> bool:
         return False
 
     # Quick-action chip so the user needn't type to continue (upload optional).
-    # On target_ctx so get_pending_suggestions returns it this turn — popped
+    # On session_memory so get_pending_suggestions returns it this turn — popped
     # before the elicitation guard, so the open upload elicitation can't suppress it.
-    target_ctx["_pending_suggestions"] = {
+    session_memory["_pending_suggestions"] = {
         "options": [{"label": "Continue without uploading",
                      "value": "Continue without uploading"}],
         "mode": "single",
@@ -249,22 +248,32 @@ async def _emit_asset_upload_prompt(stream, target_ctx: dict, url: str) -> bool:
     )
     return True
 
+def _build_llm_summary(product: dict) -> str:
+    """The tool-result summary the orchestrator LLM sees. Deliberately OMITs location
+    — echoing it made the LLM ask "confirm location?" as free text before
+    confirm_location's widget fired (dup question); it stays in product_data."""
+    lines: list[str] = []
+    if product.get("product_name"):
+        lines.append(f"Product: {product['product_name']}")
+    if product.get("business_type"):
+        lines.append(f"Type: {product['business_type']}")
+    if product.get("summary"):
+        lines.append(f"\n{product['summary']}")
+    return "\n".join(lines) or "Product analysis complete."
 
-# ── Tool definition ───────────────────────────────────────────────────
+async def _safe_emit_finished(stream, **kwargs) -> None:
+    """emit_agent_finished for product_analyst, swallowing stream errors."""
+    if stream is None:
+        return
+    try:
+        await stream.emit_agent_finished(agent_id="product_analyst", **kwargs)
+    except Exception:
+        logger.debug("safe_emit_finished skipped: stream=%s kwargs=%s", stream, kwargs)
 
-analyze_business = ToolDefinition(
-    name="analyze_product",
-    description=(
-        "Scrape a business website and generate a product profile: what they sell "
-        "(all variants), location, pricing, USPs, target customer. This is the FIRST "
-        "step when the user gives a URL. Does NOT do competitor research — that "
-        "happens separately later. Returns a structured product profile."
-    ),
-    display_name="Analyze Product",
-    parameters=[
-        ToolParameter(name="url", type="string", description="The business website URL to analyze.", required=True),
-    ],
-    execute=_analyze_product,
-)
-
-BUSINESS_TOOLS = [analyze_business]
+def _normalize_url(url: str) -> str:
+    url = url.strip()
+    if url.startswith("http://"):
+        return "https://" + url[7:]
+    if not url.startswith("https://"):
+        return f"https://{url}"
+    return url

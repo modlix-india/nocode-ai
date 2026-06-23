@@ -454,6 +454,10 @@ class BaseAgent:
                     # capture the reply deterministically. Core never reads it.
                     "field": elicited.get("elicit_field"),
                     "answers": elicited.get("elicit_answers"),
+                    # Generic typed payload (see elicit_payload above); the
+                    # subclass that opened the elicitation reads + mutates it
+                    # across turns. Core only carries + persists it.
+                    "payload": elicited.get("elicit_payload"),
                 }
                 logger.info(
                     "elicitation_break: turn=%d tool=%s expects=%s batch=%d",
@@ -925,6 +929,10 @@ class BaseAgent:
             # capture the reply. Inert (None) for every other tool and agent.
             "elicit_field": (result.data.get("elicit_field") if isinstance(result.data, dict) else None),
             "elicit_answers": (result.data.get("elicit_answers") if isinstance(result.data, dict) else None),
+            # Generic typed payload an elicitation collects across turns (e.g.
+            # the still-missing AssetGaps). Opaque to core — a subclass owns its
+            # shape + (de)serialization. Inert (None) for every other tool.
+            "elicit_payload": (result.data.get("elicit_payload") if isinstance(result.data, dict) else None),
             # F15 · a success that stored nothing new (kept-noop). The stuck-loop
             # breaker treats it like a failure so a re-send loop the model won't
             # break out of gets the tool quarantined. Generic + inert (False) for

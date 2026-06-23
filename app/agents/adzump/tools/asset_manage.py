@@ -143,7 +143,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
             if role == "logo":
                 store_logo(product_data, res, v.name, sctx)
             else:
-                store_creative(product_data, res, role, v.name)
+                store_creative(product_data, res, role, v.name, sctx)
             stored.append({"role": role, "name": v.name or role})
         elif action == "reject":
             rejected.append({"idx": v.idx, "reason": v.reasoning or "not relevant to the product"})

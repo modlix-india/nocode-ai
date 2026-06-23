@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.adzump.agents.product.models import ProductAssets
+from app.agents.adzump.agents.product.models import AssetGaps, ProductAssets
 from app.agents.adzump.agents.product.product_assets import select_product_assets
 from .receipts import _emit_asset_receipts
 from app.agents.adzump.agents.product.scrape_stages import ScrapeStage, stage_emit
@@ -55,12 +55,11 @@ async def _select_and_persist_primary_assets(
         selected_assets, prefetched, product_data, context,
         stream=stream, craft_id=craft_id, primary_url=url,
     )
-    # Shift 3 Stage 1 chat-prompt is emitted at the AdPilot orchestrator layer
+    # The asset-upload chat-prompt is emitted at the AdPilot orchestrator layer
     # (tools/product.py · _analyze_product), not here — _PassthroughEventStream
     # drops emit_text from the sub-agent's stream. _persist_product_assets
-    # already stashed the decline signal on product_data["_shift3_signal"];
-    # the parent reads it and emits to the user-visible chat. See
-    # plans/agent-tracing/v9-live-test-fixes.html · FIX 2.
+    # stashed the gaps for the return; the parent reads AnalysisOutput.asset_gaps
+    # and emits to the user-visible chat. See plans/asset-gaps-refactor.html.
 
 
 async def _update_assets_from_extra_page(
@@ -114,17 +113,18 @@ async def _persist_product_assets(
         len(product_data.get("creative_images") or []),
         ",".join(rehosted_filenames),
     )
-    # v9 live-test fix 2 (2026-05-22): persist the Shift 3 signal so the
-    # top-level AdPilot tool wrapper (tools/product.py · _analyze_product) can
-    # emit the chat-prompt on the PARENT stream. The sub-agent's
-    # _PassthroughEventStream drops emit_text, so we can't fire the prompt
-    # from inside the picker layer.
+    # Stash the asset gaps for the sub-agent's own return path: _parse_result
+    # (agent.py) lifts this onto AnalysisOutput.asset_gaps and pops it. The
+    # parent tool (tools/product.py) then reads the TYPED return — not this key
+    # — and emits the upload prompt on the PARENT stream (the picker can't:
+    # _PassthroughEventStream drops emit_text). Stored as a dict, not a live
+    # AssetGaps, because save_context json.dumps the context before _parse_result.
     cc = getattr(assets, "creative_completeness", None)
-    product_data["_shift3_signal"] = {
-        "logo_missing": not assets.logos,
-        "creative_missing_categories": list(getattr(cc, "missing_categories", []) or []),
-        "verdict": getattr(cc, "verdict", ""),
-    }
+    product_data["_asset_gaps"] = AssetGaps(
+        logo_missing=not assets.logos,
+        missing_categories=list(getattr(cc, "missing_categories", []) or []),
+        verdict=getattr(cc, "verdict", ""),
+    ).to_dict()
 
 
 async def _persist_logos(
@@ -341,6 +341,6 @@ def _compose_asset_request_text(missing_logo: bool, missing_creatives: list[str]
 # chat-text never reached the user-visible chat. The emit now lives at the
 # AdPilot orchestrator layer in tools/product.py · _analyze_product, which
 # has access to the parent stream. _compose_asset_request_text above is
-# reused from there. _persist_product_assets stashes the decline signal on
-# product_data["_shift3_signal"] so the parent can read it without re-walking
-# the ProductAssets object.
+# reused from there. _persist_product_assets stashes the gaps for the
+# sub-agent's return (AnalysisOutput.asset_gaps), which the parent reads —
+# no re-walking the ProductAssets object.

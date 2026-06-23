@@ -13,8 +13,21 @@ from hashlib import md5
 from typing import Any
 
 from app.agents.adzump.agents.vision.models import ImageVerdict
+from app.agents.adzump.agents.product.models import AssetGaps
 
 USABLE_ROLES = {"logo", "hero", "amenity", "floor_plan"}
+
+
+def _fulfill_gap(sctx: dict, mutate) -> None:
+    """Apply a decrement to the open asset-upload elicitation's gap payload.
+    The payload rides _pending_elicitation as a JSON-safe dict (persisted across
+    turns); rehydrate → mutate → re-store. No-op when no elicitation is open."""
+    elicit = (sctx or {}).get("_pending_elicitation") or {}
+    gaps = AssetGaps.from_dict(elicit.get("payload"))
+    if gaps is None:
+        return
+    mutate(gaps)
+    elicit["payload"] = gaps.to_dict()
 
 
 def classify_verdict(v: ImageVerdict) -> str:
@@ -67,21 +80,15 @@ def store_logo(product_data: dict, res: dict, name: str, sctx: dict) -> None:
     product_data["logo_source"] = "user_upload"
     product_data["logo_reasoning"] = "User-uploaded logo"
     product_data["logo_confidence"] = 1.0
-    sig = product_data.get("_shift3_signal")
-    if isinstance(sig, dict):
-        sig["logo_missing"] = False
+    _fulfill_gap(sctx, lambda g: g.fulfill_logo())
 
 
-def store_creative(product_data: dict, res: dict, role: str, name: str) -> bool:
+def store_creative(product_data: dict, res: dict, role: str, name: str, sctx: dict) -> bool:
     urls = product_data.setdefault("creative_images", [])
     displays = product_data.setdefault("creative_displays", [])
     if res["url"] in set(urls):
         return False
     urls.append(res["url"])
     displays.append({k: v for k, v in res.items() if k != "url"})
-    sig = product_data.get("_shift3_signal")
-    if isinstance(sig, dict):
-        sig["creative_missing_categories"] = [
-            c for c in (sig.get("creative_missing_categories") or []) if c != role
-        ]
+    _fulfill_gap(sctx, lambda g: g.fulfill_category(role))
     return True

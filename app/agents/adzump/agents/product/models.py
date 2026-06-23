@@ -164,6 +164,39 @@ class ScrapeResult(BaseModel):
 
 
 @dataclass
+class AssetGaps:
+    """Assets the picker couldn't satisfy from the site → the user is asked to
+    upload them. fulfill_* is the single decrement path as uploads arrive.
+    Travels JSON-safe (to_dict/from_dict): it rides the elicitation payload,
+    which is persisted via json.dumps — never store a live instance on context."""
+    logo_missing: bool = False
+    missing_categories: list[str] = field(default_factory=list)
+    verdict: str = ""
+
+    def fulfill_logo(self) -> None:
+        self.logo_missing = False
+
+    def fulfill_category(self, role: str) -> None:
+        self.missing_categories = [c for c in self.missing_categories if c != role]
+
+    def any_open(self) -> bool:
+        return self.logo_missing or bool(self.missing_categories)
+
+    def to_dict(self) -> dict:
+        return {"logo_missing": self.logo_missing,
+                "missing_categories": list(self.missing_categories),
+                "verdict": self.verdict}
+
+    @classmethod
+    def from_dict(cls, d) -> "AssetGaps | None":
+        if not isinstance(d, dict):
+            return None
+        return cls(logo_missing=bool(d.get("logo_missing")),
+                   missing_categories=list(d.get("missing_categories") or []),
+                   verdict=d.get("verdict") or "")
+
+
+@dataclass
 class AnalysisOutput:
     """Structured return type of ProductAgent.analyze().
 
@@ -171,8 +204,9 @@ class AnalysisOutput:
     arbitrary keys like positioning_narrative, segments, etc. that aren't
     fully modeled yet. Strict validation is a future concern.
     """
-    business: dict | None
+    product: dict | None   # model emits it as JSON key "business"
     competitive: dict | None
     notes: list[str] = field(default_factory=list)
     screenshot_url: str | None = None
     raw_text: str = ""
+    asset_gaps: AssetGaps | None = None

@@ -513,8 +513,8 @@ async def _lookup_single_competitor(
 
         if output.competitive and output.competitive.get("competitors"):
             new_competitors = output.competitive["competitors"]
-        elif output.business:
-            new_competitors = [output.business]
+        elif output.product:
+            new_competitors = [output.product]
 
         skipped = (output.competitive or {}).get("skipped") or []
 
@@ -539,7 +539,7 @@ async def _lookup_single_competitor(
             # Full rebuild — append=False replaces the panel entirely.
             await _emit_final_craft(
                 stream, craft_id, primary_url, business, competitive,
-                screenshot_url=business.get("screenshot_url"),
+                screenshot_url=(business.get("primary_screenshot_url") or business.get("screenshot_url")),
                 baked_summary=product_summary,
             )
         elif new_competitors:
