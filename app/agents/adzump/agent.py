@@ -46,6 +46,23 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Substrings in ``product_data.business_type`` that flag a session as
+# real-estate. Matches the scraper's metadata prompt.
+_REAL_ESTATE_KEYWORDS = (
+    "real estate",
+    "realty",
+    "villa",
+    "apartment",
+    "residential",
+    "property",
+    "housing",
+    "homes",
+    "realtor",
+    "township",
+    "builder",
+    "developer",
+)
+
 
 def _is_custom_reply(text: str) -> bool:
     """v4 · F10 — did the user pick the "Custom" escape on a chip ask? The chip's
@@ -92,9 +109,7 @@ def _hydrate_location_from_product_data(ctx: dict) -> None:
         loc_meta["google_mapped_locations"] = product["google_mapped_locations"]
     if "meta_mapped_locations" in product:
         loc_meta["meta_mapped_locations"] = product["meta_mapped_locations"]
-    logger.info(
-        "hydrated_location_from_product_data: location=%s", product["location"]
-    )
+    logger.info("hydrated_location_from_product_data: location=%s", product["location"])
 
 
 @dataclass(frozen=True)
@@ -263,9 +278,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform — use the present_options tool (field \"platform\") to ask "
-            "\"Which platform should we run this on?\" with chip choices: Google Ads, "
-            "Meta. CALL the tool — never type the call into your reply."
+            'platform — call `present_options(question="Which platform should we run this on?", '
+            'options=[{"label":"Google Ads","value":"Google Ads","answer":"Google Ads"}, '
+            '{"label":"Meta","value":"Meta","answer":"Meta"}], field="platform")`'
         )
 
     has_platform = bool(cctx.spec.get("platform"))
@@ -294,8 +309,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         missing.append(
             "competitive analysis — offer it ONCE as a Yes/No question, then react:\n"
             "  • if you have not offered competitor analysis yet → ask via the "
-            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
-            "analyze competitors before we set things up?\" with chips Yes / No. A No "
+            'present_options tool (field "competitive_analysis_declined"): "Want me to '
+            'analyze competitors before we set things up?" with chips Yes / No. A No '
             "(or a clear typed decline) is recorded for you automatically — do NOT call "
             "set_campaign_spec for it, and never set a field the user hasn't stated "
             "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
@@ -318,8 +333,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         else:
             missing.append(
-                "duration — use the present_options tool (field \"duration\") to ask "
-                "\"How long should the campaign run?\" with chip choices: 30 days, "
+                'duration — use the present_options tool (field "duration") to ask '
+                '"How long should the campaign run?" with chip choices: 30 days, '
                 "60 days, 90 days, Custom. CALL the tool — never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
@@ -335,8 +350,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
-                "budget — use the present_options tool (field \"budget\") to ask "
-                "\"What's your daily budget?\" with platform-tuned chip choices "
+                'budget — use the present_options tool (field "budget") to ask '
+                '"What\'s your daily budget?" with platform-tuned chip choices '
                 f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day) "
                 "plus Custom. CALL the tool — never type the call into your reply."
             )
@@ -400,40 +415,88 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 )
 
     if not missing:
-        meta_extra = ""
-        if cctx.is_meta:
-            meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-            meta_extra += (
-                "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-                if cctx.spec.get("ig_page")
-                else "\n  - **Instagram Account**: not linked (Facebook only)"
+        if not cctx.product.get("logo_url"):
+            missing.append(
+                "brand logo — brand logo is missing. Ask the user in one short phrase to upload their brand logo. "
+                "Do NOT proceed until a logo is uploaded via `save_uploaded_assets`."
             )
-        missing.append(
-            "review & publish — TWO separate steps this turn:\n"
-            "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
-            "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
-            "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
-            "do NOT abbreviate):\n\n"
-            "Here's your campaign summary:\n\n"
-            "  - **Product**: <product name from State>\n"
-            "  - **Website**: <website URL from State>\n"
-            "  - **Location**: <location from State>\n"
-            "  - **Platform**: <platform from State>\n"
-            "  - **Duration**: <duration from State>\n"
-            "  - **Daily Budget**: <budget from State>\n"
-            "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
-            "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
-            f"{meta_extra}\n"
-            "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
-            "if competitor_analysis_attempted is true with empty list, or 'declined' "
-            "if competitive_analysis_declined='true'>\n\n"
-            "EVERY bullet must be present — do not omit any.\n"
-            "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
-            "the campaign?\" with chips: Yes, launch / No, make changes. When the user "
-            "picks 'Yes, launch', run the launch_campaign tool (no arguments) — the one "
-            "tool that persists the campaign. These are tools to CALL — never type "
-            "tool-call syntax into your reply, only the markdown summary above is text."
-        )
+        elif not cctx.spec.get("creative_config"):
+            missing.append(
+                'creative count selection — Call `present_options(question="How many ad creatives would you like to generate?", '
+                'options=[{"label":"1 Creative","value":"1","answer":"1"}, '
+                '{"label":"2 Creatives (1 Own, 1 Competitor)","value":"2","answer":"2"}, '
+                '{"label":"3 Creatives (2 Own, 1 Competitor)","value":"3","answer":"3"}, '
+                '"Custom"], field="creative_config")`'
+            )
+        elif not cctx.spec.get("ad_copy"):
+            missing.append(
+                "ad creative generation — Call `generate_ad_copy_and_prompt()` to generate "
+                "ad copy and final ad creatives in one step."
+            )
+        elif cctx.spec.get("creative_approved") == "false":
+            missing.append(
+                "creative changes — user wants to change the creatives. Call `set_campaign_spec(creative_approved=None)` "
+                "to reset the approval, and ask the user what changes they would like to make (such as custom headline, description, cta, or theme). "
+                "Once they provide the feedback, call `generate_ad_copy_and_prompt()` again with their custom overrides."
+            )
+        elif cctx.spec.get("creative_approved") != "true":
+            creative_previews = ""
+            ad_copy_list = cctx.spec.get("ad_copy") or []
+            if isinstance(ad_copy_list, list):
+                for idx, item in enumerate(ad_copy_list, 1):
+                    urls = item.get("creative_urls", {})
+                    creative_previews += f'\n  - **Creative {idx} ({item.get("creative_type")})**: Headline: "{item.get("headline")}"\n![Square]({urls.get("square", "")}){{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px;"}}'
+
+            missing.append(
+                "creative approval — present the generated ad creatives to the user:\n"
+                f"{creative_previews}\n\n"
+                "Ask the user if they would like to proceed with these creatives or make changes. Call "
+                '`present_options(question="Would you like to proceed with these creatives or make changes?", '
+                'options=[{"label":"Continue to next step","value":"true","answer":"true"}, '
+                '{"label":"Make changes to creative","value":"false","answer":"false"}], field="creative_approved")`'
+            )
+        else:
+            meta_extra = ""
+            if cctx.is_meta:
+                meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+                meta_extra += (
+                    "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
+                    if cctx.spec.get("ig_page")
+                    else "\n  - **Instagram Account**: not linked (Facebook only)"
+                )
+            # Include creative info in review block
+            creative_previews = ""
+            ad_copy_list = cctx.spec.get("ad_copy") or []
+            if isinstance(ad_copy_list, list):
+                for idx, item in enumerate(ad_copy_list, 1):
+                    urls = item.get("creative_urls", {})
+                    creative_previews += f'\n  - **Creative {idx} ({item.get("creative_type")})**: Headline: "{item.get("headline")}"\n![Square]({urls.get("square", "")}){{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px;"}}'
+
+            missing.append(
+                "review & publish — your reply this turn is EXACTLY this markdown, "
+                "with values copied VERBATIM from the `## State` block above (do NOT "
+                "rephrase, do NOT drop fields, do NOT replace IDs with placeholders "
+                "like 'Linked' or 'Connected', do NOT abbreviate):\n\n"
+                "Here's your campaign summary:\n\n"
+                "  - **Product**: <product name from State>\n"
+                "  - **Website**: <website URL from State>\n"
+                "  - **Location**: <location from State>\n"
+                "  - **Platform**: <platform from State>\n"
+                "  - **Duration**: <duration from State>\n"
+                "  - **Daily Budget**: <budget from State>\n"
+                "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
+                "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
+                f"{meta_extra}"
+                f"{creative_previews}\n"
+                "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
+                "if competitor_analysis_attempted is true with empty list, or 'declined' "
+                "if competitive_analysis_declined='true'>\n\n"
+                'Then call `present_options(question="Ready to launch the campaign?", '
+                'options=["Yes, launch", "No, make changes"])`. EVERY bullet must be '
+                "present — do not omit any. "
+                "**On the user's 'Yes, launch' reply, call `launch_campaign()` "
+                "(no params) — that's the one tool that persists the campaign.**"
+            )
 
     return missing
 
@@ -503,8 +566,11 @@ class AdzumpAgent(BaseAgent):
             value = parse_typed_answer(
                 field, last_user, currency_for(session.context)
             )  # (b) typed
-        if value is None and field == "competitive_analysis_declined" \
-                and is_clear_decline_reply(last_user):
+        if (
+            value is None
+            and field == "competitive_analysis_declined"
+            and is_clear_decline_reply(last_user)
+        ):
             value = "true"  # (c) F17 · typed clear decline
         if value is None:
             # v4 · F10 — the user picked the "Custom" escape on a duration/budget
@@ -570,7 +636,11 @@ class AdzumpAgent(BaseAgent):
         )
 
     def _record_prose_decline(
-        self, session: BaseSession, cctx: "CampaignContext", last_user: str, turn: int,
+        self,
+        session: BaseSession,
+        cctx: "CampaignContext",
+        last_user: str,
+        turn: int,
     ) -> bool:
         """F18 · the competitor offer is non-deterministically asked as PROSE (no
         tagged ``present_options``), so a typed decline has no elicitation for
@@ -586,20 +656,27 @@ class AdzumpAgent(BaseAgent):
             return False
         pe = session.context.get("_pending_elicitation")
         if pe and pe.get("field") == "competitive_analysis_declined":
-            return False                                     # tagged-capture owns it
-        if not (cctx.is_google
-                and not cctx.competitor_analysis_attempted
-                and "competitive_analysis_declined" not in cctx.spec):
+            return False  # tagged-capture owns it
+        if not (
+            cctx.is_google
+            and not cctx.competitor_analysis_attempted
+            and "competitive_analysis_declined" not in cctx.spec
+        ):
             return False
         if not is_clear_decline_reply(last_user):
-            return False                                     # ambiguous → let the LLM judge
+            return False  # ambiguous → let the LLM judge
         stored, _ = _apply_field(
-            "competitive_analysis_declined", "true", last_user,
-            session.context, _current_turn({"_session": session}),
+            "competitive_analysis_declined",
+            "true",
+            last_user,
+            session.context,
+            _current_turn({"_session": session}),
         )
         if stored:
-            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
-                        last_user[:80])
+            logger.info(
+                "prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+                last_user[:80],
+            )
         return bool(stored)
 
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
@@ -786,7 +863,7 @@ class AdzumpAgent(BaseAgent):
         # platform, call confirm_location for location).
         lines = [
             "\n## What's still missing (in order — do the top item first)",
-            "Example values below (e.g. \"30 days\", \"₹5,000/day\") are OPTIONS to "
+            'Example values below (e.g. "30 days", "₹5,000/day") are OPTIONS to '
             "SHOW the user via present_options — NEVER values to store. Only "
             "`set_campaign_spec` a field after the user actually states it (F12).",
         ]
@@ -868,11 +945,20 @@ class AdzumpAgent(BaseAgent):
 
     # ── public surface — BaseAgent override hooks (last, per Kiran's BaseAgent) ──
 
-    async def run(self, user_message, session, event_stream, image_blocks=None, model_override=None):
+    async def run(
+        self,
+        user_message,
+        session,
+        event_stream,
+        image_blocks=None,
+        model_override=None,
+    ):
         """Stash event_stream so _on_loop_complete can emit without session.context."""
         self._current_stream = event_stream
         try:
-            await super().run(user_message, session, event_stream, image_blocks, model_override)
+            await super().run(
+                user_message, session, event_stream, image_blocks, model_override
+            )
         finally:
             self._current_stream = None
 
@@ -937,11 +1023,17 @@ class AdzumpAgent(BaseAgent):
         return ctx
 
     async def _on_loop_complete(
-        self, session: BaseSession, tool_call_log: list[dict[str, Any]],
+        self,
+        session: BaseSession,
+        tool_call_log: list[dict[str, Any]],
     ) -> None:
         await super()._on_loop_complete(session, tool_call_log)
         ctx = session.context
-        from app.agents.adzump.services.business_storage import save_campaign, resolve_url
+        from app.agents.adzump.services.business_storage import (
+            save_campaign,
+            resolve_url,
+        )
+
         if resolve_url(ctx):
             try:
                 await save_campaign(ctx, self.build_tool_context(session))
@@ -959,16 +1051,21 @@ class AdzumpAgent(BaseAgent):
         if platform_eot and target_areas_eot:
             from app.agents.adzump.platform import is_google as _ig, is_meta as _im
             from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+
             loc_meta_eot = ctx.setdefault("_location_meta", {})
             cc_eot = loc_meta_eot.get("country_code") or "IN"
-            needs_google = _ig(platform_eot) and not product_eot.get("google_mapped_locations")
-            needs_meta = _im(platform_eot) and not product_eot.get("meta_mapped_locations")
+            needs_google = _ig(platform_eot) and not product_eot.get(
+                "google_mapped_locations"
+            )
+            needs_meta = _im(platform_eot) and not product_eot.get(
+                "meta_mapped_locations"
+            )
             if needs_google or needs_meta:
                 try:
                     tool_ctx = self.build_tool_context(session)
-                    mapped_eot = await PlatformGeoMapper(ctx, tool_ctx).map_target_areas(
-                        target_areas_eot, platform_eot, cc_eot
-                    )
+                    mapped_eot = await PlatformGeoMapper(
+                        ctx, tool_ctx
+                    ).map_target_areas(target_areas_eot, platform_eot, cc_eot)
                     if mapped_eot:
                         product_eot["target_areas"] = mapped_eot
                         if needs_google:
@@ -978,7 +1075,9 @@ class AdzumpAgent(BaseAgent):
                             product_eot["meta_mapped_locations"] = mapped_eot
                             loc_meta_eot["meta_mapped_locations"] = mapped_eot
                 except Exception as e:
-                    logger.warning("End-of-turn geo auto-mapping failed (non-fatal): %s", e)
+                    logger.warning(
+                        "End-of-turn geo auto-mapping failed (non-fatal): %s", e
+                    )
 
         # If platform was just set this turn and mapped locations already exist
         # (storage reuse path), emit the craft panel with platform so the map
@@ -986,7 +1085,11 @@ class AdzumpAgent(BaseAgent):
         # is already True.
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
-        if platform and cctx.has_mapped_geo_targets and ctx.get("_last_craft_platform") != platform:
+        if (
+            platform
+            and cctx.has_mapped_geo_targets
+            and ctx.get("_last_craft_platform") != platform
+        ):
             ctx["_last_craft_platform"] = platform
             url = resolve_url(ctx)
             product = ctx.get("product_data") or {}
@@ -994,10 +1097,17 @@ class AdzumpAgent(BaseAgent):
             craft_id = ctx.get("craft_id") or ctx.get("_craft_id")
             if stream and craft_id and url:
                 from app.agents.adzump.tools.craft import emit_craft_panel
-                from app.agents.adzump.platform import is_google as _is_google, is_meta as _is_meta
+                from app.agents.adzump.platform import (
+                    is_google as _is_google,
+                    is_meta as _is_meta,
+                )
+
                 try:
                     await emit_craft_panel(
-                        stream, craft_id, url, product,
+                        stream,
+                        craft_id,
+                        url,
+                        product,
                         ctx.get("competitor_analysis") or {},
                         screenshot_url=(
                             product.get("primary_screenshot_url")
@@ -1026,8 +1136,12 @@ class AdzumpAgent(BaseAgent):
                         await stream.emit_data(
                             "suggested_locations",
                             {
-                                "locations": [loc["name"] for loc in mapped if loc.get("name")],
-                                "targeting_type": product.get("business_scale", "local"),
+                                "locations": [
+                                    loc["name"] for loc in mapped if loc.get("name")
+                                ],
+                                "targeting_type": product.get(
+                                    "business_scale", "local"
+                                ),
                                 "location": loc_meta.get("address") or "",
                                 "from_storage": True,
                             },
@@ -1054,21 +1168,39 @@ class AdzumpAgent(BaseAgent):
         # trailing line, so anchoring there fixes the over-match.
         tail = next((ln for ln in reversed(lt.splitlines()) if ln.strip()), "")
         markers = (
-            "let's confirm", "lets confirm", "confirm the location", "shall i",
-            "shall we", "ready to", "ready when you", "go ahead", "look good",
-            "looks good", "proceed", "all set",
+            "let's confirm",
+            "lets confirm",
+            "confirm the location",
+            "shall i",
+            "shall we",
+            "ready to",
+            "ready when you",
+            "go ahead",
+            "look good",
+            "looks good",
+            "proceed",
+            "all set",
         )
         if not any(m in tail for m in markers):
             return None
         # Label precedence: launch → location → generic (launch must win — the
         # launch ask's trailing line is "…Ready to launch the campaign?").
-        if "launch" in tail:                                   # F27 · launch step
-            return {"options": [{"label": "Yes, launch",
-                                 "value": "yes, launch"}], "mode": "single"}
+        if "launch" in tail:  # F27 · launch step
+            return {
+                "options": [{"label": "Yes, launch", "value": "yes, launch"}],
+                "mode": "single",
+            }
         if "location" in tail:
-            return {"options": [{"label": "Confirm location",
-                                 "value": "yes, confirm the location"}], "mode": "single"}
-        return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
+            return {
+                "options": [
+                    {"label": "Confirm location", "value": "yes, confirm the location"}
+                ],
+                "mode": "single",
+            }
+        return {
+            "options": [{"label": "Go ahead", "value": "yes, go ahead"}],
+            "mode": "single",
+        }
 
     async def get_pending_suggestions(
         self,

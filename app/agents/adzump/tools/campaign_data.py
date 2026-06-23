@@ -26,7 +26,9 @@ from typing import Any
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.platform import Platform
 from app.agents.adzump.answer_parse import (
-    parse_typed_answer, currency_for, field_candidates,
+    parse_typed_answer,
+    currency_for,
+    field_candidates,
 )
 
 logger = logging.getLogger(__name__)
@@ -155,9 +157,20 @@ def is_ig_skip(text: str) -> bool:
 # only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
 # decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
 _DECLINE_PHRASES = (
-    "skip competitor", "skip competitors", "skip the competitor", "no competitor",
-    "not now", "maybe later", "do it later", "no need", "no thanks",
-    "don't bother", "dont bother", "skip it", "skip this", "skip that",
+    "skip competitor",
+    "skip competitors",
+    "skip the competitor",
+    "no competitor",
+    "not now",
+    "maybe later",
+    "do it later",
+    "no need",
+    "no thanks",
+    "don't bother",
+    "dont bother",
+    "skip it",
+    "skip this",
+    "skip that",
 )
 
 
@@ -174,8 +187,20 @@ def is_decline(text: str) -> bool:
 # instead). is_decline is substring-based and over-fires on these: "not now, first
 # tell me about the audience" (defer+ask), "no competitors named yet" (informing).
 _DECLINE_AMBIG_MARKERS = (
-    "?", "first", "tell me", "what ", "what'", "how ", "which ", "why ",
-    "named", "instead", "before we", "about the", "explain", " vs ",
+    "?",
+    "first",
+    "tell me",
+    "what ",
+    "what'",
+    "how ",
+    "which ",
+    "why ",
+    "named",
+    "instead",
+    "before we",
+    "about the",
+    "explain",
+    " vs ",
 )
 
 
@@ -436,7 +461,11 @@ async def _set_campaign_spec(
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
         # User sees only what was actually stored; the rejection steer + kept/
         # review hints are model-only — never leak validator internals to chat.
-        user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
+        user_summary = (
+            f"Campaign spec updated: {', '.join(parts)}."
+            if stored_keys
+            else "No changes stored."
+        )
         return ToolResult(
             success=True,
             summary=user_summary,
@@ -624,6 +653,19 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     ):
         return ""
 
+    # Check if creative generation is complete. If not, do NOT trigger the final review yet.
+    product_profile = session_ctx.get("product_profile") or {}
+    if not product_profile.get("creative_generated"):
+        return ""
+
+    # Include creative info in review block
+    creative_previews = ""
+    ad_copy_list = spec.get("ad_copy") or []
+    if isinstance(ad_copy_list, list):
+        for idx, item in enumerate(ad_copy_list, 1):
+            urls = item.get("creative_urls", {})
+            creative_previews += f'\n  - **Creative {idx} ({item.get("creative_type")})**: Headline: "{item.get("headline")}" | Square: {urls.get("square", "N/A")} | Portrait: {urls.get("portrait", "N/A")} | Landscape: {urls.get("landscape", "N/A")}'
+
     meta_extra = ""
     if is_meta:
         meta_extra = (
@@ -651,7 +693,8 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
         f"{meta_extra}\n"
         "  - **Competitors**: <comma-separated names from State, or 'none "
-        "analyzed', or 'declined' if competitive_analysis_declined='true'>\n\n"
+        "analyzed', or 'declined' if competitive_analysis_declined='true'>\n"
+        f"  - **Ad Creatives**:{creative_previews}\n\n"
         'Then call `present_options(question="Ready to launch the campaign?", '
         'options=["Yes, launch", "No, make changes"])`. EVERY bullet must '
         "be present. **On the user's 'Yes, launch' reply, call "

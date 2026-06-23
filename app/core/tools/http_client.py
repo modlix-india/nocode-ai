@@ -31,8 +31,7 @@ _SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie"}
 def _redact_headers(headers: dict[str, str]) -> dict[str, str]:
     """Return a copy of headers with sensitive values redacted for logging."""
     return {
-        k: ("***" if k.lower() in _SENSITIVE_HEADERS else v)
-        for k, v in headers.items()
+        k: ("***" if k.lower() in _SENSITIVE_HEADERS else v) for k, v in headers.items()
     }
 
 
@@ -81,7 +80,9 @@ class SaasClient:
         params: dict[str, Any] | None = None,
     ) -> ToolResult:
         """POST request to the gateway."""
-        return await self._request("POST", path, headers=headers, json=json, params=params)
+        return await self._request(
+            "POST", path, headers=headers, json=json, params=params
+        )
 
     async def put(
         self,
@@ -91,7 +92,9 @@ class SaasClient:
         params: dict[str, Any] | None = None,
     ) -> ToolResult:
         """PUT request to the gateway."""
-        return await self._request("PUT", path, headers=headers, json=json, params=params)
+        return await self._request(
+            "PUT", path, headers=headers, json=json, params=params
+        )
 
     async def patch(
         self,
@@ -101,7 +104,9 @@ class SaasClient:
         params: dict[str, Any] | None = None,
     ) -> ToolResult:
         """PATCH request to the gateway."""
-        return await self._request("PATCH", path, headers=headers, json=json, params=params)
+        return await self._request(
+            "PATCH", path, headers=headers, json=json, params=params
+        )
 
     async def delete(
         self,
@@ -124,21 +129,29 @@ class SaasClient:
     ) -> ToolResult:
         """Execute an HTTP request and return a structured ToolResult."""
         client = self._get_client()
-        url = path if path.startswith("/") else f"/{path}"
+        if path.startswith(("http://", "https://")):
+            url = path
+        else:
+            url = path if path.startswith("/") else f"/{path}"
 
         # Standalone mode: extract path prefix from headers and prepend to URL.
         # The X-Path-Prefix header is set by the webpack proxy and carried in
         # the tool context headers — it is stripped before forwarding to the backend.
-        if headers and "X-Path-Prefix" in headers:
-            url = headers.pop("X-Path-Prefix") + url
+        req_headers = dict(headers) if headers is not None else {}
+        if "X-Path-Prefix" in req_headers:
+            url = req_headers.pop("X-Path-Prefix") + url
 
-        logger.info(f"→ {method} {self.gateway_url}{url}")
+        logger.info(
+            f"→ {method} {self.gateway_url}{url}"
+            if not path.startswith(("http://", "https://"))
+            else f"→ {method} {url}"
+        )
 
         try:
             response = await client.request(
                 method=method,
                 url=url,
-                headers=headers,
+                headers=req_headers,
                 json=json,
                 params=params,
             )
@@ -153,11 +166,17 @@ class SaasClient:
             # Parse response body
             data = None
             if response.content:
-                content_type = response.headers.get("content-type", "")
+                content_type = response.headers.get("content-type", "").lower()
                 if "application/json" in content_type:
                     data = response.json()
-                else:
+                elif (
+                    "text/" in content_type
+                    or "application/xml" in content_type
+                    or "javascript" in content_type
+                ):
                     data = response.text
+                else:
+                    data = response.content
 
             return ToolResult(
                 success=True,
@@ -172,7 +191,9 @@ class SaasClient:
                 error=f"Request timed out after {self.timeout}s: {method} {url}",
             )
         except httpx.ConnectError:
-            logger.error(f"← CONNECT_ERROR: {method} {url} (gateway: {self.gateway_url})")
+            logger.error(
+                f"← CONNECT_ERROR: {method} {url} (gateway: {self.gateway_url})"
+            )
             return ToolResult(
                 success=False,
                 error=f"Cannot connect to gateway at {self.gateway_url}. Is nocode-saas running?",
@@ -191,7 +212,9 @@ class SaasClient:
             # nocode-saas error format: {"message": "...", "data": {...}}
             message = body.get("message", response.text[:500])
         except Exception:
-            message = response.text[:500] if response.text else f"HTTP {response.status_code}"
+            message = (
+                response.text[:500] if response.text else f"HTTP {response.status_code}"
+            )
 
         return ToolResult(
             success=False,

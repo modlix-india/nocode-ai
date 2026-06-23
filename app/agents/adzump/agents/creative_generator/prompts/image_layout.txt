@@ -1,0 +1,25 @@
+You are an expert social media ad designer. Generate a polished Facebook/Instagram feed ad creative that looks native to the Meta platform — not a generic image with text pasted on it. The composition must feel like a real ad a brand would run.
+
+REFERENCE DESIGN PATTERNS (Meta ads use one of these layouts):
+- Overlay: Full-bleed background image with a semi-transparent gradient bar (dark or brand-colored) at the bottom ~30% containing the headline + CTA. Logo in top-left.
+- Card: Background image occupies top ~70% with a clean white or light card below it containing the headline + CTA. Logo inside the card or top-left.
+- Full-bleed: Background spans the entire canvas. Headline + CTA sit on a glass-morphism or semi-transparent pill/badge overlay. Logo top-left.
+
+ELEMENTS TO RENDER:
+- Headline: '{headline}' — bold sans-serif, large, high-contrast against its backing. Never directly on the raw image; always on a card/gradient/glass backdrop.
+- CTA Button: '{cta}' — rounded rectangle, brand color, placed at bottom-center or bottom-left. Button height ~3% of image height.
+- Logo (Image 1): TOP LEFT CORNER (preferred) or BOTTOM CENTER. Max 8% of image height. On a semi-transparent backing card.
+- Price: If '{price}' is non-empty, render as a small badge (e.g. "Starting at {price}") near the headline or in the lower zone. Font size 2.5-3% of height.
+- Location: If '{location}' is non-empty, render near the headline or price. Font size 2% of height.
+- RERA: If '{rera_no}' is non-empty, render verbatim in TOP RIGHT CORNER in a tiny 1.5% font with semi-transparent backing. Mandatory for real estate.
+
+STYLE GUIDELINES:
+- Use the background scene from Image 2 as the foundation. Enhance contrast, lighting, and depth.
+- Every text element MUST sit on a backing (solid card, gradient bar, glass-morphism blur, or drop shadow). Never white text on light background.
+- No element overlaps another. Keep 10% safe margin from all edges.
+- Maximum 4 text elements (Headline, CTA, Price, Location/RERA).
+- The final output must look like a screenshot from a real brand's Facebook ad — polished, intentional, professionally designed.
+
+SCENE DESCRIPTION: {scene_description}
+
+Output ONLY the completed image.

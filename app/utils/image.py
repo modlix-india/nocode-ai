@@ -14,11 +14,14 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+
 def _get_limits() -> tuple[int, int]:
     """Get image limits from config settings."""
     from app.config import settings
+
     max_bytes = int(settings.MAX_IMAGE_BASE64_MB * 1_000_000)
     return max_bytes, settings.IMAGE_MAX_DIMENSION
+
 
 # JPEG quality steps for progressive compression
 QUALITY_STEPS = [85, 70, 55, 40]
@@ -43,6 +46,16 @@ def compress_image_base64(
     Returns:
         Tuple of (compressed_base64, new_media_type).
     """
+    # Strip data URI prefix if present (e.g. data:image/png;base64,...)
+    if base64_data.startswith("data:"):
+        try:
+            header, base64_str = base64_data.split(",", 1)
+            if ";" in header and "base64" in header:
+                media_type = header.split(";")[0].split(":")[1]
+                base64_data = base64_str
+        except Exception as e:
+            logger.warning("Failed to parse data URI header: %s", e)
+
     max_bytes, max_dim = _get_limits()
 
     # Check if already within limits
