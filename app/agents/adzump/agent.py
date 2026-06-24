@@ -183,7 +183,7 @@ class CampaignContext:
     def has_mapped_geo_targets(self) -> bool:
         if self.is_google:
             locs = self.product.get("google_mapped_locations") or []
-            return bool(locs) and all(loc.get("google_id") for loc in locs)
+            return bool(locs)
         if self.is_meta:
             return bool(self.product.get("meta_mapped_locations"))
         return bool(self.product.get("target_areas"))
@@ -886,9 +886,7 @@ class AdzumpAgent(BaseAgent):
 
             if is_google(platform):
                 google_locs = product.get("google_mapped_locations") or []
-                if not google_locs or not all(
-                    loc.get("google_id") for loc in google_locs
-                ):
+                if not google_locs:
                     try:
                         ctx = self.build_tool_context(session)
                         mapper = PlatformGeoMapper(session.context, ctx)
@@ -906,7 +904,7 @@ class AdzumpAgent(BaseAgent):
                         )
             elif is_meta(platform):
                 meta_locs = product.get("meta_mapped_locations") or []
-                if not meta_locs or not all(loc.get("meta_key") for loc in meta_locs):
+                if not meta_locs:
                     try:
                         ctx = self.build_tool_context(session)
                         mapper = PlatformGeoMapper(session.context, ctx)
@@ -967,6 +965,17 @@ class AdzumpAgent(BaseAgent):
         if session.auth:
             ctx["auth"] = session.auth
         return ctx
+
+    async def _on_loop_complete(
+        self, session: BaseSession, tool_call_log: list[dict[str, Any]],
+    ) -> None:
+        await super()._on_loop_complete(session, tool_call_log)
+        from app.agents.adzump.services.business_storage import save_campaign, resolve_url
+        if resolve_url(session.context):
+            try:
+                await save_campaign(session.context, self.build_tool_context(session))
+            except Exception as e:
+                logger.debug("End-of-turn campaign save failed (non-fatal): %s", e)
 
     @staticmethod
     def _advance_chip(text: str) -> dict[str, Any] | None:
