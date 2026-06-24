@@ -98,7 +98,15 @@ class ToolResult:
         terse `model_summary` (or `data`), never the verbatim user copy."""
         if not self.success:
             return f"Error: {self.error}"
-        primary = self.model_summary if self.audience == "user" else self.summary
+        # What the MODEL reads (the user separately sees `summary`). `model_summary`
+        # is a private line to the model — lets a tool say one thing to the user,
+        # another to the model (e.g. user "Updating…", model "rejected budget, re-ask").
+        #   audience="user" → model_summary/data only, never the user's `summary`
+        #   else            → model_summary if set, else `summary`
+        if self.audience == "user":
+            primary = self.model_summary
+        else:
+            primary = self.model_summary or self.summary
         text = primary or _data_text(self.data)
         if text is None:
             return "OK"
