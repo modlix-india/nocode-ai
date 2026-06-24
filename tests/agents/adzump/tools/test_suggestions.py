@@ -1,12 +1,13 @@
-"""Unit tests for app/agents/adzump/tools/suggestions.py (_present_options, _norm_q)."""
+"""Unit tests for app/agents/adzump/tools/suggestions.py (_present_options)."""
 # regression: F9 (present_options question de-dup) + tagged-capture elicit tagging
+# Normalizer itself (contains_normalized) is unit-tested in tests/core/test_text.py.
 from __future__ import annotations
 
 import asyncio
 import types
 import unittest
 
-from app.agents.adzump.tools.suggestions import _present_options, _norm_q
+from app.agents.adzump.tools.suggestions import _present_options
 
 
 class _FakeStream:
@@ -66,10 +67,6 @@ class QuestionDedupTests(unittest.TestCase):
             {"event_stream": stream, "session_context": {}},
         ))
         self.assertTrue(any(self.Q in t for t in stream.texts))
-
-    def test_norm_q(self):
-        self.assertEqual(_norm_q("How long should it run?"), "how long should it run")
-        self.assertEqual(_norm_q("  HOW   long  "), "how long")     # lower + collapse + strip
 
 
 class PresentOptionsTagTests(unittest.TestCase):

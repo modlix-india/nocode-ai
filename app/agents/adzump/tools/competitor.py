@@ -291,7 +291,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 success=True,
                 data={"competitive": existing},
                 summary=f"Already analyzed: {comp_count} competitors found.",
-                relay_summary=True,
+                audience="both",
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
@@ -306,7 +306,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                             success=True,
                             data={"competitive": existing, "from_storage": True},
                             summary=f"Reused {comp_count} competitors from storage.",
-                            relay_summary=True,
+                            audience="both",
                         )
         except Exception as e:
             logger.warning("competitor_storage_hydrate_skipped: %s: %s",
@@ -400,7 +400,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 pass
 
         summary = f"Found {comp_count} competitors: {', '.join(names)}"
-        return ToolResult(success=True, data={"competitive": competitive}, summary=summary, relay_summary=True)
+        return ToolResult(success=True, data={"competitive": competitive}, summary=summary, audience="both")
 
     except Exception as e:
         logger.warning("analyze_competitors failed: %s: %s",
@@ -562,7 +562,7 @@ async def _lookup_single_competitor(
         success=True,
         data={"competitors": competitive["competitors"], "skipped": skipped},
         summary=". ".join(parts),
-        relay_summary=True,
+        audience="both",
     )
 
 

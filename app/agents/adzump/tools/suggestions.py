@@ -13,20 +13,13 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.core.text import contains_normalized
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-
-def _norm_q(s: str) -> str:
-    """Normalize a question for the v4 · F9 de-dup compare: lowercase, collapse
-    whitespace, strip trailing punctuation. Lets "How long should it run?" match
-    a prose "...how long should it run" the model already streamed."""
-    return re.sub(r"\s+", " ", (s or "").lower()).strip().strip("?.!,: ").strip()
 
 
 async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
@@ -100,8 +93,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     if stream is not None:
         parent_session = context.get("_session")
         streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
-        nq = _norm_q(question)
-        already = bool(nq) and nq in _norm_q(streamed)
+        already = contains_normalized(question, streamed)
         if already:
             logger.info("present_options: question already in streamed prose — skip emit (F9)")
         else:

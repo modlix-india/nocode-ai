@@ -1,9 +1,13 @@
-"""Unit: core BaseAgent run-loop — _with_tail_reminder (replace-not-append, tail-placed)."""
+"""Unit: core BaseAgent run-loop — _with_tail_reminder (replace-not-append,
+tail-placed) + audience routing in _run_tool_block (user/both → emit + persist)."""
 from __future__ import annotations
 
+import types
 import unittest
 
 from app.core.agent import BaseAgent
+from app.core.streaming import AgentEventStream, AgentEventType
+from app.core.tools.base import ToolDefinition, ToolResult
 
 REMINDER = "State: platform=Google Ads. Next: ask duration."
 
@@ -53,6 +57,74 @@ class WithTailReminderTests(unittest.TestCase):
         out = BaseAgent._with_tail_reminder([], REMINDER)
         self.assertEqual(out[0]["role"], "user")
         self.assertIn(REMINDER, out[0]["content"][0]["text"])
+
+
+class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
+    """_run_tool_block posts the summary to chat (emit + persist) iff audience
+    targets the user. Replaces the old relay_summary/_chat_receipt_text de-dup."""
+
+    async def _run(self, result: ToolResult, streamed: str = ""):
+        class _A(BaseAgent):
+            async def _execute_tool(self, *a, **k):
+                return result
+        agent = _A(name="x", tools=[ToolDefinition(name="t", description="d")],
+                   context_builder=object())
+        stream = AgentEventStream()
+        parts: list[str] = []
+        session = types.SimpleNamespace(session_id="s", _turn_assistant_text=streamed)
+        await agent._run_tool_block({"name": "t", "input": {}, "id": "u1"},
+                                    session, stream, parts)
+        texts = []
+        while not stream._queue.empty():
+            ev = stream._queue.get_nowait()
+            if getattr(ev, "event", None) == AgentEventType.TEXT:
+                texts.append(ev.data["text"])
+        return texts, parts
+
+    async def test_user_emits_and_persists_the_summary(self):
+        texts, parts = await self._run(ToolResult(success=True, summary="Saved.", audience="user"))
+        self.assertEqual(texts, ["Saved."])
+        self.assertEqual(parts, ["Saved."])     # persisted → survives refresh
+
+    async def test_both_also_emits(self):
+        texts, parts = await self._run(ToolResult(success=True, summary="Found 2.", audience="both"))
+        self.assertEqual(texts, ["Found 2."])
+        self.assertEqual(parts, ["Found 2."])
+
+    async def test_assistant_default_does_not_post_to_chat(self):
+        texts, parts = await self._run(ToolResult(success=True, summary="internal note"))
+        self.assertEqual(texts, [])
+        self.assertEqual(parts, [])
+
+    async def test_user_with_empty_summary_posts_nothing(self):
+        texts, parts = await self._run(ToolResult(success=True, summary="", audience="user"))
+        self.assertEqual(texts, [])
+
+    async def test_failed_user_tool_posts_nothing(self):
+        texts, _ = await self._run(ToolResult(success=False, error="boom", summary="x", audience="user"))
+        self.assertEqual(texts, [])
+
+    async def test_both_skips_when_model_already_echoed_it(self):
+        # model's lead-in already contains the summary (normalized) → don't double.
+        texts, parts = await self._run(
+            ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience="both"),
+            streamed="Sure — Found 2 competitors:  Sobha, Prestige. Want me to continue?")
+        self.assertEqual(texts, [])
+        self.assertEqual(parts, [])
+
+    async def test_user_posts_even_if_model_text_matches(self):
+        # "user" never de-dups — the model is blind to the prose, so post regardless.
+        texts, _ = await self._run(
+            ToolResult(success=True, summary="Saved your logo.", audience="user"),
+            streamed="Saved your logo.")
+        self.assertEqual(texts, ["Saved your logo."])
+
+    async def test_both_dedup_ignores_trailing_punctuation(self):
+        # summary ends in '.', model echoed it without the period → still de-dup.
+        texts, _ = await self._run(
+            ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience="both"),
+            streamed="Found 2 competitors: Sobha, Prestige and details below")
+        self.assertEqual(texts, [])
 
 
 if __name__ == "__main__":

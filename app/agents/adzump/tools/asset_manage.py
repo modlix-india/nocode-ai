@@ -182,8 +182,13 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
     return ToolResult(
         success=True,
         data=result_data,
-        summary=summary,
-        relay_summary=True,  # the saved/skipped/ask text IS the user-facing message
+        summary=summary,  # the saved/skipped/ask text IS the user-facing message
+        audience="user",  # model gets model_summary, not the user prose → no double
+        model_summary=(
+            f"Stored {len(stored)}, skipped {len(rejected)}"
+            + (f", {len(ambiguous)} need a user decision (already asked in chat)" if ambiguous else "")
+            + "."
+        ),
     )
 
 

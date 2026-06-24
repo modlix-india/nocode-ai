@@ -37,6 +37,7 @@ from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream, current_agent_id
 from app.core.session import BaseSession
 from app.core.context import BaseContext
+from app.core.text import contains_normalized
 from app.core.builtin_tools import (
     close_builtin_rows, on_builtin_tool_result, on_builtin_tool_use,
 )
@@ -793,20 +794,6 @@ class BaseAgent:
                            "tool-call syntax from assistant text", n)
         return cleaned
 
-    @staticmethod
-    def _chat_receipt_text(result: ToolResult, turn_text: str) -> str | None:
-        """The text a ``relay_summary`` tool should post to chat as assistant
-        text — or ``None`` to skip. Skips when: not opted in, failed, no summary,
-        or the model already wrote it this turn (normalized substring de-dup, the
-        same guard present_options uses). Pure → unit-tested below the model."""
-        if not (result.relay_summary and result.success and result.summary):
-            return None
-        receipt = " ".join(result.summary.lower().split())
-        streamed = " ".join((turn_text or "").lower().split())
-        if not receipt or receipt in streamed:
-            return None
-        return result.summary
-
     async def _run_tool_block(
         self,
         tool_block: dict[str, Any],
@@ -817,8 +804,8 @@ class BaseAgent:
         """Execute one tool_use block, emit SSE events, and return (result_block, log_entry).
 
         ``assistant_text_parts`` is the run-scoped list the persisted turn is
-        built from; a tool with ``relay_summary`` appends its summary here so the
-        receipt survives refresh (see the relay block below)."""
+        built from; a tool whose ``audience`` targets the user appends its summary
+        here so the receipt survives refresh (see the audience block below)."""
         tool_name = tool_block["name"]
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
@@ -884,15 +871,17 @@ class BaseAgent:
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
 
-        # F1 · relay_summary: the tool's result IS the user-facing message, so
-        # post it to chat as assistant text AND persist it (append to the
-        # run-scoped parts the saved turn is built from). De-duped against text
-        # the model already wrote this turn so we never double-render (same
-        # guard present_options uses). The LLM then writes only a lead-in.
-        _receipt = self._chat_receipt_text(result, getattr(session, "_turn_assistant_text", ""))
-        if _receipt is not None:
-            await event_stream.emit_text(_receipt)
-            assistant_text_parts.append(_receipt)
+        # audience: a tool whose summary targets the user (audience "user"/"both")
+        # has it posted to chat AND persisted (append to the run-scoped parts the
+        # saved turn is built from, so it survives refresh). For "user" the model
+        # saw only model_summary above → it can't double this, so post always. For
+        # "both" the model also saw the summary; skip the post if its lead-in
+        # already echoed it (same normalized de-dup present_options uses).
+        if result.audience in ("user", "both") and result.success and result.summary:
+            streamed = getattr(session, "_turn_assistant_text", "")
+            if result.audience == "user" or not contains_normalized(result.summary, streamed):
+                await event_stream.emit_text(result.summary)
+                assistant_text_parts.append(result.summary)
 
         # Learning loop: track tool errors for pitfall detection
         if not result.success:
