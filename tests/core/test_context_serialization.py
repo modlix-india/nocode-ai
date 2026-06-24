@@ -17,7 +17,10 @@ from __future__ import annotations
 import json
 import unittest
 
-from app.core.session import _serialize_context, _EPHEMERAL_CONTEXT_KEYS
+from app.core.session import BaseSession
+
+_serialize_context = BaseSession._serialize_context
+_EPHEMERAL_CONTEXT_KEYS = BaseSession._EPHEMERAL_CONTEXT_KEYS
 
 
 class SerializeContextTests(unittest.TestCase):
