@@ -228,14 +228,14 @@ class BaseAgent:
         tool_call_log: list[dict[str, Any]] = []
         # Track the model used (from the first LLM response)
         model_used: str | None = None
-        # F13 · deterministic stuck-loop breaker (run-scoped). When a turn's tool
-        # calls ALL fail with the same tool-name signature N turns running, the
-        # offending tool(s) are quarantined (withdrawn from the tool set) for the
-        # rest of THIS run — so the model is forced onto a different action (e.g.
-        # asking the user) instead of re-calling a tool that keeps rejecting (the
-        # v5 advisory STOP-steer the model ignores). Signature = tool NAMES, not
-        # inputs (a model inventing fresh values each turn keeps the same names);
-        # any success resets it. N=4 sits one above the domain advisory's n>=3.
+        # Deterministic stuck-loop breaker (run-scoped). When a turn's tool calls
+        # ALL fail with the same tool-name signature N turns running, the offending
+        # tool(s) are quarantined (withdrawn from the tool set) for the rest of THIS
+        # run — so the model is forced onto a different action (e.g. asking the
+        # user) instead of re-calling a tool that keeps rejecting (an advisory
+        # STOP-steer the model ignores). Signature = tool NAMES, not inputs (a model
+        # inventing fresh values each turn keeps the same names); any success resets
+        # it. N=4 sits one above the domain advisory's n>=3.
         STUCK_N = 4
         stuck_sig: tuple[str, ...] | None = None
         stuck_n = 0
@@ -261,7 +261,7 @@ class BaseAgent:
             # Stream the turn + assemble the provider chunks into blocks. Mutates
             # assistant_text_parts (run-scoped) in place; always drains builtin
             # rows, even on a mid-stream raise. See _stream_turn.
-            # F13: withdraw quarantined tools — filtered COPY, never mutate self._anthropic_tools.
+            # Withdraw quarantined tools — filtered COPY, never mutate self._anthropic_tools.
             call_tools = (
                 [t for t in self._anthropic_tools if t.get("name") not in quarantined]
                 if quarantined else None
@@ -436,7 +436,7 @@ class BaseAgent:
                 )
                 break
 
-            # F13: stuck-loop detection (see _stuck_step). On trip, quarantine
+            # Stuck-loop detection (see _stuck_step). On trip, quarantine
             # offenders for the rest of the run so the model must ask/move on.
             stuck_sig, stuck_n, to_quarantine = self._stuck_step(
                 new_entries, stuck_sig, stuck_n, STUCK_N
@@ -544,7 +544,7 @@ class BaseAgent:
                     await on_builtin_tool_result(builtin_rows, chunk, event_stream)
 
                 elif chunk.type == "tool_use_start":
-                    # Flush text block (F16 scrub).
+                    # Flush text block (scrub leaked tool-call syntax).
                     if current_text:
                         cleaned = self._clean_assistant_text(current_text)
                         if cleaned:
@@ -595,7 +595,7 @@ class BaseAgent:
             # In a finally so a mid-stream raise can't leave a row spinning.
             await close_builtin_rows(builtin_rows, event_stream)
 
-        # Flush remaining text (F16 scrub).
+        # Flush remaining text (scrub leaked tool-call syntax).
         if current_text:
             cleaned = self._clean_assistant_text(current_text)
             if cleaned:
@@ -613,7 +613,7 @@ class BaseAgent:
 
         Returns ``(content_blocks, tool_use_blocks)`` and mutates
         ``assistant_text_parts`` in place so persistence/summaries stay in sync.
-        F16: scrub leaked tool-call syntax from text blocks here too — this is the
+        Scrub leaked tool-call syntax from text blocks here too — this is the
         Anthropic message_complete path and rebuilds the parts authoritatively, so
         it must scrub or the event-path scrub is bypassed.
         """
@@ -694,11 +694,11 @@ class BaseAgent:
         prev_n: int,
         n_threshold: int,
     ) -> tuple[tuple[str, ...] | None, int, set[str]]:
-        """F13/F15 · one stuck-loop step (pure → unit-tested below the model).
+        """One stuck-loop step (pure → unit-tested below the model).
 
         A turn is "stuck" when EVERY tool call in it made NO PROGRESS — either it
         failed, OR it succeeded but stored nothing new (a kept-noop, flagged
-        ``no_progress``; F15). Both read as "retry-me" to a model that ignores the
+        ``no_progress``). Both read as "retry-me" to a model that ignores the
         steer. Signature is the sorted tool-name tuple (NOT inputs — a model
         inventing fresh values keeps the same names). Returns
         ``(sig, n, to_quarantine)``: the running signature + consecutive count,
@@ -722,7 +722,7 @@ class BaseAgent:
 
     @staticmethod
     def _strip_tool_syntax(text: str, tool_names: set[str]) -> tuple[str, int]:
-        """F16 · remove standalone leaked tool-call-syntax lines from user-facing
+        """Remove standalone leaked tool-call-syntax lines from user-facing
         assistant text — e.g. a model echoing the internal prescription
         `present_options(question=…, field="duration")` into chat. Returns
         ``(cleaned, n_stripped)``. Pure → unit-tested below the model.
@@ -747,7 +747,7 @@ class BaseAgent:
     def _clean_assistant_text(self, text: str) -> str:
         """Scrub leaked tool-call syntax from one assistant text block, keyed off
         the live tool registry. Logs when it fires (telemetry on prompt-guard
-        decay) so the leak is a counted alarm, not a silent spot-check (F16)."""
+        decay) so the leak is a counted alarm, not a silent spot-check."""
         cleaned, n = self._strip_tool_syntax(text, set(self.tools))
         if n:
             logger.warning("stripped_tool_syntax_leak: removed %d line(s) of "
@@ -878,7 +878,7 @@ class BaseAgent:
             # the still-missing AssetGaps). Opaque to core — a subclass owns its
             # shape + (de)serialization. Inert (None) for every other tool.
             "elicit_payload": (result.data.get("elicit_payload") if isinstance(result.data, dict) else None),
-            # F15 · a success that stored nothing new (kept-noop). The stuck-loop
+            # A success that stored nothing new (kept-noop). The stuck-loop
             # breaker treats it like a failure so a re-send loop the model won't
             # break out of gets the tool quarantined. Generic + inert (False) for
             # every other tool. Domain-agnostic pass-through, same as elicited.
