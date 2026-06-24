@@ -203,8 +203,9 @@ class SpecRetryBreakerTests(unittest.TestCase):
         ctx, sc = spec_context({"location": FULL_ADDR}, "continue")
         r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
         self.assertTrue(r.success)
-        self.assertIn("kept", (r.summary or ""))
-        self.assertIn("re-send", (r.summary or ""))
+        self.assertIn("kept", (r.model_summary or ""))      # B2b: steer is model-only now
+        self.assertIn("re-send", (r.model_summary or ""))
+        self.assertNotIn("kept", (r.summary or ""))         # user/card never sees the steer
         self.assertEqual(sc["campaign_spec"]["location"], FULL_ADDR)
 
     def test_empty_field_untraceable_still_rejected(self):
@@ -282,6 +283,37 @@ class NoProgressFloorTests(unittest.TestCase):
         self.assertTrue(r.success)
         self.assertEqual(sc["campaign_spec"]["duration"], "30 days")
         self.assertFalse(isinstance(r.data, dict) and r.data.get("no_progress"))
+
+
+# ── B2b · validator rejections must NOT leak into the user-facing summary ──
+# Live (Gremlin loop, 2026-06-24, dev): "rejected platform=Google Ads (not
+# traceable…)" rendered in the activity card. The steer is model-only now
+# (model_summary on success / error on failure); the user/card `summary` carries
+# only what was actually stored.
+class ValidatorLeakContainmentTests(unittest.TestCase):
+    _LEAKS = ("rejected", "not traceable", "cannot set", "=")  # internal steer markers
+
+    def _assert_clean(self, summary):
+        s = (summary or "").lower()
+        for leak in self._LEAKS:
+            self.assertNotIn(leak, s, f"validator steer leaked into user summary: {leak!r} in {summary!r}")
+
+    def test_partial_reject_summary_clean_steer_model_only(self):
+        # stores duration (traceable), rejects budget="true" (invented) → partial
+        ctx, sc = _spec_ctx({}, "make it 30 days")
+        r = asyncio.run(_set_campaign_spec({"duration": "30 days", "budget": "true"}, ctx))
+        self.assertTrue(r.success)
+        self.assertEqual(sc["campaign_spec"]["duration"], "30 days")
+        self.assertNotIn("budget", sc["campaign_spec"])          # rejected, not stored
+        self._assert_clean(r.summary)                            # user/card: clean
+        self.assertIn("rejected", r.to_tool_result_content().lower())  # model: still steered
+
+    def test_all_rejected_summary_clean_steer_in_error(self):
+        ctx, sc = _spec_ctx({}, "continue")
+        r = asyncio.run(_set_campaign_spec({"platform": "Google Ads"}, ctx))
+        self.assertFalse(r.success)
+        self._assert_clean(r.summary)                            # user/card: clean
+        self.assertIn("traceable", (r.error or "").lower())      # model: steer in error
 
 
 # ── (a) F17a — bleed containment: only the traceable declined field lands ──
