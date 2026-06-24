@@ -30,7 +30,7 @@ from app.agents.adzump.platform import (
 )
 from app.agents.adzump.tools.campaign_data import (
     _ACCOUNT_LIKE_FIELDS, _apply_field, _current_turn, _last_user_text, _normalize_id,
-    is_ig_skip,
+    is_clear_decline_reply, is_ig_skip,
 )
 from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 from app.agents.adzump.tools.registry import ALL_TOOLS
@@ -210,31 +210,33 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform — call `present_options(question=\"Which platform should we run this on?\", "
-            "options=[{\"label\":\"Google Ads\",\"value\":\"Google Ads\",\"answer\":\"Google Ads\"}, "
-            "{\"label\":\"Meta\",\"value\":\"Meta\",\"answer\":\"Meta\"}], field=\"platform\")`"
+            "platform — use the present_options tool (field \"platform\") to ask "
+            "\"Which platform should we run this on?\" with chip choices: Google Ads, "
+            "Meta. CALL the tool — never type the call into your reply."
         )
 
     if (cctx.is_google
             and not cctx.competitor_analysis_attempted
             and "competitive_analysis_declined" not in cctx.spec):
-        # Pending-aware: if user just said no/skip, drop the question and
-        # store the declined flag. If user said yes (or anything else), the
-        # LLM follows the prescription.
-        lu = cctx.last_user.strip().lower()
-        if lu in ("no", "n", "no thanks", "skip", "no need"):
-            missing.append(
-                "competitive analysis — user said NO. Call "
-                "`set_campaign_spec(competitive_analysis_declined=\"true\")` and proceed."
-            )
-        else:
-            missing.append(
-                "competitive analysis — call `present_options(question=\"Want me to analyze "
-                "competitors before we set things up?\", options=[\"Yes\", "
-                "{\"label\":\"No\",\"value\":\"No\",\"answer\":\"true\"}], "
-                "field=\"competitive_analysis_declined\")`. "
-                "If the user just said YES, call `analyze_competitors()` instead."
-            )
+        # F11 · agentic, not a hardcoded phrase ladder: the MODEL interprets the
+        # user's reply to THIS competitor offer (the old `lu in (...)` exact-match
+        # missed "No, skip competitor analysis for now" → re-ask loop). Scoped +
+        # biased to re-ask on doubt so a polarity-flip ("no, change the budget")
+        # is never read as a decline. The _field_traceable guard backstops it.
+        missing.append(
+            "competitive analysis — offer it ONCE as a Yes/No question, then react:\n"
+            "  • if you have not offered competitor analysis yet → ask via the "
+            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
+            "analyze competitors before we set things up?\" with chips Yes / No. A No "
+            "(or a clear typed decline) is recorded for you automatically — do NOT call "
+            "set_campaign_spec for it, and never set a field the user hasn't stated "
+            "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
+            "  • they want it (yes / go ahead) → run analyze_competitors.\n"
+            "  • the reply is unclear or about something ELSE (budget, a named competitor) "
+            "→ re-ask the same Yes/No present_options; do NOT treat a doubtful reply as a "
+            "decline.\n"
+            "(These are instructions to CALL tools — never type tool-call syntax into your reply.)"
+        )
 
     if not cctx.spec.get("duration"):
         if cctx.awaiting_custom_field == "duration":
@@ -248,11 +250,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         else:
             missing.append(
-                "duration — call `present_options(question=\"How long should the campaign run?\", "
-                "options=[{\"label\":\"30 days\",\"value\":\"30 days\",\"answer\":\"30 days\"}, "
-                "{\"label\":\"60 days\",\"value\":\"60 days\",\"answer\":\"60 days\"}, "
-                "{\"label\":\"90 days\",\"value\":\"90 days\",\"answer\":\"90 days\"}, \"Custom\"], "
-                "field=\"duration\")`"
+                "duration — use the present_options tool (field \"duration\") to ask "
+                "\"How long should the campaign run?\" with chip choices: 30 days, "
+                "60 days, 90 days, Custom. CALL the tool — never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
         if cctx.awaiting_custom_field == "budget":
@@ -267,10 +267,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
-                "budget — call `present_options(question=\"What's your daily budget?\", "
-                f"options=[<platform-tuned presets as {{label,value,answer}} dicts with answer==value, "
-                f"e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day>, \"Custom\"], "
-                "field=\"budget\")`"
+                "budget — use the present_options tool (field \"budget\") to ask "
+                "\"What's your daily budget?\" with platform-tuned chip choices "
+                f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day) "
+                "plus Custom. CALL the tool — never type the call into your reply."
             )
     # Account-block lines depend on the platform pick — skip until platform
     # is set so we don't suggest the wrong fetch tool.
@@ -337,10 +337,11 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 else "\n  - **Instagram Account**: not linked (Facebook only)"
             )
         missing.append(
-            "review & publish — your reply this turn is EXACTLY this markdown, "
-            "with values copied VERBATIM from the `## State` block above (do NOT "
-            "rephrase, do NOT drop fields, do NOT replace IDs with placeholders "
-            "like 'Linked' or 'Connected', do NOT abbreviate):\n\n"
+            "review & publish — TWO separate steps this turn:\n"
+            "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
+            "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
+            "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
+            "do NOT abbreviate):\n\n"
             "Here's your campaign summary:\n\n"
             "  - **Product**: <product name from State>\n"
             "  - **Website**: <website URL from State>\n"
@@ -354,11 +355,12 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
             "if competitive_analysis_declined='true'>\n\n"
-            "Then call `present_options(question=\"Ready to launch the campaign?\", "
-            "options=[\"Yes, launch\", \"No, make changes\"])`. EVERY bullet must be "
-            "present — do not omit any. "
-            "**On the user's 'Yes, launch' reply, call `launch_campaign()` "
-            "(no params) — that's the one tool that persists the campaign.**"
+            "EVERY bullet must be present — do not omit any.\n"
+            "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
+            "the campaign?\" with chips: Yes, launch / No, make changes. When the user "
+            "picks 'Yes, launch', run the launch_campaign tool (no arguments) — the one "
+            "tool that persists the campaign. These are tools to CALL — never type "
+            "tool-call syntax into your reply, only the markdown summary above is text."
         )
 
     return missing
@@ -423,6 +425,9 @@ class AdzumpAgent(BaseAgent):
         value = answers.get(last_user)                       # (a) exact chip match
         if value is None and field in ("duration", "budget", "platform"):
             value = parse_typed_answer(field, last_user, currency_for(session.context))  # (b) typed
+        if value is None and field == "competitive_analysis_declined" \
+                and is_clear_decline_reply(last_user):
+            value = "true"                                    # (c) F17 · typed clear decline
         if value is None:
             # v4 · F10 — the user picked the "Custom" escape on a duration/budget
             # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
@@ -466,6 +471,39 @@ class AdzumpAgent(BaseAgent):
             "NEVER end your turn without making that tool call (a live run stalled "
             "on a dead-end turn that acknowledged and stopped)."
         )
+
+    def _record_prose_decline(
+        self, session: BaseSession, cctx: "CampaignContext", last_user: str, turn: int,
+    ) -> bool:
+        """F18 · the competitor offer is non-deterministically asked as PROSE (no
+        tagged ``present_options``), so a typed decline has no elicitation for
+        ``_capture_tagged_answer`` to match — and the model often just advances
+        without recording it, leaving ``competitive_analysis_declined`` unset and
+        the prescription re-firing every turn. Record it in code at turn-start,
+        with a NARROW guard (Kiran): only the competitor-offer state, only a
+        clear-decline reply (``is_clear_decline_reply`` excludes ambiguous "no…"
+        like "no competitors named yet" / "not now, first tell me about X"), and
+        never when a competitor elicitation is already pending (tagged-capture
+        owns that). Gated agentic ``turn == 1``. Returns True iff it stored."""
+        if turn != 1 or not last_user:
+            return False
+        pe = session.context.get("_pending_elicitation")
+        if pe and pe.get("field") == "competitive_analysis_declined":
+            return False                                     # tagged-capture owns it
+        if not (cctx.is_google
+                and not cctx.competitor_analysis_attempted
+                and "competitive_analysis_declined" not in cctx.spec):
+            return False
+        if not is_clear_decline_reply(last_user):
+            return False                                     # ambiguous → let the LLM judge
+        stored, _ = _apply_field(
+            "competitive_analysis_declined", "true", last_user,
+            session.context, _current_turn({"_session": session}),
+        )
+        if stored:
+            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+                        last_user[:80])
+        return bool(stored)
 
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
         """v8 Plan B WS2 · when the previous turn ended on a deferred
@@ -514,22 +552,21 @@ class AdzumpAgent(BaseAgent):
         )
 
     def _uploaded_assets_section(self, session: BaseSession) -> str:
-        """v9 I-0 · when the user attached image(s) this turn, prompt the LLM to
-        persist them via save_uploaded_assets (the bytes are stashed on the
-        session by the /chat handler). First action of the turn — otherwise the
-        upload is lost (it only lives in the pending stash)."""
+        """v9 I-0 · when the user attached image(s) this turn, hand them to the
+        Asset Manager via manage_assets (bytes are stashed on the session by the
+        /chat handler). First action of the turn — otherwise the upload is lost
+        (it only lives in the pending stash)."""
         pending = session.context.get("_pending_uploads")
         if not pending:
             return ""
         n = len(pending)
         return (
             f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
-            "FIRST, call `save_uploaded_assets(role=...)` to persist the upload — "
-            "look at the image and pick the role: a brand mark → 'logo'; a main "
-            "building/render → 'hero'; a lifestyle/amenity photo → 'amenity'; a "
-            "floor plan → 'floor_plan'. (All pending uploads are saved under that "
-            "one role, so if they're different types, pick the best fit.) Do this "
-            "before anything else, then continue."
+            "FIRST, call `manage_assets` to hand the upload(s) to the Asset "
+            "Manager — it looks at each image, decides what it is, and saves or "
+            "skips it. You do NOT classify the image yourself; if the user said "
+            "what it is, pass that as `note`. Do this before anything else, then "
+            "continue."
         )
 
     def _state_section(self, cctx: CampaignContext) -> str:
@@ -636,7 +673,12 @@ class AdzumpAgent(BaseAgent):
         # marked as the immediate next action; the rest let the LLM keep
         # going within the same agentic-loop turn (e.g. after storing
         # platform, call confirm_location for location).
-        lines = ["\n## What's still missing (in order — do the top item first)"]
+        lines = [
+            "\n## What's still missing (in order — do the top item first)",
+            "Example values below (e.g. \"30 days\", \"₹5,000/day\") are OPTIONS to "
+            "SHOW the user via present_options — NEVER values to store. Only "
+            "`set_campaign_spec` a field after the user actually states it (F12).",
+        ]
         for i, item in enumerate(missing, 1):
             lines.append(f"{i}. {item}")
         return "\n".join(lines)
@@ -654,10 +696,19 @@ class AdzumpAgent(BaseAgent):
             "Then acknowledge in one short sentence and re-check Next action.\n"
             "4. Ambient (\"ok\", \"continue\", \"next\") → just do Next action.\n"
             "5. Otherwise → do Next action.\n"
+            "\n**A tool already spoke?** When a tool posts its own result to the "
+            "user (assets saved/skipped/corrected, competitors added/skipped — these "
+            "now appear in chat automatically), do NOT repeat it; write only a short "
+            "one-line lead-in to the Next action.\n"
             "\n**One ask per turn.** Never call two question-asking tools "
             "(`confirm_location`, `present_options`) in the same turn — ask one, "
             "wait for the reply, then ask the next. (The runtime also enforces "
-            "this, but don't rely on it.)"
+            "this, but don't rely on it.)\n"
+            "\n**Tool syntax is INTERNAL — never print it.** The `tool(question=…, "
+            "options=[…], field=…)` forms in '## What's still missing' are "
+            "instructions for YOU to CALL — never text to show the user. CALL the "
+            "tool; your visible reply is natural prose only. NEVER write a tool "
+            "name or `tool(...)` call syntax into the chat."
         )
 
     @staticmethod
@@ -715,6 +766,12 @@ class AdzumpAgent(BaseAgent):
         ack = self._capture_tagged_answer(session, turn)
         cctx = CampaignContext.from_session(session)
         last_user = _last_user_text({"_session": session})
+        # F18 · when the competitor offer was asked as PROSE (not a tagged
+        # present_options), a clear typed decline has no capture rail — record it
+        # in code at turn-start so competitive_analysis_declined doesn't persist
+        # in `missing` forever. Re-derive cctx since the spec changed.
+        if self._record_prose_decline(session, cctx, last_user, turn):
+            cctx = CampaignContext.from_session(session)
         missing = _next_action(cctx)
         logger.info(
             "next_action: turn=%d agentic=%d missing=%s user_said=%r",
@@ -743,6 +800,41 @@ class AdzumpAgent(BaseAgent):
         if session.auth:
             ctx["auth"] = session.auth
         return ctx
+
+    @staticmethod
+    def _advance_chip(text: str) -> dict[str, Any] | None:
+        """F23 · a prose advance/confirm ask (e.g. "Let's confirm the location for
+        the campaign") with no live widget gets ONE value-only quick-reply chip so
+        the user can click instead of having to type to proceed. Value-only (no
+        ``field``/``answer``) → the click just sends "yes …" text that routes to the
+        model, so it CANNOT reintroduce the F4 untagged-capture loop. Keyword-gated
+        + deterministic (no extra LLM call), per the panel. Returns the chip dict or
+        None."""
+        lt = (text or "").lower()
+        if not lt:
+            return None
+        # F27 · evaluate the TRAILING line (the actual ask), NOT the whole blob —
+        # a launch/review summary lists a "Location:" bullet and contains "ready
+        # to" (in "Ready to launch"), which made this fire a "Confirm location"
+        # chip at the launch step. The genuine advance ask is always its own short
+        # trailing line, so anchoring there fixes the over-match.
+        tail = next((ln for ln in reversed(lt.splitlines()) if ln.strip()), "")
+        markers = (
+            "let's confirm", "lets confirm", "confirm the location", "shall i",
+            "shall we", "ready to", "ready when you", "go ahead", "look good",
+            "looks good", "proceed", "all set",
+        )
+        if not any(m in tail for m in markers):
+            return None
+        # Label precedence: launch → location → generic (launch must win — the
+        # launch ask's trailing line is "…Ready to launch the campaign?").
+        if "launch" in tail:                                   # F27 · launch step
+            return {"options": [{"label": "Yes, launch",
+                                 "value": "yes, launch"}], "mode": "single"}
+        if "location" in tail:
+            return {"options": [{"label": "Confirm location",
+                                 "value": "yes, confirm the location"}], "mode": "single"}
+        return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
 
     async def get_pending_suggestions(
         self, session: BaseSession, assistant_text: str = "",
@@ -773,6 +865,13 @@ class AdzumpAgent(BaseAgent):
         # chips would carry no field tag (a click wouldn't be captured → re-ask
         # loop). The user can type the answer (typed-capture handles
         # duration/budget/platform); next turn the LLM re-asks via a tagged tool.
+        # F23 · a prose advance/confirm ask (no live widget) gets one value-only
+        # "Go ahead"/"Confirm location" chip so the user needn't type to proceed.
+        # BEFORE the captured-guard so it fires even right after a chip answer (the
+        # dead-end case). Value-only → can't reintroduce the F4 untagged-capture loop.
+        adv = AdzumpAgent._advance_chip(assistant_text)
+        if adv:
+            return adv
         if captured:
             return None
         return await infer_suggestions(assistant_text, session.context)

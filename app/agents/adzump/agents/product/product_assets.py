@@ -37,7 +37,6 @@ from app.agents.adzump.agents.product.models import (
     ProductAssets,
     SiteImage,
 )
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -257,20 +256,20 @@ async def select_product_assets(
     # v9 (2026-05-22, Shift 6): SVG filter lives in html_parser._collect_image_candidates.add().
     # Parser yields raster-only candidates by contract; no per-call filter needed here.
 
-    # v4 (2026-05-25, I-1): allocate AssetPicker's own tool_use_id so DISCOVER + SELECT
-    # stage events attribute to AssetPicker's row rather than collapsing onto the parent
+    # v4 (2026-05-25, I-1): allocate VisionAnalyst's own tool_use_id so DISCOVER + SELECT
+    # stage events attribute to VisionAnalyst's row rather than collapsing onto the parent
     # scrape tool's row in the UI. SAVE_LOGO + SAVE_IMG (later, in tools/scrape/assets.py)
     # stay on the parent scrape's tool_use_id — they're post-pick filesystem writes by the
-    # scrape tool, not picker work (Kiran's panel-review correction).
+    # scrape tool, not select work (Kiran's panel-review correction).
     # v6 S2 (2026-05-27): pre-emit agent_started BEFORE DISCOVER stage_emit so
     # the UI has an open span for the tool_update to route to. The launcher
     # owns both AgentCard ends. See asset-picker-fixes-v6.
     from app.core.streaming import pre_emit_agent_started
-    asset_picker_tuid = await pre_emit_agent_started(
-        context.get("event_stream"), agent_id="asset_picker", label="Asset Picker",
+    select_tuid = await pre_emit_agent_started(
+        context.get("event_stream"), agent_id="vision_select", label="Vision Analyst",
         parent_tool_use_id=context.get("tool_use_id", ""), context=context,
     )
-    await stage_emit(context, ScrapeStage.DISCOVER, tool_use_id=asset_picker_tuid, n=len(candidates))
+    await stage_emit(context, ScrapeStage.DISCOVER, tool_use_id=select_tuid, n=len(candidates))
 
     # Parallel fetch + downscale. Anything that fails / is too small / isn't
     # an image is dropped here so the LLM only sees real visual content.
@@ -287,11 +286,11 @@ async def select_product_assets(
     if not available:
         return ProductAssets(), {}
 
-    await stage_emit(context, ScrapeStage.SELECT, tool_use_id=asset_picker_tuid)
+    await stage_emit(context, ScrapeStage.SELECT, tool_use_id=select_tuid)
 
     # Build the vision message: prompt text + summary + per-candidate thumbs.
     # SVG candidates have no thumbnail (vector — see _fetch_one); they appear
-    # as text-only entries and the LLM judges by metadata signals.
+    # as text-only entries and the LLM reviews by metadata signals.
     n_svg = sum(1 for c in available if fetched[c.src].get("is_svg"))
     meta_json = _render_candidate_meta(available)
     intro = (
@@ -306,21 +305,21 @@ async def select_product_assets(
     # thing to check — the prompt rules are only useful if the data backs them.
     _stage("llm_input_meta", n=len(available), meta=meta_json[:1200])
 
-    # Vision pick runs through AssetPickerAgent (single-shot BaseAgent that
+    # Vision pick runs through VisionAnalyst (single-shot BaseAgent that
     # wraps the gpt-4o-mini call). The agent handles message construction,
     # Anthropic→OpenAI image-block conversion, JSON parsing, and resolve
     # internally — the caller still owns the safety net + bytes dict.
     if context.get("auth") is None:
-        logger.warning("asset_picker_skip_no_auth url=%s", page.url)
+        logger.warning("vision_select_skip_no_auth url=%s", page.url)
         return ProductAssets(), {}
     try:
-        from app.agents.adzump.agents.asset_picker import get_asset_picker_agent
+        from app.agents.adzump.agents.vision import get_selector
         # Shift 2 (2026-05-21): scrape/tool.py stashes the full-page screenshot
         # bytes (downsampled to ≤2000 px long-edge) under this context key. If
         # the adapter failed to capture / the chain is invoked outside the scrape
-        # tool, the picker falls back to the v7 candidate-only payload.
+        # tool, the agent falls back to the v7 candidate-only payload.
         screenshot_b64 = (context.get("full_page_screenshot_b64") or "") if isinstance(context, dict) else ""
-        assets = await get_asset_picker_agent().pick(
+        assets = await get_selector().pick(
             candidates=available,
             fetched=fetched,
             summary=summary or "",
@@ -534,7 +533,7 @@ async def _fetch_one(client, url: str) -> dict | None:
     """Download one candidate; downscale to a JPEG thumbnail when possible.
 
     SVGs are kept as candidates with no thumbnail — PIL can't open them and
-    we don't want a Cairo system dependency. The LLM judges SVG candidates
+    we don't want a Cairo system dependency. The LLM evaluates SVG candidates
     by their text metadata (in_header / in_nav / alt / class / filename),
     which is enough to discriminate brand logos from decorative icons.
 
@@ -545,7 +544,7 @@ async def _fetch_one(client, url: str) -> dict | None:
         return None
     if resp.status_code != 200:
         return None
-    from app.agents.adzump._shared import (
+    from app.agents.adzump._uploads import (
         looks_like_image_response, _guess_ctype_from_url,
     )
     raw_ctype = resp.headers.get("content-type") or ""
