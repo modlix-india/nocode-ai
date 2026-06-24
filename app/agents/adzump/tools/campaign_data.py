@@ -333,7 +333,7 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         if n >= 3:
             return ToolResult(
                 success=False,
-                summary="Let me ask you about that instead of guessing.",  # user/card; steer stays model-only (B2b)
+                summary="Let me ask you about that instead of guessing.",  # user sees this; steer stays model-only
                 error=(
                     f"STOP — {pairs} rejected {n} times: these values are NOT traceable "
                     "to anything the user said (you may be inventing them). Do NOT call "
@@ -342,7 +342,7 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
             )
         return ToolResult(
             success=False,
-            summary="Let me confirm that with you rather than assume.",  # user/card; steer stays model-only (B2b)
+            summary="Let me confirm that with you rather than assume.",  # user sees this; steer stays model-only
             error=(
                 f"Cannot set {pairs} — NOT traceable to the user's last message "
                 f"('{preview}'); do not invent or default these. ASK the user via "
@@ -379,8 +379,8 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         )
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
-        # User/card sees only what was actually stored; the rejection steer + kept/
-        # review hints are model-only (B2b: never leak validator internals to chat).
+        # User sees only what was actually stored; the rejection steer + kept/
+        # review hints are model-only — never leak validator internals to chat.
         user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
         return ToolResult(
             success=True,

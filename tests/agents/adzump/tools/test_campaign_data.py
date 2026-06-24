@@ -203,7 +203,7 @@ class SpecRetryBreakerTests(unittest.TestCase):
         ctx, sc = spec_context({"location": FULL_ADDR}, "continue")
         r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
         self.assertTrue(r.success)
-        self.assertIn("kept", (r.model_summary or ""))      # B2b: steer is model-only now
+        self.assertIn("kept", (r.model_summary or ""))      # steer is model-only now
         self.assertIn("re-send", (r.model_summary or ""))
         self.assertNotIn("kept", (r.summary or ""))         # user/card never sees the steer
         self.assertEqual(sc["campaign_spec"]["location"], FULL_ADDR)
@@ -285,11 +285,11 @@ class NoProgressFloorTests(unittest.TestCase):
         self.assertFalse(isinstance(r.data, dict) and r.data.get("no_progress"))
 
 
-# ── B2b · validator rejections must NOT leak into the user-facing summary ──
-# Live (Gremlin loop, 2026-06-24, dev): "rejected platform=Google Ads (not
-# traceable…)" rendered in the activity card. The steer is model-only now
-# (model_summary on success / error on failure); the user/card `summary` carries
-# only what was actually stored.
+# ── validator rejections must NOT leak into the user-facing summary ──
+# Seen live (dev, 2026-06-24): "rejected platform=Google Ads (not traceable…)"
+# rendered in the activity card. The steer is model-only now (model_summary on
+# success / error on failure); the user-facing `summary` carries only what was
+# actually stored.
 class ValidatorLeakContainmentTests(unittest.TestCase):
     _LEAKS = ("rejected", "not traceable", "cannot set", "=")  # internal steer markers
 
