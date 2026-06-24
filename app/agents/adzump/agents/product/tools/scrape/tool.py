@@ -20,7 +20,8 @@ from urllib.parse import urlparse
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.agents.product.adapters.playwright_adapter import scrape_page
 from app.agents.adzump.agents.product.scrape_stages import ScrapeStage, stage_emit
-from app.agents.adzump._shared import clean_input_url, host_of, short_url, upload_screenshot
+from app.agents.adzump._shared import clean_input_url, host_of, short_url
+from app.agents.adzump._uploads import upload_screenshot
 from .profile import (
     _format_page_for_profile,
     _generate_business_profile,
