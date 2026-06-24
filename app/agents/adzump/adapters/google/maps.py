@@ -23,18 +23,17 @@ class GoogleMapsClient:
     """HTTP client wrapper for Google Maps Geocoding services."""
 
     def __init__(self) -> None:
-        self._api_key = settings.GOOGLE_MAPS_API_KEY
         self._timeout = httpx.Timeout(DEFAULT_HTTP_TIMEOUT_SECONDS)
 
     @property
-    def api_key(self) -> str | None:
-        return self._api_key
+    def api_key(self) -> str:
+        return settings.GOOGLE_MAPS_API_KEY
 
     async def _request_with_retry(
         self, url: str, params: dict
     ) -> httpx.Response | None:
         """GET request execution with exponential backoff retry strategy."""
-        if not self._api_key:
+        if not self.api_key:
             logger.error("Google Maps API key is not configured.")
             return None
 
@@ -78,7 +77,7 @@ class GoogleMapsClient:
     async def reverse_geocode(self, lat: float, lng: float) -> list[dict]:
         """Fetch reverse-geocoding candidate locations for coordinates."""
         url = f"{MAPS_API_BASE_URL}/geocode/json"
-        params = {"latlng": f"{lat},{lng}", "key": self._api_key}
+        params = {"latlng": f"{lat},{lng}", "key": self.api_key}
 
         response = await self._request_with_retry(url, params)
         if response is None or response.status_code != 200:
@@ -102,7 +101,7 @@ class GoogleMapsClient:
     async def geocode(self, address: str) -> dict | None:
         """Geocode an address string to fetch coordinates and parsed components."""
         url = f"{MAPS_API_BASE_URL}/geocode/json"
-        params = {"address": address, "key": self._api_key}
+        params = {"address": address, "key": self.api_key}
 
         response = await self._request_with_retry(url, params)
         if response is None or response.status_code != 200:
