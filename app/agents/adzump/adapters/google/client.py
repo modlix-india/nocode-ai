@@ -28,10 +28,10 @@ _oauth_token_expiry: float = 0.0
 
 
 class GoogleAdsClient:
-    """Thin wrapper over the Google Ads REST API (v21)."""
+    """Thin wrapper over the Google Ads REST API (v23)."""
 
     BASE_URL = "https://googleads.googleapis.com"
-    API_VERSION = "v21"
+    API_VERSION = "v23"
 
     def __init__(self) -> None:
         self._timeout = httpx.Timeout(30.0, connect=10.0)

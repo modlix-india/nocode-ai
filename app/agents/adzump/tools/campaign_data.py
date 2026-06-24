@@ -25,7 +25,9 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.platform import Platform
-from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
+from app.agents.adzump.answer_parse import (
+    parse_typed_answer, currency_for, field_candidates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +128,47 @@ def is_ig_skip(text: str) -> bool:
     return any(p in lu for p in _IG_SKIP_PHRASES) or lu in ("skip", "later", "no", "n")
 
 
+# F11 — phrases that mean "skip competitor analysis". Substring-based, so it's
+# comma-robust ("No, skip competitor analysis for now" matches) — unlike the old
+# `"no" in lu.split()` which broke on the trailing comma in "no,". Bare no/n/skip
+# only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
+# decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
+_DECLINE_PHRASES = (
+    "skip competitor", "skip competitors", "skip the competitor", "no competitor",
+    "not now", "maybe later", "do it later", "no need", "no thanks",
+    "don't bother", "dont bother", "skip it", "skip this", "skip that",
+)
+
+
+def is_decline(text: str) -> bool:
+    """True if the user clearly declines the competitor-analysis offer."""
+    lu = (text or "").strip().lower()
+    if not lu:
+        return False
+    return any(p in lu for p in _DECLINE_PHRASES) or lu in ("no", "n", "skip", "later")
+
+
+# F17 — markers that a "decline-looking" reply is actually a request/question for
+# something else, so it must NOT be auto-recorded as declined (it goes to the LLM
+# instead). is_decline is substring-based and over-fires on these: "not now, first
+# tell me about the audience" (defer+ask), "no competitors named yet" (informing).
+_DECLINE_AMBIG_MARKERS = (
+    "?", "first", "tell me", "what ", "what'", "how ", "which ", "why ",
+    "named", "instead", "before we", "about the", "explain", " vs ",
+)
+
+
+def is_clear_decline_reply(text: str) -> bool:
+    """True only for a TYPED reply that is an unambiguous decline (no follow-up
+    request). Tighter than is_decline — used to auto-record the decline in code
+    (deterministic) while leaving doubtful replies for the model to judge. Chip
+    clicks are captured separately by exact option match; this covers free text."""
+    lu = (text or "").strip().lower()
+    if not lu or not is_decline(lu):
+        return False
+    return not any(m in lu for m in _DECLINE_AMBIG_MARKERS)
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")
@@ -174,13 +217,11 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flag — accept "true" (any case) when the user said no/skip.
+    # Decline flag — accept "true" when the user declines (chip or typed). Uses
+    # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
+    # silently rejected "no, skip competitor analysis for now" → re-ask loop).
     if field == "competitive_analysis_declined":
-        if v in ("true", "yes", "1") and (
-            "no" in lu.split() or lu in ("n", "skip", "no thanks", "no need")
-        ):
-            return True
-        return False
+        return v in ("true", "yes", "1") and is_decline(lu)
 
     # v3 · F3 — Instagram-skip flag. Accept "true" when the user opts out of
     # linking IG, by chip ("Continue with Facebook only") or typed ("skip insta",
@@ -212,9 +253,14 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         # legitimate case it used to cover — a typed bare number meaning days —
         # is now handled CANONICALLY: parse_typed_answer reads bare "30" → "30
         # days" (duration-only), so both sides parse equal and match above.
+        # F24 — read the user's message for ALL values it supports for this field
+        # (corrections with a cue word, multi-number volunteered messages), then
+        # accept iff the model's canonical value is one of them. The anti-invention
+        # property is this canonical equality, NOT a digit-substring — so F1 (a
+        # stored "5 days" tracing to "15 properties") stays closed.
         cur = currency_for(session_ctx)
-        pv = parse_typed_answer(field, str(value), cur)
-        if pv is not None and pv == parse_typed_answer(field, last_user, cur):
+        cand = parse_typed_answer(field, str(value), cur)
+        if cand is not None and cand in field_candidates(field, last_user, cur):
             return True
     return False
 
@@ -301,27 +347,34 @@ async def _set_campaign_spec(
             rejected,
             preview,
         )
-        # v5 · circuit breaker: the same all-rejected call replayed 3+ times
-        # in a row gets a hard stop-steer — the plain error below reads as
-        # retryable and the model will replay it indefinitely.
-        sig = repr(sorted((k, str(v)) for k, v, _ in rejected))
+        # v5 · circuit breaker: the same FIELD-SET rejected 3+ times in a row
+        # gets a hard stop-steer. F12: key on the field set, NOT (field,value) —
+        # a model inventing FRESH values each retry (30d→45d→60d) would otherwise
+        # reset the streak every turn and evade the breaker forever. Safe to
+        # collapse across values: this path is all-rejected (nothing stored), and
+        # any traceable correction stores → pops the streak at :280-281, so a real
+        # varied correction never accumulates here.
+        sig = repr(sorted(k for k, _, _ in rejected))
         streak = session_ctx.get("_spec_reject_streak") or {}
         n = (streak.get("n", 0) + 1) if streak.get("sig") == sig else 1
         session_ctx["_spec_reject_streak"] = {"sig": sig, "n": n}
         if n >= 3:
             return ToolResult(
                 success=False,
+                summary="Let me ask you about that instead of guessing.",  # user sees this; steer stays model-only
                 error=(
-                    f"STOP — this exact call was rejected {n} times. Do NOT call "
-                    "set_campaign_spec with these values again. Drop them and follow "
-                    "the missing-list, or ask the user."
+                    f"STOP — {pairs} rejected {n} times: these values are NOT traceable "
+                    "to anything the user said (you may be inventing them). Do NOT call "
+                    "set_campaign_spec again — ASK the user via present_options."
                 ),
             )
         return ToolResult(
             success=False,
+            summary="Let me confirm that with you rather than assume.",  # user sees this; steer stays model-only
             error=(
-                f"Cannot set {pairs}. User's last message: '{preview}'. "
-                "Ask the user for the missing pieces, then store what they actually say."
+                f"Cannot set {pairs} — NOT traceable to the user's last message "
+                f"('{preview}'); do not invent or default these. ASK the user via "
+                "present_options, then store only what they actually say."
             ),
         )
 
@@ -371,13 +424,14 @@ async def _set_campaign_spec(
     )
 
     if rejected:
-        # Partial-success: explicit logging so we can tune the guards. Shows
-        # exactly what the LLM tried to bundle and which subset we kept.
-        # NOTE (v5, deliberate): a kept-paraphrase bundled with a rejected
-        # empty field lands here as success, so the reject-streak breaker
-        # never accumulates on these calls (the pop above fires on kept).
-        # That's intended — success doesn't read as retry-me, and the
-        # rejected note steers. Don't "fix" the breaker into firing here.
+        # Partial: log + steer. F17c — if this call stored NOTHING new (only kept
+        # paraphrases + rejected invents), it made no forward progress, so flag
+        # no_progress and let the core stuck-step breaker count it. A kept+rejected
+        # bleed that stores nothing is the same retry-me loop as an all-failed turn
+        # (live: 18 consecutive calls; the 'kept' silently disarmed both breakers).
+        # When something WAS stored this call it's real progress → no flag.
+        # (Supersedes the v5 "don't fire the breaker here" note — that was about the
+        # separate reject-streak breaker, not this no_progress/stuck-step path.)
         logger.warning(
             "campaign_spec_partial: stored=%s kept=%s rejected=%s call=%s user_said=%r",
             stored_keys,
@@ -388,23 +442,36 @@ async def _set_campaign_spec(
         )
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
+        # User sees only what was actually stored; the rejection steer + kept/
+        # review hints are model-only — never leak validator internals to chat.
+        user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
         return ToolResult(
             success=True,
-            summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
+            summary=user_summary,
+            model_summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
+            data=None if stored_keys else {"no_progress": True},
         )
 
     if not stored_keys:
         # kept-only: nothing changed; say so without an error the model would retry.
+        # F15: data["no_progress"]=True — this success stored NOTHING new, so the
+        # core stuck-loop breaker counts it (a model that ignores the "do NOT
+        # re-send" steer and loops kept-noops gets the tool quarantined, same as
+        # an all-failed loop). Distinct from the v5 reject-streak (all-rejected).
         logger.info("campaign_spec_noop_kept: kept=%s", kept)
         return ToolResult(
             success=True,
-            summary=f"No changes.{kept_note}{review_hint}",
+            summary="No changes.",
+            model_summary=f"No changes.{kept_note}{review_hint}",
+            data={"no_progress": True},
         )
 
     logger.info("campaign_spec_updated: fields=%s kept=%s", stored_keys, kept)
+    clean = f"Campaign spec updated: {', '.join(parts)}."
     return ToolResult(
         success=True,
-        summary=f"Campaign spec updated: {', '.join(parts)}.{kept_note}{review_hint}",
+        summary=clean,
+        model_summary=f"{clean}{kept_note}{review_hint}",
     )
 
 
@@ -460,6 +527,20 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     if field in ("platform", "parent_account", "fb_page"):
         session_ctx.pop("_ig_offered", None)
     return cleared
+
+
+def clear_competitor_decline(session_ctx: dict) -> bool:
+    """F26 — competitors are now present (analyzed / looked-up), so a PRIOR
+    "declined" is void: a launched/reviewed campaign must never report
+    'declined' alongside a populated competitor list (the contradictory state
+    reachable via decline→reverse). Pop the flag AND its provenance, mirroring
+    _clear_dependents' spec/set_at lockstep. Idempotent. Returns whether it
+    popped (for logging)."""
+    spec = session_ctx.get("campaign_spec") or {}
+    if spec.pop("competitive_analysis_declined", None) is None:
+        return False
+    (session_ctx.get("_spec_set_at") or {}).pop("competitive_analysis_declined", None)
+    return True
 
 
 def _apply_field(
