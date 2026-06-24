@@ -109,12 +109,13 @@ class PlatformGeoMapper:
         meta_type = None
         meta_name = None
 
+        query, loc_type = (pincode, "zip") if pincode else (city, "city") if city else (None, None)
         try:
-            if pincode:
+            if query:
                 params = {
                     "type": "adgeolocation",
-                    "q": pincode,
-                    "location_types": json.dumps(["zip"]),
+                    "q": query,
+                    "location_types": json.dumps([loc_type]),
                     "country_code": country_code,
                 }
                 res = await meta_client.get(
@@ -123,23 +124,7 @@ class PlatformGeoMapper:
                 data = res.get("data") or []
                 if data:
                     meta_key = data[0].get("key")
-                    meta_type = "zip"
-                    meta_name = data[0].get("name")
-
-            elif city:
-                params = {
-                    "type": "adgeolocation",
-                    "q": city,
-                    "location_types": json.dumps(["city"]),
-                    "country_code": country_code,
-                }
-                res = await meta_client.get(
-                    "/search", self.client_code, self.auth_headers, params=params
-                )
-                data = res.get("data") or []
-                if data:
-                    meta_key = data[0].get("key")
-                    meta_type = "city"
+                    meta_type = loc_type
                     meta_name = data[0].get("name")
 
         except Exception as e:

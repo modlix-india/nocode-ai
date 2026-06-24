@@ -33,6 +33,15 @@ def is_local_business(business_scale: str) -> bool:
     return (business_scale or "").strip().lower() == "local"
 
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Return the great-circle distance in km between two GPS coordinates."""
+    rlat1, rlng1 = math.radians(lat1), math.radians(lng1)
+    rlat2, rlng2 = math.radians(lat2), math.radians(lng2)
+    dlat, dlng = rlat2 - rlat1, rlng2 - rlng1
+    a = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlng / 2) ** 2
+    return round(EARTH_RADIUS_KM * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)), 2)
+
+
 def generate_radial_offsets(
     lat: float, lng: float, radius_km: float
 ) -> list[tuple[float, float]]:
@@ -109,18 +118,7 @@ async def discover_neighborhoods(
         if not target_key:
             continue
 
-        # Calculate actual distance from coordinates center
-        # Simple Haversine distance formula
-        lat1, lon1 = math.radians(lat), math.radians(lng)
-        lat2, lon2 = math.radians(center_lat), math.radians(center_lng)
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-        )
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        dist = round(EARTH_RADIUS_KM * c, 2)
+        dist = _haversine_km(lat, lng, center_lat, center_lng)
 
         # Keep the coordinate representation closest to the center
         if (

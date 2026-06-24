@@ -179,6 +179,15 @@ class CampaignContext:
     def is_meta(self) -> bool:
         return _platform_is_meta(self.spec.get("platform"))
 
+    @property
+    def has_mapped_geo_targets(self) -> bool:
+        if self.is_google:
+            locs = self.product.get("google_mapped_locations") or []
+            return bool(locs) and all(loc.get("google_id") for loc in locs)
+        if self.is_meta:
+            return bool(self.product.get("meta_mapped_locations"))
+        return bool(self.product.get("target_areas"))
+
 
 def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     """Recognize when the user's last message is an obvious answer for a
@@ -260,21 +269,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     has_platform = bool(cctx.spec.get("platform"))
     has_location = bool(cctx.spec.get("location"))
-    if has_platform and has_location:
-        if cctx.is_google:
-            google_locs = cctx.product.get("google_mapped_locations") or []
-            has_mapped_targets = bool(google_locs) and all(
-                loc.get("google_id") for loc in google_locs
-            )
-        elif cctx.is_meta:
-            has_mapped_targets = bool(cctx.product.get("meta_mapped_locations"))
-        else:
-            has_mapped_targets = bool(cctx.product.get("target_areas"))
-
-        if not has_mapped_targets:
-            missing.append(
-                f"target_areas — call `discover_geo_targets(location_name={cctx.spec.get('location')!r})`"
-            )
+    if has_platform and has_location and not cctx.has_mapped_geo_targets:
+        missing.append(
+            f"target_areas — call `discover_geo_targets(location_name={cctx.spec.get('location')!r})`"
+        )
 
     if (
         cctx.is_google
