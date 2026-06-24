@@ -23,7 +23,7 @@ from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 from app.agents.adzump.agents.product.context import build_product_context
 from app.agents.adzump.agents.product.tools import PRODUCT_TOOLS
-from app.agents.adzump.agents.product.models import AnalysisOutput
+from app.agents.adzump.agents.product.models import AnalysisOutput, AssetGaps
 from app.agents.adzump._shared import extract_json
 
 logger = logging.getLogger(__name__)
@@ -267,19 +267,22 @@ class ProductAgent(BaseAgent):
         if not payload or "business" not in payload:
             payload = _build_minimal_result(primary_url, sub_session.context)
 
-        business = payload.get("business") if payload else None
+        # model's JSON names this section "business"; internally it's product.
+        product = payload.get("business") if payload else None
         competitive = payload.get("competitive") if payload else None
         notes = payload.get("notes", []) if payload else []
-        screenshot_url = (
-            (sub_session.context.get("product_data") or {})
-            .get("primary_screenshot_url")
-        )
+        product_data = sub_session.context.get("product_data") or {}
+        screenshot_url = product_data.get("primary_screenshot_url")
+        # Lift the picker's gaps onto the typed return and pop the transient key
+        # — the parent reads AnalysisOutput.asset_gaps, never product_data.
+        asset_gaps = AssetGaps.from_dict(product_data.pop("_asset_gaps", None))
         return AnalysisOutput(
-            business=business,
+            product=product,
             competitive=competitive,
             notes=notes,
             screenshot_url=screenshot_url,
             raw_text=final_text,
+            asset_gaps=asset_gaps,
         )
 
     async def analyze(

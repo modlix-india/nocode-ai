@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.adzump.agents.product.models import ProductAssets
+from app.agents.adzump.agents.product.models import AssetGaps, ProductAssets
 from app.agents.adzump.agents.product.product_assets import select_product_assets
 from .receipts import _emit_asset_receipts
 from app.agents.adzump.agents.product.scrape_stages import ScrapeStage, stage_emit
-from app.agents.adzump._shared import rehost_image, upload_and_analyze
+from app.agents.adzump._uploads import rehost_image, upload_and_analyze
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,11 @@ async def _select_and_persist_primary_assets(
         selected_assets, prefetched, product_data, context,
         stream=stream, craft_id=craft_id, primary_url=url,
     )
-    # Shift 3 Stage 1 chat-prompt is emitted at the AdPilot orchestrator layer
+    # The asset-upload chat-prompt is emitted at the AdPilot orchestrator layer
     # (tools/product.py · _analyze_product), not here — _PassthroughEventStream
     # drops emit_text from the sub-agent's stream. _persist_product_assets
-    # already stashed the decline signal on product_data["_shift3_signal"];
-    # the parent reads it and emits to the user-visible chat. See
-    # plans/agent-tracing/v9-live-test-fixes.html · FIX 2.
+    # stashed the gaps for the return; the parent reads AnalysisOutput.asset_gaps
+    # and emits to the user-visible chat. See plans/asset-gaps-refactor.html.
 
 
 async def _update_assets_from_extra_page(
@@ -114,17 +113,18 @@ async def _persist_product_assets(
         len(product_data.get("creative_images") or []),
         ",".join(rehosted_filenames),
     )
-    # v9 live-test fix 2 (2026-05-22): persist the Shift 3 signal so the
-    # top-level AdPilot tool wrapper (tools/product.py · _analyze_product) can
-    # emit the chat-prompt on the PARENT stream. The sub-agent's
-    # _PassthroughEventStream drops emit_text, so we can't fire the prompt
-    # from inside the picker layer.
+    # Stash the asset gaps for the sub-agent's own return path: _parse_result
+    # (agent.py) lifts this onto AnalysisOutput.asset_gaps and pops it. The
+    # parent tool (tools/product.py) then reads the TYPED return — not this key
+    # — and emits the upload prompt on the PARENT stream (the picker can't:
+    # _PassthroughEventStream drops emit_text). Stored as a dict, not a live
+    # AssetGaps, because save_context json.dumps the context before _parse_result.
     cc = getattr(assets, "creative_completeness", None)
-    product_data["_shift3_signal"] = {
-        "logo_missing": not assets.logos,
-        "creative_missing_categories": list(getattr(cc, "missing_categories", []) or []),
-        "verdict": getattr(cc, "verdict", ""),
-    }
+    product_data["_asset_gaps"] = AssetGaps(
+        logo_missing=not assets.logos,
+        missing_categories=list(getattr(cc, "missing_categories", []) or []),
+        verdict=getattr(cc, "verdict", ""),
+    ).to_dict()
 
 
 async def _persist_logos(
@@ -154,7 +154,10 @@ async def _persist_logos(
         hints = {"fit": "contain"}
         if pick.background in ("light", "dark"):
             hints["background"] = pick.background
-        rehosted = await _upload_picked_image(pick.url, "logo", prefetched, context, hints=hints)
+        # name from the vision pick's role: developer/project → <role>-logo,
+        # singular/unknown → plain "logo".
+        name = f"{pick.role}-logo" if pick.role in ("developer", "project") else "logo"
+        rehosted = await _upload_picked_image(pick.url, "logo", prefetched, context, hints=hints, name=name)
         if not rehosted:
             continue
         new_urls.append(rehosted["url"])
@@ -222,9 +225,19 @@ async def _persist_creatives(
     # Creatives are full-color product photos — no background-tile contrast
     # issue. `cover` fills the tile cleanly without letterboxing.
     creative_hints = {"fit": "cover"}
+    # name from the vision role map: image-<role>-<nth of its role>, e.g.
+    # image-hero-1, image-amenity-2; plain image-<i> when role is unknown.
+    role_by_url = {c.url: c.role for c in (assets.creatives_with_role or [])}
+    role_counts: dict[str, int] = {}
     for i, src in enumerate(assets.creative_image_urls, start=1):
         await stage_emit(context, ScrapeStage.SAVE_IMG, i=i, n=total)
-        rehosted = await _upload_picked_image(src, "creative", prefetched, context, hints=creative_hints)
+        role = role_by_url.get(src, "")
+        if role:
+            role_counts[role] = role_counts.get(role, 0) + 1
+            name = f"image-{role.replace('_', '-')}-{role_counts[role]}"
+        else:
+            name = f"image-{i}"
+        rehosted = await _upload_picked_image(src, "creative", prefetched, context, hints=creative_hints, name=name)
         if not rehosted:
             skipped_fail += 1
             continue
@@ -243,7 +256,7 @@ async def _persist_creatives(
 
 async def _upload_picked_image(
     source_url: str, kind: str, prefetched: dict[str, dict], context: dict,
-    hints: dict | None = None,
+    hints: dict | None = None, name: str = "",
 ) -> dict | None:
     """Upload a LLM-picked candidate. Reuses bytes the selector already
     fetched when available, falls back to a fresh network fetch otherwise.
@@ -251,6 +264,9 @@ async def _upload_picked_image(
     `hints` (`background`, `fit`) come from the caller — the vision LLM that
     picked this asset is the source of truth, not pixel sampling here. They
     flow through to the upload's `logo_displays` / `creative_displays` record.
+    `name` (e.g. "project-logo", "image-hero-1") is the semantic filename the
+    caller derived from the pick's role; threaded to both branches so cache
+    hit / miss name identically.
 
     Also uploads a 256px JPEG thumbnail variant (when the selector cached
     one) and attaches its URL as ``thumb_url`` so the receipts row can
@@ -259,10 +275,10 @@ async def _upload_picked_image(
     if cached:
         result = await upload_and_analyze(
             cached["bytes"], cached["content_type"], source_url, kind, context,
-            hints=hints,
+            hints=hints, name=name,
         )
     else:
-        result = await rehost_image(source_url, kind, context, hints=hints)
+        result = await rehost_image(source_url, kind, context, hints=hints, name=name)
     if not result:
         return None
     thumb_bytes = (cached or {}).get("thumb_bytes")
@@ -271,7 +287,7 @@ async def _upload_picked_image(
         # so the thumb render matches the full asset's tile contrast.
         thumb = await upload_and_analyze(
             thumb_bytes, "image/jpeg", source_url, f"{kind}_thumb", context,
-            hints=hints,
+            hints=hints, name=f"{name}-thumb" if name else "",
         )
         if thumb and thumb.get("url"):
             result["thumb_url"] = thumb["url"]
@@ -325,6 +341,6 @@ def _compose_asset_request_text(missing_logo: bool, missing_creatives: list[str]
 # chat-text never reached the user-visible chat. The emit now lives at the
 # AdPilot orchestrator layer in tools/product.py · _analyze_product, which
 # has access to the parent stream. _compose_asset_request_text above is
-# reused from there. _persist_product_assets stashes the decline signal on
-# product_data["_shift3_signal"] so the parent can read it without re-walking
-# the ProductAssets object.
+# reused from there. _persist_product_assets stashes the gaps for the
+# sub-agent's return (AnalysisOutput.asset_gaps), which the parent reads —
+# no re-walking the ProductAssets object.

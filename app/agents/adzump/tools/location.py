@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 
 from app.config import settings
-from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.core.tools.base import ToolDefinition, ToolResult
 
 logger = logging.getLogger(__name__)
 
