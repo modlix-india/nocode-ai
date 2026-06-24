@@ -61,7 +61,8 @@ class WithTailReminderTests(unittest.TestCase):
 
 class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
     """_run_tool_block posts the summary to chat (emit + persist) iff audience
-    targets the user. Replaces the old relay_summary/_chat_receipt_text de-dup."""
+    targets the user. Replaces relay_summary; NO de-dup — the tool-text contract
+    keeps the model to a lead-in, a rare verbatim echo is accepted."""
 
     async def _run(self, result: ToolResult, streamed: str = ""):
         class _A(BaseAgent):
@@ -104,27 +105,13 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
         texts, _ = await self._run(ToolResult(success=False, error="boom", summary="x", audience="user"))
         self.assertEqual(texts, [])
 
-    async def test_both_skips_when_model_already_echoed_it(self):
-        # model's lead-in already contains the summary (normalized) → don't double.
-        texts, parts = await self._run(
-            ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience="both"),
-            streamed="Sure — Found 2 competitors:  Sobha, Prestige. Want me to continue?")
-        self.assertEqual(texts, [])
-        self.assertEqual(parts, [])
-
-    async def test_user_posts_even_if_model_text_matches(self):
-        # "user" never de-dups — the model is blind to the prose, so post regardless.
-        texts, _ = await self._run(
-            ToolResult(success=True, summary="Saved your logo.", audience="user"),
-            streamed="Saved your logo.")
-        self.assertEqual(texts, ["Saved your logo."])
-
-    async def test_both_dedup_ignores_trailing_punctuation(self):
-        # summary ends in '.', model echoed it without the period → still de-dup.
-        texts, _ = await self._run(
-            ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience="both"),
-            streamed="Found 2 competitors: Sobha, Prestige and details below")
-        self.assertEqual(texts, [])
+    async def test_posts_even_when_model_already_echoed_it(self):
+        # no de-dup: posts regardless of what the model streamed (both + user).
+        for aud in ("both", "user"):
+            texts, _ = await self._run(
+                ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience=aud),
+                streamed="Sure — Found 2 competitors: Sobha, Prestige. Continue?")
+            self.assertEqual(texts, ["Found 2 competitors: Sobha, Prestige."], aud)
 
 
 if __name__ == "__main__":
