@@ -98,11 +98,11 @@ class ToolResult:
         terse `model_summary` (or `data`), never the verbatim user copy."""
         if not self.success:
             return f"Error: {self.error}"
-        # What the model reads. audience="user" NEVER gives the model the user prose
-        # `summary` (it gets model_summary/data, so it can't paraphrase-double it).
-        # For "assistant"/"both", `model_summary` — when set — OVERRIDES `summary`, so
-        # a tool can show a CLEAN user-facing `summary` in the activity trace while
-        # steering the model privately (e.g. set_campaign_spec's rejection notes).
+        # What the MODEL reads (the user separately sees `summary`). `model_summary`
+        # is a private line to the model — lets a tool say one thing to the user,
+        # another to the model (e.g. user "Updating…", model "rejected budget, re-ask").
+        #   audience="user" → model_summary/data only, never the user's `summary`
+        #   else            → model_summary if set, else `summary`
         if self.audience == "user":
             primary = self.model_summary
         else:
