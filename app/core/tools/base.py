@@ -23,8 +23,19 @@ Usage:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Awaitable, Literal, Optional
+
+
+def _data_text(data: Any) -> str | None:
+    """Render tool `data` as text for the model, or None when there's nothing."""
+    if data is None:
+        return None
+    try:
+        return json.dumps(data, indent=2, default=str)
+    except (TypeError, ValueError):
+        return str(data)
 
 
 @dataclass(frozen=True)
@@ -65,26 +76,32 @@ class ToolResult:
     data: Any = None
     summary: str = ""
     error: str = ""
+    # Who `summary` is for (MCP annotations.audience). The run loop routes by it:
+    #   "assistant" (default) — model only (tool_result content). Today's tools.
+    #   "user"  — posted to chat for the user; the MODEL gets only model_summary
+    #             (or data), never the user prose → it can't paraphrase-double it.
+    #   "both"  — model sees summary AND it's posted to chat (e.g. competitors,
+    #             whose list the model reasons over later). LLM writes a lead-in.
+    audience: Literal["assistant", "user", "both"] = "assistant"
+    # Terse model-facing note for audience="user" — what the model sees instead
+    # of the user prose. Falls back to data/"OK" when unset.
+    model_summary: str = ""
 
     # Hard cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.
     MAX_RESULT_CHARS: int = 4000
 
     def to_tool_result_content(self) -> str:
-        """Format as text content for the tool_result message back to the LLM."""
+        """Format as text content for the tool_result message back to the LLM.
+
+        For audience="user" the prose `summary` is the user's; the model gets the
+        terse `model_summary` (or `data`), never the verbatim user copy."""
         if not self.success:
             return f"Error: {self.error}"
-        if self.summary:
-            text = self.summary
-        elif self.data is not None:
-            import json
-            try:
-                text = json.dumps(self.data, indent=2, default=str)
-            except (TypeError, ValueError):
-                text = str(self.data)
-        else:
+        primary = self.model_summary if self.audience == "user" else self.summary
+        text = primary or _data_text(self.data)
+        if text is None:
             return "OK"
-
         if len(text) > self.MAX_RESULT_CHARS:
             return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
         return text

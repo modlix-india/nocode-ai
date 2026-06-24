@@ -11,8 +11,8 @@ import logging
 from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.tools.campaign_data import clear_competitor_decline
 from app.agents.adzump._shared import (
-    AGGREGATOR_HOSTS,
     emit_progress,
     host_of,
     is_aggregator_host,
@@ -291,6 +291,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 success=True,
                 data={"competitive": existing},
                 summary=f"Already analyzed: {comp_count} competitors found.",
+                audience="both",
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
@@ -305,6 +306,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                             success=True,
                             data={"competitive": existing, "from_storage": True},
                             summary=f"Reused {comp_count} competitors from storage.",
+                            audience="both",
                         )
         except Exception as e:
             logger.warning("competitor_storage_hydrate_skipped: %s: %s",
@@ -368,6 +370,9 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         _filter_self_references(business, competitive, primary_url=url)
 
         session_ctx["competitor_analysis"] = competitive
+        # F26 — fresh analysis ran (even if 0 found): a prior decline is void.
+        if clear_competitor_decline(session_ctx):
+            logger.info("competitor_decline_cleared: analyze_competitors ran")
 
         # Append competitor blocks to the existing craft panel. This is the
         # first batch, so show the "Competitors" heading.
@@ -395,7 +400,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 pass
 
         summary = f"Found {comp_count} competitors: {', '.join(names)}"
-        return ToolResult(success=True, data={"competitive": competitive}, summary=summary)
+        return ToolResult(success=True, data={"competitive": competitive}, summary=summary, audience="both")
 
     except Exception as e:
         logger.warning("analyze_competitors failed: %s: %s",
@@ -508,12 +513,16 @@ async def _lookup_single_competitor(
 
         if output.competitive and output.competitive.get("competitors"):
             new_competitors = output.competitive["competitors"]
-        elif output.business:
-            new_competitors = [output.business]
+        elif output.product:
+            new_competitors = [output.product]
 
         skipped = (output.competitive or {}).get("skipped") or []
 
         competitors_list.extend(new_competitors)
+        # F26 — competitors were ADDED by name → a prior decline is void. (Not on
+        # a pure removal: zeroing the list isn't a reversal of the decline.)
+        if new_competitors and clear_competitor_decline(session_ctx):
+            logger.info("competitor_decline_cleared: competitors added by name")
 
     # ── Nothing happened ──
     if not removed_names and not new_competitors and not skipped:
@@ -530,7 +539,7 @@ async def _lookup_single_competitor(
             # Full rebuild — append=False replaces the panel entirely.
             await _emit_final_craft(
                 stream, craft_id, primary_url, business, competitive,
-                screenshot_url=business.get("screenshot_url"),
+                screenshot_url=(business.get("primary_screenshot_url") or business.get("screenshot_url")),
                 baked_summary=product_summary,
             )
         elif new_competitors:
@@ -553,6 +562,7 @@ async def _lookup_single_competitor(
         success=True,
         data={"competitors": competitive["competitors"], "skipped": skipped},
         summary=". ".join(parts),
+        audience="both",
     )
 
 
