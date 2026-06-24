@@ -36,6 +36,7 @@ from app.agents.adzump.tools.campaign_data import (
     _normalize_id,
     is_clear_decline_reply,
     is_ig_skip,
+    is_real_estate,
 )
 from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 from app.agents.adzump.tools.registry import ALL_TOOLS
@@ -44,23 +45,6 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-
-# Substrings in ``product_data.business_type`` that flag a session as
-# real-estate. Matches the scraper's metadata prompt.
-_REAL_ESTATE_KEYWORDS = (
-    "real estate",
-    "realty",
-    "villa",
-    "apartment",
-    "residential",
-    "property",
-    "housing",
-    "homes",
-    "realtor",
-    "township",
-    "builder",
-    "developer",
-)
 
 
 def _is_custom_reply(text: str) -> bool:
@@ -185,8 +169,7 @@ class CampaignContext:
 
     @property
     def is_real_estate(self) -> bool:
-        bt = (self.product.get("business_type") or "").lower()
-        return any(kw in bt for kw in _REAL_ESTATE_KEYWORDS)
+        return is_real_estate(self.product.get("business_type") or "")
 
     @property
     def is_google(self) -> bool:
@@ -250,12 +233,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
         )
 
-    from app.agents.adzump.services.geo.discovery import is_local_business
-
-    scale = (cctx.product.get("business_scale") or "national").lower().strip()
-    is_local = is_local_business(scale)
-
-    if is_local and not cctx.spec.get("location"):
+    if cctx.is_real_estate and not cctx.spec.get("location"):
         if cctx.pending_location:
             # Map shown last turn. Branch on user reply.
             detected = cctx.pending_location
@@ -270,7 +248,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         else:
             missing.append(
-                "location — call `confirm_location()` (local physical business)"
+                "location — call `confirm_location()` (real estate business)"
             )
 
     if not cctx.spec.get("platform") and intent_field != "platform":

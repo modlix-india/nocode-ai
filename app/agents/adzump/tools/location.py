@@ -14,9 +14,9 @@ from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.services.geo.discovery import (
-    is_local_business,
     discover_geo_targets as run_discover_geo_targets,
 )
+from app.agents.adzump.tools.campaign_data import is_real_estate
 from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
 from app.agents.adzump.services.business_storage import save_campaign, resolve_url
 
@@ -35,18 +35,17 @@ def _detected_location(product_data: dict) -> str:
 async def _confirm_location(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context") or {}
     product = session_ctx.get("product_data") or {}
-    business_scale = (product.get("business_scale") or "").strip()
+    business_type = (product.get("business_type") or "").strip()
 
-    # Relax constraints: allow any local physical business to validate location on map
-    if not is_local_business(business_scale):
+    if not is_real_estate(business_type):
         logger.info(
-            "confirm_location skipped: business_scale=%r is not local", business_scale
+            "confirm_location skipped: business_type=%r is not real estate", business_type
         )
         return ToolResult(
             success=False,
             error=(
-                f"confirm_location only applies to local physical businesses. "
-                f"Business scale is '{business_scale}'. Skip this step."
+                f"confirm_location only applies to real estate businesses. "
+                f"Business type is '{business_type}'. Skip this step."
             ),
         )
 

@@ -31,6 +31,27 @@ from app.agents.adzump.answer_parse import (
 
 logger = logging.getLogger(__name__)
 
+_REAL_ESTATE_KEYWORDS = (
+    "real estate",
+    "realty",
+    "villa",
+    "apartment",
+    "residential",
+    "property",
+    "housing",
+    "homes",
+    "realtor",
+    "township",
+    "builder",
+    "developer",
+)
+
+
+def is_real_estate(business_type: str) -> bool:
+    """Return True if business_type indicates a real-estate category."""
+    bt = (business_type or "").lower()
+    return any(kw in bt for kw in _REAL_ESTATE_KEYWORDS)
+
 
 # Post-NFKC folding collapses fullwidth digits + most Unicode dashes to ASCII.
 # Remaining stragglers: soft hyphen (U+00AD) and hyphen bullet (U+2043) don't
@@ -574,27 +595,8 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     is_meta = platform is Platform.META
 
     # Real-estate? location is required. Otherwise location is optional.
-    business_type = (
-        (session_ctx.get("product_data") or {}).get("business_type") or ""
-    ).lower()
-    is_real_estate = any(
-        kw in business_type
-        for kw in (
-            "real estate",
-            "realty",
-            "villa",
-            "apartment",
-            "residential",
-            "property",
-            "housing",
-            "homes",
-            "realtor",
-            "township",
-            "builder",
-            "developer",
-        )
-    )
-    if is_real_estate and not spec.get("location"):
+    business_type = (session_ctx.get("product_data") or {}).get("business_type") or ""
+    if is_real_estate(business_type) and not spec.get("location"):
         return ""
 
     if not (
