@@ -7,6 +7,7 @@ and geocodes candidate coordinates and place details in parallel.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any
 
@@ -14,6 +15,31 @@ from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.adapters.meta.client import meta_client
 
 logger = logging.getLogger(__name__)
+
+
+def _geo_to_candidate(s_data: dict[str, Any], geo: dict | Exception | None) -> dict[str, Any]:
+    """Convert a geocode result + platform suggestion into a unified candidate dict."""
+    lat = lng = place_id = pincode = city = state = address = None
+    if geo and not isinstance(geo, Exception):
+        lat = geo.get("lat")
+        lng = geo.get("lng")
+        place_id = geo.get("place_id")
+        pincode = geo.get("pincode")
+        city = geo.get("city")
+        state = geo.get("state")
+        address = geo.get("address")
+    return {
+        "id": s_data["id"],
+        "name": s_data["name"],
+        "canonical_name": address or s_data["canonical_name"],
+        "type": s_data["type"],
+        "lat": lat,
+        "lng": lng,
+        "place_id": place_id,
+        "pincode": pincode or "",
+        "city": city or "",
+        "state": state or "",
+    }
 
 
 async def search_autocomplete_locations(
@@ -62,38 +88,12 @@ async def search_autocomplete_locations(
             geocode_results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for idx, geo in enumerate(geocode_results):
-                if isinstance(geo, Exception) or not geo:
-                    lat, lng, place_id = None, None, None
-                    pincode, city, state, address = None, None, None, None
-                else:
-                    lat = geo.get("lat")
-                    lng = geo.get("lng")
-                    place_id = geo.get("place_id")
-                    pincode = geo.get("pincode")
-                    city = geo.get("city")
-                    state = geo.get("state")
-                    address = geo.get("address")
-
-                s_data = suggest_data[idx]
-                candidates.append({
-                    "id": s_data["id"],
-                    "name": s_data["name"],
-                    "canonical_name": address or s_data["canonical_name"],
-                    "type": s_data["type"],
-                    "lat": lat,
-                    "lng": lng,
-                    "place_id": place_id,
-                    "pincode": pincode or "",
-                    "city": city or "",
-                    "state": state or "",
-                })
+                candidates.append(_geo_to_candidate(suggest_data[idx], geo))
         except Exception as e:
             logger.exception("Google Ads geolocations suggest autocomplete failed: %s", e)
 
     elif platform == "meta":
         try:
-            import json
-
             params = {
                 "type": "adgeolocation",
                 "q": q,
@@ -126,31 +126,7 @@ async def search_autocomplete_locations(
             geocode_results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for idx, geo in enumerate(geocode_results):
-                if isinstance(geo, Exception) or not geo:
-                    lat, lng, place_id = None, None, None
-                    pincode, city, state, address = None, None, None, None
-                else:
-                    lat = geo.get("lat")
-                    lng = geo.get("lng")
-                    place_id = geo.get("place_id")
-                    pincode = geo.get("pincode")
-                    city = geo.get("city")
-                    state = geo.get("state")
-                    address = geo.get("address")
-
-                s_data = suggest_data[idx]
-                candidates.append({
-                    "id": s_data["id"],
-                    "name": s_data["name"],
-                    "canonical_name": address or s_data["canonical_name"],
-                    "type": s_data["type"],
-                    "lat": lat,
-                    "lng": lng,
-                    "place_id": place_id,
-                    "pincode": pincode or "",
-                    "city": city or "",
-                    "state": state or "",
-                })
+                candidates.append(_geo_to_candidate(suggest_data[idx], geo))
         except Exception as e:
             logger.exception("Meta Ads geolocations search failed: %s", e)
 

@@ -13,10 +13,9 @@ import logging
 import math
 from typing import Any
 
-from openai import AsyncOpenAI
-
 from app.config import settings
 from app.agents.adzump.adapters.google.maps import google_maps_client
+from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +26,6 @@ SEARCH_STEPS = [0.33, 0.66, 1.0]
 EARTH_RADIUS_KM = 6371.0
 DEFAULT_LOCAL_RADIUS_KM = 15.0
 MAX_LOCAL_NEIGHBORHOODS = 15
-DEFAULT_LLM_MODEL = "gpt-4o-mini"
-DEFAULT_LLM_TEMPERATURE = 0.2
 
 
 def is_local_business(business_scale: str) -> bool:
@@ -174,8 +171,6 @@ async def _discover_strategic_markets(
     product_data: dict, scope: str, country_code: str = "IN"
 ) -> list[dict[str, Any]]:
     """Query LLM to recommend prime targeting zones with marketing justifications."""
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
     product_name = product_data.get("product_name") or "Product"
     business_type = product_data.get("business_type") or "Business"
     summary = product_data.get("summary") or ""
@@ -207,20 +202,14 @@ async def _discover_strategic_markets(
     """
 
     try:
-        response = await client.chat.completions.create(
-            model=DEFAULT_LLM_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a senior marketing strategist who output clean, valid JSON responses only.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=DEFAULT_LLM_TEMPERATURE,
+        provider = get_llm_provider()
+        response = await provider.create_completion(
+            system_prompt="You are a senior marketing strategist. Output clean, valid JSON only — no markdown, no explanation.",
+            messages=[{"role": "user", "content": prompt}],
+            model_tier="fast",
+            max_tokens=1024,
         )
-        content = response.choices[0].message.content
-        data = json.loads(content)
+        data = json.loads(response["content"])
         locations = data.get("locations") or []
 
         # Geocode the LLM recommended locations in parallel to obtain lat/lng and place IDs

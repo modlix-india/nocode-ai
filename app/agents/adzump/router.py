@@ -94,5 +94,8 @@ async def search_target_locations(
             session_context=session.context,
             country_code=country_code,
         )
-    except Exception as e:
+    except (ValueError, KeyError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("Geo location search failed: %s", e)
+        raise HTTPException(status_code=500, detail="Geo search unavailable")
