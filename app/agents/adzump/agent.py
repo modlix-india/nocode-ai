@@ -72,6 +72,47 @@ def _is_custom_reply(text: str) -> bool:
     return lu == "custom" or lu.startswith("custom")
 
 
+def _hydrate_location_from_product_data(ctx: dict) -> None:
+    """Restore location + mapped targets into campaign_spec/_location_meta from
+    product_data on returning sessions, so the agent doesn't re-ask for a location
+    that was already confirmed.
+
+    Only runs when spec.location is unset but product_data.location exists. For
+    local businesses, requires that geo-targets were already resolved (otherwise
+    we must go through confirm_location again).
+    """
+    from app.agents.adzump.services.geo.discovery import is_local_business
+
+    spec = ctx.setdefault("campaign_spec", {})
+    if spec.get("location"):
+        return
+    product = ctx.get("product_data") or {}
+    if not product.get("location"):
+        return
+
+    scale = (product.get("business_scale") or "national").lower().strip()
+    has_resolved_targets = bool(product.get("google_mapped_locations")) or bool(
+        product.get("meta_mapped_locations")
+    )
+    if is_local_business(scale) and not has_resolved_targets:
+        return
+
+    spec["location"] = product["location"]
+    loc_meta = ctx.setdefault("_location_meta", {})
+    loc_meta["address"] = product["location"]
+    if product.get("product_coordinates"):
+        coords = product["product_coordinates"]
+        loc_meta["lat"] = coords.get("lat")
+        loc_meta["lng"] = coords.get("lng")
+    if "google_mapped_locations" in product:
+        loc_meta["google_mapped_locations"] = product["google_mapped_locations"]
+    if "meta_mapped_locations" in product:
+        loc_meta["meta_mapped_locations"] = product["meta_mapped_locations"]
+    logger.info(
+        "hydrated_location_from_product_data: location=%s", product["location"]
+    )
+
+
 @dataclass(frozen=True)
 class CampaignContext:
     """Typed read-model over ``session.context``.
@@ -105,41 +146,6 @@ class CampaignContext:
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
         ctx = session.context
-
-        # Caching/hydration check: if spec has no location but product_data already has location, auto-hydrate!
-        spec = ctx.setdefault("campaign_spec", {})
-        product = ctx.get("product_data") or {}
-        if not spec.get("location") and product.get("location"):
-            from app.agents.adzump.services.geo.discovery import is_local_business
-
-            scale = (product.get("business_scale") or "national").lower().strip()
-            is_local = is_local_business(scale)
-
-            # Check if we already have mapped advertising targets (returning session)
-            has_resolved_targets = bool(product.get("google_mapped_locations")) or bool(
-                product.get("meta_mapped_locations")
-            )
-
-            # Auto-hydrate ONLY if it is a non-local business or a returning local business with resolved targets
-            if not is_local or has_resolved_targets:
-                spec["location"] = product["location"]
-                loc_meta = ctx.setdefault("_location_meta", {})
-                loc_meta["address"] = product["location"]
-                if product.get("product_coordinates"):
-                    coords = product["product_coordinates"]
-                    loc_meta["lat"] = coords.get("lat")
-                    loc_meta["lng"] = coords.get("lng")
-                if "google_mapped_locations" in product:
-                    loc_meta["google_mapped_locations"] = product[
-                        "google_mapped_locations"
-                    ]
-                if "meta_mapped_locations" in product:
-                    loc_meta["meta_mapped_locations"] = product["meta_mapped_locations"]
-                logger.info(
-                    "auto_hydrated_location_from_product_data: location=%s",
-                    product["location"],
-                )
-
         competitive_raw = ctx.get("competitor_analysis")
         competitive = competitive_raw or {}
         marker = ctx.get("_pending_location_confirm")
@@ -940,6 +946,7 @@ class AdzumpAgent(BaseAgent):
                             "Auto-mapping to Meta failed in build_turn_reminder: %s", e
                         )
 
+        _hydrate_location_from_product_data(session.context)
         cctx = CampaignContext.from_session(session)
         last_user = _last_user_text({"_session": session})
         # F18 · when the competitor offer was asked as PROSE (not a tagged

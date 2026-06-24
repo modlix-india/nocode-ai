@@ -7,14 +7,18 @@ geo-targeting discovery, and manual targeting edits (additions/deletions).
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any
 
 from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.services.geo.discovery import (
     is_local_business,
     discover_geo_targets as run_discover_geo_targets,
 )
+from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+from app.agents.adzump.services.business_storage import save_campaign, resolve_url
 
 logger = logging.getLogger(__name__)
 
@@ -92,24 +96,17 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
 
 
 async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
-    import sys
-
-    sys.stderr.write(">>> [DEBUG] _discover_geo_targets function CALLED\n")
     session_ctx = context.get("session_context") or {}
     product = session_ctx.get("product_data") or {}
     spec = session_ctx.get("campaign_spec") or {}
 
     location_name = params.get("location_name")
     platform = spec.get("platform") or params.get("platform") or "Google Ads"
-    sys.stderr.write(
-        f">>> [DEBUG] platform={platform}, location_name={location_name}\n"
-    )
 
     loc_meta = session_ctx.get("_location_meta") or {}
     coordinates = None
     if loc_meta.get("lat") is not None and loc_meta.get("lng") is not None:
         coordinates = {"lat": float(loc_meta["lat"]), "lng": float(loc_meta["lng"])}
-    sys.stderr.write(f">>> [DEBUG] Initial coordinates from loc_meta: {coordinates}\n")
 
     if not location_name:
         location_name = (
@@ -117,17 +114,10 @@ async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
             or spec.get("location")
             or _detected_location(product)
         )
-    sys.stderr.write(f">>> [DEBUG] location_name set to: {location_name}\n")
 
     if not coordinates and location_name:
         try:
-            sys.stderr.write(
-                f">>> [DEBUG] Attempting to geocode location_name: {location_name}\n"
-            )
-            from app.agents.adzump.adapters.google.maps import google_maps_client
-
             geo = await google_maps_client.geocode(location_name)
-            sys.stderr.write(f">>> [DEBUG] Geocode API raw result: {geo}\n")
             if geo and geo.get("lat") is not None and geo.get("lng") is not None:
                 coordinates = {"lat": float(geo["lat"]), "lng": float(geo["lng"])}
                 loc_meta["lat"] = geo["lat"]
@@ -139,19 +129,13 @@ async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
                 if "place_id" in geo:
                     loc_meta["place_id"] = geo["place_id"]
                 session_ctx["_location_meta"] = loc_meta
-                sys.stderr.write(
-                    f">>> [DEBUG] Geocoding succeeded! Coordinates: {coordinates}\n"
-                )
         except Exception as ge:
-            sys.stderr.write(f">>> [DEBUG] Geocoding exception: {ge}\n")
             logger.warning("Geocoding location_name '%s' failed: %s", location_name, ge)
 
     if coordinates:
         product["product_coordinates"] = coordinates
 
     stream = context.get("event_stream")
-    import uuid
-
     tool_use_id = f"discover_geo_targets_{uuid.uuid4().hex[:8]}"
 
     if stream:
@@ -163,9 +147,6 @@ async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
         )
 
     try:
-        sys.stderr.write(
-            f">>> [DEBUG] Calling discover_geo_targets with coordinates={coordinates}\n"
-        )
         if stream:
             await stream.emit_tool_update(
                 tool_use_id=tool_use_id,
@@ -174,86 +155,61 @@ async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
         resolved_locations = await run_discover_geo_targets(
             coordinates, product, country_code=loc_meta.get("country_code", "IN")
         )
-        sys.stderr.write(
-            f">>> [DEBUG] discover_geo_targets returned {len(resolved_locations)} locations: {resolved_locations}\n"
+        logger.info(
+            "discover_geo_targets: resolved %d locations for platform=%s",
+            len(resolved_locations),
+            platform,
         )
 
         is_google = "google" in platform.lower()
-        mapping_key = (
-            "google_mapped_locations" if is_google else "meta_mapped_locations"
-        )
-
-        from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+        mapping_key = "google_mapped_locations" if is_google else "meta_mapped_locations"
 
         mapper = PlatformGeoMapper(session_ctx, context)
-        sys.stderr.write(f">>> [DEBUG] Mapping target areas to platform: {platform}\n")
         if stream:
             await stream.emit_tool_update(
                 tool_use_id=tool_use_id,
-                message=f"Mapping {len(resolved_locations)} target locations to platform {platform}...",
+                message=f"Mapping {len(resolved_locations)} target locations to {platform}...",
             )
         mapped_locations = await mapper.map_target_areas(
             resolved_locations, platform, loc_meta.get("country_code", "IN")
         )
-        sys.stderr.write(
-            f">>> [DEBUG] map_target_areas returned {len(mapped_locations)} mapped locations: {mapped_locations}\n"
-        )
 
-        # Update cache and product data targeting info
         loc_meta[mapping_key] = mapped_locations
         session_ctx["_location_meta"] = loc_meta
         product["target_areas"] = mapped_locations
         product[mapping_key] = mapped_locations
 
-        # Phase 1: Stream suggested targeting area names to UI
-        if stream is not None and mapped_locations:
-            raw_names = [loc["name"] for loc in mapped_locations]
+        if stream and mapped_locations:
             await stream.emit_data(
                 "suggested_locations",
                 {
-                    "locations": raw_names,
+                    "locations": [loc["name"] for loc in mapped_locations],
                     "targeting_type": product.get("business_scale", "national"),
                     "location": location_name,
                 },
             )
 
-        # Save campaign state
-        from app.agents.adzump.services.business_storage import save_campaign
-
         await save_campaign(session_ctx, context)
 
-        # Re-render Craft panel to show updated targets in UI
         try:
-            from app.agents.adzump.services.business_storage import resolve_url
             from app.agents.adzump.tools.competitor import _emit_final_craft
 
             url = resolve_url(session_ctx)
             craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
             if stream and craft_id and url:
-                competitive = session_ctx.get("competitor_analysis") or {
-                    "competitors": []
-                }
-                screenshot_url = product.get("primary_screenshot_url") or product.get(
-                    "screenshot_url"
-                )
-                baked_summary = product.get("summary") or (
-                    session_ctx.get("product_profile") or {}
-                ).get("summary", "")
+                competitive = session_ctx.get("competitor_analysis") or {"competitors": []}
                 await _emit_final_craft(
                     stream,
                     craft_id,
                     url,
                     product,
                     competitive,
-                    screenshot_url=screenshot_url,
-                    baked_summary=baked_summary,
+                    screenshot_url=(product.get("primary_screenshot_url") or product.get("screenshot_url")),
+                    baked_summary=(product.get("summary") or (session_ctx.get("product_profile") or {}).get("summary", "")),
                     platform=platform,
                 )
         except Exception as ce:
-            sys.stderr.write(
-                f">>> [DEBUG] Dynamic discovery craft panel re-render failed exception: {ce}\n"
-            )
-            logger.warning("Dynamic discovery craft panel re-render failed: %s", ce)
+            logger.warning("Craft panel re-render after geo-target discovery failed: %s", ce)
 
         if stream:
             await stream.emit_tool_result(
@@ -263,9 +219,6 @@ async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
                 tool_use_id=tool_use_id,
             )
 
-        sys.stderr.write(
-            f">>> [DEBUG] _discover_geo_targets finished successfully with {len(mapped_locations)} locations!\n"
-        )
         return ToolResult(
             success=True,
             data={"target_areas": mapped_locations},
@@ -280,7 +233,6 @@ async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
                 summary=f"Failed to resolve geo-targeting: {e}",
                 tool_use_id=tool_use_id,
             )
-        sys.stderr.write(f">>> [DEBUG] _discover_geo_targets main block FAILED: {e}\n")
         logger.exception("discover_geo_targets failed: %s", e)
         return ToolResult(
             success=False,

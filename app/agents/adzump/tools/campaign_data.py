@@ -378,35 +378,6 @@ async def _set_campaign_spec(
             ),
         )
 
-    product_data = session_ctx.get("product_data") or {}
-    has_platform = bool(spec.get("platform"))
-
-    if any(
-        k in stored_keys for k in ("platform", "location", "account", "parent_account")
-    ):
-        business_scale = (product_data.get("business_scale") or "").strip()
-        from app.agents.adzump.services.geo.discovery import is_local_business
-
-        should_discover = False
-        if has_platform:
-            if is_local_business(business_scale):
-                if (
-                    spec.get("location")
-                    or product_data.get("location")
-                    or session_ctx.get("_location_meta")
-                ):
-                    should_discover = True
-            else:
-                should_discover = True
-
-        if should_discover:
-            try:
-                from app.agents.adzump.tools.location import _discover_geo_targets
-
-                await _discover_geo_targets({}, context)
-            except Exception as e:
-                logger.warning("Auto-trigger of discover_geo_targets failed: %s", e)
-
     # Are we DONE after this write? If yes, inject the review prescription
     # into the tool result so the LLM renders the summary on the same turn —
     # the dynamic context computed at start-of-turn doesn't know the field
