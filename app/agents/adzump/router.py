@@ -101,6 +101,7 @@ def _stream_location_widget(
             await event_stream.emit_tool_start(
                 tool_use_id="widget_location",
                 tool_name="modify_targeting_location",
+                display_name="Geo Targeting",
                 tool_input=params,
             )
 

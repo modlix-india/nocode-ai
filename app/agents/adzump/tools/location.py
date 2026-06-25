@@ -109,7 +109,7 @@ discover_geo_targets = ToolDefinition(
         "For local physical businesses, it scans neighborhoods within a radius. For broad "
         "businesses, it resolves country/region names directly."
     ),
-    display_name="Discover Geo Targets",
+    display_name="Geo Targeting",
     parameters=[
         ToolParameter(
             name="location_name",
@@ -127,7 +127,7 @@ modify_targeting_location = ToolDefinition(
         "Add or delete a campaign targeting location. "
         "Expects 1-based index for delete action."
     ),
-    display_name="Modify Targeting Location",
+    display_name="Geo Targeting",
     parameters=[
         ToolParameter(
             name="action",
