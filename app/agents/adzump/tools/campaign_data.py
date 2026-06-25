@@ -25,9 +25,32 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.platform import Platform
-from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
+from app.agents.adzump.answer_parse import (
+    parse_typed_answer, currency_for, field_candidates,
+)
 
 logger = logging.getLogger(__name__)
+
+_REAL_ESTATE_KEYWORDS = (
+    "real estate",
+    "realty",
+    "villa",
+    "apartment",
+    "residential",
+    "property",
+    "housing",
+    "homes",
+    "realtor",
+    "township",
+    "builder",
+    "developer",
+)
+
+
+def is_real_estate(business_type: str) -> bool:
+    """Return True if business_type indicates a real-estate category."""
+    bt = (business_type or "").lower()
+    return any(kw in bt for kw in _REAL_ESTATE_KEYWORDS)
 
 
 # Post-NFKC folding collapses fullwidth digits + most Unicode dashes to ASCII.
@@ -59,7 +82,7 @@ ALLOWED_FIELDS = {
     "fb_page",
     "ig_page",
     "competitive_analysis_declined",
-    "ig_page_declined",          # v3 · F3 — Instagram is optional; "true" = Facebook-only
+    "ig_page_declined",  # v3 · F3 — Instagram is optional; "true" = Facebook-only
 }
 
 # IDs from Google Ads / Meta — must be traceable to a fetch tool's output
@@ -71,8 +94,14 @@ _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 # through one kind of traceability check. The two decline flags
 # (`competitive_analysis_declined`, `ig_page_declined`) have their own narrow
 # rules (see _field_traceable).
-_USER_TEXT_FIELDS = {"platform", "duration", "budget", "location",
-                     "competitive_analysis_declined", "ig_page_declined"}
+_USER_TEXT_FIELDS = {
+    "platform",
+    "duration",
+    "budget",
+    "location",
+    "competitive_analysis_declined",
+    "ig_page_declined",
+}
 
 # v3 · F2 — when a campaign field that OTHERS depend on is *changed*, those
 # dependents are now stale and must be cleared. Without this a Google→Meta
@@ -81,8 +110,14 @@ _USER_TEXT_FIELDS = {"platform", "duration", "budget", "location",
 # `_next_action` never re-asks a field that still looks "set". Keyed by the
 # field that changed → the fields it invalidates.
 _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
-    "platform": ("parent_account", "account", "fb_page", "ig_page",
-                 "ig_page_declined", "competitive_analysis_declined"),
+    "platform": (
+        "parent_account",
+        "account",
+        "fb_page",
+        "ig_page",
+        "ig_page_declined",
+        "competitive_analysis_declined",
+    ),
     "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
     "fb_page": ("ig_page", "ig_page_declined"),
 }
@@ -92,9 +127,17 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
 # "Continue with Facebook only") and by _next_action (typed "skip insta",
 # "lets do it later"). Kept narrow + scoped to the IG-pending branch.
 _IG_SKIP_PHRASES = (
-    "facebook only", "fb only", "without insta", "without instagram",
-    "no insta", "no instagram", "skip insta", "skip instagram",
-    "continue without", "do it later", "no thanks",
+    "facebook only",
+    "fb only",
+    "without insta",
+    "without instagram",
+    "no insta",
+    "no instagram",
+    "skip insta",
+    "skip instagram",
+    "continue without",
+    "do it later",
+    "no thanks",
 )
 
 
@@ -104,6 +147,47 @@ def is_ig_skip(text: str) -> bool:
     if not lu:
         return False
     return any(p in lu for p in _IG_SKIP_PHRASES) or lu in ("skip", "later", "no", "n")
+
+
+# F11 — phrases that mean "skip competitor analysis". Substring-based, so it's
+# comma-robust ("No, skip competitor analysis for now" matches) — unlike the old
+# `"no" in lu.split()` which broke on the trailing comma in "no,". Bare no/n/skip
+# only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
+# decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
+_DECLINE_PHRASES = (
+    "skip competitor", "skip competitors", "skip the competitor", "no competitor",
+    "not now", "maybe later", "do it later", "no need", "no thanks",
+    "don't bother", "dont bother", "skip it", "skip this", "skip that",
+)
+
+
+def is_decline(text: str) -> bool:
+    """True if the user clearly declines the competitor-analysis offer."""
+    lu = (text or "").strip().lower()
+    if not lu:
+        return False
+    return any(p in lu for p in _DECLINE_PHRASES) or lu in ("no", "n", "skip", "later")
+
+
+# F17 — markers that a "decline-looking" reply is actually a request/question for
+# something else, so it must NOT be auto-recorded as declined (it goes to the LLM
+# instead). is_decline is substring-based and over-fires on these: "not now, first
+# tell me about the audience" (defer+ask), "no competitors named yet" (informing).
+_DECLINE_AMBIG_MARKERS = (
+    "?", "first", "tell me", "what ", "what'", "how ", "which ", "why ",
+    "named", "instead", "before we", "about the", "explain", " vs ",
+)
+
+
+def is_clear_decline_reply(text: str) -> bool:
+    """True only for a TYPED reply that is an unambiguous decline (no follow-up
+    request). Tighter than is_decline — used to auto-record the decline in code
+    (deterministic) while leaving doubtful replies for the model to judge. Chip
+    clicks are captured separately by exact option match; this covers free text."""
+    lu = (text or "").strip().lower()
+    if not lu or not is_decline(lu):
+        return False
+    return not any(m in lu for m in _DECLINE_AMBIG_MARKERS)
 
 
 def _last_user_text(context: dict[str, Any]) -> str:
@@ -141,7 +225,11 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
 
     if field == "location":
         if session_ctx.get("_pending_location_confirm"):
-            if lu == "confirm" or "location_update" in lu or lu.startswith("location confirmed"):
+            if (
+                lu == "confirm"
+                or "location_update" in lu
+                or lu.startswith("location confirmed")
+            ):
                 return True
         if lu and v in lu:
             return True
@@ -150,13 +238,11 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flag — accept "true" (any case) when the user said no/skip.
+    # Decline flag — accept "true" when the user declines (chip or typed). Uses
+    # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
+    # silently rejected "no, skip competitor analysis for now" → re-ask loop).
     if field == "competitive_analysis_declined":
-        if v in ("true", "yes", "1") and (
-            "no" in lu.split() or lu in ("n", "skip", "no thanks", "no need")
-        ):
-            return True
-        return False
+        return v in ("true", "yes", "1") and is_decline(lu)
 
     # v3 · F3 — Instagram-skip flag. Accept "true" when the user opts out of
     # linking IG, by chip ("Continue with Facebook only") or typed ("skip insta",
@@ -188,14 +274,21 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         # legitimate case it used to cover — a typed bare number meaning days —
         # is now handled CANONICALLY: parse_typed_answer reads bare "30" → "30
         # days" (duration-only), so both sides parse equal and match above.
+        # F24 — read the user's message for ALL values it supports for this field
+        # (corrections with a cue word, multi-number volunteered messages), then
+        # accept iff the model's canonical value is one of them. The anti-invention
+        # property is this canonical equality, NOT a digit-substring — so F1 (a
+        # stored "5 days" tracing to "15 properties") stays closed.
         cur = currency_for(session_ctx)
-        pv = parse_typed_answer(field, str(value), cur)
-        if pv is not None and pv == parse_typed_answer(field, last_user, cur):
+        cand = parse_typed_answer(field, str(value), cur)
+        if cand is not None and cand in field_candidates(field, last_user, cur):
             return True
     return False
 
 
-async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+async def _set_campaign_spec(
+    params: dict[str, Any], context: dict[str, Any]
+) -> ToolResult:
     """Store campaign-spec fields in session context."""
     session_ctx = context.get("session_context")
     if session_ctx is None:
@@ -223,7 +316,8 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         if not any_supplied:
             return ToolResult(
                 success=False,
-                error="No valid fields provided. Allowed: " + ", ".join(sorted(ALLOWED_FIELDS)),
+                error="No valid fields provided. Allowed: "
+                + ", ".join(sorted(ALLOWED_FIELDS)),
             )
         return ToolResult(success=True, summary="")
 
@@ -271,29 +365,37 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
         logger.warning(
             "campaign_spec_all_rejected: incoming=%s rejected=%s user_said=%r",
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
-            rejected, preview,
+            rejected,
+            preview,
         )
-        # v5 · circuit breaker: the same all-rejected call replayed 3+ times
-        # in a row gets a hard stop-steer — the plain error below reads as
-        # retryable and the model will replay it indefinitely.
-        sig = repr(sorted((k, str(v)) for k, v, _ in rejected))
+        # v5 · circuit breaker: the same FIELD-SET rejected 3+ times in a row
+        # gets a hard stop-steer. F12: key on the field set, NOT (field,value) —
+        # a model inventing FRESH values each retry (30d→45d→60d) would otherwise
+        # reset the streak every turn and evade the breaker forever. Safe to
+        # collapse across values: this path is all-rejected (nothing stored), and
+        # any traceable correction stores → pops the streak at :280-281, so a real
+        # varied correction never accumulates here.
+        sig = repr(sorted(k for k, _, _ in rejected))
         streak = session_ctx.get("_spec_reject_streak") or {}
         n = (streak.get("n", 0) + 1) if streak.get("sig") == sig else 1
         session_ctx["_spec_reject_streak"] = {"sig": sig, "n": n}
         if n >= 3:
             return ToolResult(
                 success=False,
+                summary="Let me ask you about that instead of guessing.",  # user sees this; steer stays model-only
                 error=(
-                    f"STOP — this exact call was rejected {n} times. Do NOT call "
-                    "set_campaign_spec with these values again. Drop them and follow "
-                    "the missing-list, or ask the user."
+                    f"STOP — {pairs} rejected {n} times: these values are NOT traceable "
+                    "to anything the user said (you may be inventing them). Do NOT call "
+                    "set_campaign_spec again — ASK the user via present_options."
                 ),
             )
         return ToolResult(
             success=False,
+            summary="Let me confirm that with you rather than assume.",  # user sees this; steer stays model-only
             error=(
-                f"Cannot set {pairs}. User's last message: '{preview}'. "
-                "Ask the user for the missing pieces, then store what they actually say."
+                f"Cannot set {pairs} — NOT traceable to the user's last message "
+                f"('{preview}'); do not invent or default these. ASK the user via "
+                "present_options, then store only what they actually say."
             ),
         )
 
@@ -305,51 +407,74 @@ async def _set_campaign_spec(params: dict[str, Any], context: dict[str, Any]) ->
 
     # v5 · kept no-ops get one steer line so the model stops re-sending them.
     kept_note = (
-        f" {'; '.join(kept)} — already set: do NOT re-send stored fields, "
-        "only send NEW values the user just gave."
-    ) if kept else ""
+        (
+            f" {'; '.join(kept)} — already set: do NOT re-send stored fields, "
+            "only send NEW values the user just gave."
+        )
+        if kept
+        else ""
+    )
 
     if rejected:
-        # Partial-success: explicit logging so we can tune the guards. Shows
-        # exactly what the LLM tried to bundle and which subset we kept.
-        # NOTE (v5, deliberate): a kept-paraphrase bundled with a rejected
-        # empty field lands here as success, so the reject-streak breaker
-        # never accumulates on these calls (the pop above fires on kept).
-        # That's intended — success doesn't read as retry-me, and the
-        # rejected note steers. Don't "fix" the breaker into firing here.
+        # Partial: log + steer. F17c — if this call stored NOTHING new (only kept
+        # paraphrases + rejected invents), it made no forward progress, so flag
+        # no_progress and let the core stuck-step breaker count it. A kept+rejected
+        # bleed that stores nothing is the same retry-me loop as an all-failed turn
+        # (live: 18 consecutive calls; the 'kept' silently disarmed both breakers).
+        # When something WAS stored this call it's real progress → no flag.
+        # (Supersedes the v5 "don't fire the breaker here" note — that was about the
+        # separate reject-streak breaker, not this no_progress/stuck-step path.)
         logger.warning(
             "campaign_spec_partial: stored=%s kept=%s rejected=%s call=%s user_said=%r",
-            stored_keys, kept, rejected,
+            stored_keys,
+            kept,
+            rejected,
             {k: params.get(k) for k in ALLOWED_FIELDS if params.get(k)},
             (last_user or "").replace("\n", " ")[:120],
         )
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
+        # User sees only what was actually stored; the rejection steer + kept/
+        # review hints are model-only — never leak validator internals to chat.
+        user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
         return ToolResult(
             success=True,
-            summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
+            summary=user_summary,
+            model_summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
+            data=None if stored_keys else {"no_progress": True},
         )
 
     if not stored_keys:
         # kept-only: nothing changed; say so without an error the model would retry.
+        # F15: data["no_progress"]=True — this success stored NOTHING new, so the
+        # core stuck-loop breaker counts it (a model that ignores the "do NOT
+        # re-send" steer and loops kept-noops gets the tool quarantined, same as
+        # an all-failed loop). Distinct from the v5 reject-streak (all-rejected).
         logger.info("campaign_spec_noop_kept: kept=%s", kept)
         return ToolResult(
             success=True,
-            summary=f"No changes.{kept_note}{review_hint}",
+            summary="No changes.",
+            model_summary=f"No changes.{kept_note}{review_hint}",
+            data={"no_progress": True},
         )
 
     logger.info("campaign_spec_updated: fields=%s kept=%s", stored_keys, kept)
+    clean = f"Campaign spec updated: {', '.join(parts)}."
     return ToolResult(
         success=True,
-        summary=f"Campaign spec updated: {', '.join(parts)}.{kept_note}{review_hint}",
+        summary=clean,
+        model_summary=f"{clean}{kept_note}{review_hint}",
     )
 
 
-def _store_location_meta(session_ctx: dict, location_value: Any, last_user: str) -> None:
+def _store_location_meta(
+    session_ctx: dict, location_value: Any, last_user: str
+) -> None:
     """Location side-effect: clear the map-confirm marker + stash lat/lng for save.
     Plain "confirm" / typed-city paths store the address with null coordinates."""
     session_ctx.pop("_pending_location_confirm", None)
     from app.agents.adzump.services.business_storage import parse_location_update
+
     loc_payload = parse_location_update(last_user)
     if loc_payload:
         display_name = ""
@@ -358,12 +483,16 @@ def _store_location_meta(session_ctx: dict, location_value: Any, last_user: str)
             display_name = f"{product['product_name']}, {product['location']}"
         session_ctx["_location_meta"] = {
             "address": loc_payload["address"] or str(location_value),
-            "lat": loc_payload["lat"], "lng": loc_payload["lng"],
+            "lat": loc_payload["lat"],
+            "lng": loc_payload["lng"],
             "displayName": display_name,
         }
     else:
         session_ctx["_location_meta"] = {
-            "address": str(location_value), "lat": None, "lng": None, "displayName": "",
+            "address": str(location_value),
+            "lat": None,
+            "lng": None,
+            "displayName": "",
         }
 
 
@@ -392,8 +521,26 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     return cleared
 
 
+def clear_competitor_decline(session_ctx: dict) -> bool:
+    """F26 — competitors are now present (analyzed / looked-up), so a PRIOR
+    "declined" is void: a launched/reviewed campaign must never report
+    'declined' alongside a populated competitor list (the contradictory state
+    reachable via decline→reverse). Pop the flag AND its provenance, mirroring
+    _clear_dependents' spec/set_at lockstep. Idempotent. Returns whether it
+    popped (for logging)."""
+    spec = session_ctx.get("campaign_spec") or {}
+    if spec.pop("competitive_analysis_declined", None) is None:
+        return False
+    (session_ctx.get("_spec_set_at") or {}).pop("competitive_analysis_declined", None)
+    return True
+
+
 def _apply_field(
-    field: str, value: Any, last_user: str, session_ctx: dict, turn: int,
+    field: str,
+    value: Any,
+    last_user: str,
+    session_ctx: dict,
+    turn: int,
     batch_fields=frozenset(),
 ) -> tuple[bool, str]:
     """Validated single-field write — the one place a campaign_spec field is
@@ -406,7 +553,9 @@ def _apply_field(
     reason on failure."""
     spec = session_ctx.setdefault("campaign_spec", {})
     set_at = session_ctx.setdefault("_spec_set_at", {})
-    if field in _USER_TEXT_FIELDS and not _field_traceable(field, value, last_user, session_ctx):
+    if field in _USER_TEXT_FIELDS and not _field_traceable(
+        field, value, last_user, session_ctx
+    ):
         return (False, "not traceable to user's last message")
     if field in _ACCOUNT_LIKE_FIELDS:
         known_ids = set((session_ctx.get("account_names") or {}).keys())
@@ -446,37 +595,40 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     is_meta = platform is Platform.META
 
     # Real-estate? location is required. Otherwise location is optional.
-    business_type = ((session_ctx.get("product_data") or {})
-                     .get("business_type") or "").lower()
-    is_real_estate = any(kw in business_type for kw in (
-        "real estate", "realty", "villa", "apartment", "residential",
-        "property", "housing", "homes", "realtor", "township",
-        "builder", "developer",
-    ))
-    if is_real_estate and not spec.get("location"):
+    business_type = (session_ctx.get("product_data") or {}).get("business_type") or ""
+    if is_real_estate(business_type) and not spec.get("location"):
         return ""
 
-    if not (spec.get("duration") and spec.get("budget")
-            and spec.get("parent_account") and spec.get("account")):
+    if not (
+        spec.get("duration")
+        and spec.get("budget")
+        and spec.get("parent_account")
+        and spec.get("account")
+    ):
         return ""
 
     # Google: competitive analysis must have been attempted OR declined.
     if is_google:
-        if (session_ctx.get("competitor_analysis") is None
-                and "competitive_analysis_declined" not in spec):
+        if (
+            session_ctx.get("competitor_analysis") is None
+            and "competitive_analysis_declined" not in spec
+        ):
             return ""
 
     # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) — but it must have
     # been OFFERED, i.e. an ig_page was picked OR ig_page_declined is set. This
     # gates review until the IG choice has been made once, without making IG
     # mandatory (Facebook-only is a valid campaign).
-    if is_meta and not (spec.get("fb_page")
-                        and (spec.get("ig_page") or spec.get("ig_page_declined"))):
+    if is_meta and not (
+        spec.get("fb_page") and (spec.get("ig_page") or spec.get("ig_page_declined"))
+    ):
         return ""
 
     meta_extra = ""
     if is_meta:
-        meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+        meta_extra = (
+            "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+        )
         meta_extra += (
             "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
             if spec.get("ig_page")
@@ -500,8 +652,8 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         f"{meta_extra}\n"
         "  - **Competitors**: <comma-separated names from State, or 'none "
         "analyzed', or 'declined' if competitive_analysis_declined='true'>\n\n"
-        "Then call `present_options(question=\"Ready to launch the campaign?\", "
-        "options=[\"Yes, launch\", \"No, make changes\"])`. EVERY bullet must "
+        'Then call `present_options(question="Ready to launch the campaign?", '
+        'options=["Yes, launch", "No, make changes"])`. EVERY bullet must '
         "be present. **On the user's 'Yes, launch' reply, call "
         "`launch_campaign()` (no params) — that's the one tool that persists "
         "the campaign.**"

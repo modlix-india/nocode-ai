@@ -27,7 +27,7 @@ from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 
 from app.agents.adzump.agents.summary.context import build_summary_context
-from app.agents.adzump.agents.summary.models import SummaryInput, SummaryOutput
+from app.agents.adzump.agents.summary.models import SummaryOutput
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +274,7 @@ class SummaryAgent(BaseAgent):
     ) -> None:
         """Emit agent_finished with token usage from sub_session.total_usage.
 
-        Mirrors AssetPickerAgent._emit_finished (asset_picker/agent.py:526)
+        Mirrors VisionAnalyst._emit_finished (vision/agent.py:526)
         so the Profile Writer span closes in the UI when the summary
         stream completes. Defensive: never fails the summarize() call on
         emit error (observability hook only).
@@ -283,7 +283,7 @@ class SummaryAgent(BaseAgent):
         the agent row's right-meta slot in the chat UI alongside the
         duration. It must be a span-level outcome users *can't derive
         from elsewhere in the UI*. Examples:
-          · GOOD: AssetPicker's "logos=N creatives=N" (counts not shown elsewhere)
+          · GOOD: VisionAnalyst's "logos=N creatives=N" (counts not shown elsewhere)
           · GOOD: error path's "ExceptionName: ..." (not shown elsewhere)
           · BAD:  the marketing-copy preview (full text already in craft panel)
         When the agent's output is rendered in a sibling panel, send "".

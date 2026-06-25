@@ -11,8 +11,8 @@ import logging
 from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.tools.campaign_data import clear_competitor_decline
 from app.agents.adzump._shared import (
-    AGGREGATOR_HOSTS,
     emit_progress,
     host_of,
     is_aggregator_host,
@@ -25,9 +25,13 @@ logger = logging.getLogger(__name__)
 
 # Content platforms that aren't competitor homepages but aren't in the
 # general AGGREGATOR_HOSTS set (which tracks portals/social/marketplaces).
-_CONTENT_PLATFORM_HOSTS: frozenset[str] = frozenset({
-    "tiktok.com", "medium.com", "substack.com",
-})
+_CONTENT_PLATFORM_HOSTS: frozenset[str] = frozenset(
+    {
+        "tiktok.com",
+        "medium.com",
+        "substack.com",
+    }
+)
 
 
 def _is_bad_url(url: str) -> bool:
@@ -57,7 +61,9 @@ def _clean_urls(competitive: dict) -> int:
 
 
 def _filter_self_references(
-    business: dict, competitive: dict, primary_url: str = "",
+    business: dict,
+    competitive: dict,
+    primary_url: str = "",
 ) -> int:
     """Drop obviously-invalid competitor entries (self-references, non-
     competitor platforms, missing name). Returns count removed."""
@@ -73,14 +79,18 @@ def _filter_self_references(
     except Exception:
         pass
     domain_name_norm = (
-        _normalize_name(business_url_host.split(".")[0])
-        if business_url_host else ""
+        _normalize_name(business_url_host.split(".")[0]) if business_url_host else ""
     )
 
     NON_COMPETITOR_HINTS = (
-        "investment platform", "aggregator", "marketplace",
-        "comparison site", "review site", "directory",
-        "property portal", "real estate intelligence",
+        "investment platform",
+        "aggregator",
+        "marketplace",
+        "comparison site",
+        "review site",
+        "directory",
+        "property portal",
+        "real estate intelligence",
     )
 
     kept: list[dict] = []
@@ -101,7 +111,11 @@ def _filter_self_references(
         if business_name_norm and name_norm == business_name_norm:
             dropped += 1
             continue
-        if domain_name_norm and len(domain_name_norm) > 3 and domain_name_norm in name_norm:
+        if (
+            domain_name_norm
+            and len(domain_name_norm) > 3
+            and domain_name_norm in name_norm
+        ):
             dropped += 1
             continue
         url = str(c.get("url") or "")
@@ -113,10 +127,12 @@ def _filter_self_references(
                     continue
             except Exception:
                 pass
-        combined_text = " ".join([
-            str(c.get("business_type") or ""),
-            str(c.get("weakness") or ""),
-        ]).lower()
+        combined_text = " ".join(
+            [
+                str(c.get("business_type") or ""),
+                str(c.get("weakness") or ""),
+            ]
+        ).lower()
         if any(hint in combined_text for hint in NON_COMPETITOR_HINTS):
             dropped += 1
             continue
@@ -127,112 +143,16 @@ def _filter_self_references(
     return dropped
 
 
-# ── Craft panel rendering ─────────────────────────────────────────────
-
-async def _emit_final_craft(
-    stream, craft_id: str, url: str, business: dict, competitive: dict,
-    screenshot_url: str | None = None,
-    baked_summary: str | None = None,
-) -> None:
-    """Rebuild the full craft panel: screenshot + summary + direct competitors."""
-    loc = business.get("location") or ""
-    if isinstance(loc, dict):
-        loc = loc.get("location", "")
-
-    kv_items: list[dict] = [{"key": "Website", "value": url}]
-    if loc:
-        kv_items.append({"key": "Location", "value": loc})
-    if business.get("pricing"):
-        kv_items.append({"key": "Pricing", "value": str(business["pricing"])[:100]})
-
-    blocks: list[dict] = []
-    if screenshot_url:
-        blocks.append({"type": "image", "url": screenshot_url})
-    if business.get("business_type"):
-        blocks.append({"type": "badge", "label": business["business_type"]})
-    if kv_items:
-        blocks.append({"type": "key_value", "items": kv_items})
-
-    if baked_summary:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "heading", "text": "Product Summary"})
-        blocks.append({"type": "text", "content": baked_summary})
-
-    _render_competitors(blocks, competitive)
-
-    await stream.emit_craft(
-        craft_id,
-        business.get("product_name") or url,
-        blocks,
-        append=False,
-    )
-
-
-def _render_competitors(
-    blocks: list[dict], competitive: dict, *, include_headers: bool = True,
-) -> None:
-    """Append competitor cards. Only direct head-to-head competitors are rendered."""
-    competitors = competitive.get("competitors") or []
-    valid: list[dict] = [
-        c for c in competitors[:20]
-        if isinstance(c, dict) and (c.get("name") or "").strip()
-    ]
-    if not valid:
-        return
-
-    if include_headers:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "heading", "text": "Competitors"})
-
-    for c in valid:
-        blocks.append({"type": "heading", "text": c.get("name") or "?", "level": 2})
-        kv_items: list[dict] = []
-        if c.get("url"):
-            kv_items.append({"key": "Website", "value": str(c["url"])})
-        if c.get("business_type"):
-            kv_items.append({"key": "Format", "value": str(c["business_type"])})
-        if c.get("location"):
-            kv_items.append({"key": "Location", "value": str(c["location"])})
-        if c.get("pricing"):
-            kv_items.append({"key": "Pricing", "value": str(c["pricing"])})
-        key_usps = c.get("key_usps") or []
-        if isinstance(key_usps, list) and key_usps:
-            kv_items.append({"key": "USPs", "value": ", ".join(str(u) for u in key_usps[:3])})
-        if c.get("weakness"):
-            kv_items.append({"key": "Gap", "value": str(c["weakness"])})
-        if kv_items:
-            blocks.append({"type": "key_value", "items": kv_items})
-        if c.get("why_competitor"):
-            blocks.append({"type": "text", "content": str(c["why_competitor"])})
-
-
-async def _append_competitor_craft(
-    stream, craft_id: str, business: dict, competitors: list[dict],
-    *, include_headers: bool = False,
-) -> None:
-    """Append specific competitor blocks to an existing craft panel.
-
-    Pass ``include_headers=True`` for the first append (shows the "Competitors"
-    heading); ``False`` for subsequent appends (focused lookups) so the heading
-    isn't duplicated.
-    """
-    if not competitors:
-        return
-    blocks: list[dict] = []
-    _render_competitors(
-        blocks, {"competitors": competitors}, include_headers=include_headers,
-    )
-    if not blocks:
-        return
-    try:
-        await stream.emit_craft(
-            craft_id, business.get("product_name", ""), blocks, append=True,
-        )
-    except Exception as e:
-        logger.warning("competitor_craft_append_failed: %s", str(e)[:200])
+# ── Craft panel rendering — delegated to tools/craft.py ──────────────
+from app.agents.adzump.tools.craft import (
+    emit_craft_panel as _emit_final_craft,
+    append_competitor_blocks as _append_competitor_craft,
+    render_competitors as _render_competitors,
+)
 
 
 # ── Tool implementation ───────────────────────────────────────────────
+
 
 async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     """Spawn the Product Analyst agent to do competitor research.
@@ -240,6 +160,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     Thin bridge: business check → cache check → spawn agent → clean → persist → render craft.
     """
     import time as _time
+
     _run_start = _time.monotonic()
 
     stream = context.get("event_stream")
@@ -277,8 +198,16 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         if auth is None:
             return ToolResult(success=False, error="Authentication required.")
         return await _lookup_single_competitor(
-            query, remove, product_name, product_summary, url,
-            stream, tool_use_id, auth, session_ctx, context,
+            query,
+            remove,
+            product_name,
+            product_summary,
+            url,
+            stream,
+            tool_use_id,
+            auth,
+            session_ctx,
+            context,
         )
 
     # Return cached competitor results unless force-refresh requested.
@@ -291,10 +220,12 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 success=True,
                 data={"competitive": existing},
                 summary=f"Already analyzed: {comp_count} competitors found.",
+                audience="both",
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
             from app.agents.adzump.services.business_storage import hydrate_from_storage
+
             if url:
                 hit = await hydrate_from_storage(url, session_ctx, context)
                 if hit:
@@ -305,10 +236,14 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                             success=True,
                             data={"competitive": existing, "from_storage": True},
                             summary=f"Reused {comp_count} competitors from storage.",
+                            audience="both",
                         )
         except Exception as e:
-            logger.warning("competitor_storage_hydrate_skipped: %s: %s",
-                           type(e).__name__, str(e)[:200])
+            logger.warning(
+                "competitor_storage_hydrate_skipped: %s: %s",
+                type(e).__name__,
+                str(e)[:200],
+            )
     else:
         # Clear stale results so the pipeline runs fresh.
         session_ctx.pop("competitor_analysis", None)
@@ -324,9 +259,13 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         # Symmetric lifecycle: the launcher owns both AgentCard ends —
         # agent_started here, agent_finished after post-processing.
         from app.core.streaming import pre_emit_agent_started
+
         await pre_emit_agent_started(
-            stream, agent_id="product_analyst", label="Product Analyst",
-            parent_tool_use_id=tool_use_id, context=context,
+            stream,
+            agent_id="product_analyst",
+            label="Product Analyst",
+            parent_tool_use_id=tool_use_id,
+            context=context,
         )
         output = await get_product_agent().analyze(
             url=url,
@@ -342,8 +281,8 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 "   - Queries 1-5: direct discovery (offering_type, geography, price_tier, "
                 "adjacent format, customer overlap). At least 2 spec-anchored to specific "
                 "product variants.\n"
-                "   - Queries 6-7: review/comparison (e.g. \"best {offering} in {geography} "
-                "reviews\", \"{offering} market report\", \"{offering} vs alternatives\"). "
+                '   - Queries 6-7: review/comparison (e.g. "best {offering} in {geography} '
+                'reviews", "{offering} market report", "{offering} vs alternatives"). '
                 "These target expert/media content for authority signal.\n"
                 "2) Issue SEVEN `web_search` calls — one per query. The server runs each "
                 "search and returns results inline.\n"
@@ -368,13 +307,19 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         _filter_self_references(business, competitive, primary_url=url)
 
         session_ctx["competitor_analysis"] = competitive
+        # F26 — fresh analysis ran (even if 0 found): a prior decline is void.
+        if clear_competitor_decline(session_ctx):
+            logger.info("competitor_decline_cleared: analyze_competitors ran")
 
         # Append competitor blocks to the existing craft panel. This is the
         # first batch, so show the "Competitors" heading.
         craft_id = session_ctx.get("craft_id", "")
         if stream and craft_id:
             await _append_competitor_craft(
-                stream, craft_id, business, competitive.get("competitors") or [],
+                stream,
+                craft_id,
+                business,
+                competitive.get("competitors") or [],
                 include_headers=True,
             )
 
@@ -395,11 +340,14 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 pass
 
         summary = f"Found {comp_count} competitors: {', '.join(names)}"
-        return ToolResult(success=True, data={"competitive": competitive}, summary=summary)
+        return ToolResult(
+            success=True, data={"competitive": competitive}, summary=summary, audience="both"
+        )
 
     except Exception as e:
-        logger.warning("analyze_competitors failed: %s: %s",
-                       type(e).__name__, str(e)[:200])
+        logger.warning(
+            "analyze_competitors failed: %s: %s", type(e).__name__, str(e)[:200]
+        )
         duration_ms = int((_time.monotonic() - _run_start) * 1000)
         if stream:
             try:
@@ -434,6 +382,7 @@ async def _lookup_single_competitor(
     or appended to if only additions.
     """
     import time as _time
+
     _run_start = _time.monotonic()
 
     competitive = session_ctx.setdefault("competitor_analysis", {"competitors": []})
@@ -463,9 +412,13 @@ async def _lookup_single_competitor(
         # Symmetric lifecycle: the launcher owns both AgentCard ends —
         # agent_started here, agent_finished after post-processing.
         from app.core.streaming import pre_emit_agent_started
+
         await pre_emit_agent_started(
-            stream, agent_id="product_analyst", label="Product Analyst",
-            parent_tool_use_id=tool_use_id, context=context,
+            stream,
+            agent_id="product_analyst",
+            label="Product Analyst",
+            parent_tool_use_id=tool_use_id,
+            context=context,
         )
         output = await get_product_agent().analyze(
             url="",
@@ -508,12 +461,16 @@ async def _lookup_single_competitor(
 
         if output.competitive and output.competitive.get("competitors"):
             new_competitors = output.competitive["competitors"]
-        elif output.business:
-            new_competitors = [output.business]
+        elif output.product:
+            new_competitors = [output.product]
 
         skipped = (output.competitive or {}).get("skipped") or []
 
         competitors_list.extend(new_competitors)
+        # F26 — competitors were ADDED by name → a prior decline is void. (Not on
+        # a pure removal: zeroing the list isn't a reversal of the decline.)
+        if new_competitors and clear_competitor_decline(session_ctx):
+            logger.info("competitor_decline_cleared: competitors added by name")
 
     # ── Nothing happened ──
     if not removed_names and not new_competitors and not skipped:
@@ -529,8 +486,12 @@ async def _lookup_single_competitor(
         if removed_names:
             # Full rebuild — append=False replaces the panel entirely.
             await _emit_final_craft(
-                stream, craft_id, primary_url, business, competitive,
-                screenshot_url=business.get("screenshot_url"),
+                stream,
+                craft_id,
+                primary_url,
+                business,
+                competitive,
+                screenshot_url=(business.get("primary_screenshot_url") or business.get("screenshot_url")),
                 baked_summary=product_summary,
             )
         elif new_competitors:
@@ -545,7 +506,8 @@ async def _lookup_single_competitor(
     if skipped:
         skip_lines = [
             f"{s.get('name', '?')} ({s.get('reason', 'not a direct competitor')})"
-            for s in skipped if isinstance(s, dict)
+            for s in skipped
+            if isinstance(s, dict)
         ]
         if skip_lines:
             parts.append(f"Skipped: {'; '.join(skip_lines)}")
@@ -553,6 +515,7 @@ async def _lookup_single_competitor(
         success=True,
         data={"competitors": competitive["competitors"], "skipped": skipped},
         summary=". ".join(parts),
+        audience="both",
     )
 
 

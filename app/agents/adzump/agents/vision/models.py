@@ -1,4 +1,4 @@
-"""Wire-shape models for the AssetPickerAgent's LLM output.
+"""Wire-shape models for the VisionAnalyst's LLM output.
 
 These mirror the private ``_LogoChoice`` / ``_AssetSelection`` classes that
 lived inside ``agents/product/product_assets.py``. Moved here so the agent
@@ -41,7 +41,7 @@ class CreativeChoice(BaseModel):
     """One creative-image role assignment in the LLM's JSON output.
 
     Shift 2 addition (post-v7 redesign · 2026-05-21). Mirrors ``LogoChoice``
-    shape so the picker has a consistent contract: model emits per-candidate
+    shape so the analyst has a consistent contract: model emits per-candidate
     role, code derives the aggregate ``creative_completeness`` shape.
 
     Roles are intentionally a tight enum (3 ad-usable categories plus
@@ -96,3 +96,42 @@ class AssetSelection(BaseModel):
         default="",
         description="One sentence when logos=[] or a logo-looking candidate was rejected.",
     )
+
+
+class ImageVerdict(BaseModel):
+    """Review-each verdict for ONE image (the upload path). Where select-subset
+    mode PICKS a subset, review-each returns a verdict per image — so the model
+    can say 'not relevant' or 'unsure, ask the user' instead of being forced to
+    choose."""
+    idx: int = Field(description="Index into the images list (verdict order = input order).")
+    role: str = Field(
+        default="",
+        description="'logo' | 'hero' | 'amenity' | 'floor_plan' | 'unused' | 'unknown'.",
+    )
+    relevant: bool = Field(
+        default=True,
+        description="Is this image usable for the product's ads at all?",
+    )
+    confidence: float = Field(
+        default=0.0,
+        description="0.0..1.0 self-assessed confidence in THIS verdict.",
+    )
+    needs_user: bool = Field(
+        default=False,
+        description="True when unsure — the orchestrator should ask the user, not guess.",
+    )
+    question: str = Field(
+        default="",
+        description="What to ask the user when needs_user is true.",
+    )
+    name: str = Field(
+        default="",
+        description="2-4 word descriptive name for the stored file, e.g. 'logo-dark', "
+                    "'floor-plan-3bhk'. Slugified downstream; '' falls back to the role.",
+    )
+    reasoning: str = Field(default="", description="<= 120 chars on why.")
+
+
+class ReviewResult(BaseModel):
+    """Review-each output: one verdict per input image, in input order."""
+    verdicts: list[ImageVerdict] = Field(default_factory=list)

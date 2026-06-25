@@ -52,25 +52,41 @@ class MetaAccountsAdapter:
         client_code: str,
         auth_headers: dict[str, str],
     ) -> list[dict[str, Any]]:
-        """FB pages accessible to the business — client_pages first, else owned_pages."""
-        result = await meta_client.get(
-            f"/{business_id}/client_pages",
+        """Facebook pages the connected user can actually POST FROM — i.e. pages
+        they have a role on, which carry a Page Access Token (via /me/accounts).
+        Business client/owned pages the user has NO token for are EXCLUDED: picking
+        one dead-ends the campaign (no page token → can't fetch IG or publish — the
+        live `client_pages` loop). Scoped to `business_id` when the user's pages
+        overlap it, but never over-filtered to empty (fall back to all token-backed
+        pages). Tokening client pages is the separate System-User flow, not this."""
+        me = await meta_client.get(
+            "/me/accounts",
             client_code=client_code,
             auth_headers=auth_headers,
-            params={"fields": "id,name"},
+            params={"fields": "id,name", "limit": 100},
         )
-        pages = result.get("data", [])
+        tokenable = [
+            {"id": str(p["id"]), "name": p.get("name", str(p["id"]))}
+            for p in me.get("data", [])
+        ]
+        if not tokenable:
+            return []
 
-        if not pages:
-            result = await meta_client.get(
-                f"/{business_id}/owned_pages",
-                client_code=client_code,
-                auth_headers=auth_headers,
-                params={"fields": "id,name"},
-            )
-            pages = result.get("data", [])
-
-        return [{"id": p["id"], "name": p.get("name", p["id"])} for p in pages]
+        # Scope to the chosen business (owned + client pages) when there's overlap.
+        biz_ids: set[str] = set()
+        for edge in ("owned_pages", "client_pages"):
+            try:
+                r = await meta_client.get(
+                    f"/{business_id}/{edge}",
+                    client_code=client_code,
+                    auth_headers=auth_headers,
+                    params={"fields": "id"},
+                )
+                biz_ids.update(str(p.get("id")) for p in r.get("data", []))
+            except Exception:
+                pass
+        scoped = [p for p in tokenable if p["id"] in biz_ids]
+        return scoped or tokenable
 
     async def list_ig_accounts(
         self,
