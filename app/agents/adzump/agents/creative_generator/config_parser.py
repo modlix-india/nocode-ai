@@ -40,7 +40,15 @@ def filter_competitor_images(competitors: list[dict]) -> list[str]:
     exclude_keywords = ("icon", "logo", "header", "footer", "badge", "social", "avatar")
     
     for c in competitors:
-        img_url = c.get("logoUrl") or c.get("url") or ""
-        if img_url and not any(k in img_url.lower() for k in exclude_keywords):
-            competitor_images.append(img_url)
+        # Check crawled creative_images list first
+        images = c.get("creative_images") or []
+        if isinstance(images, list):
+            for img in images:
+                if img and not any(k in img.lower() for k in exclude_keywords):
+                    competitor_images.append(img)
+        else:
+            img_url = c.get("logoUrl") or c.get("url") or ""
+            if img_url and not any(k in img_url.lower() for k in exclude_keywords):
+                if any(img_url.lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp")):
+                    competitor_images.append(img_url)
     return competitor_images

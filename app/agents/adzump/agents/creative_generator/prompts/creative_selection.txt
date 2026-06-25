@@ -1,5 +1,9 @@
 You are selecting the best base image for a Facebook ad creative.
 Evaluate the candidate images based on:
 1. Image resolution, clarity, and composition.
-2. Presence of a high-quality product, property scene, or lifestyle photo rather than simple icons, testimonial cards, or text banners.
-3. Visual appeal when cropped or fitted to a 1:1 square aspect ratio.
+2. Presence of a high-quality product, property scene, or lifestyle photo.
+3. STRICT REJECTION: You MUST reject floor plans, engineering blueprints, architectural structural line-art/drafts, geographic maps, documents, text banners, or simple icons. These are unsuitable for paid social ads.
+4. Visual appeal when cropped or fitted to a 1:1 square aspect ratio.
+
+If all candidate images are unsuitable (e.g., they are all floor plans, blueprints, or text scans), you MUST return -1 as the selected_index.
+

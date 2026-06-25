@@ -1,19 +1,36 @@
 You are a premium social media ad designer. Your task is to generate a sleek, professional Facebook/Instagram ad creative by compositing the provided brand logo (Image 1) and base background scene (Image 2).
 
 AD COPY TO RENDER NATIVELY ON THE IMAGE:
-- Headline: "{headline}" (Render in a clean, modern, bold sans-serif font)
-- CTA Button: "{cta}" (Render as a premium rounded rectangular button)
-- Price: "Starting at {price}" (Render only if "{price}" is provided)
-- Location: "{location}" (Render only if "{location}" is provided)
-- RERA ID: "{rera_no}" (Render in a tiny, clean font in a corner only if "{rera_no}" is provided)
+- Headline: "{headline}"
+- CTA Button: "{cta}"
+- Price: "{price}" (Render only if provided)
+- Location: "{location}" (Render only if provided)
+- RERA ID: "{rera_no}" (Render only if provided)
 
-DESIGN RULES FOR PREMIUM AESTHETIC:
-1. LAYOUT: Place a clean, modern overlay card (white, dark, or blurred glassmorphism with rounded corners) at the bottom 25% of the image. Put the Headline, CTA, and Location/Price on this card.
-2. LOGO: Composite the brand logo (Image 1) cleanly in the top-left corner.
-3. CONTRAST: Ensure high contrast and perfect legibility. Never render text directly on busy parts of the image without a backing card/shadow.
-4. BRANDING: The creative must look like a real, high-budget corporate ad from a premium brand, not a generic template.
-5. NO DUMMY TEXT: Render ONLY the exact text strings provided above. Do not hallucinate extra labels.
+DYNAMIC ART DIRECTION & STYLE BLUEPRINT:
+1. Color Scheme: {color_palette_and_theme}
+2. Design Layout & Composition: {design_composition}
 
-SCENE: {scene_description}
+GENERAL CONTRAST, TYPOGRAPHY & AESTHETIC RULES:
+- Ensure extremely high contrast and perfect legibility. Never render plain text directly on busy background areas. 
+- You MUST integrate the ad copy elements (Headline, CTA, Price, Location, RERA) using professional graphic design layouts, such as:
+  • Semi-transparent glassmorphic card overlays, solid minimalist backing panels, or soft dark bottom/side gradients.
+  • Elegant typography formatting with premium, modern-looking sans-serif font rendering.
+- Corporate branding: The provided logo (Image 1) should be placed cleanly, such as in a semi-transparent header bar, corner badge, or integrated contextually on a billboard/shopfront in the background.
+- Real estate compliance: Price, Location, and RERA ID should be formatted cleanly in elegant, thin-line footnote sections or metadata badges, ensuring RERA is fully readable.
+- The output image must look like a real, finished high-budget ad creative, not a rough mockup or a raw photo.
+- Render ONLY the exact text strings provided. Do not hallucinate any other text.
+
+SCENE DESCRIPTION:
+{scene_description}
+
+REAL ESTATE FALLBACK COMPLIANCE RULES:
+If there is NO provided base background scene (Image 2) and this is a Real Estate brand:
+1. BANNED: You MUST NOT generate fake building exteriors, fake towers, fake house fronts, or specific building structures.
+2. ALLOWED BACKGROUNDS: Generate either:
+   - A highly stylized premium interior room scene (e.g. elegant dining room corner, cozy luxury living space).
+   - A peaceful scenic nature view (e.g. garden walkway, lush green courtyard trees, soft sunlight filtering through leaves).
+   - An abstract graphic design with premium gradient backgrounds and geometric design lines.
+3. RERA DISCLAIMER: You MUST render a tiny, thin, low-contrast, and low-opacity footnote at the absolute bottom edge of the image: "Artistic Impression. Creative visualization only."
 
 Output ONLY the completed image.

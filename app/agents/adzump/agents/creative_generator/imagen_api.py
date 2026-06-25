@@ -84,10 +84,10 @@ async def call_gemini_imagen(
     context: dict,
     target_formats: list[str] | None = None,
 ) -> dict:
-    """Generate 3 aspect-ratio variants of a creative in parallel via Gemini.
+    """Generate aspect-ratio variants of a creative in parallel via Gemini Imagen.
 
-    Makes 3 concurrent API calls (1:1, 4:5, 16:9) — each produces a
-    natively-rendered image with text positioned optimally for that ratio.
+    Makes concurrent API calls for each requested format (e.g., 1:1, 4:5, 16:9),
+    producing natively-rendered images with text positioned optimally for that ratio.
 
     Returns a dict with *headline*, *description*, *cta*, *creative_urls*
     (label → CDN URL), *creative_type*, and *base_image_url*.
@@ -121,6 +121,8 @@ async def call_gemini_imagen(
         headline=headline,
         description=ad_copy.get("description", ""),
         cta=cta,
+        design_composition=ad_copy.get("design_composition", ""),
+        color_palette_and_theme=ad_copy.get("color_palette_and_theme", ""),
         scene_description=scene_description,
         rera_no=ad_copy.get("rera_no", "") or "",
         price=ad_copy.get("price", "") or "",
@@ -141,9 +143,10 @@ async def call_gemini_imagen(
     parts.append({"text": f"\nInstructions:\n{prompt}"})
 
     # Fire parallel Gemini calls for requested aspect ratios
-    target_aspects = ASPECT_CONFIGS
+    target_aspects = [cfg for cfg in ASPECT_CONFIGS if cfg[0] == "square"]  # Default/fallback to square
     if target_formats:
         target_aspects = [cfg for cfg in ASPECT_CONFIGS if cfg[0] in target_formats]
+
 
     tasks = [
         _call_gemini_one(parts, label, ratio, api_key)

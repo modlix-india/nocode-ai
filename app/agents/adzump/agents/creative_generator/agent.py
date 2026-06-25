@@ -10,7 +10,6 @@ from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
-SELECTION_PROVIDER = "openai"
 SELECTION_MODEL_TIER = "fast"
 SELECTION_MAX_TOKENS = 600
 
@@ -23,7 +22,9 @@ class CreativeSelectionAgent:
 
     def __init__(self) -> None:
         prompts_dir = Path(__file__).resolve().parent / "prompts"
-        self._system_prompt = (prompts_dir / "creative_selection.txt").read_text(encoding="utf-8")
+        self._system_prompt = (prompts_dir / "creative_selection.txt").read_text(
+            encoding="utf-8"
+        )
 
     @classmethod
     def get_instance(cls) -> CreativeSelectionAgent:
@@ -35,13 +36,11 @@ class CreativeSelectionAgent:
     async def select(
         self,
         user_message: str,
-        image_blocks: List[Dict[str, Any]],
-        parent_event_stream=None,
-        auth=None,
-        parent_session_context: dict | None = None,
+        image_blocks: List[tuple[str, str]],
+        provider_name: str = "openai",
     ) -> str:
         """Call the LLM directly to pick the best image (no sub-agent streaming)."""
-        provider = get_llm_provider(SELECTION_PROVIDER)
+        provider = get_llm_provider(provider_name)
 
         user_content: list[dict[str, Any]] = []
         for b64, mime in image_blocks:
