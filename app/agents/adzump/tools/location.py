@@ -1,10 +1,7 @@
-"""Real-estate location confirmation tool.
+"""Location confirmation and geo-targeting tools for Adzump.
 
-Gated on real-estate business-type keywords. Emits BOTH a prompt text and
-the map widget atomically — the LLM no longer has to remember to write
-"I'll show you a map" alongside the tool call. Frontend handles geocoding,
-rendering, pin-drag. On confirm it sends coords back as JSON and the LLM
-stores them via `set_campaign_spec`.
+Provides tools for map validation of business locations, platform-specific
+geo-targeting discovery, and manual targeting edits (additions/deletions).
 """
 
 from __future__ import annotations
@@ -12,38 +9,12 @@ from __future__ import annotations
 import logging
 
 from app.config import settings
-from app.core.tools.base import ToolDefinition, ToolResult
+from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump._shared import product_location_str as _detected_location
+from app.agents.adzump.tools.campaign_data import is_real_estate
+from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
 
 logger = logging.getLogger(__name__)
-
-_REAL_ESTATE_KEYWORDS = (
-    "real estate",
-    "realty",
-    "villa",
-    "apartment",
-    "residential",
-    "property",
-    "housing",
-    "homes",
-    "realtor",
-    "township",
-    "builder",
-    "developer",
-)
-
-
-def _is_real_estate(business_type: str) -> bool:
-    bt = (business_type or "").strip().lower()
-    return any(kw in bt for kw in _REAL_ESTATE_KEYWORDS)
-
-
-def _detected_location(product_data: dict) -> str:
-    loc = product_data.get("location") or {}
-    if isinstance(loc, str):
-        return loc.strip()
-    if isinstance(loc, dict):
-        return (loc.get("location") or "").strip()
-    return ""
 
 
 async def _confirm_location(params: dict, context: dict) -> ToolResult:
@@ -51,16 +22,25 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     product = session_ctx.get("product_data") or {}
     business_type = (product.get("business_type") or "").strip()
 
-    if not _is_real_estate(business_type):
-        logger.info("confirm_location skipped: business_type=%r not real-estate", business_type)
+    if not is_real_estate(business_type):
+        logger.info(
+            "confirm_location skipped: business_type=%r is not real estate", business_type
+        )
         return ToolResult(
             success=False,
-            error=f"confirm_location only applies to real-estate campaigns — business_type is '{business_type}'. Skip this step.",
+            error=(
+                f"confirm_location only applies to real estate businesses. "
+                f"Business type is '{business_type}'. Skip this step."
+            ),
         )
 
     detected = _detected_location(product)
     product_name = (product.get("product_name") or "").strip()
-    display = f"{product_name}, {detected}" if product_name and detected else (detected or product_name)
+    display = (
+        f"{product_name}, {detected}"
+        if product_name and detected
+        else (detected or product_name)
+    )
 
     payload = {
         "location": detected,
@@ -99,23 +79,130 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     )
 
 
+async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
+    return await get_geo_targeting_agent().discover(params, context)
+
+
+async def _modify_targeting_location(params: dict, context: dict) -> ToolResult:
+    return await get_geo_targeting_agent().modify(params, context)
+
+
 confirm_location = ToolDefinition(
     name="confirm_location",
     description=(
-        "Ask the user to confirm or correct the project location on a map. "
-        "Real-estate campaigns only — refuses for other business types. The "
-        "tool emits the prompt text AND the map widget itself — your response "
-        "must contain NO free text. Takes no parameters; reads the detected "
-        "location from product_data."
+        "Ask the user to confirm or correct the business location on a map. "
+        "Only applies to local physical businesses. Emits the prompt text "
+        "and map widget atomically. Reads location from product_data."
     ),
     display_name="Confirm Location",
     parameters=[],
     execute=_confirm_location,
-    # v8 Plan B WS3 · deferred elicitation. After this returns, the run loop
-    # breaks and yields the turn to the user; their reply resumes next turn.
     kind="elicitation",
     elicit_mode="deferred",
     elicit_expects="single",
 )
 
-LOCATION_TOOLS = [confirm_location]
+discover_geo_targets = ToolDefinition(
+    name="discover_geo_targets",
+    description=(
+        "Resolve targetable areas/constants for the active ad network (Google Ads or Meta Ads). "
+        "For local physical businesses, it scans neighborhoods within a radius. For broad "
+        "businesses, it resolves country/region names directly."
+    ),
+    display_name="Geo Targeting",
+    parameters=[
+        ToolParameter(
+            name="location_name",
+            type="string",
+            description="Target location, city, state, or country name. Optional.",
+            required=False,
+        ),
+    ],
+    execute=_discover_geo_targets,
+)
+
+modify_targeting_location = ToolDefinition(
+    name="modify_targeting_location",
+    description=(
+        "Add or delete a campaign targeting location. "
+        "Expects 1-based index for delete action."
+    ),
+    display_name="Geo Targeting",
+    parameters=[
+        ToolParameter(
+            name="action",
+            type="string",
+            description="The action to perform: 'add' or 'delete'.",
+            required=True,
+        ),
+        ToolParameter(
+            name="index",
+            type="integer",
+            description="The 1-based index to delete. Required for 'delete' action.",
+            required=False,
+        ),
+        ToolParameter(
+            name="name",
+            type="string",
+            description="The location name. Required for 'add' action.",
+            required=False,
+        ),
+        ToolParameter(
+            name="city",
+            type="string",
+            description="The city name.",
+            required=False,
+        ),
+        ToolParameter(
+            name="state",
+            type="string",
+            description="The state name.",
+            required=False,
+        ),
+        ToolParameter(
+            name="pincode",
+            type="string",
+            description="The pincode/ZIP code.",
+            required=False,
+        ),
+        ToolParameter(
+            name="lat",
+            type="number",
+            description="Latitude coordinates.",
+            required=False,
+        ),
+        ToolParameter(
+            name="lng",
+            type="number",
+            description="Longitude coordinates.",
+            required=False,
+        ),
+        ToolParameter(
+            name="radius",
+            type="number",
+            description="Radial distance in km.",
+            required=False,
+        ),
+        ToolParameter(
+            name="google_id",
+            type="string",
+            description="Google Ads Criteria ID.",
+            required=False,
+        ),
+        ToolParameter(
+            name="meta_key",
+            type="string",
+            description="Meta location key.",
+            required=False,
+        ),
+        ToolParameter(
+            name="place_id",
+            type="string",
+            description="Google Place ID.",
+            required=False,
+        ),
+    ],
+    execute=_modify_targeting_location,
+)
+
+LOCATION_TOOLS = [confirm_location, discover_geo_targets, modify_targeting_location]
