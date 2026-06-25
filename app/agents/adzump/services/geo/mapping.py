@@ -42,7 +42,7 @@ class PlatformGeoMapper:
                 area["lat"] = geo["lat"]
                 area["lng"] = geo["lng"]
         except Exception as e:
-            logger.warning("Geocode for map pin failed: %s", e)
+            logger.warning("Geocode failed for area %r: %s", area.get("name"), e)
 
     async def map_target_areas(
         self,

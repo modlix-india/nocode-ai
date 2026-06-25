@@ -146,7 +146,10 @@ def is_aggregator_host(host: str, extra_hosts: frozenset[str] | set[str] = froze
 # ─── Shared product-data helpers ─────────────────────────────────────────
 
 def product_location_str(product_data: dict) -> str:
-    """Return the business location as a plain string from product_data.location."""
+    """Return the business location as a plain string from product_data.location.
+
+    The LLM emits location as either a plain string or {"location": "<string>"}.
+    """
     loc = product_data.get("location") or {}
     if isinstance(loc, str):
         return loc.strip()

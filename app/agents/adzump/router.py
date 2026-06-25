@@ -24,13 +24,14 @@ from app.core.base_router import (
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 from app.services.session_manager import get_session_manager
+from app.agents.adzump.agent import AdzumpAgent
+from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
+from app.agents.adzump.agents.geo.widget import parse_location_widget_message
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 create_common_routes(router, agent_name="adzump")
-
-from app.agents.adzump.agent import AdzumpAgent
 
 
 class ChatRequest(BaseModel):
@@ -71,7 +72,6 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
     # Location widget messages are machine-readable structured actions from
     # the craft-panel search widget.  They carry all params needed to call
     # modify_targeting_location directly — no LLM reasoning required.
-    from app.agents.adzump.agents.geo.widget import parse_location_widget_message
     widget_params = parse_location_widget_message(body.message)
     if widget_params is not None:
         return _stream_location_widget(agent, session, widget_params)
@@ -104,16 +104,8 @@ def _stream_location_widget(
                 tool_input=params,
             )
 
-            from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
-            from app.agents.adzump.services.business_storage import save_campaign
             result = await get_geo_targeting_agent().modify(params, ctx)
-            # modify() calls _rerender_craft but not save_campaign (save belongs to the
-            # caller — the LLM path saves via _on_loop_complete; we save explicitly here).
-            if result.success:
-                try:
-                    await save_campaign(session.context, ctx)
-                except Exception as e:
-                    logger.debug("Widget path campaign save failed (non-fatal): %s", e)
+            # modify() owns save_campaign + _rerender_craft; nothing extra needed here.
 
             await event_stream.emit_tool_result(
                 tool_use_id="widget_location",

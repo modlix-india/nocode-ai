@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 class GeoTargetingAgent:
-    """Singleton that owns the geo-targeting orchestration shared by location tools."""
+    """Singleton that owns the geo-targeting orchestration shared by location tools.
+
+    Kept as a class (rather than module-level functions) to make future
+    per-session state (e.g. a cached geocode result) easy to attach.
+    """
 
     _instance: "GeoTargetingAgent | None" = None
 
@@ -41,7 +45,7 @@ class GeoTargetingAgent:
         product: dict,
         platform: str,
     ) -> None:
-        """Re-emit the craft panel. Saving is the caller's responsibility."""
+        """Re-emit the craft panel after targeting changes. Does NOT persist — callers must save before calling this."""
         stream = context.get("event_stream")
         craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
         url = resolve_url(session_ctx)
@@ -92,13 +96,14 @@ class GeoTargetingAgent:
                 geo = await google_maps_client.geocode(location_name)
                 if geo and geo.get("lat") is not None and geo.get("lng") is not None:
                     coordinates = {"lat": float(geo["lat"]), "lng": float(geo["lng"])}
-                    loc_meta.update({
-                        "lat": geo["lat"],
-                        "lng": geo["lng"],
-                        **({} if not geo.get("country_code") else {"country_code": geo["country_code"]}),
-                        **({} if loc_meta.get("address") or not geo.get("address") else {"address": geo["address"]}),
-                        **({} if "place_id" not in geo else {"place_id": geo["place_id"]}),
-                    })
+                    loc_meta["lat"] = geo["lat"]
+                    loc_meta["lng"] = geo["lng"]
+                    if geo.get("country_code"):
+                        loc_meta["country_code"] = geo["country_code"]
+                    if not loc_meta.get("address") and geo.get("address"):
+                        loc_meta["address"] = geo["address"]
+                    if "place_id" in geo:
+                        loc_meta["place_id"] = geo["place_id"]
                     session_ctx["_location_meta"] = loc_meta
             except Exception as ge:
                 logger.warning("Geocoding '%s' failed: %s", location_name, ge)
@@ -213,23 +218,23 @@ class GeoTargetingAgent:
 
         loc_meta = session_ctx.get("_location_meta") or {}
         cc = loc_meta.get("country_code") or "IN"
+        mapped = target_areas
         try:
             mapper = PlatformGeoMapper(session_ctx, context)
-            product["target_areas"] = await mapper.map_target_areas(target_areas, platform, cc)
+            mapped = await mapper.map_target_areas(target_areas, platform, cc)
         except Exception as e:
             logger.warning("PlatformGeoMapper failed in modify: %s", e)
+        product["target_areas"] = mapped
 
         mapping_key = "google_mapped_locations" if is_google(platform) else "meta_mapped_locations"
         loc_meta[mapping_key] = product["target_areas"]
         session_ctx["_location_meta"] = loc_meta
         product[mapping_key] = product["target_areas"]
 
-        caller_platform = spec.get("platform") or "Google Ads"
-
         logger.info(
             "modify_targeting_location: action=%s platform=%s areas=%d "
             "mapping_key=%s stream=%s craft_id=%s url=%s first_area=%s",
-            action, caller_platform, len(product["target_areas"]),
+            action, platform, len(product["target_areas"]),
             mapping_key,
             bool(context.get("event_stream")),
             session_ctx.get("craft_id") or session_ctx.get("_craft_id"),
@@ -238,7 +243,7 @@ class GeoTargetingAgent:
         )
 
         await save_campaign(session_ctx, context)
-        await self._rerender_craft(session_ctx, context, product, caller_platform)
+        await self._rerender_craft(session_ctx, context, product, platform)
 
         # Re-emit the location chips so the search widget reflects the new list.
         stream = context.get("event_stream")
