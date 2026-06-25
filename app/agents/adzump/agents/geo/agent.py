@@ -11,6 +11,7 @@ import logging
 
 from app.core.tools.base import ToolResult
 from app.agents.adzump.adapters.google.maps import google_maps_client
+from app.agents.adzump.platform import is_google
 from app.agents.adzump.services.geo.discovery import (
     discover_geo_targets as run_discover_geo_targets,
 )
@@ -133,8 +134,7 @@ class GeoTargetingAgent:
                 len(resolved), platform,
             )
 
-            is_google = "google" in platform.lower()
-            mapping_key = "google_mapped_locations" if is_google else "meta_mapped_locations"
+            mapping_key = "google_mapped_locations" if is_google(platform) else "meta_mapped_locations"
 
             mapper = PlatformGeoMapper(session_ctx, context)
             if stream:
@@ -181,7 +181,7 @@ class GeoTargetingAgent:
 
         product = session_ctx.setdefault("product_data", {})
         spec = session_ctx.setdefault("campaign_spec", {})
-        platform = (spec.get("platform") or "Google Ads").lower().strip()
+        platform = (spec.get("platform") or "Google Ads").strip()
         target_areas = product.setdefault("target_areas", [])
 
         action = params.get("action")
@@ -228,8 +228,7 @@ class GeoTargetingAgent:
         except Exception as e:
             logger.warning("PlatformGeoMapper failed in modify: %s", e)
 
-        is_google = "google" in platform.lower()
-        mapping_key = "google_mapped_locations" if is_google else "meta_mapped_locations"
+        mapping_key = "google_mapped_locations" if is_google(platform) else "meta_mapped_locations"
         loc_meta[mapping_key] = product["target_areas"]
         session_ctx["_location_meta"] = loc_meta
         product[mapping_key] = product["target_areas"]
