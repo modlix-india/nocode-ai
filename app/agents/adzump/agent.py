@@ -890,55 +890,6 @@ class AdzumpAgent(BaseAgent):
         # a legacy rename); gated to agentic turn==1 internally.
         ack = self._capture_tagged_answer(session, turn)
 
-        # Auto-map target areas on-the-fly if platform changed but locations aren't mapped yet
-        spec = session.context.get("campaign_spec") or {}
-        platform = spec.get("platform")
-        product = session.context.get("product_data") or {}
-        target_areas = product.get("target_areas") or []
-
-        if platform and target_areas:
-            from app.agents.adzump.platform import is_google, is_meta
-            from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
-
-            loc_meta = session.context.setdefault("_location_meta", {})
-            cc = loc_meta.get("country_code") or "IN"
-
-            if is_google(platform):
-                google_locs = product.get("google_mapped_locations") or []
-                if not google_locs:
-                    try:
-                        ctx = self.build_tool_context(session)
-                        mapper = PlatformGeoMapper(session.context, ctx)
-                        mapped = await mapper.map_target_areas(
-                            target_areas, platform, cc
-                        )
-                        if mapped:
-                            product["google_mapped_locations"] = mapped
-                            loc_meta["google_mapped_locations"] = mapped
-                            product["target_areas"] = mapped
-                    except Exception as e:
-                        logger.warning(
-                            "Auto-mapping to Google failed in build_turn_reminder: %s",
-                            e,
-                        )
-            elif is_meta(platform):
-                meta_locs = product.get("meta_mapped_locations") or []
-                if not meta_locs:
-                    try:
-                        ctx = self.build_tool_context(session)
-                        mapper = PlatformGeoMapper(session.context, ctx)
-                        mapped = await mapper.map_target_areas(
-                            target_areas, platform, cc
-                        )
-                        if mapped:
-                            product["meta_mapped_locations"] = mapped
-                            loc_meta["meta_mapped_locations"] = mapped
-                            product["target_areas"] = mapped
-                    except Exception as e:
-                        logger.warning(
-                            "Auto-mapping to Meta failed in build_turn_reminder: %s", e
-                        )
-
         _hydrate_location_from_product_data(session.context)
         cctx = CampaignContext.from_session(session)
         last_user = _last_user_text({"_session": session})
@@ -996,6 +947,38 @@ class AdzumpAgent(BaseAgent):
                 await save_campaign(ctx, self.build_tool_context(session))
             except Exception as e:
                 logger.debug("End-of-turn campaign save failed (non-fatal): %s", e)
+
+        # If platform was set this turn but existing locations aren't yet mapped
+        # for it (storage-reuse path: locations existed before platform was chosen),
+        # map them now so has_mapped_geo_targets is true for the next turn's prompt.
+        # This runs at end-of-turn where external I/O belongs — NOT in build_turn_reminder.
+        spec = ctx.get("campaign_spec") or {}
+        platform_eot = spec.get("platform") or ""
+        product_eot = ctx.get("product_data") or {}
+        target_areas_eot = product_eot.get("target_areas") or []
+        if platform_eot and target_areas_eot:
+            from app.agents.adzump.platform import is_google as _ig, is_meta as _im
+            from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+            loc_meta_eot = ctx.setdefault("_location_meta", {})
+            cc_eot = loc_meta_eot.get("country_code") or "IN"
+            needs_google = _ig(platform_eot) and not product_eot.get("google_mapped_locations")
+            needs_meta = _im(platform_eot) and not product_eot.get("meta_mapped_locations")
+            if needs_google or needs_meta:
+                try:
+                    tool_ctx = self.build_tool_context(session)
+                    mapped_eot = await PlatformGeoMapper(ctx, tool_ctx).map_target_areas(
+                        target_areas_eot, platform_eot, cc_eot
+                    )
+                    if mapped_eot:
+                        product_eot["target_areas"] = mapped_eot
+                        if needs_google:
+                            product_eot["google_mapped_locations"] = mapped_eot
+                            loc_meta_eot["google_mapped_locations"] = mapped_eot
+                        else:
+                            product_eot["meta_mapped_locations"] = mapped_eot
+                            loc_meta_eot["meta_mapped_locations"] = mapped_eot
+                except Exception as e:
+                    logger.warning("End-of-turn geo auto-mapping failed (non-fatal): %s", e)
 
         # If platform was just set this turn and mapped locations already exist
         # (storage reuse path), emit the craft panel with platform so the map
