@@ -195,9 +195,11 @@ _META_NOT_CONNECTED = (
 
 
 _NO_FB_PAGES = (
-    "No Facebook pages are linked to this Meta Business. Tell the user to create or "
-    "assign a Facebook page to this Business (Meta Business Suite → Accounts → Pages), "
-    "then reply 'ready' and we'll pick up here. Do NOT invent a page id. Stop and wait."
+    "No Facebook page you can post from. The campaign needs a page where the connected "
+    "Meta user is an admin (only then does Meta issue a Page Access Token to publish / "
+    "link Instagram). Tell the user to give themselves an admin role on a page in this "
+    "Business (Meta Business Suite → Pages), then reply 'ready' and we'll pick up here. "
+    "Do NOT invent a page id. Stop and wait."
 )
 
 
