@@ -6,10 +6,12 @@ Only the /chat endpoint with adzump-specific logic lives here.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context
@@ -20,6 +22,7 @@ from app.core.base_router import (
     stream_agent_response,
 )
 from app.core.session import BaseSession, AuthContext
+from app.core.streaming import AgentEventStream
 from app.services.session_manager import get_session_manager
 
 logger = logging.getLogger(__name__)
@@ -65,9 +68,70 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
             if a.type == "image" and a.data
         ]
 
+    # Location widget messages are machine-readable structured actions from
+    # the craft-panel search widget.  They carry all params needed to call
+    # modify_targeting_location directly — no LLM reasoning required.
+    from app.agents.adzump.agents.geo.widget import parse_location_widget_message
+    widget_params = parse_location_widget_message(body.message)
+    if widget_params is not None:
+        return _stream_location_widget(agent, session, widget_params)
+
     return stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )
+
+
+def _stream_location_widget(
+    agent: AdzumpAgent,
+    session: BaseSession,
+    params: dict,
+) -> StreamingResponse:
+    """Execute a location widget action directly (no LLM) and stream SSE."""
+    event_stream = AgentEventStream()
+
+    async def run() -> None:
+        try:
+            # Build the same tool context the agent would pass to any tool.
+            ctx = agent.build_tool_context(session)
+            ctx["event_stream"] = event_stream
+            # Clear any pending chip-question so the next real agent turn
+            # doesn't re-ask duration/budget after a location add/delete.
+            session.context.pop("_pending_elicitation", None)
+
+            await event_stream.emit_tool_start(
+                tool_use_id="widget_location",
+                tool_name="modify_targeting_location",
+                tool_input=params,
+            )
+
+            from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
+            result = await get_geo_targeting_agent().modify(params, ctx)
+
+            await event_stream.emit_tool_result(
+                tool_use_id="widget_location",
+                tool_name="modify_targeting_location",
+                success=result.success,
+                summary=result.summary or result.error or "",
+            )
+        except Exception as e:
+            logger.exception("Location widget action failed")
+            await event_stream.emit_error(str(e))
+        finally:
+            await event_stream.emit_done(session_id=session.session_id)
+
+    async def event_generator():
+        task = asyncio.create_task(run())
+        try:
+            async for event in event_stream.events():
+                yield event.to_sse()
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/sessions/{session_id}/target-locations/search")

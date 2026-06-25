@@ -16,7 +16,6 @@ workflow tree lives in Python (``_next_action``), computed from a typed
 from __future__ import annotations
 
 import logging
-import re as _re
 from dataclasses import dataclass
 from typing import Any
 
@@ -190,55 +189,6 @@ class CampaignContext:
         return bool(self.product.get("target_areas"))
 
 
-def _parse_location_params(msg: str) -> dict:
-    """Parse key=value pairs from craft-panel location widget messages.
-
-    Handles both quoted strings (name="...") and bare values (lat=12.97).
-    Returns a dict with any recognised fields: name, lat, lng, place_id,
-    city, state, pincode, google_id, meta_key.
-    """
-    params: dict = {}
-    name_m = _re.search(r'name="([^"]+)"', msg)
-    if name_m:
-        params["name"] = name_m.group(1)
-    for key in ("place_id", "city", "state", "pincode", "google_id", "meta_key"):
-        m = _re.search(rf'{key}="([^"]*)"', msg)
-        if m:
-            params[key] = m.group(1)
-        else:
-            m = _re.search(rf'{key}=(\S+)', msg)
-            if m:
-                params[key] = m.group(1)
-    for key in ("lat", "lng"):
-        m = _re.search(rf'{key}=([+-]?\d+\.?\d*)', msg)
-        if m:
-            try:
-                params[key] = float(m.group(1))
-            except ValueError:
-                pass
-    for key in ("index",):
-        m = _re.search(rf'{key}=(\d+)', msg)
-        if m:
-            try:
-                params[key] = int(m.group(1))
-            except ValueError:
-                pass
-    return params
-
-
-def _is_location_modify_message(text: str) -> bool:
-    """Return True if `text` is a craft-panel location add/remove widget message."""
-    t = text.strip().lower()
-    return (
-        t.startswith("add targeting location ")
-        or t.startswith("adding location ")
-        or t.startswith("remove targeting location")
-        or t.startswith("delete targeting location")
-        or t.startswith("removing location ")
-        or t.startswith("deleting location")
-    )
-
-
 def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     """Recognize when the user's last message is an obvious answer for a
     pending campaign-spec field. Returns (field, value) to store, or None.
@@ -252,19 +202,6 @@ def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     if not lu:
         return None
     spec = cctx.spec
-
-    # Location add/delete: structured messages sent by the craft-panel UI
-    # widget. Two formats:
-    #   New: "add targeting location name="<name>" lat=<lat> lng=<lng> ..."
-    #   Legacy: "Adding location <name>" / "Removing location <name>"
-    # Pass the full message as the value so _next_action can parse params.
-    if lu_lower.startswith("add targeting location ") or lu_lower.startswith("adding location "):
-        return ("_location_add", lu)
-    if (lu_lower.startswith("remove targeting location")
-            or lu_lower.startswith("delete targeting location")
-            or lu_lower.startswith("removing location ")
-            or lu_lower.startswith("deleting location")):
-        return ("_location_delete", lu)
 
     # Platform: "Google Ads" / "Meta" chip clicks or close natural-language
     # variants. Only fire if platform isn't already stored. Defers keyword
@@ -301,55 +238,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     intent_field: str | None = None
     if intent is not None:
         intent_field, value = intent
-        if intent_field == "_location_add":
-            # Parse all params the UI embedded in the message (name, lat, lng, etc.)
-            p = _parse_location_params(value)
-            name = p.get("name") or ""
-            # Fallback: strip the prefix to get bare name from legacy "Adding location X" format
-            if not name:
-                for pfx in ("add targeting location ", "adding location "):
-                    if value.lower().startswith(pfx):
-                        name = value[len(pfx):].rstrip(". ")
-                        break
-            call_args = f'action="add", name={name!r}'
-            if p.get("lat") is not None:
-                call_args += f', lat={p["lat"]}'
-            if p.get("lng") is not None:
-                call_args += f', lng={p["lng"]}'
-            if p.get("city"):
-                call_args += f', city={p["city"]!r}'
-            if p.get("state"):
-                call_args += f', state={p["state"]!r}'
-            if p.get("pincode"):
-                call_args += f', pincode={p["pincode"]!r}'
-            if p.get("place_id"):
-                call_args += f', place_id={p["place_id"]!r}'
-            if p.get("google_id"):
-                call_args += f', google_id={p["google_id"]!r}'
-            if p.get("meta_key"):
-                call_args += f', meta_key={p["meta_key"]!r}'
-            missing.append(
-                f'location add — user wants to add "{name}". '
-                f'Call `modify_targeting_location({call_args})` FIRST, '
-                "before asking any other question."
-            )
-        elif intent_field == "_location_delete":
-            p = _parse_location_params(value)
-            if p.get("index"):
-                missing.append(
-                    f'location delete — call `modify_targeting_location(action="delete", index={p["index"]})` FIRST.'
-                )
-            else:
-                missing.append(
-                    "location delete — user wants to remove a targeting location. "
-                    "Identify the index from the current target_areas list and call "
-                    '`modify_targeting_location(action="delete", index=<1-based index>)` FIRST.'
-                )
-        else:
-            missing.append(
-                f'{intent_field} — user said "{cctx.last_user[:40]}". '
-                f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
-            )
+        missing.append(
+            f'{intent_field} — user said "{cctx.last_user[:40]}". '
+            f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
+        )
 
     if cctx.is_real_estate and not cctx.spec.get("location"):
         if cctx.pending_location:
@@ -730,13 +622,6 @@ class AdzumpAgent(BaseAgent):
             return ""
         pe = session.context.get("_pending_elicitation")
         if not pe:
-            return ""
-        # If the user sent a location-modify message (from the craft-panel
-        # search widget), clear the pending elicitation so the intent
-        # prescription takes over rather than re-asking the previous question.
-        _lu = (_last_user_text({"_session": session}) or "").strip()
-        if _is_location_modify_message(_lu):
-            session.context.pop("_pending_elicitation", None)
             return ""
         if pe.get("expects") == "multi":
             return (
