@@ -138,7 +138,21 @@ class Settings(BaseSettings):
     APPBUILDER_PROVIDER: str = "openai"  # AppBuilder LLM provider
     ADZUMP_PROVIDER: str = "openai"  # Adzump LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
-    
+
+    # ── Competitor creative library (adlibrary.com integration) ──
+    # adlibrary.com ad-intelligence API — fetches competitor ad creatives.
+    ADLIBRARY_API_KEY: str = ""  # Bearer key ("adl_...") — Business plan
+    ADLIBRARY_BASE_URL: str = "https://adlibrary.com/api"
+    # Competitor-creative library scope.
+    #   False (default, current): store under the logged-in client's own
+    #     clientCode — simple, uses the user's JWT directly.
+    #   True (future): one shared SYSTEM-owned collection across all clients
+    #     (reached via clientCode=SYSTEM, no token). Needs the SYSTEM-side
+    #     CompetitorCreativeLibrary storage created first, then flip this.
+    CREATIVE_LIBRARY_SHARED: bool = False
+    # A competitor older than this many days is refetched on next request.
+    CREATIVE_LIBRARY_FRESHNESS_DAYS: int = 30
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -173,6 +187,7 @@ class Settings(BaseSettings):
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
+            ("adzump", "adLibraryAPIKey"): "ADLIBRARY_API_KEY",
         }
         
         for keys, attr in mappings.items():

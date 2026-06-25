@@ -23,6 +23,9 @@ _IMAGE_KIND_FOLDERS = {
     "creative": "creatives",
     "logo_thumb": "logos",
     "creative_thumb": "creatives",
+    # Competitor ad creatives rehosted from adlibrary.com into our file store
+    # so the shared library doesn't depend on adlibrary's (undocumented-TTL) URLs.
+    "competitor_creative": "competitor-creatives",
 }
 
 _REHOST_TIMEOUT_S = 5.0
