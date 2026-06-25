@@ -28,10 +28,10 @@ _oauth_token_expiry: float = 0.0
 
 
 class GoogleAdsClient:
-    """Thin wrapper over the Google Ads REST API (v21)."""
+    """Thin wrapper over the Google Ads REST API (v23)."""
 
     BASE_URL = "https://googleads.googleapis.com"
-    API_VERSION = "v21"
+    API_VERSION = "v23"
 
     def __init__(self) -> None:
         self._timeout = httpx.Timeout(30.0, connect=10.0)
@@ -76,6 +76,29 @@ class GoogleAdsClient:
             )
             _raise_for_google_error(response)
             return response.json().get("results", [])
+
+    async def suggest_geo_targets(
+        self,
+        query: str,
+        country_code: str,
+        client_code: str,
+        auth_headers: dict[str, str],
+    ) -> dict:
+        """Call geoTargetConstants:suggest — no customer_id needed."""
+        token = await self._get_api_token(client_code, auth_headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/geoTargetConstants:suggest"
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                url,
+                headers=self._build_auth_headers(token),
+                json={
+                    "locale": "en",
+                    "countryCode": country_code,
+                    "locationNames": {"names": [query]},
+                },
+            )
+            _raise_for_google_error(response)
+            return response.json()
 
     async def search_stream(
         self,

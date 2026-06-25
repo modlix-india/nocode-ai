@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
@@ -90,7 +91,9 @@ class BaseAgent:
             self.display_name = name.replace("_", " ").title()
 
         # Tool surface strategy — three mutually exclusive modes:
-        #   1. router_tool  → LLM sees only `execute`; we unwrap.
+        #   1. router_tool  → LLM sees only `execute`; we unwrap
+        #                       execute(tool=X, params={}) → real call at
+        #                       dispatch (_run_tool_block).
         #   2. defer_schemas → LLM sees every tool's name + description with
         #                       EMPTY parameters; full schema fetched on demand
         #                       via get_tool_schema. First call to a tool
@@ -109,13 +112,9 @@ class BaseAgent:
         else:
             self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
 
-        # Registry lint: a confirmation tool pauses for the user (via
-        # request_confirmation), so it should declare kind="elicitation" —
-        # that keeps the registry honest about which tools wait on input
-        # (used for one-ask-per-turn serialization). Warn on any confirmation
-        # tool that isn't marked, to catch the easy mistake of adding one to
-        # CONFIRMATION_TOOLS but forgetting kind='elicitation',
-        # elicit_mode='blocking'.
+        # Registry lint: a CONFIRMATION_TOOLS entry pauses for the user, so it
+        # must declare kind='elicitation', elicit_mode='blocking' (keeps the
+        # one-ask-per-turn serialization honest). Warn on any that forgot.
         for _cname in self.CONFIRMATION_TOOLS:
             _ct = self.tools.get(_cname)
             if _ct is not None and getattr(_ct, "kind", "tool") != "elicitation":
@@ -126,7 +125,7 @@ class BaseAgent:
                     name, _cname,
                 )
 
-        # Hold references to background tasks to prevent premature GC
+        # strong refs so tasks aren't GC'd mid-flight
         self._background_tasks: set[asyncio.Task] = set()
 
     def _tool_to_advertised_schema(self, tool: ToolDefinition) -> dict[str, Any]:
@@ -158,32 +157,23 @@ class BaseAgent:
         image_blocks: list[dict[str, Any]] | None = None,
         model_override: str | None = None,
     ) -> None:
-        """Execute the agentic loop for a single user request (it spans many
-        internal ``turn`` iterations until done).
-
-        This is the core method. It:
-        1. Builds the system prompt
-        2. Appends the user message
-        3. Calls the LLM with tools
-        4. Streams text, executes tools, loops until done
-        5. Emits the done event
-
-        All errors are caught and emitted as error events.
+        """Execute the agentic loop for one user request (spans many internal turn
+        iterations). Builds the prompt, appends the user message, runs the tool-use
+        loop, emits done. All errors are caught and emitted as error events.
 
         Args:
             user_message: The user's input text.
             session: Active session with auth context and message history.
             event_stream: SSE stream to emit events to the client.
-            image_blocks: Optional image content blocks (Anthropic format) to include with the message.
-            model_override: Optional model ID in "provider:model" format to override the default.
+            image_blocks: Optional image content blocks (Anthropic format).
+            model_override: Optional "provider:model" override of the default.
         """
-        # Detect whether this is a nested sub-agent run. The AgentCard
-        # lifecycle (agent_started + agent_finished) is owned by the spawning
-        # tool, not here: the launcher pre-emits agent_started and emits
-        # agent_finished after all post-processing, so the card outlives this
-        # loop. We only use is_sub_agent for error routing below — a sub-agent
-        # re-raises to its parent's tool wrapper; the top-level chat agent
-        # (parent_id "root") emits error/done itself to close the SSE stream.
+        # Nested sub-agent run? The AgentCard lifecycle (agent_started/finished)
+        # is owned by the spawning tool, not here — the launcher pre-emits started
+        # and emits finished after post-processing, so the card outlives this loop.
+        # is_sub_agent is used ONLY for error routing below: a sub-agent re-raises
+        # to its parent's tool wrapper; the top-level "root" agent emits error/done
+        # itself to close the SSE stream.
         is_sub_agent = current_agent_id.get() != "root"
         ctx_token = current_agent_id.set(self.name)
 
@@ -255,10 +245,9 @@ class BaseAgent:
         # Mark session as processing so UI can detect in-progress state on refresh
         await session.set_processing()
 
-        # Append user message + start turn FIRST so build_dynamic_context can
-        # read the current turn's message via session.messages (and turn count
-        # via session._turn_count). Otherwise the dynamic context shows the
-        # PREVIOUS user message and uses an off-by-one turn for provenance.
+        # Append user message + start turn BEFORE build_dynamic_context, so it
+        # reads THIS turn's message (session.messages) and turn count — else the
+        # context shows the previous message with an off-by-one turn.
         session.append_user_message(user_message, image_blocks)
         logger.info("Message history: %d messages", len(session.get_messages()))
         session.start_turn()
@@ -292,9 +281,20 @@ class BaseAgent:
         tool_call_log: list[dict[str, Any]] = []
         # Track the model used (from the first LLM response)
         model_used: str | None = None
+        # Deterministic stuck-loop breaker (run-scoped). When a turn's tool calls
+        # ALL fail with the same tool-name signature N turns running, the offending
+        # tool(s) are quarantined (withdrawn from the tool set) for the rest of THIS
+        # run — so the model is forced onto a different action (e.g. asking the
+        # user) instead of re-calling a tool that keeps rejecting (an advisory
+        # STOP-steer the model ignores). Signature = tool NAMES, not inputs (a model
+        # inventing fresh values each turn keeps the same names); any success resets
+        # it. N=4 sits one above the domain advisory's n>=3.
+        STUCK_N = 4
+        stuck_sig: tuple[str, ...] | None = None
+        stuck_n = 0
+        quarantined: set[str] = set()
 
         while turn < self.max_turns:
-            # Check for user-initiated cancellation
             if event_stream.is_cancelled:
                 await event_stream.emit_text("\n\n[Stopped by user.]")
                 break
@@ -302,7 +302,6 @@ class BaseAgent:
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
-            # Call LLM with streaming
             effective_tier = override_model or self.model_tier
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
                        turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
@@ -315,10 +314,15 @@ class BaseAgent:
             # Stream the turn + assemble the provider chunks into blocks. Mutates
             # assistant_text_parts (run-scoped) in place; always drains builtin
             # rows, even on a mid-stream raise. See _stream_turn.
+            # Withdraw quarantined tools — filtered COPY, never mutate self._anthropic_tools.
+            call_tools = (
+                [t for t in self._anthropic_tools if t.get("name") not in quarantined]
+                if quarantined else None
+            )
             content_blocks, tool_use_blocks, stop_reason, usage, _text_chunk_count = (
                 await self._stream_turn(
                     provider, system_prompt, call_messages, effective_tier,
-                    event_stream, assistant_text_parts,
+                    event_stream, assistant_text_parts, tools=call_tools,
                 )
             )
 
@@ -333,7 +337,6 @@ class BaseAgent:
                     turn, self.max_tokens,
                 )
 
-            # Track usage and capture model name
             resolved_model = provider.get_model(effective_tier)
             if not model_used:
                 model_used = resolved_model
@@ -347,10 +350,8 @@ class BaseAgent:
             # Pop here so it doesn't leak into the persisted usage record.
             reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
 
-            # Save assistant message to conversation history
             session.append_assistant_message(content_blocks, reasoning_content)
 
-            # If no tool calls, we're done
             if stop_reason != "tool_use" or not tool_use_blocks:
                 break
 
@@ -362,26 +363,20 @@ class BaseAgent:
                         "in parallel" if len(tool_use_blocks) > 1 else "",
                         [tb.get("name", "?") for tb in tool_use_blocks])
 
-            # Expose THIS turn's streamed assistant text (prose written before
-            # the tool calls) so a widget tool can avoid re-emitting text the
-            # model already wrote — e.g. present_options skipping a question the
-            # model streamed as a lead-in (duplicate-question de-dup). Per-turn:
-            # content_blocks resets each turn (assistant_text_parts is the whole
-            # run), so this only carries the current turn's prose. Transient
-            # session attribute (not persisted context). Generic + inert — only
-            # a tool that opts to read it is affected.
+            # THIS turn's streamed prose (before tool calls) so a widget tool can skip
+            # re-emitting text the model already wrote (e.g. present_options de-dupes a
+            # question streamed as its lead-in). content_blocks resets per turn, so this
+            # is current-turn only (assistant_text_parts is whole-run). Transient attr,
+            # not persisted; generic + inert — only a tool that opts to read it cares.
             session._turn_assistant_text = "".join(
                 b.get("text", "") for b in content_blocks if b.get("type") == "text"
             )
 
-            # Telemetry + kill-switch for the parallel-batch elicitation race.
-            # The LLM DOES batch >1 tool_use block when the dynamic context
-            # lists several missing items (observed live: two elicitation
-            # widgets rendered stacked in one bubble). When
-            # force_serial_on_elicitation is on, the serial path above
-            # early-exits after the first deferred elicitation so a second
-            # widget can't stack. This warning fires regardless, for visibility
-            # into how often batching happens.
+            # Telemetry + kill-switch for the parallel-batch elicitation race. The LLM
+            # DOES batch >1 tool_use when several items are missing (observed live:
+            # two widgets stacked in one bubble). force_serial_on_elicitation early-exits
+            # after the first deferred elicitation so a second can't stack; this warning
+            # fires regardless, for visibility into batch frequency.
             batch_has_elicitation = self._batch_has_deferred_elicitation(tool_use_blocks)
             if len(tool_use_blocks) > 1 and batch_has_elicitation:
                 logger.warning(
@@ -398,13 +393,11 @@ class BaseAgent:
             )
             if run_serial:
                 tool_result_blocks = []
-                # Serial dispatch EARLY-EXITS the batch after the first deferred
-                # elicitation: remaining batched tools are NOT run (so a second
-                # widget can't stack in the same bubble), but each still gets a
-                # placeholder tool_result, since the Anthropic API requires one
-                # per tool_use block. The LLM re-issues the deferred calls next
-                # turn if still needed. Reached when force_serial_on_elicitation
-                # is on (an opt-in subclass) or for the trivial single-tool case.
+                # Serial dispatch EARLY-EXITS after the first deferred elicitation:
+                # remaining batched tools aren't run (no second stacked widget), but each
+                # gets a placeholder tool_result (Anthropic requires one per tool_use
+                # block). The LLM re-issues deferred calls next turn if still needed.
+                # Reached via force_serial_on_elicitation (opt-in) or the single-tool case.
                 stop_batch = False
                 for tb in tool_use_blocks:
                     if stop_batch:
@@ -430,7 +423,7 @@ class BaseAgent:
                         })
                         continue
                     result_block, log_entry = await self._run_tool_block(
-                        tb, session, event_stream
+                        tb, session, event_stream, assistant_text_parts
                     )
                     tool_result_blocks.append(result_block)
                     tool_call_log.append(log_entry)
@@ -438,7 +431,7 @@ class BaseAgent:
                         stop_batch = True
             else:
                 results = await asyncio.gather(
-                    *(self._run_tool_block(tb, session, event_stream)
+                    *(self._run_tool_block(tb, session, event_stream, assistant_text_parts)
                       for tb in tool_use_blocks),
                     return_exceptions=False,
                 )
@@ -450,7 +443,6 @@ class BaseAgent:
                 await event_stream.emit_text("\n\n[Stopped by user.]")
                 break
 
-            # Append tool results to conversation
             session.append_tool_results(tool_result_blocks)
 
             # Persist incremental progress so data is not lost on disconnect
@@ -490,6 +482,10 @@ class BaseAgent:
                     # capture the reply deterministically. Core never reads it.
                     "field": elicited.get("elicit_field"),
                     "answers": elicited.get("elicit_answers"),
+                    # Generic typed payload (see elicit_payload above); the
+                    # subclass that opened the elicitation reads + mutates it
+                    # across turns. Core only carries + persists it.
+                    "payload": elicited.get("elicit_payload"),
                 }
                 logger.info(
                     "elicitation_break: turn=%d tool=%s expects=%s batch=%d",
@@ -497,6 +493,19 @@ class BaseAgent:
                     elicited.get("elicit_expects"), len(tool_result_blocks),
                 )
                 break
+
+            # Stuck-loop detection (see _stuck_step). On trip, quarantine
+            # offenders for the rest of the run so the model must ask/move on.
+            stuck_sig, stuck_n, to_quarantine = self._stuck_step(
+                new_entries, stuck_sig, stuck_n, STUCK_N
+            )
+            newly = to_quarantine - quarantined
+            if newly:
+                quarantined |= newly
+                logger.warning(
+                    "stuck_loop_quarantine: turn=%d tools=%s — withdrawing for the "
+                    "rest of this run so the model must ask/move on", turn, sorted(newly),
+                )
 
         else:
             # while/else: reached ONLY when the loop ends without a break —
@@ -538,7 +547,6 @@ class BaseAgent:
             turn_number=session._turn_count,
         )
 
-        # Mark session as completed and emit done
         await session.complete()
         await event_stream.emit_done(
             session_id=session.session_id,
@@ -553,16 +561,15 @@ class BaseAgent:
         effective_tier: str,
         event_stream: AgentEventStream,
         assistant_text_parts: list[str],
+        tools: list[dict[str, Any]] | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str, dict[str, Any], int]:
-        """Stream one LLM turn and assemble the provider chunks into blocks.
+        """Stream one LLM turn; assemble provider chunks into blocks.
 
-        Returns ``(content_blocks, tool_use_blocks, stop_reason, usage,
-        text_chunks)``. Mutates ``assistant_text_parts`` in place — it is
-        run-scoped (read at finalize), NOT a per-turn output, so it must not be
-        returned as a fresh list. Builtin rows are ALWAYS drained via the
-        finally, even on a mid-stream raise, so an open row never spins forever
-        in the UI (the sub-agent path re-raises without emitting done). Returns
-        normally on cancel so the loop's post-stream cancel checks still fire.
+        Returns ``(content_blocks, tool_use_blocks, stop_reason, usage, text_chunks)``.
+        Mutates ``assistant_text_parts`` in place — run-scoped (read at finalize), NOT
+        a per-turn output, so it must not be returned fresh. Builtin rows ALWAYS drain
+        via the finally, even on a mid-stream raise, so no row spins forever in the UI.
+        Returns normally on cancel so the loop's post-stream cancel checks still fire.
         """
         content_blocks: list[dict[str, Any]] = []
         tool_use_blocks: list[dict[str, Any]] = []
@@ -582,7 +589,7 @@ class BaseAgent:
             async for chunk in provider.stream_completion_with_tools(
                 system_prompt=system_prompt,
                 messages=call_messages,
-                tools=self._anthropic_tools,
+                tools=self._anthropic_tools if tools is None else tools,
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
                 context_management=self.context_management,
@@ -610,10 +617,12 @@ class BaseAgent:
                     await on_builtin_tool_result(builtin_rows, chunk, event_stream)
 
                 elif chunk.type == "tool_use_start":
-                    # Flush text block if any
+                    # Flush text block (scrub leaked tool-call syntax).
                     if current_text:
-                        content_blocks.append({"type": "text", "text": current_text})
-                        assistant_text_parts.append(current_text)
+                        cleaned = self._clean_assistant_text(current_text)
+                        if cleaned:
+                            content_blocks.append({"type": "text", "text": cleaned})
+                            assistant_text_parts.append(cleaned)
                         current_text = ""
                     current_tool = {
                         "type": "tool_use",
@@ -628,7 +637,6 @@ class BaseAgent:
 
                 elif chunk.type == "tool_use_end":
                     if current_tool:
-                        # Parse accumulated JSON input
                         raw = current_tool.pop("_input_json", "{}")
                         try:
                             current_tool["input"] = json.loads(raw)
@@ -660,15 +668,17 @@ class BaseAgent:
             # In a finally so a mid-stream raise can't leave a row spinning.
             await close_builtin_rows(builtin_rows, event_stream)
 
-        # Flush any remaining text
+        # Flush remaining text (scrub leaked tool-call syntax).
         if current_text:
-            content_blocks.append({"type": "text", "text": current_text})
-            assistant_text_parts.append(current_text)
+            cleaned = self._clean_assistant_text(current_text)
+            if cleaned:
+                content_blocks.append({"type": "text", "text": cleaned})
+                assistant_text_parts.append(cleaned)
 
         return content_blocks, tool_use_blocks, stop_reason, usage, text_chunks
 
-    @staticmethod
     def _adopt_final_blocks(
+        self,
         blocks: list[dict[str, Any]],
         assistant_text_parts: list[str],
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -676,8 +686,14 @@ class BaseAgent:
 
         Returns ``(content_blocks, tool_use_blocks)`` and mutates
         ``assistant_text_parts`` in place so persistence/summaries stay in sync.
+        Scrub leaked tool-call syntax from text blocks here too — this is the
+        Anthropic message_complete path and rebuilds the parts authoritatively, so
+        it must scrub or the event-path scrub is bypassed.
         """
         content_blocks = [dict(b) for b in blocks]
+        for b in content_blocks:
+            if b.get("type") == "text" and b.get("text"):
+                b["text"] = self._clean_assistant_text(b["text"])
         tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
         assistant_text_parts[:] = [
             b["text"] for b in content_blocks
@@ -744,13 +760,85 @@ class BaseAgent:
         """
         return f"Confirm: {display_name}"
 
+    @staticmethod
+    def _stuck_step(
+        new_entries: list[dict[str, Any]],
+        prev_sig: tuple[str, ...] | None,
+        prev_n: int,
+        n_threshold: int,
+    ) -> tuple[tuple[str, ...] | None, int, set[str]]:
+        """One stuck-loop step (pure → unit-tested below the model).
+
+        A turn is "stuck" when EVERY tool call in it made NO PROGRESS — either it
+        failed, OR it succeeded but stored nothing new (a kept-noop, flagged
+        ``no_progress``). Both read as "retry-me" to a model that ignores the
+        steer. Signature is the sorted tool-name tuple (NOT inputs — a model
+        inventing fresh values keeps the same names). Returns
+        ``(sig, n, to_quarantine)``: the running signature + consecutive count,
+        and — once the SAME stuck signature repeats ``n_threshold`` turns — the
+        set of no-progress tool names to withdraw (resets so a different tool can
+        re-trip). RESETS on real progress: any success that stored new work, OR
+        any elicitation (asking the user advanced the conversation), OR an empty
+        turn — preserving the normal self-heal path."""
+        # Asking the user IS progress — a turn that elicits is never stuck.
+        if any(e.get("elicited") for e in new_entries):
+            return None, 0, set()
+        stuck = [e for e in new_entries if (not e.get("success")) or e.get("no_progress")]
+        sig = (
+            tuple(sorted(e.get("tool", "") for e in new_entries))
+            if new_entries and len(stuck) == len(new_entries) else None
+        )
+        n = (prev_n + 1) if (sig and sig == prev_sig) else (1 if sig else 0)
+        if sig and n >= n_threshold:
+            return None, 0, {e.get("tool", "") for e in stuck if e.get("tool")}
+        return sig, n, set()
+
+    @staticmethod
+    def _strip_tool_syntax(text: str, tool_names: set[str]) -> tuple[str, int]:
+        """Remove standalone leaked tool-call-syntax lines from user-facing
+        assistant text — e.g. a model echoing the internal prescription
+        `present_options(question=…, field="duration")` into chat. Returns
+        ``(cleaned, n_stripped)``. Pure → unit-tested below the model.
+
+        Tight to avoid eating legit prose: a line is stripped ONLY if it is, on
+        its own line, ``<known_tool>(`` followed by a kwarg (``foo=``) or an empty
+        call ``()``. So registered tool names only (not generic ``foo(``), and
+        "I'll use present_options for you" (no paren/kwarg) survives untouched."""
+        if not text or not tool_names:
+            return text, 0
+        names = "|".join(re.escape(n) for n in sorted(tool_names))
+        # ^ line start (+ optional backticks/bullet) · known tool name · "(" ·
+        # then a kwarg (word=) OR close-paren · rest of the (possibly wrapped) line.
+        pat = re.compile(
+            rf"(?im)^[ \t]*`{{0,3}}[ \t]*(?:{names})\([ \t]*(?:[a-z_]+[ \t]*=|\))[^\n]*$\n?"
+        )
+        cleaned, n = pat.subn("", text)
+        if n:
+            cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+        return cleaned, n
+
+    def _clean_assistant_text(self, text: str) -> str:
+        """Scrub leaked tool-call syntax from one assistant text block, keyed off
+        the live tool registry. Logs when it fires (telemetry on prompt-guard
+        decay) so the leak is a counted alarm, not a silent spot-check."""
+        cleaned, n = self._strip_tool_syntax(text, set(self.tools))
+        if n:
+            logger.warning("stripped_tool_syntax_leak: removed %d line(s) of "
+                           "tool-call syntax from assistant text", n)
+        return cleaned
+
     async def _run_tool_block(
         self,
         tool_block: dict[str, Any],
         session: BaseSession,
         event_stream: AgentEventStream,
+        assistant_text_parts: list[str],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Execute one tool_use block, emit SSE events, and return (result_block, log_entry)."""
+        """Execute one tool_use block, emit SSE events, and return (result_block, log_entry).
+
+        ``assistant_text_parts`` is the run-scoped list the persisted turn is
+        built from; a tool whose ``audience`` targets the user appends its summary
+        here so the receipt survives refresh (see the audience block below)."""
         tool_name = tool_block["name"]
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
@@ -765,7 +853,7 @@ class BaseAgent:
 
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
-        # Request user confirmation for mutating operations (master's flow).
+        # Request user confirmation for mutating operations.
         # Headless/harness callers set session.context["auto_confirm"]=True to
         # pre-approve mutations: skip the SSE pause (which would otherwise block
         # on a /confirm resolver that no headless client provides) AND stamp
@@ -825,6 +913,14 @@ class BaseAgent:
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
 
+        # audience: a tool whose summary targets the user ("user"/"both") has it
+        # posted to chat AND persisted (append to the run-scoped parts the saved
+        # turn is built from, so it survives refresh). The model writes only a
+        # lead-in (tool-text contract); no de-dup — a rare verbatim echo is OK.
+        if result.audience in ("user", "both") and result.success and result.summary:
+            await event_stream.emit_text(result.summary)
+            assistant_text_parts.append(result.summary)
+
         # Learning loop: track tool errors for pitfall detection
         if not result.success:
             await self._on_tool_error(tool_name, tool_input, result.error or "Unknown error")
@@ -880,6 +976,15 @@ class BaseAgent:
             # capture the reply. Inert (None) for every other tool and agent.
             "elicit_field": (result.data.get("elicit_field") if isinstance(result.data, dict) else None),
             "elicit_answers": (result.data.get("elicit_answers") if isinstance(result.data, dict) else None),
+            # Generic typed payload an elicitation collects across turns (e.g.
+            # the still-missing AssetGaps). Opaque to core — a subclass owns its
+            # shape + (de)serialization. Inert (None) for every other tool.
+            "elicit_payload": (result.data.get("elicit_payload") if isinstance(result.data, dict) else None),
+            # A success that stored nothing new (kept-noop). The stuck-loop
+            # breaker treats it like a failure so a re-send loop the model won't
+            # break out of gets the tool quarantined. Generic + inert (False) for
+            # every other tool. Domain-agnostic pass-through, same as elicited.
+            "no_progress": bool(isinstance(result.data, dict) and result.data.get("no_progress")),
         }
         return result_block, log_entry
 

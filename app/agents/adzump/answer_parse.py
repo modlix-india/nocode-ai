@@ -133,3 +133,74 @@ def parse_typed_answer(field: str, text: str, currency: str = "$") -> str | None
     if field == "platform":
         return _parse_platform(text)
     return None
+
+
+# ── F24 · traceability-side reading (NOT auto-capture) ─────────────────────
+# parse_typed_answer is deliberately conservative — it bails on a correction cue
+# ("no wait, make it 60") or >1 number ("60 day, ₹15000 budget"). That is right
+# for AUTO-capture but too strict as the traceability gate on the model's OWN
+# set_campaign_spec write: the user stated a real value the gate then dropped
+# (F24 — silent "No changes." / volunteered fields lost). field_candidates reads
+# EVERY value the text genuinely supports for a field, with no cue gate and no
+# multi-number bail. Anti-invention is preserved by _field_traceable's canonical
+# equality (the model's value must equal one of these), NOT by digit-substring —
+# so an invented value that matches no number/amount is still rejected (F1 stays
+# closed). ASYMMETRY (Kiran): duration may read a FREE bare number (days implied
+# by the field context); budget requires a money marker LOCAL to the amount, so a
+# bare number is never a budget ("call me at 5000" stays out; a duration number
+# can't masquerade as ₹/day).
+_BARE_INT = re.compile(r"\b\d{1,3}\b")
+_TIME_UNIT_AFTER = re.compile(r"\s*(days?|weeks?|months?|years?|yrs?|mo|wk)\b", re.I)
+_SUFFIX_AFTER = re.compile(r"\s*(k|l|lac|lakh|cr|crore|m|mn)\b", re.I)
+
+
+def _money_local(text: str, start: int, end: int) -> bool:
+    """A money marker sits adjacent to text[start:end] — currency symbol just
+    before, magnitude suffix just after, or a per-day phrase just after."""
+    left = text[max(0, start - 5):start]
+    right = text[end:end + 9]
+    return (any(rx.search(left) for rx, _ in _SYMBOLS)
+            or bool(_SUFFIX_AFTER.match(right)) or bool(_PERDAY.search(right)))
+
+
+def _local_budget(text: str, m: "re.Match", currency: str) -> str | None:
+    """Canonical budget for an _AMOUNT match iff a marker is LOCAL to it."""
+    suffix = (m.group(2) or "").lower()
+    if not (suffix or _money_local(text, m.start(), m.end())):
+        return None
+    left = text[max(0, m.start() - 5):m.start()]
+    right = text[m.end():m.end() + 9]
+    sym = next((s for rx, s in _SYMBOLS if rx.search(left)), None)
+    amount = float(m.group(1).replace(",", ""))
+    if not suffix:
+        sm = _SUFFIX_AFTER.match(right)
+        suffix = sm.group(1).lower() if sm else ""
+    if suffix:
+        amount *= _MULT[suffix]
+    return f"{sym or currency}{int(round(amount)):,}/day"
+
+
+def field_candidates(field: str, text: str, currency: str = "$") -> set[str]:
+    """Every canonical duration/budget value `text` supports, cue-free and
+    multi-number-tolerant. Used ONLY by _field_traceable (see note above)."""
+    text = (text or "").strip()
+    out: set[str] = set()
+    if not text:
+        return out
+    if field == "duration":
+        for m in list(_DURATION.finditer(text)) + list(_DURATION_ONE.finditer(text)):
+            if (d := _parse_duration(m.group(0))):
+                out.add(d)
+        for m in _BARE_INT.finditer(text):
+            if _TIME_UNIT_AFTER.match(text[m.end():m.end() + 9]):
+                continue                                   # unit-bearing; added above
+            if _money_local(text, m.start(), m.end()):
+                continue                                   # it's money, not days
+            n = int(m.group(0))
+            if 1 <= n <= 999:
+                out.add(f"{n} day" if n == 1 else f"{n} days")
+    elif field == "budget":
+        for m in _AMOUNT.finditer(text):
+            if (b := _local_budget(text, m, currency)):
+                out.add(b)
+    return out

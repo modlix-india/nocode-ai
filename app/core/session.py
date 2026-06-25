@@ -547,7 +547,7 @@ class BaseSession:
 
         try:
             from app.services.session_manager import get_session_manager
-            context_json = json.dumps(self.context)
+            context_json = self._serialize_context(self.context)
             await get_session_manager().update_session_context(
                 self.session_id, context_json, self.auth.user_id if self.auth else None
             )
@@ -557,12 +557,27 @@ class BaseSession:
 
     # ── Internal helpers ────────────────────────────────────────
 
+    # Transient runtime keys that live for one turn only — never persisted.
+    # _started_tuids is a *set* (opened sub-agent card ids) JSON can't serialize;
+    # left in, it sinks the whole context save and the conversation loses its
+    # memory next message.
+    _EPHEMERAL_CONTEXT_KEYS = {"_started_tuids"}
+
+    @staticmethod
+    def _serialize_context(context: dict) -> str:
+        """JSON-encode session context for persistence. Drops ephemeral runtime
+        keys, and degrades any stray non-JSON value (e.g. a set) to a list/str so
+        one bad value can never again sink the entire context."""
+        persistable = {k: v for k, v in context.items()
+                       if k not in BaseSession._EPHEMERAL_CONTEXT_KEYS}
+        return json.dumps(persistable, default=lambda o: list(o) if isinstance(o, set) else str(o))
+
     async def _create_new_session(self) -> None:
         """Create a new session in the database."""
         try:
             from app.services.session_manager import get_session_manager
             session_manager = get_session_manager()
-            context_json = json.dumps(self.context) if self.context else None
+            context_json = self._serialize_context(self.context) if self.context else None
             session = await session_manager.create_session(
                 client_code=self.auth.client_code,
                 client_id=self.auth.client_id,

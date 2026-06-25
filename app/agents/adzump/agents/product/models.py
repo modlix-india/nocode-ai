@@ -11,12 +11,6 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 
-class ContactInfo(BaseModel):
-    phone: str | None = None
-    email: str | None = None
-    address: str | None = None
-
-
 class SiteLink(BaseModel):
     """A single anchor extracted from a page (text + href)."""
     text: str = ""
@@ -132,31 +126,6 @@ class PageContent(BaseModel):
     structured_data: dict | None = None
 
 
-class LocationInfo(BaseModel):
-    """Business location with suggested ad targeting areas."""
-    location: str = ""
-    suggested_locations: list[str] = []
-
-
-class WebsiteMetadata(BaseModel):
-    """Pass 1 LLM extraction — cheap structured extraction."""
-    product_name: str
-    business_type: str
-    location: LocationInfo = LocationInfo()
-
-
-class BusinessProfile(BaseModel):
-    """Aggregate — full extracted business data."""
-    product_name: str
-    business_type: str
-    location: LocationInfo = LocationInfo()
-    summary: str
-    unique_features: list[str] = []
-    products_services: list[str] = []
-    contact: ContactInfo | None = None
-    pages_analyzed: list[str] = []
-
-
 class ScrapeTimings(BaseModel):
     """Per-stage scrape timing in ms, populated by the Playwright adapter.
 
@@ -196,32 +165,37 @@ class ScrapeResult(BaseModel):
     timings: ScrapeTimings | None = None
 
 
-class CompetitorProfile(BaseModel):
-    """A single competitor discovered and analyzed by the BusinessAnalyst."""
-    name: str
-    url: str
-    business_type: str = ""
-    location: str = ""
-    pricing: str | None = None
-    key_usps: list[str] = []         # top differentiators
-    trust_signals: list[str] = []    # e.g. "500+ reviews", "Since 2005"
-    weakness: str | None = None      # inferred gap, optional
+@dataclass
+class AssetGaps:
+    """Assets the picker couldn't satisfy from the site → the user is asked to
+    upload them. fulfill_* is the single decrement path as uploads arrive.
+    Travels JSON-safe (to_dict/from_dict): it rides the elicitation payload,
+    which is persisted via json.dumps — never store a live instance on context."""
+    logo_missing: bool = False
+    missing_categories: list[str] = field(default_factory=list)
+    verdict: str = ""
 
+    def fulfill_logo(self) -> None:
+        self.logo_missing = False
 
-class CompetitiveAnalysis(BaseModel):
-    """Aggregate competitive landscape output of the BusinessAnalyst agent."""
-    competitors: list[CompetitorProfile] = []
-    our_usps: list[str] = []              # things we do that competitors don't
-    competitive_threats: list[str] = []   # things competitors do better
-    keyword_opportunities: list[str] = [] # keyword angles worth targeting
-    positioning: str = ""                 # one-line positioning statement
+    def fulfill_category(self, role: str) -> None:
+        self.missing_categories = [c for c in self.missing_categories if c != role]
 
+    def any_open(self) -> bool:
+        return self.logo_missing or bool(self.missing_categories)
 
-class BusinessAnalysisResult(BaseModel):
-    """Top-level result returned by the BusinessAnalyst agent."""
-    business: BusinessProfile
-    competitive: CompetitiveAnalysis = CompetitiveAnalysis()
-    notes: list[str] = []  # agent-visible caveats (e.g. "skipped reviews: API error")
+    def to_dict(self) -> dict:
+        return {"logo_missing": self.logo_missing,
+                "missing_categories": list(self.missing_categories),
+                "verdict": self.verdict}
+
+    @classmethod
+    def from_dict(cls, d) -> "AssetGaps | None":
+        if not isinstance(d, dict):
+            return None
+        return cls(logo_missing=bool(d.get("logo_missing")),
+                   missing_categories=list(d.get("missing_categories") or []),
+                   verdict=d.get("verdict") or "")
 
 
 @dataclass
@@ -232,8 +206,9 @@ class AnalysisOutput:
     arbitrary keys like positioning_narrative, segments, etc. that aren't
     fully modeled yet. Strict validation is a future concern.
     """
-    business: dict | None
+    product: dict | None   # model emits it as JSON key "business"
     competitive: dict | None
     notes: list[str] = field(default_factory=list)
     screenshot_url: str | None = None
     raw_text: str = ""
+    asset_gaps: AssetGaps | None = None
