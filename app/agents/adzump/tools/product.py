@@ -53,6 +53,29 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
 
         _merge_product_into_context(session_memory, analysis, url)
 
+        # Emit the full craft panel (badge + key-values) immediately after analysis,
+        # before geo-targeting runs. Map section is omitted because no target_areas yet.
+        craft_id = session_memory.get("craft_id") or session_memory.get("_craft_id", "")
+        if stream and craft_id:
+            from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
+            product_now = session_memory.get("product_data") or {}
+            early_summary = (
+                (session_memory.get("product_profile") or {}).get("summary")
+                or product_now.get("summary", "")
+            )
+            try:
+                await _emit_final_craft(
+                    stream, craft_id, url, product_now,
+                    session_memory.get("competitor_analysis") or {},
+                    screenshot_url=(
+                        product_now.get("primary_screenshot_url")
+                        or product_now.get("screenshot_url")
+                    ),
+                    baked_summary=early_summary,
+                )
+            except Exception as e:
+                logger.warning("post_analyze_craft_emit_failed: %s", e)
+
         await _safe_emit_finished(
             stream, status="success",
             summary=f"Analyzed {product.get('product_name', 'product')}",
@@ -168,7 +191,7 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
     ToolResult. Returns None on miss/error — caller falls through to a fresh scrape."""
     try:
         from app.agents.adzump.services.business_storage import hydrate_from_storage
-        from app.agents.adzump.tools.competitor import _emit_final_craft
+        from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
         if not await hydrate_from_storage(url, session_memory, context):
             return None
         product = session_memory.get("product_data") or {}
@@ -183,7 +206,10 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
                     stream, craft_id, url, product, competitive,
                     screenshot_url=(product.get("primary_screenshot_url")
                                     or product.get("screenshot_url")),
-                    baked_summary=product.get("summary", ""),
+                    baked_summary=(
+                        (session_memory.get("product_profile") or {}).get("summary")
+                        or product.get("summary", "")
+                    ),
                 )
             except Exception as e:
                 logger.warning("storage_hydrate_craft_failed: %s: %s",

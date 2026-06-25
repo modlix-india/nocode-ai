@@ -66,8 +66,10 @@ class PlatformGeoMapper:
         google_id = area.get("google_id")
         google_name = area.get("google_name")
 
-        # Query suggest_geo_targets without needing account/parent_account IDs
-        lookup_query = pincode or city
+        # Query suggest_geo_targets without needing account/parent_account IDs.
+        # Fall back to area name so manually-added areas (no pincode/city parsed)
+        # still get a google_id and coordinates.
+        lookup_query = pincode or city or area.get("name") or ""
         if lookup_query and not google_id:
             try:
                 results = await google_ads_client.suggest_geo_targets(
@@ -92,6 +94,18 @@ class PlatformGeoMapper:
             area["google_id"] = str_id
             area["google_name"] = google_name or area.get("name")
 
+        # Geocode to get lat/lng for map rendering when not already present.
+        if area.get("lat") is None and (area.get("name") or pincode or city):
+            try:
+                from app.agents.adzump.adapters.google.maps import google_maps_client
+                geo_query = area.get("name") or city or pincode or ""
+                geo = await google_maps_client.geocode(geo_query)
+                if geo and geo.get("lat") is not None:
+                    area["lat"] = geo["lat"]
+                    area["lng"] = geo["lng"]
+            except Exception as ge:
+                logger.warning("Geocode for map pin failed: %s", ge)
+
         area.pop("google_proximity", None)
         return area
 
@@ -109,7 +123,12 @@ class PlatformGeoMapper:
         meta_type = None
         meta_name = None
 
-        query, loc_type = (pincode, "zip") if pincode else (city, "city") if city else (None, None)
+        # Fall back to area name so manually-added areas (no pincode/city) still resolve.
+        query, loc_type = (
+            (pincode, "zip") if pincode
+            else (city, "city") if city
+            else (area.get("name") or "", "city")
+        )
         try:
             if query:
                 params = {
@@ -135,6 +154,18 @@ class PlatformGeoMapper:
             area["meta_key"] = str(meta_key)
             area["meta_type"] = meta_type
             area["meta_name"] = meta_name or area.get("name")
+
+        # Geocode to get lat/lng for map rendering when not already present.
+        if area.get("lat") is None and (area.get("name") or pincode or city):
+            try:
+                from app.agents.adzump.adapters.google.maps import google_maps_client
+                geo_query = area.get("name") or city or pincode or ""
+                geo = await google_maps_client.geocode(geo_query)
+                if geo and geo.get("lat") is not None:
+                    area["lat"] = geo["lat"]
+                    area["lng"] = geo["lng"]
+            except Exception as ge:
+                logger.warning("Geocode for map pin failed: %s", ge)
 
         area.pop("meta_radial", None)
         return area

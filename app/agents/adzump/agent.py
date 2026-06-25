@@ -16,6 +16,7 @@ workflow tree lives in Python (``_next_action``), computed from a typed
 from __future__ import annotations
 
 import logging
+import re as _re
 from dataclasses import dataclass
 from typing import Any
 
@@ -189,6 +190,55 @@ class CampaignContext:
         return bool(self.product.get("target_areas"))
 
 
+def _parse_location_params(msg: str) -> dict:
+    """Parse key=value pairs from craft-panel location widget messages.
+
+    Handles both quoted strings (name="...") and bare values (lat=12.97).
+    Returns a dict with any recognised fields: name, lat, lng, place_id,
+    city, state, pincode, google_id, meta_key.
+    """
+    params: dict = {}
+    name_m = _re.search(r'name="([^"]+)"', msg)
+    if name_m:
+        params["name"] = name_m.group(1)
+    for key in ("place_id", "city", "state", "pincode", "google_id", "meta_key"):
+        m = _re.search(rf'{key}="([^"]*)"', msg)
+        if m:
+            params[key] = m.group(1)
+        else:
+            m = _re.search(rf'{key}=(\S+)', msg)
+            if m:
+                params[key] = m.group(1)
+    for key in ("lat", "lng"):
+        m = _re.search(rf'{key}=([+-]?\d+\.?\d*)', msg)
+        if m:
+            try:
+                params[key] = float(m.group(1))
+            except ValueError:
+                pass
+    for key in ("index",):
+        m = _re.search(rf'{key}=(\d+)', msg)
+        if m:
+            try:
+                params[key] = int(m.group(1))
+            except ValueError:
+                pass
+    return params
+
+
+def _is_location_modify_message(text: str) -> bool:
+    """Return True if `text` is a craft-panel location add/remove widget message."""
+    t = text.strip().lower()
+    return (
+        t.startswith("add targeting location ")
+        or t.startswith("adding location ")
+        or t.startswith("remove targeting location")
+        or t.startswith("delete targeting location")
+        or t.startswith("removing location ")
+        or t.startswith("deleting location")
+    )
+
+
 def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     """Recognize when the user's last message is an obvious answer for a
     pending campaign-spec field. Returns (field, value) to store, or None.
@@ -197,17 +247,31 @@ def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     durations, free-form budgets) is left to the LLM via the default
     missing-list prescription.
     """
-    lu = (cctx.last_user or "").strip().lower()
+    lu = (cctx.last_user or "").strip()
+    lu_lower = lu.lower()
     if not lu:
         return None
     spec = cctx.spec
+
+    # Location add/delete: structured messages sent by the craft-panel UI
+    # widget. Two formats:
+    #   New: "add targeting location name="<name>" lat=<lat> lng=<lng> ..."
+    #   Legacy: "Adding location <name>" / "Removing location <name>"
+    # Pass the full message as the value so _next_action can parse params.
+    if lu_lower.startswith("add targeting location ") or lu_lower.startswith("adding location "):
+        return ("_location_add", lu)
+    if (lu_lower.startswith("remove targeting location")
+            or lu_lower.startswith("delete targeting location")
+            or lu_lower.startswith("removing location ")
+            or lu_lower.startswith("deleting location")):
+        return ("_location_delete", lu)
 
     # Platform: "Google Ads" / "Meta" chip clicks or close natural-language
     # variants. Only fire if platform isn't already stored. Defers keyword
     # classification to app.agents.adzump.platform so all consumers stay
     # aligned on which strings count as which platform.
     if not spec.get("platform"):
-        platform = Platform.from_value(lu)
+        platform = Platform.from_value(lu_lower)
         if platform is not None:
             return ("platform", CANONICAL_LABEL[platform])
 
@@ -237,10 +301,55 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     intent_field: str | None = None
     if intent is not None:
         intent_field, value = intent
-        missing.append(
-            f'{intent_field} — user said "{cctx.last_user[:40]}". '
-            f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
-        )
+        if intent_field == "_location_add":
+            # Parse all params the UI embedded in the message (name, lat, lng, etc.)
+            p = _parse_location_params(value)
+            name = p.get("name") or ""
+            # Fallback: strip the prefix to get bare name from legacy "Adding location X" format
+            if not name:
+                for pfx in ("add targeting location ", "adding location "):
+                    if value.lower().startswith(pfx):
+                        name = value[len(pfx):].rstrip(". ")
+                        break
+            call_args = f'action="add", name={name!r}'
+            if p.get("lat") is not None:
+                call_args += f', lat={p["lat"]}'
+            if p.get("lng") is not None:
+                call_args += f', lng={p["lng"]}'
+            if p.get("city"):
+                call_args += f', city={p["city"]!r}'
+            if p.get("state"):
+                call_args += f', state={p["state"]!r}'
+            if p.get("pincode"):
+                call_args += f', pincode={p["pincode"]!r}'
+            if p.get("place_id"):
+                call_args += f', place_id={p["place_id"]!r}'
+            if p.get("google_id"):
+                call_args += f', google_id={p["google_id"]!r}'
+            if p.get("meta_key"):
+                call_args += f', meta_key={p["meta_key"]!r}'
+            missing.append(
+                f'location add — user wants to add "{name}". '
+                f'Call `modify_targeting_location({call_args})` FIRST, '
+                "before asking any other question."
+            )
+        elif intent_field == "_location_delete":
+            p = _parse_location_params(value)
+            if p.get("index"):
+                missing.append(
+                    f'location delete — call `modify_targeting_location(action="delete", index={p["index"]})` FIRST.'
+                )
+            else:
+                missing.append(
+                    "location delete — user wants to remove a targeting location. "
+                    "Identify the index from the current target_areas list and call "
+                    '`modify_targeting_location(action="delete", index=<1-based index>)` FIRST.'
+                )
+        else:
+            missing.append(
+                f'{intent_field} — user said "{cctx.last_user[:40]}". '
+                f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
+            )
 
     if cctx.is_real_estate and not cctx.spec.get("location"):
         if cctx.pending_location:
@@ -269,9 +378,15 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     has_platform = bool(cctx.spec.get("platform"))
     has_location = bool(cctx.spec.get("location"))
-    if has_platform and has_location and not cctx.has_mapped_geo_targets:
+    # Coordinates restored from storage count as a valid anchor for discovery —
+    # discover_geo_targets falls back to _location_meta lat/lng when no location
+    # string is provided, so we can prescribe it without requiring a fresh confirm.
+    _stored_coords = cctx.product.get("product_coordinates") or {}
+    has_geo_anchor = has_location or bool(_stored_coords.get("lat"))
+    if has_platform and has_geo_anchor and not cctx.has_mapped_geo_targets:
+        loc_arg = cctx.spec.get("location") or ""
         missing.append(
-            f"target_areas — call `discover_geo_targets(location_name={cctx.spec.get('location')!r})`"
+            f"target_areas — call `discover_geo_targets({('location_name=' + repr(loc_arg)) if loc_arg else ''})`"
         )
 
     if (
@@ -444,6 +559,10 @@ class AdzumpAgent(BaseAgent):
     # ── construction ──
 
     def __init__(self) -> None:
+        # _current_stream is stashed per-run so _on_loop_complete can emit
+        # without needing event_stream in session.context (which is persisted
+        # and can't hold live coroutine objects).
+        self._current_stream = None
         context = build_adzump_context()
         provider = getattr(settings, "ADZUMP_PROVIDER", settings.LLM_PROVIDER)
         super().__init__(
@@ -611,6 +730,13 @@ class AdzumpAgent(BaseAgent):
             return ""
         pe = session.context.get("_pending_elicitation")
         if not pe:
+            return ""
+        # If the user sent a location-modify message (from the craft-panel
+        # search widget), clear the pending elicitation so the intent
+        # prescription takes over rather than re-asking the previous question.
+        _lu = (_last_user_text({"_session": session}) or "").strip()
+        if _is_location_modify_message(_lu):
+            session.context.pop("_pending_elicitation", None)
             return ""
         if pe.get("expects") == "multi":
             return (
@@ -857,6 +983,14 @@ class AdzumpAgent(BaseAgent):
 
     # ── public surface — BaseAgent override hooks (last, per Kiran's BaseAgent) ──
 
+    async def run(self, user_message, session, event_stream, image_blocks=None, model_override=None):
+        """Stash event_stream so _on_loop_complete can emit without session.context."""
+        self._current_stream = event_stream
+        try:
+            await super().run(user_message, session, event_stream, image_blocks, model_override)
+        finally:
+            self._current_stream = None
+
     async def build_dynamic_context(self, session: BaseSession) -> str:
         return (
             ""  # adzump context is fully per-turn — see build_turn_reminder (Layer 2)
@@ -970,12 +1104,68 @@ class AdzumpAgent(BaseAgent):
         self, session: BaseSession, tool_call_log: list[dict[str, Any]],
     ) -> None:
         await super()._on_loop_complete(session, tool_call_log)
+        ctx = session.context
         from app.agents.adzump.services.business_storage import save_campaign, resolve_url
-        if resolve_url(session.context):
+        if resolve_url(ctx):
             try:
-                await save_campaign(session.context, self.build_tool_context(session))
+                await save_campaign(ctx, self.build_tool_context(session))
             except Exception as e:
                 logger.debug("End-of-turn campaign save failed (non-fatal): %s", e)
+
+        # If platform was just set this turn and mapped locations already exist
+        # (storage reuse path), emit the craft panel with platform so the map
+        # appears — discover_geo_targets won't fire because has_mapped_geo_targets
+        # is already True.
+        cctx = CampaignContext.from_session(session)
+        platform = cctx.spec.get("platform") or ""
+        if platform and cctx.has_mapped_geo_targets and ctx.get("_last_craft_platform") != platform:
+            ctx["_last_craft_platform"] = platform
+            url = resolve_url(ctx)
+            product = ctx.get("product_data") or {}
+            stream = self._current_stream
+            craft_id = ctx.get("craft_id") or ctx.get("_craft_id")
+            if stream and craft_id and url:
+                from app.agents.adzump.tools.craft import emit_craft_panel
+                from app.agents.adzump.platform import is_google as _is_google, is_meta as _is_meta
+                try:
+                    await emit_craft_panel(
+                        stream, craft_id, url, product,
+                        ctx.get("competitor_analysis") or {},
+                        screenshot_url=(
+                            product.get("primary_screenshot_url")
+                            or product.get("screenshot_url")
+                        ),
+                        baked_summary=(
+                            (ctx.get("product_profile") or {}).get("summary")
+                            or product.get("summary", "")
+                        ),
+                        platform=platform,
+                    )
+                except Exception as e:
+                    logger.debug("Post-platform craft emit failed (non-fatal): %s", e)
+
+                # Emit a visible locations row so the user sees the stored
+                # targeting areas being applied (mirrors discover_geo_targets UX).
+                try:
+                    if _is_google(platform):
+                        mapped = product.get("google_mapped_locations") or []
+                    elif _is_meta(platform):
+                        mapped = product.get("meta_mapped_locations") or []
+                    else:
+                        mapped = product.get("target_areas") or []
+                    if mapped:
+                        loc_meta = ctx.get("_location_meta") or {}
+                        await stream.emit_data(
+                            "suggested_locations",
+                            {
+                                "locations": [loc["name"] for loc in mapped if loc.get("name")],
+                                "targeting_type": product.get("business_scale", "local"),
+                                "location": loc_meta.get("address") or "",
+                                "from_storage": True,
+                            },
+                        )
+                except Exception as e:
+                    logger.debug("Stored-locations row emit failed (non-fatal): %s", e)
 
     @staticmethod
     def _advance_chip(text: str) -> dict[str, Any] | None:

@@ -376,6 +376,15 @@ def _record_data(record: dict) -> dict:
     return record
 
 
+def _extract_campaign_coords(d: dict) -> dict | None:
+    """Pull lat/lng from the stored campaign.location sub-object."""
+    loc = (d.get("campaign") or {}).get("location") or {}
+    lat, lng = loc.get("lat"), loc.get("lng")
+    if lat is not None and lng is not None:
+        return {"lat": lat, "lng": lng}
+    return None
+
+
 def _record_to_business(record: dict) -> dict:
     """Translate AISuggestedData (camelCase) → adzump's product_data shape."""
     d = _record_data(record)
@@ -428,6 +437,8 @@ def _record_to_business(record: dict) -> dict:
         "target_areas": (d.get("campaign") or {}).get("targetAreas") or [],
         "google_mapped_locations": (d.get("campaign") or {}).get("googleMappedLocations") or [],
         "meta_mapped_locations": (d.get("campaign") or {}).get("metaMappedLocations") or [],
+        # Restore product coordinates so the map center pin renders on reuse
+        "product_coordinates": _extract_campaign_coords(d),
     }
 
 
@@ -462,6 +473,24 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
             "title": d.get("productName") or d.get("businessName", ""),
             "summary": d.get("summary", ""),
         })
+        # Restore _location_meta so geo discovery can reuse coordinates
+        # without re-geocoding, and so the map pin renders immediately.
+        coords = _extract_campaign_coords(d)
+        if coords:
+            campaign_loc = (d.get("campaign") or {}).get("location") or {}
+            stored_address = campaign_loc.get("address") or ""
+            session_ctx.setdefault("_location_meta", {}).update({
+                "lat": coords["lat"],
+                "lng": coords["lng"],
+                "address": stored_address,
+                "google_mapped_locations": (d.get("campaign") or {}).get("googleMappedLocations") or [],
+                "meta_mapped_locations": (d.get("campaign") or {}).get("metaMappedLocations") or [],
+            })
+            # Restore campaign_spec.location so _next_action sees has_location=True
+            # and prescribes discover_geo_targets immediately after platform is set,
+            # instead of asking for confirm_location again on every reuse.
+            if stored_address:
+                session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)
         logger.info("hydrate_from_storage: business loaded url=%s", url)
 
     if not session_ctx.get("competitor_analysis"):

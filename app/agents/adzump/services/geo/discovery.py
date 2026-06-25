@@ -24,8 +24,8 @@ SEARCH_STEPS = [0.33, 0.66, 1.0]
 
 # Industry-standard Constants
 EARTH_RADIUS_KM = 6371.0
-DEFAULT_LOCAL_RADIUS_KM = 15.0
-MAX_LOCAL_NEIGHBORHOODS = 15
+DEFAULT_LOCAL_RADIUS_KM = 8.0
+MAX_LOCAL_NEIGHBORHOODS = 25
 
 
 def is_local_business(business_scale: str) -> bool:
@@ -50,7 +50,7 @@ def generate_radial_offsets(
     distances = [radius_km * step for step in SEARCH_STEPS]
 
     for distance in distances:
-        for bearing in range(0, 360, 22):
+        for bearing in range(0, 360, 8):
             # Calculate offset coordinates using simple flat-earth approximation
             # suitable for small radial distances (< 50km)
             rad_bearing = math.radians(bearing)
@@ -83,6 +83,8 @@ async def discover_neighborhoods(
 
         pincode = None
         pincode_place_id = None
+        pincode_centroid_lat: float | None = None
+        pincode_centroid_lng: float | None = None
         neighborhood = None
         city = None
         state = None
@@ -92,6 +94,10 @@ async def discover_neighborhoods(
             types = res.get("types", [])
             if "postal_code" in types and not pincode:
                 pincode_place_id = res.get("place_id")
+                geom_loc = res.get("geometry", {}).get("location", {})
+                if geom_loc.get("lat") is not None and geom_loc.get("lng") is not None:
+                    pincode_centroid_lat = geom_loc["lat"]
+                    pincode_centroid_lng = geom_loc["lng"]
                 for comp in res.get("address_components", []):
                     if "postal_code" in comp.get("types", []):
                         pincode = comp.get("long_name", "").strip()
@@ -118,22 +124,25 @@ async def discover_neighborhoods(
         if not target_key:
             continue
 
-        dist = _haversine_km(lat, lng, center_lat, center_lng)
+        # Prefer the pincode centroid from the geocoder response; fall back to grid point
+        ref_lat = pincode_centroid_lat if pincode_centroid_lat is not None else center_lat
+        ref_lng = pincode_centroid_lng if pincode_centroid_lng is not None else center_lng
+        dist = _haversine_km(lat, lng, ref_lat, ref_lng)
 
-        # Keep the coordinate representation closest to the center
+        # Keep the closest representative coordinate for each unique pincode
         if (
             target_key not in discovered_map
             or dist < discovered_map[target_key]["distance_km"]
         ):
             boundary_place_id = pincode_place_id if pincode else fallback_place_id
-            pincode_lat = center_lat
-            pincode_lng = center_lng
+            pincode_lat = ref_lat
+            pincode_lng = ref_lng
 
-            # Fallback geocoding if place ID is missing
+            # Fallback geocoding only when place ID is missing
             if not boundary_place_id:
                 try:
                     if pincode:
-                        query = f"{pincode}"
+                        query = pincode
                         if city:
                             query += f", {city}"
                         if state:
@@ -146,11 +155,13 @@ async def discover_neighborhoods(
                         if geo.get("lat") is not None and geo.get("lng") is not None:
                             pincode_lat = geo["lat"]
                             pincode_lng = geo["lng"]
+                            dist = _haversine_km(lat, lng, pincode_lat, pincode_lng)
                 except Exception:
                     pass
 
+            display_name = neighborhood or (f"Pincode {pincode}" if pincode else target_key)
             discovered_map[target_key] = {
-                "name": f"Pincode {pincode}" if pincode else target_key,
+                "name": display_name,
                 "pincode": pincode or "",
                 "city": city or "",
                 "state": state or "",

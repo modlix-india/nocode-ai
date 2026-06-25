@@ -8,7 +8,6 @@ than embedding the orchestration inline.
 from __future__ import annotations
 
 import logging
-import uuid
 
 from app.core.tools.base import ToolResult
 from app.agents.adzump.adapters.google.maps import google_maps_client
@@ -17,7 +16,7 @@ from app.agents.adzump.services.geo.discovery import (
 )
 from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
 from app.agents.adzump.services.business_storage import save_campaign, resolve_url
-from app.agents.adzump.tools.competitor import _emit_final_craft
+from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +67,8 @@ class GeoTargetingAgent:
                         product.get("primary_screenshot_url") or product.get("screenshot_url")
                     ),
                     baked_summary=(
-                        product.get("summary")
-                        or (session_ctx.get("product_profile") or {}).get("summary", "")
+                        (session_ctx.get("product_profile") or {}).get("summary")
+                        or product.get("summary", "")
                     ),
                     platform=platform,
                 )
@@ -117,15 +116,7 @@ class GeoTargetingAgent:
             product["product_coordinates"] = coordinates
 
         stream = context.get("event_stream")
-        tool_use_id = f"discover_geo_targets_{uuid.uuid4().hex[:8]}"
-
-        if stream:
-            await stream.emit_tool_start(
-                tool_name="discover_geo_targets",
-                tool_input={"location_name": location_name, "platform": platform},
-                tool_use_id=tool_use_id,
-                display_name="Discover Geo Targets",
-            )
+        tool_use_id = context.get("tool_use_id", "")
 
         try:
             if stream:
@@ -172,28 +163,13 @@ class GeoTargetingAgent:
 
             await self._persist_and_rerender(session_ctx, context, product, platform)
 
-            if stream:
-                await stream.emit_tool_result(
-                    tool_name="discover_geo_targets",
-                    success=True,
-                    summary=f"Discovered and mapped {len(mapped)} targeting locations for {platform}.",
-                    tool_use_id=tool_use_id,
-                )
-
             return ToolResult(
                 success=True,
                 data={"target_areas": mapped},
-                summary=f"Resolved {len(mapped)} targeting locations for {platform}.",
+                summary=f"Discovered and mapped {len(mapped)} targeting locations for {platform}.",
             )
 
         except Exception as e:
-            if stream:
-                await stream.emit_tool_result(
-                    tool_name="discover_geo_targets",
-                    success=False,
-                    summary=f"Failed to resolve geo-targeting: {e}",
-                    tool_use_id=tool_use_id,
-                )
             logger.exception("discover_geo_targets failed: %s", e)
             return ToolResult(success=False, error=f"Failed to resolve geo-targeting: {e}")
 
@@ -259,7 +235,36 @@ class GeoTargetingAgent:
         product[mapping_key] = product["target_areas"]
 
         caller_platform = spec.get("platform") or "Google Ads"
+
+        logger.info(
+            "modify_targeting_location: action=%s platform=%s areas=%d "
+            "mapping_key=%s stream=%s craft_id=%s url=%s first_area=%s",
+            action, caller_platform, len(product["target_areas"]),
+            mapping_key,
+            bool(context.get("event_stream")),
+            session_ctx.get("craft_id") or session_ctx.get("_craft_id"),
+            (session_ctx.get("product_profile") or {}).get("url", ""),
+            product["target_areas"][-1] if product["target_areas"] else None,
+        )
+
         await self._persist_and_rerender(session_ctx, context, product, caller_platform)
+
+        # Re-emit the location chips so the search widget reflects the new list.
+        stream = context.get("event_stream")
+        if stream and product["target_areas"]:
+            try:
+                loc_name = (
+                    loc_meta.get("address")
+                    or spec.get("location")
+                    or ""
+                )
+                await stream.emit_data("suggested_locations", {
+                    "locations": [a["name"] for a in product["target_areas"] if a.get("name")],
+                    "targeting_type": product.get("business_scale", "national"),
+                    "location": loc_name,
+                })
+            except Exception as e:
+                logger.debug("suggested_locations re-emit after modify failed: %s", e)
 
         action_past = "added" if action == "add" else "deleted"
         return ToolResult(
