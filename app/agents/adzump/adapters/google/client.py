@@ -96,6 +96,32 @@ class GoogleAdsClient:
             _raise_for_google_error(response)
             return self._parse_stream(response.json())
 
+    async def post(
+        self,
+        endpoint: str,
+        json_body: dict,
+        client_code: str,
+        auth_headers: dict[str, str],
+        login_customer_id: str | None = None,
+    ) -> dict:
+        """POST to a Google Ads service method and return the parsed JSON.
+
+        For endpoints like ``customers/{id}:generateKeywordIdeas`` or
+        ``geoTargetConstants:suggest`` (``endpoint`` is the path after the API
+        version). Reuses the shared token, auth headers, and error handling so
+        every Google Ads call stays consistent.
+        """
+        token = await self._get_api_token(client_code, auth_headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/{endpoint}"
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                url,
+                headers=self._build_auth_headers(token, login_customer_id),
+                json=json_body,
+            )
+            _raise_for_google_error(response)
+            return response.json()
+
     async def _get_api_token(
         self, client_code: str, auth_headers: dict[str, str],
     ) -> str:

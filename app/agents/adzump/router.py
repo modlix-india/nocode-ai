@@ -28,6 +28,10 @@ router = APIRouter()
 create_common_routes(router, agent_name="adzump")
 
 from app.agents.adzump.agent import AdzumpAgent
+from app.agents.adzump.agents.campaign.api import router as campaign_api_router
+
+# Campaign-creation endpoints (e.g. keyword/volume for the review panel).
+router.include_router(campaign_api_router)
 
 
 class ChatRequest(BaseModel):

@@ -85,6 +85,10 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    # True once create_campaign has run and stored keyword_research — flips the review
+    # branch from "build the campaign" (run keyword research) to "launch". Defaulted so
+    # existing test fixtures that build CampaignContext directly need no change.
+    keyword_research_done: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -123,6 +127,7 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            keyword_research_done=bool(ctx.get("keyword_research")),
         )
 
     @property
@@ -327,7 +332,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "option). If none are linked, the tool says so — offer Facebook-only."
                 )
 
-    if not missing:
+    if not missing and not cctx.keyword_research_done:
         meta_extra = ""
         if cctx.is_meta:
             meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
@@ -337,7 +342,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 else "\n  - **Instagram Account**: not linked (Facebook only)"
             )
         missing.append(
-            "review & publish — your reply this turn is EXACTLY this markdown, "
+            "review & build — your reply this turn is EXACTLY this markdown, "
             "with values copied VERBATIM from the `## State` block above (do NOT "
             "rephrase, do NOT drop fields, do NOT replace IDs with placeholders "
             "like 'Linked' or 'Connected', do NOT abbreviate):\n\n"
@@ -354,11 +359,21 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
             "if competitive_analysis_declined='true'>\n\n"
-            "Then call `present_options(question=\"Ready to launch the campaign?\", "
-            "options=[\"Yes, launch\", \"No, make changes\"])`. EVERY bullet must be "
+            "Then call `present_options(question=\"Proceed to build the campaign?\", "
+            "options=[\"Yes, proceed\", \"No, make changes\"])`. EVERY bullet must be "
             "present — do not omit any. "
-            "**On the user's 'Yes, launch' reply, call `launch_campaign()` "
-            "(no params) — that's the one tool that persists the campaign.**"
+            "**On the user's 'Yes, proceed' reply, call `create_campaign()` (no params) "
+            "— it researches the keywords and shows them in the review panel.**"
+        )
+    elif not missing:
+        # keyword_research already done — keywords are in the panel; confirm launch.
+        missing.append(
+            "review keywords & launch — the keyword suggestions are shown in the panel. "
+            "Ask the user to review and edit them (add / remove / edit), then call "
+            "`present_options(question=\"Ready to launch the campaign?\", "
+            "options=[\"Yes, launch\", \"No, make changes\"])`. "
+            "**On the user's 'Yes, launch' reply, call `launch_campaign()` (no params) — "
+            "that's the one tool that persists the campaign.**"
         )
 
     return missing
