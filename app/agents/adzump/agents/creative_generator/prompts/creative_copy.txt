@@ -11,7 +11,7 @@ The "image_prompt" you generate will be sent to a multimodal image generator (Ge
 1. Describe the background scenery, subject, lighting, and camera style (e.g. editorial architectural photography, clean studio lighting, shallow depth of field).
 2. Instruct the model on the overall design aesthetic: modern, minimal, clean, and uncluttered.
 3. Explicitly describe how the typography, CTA button, and brand logo should look and where they should be positioned to avoid obscuring key subjects (e.g. placing text on a semi-transparent card/badge to ensure 100% legibility).
-4. RERA & PPP Compliance: If a RERA certificate/registration number, Price, or Location is provided or found in the Summary/parameters, you MUST explicitly instruct the image model in the "image_prompt" to render these details verbatim (e.g. "Price: [price]", "Location: [location]", and "RERA Reg No: [number]") in a clean, legible font, positioned professionally (such as in a footer disclaimer or overlay card).
+4. RERA & PPP Compliance: If a RERA certificate/registration number, Price, or Location is provided or found in the Summary/parameters, you MUST explicitly instruct the image model in the "image_prompt" to render these details verbatim (e.g. "Price: [price]", "Location: [location]", and "RERA Reg No: [number]") in a clean, legible font, positioned professionally (such as in a footer disclaimer or overlay card). If no RERA registration number is available, do NOT mention RERA anywhere in the "image_prompt", do NOT instruct the model to write "RERA status not provided" or any other placeholder, and set "rera_no" to an empty string.
 
 Return the output ONLY as a JSON object with the keys:
 {

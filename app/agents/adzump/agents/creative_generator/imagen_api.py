@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 # Meta ad placements — 3 aspect ratios generated natively via parallel API calls
 ASPECT_CONFIGS: list[tuple[str, str]] = [
-    ("square",    "1:1"),    # 1080×1080 — feed
-    ("portrait",  "4:5"),    # 960×1200  — feed / stories
-    ("landscape", "16:9"),   # 1200×675  — feed / right column (close to Meta 1.91:1)
+    ("square", "1:1"),  # 1080×1080 — feed
+    ("portrait", "4:5"),  # 960×1200  — feed / stories
+    ("landscape", "16:9"),  # 1200×675  — feed / right column (close to Meta 1.91:1)
 ]
 
 GEMINI_API_TIMEOUT = 60.0
@@ -82,6 +82,7 @@ async def call_gemini_imagen(
     ad_copy: dict,
     api_key: str,
     context: dict,
+    target_formats: list[str] | None = None,
 ) -> dict:
     """Generate 3 aspect-ratio variants of a creative in parallel via Gemini.
 
@@ -109,6 +110,13 @@ async def call_gemini_imagen(
     prompts_dir = Path(__file__).resolve().parent / "prompts"
     layout_template = (prompts_dir / "image_layout.txt").read_text(encoding="utf-8")
 
+    # Adapt template if there is no background image to composite
+    if not (base_img_b64 and mime_base):
+        layout_template = layout_template.replace(
+            "compositing the provided brand logo (Image 1) and base background scene (Image 2)",
+            "using the provided brand logo (Image 1) and generating a beautiful background scene from scratch",
+        )
+
     prompt = layout_template.format(
         headline=headline,
         description=ad_copy.get("description", ""),
@@ -132,10 +140,14 @@ async def call_gemini_imagen(
         logger.info("No base background image attached")
     parts.append({"text": f"\nInstructions:\n{prompt}"})
 
-    # Fire 3 parallel Gemini calls with different aspect ratios
+    # Fire parallel Gemini calls for requested aspect ratios
+    target_aspects = ASPECT_CONFIGS
+    if target_formats:
+        target_aspects = [cfg for cfg in ASPECT_CONFIGS if cfg[0] in target_formats]
+
     tasks = [
         _call_gemini_one(parts, label, ratio, api_key)
-        for label, ratio in ASPECT_CONFIGS
+        for label, ratio in target_aspects
     ]
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -163,7 +175,7 @@ async def call_gemini_imagen(
     logger.info(
         "Generated %d/%d sizes for creative_type=%s: %s",
         len(urls),
-        len(ASPECT_CONFIGS),
+        len(target_aspects),
         creative_type_value,
         urls,
     )

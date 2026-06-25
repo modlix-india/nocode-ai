@@ -27,6 +27,8 @@ from app.agents.adzump.agents.creative_generator.image_utils import (
     get_base_image_b64,
 )
 from app.agents.adzump.agents.creative_generator.imagen_api import call_gemini_imagen
+from app.agents.adzump.services.business_storage import save_campaign
+from datetime import datetime, timezone
 from app.config import settings
 from app.services.llm_provider import get_llm_provider
 
@@ -114,10 +116,156 @@ class CreativeGenerationService:
         return pool[0]
 
     async def generate_ad_copy_and_prompt(self, params: dict) -> ToolResult:
-        """Generate ad copy and images in a single call."""
+        """Generate ad copy and images in a single call, supporting targeted regeneration and auto-save."""
         if self.auth is None:
             return ToolResult(success=False, error="Authentication required.")
 
+        target_creative_index = params.get("target_creative_index")
+        target_formats_str = params.get("target_formats")
+        target_formats = None
+        if target_formats_str:
+            target_formats = [
+                f.strip().lower() for f in target_formats_str.split(",") if f.strip()
+            ]
+
+        # ── Branch A: Targeted Modification of an Existing Creative ──
+        ad_copy_list = self.spec.get("ad_copy") or []
+        if not isinstance(ad_copy_list, list):
+            # Back-compat: if it was stored as a dict, wrap it in a list
+            ad_copy_list = [ad_copy_list] if ad_copy_list else []
+
+        if target_creative_index is not None and len(ad_copy_list) > 0:
+            if not (1 <= target_creative_index <= len(ad_copy_list)):
+                return ToolResult(
+                    success=False,
+                    error=f"Invalid target_creative_index: {target_creative_index}. There are only {len(ad_copy_list)} creatives.",
+                )
+
+            await emit_progress(
+                self.context,
+                f"Regenerating targeted creative {target_creative_index}...",
+            )
+
+            existing_creative = ad_copy_list[target_creative_index - 1]
+            copy_dict = dict(existing_creative)
+
+            # Apply custom overrides
+            if params.get("custom_headline"):
+                copy_dict["headline"] = params["custom_headline"]
+            if params.get("custom_description"):
+                copy_dict["description"] = params["custom_description"]
+            if params.get("custom_cta"):
+                copy_dict["cta"] = params["custom_cta"]
+            if params.get("custom_theme"):
+                prompt_suffix = (
+                    f" Use a {params['custom_theme']} visual style and theme."
+                )
+                copy_dict["image_prompt"] = (
+                    copy_dict.get("image_prompt", "") + prompt_suffix
+                )
+
+            # Sanitize RERA: empty string if missing, "not found", or "not available"
+            current_rera = copy_dict.get("rera_no")
+            if current_rera and current_rera.lower().strip() in (
+                "not found",
+                "not available",
+                "none",
+                "null",
+            ):
+                copy_dict["rera_no"] = ""
+
+            api_key = os.environ.get("GEMINI_API_KEY") or settings.GOOGLE_API_KEY
+            if not api_key:
+                return ToolResult(
+                    success=False,
+                    error="GEMINI_API_KEY is not configured. Please add it to variables.sh.",
+                )
+
+            # Load logo
+            logo_url = self.product_data.get("logo_url")
+            logger.info("Downloading logo from URL: %s", logo_url)
+            logo_b64, logo_mime = await download_and_normalize_logo(
+                logo_url,
+                self.client,
+                self.headers,
+                self.context,
+            )
+
+            # Resolve base background image
+            base_img_path = params.get(
+                "custom_background_image"
+            ) or existing_creative.get("base_image_url")
+            base_b64, base_mime = None, None
+            if base_img_path:
+                logger.info("Downloading base background image: %s", base_img_path)
+                base_b64_res = await get_base_image_b64(
+                    base_img_path, self.client, self.headers
+                )
+                if base_b64_res:
+                    base_b64, base_mime = base_b64_res
+
+            # Versioning: Snapshot active URLs into history before editing
+            if "creative_urls" in existing_creative:
+                history_entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "creative_urls": dict(existing_creative["creative_urls"]),
+                }
+                copy_dict.setdefault("history", []).append(history_entry)
+
+            # Call Imagen API with target aspect ratios
+            new_creative_res = await call_gemini_imagen(
+                base_b64,
+                base_mime,
+                base_img_path,
+                existing_creative.get("creative_type", "own"),
+                logo_b64,
+                logo_mime,
+                copy_dict,
+                api_key,
+                self.context,
+                target_formats=target_formats,
+            )
+
+            # Merge updated aspect ratios with existing ones
+            existing_urls = existing_creative.get("creative_urls") or {}
+            new_urls = new_creative_res.get("creative_urls") or {}
+            merged_urls = {**existing_urls, **new_urls}
+            copy_dict["creative_urls"] = merged_urls
+            copy_dict["base_image_url"] = new_creative_res.get("base_image_url") or ""
+
+            # Update list and persist
+            ad_copy_list[target_creative_index - 1] = copy_dict
+            self.spec["ad_copy"] = ad_copy_list
+            self.sctx["campaign_spec"] = self.spec
+
+            # Save directly to the Database
+            logger.info("Auto-saving creative modifications to storage...")
+            await save_campaign(self.sctx, self.context)
+
+            if self.stream:
+                preview_markdown = f"\n\n### Updated Ad Creative {target_creative_index} ({copy_dict.get('creative_type')}):\n"
+                preview_markdown += f'Headline: "{copy_dict.get("headline")}"\n'
+                for label in ("square", "portrait", "landscape"):
+                    url = merged_urls.get(label)
+                    if url:
+                        preview_markdown += (
+                            f"![{label}]({url})"
+                            f'{{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px;"}} '
+                        )
+                preview_markdown += "\n"
+                await self.stream.emit_text(preview_markdown + "\n")
+
+            await emit_progress(
+                self.context,
+                f"Ad creative {target_creative_index} updated and saved successfully.",
+            )
+            return ToolResult(
+                success=True,
+                data={"creatives": ad_copy_list},
+                summary=f"Successfully updated Creative {target_creative_index}.",
+            )
+
+        # ── Branch B: Generate All Creatives (Standard Flow) ──
         await emit_progress(
             self.context, "Analyzing campaign details and generating ad copy..."
         )
@@ -156,18 +304,29 @@ class CreativeGenerationService:
             rera_match = re.search(
                 r"(?:RERA|PRM/KA|P521000|UPRERA)[^\n\.,;]*", summary, re.IGNORECASE
             )
-            rera_info = rera_match.group(0).strip() if rera_match else "Not found"
+            rera_info = rera_match.group(0).strip() if rera_match else ""
 
-            user_msg += (
-                f"\nThis is a Real Estate project. You MUST ensure the ad copy and image prompt include the PPP details:\n"
-                f"- Project Name: {product_name}\n"
-                f"- Price: {price}\n"
-                f"- Location: {location}\n"
-                f"- RERA Registration: {rera_info}\n\n"
-                f"You MUST include the verbatim RERA registration details in the 'rera_no' field. "
-                f"Also, explicitly specify in the 'image_prompt' that the RERA registration number MUST be rendered on the image. "
-                f"Output a concise 'location' suitable for rendering on an ad image (just city/area, max 50 characters — e.g. 'Bannerghatta Rd, Bengaluru')."
-            )
+            if rera_info:
+                user_msg += (
+                    f"\nThis is a Real Estate project. You MUST ensure the ad copy and image prompt include the PPP details:\n"
+                    f"- Project Name: {product_name}\n"
+                    f"- Price: {price}\n"
+                    f"- Location: {location}\n"
+                    f"- RERA Registration: {rera_info}\n\n"
+                    f"You MUST include the verbatim RERA registration details in the 'rera_no' field. "
+                    f"Also, explicitly specify in the 'image_prompt' that the RERA registration number MUST be rendered on the image. "
+                    f"Output a concise 'location' suitable for rendering on an ad image (just city/area, max 50 characters — e.g. 'Bannerghatta Rd, Bengaluru')."
+                )
+            else:
+                user_msg += (
+                    f"\nThis is a Real Estate project. You MUST ensure the ad copy and image prompt include the PPP details:\n"
+                    f"- Project Name: {product_name}\n"
+                    f"- Price: {price}\n"
+                    f"- Location: {location}\n"
+                    f"- RERA Registration: Not available (do NOT render any RERA details, RERA numbers, or RERA labels on the image or in the copy)\n\n"
+                    f"Set 'rera_no' to an empty string in the output JSON. "
+                    f"Output a concise 'location' suitable for rendering on an ad image (just city/area, max 50 characters — e.g. 'Bannerghatta Rd, Bengaluru')."
+                )
 
         user_msg += (
             "\nProvide the output in JSON format with keys: "
@@ -179,7 +338,7 @@ class CreativeGenerationService:
         )
 
         try:
-            # Step 1: Call LLM directly for ad copy (no sub-agent, no streaming to UI)
+            # Step 1: Call LLM directly for ad copy
             prompts_dir = Path(__file__).resolve().parent / "prompts"
             system_prompt = (prompts_dir / "creative_copy.txt").read_text(
                 encoding="utf-8"
@@ -212,22 +371,35 @@ class CreativeGenerationService:
                     f" Use a {params['custom_theme']} visual style and theme."
                 )
 
-            # Inject real estate fallback values to guarantee presence of RERA & PPP details
+            # Inject real estate fallback values
             if is_real_estate:
                 if not copy_dict.get("price"):
                     copy_dict["price"] = price
                 if not copy_dict.get("location"):
                     copy_dict["location"] = location
-                if (
-                    not copy_dict.get("rera_no")
-                    or copy_dict.get("rera_no") == "Not found"
+
+                current_rera = copy_dict.get("rera_no")
+                if not current_rera:
+                    current_rera = rera_info
+
+                # Sanitize RERA: empty string if missing, "not found", or "not available"
+                if not current_rera or current_rera.lower().strip() in (
+                    "not found",
+                    "not available",
+                    "none",
+                    "null",
                 ):
-                    copy_dict["rera_no"] = rera_info
+                    copy_dict["rera_no"] = ""
+                else:
+                    copy_dict["rera_no"] = current_rera
 
             self.spec["ad_copy"] = copy_dict
             self.sctx["campaign_spec"] = self.spec
 
-            logger.info("Ad copy generation step complete. Output keys: %s", list(copy_dict.keys()))
+            logger.info(
+                "Ad copy generation step complete. Output keys: %s",
+                list(copy_dict.keys()),
+            )
 
             # Step 2: Generate images immediately
             api_key = os.environ.get("GEMINI_API_KEY") or settings.GOOGLE_API_KEY
@@ -261,7 +433,11 @@ class CreativeGenerationService:
                 self.headers,
                 self.context,
             )
-            logger.info("Logo download complete. Mime: %s, Length: %d", logo_mime, len(logo_b64) if logo_b64 else 0)
+            logger.info(
+                "Logo download complete. Mime: %s, Length: %d",
+                logo_mime,
+                len(logo_b64) if logo_b64 else 0,
+            )
 
             logger.info("Selecting best OWN background image...")
             selected_own_path = await self.select_best_image(
@@ -277,25 +453,40 @@ class CreativeGenerationService:
             )
             logger.info("Selected COMPETITOR image path: %s", selected_comp_path)
 
-            logger.info("Downloading base64 for OWN background image: %s", selected_own_path)
+            logger.info(
+                "Downloading base64 for OWN background image: %s", selected_own_path
+            )
             own_b64_res = (
                 await get_base_image_b64(selected_own_path, self.client, self.headers)
                 if selected_own_path
                 else None
             )
             own_b64, own_mime = own_b64_res if own_b64_res else (None, None)
-            logger.info("OWN background image base64 resolved. Mime: %s, Length: %d", own_mime, len(own_b64) if own_b64 else 0)
+            logger.info(
+                "OWN background image base64 resolved. Mime: %s, Length: %d",
+                own_mime,
+                len(own_b64) if own_b64 else 0,
+            )
 
             comp_b64, comp_mime = None, None
             if selected_comp_path:
-                logger.info("Downloading base64 for COMPETITOR background image: %s", selected_comp_path)
+                logger.info(
+                    "Downloading base64 for COMPETITOR background image: %s",
+                    selected_comp_path,
+                )
                 comp_b64_res = (
-                    await get_base_image_b64(selected_comp_path, self.client, self.headers)
+                    await get_base_image_b64(
+                        selected_comp_path, self.client, self.headers
+                    )
                     if selected_comp_path
                     else None
                 )
                 comp_b64, comp_mime = comp_b64_res if comp_b64_res else (None, None)
-                logger.info("COMPETITOR background image base64 resolved. Mime: %s, Length: %d", comp_mime, len(comp_b64) if comp_b64 else 0)
+                logger.info(
+                    "COMPETITOR background image base64 resolved. Mime: %s, Length: %d",
+                    comp_mime,
+                    len(comp_b64) if comp_b64 else 0,
+                )
 
             tasks = []
             for _ in range(own_count):
@@ -310,6 +501,7 @@ class CreativeGenerationService:
                         copy_dict,
                         api_key,
                         self.context,
+                        target_formats=target_formats,
                     )
                 )
             for _ in range(competitor_count):
@@ -324,6 +516,7 @@ class CreativeGenerationService:
                         copy_dict,
                         api_key,
                         self.context,
+                        target_formats=target_formats,
                     )
                 )
 
@@ -336,6 +529,10 @@ class CreativeGenerationService:
             self.sctx["campaign_spec"] = self.spec
             self.sctx.setdefault("product_profile", {})["creative_generated"] = True
 
+            # Save directly to the Database
+            logger.info("Auto-saving newly generated creatives to storage...")
+            await save_campaign(self.sctx, self.context)
+
             if self.stream:
                 preview_markdown = "\n\n### Generated Ad Creatives:\n"
                 for i, c in enumerate(generated_creatives, 1):
@@ -346,8 +543,8 @@ class CreativeGenerationService:
                         url = urls.get(label)
                         if url:
                             preview_markdown += (
-                                f'![{label}]({url})'
-                                f'{{style="width: 180px; object-fit: contain; border-radius: 6px;"}} '
+                                f"![{label}]({url})"
+                                f'{{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px;"}} '
                             )
                     preview_markdown += "\n"
                 await self.stream.emit_text(preview_markdown + "\n")

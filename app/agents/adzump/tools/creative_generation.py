@@ -50,6 +50,24 @@ generate_ad_copy_and_prompt = ToolDefinition(
             description="Optional visual theme override (e.g. 'sunset background').",
             required=False,
         ),
+        ToolParameter(
+            name="target_creative_index",
+            type="integer",
+            description="Optional 1-based index of the specific creative to regenerate/update. If omitted, all creatives are updated.",
+            required=False,
+        ),
+        ToolParameter(
+            name="target_formats",
+            type="string",
+            description="Optional comma-separated list of formats to regenerate (e.g. 'square,portrait,landscape'). If omitted, all formats are regenerated.",
+            required=False,
+        ),
+        ToolParameter(
+            name="custom_background_image",
+            type="string",
+            description="Optional CDN URL or file path of a custom background image to use for the creative.",
+            required=False,
+        ),
     ],
     execute=_generate_ad_copy_and_prompt,
 )
