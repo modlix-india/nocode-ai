@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolResult
+from app.agents.adzump._shared import product_location_str
 from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.platform import is_google
 from app.agents.adzump.services.geo.discovery import (
@@ -20,16 +21,6 @@ from app.agents.adzump.services.business_storage import save_campaign, resolve_u
 from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
 
 logger = logging.getLogger(__name__)
-
-
-def _location_str(product: dict) -> str:
-    """Extract a plain string location from product_data.location (str or dict)."""
-    loc = product.get("location") or {}
-    if isinstance(loc, str):
-        return loc.strip()
-    if isinstance(loc, dict):
-        return (loc.get("location") or "").strip()
-    return ""
 
 
 class GeoTargetingAgent:
@@ -43,15 +34,14 @@ class GeoTargetingAgent:
             cls._instance = cls()
         return cls._instance
 
-    async def _persist_and_rerender(
+    async def _rerender_craft(
         self,
         session_ctx: dict,
         context: dict,
         product: dict,
         platform: str,
     ) -> None:
-        """Save campaign and re-emit the craft panel. Swallows failures gracefully."""
-        await save_campaign(session_ctx, context)
+        """Re-emit the craft panel. Saving is the caller's responsibility."""
         stream = context.get("event_stream")
         craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
         url = resolve_url(session_ctx)
@@ -94,7 +84,7 @@ class GeoTargetingAgent:
             location_name = (
                 loc_meta.get("address")
                 or spec.get("location")
-                or _location_str(product)
+                or product_location_str(product)
             )
 
         if not coordinates and location_name:
@@ -161,7 +151,8 @@ class GeoTargetingAgent:
                     },
                 )
 
-            await self._persist_and_rerender(session_ctx, context, product, platform)
+            await save_campaign(session_ctx, context)
+            await self._rerender_craft(session_ctx, context, product, platform)
 
             return ToolResult(
                 success=True,
@@ -246,7 +237,8 @@ class GeoTargetingAgent:
             product["target_areas"][-1] if product["target_areas"] else None,
         )
 
-        await self._persist_and_rerender(session_ctx, context, product, caller_platform)
+        await save_campaign(session_ctx, context)
+        await self._rerender_craft(session_ctx, context, product, caller_platform)
 
         # Re-emit the location chips so the search widget reflects the new list.
         stream = context.get("event_stream")

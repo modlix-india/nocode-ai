@@ -105,7 +105,15 @@ def _stream_location_widget(
             )
 
             from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
+            from app.agents.adzump.services.business_storage import save_campaign
             result = await get_geo_targeting_agent().modify(params, ctx)
+            # modify() calls _rerender_craft but not save_campaign (save belongs to the
+            # caller — the LLM path saves via _on_loop_complete; we save explicitly here).
+            if result.success:
+                try:
+                    await save_campaign(session.context, ctx)
+                except Exception as e:
+                    logger.debug("Widget path campaign save failed (non-fatal): %s", e)
 
             await event_stream.emit_tool_result(
                 tool_use_id="widget_location",

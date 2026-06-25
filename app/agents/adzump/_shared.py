@@ -143,6 +143,18 @@ def is_aggregator_host(host: str, extra_hosts: frozenset[str] | set[str] = froze
     return any(host == h or host.endswith("." + h) for h in all_hosts)
 
 
+# ─── Shared product-data helpers ─────────────────────────────────────────
+
+def product_location_str(product_data: dict) -> str:
+    """Return the business location as a plain string from product_data.location."""
+    loc = product_data.get("location") or {}
+    if isinstance(loc, str):
+        return loc.strip()
+    if isinstance(loc, dict):
+        return (loc.get("location") or "").strip()
+    return ""
+
+
 # ─── Shared progress emission ────────────────────────────────────────────
 
 async def emit_progress(

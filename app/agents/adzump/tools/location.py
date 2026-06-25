@@ -10,19 +10,11 @@ import logging
 
 from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump._shared import product_location_str as _detected_location
 from app.agents.adzump.tools.campaign_data import is_real_estate
 from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
 
 logger = logging.getLogger(__name__)
-
-
-def _detected_location(product_data: dict) -> str:
-    loc = product_data.get("location") or {}
-    if isinstance(loc, str):
-        return loc.strip()
-    if isinstance(loc, dict):
-        return (loc.get("location") or "").strip()
-    return ""
 
 
 async def _confirm_location(params: dict, context: dict) -> ToolResult:
