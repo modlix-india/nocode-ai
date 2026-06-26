@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.googleMapsAPIKey
     GOOGLE_MAPS_API_KEY: str = ""
 
+    # Google Maps Map ID — required for Vector rendering with Feature Layers
+    # (POSTAL_CODE, LOCALITY, COUNTRY, etc.). Must be a real Map ID from
+    # Google Cloud Console — DEMO_MAP_ID does NOT support Feature Layers.
+    # Can be overridden by config server: ai.secrets.googleMapID
+    GOOGLE_MAP_ID: str = ""
+
     # Prompt Caching (Anthropic-only feature)
     # Reduces token usage by ~90% for repeated system prompts
     # Automatically disabled when using OpenAI
@@ -184,6 +190,7 @@ class Settings(BaseSettings):
             ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
+            ("secrets", "googleMapID"): "GOOGLE_MAP_ID",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
