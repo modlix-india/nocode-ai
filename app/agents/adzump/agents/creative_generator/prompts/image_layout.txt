@@ -35,10 +35,8 @@ STRICT REJECTIONS — DO NOT GENERATE:
 REAL ESTATE FALLBACK COMPLIANCE RULES:
 If there is NO provided base background scene (Image 2) and this is a Real Estate brand:
 1. BANNED: You MUST NOT generate fake building exteriors, fake towers, fake house fronts, or specific building structures.
-2. ALLOWED BACKGROUNDS: Generate either:
-   - A highly stylized premium interior room scene (e.g. elegant dining room corner, cozy luxury living space).
-   - A peaceful scenic nature view (e.g. garden walkway, lush green courtyard trees, soft sunlight filtering through leaves).
-   - An abstract graphic design with premium gradient backgrounds and geometric design lines.
+2. ALLOWED BACKGROUNDS:
+{allowed_fallbacks}
 3. RERA DISCLAIMER: You MUST render a tiny, thin, low-contrast, and low-opacity footnote at the absolute bottom edge of the image: "Artistic Impression. Creative visualization only."
 
 Output ONLY the completed image.

@@ -323,6 +323,8 @@ async def generate_fresh_creatives_workflow(service, params: dict) -> ToolResult
                     api_key,
                     service.context,
                     target_formats=target_formats,
+                    business_type=business_type,
+                    is_real_estate=is_real_estate,
                 )
             )
 

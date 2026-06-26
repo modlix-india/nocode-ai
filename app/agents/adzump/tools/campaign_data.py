@@ -85,6 +85,10 @@ ALLOWED_FIELDS = {
     "ig_page",
     "competitive_analysis_declined",
     "ig_page_declined",  # v3 · F3 — Instagram is optional; "true" = Facebook-only
+    "creative_approved",
+    "creative_target_sizes",
+    "creative_config",
+    "creative_target_personas",
 }
 
 # IDs from Google Ads / Meta — must be traceable to a fetch tool's output
@@ -327,17 +331,25 @@ async def _set_campaign_spec(
     # vs stored "4461972633") don't leak through as false changes.
     incoming: dict[str, Any] = {}
     for k, v in params.items():
-        if k not in ALLOWED_FIELDS or v in (None, ""):
+        if k not in ALLOWED_FIELDS:
             continue
-        new_v = _normalize_id(v) if k in _ACCOUNT_LIKE_FIELDS else v
+        new_v = (
+            _normalize_id(v)
+            if (k in _ACCOUNT_LIKE_FIELDS and v not in (None, ""))
+            else v
+        )
         current = spec.get(k)
-        current_norm = _normalize_id(current) if k in _ACCOUNT_LIKE_FIELDS else current
+        current_norm = (
+            _normalize_id(current)
+            if (k in _ACCOUNT_LIKE_FIELDS and current not in (None, ""))
+            else current
+        )
         if current_norm == new_v:
             continue
         incoming[k] = new_v
 
     if not incoming:
-        any_supplied = any(params.get(k) for k in ALLOWED_FIELDS)
+        any_supplied = any(k in params for k in ALLOWED_FIELDS)
         if not any_supplied:
             return ToolResult(
                 success=False,

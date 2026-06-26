@@ -29,9 +29,7 @@ def _apply_creative_overrides(copy_dict: dict, params: dict) -> None:
     if params.get("custom_cta"):
         copy_dict["cta"] = params["custom_cta"]
     if params.get("custom_theme"):
-        copy_dict["image_prompt"] += (
-            f" Use a {params['custom_theme']} visual style."
-        )
+        copy_dict["image_prompt"] += f" Use a {params['custom_theme']} visual style."
 
 
 async def modify_existing_creative_workflow(service, params: dict) -> ToolResult:
@@ -76,6 +74,13 @@ async def modify_existing_creative_workflow(service, params: dict) -> ToolResult
 
     existing_creative = ad_copy_list[target_creative_index - 1]
     copy_dict = dict(existing_creative)
+    business_type = service.product_data.get("business_type") or "business"
+    is_real_estate = False
+    if service.session:
+        from app.agents.adzump.agent import CampaignContext
+
+        cctx = CampaignContext.from_session(service.session)
+        is_real_estate = cctx.is_real_estate
 
     target_formats_str = params.get("target_formats")
     target_formats = None
@@ -126,14 +131,6 @@ async def modify_existing_creative_workflow(service, params: dict) -> ToolResult
                 if prev_res:
                     prev_b64, prev_mime = prev_res
 
-            is_real_estate = False
-            if service.session:
-                from app.agents.adzump.agent import CampaignContext
-
-                cctx = CampaignContext.from_session(service.session)
-                is_real_estate = cctx.is_real_estate
-
-            business_type = service.product_data.get("business_type") or "business"
             product_name = (
                 service.product_data.get("product_name")
                 or service.spec.get("product_name")
@@ -260,6 +257,8 @@ async def modify_existing_creative_workflow(service, params: dict) -> ToolResult
         api_key,
         service.context,
         target_formats=target_formats,
+        business_type=business_type,
+        is_real_estate=is_real_estate,
     )
 
     existing_urls = existing_creative.get("creative_urls") or {}

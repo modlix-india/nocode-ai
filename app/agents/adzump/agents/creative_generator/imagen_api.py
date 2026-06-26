@@ -83,6 +83,8 @@ async def call_gemini_imagen(
     api_key: str,
     context: dict,
     target_formats: list[str] | None = None,
+    business_type: str = "",
+    is_real_estate: bool = False,
 ) -> dict:
     """Generate aspect-ratio variants of a creative in parallel via Gemini Imagen.
 
@@ -117,6 +119,41 @@ async def call_gemini_imagen(
             "using the provided brand logo (Image 1) and generating a beautiful background scene from scratch",
         )
 
+    # Build context-aware fallback compliance instructions
+    b_type = (business_type or "business").strip()
+    if is_real_estate:
+        # Check if commercial vs residential real estate
+        is_comm = any(
+            kw in b_type.lower()
+            for kw in (
+                "office",
+                "commercial",
+                "retail",
+                "shop",
+                "workspace",
+                "co-working",
+                "business park",
+                "warehouse",
+                "industrial",
+            )
+        )
+        if is_comm:
+            interior_desc = "sleek modern office lobby, sophisticated co-working lounge, or high-end workspace with professional lighting"
+            exterior_desc = "clean modern urban landscape plaza or green corporate terrace view"
+        else:
+            interior_desc = "elegant dining room corner, luxury living space, or premium residential interior suited for home/apartment projects"
+            exterior_desc = "peaceful scenic community nature view (e.g. garden walkway, lush green courtyard trees, soft sunlight filtering through leaves)"
+    else:
+        # Non-real estate general industries
+        interior_desc = f"clean premium setting, interior workspace, studio backdrop, or product display area suited for a {b_type} brand"
+        exterior_desc = f"natural outdoor or lifestyle context matching the theme of {b_type}"
+
+    allowed_fallbacks = (
+        f"   - A highly stylized premium interior scene or room suited for the business vertical (e.g., {interior_desc}).\n"
+        f"   - A clean modern outdoor view or lifestyle backdrop suited for the business vertical (e.g., {exterior_desc}).\n"
+        "   - An abstract graphic design with premium gradient backgrounds and geometric design lines."
+    )
+
     prompt = layout_template.format(
         headline=headline,
         description=ad_copy.get("description", ""),
@@ -127,6 +164,7 @@ async def call_gemini_imagen(
         rera_no=ad_copy.get("rera_no", "") or "",
         price=ad_copy.get("price", "") or "",
         location=ad_copy.get("location", "") or "",
+        allowed_fallbacks=allowed_fallbacks,
     )
 
     logger.info("Batch prompt for Gemini:\n%s", prompt)

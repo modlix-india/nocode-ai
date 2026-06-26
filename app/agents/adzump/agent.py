@@ -243,9 +243,12 @@ def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
 
     if cctx.spec.get("creative_approved") in ["false", "edit_copy_styling"]:
         missing.append(
-            "creative changes — ask the user what changes they would like to make (such as custom headline, description, cta, or theme) "
+            "creative changes — ask the user what changes they would like to make (such as custom headline, description, cta, theme, or custom_background_image) "
             "if they haven't specified them yet. Once they provide the feedback, call `modify_existing_creative(target_creative_index=1)` "
-            "with their custom overrides."
+            "with their custom overrides. "
+            "IMPORTANT: `target_creative_index` corresponds to the copy/design variation index (e.g., Creative 1 is index 1), "
+            "NOT the number of image size previews shown. If the user refers to the second image preview (like the Portrait or Landscape image of Creative 1), "
+            "it is still `target_creative_index=1`. If they target a specific size variation, specify that format in the `target_formats` argument (e.g. `target_formats='portrait'`)."
         )
     elif cctx.spec.get("creative_approved") == "generate_new_sizes":
         if not cctx.spec.get("creative_target_sizes"):
@@ -271,11 +274,33 @@ def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
             "to reset the approval and enable competitor creative generation, then call `generate_fresh_creatives()`."
         )
     elif cctx.spec.get("creative_approved") == "generate_persona_variations":
-        missing.append(
-            "generate persona variations — user wants to target specific demographics. Call `set_campaign_spec(creative_approved=None)` "
-            "to reset the approval, and ask the user which personas/demographics they want to target. Once they provide the feedback, "
-            "call `generate_fresh_creatives(target_personas=<comma-separated personas>)`."
-        )
+        if not cctx.spec.get("creative_target_personas"):
+            missing.append(
+                "ask target personas — ask the user which target personas or demographics they want to focus on. "
+                'Call `present_options(question="Which target personas or demographics do you want to focus on for the ad campaign?", '
+                "options=["
+                '{"label":"First-time Homebuyers","value":"First-time Homebuyers","answer":"First-time Homebuyers"}, '
+                '{"label":"Young Families","value":"Young Families","answer":"Young Families"}, '
+                '{"label":"Investors","value":"Investors","answer":"Investors"}, '
+                '{"label":"Retirees","value":"Retirees","answer":"Retirees"}, '
+                '{"label":"Professionals","value":"Professionals","answer":"Professionals"}, '
+                '{"label":"Custom","value":"Custom","answer":"Custom"}'
+                '], field="creative_target_personas")`'
+            )
+        else:
+            target_personas = cctx.spec.get("creative_target_personas")
+            if target_personas.lower().strip() == "custom":
+                missing.append(
+                    "custom target personas — the user chose Custom. Ask the user in one short line to TYPE "
+                    "the target personas or demographics they want to target. Once they provide the feedback, "
+                    "call `set_campaign_spec(creative_target_personas=<what they typed>)`."
+                )
+            else:
+                missing.append(
+                    f"generate persona variations — user wants to generate variations for personas: {target_personas}. "
+                    f"Call `set_campaign_spec(creative_approved=None, creative_target_personas=None)` "
+                    f"to reset the approval and target personas, and call `generate_fresh_creatives(target_personas='{target_personas}')`."
+                )
     else:
         creative_previews = ""
         ad_copy_list = cctx.spec.get("ad_copy") or []
