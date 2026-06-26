@@ -35,7 +35,14 @@ def parse_creative_counts(config_val: str) -> tuple[int, int]:
 
 
 def filter_competitor_images(competitors: list[dict]) -> list[str]:
-    """Filter crawled competitor images to exclude icons, logos, and badges."""
+    """Filter crawled competitor images to exclude icons, logos, and badges.
+
+    TODO: This is a placeholder until the competitor image crawl pipeline is
+    complete. Expected session key once populated:
+        session.context["competitor_analysis"]["competitors"][i]["creative_images"]
+    Currently falls back to homepage URLs when creative_images is empty,
+    which will be replaced once the crawl pipeline provides real image URLs.
+    """
     competitor_images: list[str] = []
     exclude_keywords = ("icon", "logo", "header", "footer", "badge", "social", "avatar")
     

@@ -48,9 +48,17 @@ async def generate_fresh_creatives_workflow(service, params: dict) -> ToolResult
         service.context, "Analyzing campaign details and selecting base images..."
     )
 
-    competitor_images = filter_competitor_images(
-        service.competitor_analysis.get("competitors") or []
+    # TODO: Replace with colleague's competitor image pipeline key once available.
+    # Expected: service.sctx["competitor_analysis"]["competitors"][i]["creative_images"]
+    # For now, skip competitor images — pipeline not yet populated.
+    competitor_images: list[str] = []
+    comp_competitors = service.competitor_analysis.get("competitors") or []
+    has_comp_images = any(
+        c.get("creative_images") for c in comp_competitors
     )
+    if has_comp_images:
+        competitor_images = filter_competitor_images(comp_competitors)
+
     own_images = service.product_data.get("creative_images") or []
 
     selected_own_path = await select_best_image(
@@ -93,12 +101,8 @@ async def generate_fresh_creatives_workflow(service, params: dict) -> ToolResult
 
     comp_b64, comp_mime = None, None
     if selected_comp_path:
-        comp_b64_res = (
-            await get_base_image_b64(
-                selected_comp_path, service.client, service.headers
-            )
-            if selected_comp_path
-            else None
+        comp_b64_res = await get_base_image_b64(
+            selected_comp_path, service.client, service.headers
         )
         comp_b64, comp_mime = comp_b64_res if comp_b64_res else (None, None)
         logger.info(
@@ -179,10 +183,6 @@ async def generate_fresh_creatives_workflow(service, params: dict) -> ToolResult
             or "premium pricing"
         )
 
-        # Fallback to campaign budget if price is still empty or same as budget
-        if price == service.spec.get("budget") and service.product_data.get("pricing"):
-            price = service.product_data.get("pricing")
-
         rera_info = (
             service.product_data.get("rera_no")
             or service.product_data.get("rera")
@@ -244,6 +244,8 @@ async def generate_fresh_creatives_workflow(service, params: dict) -> ToolResult
         own_count, competitor_count = parse_creative_counts(
             service.spec.get("creative_config", "1")
         )
+        if not competitor_images:
+            competitor_count = 0
         total_creatives = own_count + competitor_count
 
         logo_url = service.product_data.get("logo_url")

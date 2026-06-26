@@ -5,9 +5,8 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.agents.creative_generator.generator import (
-    generate_fresh_creatives_impl,
-    modify_existing_creative_impl,
+from app.agents.adzump.agents.creative_generator.agent import (
+    get_creative_generator_agent,
 )
 
 logger = logging.getLogger(__name__)
@@ -15,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 async def _generate_fresh_creatives(params: dict, context: dict) -> ToolResult:
     """Generate fresh ad copy and square creatives from scratch."""
-    return await generate_fresh_creatives_impl(params, context)
+    return await get_creative_generator_agent().generate(params, context)
 
 
 async def _modify_existing_creative(params: dict, context: dict) -> ToolResult:
     """Modify or regenerate aspect ratios of an existing ad creative."""
-    return await modify_existing_creative_impl(params, context)
+    return await get_creative_generator_agent().modify(params, context)
 
 
 generate_fresh_creatives = ToolDefinition(

@@ -230,6 +230,77 @@ def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     return None
 
 
+def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
+    """Creative approval/modification sub-states.
+
+    Returns a missing list if creatives need attention, None otherwise.
+    Extracted from _next_action for readability.
+    """
+    if not cctx.spec.get("ad_copy") or cctx.spec.get("creative_approved") == "true":
+        return None
+
+    missing: list[str] = []
+
+    if cctx.spec.get("creative_approved") in ["false", "edit_copy_styling"]:
+        missing.append(
+            "creative changes — ask the user what changes they would like to make (such as custom headline, description, cta, or theme) "
+            "if they haven't specified them yet. Once they provide the feedback, call `modify_existing_creative(target_creative_index=1)` "
+            "with their custom overrides."
+        )
+    elif cctx.spec.get("creative_approved") == "generate_new_sizes":
+        if not cctx.spec.get("creative_target_sizes"):
+            missing.append(
+                "ask target sizes — ask the user which sizes they would like to generate. "
+                'Call `present_options(question="Which sizes would you like to generate?", '
+                "options=["
+                '{"label":"Portrait (9:16)","value":"portrait","answer":"portrait"}, '
+                '{"label":"Landscape (16:9)","value":"landscape","answer":"landscape"}, '
+                '{"label":"Square (1:1)","value":"square","answer":"square"}, '
+                '{"label":"All sizes","value":"square,portrait,landscape","answer":"square,portrait,landscape"}'
+                '], field="creative_target_sizes")`'
+            )
+        else:
+            target_sizes = cctx.spec.get("creative_target_sizes")
+            missing.append(
+                f"generate new sizes — user wants to generate sizes: {target_sizes}. Call `set_campaign_spec(creative_approved=None, creative_target_sizes=None)` "
+                f"to reset the approval and target sizes, and call `modify_existing_creative(target_creative_index=1, target_formats='{target_sizes}')` to generate the aspect ratios."
+            )
+    elif cctx.spec.get("creative_approved") == "generate_competitor_inspired":
+        missing.append(
+            "generate competitor-inspired creative — user wants a competitor-inspired creative. Call `set_campaign_spec(creative_approved=None, creative_config='2')` "
+            "to reset the approval and enable competitor creative generation, then call `generate_fresh_creatives()`."
+        )
+    elif cctx.spec.get("creative_approved") == "generate_persona_variations":
+        missing.append(
+            "generate persona variations — user wants to target specific demographics. Call `set_campaign_spec(creative_approved=None)` "
+            "to reset the approval, and ask the user which personas/demographics they want to target. Once they provide the feedback, "
+            "call `generate_fresh_creatives(target_personas=<comma-separated personas>)`."
+        )
+    else:
+        creative_previews = ""
+        ad_copy_list = cctx.spec.get("ad_copy") or []
+        if isinstance(ad_copy_list, list):
+            for idx, item in enumerate(ad_copy_list, 1):
+                urls = item.get("creative_urls", {})
+                for size_name, url in urls.items():
+                    if url:
+                        creative_previews += f'\n![{size_name.capitalize()}]({url}){{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px; margin: 4px;"}}'
+
+        missing.append(
+            "creative approval — You MUST output the following markdown ad creative previews in your chat response so the user can see them:\n"
+            f"{creative_previews}\n\n"
+            "After showing the previews, call "
+            '`present_options(question="Would you like to proceed with these creatives or make choices?", '
+            'options=[{"label":"Proceed","value":"true","answer":"true"}, '
+            '{"label":"Edit copy/styling","value":"edit_copy_styling","answer":"edit_copy_styling"}, '
+            '{"label":"Generate new sizes","value":"generate_new_sizes","answer":"generate_new_sizes"}, '
+            '{"label":"Generate competitor-inspired creative","value":"generate_competitor_inspired","answer":"generate_competitor_inspired"}, '
+            '{"label":"Generate persona variations","value":"generate_persona_variations","answer":"generate_persona_variations"}], field="creative_approved")`'
+        )
+
+    return missing
+
+
 def _next_action(cctx: CampaignContext) -> list[str]:
     """Compute the ordered list of what's still missing, with concrete tool calls.
 
@@ -243,64 +314,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         missing.append("business URL — call `analyze_product(url=<the user's URL>)`")
         return missing
 
-    # Prioritize creative approval/modification if creatives are already generated and not approved
-    if cctx.spec.get("ad_copy") and cctx.spec.get("creative_approved") != "true":
-        if cctx.spec.get("creative_approved") in ["false", "edit_copy_styling"]:
-            missing.append(
-                "creative changes — ask the user what changes they would like to make (such as custom headline, description, cta, or theme) "
-                "if they haven't specified them yet. Once they provide the feedback, call `modify_existing_creative(target_creative_index=1)` "
-                "with their custom overrides."
-            )
-        elif cctx.spec.get("creative_approved") == "generate_new_sizes":
-            if not cctx.spec.get("creative_target_sizes"):
-                missing.append(
-                    "ask target sizes — ask the user which sizes they would like to generate. "
-                    'Call `present_options(question="Which sizes would you like to generate?", '
-                    "options=["
-                    '{"label":"Portrait (9:16)","value":"portrait","answer":"portrait"}, '
-                    '{"label":"Landscape (16:9)","value":"landscape","answer":"landscape"}, '
-                    '{"label":"Square (1:1)","value":"square","answer":"square"}, '
-                    '{"label":"All sizes","value":"square,portrait,landscape","answer":"square,portrait,landscape"}'
-                    '], field="creative_target_sizes")`'
-                )
-            else:
-                target_sizes = cctx.spec.get("creative_target_sizes")
-                missing.append(
-                    f"generate new sizes — user wants to generate sizes: {target_sizes}. Call `set_campaign_spec(creative_approved=None, creative_target_sizes=None)` "
-                    f"to reset the approval and target sizes, and call `modify_existing_creative(target_creative_index=1, target_formats='{target_sizes}')` to generate the aspect ratios."
-                )
-        elif cctx.spec.get("creative_approved") == "generate_competitor_inspired":
-            missing.append(
-                "generate competitor-inspired creative — user wants a competitor-inspired creative. Call `set_campaign_spec(creative_approved=None, creative_config='2')` "
-                "to reset the approval and enable competitor creative generation, then call `generate_fresh_creatives()`."
-            )
-        elif cctx.spec.get("creative_approved") == "generate_persona_variations":
-            missing.append(
-                "generate persona variations — user wants to target specific demographics. Call `set_campaign_spec(creative_approved=None)` "
-                "to reset the approval, and ask the user which personas/demographics they want to target. Once they provide the feedback, "
-                "call `generate_fresh_creatives(target_personas=<comma-separated personas>)`."
-            )
-        else:
-            creative_previews = ""
-            ad_copy_list = cctx.spec.get("ad_copy") or []
-            if isinstance(ad_copy_list, list):
-                for idx, item in enumerate(ad_copy_list, 1):
-                    urls = item.get("creative_urls", {})
-                    for size_name, url in urls.items():
-                        if url:
-                            creative_previews += f'\n![{size_name.capitalize()}]({url}){{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px; margin: 4px;"}}'
-
-            missing.append(
-                "creative approval — You MUST output the following markdown ad creative previews in your chat response so the user can see them:\n"
-                f"{creative_previews}\n\n"
-                "After showing the previews, call "
-                '`present_options(question="Would you like to proceed with these creatives or make choices?", '
-                'options=[{"label":"Proceed","value":"true","answer":"true"}, '
-                '{"label":"Edit copy/styling","value":"edit_copy_styling","answer":"edit_copy_styling"}, '
-                '{"label":"Generate new sizes","value":"generate_new_sizes","answer":"generate_new_sizes"}, '
-                '{"label":"Generate competitor-inspired creative","value":"generate_competitor_inspired","answer":"generate_competitor_inspired"}, '
-                '{"label":"Generate persona variations","value":"generate_persona_variations","answer":"generate_persona_variations"}], field="creative_approved")`'
-            )
+    creative_missing = _handle_creative_workflow(cctx)
+    if creative_missing is not None:
+        missing.extend(creative_missing)
         return missing
 
     # Intent routing: if the user's last message is a recognizable answer for

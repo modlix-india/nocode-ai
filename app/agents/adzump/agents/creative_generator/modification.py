@@ -20,6 +20,20 @@ from app.services.llm_provider import get_llm_provider
 logger = logging.getLogger(__name__)
 
 
+def _apply_creative_overrides(copy_dict: dict, params: dict) -> None:
+    """Apply direct parameter overrides to a creative copy dict."""
+    if params.get("custom_headline"):
+        copy_dict["headline"] = params["custom_headline"]
+    if params.get("custom_description"):
+        copy_dict["description"] = params["custom_description"]
+    if params.get("custom_cta"):
+        copy_dict["cta"] = params["custom_cta"]
+    if params.get("custom_theme"):
+        copy_dict["image_prompt"] += (
+            f" Use a {params['custom_theme']} visual style."
+        )
+
+
 async def modify_existing_creative_workflow(service, params: dict) -> ToolResult:
     """Modify, update, or regenerate formats for a specific existing creative."""
     if service.auth is None:
@@ -203,27 +217,9 @@ async def modify_existing_creative_workflow(service, params: dict) -> ToolResult
                 )
         except Exception as e:
             logger.warning("Failed to run edit copywriting re-evaluation: %s", e)
-            if params.get("custom_headline"):
-                copy_dict["headline"] = params["custom_headline"]
-            if params.get("custom_description"):
-                copy_dict["description"] = params["custom_description"]
-            if params.get("custom_cta"):
-                copy_dict["cta"] = params["custom_cta"]
-            if params.get("custom_theme"):
-                copy_dict["image_prompt"] += (
-                    f" Use a {params['custom_theme']} visual style."
-                )
+            _apply_creative_overrides(copy_dict, params)
     else:
-        if params.get("custom_headline"):
-            copy_dict["headline"] = params["custom_headline"]
-        if params.get("custom_description"):
-            copy_dict["description"] = params["custom_description"]
-        if params.get("custom_cta"):
-            copy_dict["cta"] = params["custom_cta"]
-        if params.get("custom_theme"):
-            copy_dict["image_prompt"] += (
-                f" Use a {params['custom_theme']} visual style."
-            )
+        _apply_creative_overrides(copy_dict, params)
 
     current_rera = copy_dict.get("rera_no")
     if current_rera and current_rera.lower().strip() in (
@@ -279,8 +275,6 @@ async def modify_existing_creative_workflow(service, params: dict) -> ToolResult
 
     logger.info("Auto-saving creative modifications to storage...")
     await save_campaign(service.sctx, service.context)
-
-
 
     await emit_progress(
         service.context,

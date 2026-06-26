@@ -1,4 +1,4 @@
-You are a premium social media ad designer. Your task is to generate a sleek, professional Facebook/Instagram ad creative by compositing the provided brand logo (Image 1) and base background scene (Image 2).
+You are a premium social media ad designer. Generate a photorealistic, magazine-quality Facebook/Instagram ad creative by compositing the provided brand logo (Image 1) and base background scene (Image 2).
 
 AD COPY TO RENDER NATIVELY ON THE IMAGE:
 - Headline: "{headline}"
@@ -7,22 +7,30 @@ AD COPY TO RENDER NATIVELY ON THE IMAGE:
 - Location: "{location}" (Render only if provided)
 - RERA ID: "{rera_no}" (Render only if provided)
 
-DYNAMIC ART DIRECTION & STYLE BLUEPRINT:
-1. Color Scheme: {color_palette_and_theme}
-2. Design Layout & Composition: {design_composition}
+DESIGN COMPOSITION — LAYOUT BLUEPRINT (MUST follow exactly):
+{design_composition}
 
-GENERAL CONTRAST, TYPOGRAPHY & AESTHETIC RULES:
-- Ensure extremely high contrast and perfect legibility. Never render plain text directly on busy background areas. 
-- You MUST integrate the ad copy elements (Headline, CTA, Price, Location, RERA) using professional graphic design layouts, such as:
-  • Semi-transparent glassmorphic card overlays, solid minimalist backing panels, or soft dark bottom/side gradients.
-  • Elegant typography formatting with premium, modern-looking sans-serif font rendering.
-- Corporate branding: The provided logo (Image 1) should be placed cleanly, such as in a semi-transparent header bar, corner badge, or integrated contextually on a billboard/shopfront in the background.
-- Real estate compliance: Price, Location, and RERA ID should be formatted cleanly in elegant, thin-line footnote sections or metadata badges, ensuring RERA is fully readable.
-- The output image must look like a real, finished high-budget ad creative, not a rough mockup or a raw photo.
-- Render ONLY the exact text strings provided. Do not hallucinate any other text.
+COLOR PALETTE & THEME (MUST follow exactly):
+{color_palette_and_theme}
 
 SCENE DESCRIPTION:
 {scene_description}
+
+COMPLIANCE & QUALITY RULES:
+- All text MUST be fully readable and fit within the canvas bounds — no cut-off or truncated text.
+- Each text element must be placed on a high-contrast background panel (gradient overlay, glassmorphic card, or solid backing) — never raw text on a busy photo area.
+- Logo must be cleanly visible, not overlapping any text element.
+- CTA must render as a visible button shape with a solid fill.
+- Use warm, directional lighting consistent with the scene — avoid flat/generic stock lighting.
+- Smooth gradients, anti-aliased text edges, no letterboxing.
+- Render ONLY the exact text strings provided above. Do not hallucinate any other text.
+
+STRICT REJECTIONS — DO NOT GENERATE:
+- Cut-off, truncated, or overflowing text.
+- Text on cluttered backgrounds without an overlay.
+- Fake building exteriors or generic skyscraper silhouettes (real estate only — use interiors or nature).
+- Overlapping elements that conflict with the DESIGN COMPOSITION above.
+- Missing CTA button.
 
 REAL ESTATE FALLBACK COMPLIANCE RULES:
 If there is NO provided base background scene (Image 2) and this is a Real Estate brand:

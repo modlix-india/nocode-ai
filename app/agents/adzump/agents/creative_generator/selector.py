@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from app.agents.adzump._shared import emit_progress, extract_json
 from app.agents.adzump.agents.creative_generator.image_utils import get_base_image_b64
-from app.agents.adzump.agents.creative_generator.agent import get_creative_selection_agent
+from app.agents.adzump.agents.creative_generator.selection_agent import get_creative_selection_agent
 from app.agents.adzump.agents.creative_generator.models import ImageSelectionOutput
 
 logger = logging.getLogger(__name__)
@@ -42,13 +42,9 @@ async def select_best_image(
     try:
         selection_agent = get_creative_selection_agent()
 
-        user_msg = "Here are the candidate background images to evaluate:"
-        user_msg += (
-            f"\nReturn a JSON object containing the selected_index (0, 1, or 2) of the best background image "
-            f"suitable for a Facebook ad creative of a {business_type} brand. "
-            f"If all candidates are unsuitable (e.g. floor plans, line drafts, blueprints), return -1:\n"
-            '{\n  "selected_index": <int: index of selected candidate, or -1 if none are suitable>,\n'
-            '  "reasoning": "brief reasoning"\n}'
+        user_msg = (
+            f"Candidate background images for a Facebook ad creative of a {business_type} brand. "
+            "Evaluate according to the system prompt criteria and return JSON."
         )
 
         completion = await selection_agent.select(

@@ -21,5 +21,6 @@ class AdCopyOutput(BaseModel):
 
 class ImageSelectionOutput(BaseModel):
     """Structured output for multimodal background image selection."""
-    selected_index: int = Field(description="Selected index of the background image (0, 1, or 2)")
-    reasoning: str = Field(description="Explanation of why this candidate was selected")
+    selected_index: int = Field(description="Selected index of the background image (0, 1, or 2), or -1 if all rejected")
+    reason: str = Field(description="One-sentence justification for the selection")
+    score: int = Field(description="Quality score 1-10 for the selected image")

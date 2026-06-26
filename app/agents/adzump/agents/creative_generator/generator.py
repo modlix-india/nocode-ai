@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from enum import Enum
 
 from app.core.tools.base import ToolResult
 from app.agents.appbuilder.tools._shared import get_saas_client
@@ -16,11 +15,6 @@ from app.agents.adzump.agents.creative_generator.modification import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class CreativeType(str, Enum):
-    OWN = "own"
-    COMPETITOR = "competitor"
 
 
 class CreativeGenerationService:
@@ -50,15 +44,3 @@ class CreativeGenerationService:
     async def modify_existing_creative(self, params: dict) -> ToolResult:
         """Modify, update, or regenerate formats for a specific existing creative."""
         return await modify_existing_creative_workflow(self, params)
-
-
-async def generate_fresh_creatives_impl(params: dict, context: dict) -> ToolResult:
-    """Entry point for generating fresh ad copy and images."""
-    service = CreativeGenerationService(context)
-    return await service.generate_fresh_creatives(params)
-
-
-async def modify_existing_creative_impl(params: dict, context: dict) -> ToolResult:
-    """Entry point for modifying an existing creative."""
-    service = CreativeGenerationService(context)
-    return await service.modify_existing_creative(params)

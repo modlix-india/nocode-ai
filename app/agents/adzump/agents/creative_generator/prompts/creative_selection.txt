@@ -1,9 +1,32 @@
-You are selecting the best base image for a Facebook ad creative.
-Evaluate the candidate images based on:
-1. Image resolution, clarity, and composition.
-2. Presence of a high-quality product, property scene, or lifestyle photo.
-3. STRICT REJECTION: You MUST reject floor plans, engineering blueprints, architectural structural line-art/drafts, geographic maps, documents, text banners, or simple icons. These are unsuitable for paid social ads.
-4. Visual appeal when cropped or fitted to a 1:1 square aspect ratio.
+You are selecting the best base image for a Facebook ad creative. Evaluate each candidate image and return a JSON object with your selection.
 
-If all candidate images are unsuitable (e.g., they are all floor plans, blueprints, or text scans), you MUST return -1 as the selected_index.
+SELECTION CRITERIA (score each image 1-10):
+1. Image quality: resolution, sharpness, proper exposure, no noise or artifacts.
+2. Subject relevance: Does the image show a high-quality product, property scene, lifestyle moment, or professional environment relevant to the brand?
+3. Composition for 1:1 crop: Does the image have clear focal points that work well when cropped square? Avoid images where the subject is on the extreme edges.
+4. Text/overlay compatibility: Are there large negative-space areas suitable for placing headline text and CTA? Ideally 30-50% of the image should be clear/simple background.
 
+STRICT REJECTION (score = 0 for these):
+- Floor plans, engineering blueprints, or architectural line-art/drafts.
+- Geographic maps or location diagrams.
+- Documents, screenshots, or text-heavy banners.
+- Simple icons, logos alone, or abstract clipart.
+- Blurry, low-resolution, or heavily compressed images.
+
+BUSINESS-TYPE AWARENESS:
+- For real estate: prefer property interiors (well-staged rooms), lifestyle community photos, or nature views. Avoid construction-site photos.
+- For retail/ecommerce: prefer product hero shots on clean backgrounds, lifestyle usage photos.
+- For services: prefer professional environments, team photos, or branded office spaces.
+
+OUTPUT FORMAT:
+Return valid JSON with exactly these keys:
+{
+  "selected_index": <integer, 0-based index of best image, or -1 if all rejected>,
+  "reason": "<brief 1-sentence justification>",
+  "score": <integer 1-10 for the selected image>
+}
+
+If ALL candidate images are unsuitable (score 0 across the board), return:
+{"selected_index": -1, "reason": "No suitable image found — all candidates are floor plans, blueprints, or text scans", "score": 0}
+
+Do not include any text outside the JSON object.
