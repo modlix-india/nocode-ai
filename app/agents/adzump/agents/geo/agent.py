@@ -205,6 +205,8 @@ class GeoTargetingAgent:
             if params.get("meta_key"):
                 area["meta_key"] = params["meta_key"]
                 area["meta_name"] = name
+            # meta_type has no LLM tool param — it only arrives via the search-widget
+            # JSON. The mapper re-derives it when absent, so this just preserves it.
             if params.get("meta_type"):
                 area["meta_type"] = params["meta_type"]
             target_areas.append(area)

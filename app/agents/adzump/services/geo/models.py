@@ -25,18 +25,14 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-# Meta adgeolocation `type` values the mapper currently resolves to. Not enforced
-# as an enum — Meta may return finer-grained types (subcity, neighborhood, …) and
-# rejecting those would lose a location, which is worse than the bug we're fixing.
-META_LOCATION_TYPES = frozenset(
-    {"zip", "city", "region", "country", "geo_market", "neighborhood"}
-)
-
 
 class MetaGeoLocation(BaseModel):
     """Meta Ads targeting handle — Meta's native geolocation shape."""
 
-    type: str = Field(min_length=1)  # city | zip | region | country
+    # Required & non-empty (that's the invariant). Typically zip|city|region|
+    # country, but left as a free string, not an enum: Meta can return finer types
+    # (subcity, neighborhood, …) and rejecting those would lose a location.
+    type: str = Field(min_length=1)
     key: str | None = None
     name: str | None = None
 

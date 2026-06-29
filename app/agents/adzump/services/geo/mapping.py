@@ -76,8 +76,8 @@ class PlatformGeoMapper:
 
         return mapped_areas
 
-    @staticmethod
     def _target_area(
+        self,
         area: dict[str, Any],
         *,
         meta: MetaGeoLocation | None = None,
@@ -136,7 +136,6 @@ class PlatformGeoMapper:
                 logger.warning("Google Ads API geo target suggest lookup failed: %s", e)
 
         await self._geocode_if_missing(area)
-        area.pop("google_proximity", None)
 
         # No constant resolved → keyless area falls back to lat/lng proximity
         # (no google handle attached). The model normalizes id to its resource name.
@@ -198,7 +197,6 @@ class PlatformGeoMapper:
                 logger.warning("Meta Geolocation search lookup failed: %s", e)
 
         await self._geocode_if_missing(area)
-        area.pop("meta_radial", None)
 
         # type is always set (required by the model): Meta adset creation buckets
         # each target by type, so it must be present even when the key lookup
