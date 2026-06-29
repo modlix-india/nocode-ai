@@ -205,6 +205,8 @@ class GeoTargetingAgent:
             if params.get("meta_key"):
                 area["meta_key"] = params["meta_key"]
                 area["meta_name"] = name
+            if params.get("meta_type"):
+                area["meta_type"] = params["meta_type"]
             target_areas.append(area)
 
         else:  # delete

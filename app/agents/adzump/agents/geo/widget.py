@@ -34,6 +34,7 @@ _JSON_FIELD_MAP = {
     "state": str,
     "google_id": str,
     "meta_key": str,
+    "meta_type": str,
 }
 
 
@@ -42,8 +43,8 @@ def parse_location_widget_message(msg: str) -> dict[str, Any] | None:
 
     On match returns a dict with 'action' set to "add" or "delete" plus any
     of: name, lat, lng, place_id, city, state, pincode, google_id, meta_key,
-    index.  Returns None for natural-language messages that should go through
-    the normal agent loop.
+    meta_type, index.  Returns None for natural-language messages that should
+    go through the normal agent loop.
     """
     lower = msg.strip().lower()
     if any(lower.startswith(p) for p in _ADD_PREFIXES):
@@ -79,7 +80,7 @@ def _parse_params(msg: str) -> dict[str, Any]:
     # Fallback: key=value or "index <n>" formats
     params = {}
 
-    for key in ("name", "place_id", "city", "state", "pincode", "google_id", "meta_key"):
+    for key in ("name", "place_id", "city", "state", "pincode", "google_id", "meta_key", "meta_type"):
         m = re.search(rf'{key}="([^"]*)"', msg)
         if m:
             params[key] = m.group(1)

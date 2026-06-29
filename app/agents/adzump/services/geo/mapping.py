@@ -14,6 +14,7 @@ from app.agents.adzump.platform import is_google, is_meta
 from app.agents.adzump.adapters.google.client import google_ads_client
 from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.adapters.meta.client import meta_client
+from app.agents.adzump.services.geo.models import GoogleGeoLocation, MetaGeoLocation
 from app.agents.adzump._shared import build_ds_headers
 
 logger = logging.getLogger(__name__)
@@ -102,17 +103,15 @@ class PlatformGeoMapper:
             except Exception as e:
                 logger.warning("Google Ads API geo target suggest lookup failed: %s", e)
 
-        # Apply mapped values or fallback to proximity targets for local scans
+        # Apply mapped values or fallback to proximity targets for local scans.
+        # The model normalizes google_id to its geoTargetConstants/ resource name.
         if google_id:
-            str_id = str(google_id)
-            if not str_id.startswith("geoTargetConstants/"):
-                str_id = f"geoTargetConstants/{str_id}"
-            area["google_id"] = str_id
+            area["google_id"] = google_id
             area["google_name"] = google_name or area.get("name")
 
         await self._geocode_if_missing(area)
         area.pop("google_proximity", None)
-        return area
+        return GoogleGeoLocation(**area).model_dump(exclude_none=True)
 
     async def _map_meta(
         self, area: dict[str, Any], country_code: str = "IN"
@@ -121,18 +120,29 @@ class PlatformGeoMapper:
         pincode = area.get("pincode")
         city = area.get("city")
 
-        meta_key = None
-        meta_type = None
-        meta_name = None
+        # Preserve values already resolved (e.g. a meta_key the search widget
+        # supplied) — mirrors _map_google, so a failed re-lookup never drops them.
+        meta_key = area.get("meta_key")
+        meta_type = area.get("meta_type")
+        meta_name = area.get("meta_name")
 
-        # Fall back to area name so manually-added areas (no pincode/city) still resolve.
-        query, loc_type = (
-            (pincode, "zip") if pincode
-            else (city, "city") if city
-            else (area.get("name") or "", "city")
+        # Broad campaigns tag the scale the strategist picked; map it to Meta's
+        # location_types so a country/state is searched as such, not as a city.
+        # Pincode still wins (it's the most specific signal); otherwise fall back
+        # to area name so manually-added areas (no pincode/city) still resolve.
+        meta_level = {"country": "country", "state": "region", "region": "region"}.get(
+            (area.get("geo_level") or "").strip().lower()
         )
-        try:
-            if query:
+        if pincode:
+            query, loc_type = pincode, "zip"
+        elif meta_level:
+            query, loc_type = (area.get("name") or city or ""), meta_level
+        elif city:
+            query, loc_type = city, "city"
+        else:
+            query, loc_type = (area.get("name") or ""), "city"
+        if query and not meta_key:
+            try:
                 params = {
                     "type": "adgeolocation",
                     "q": query,
@@ -145,18 +155,20 @@ class PlatformGeoMapper:
                 data = res.get("data") or []
                 if data:
                     meta_key = data[0].get("key")
-                    meta_type = loc_type
+                    # Prefer Meta's canonical type for the matched result.
+                    meta_type = data[0].get("type") or loc_type
                     meta_name = data[0].get("name")
+            except Exception as e:
+                logger.warning("Meta Geolocation search lookup failed: %s", e)
 
-        except Exception as e:
-            logger.warning("Meta Geolocation search lookup failed: %s", e)
-
-        # Apply mapped values or fallback to radial structures
+        # Always stamp the location type: Meta adset creation buckets each
+        # target by type (zips/cities/regions/…), so it is required even when
+        # the key lookup found nothing (the lat/lng radial fallback needs it too).
+        area["meta_type"] = meta_type or loc_type
         if meta_key:
             area["meta_key"] = str(meta_key)
-            area["meta_type"] = meta_type
             area["meta_name"] = meta_name or area.get("name")
 
         await self._geocode_if_missing(area)
         area.pop("meta_radial", None)
-        return area
+        return MetaGeoLocation(**area).model_dump(exclude_none=True)
