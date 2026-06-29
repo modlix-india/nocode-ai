@@ -112,14 +112,14 @@ class PlatformGeoMapper:
         # Existing resolution may arrive nested (a prior mapping round-trip) or
         # flat (the search widget / manual add). Read tolerantly.
         existing = area.get("google") or {}
-        google_id = existing.get("id") or area.get("google_id")
+        resource_name = existing.get("resourceName") or area.get("google_id")
         google_name = existing.get("name") or area.get("google_name")
 
         # Query suggest_geo_targets without needing account/parent_account IDs.
         # Fall back to area name so manually-added areas (no pincode/city parsed)
-        # still get a google_id and coordinates.
+        # still resolve to a geo target constant and coordinates.
         lookup_query = pincode or city or area.get("name") or ""
-        if lookup_query and not google_id:
+        if lookup_query and not resource_name:
             try:
                 results = await google_ads_client.suggest_geo_targets(
                     query=lookup_query,
@@ -130,7 +130,7 @@ class PlatformGeoMapper:
                 suggestions = results.get("geoTargetConstantSuggestions") or []
                 if suggestions:
                     const = suggestions[0].get("geoTargetConstant") or {}
-                    google_id = const.get("resourceName") or const.get("id")
+                    resource_name = const.get("resourceName") or const.get("id")
                     google_name = const.get("canonicalName") or const.get("name")
             except Exception as e:
                 logger.warning("Google Ads API geo target suggest lookup failed: %s", e)
@@ -138,10 +138,10 @@ class PlatformGeoMapper:
         await self._geocode_if_missing(area)
 
         # No constant resolved → keyless area falls back to lat/lng proximity
-        # (no google handle attached). The model normalizes id to its resource name.
+        # (no google handle attached). The model normalizes to the resource name.
         google = (
-            GoogleGeoLocation(id=str(google_id), name=google_name or area.get("name"))
-            if google_id
+            GoogleGeoLocation(resourceName=str(resource_name), name=google_name or area.get("name"))
+            if resource_name
             else None
         )
         return self._target_area(area, google=google)

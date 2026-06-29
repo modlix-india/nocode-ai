@@ -27,7 +27,10 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class MetaGeoLocation(BaseModel):
-    """Meta Ads targeting handle — Meta's native geolocation shape."""
+    """Meta Ads targeting handle — Meta's native adgeolocation shape.
+
+    ``type``/``key``/``name`` are Meta's own field names (a ``geo_locations``
+    entry is ``{key, name, …}`` bucketed by ``type``)."""
 
     # Required & non-empty (that's the invariant). Typically zip|city|region|
     # country, but left as a free string, not an enum: Meta can return finer types
@@ -38,15 +41,18 @@ class MetaGeoLocation(BaseModel):
 
 
 class GoogleGeoLocation(BaseModel):
-    """Google Ads targeting handle — a geo target constant."""
+    """Google Ads targeting handle — a geo target constant.
 
-    id: str | None = None
+    Uses Google's own field name: the identifier is the constant's
+    ``resourceName`` (``geoTargetConstants/{id}``), not the bare numeric ``id``."""
+
+    resourceName: str | None = None
     name: str | None = None
 
-    @field_validator("id")
+    @field_validator("resourceName")
     @classmethod
     def _as_resource_name(cls, v: str | None) -> str | None:
-        """Google Ads targets a geo by its ``geoTargetConstants/{id}`` resource name."""
+        """Normalize to the ``geoTargetConstants/{id}`` resource-name form."""
         if not v:
             return v
         v = str(v)

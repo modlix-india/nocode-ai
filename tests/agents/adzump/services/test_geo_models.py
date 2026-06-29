@@ -42,18 +42,18 @@ class MetaGeoLocationTests(unittest.TestCase):
 
 class GoogleGeoLocationTests(unittest.TestCase):
     def test_bare_id_normalized_to_resource_name(self):
-        g = GoogleGeoLocation(id="1007785")
-        self.assertEqual(g.id, "geoTargetConstants/1007785")
+        g = GoogleGeoLocation(resourceName="1007785")
+        self.assertEqual(g.resourceName, "geoTargetConstants/1007785")
 
     def test_already_resource_name_unchanged(self):
-        g = GoogleGeoLocation(id="geoTargetConstants/1007785")
-        self.assertEqual(g.id, "geoTargetConstants/1007785")
+        g = GoogleGeoLocation(resourceName="geoTargetConstants/1007785")
+        self.assertEqual(g.resourceName, "geoTargetConstants/1007785")
 
-    def test_id_optional(self):
-        self.assertIsNone(GoogleGeoLocation().id)
+    def test_resource_name_optional(self):
+        self.assertIsNone(GoogleGeoLocation().resourceName)
 
     def test_carries_only_platform_params(self):
-        self.assertEqual(set(GoogleGeoLocation.model_fields), {"id", "name"})
+        self.assertEqual(set(GoogleGeoLocation.model_fields), {"resourceName", "name"})
 
 
 class TargetAreaTests(unittest.TestCase):

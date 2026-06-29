@@ -136,12 +136,15 @@ class MapGoogleTests(unittest.TestCase):
                 patch.object(mapping_mod.google_maps_client, "geocode", side_effect=_no_geocode):
             return asyncio.run(mapper._map_google(dict(area), "IN"))
 
-    def test_id_normalized_to_resource_name(self):
+    def test_resource_name_normalized(self):
         out = self._map(
             {"name": "Bengaluru", "city": "Bengaluru"},
             [{"geoTargetConstant": {"id": "1007785", "canonicalName": "Bengaluru"}}],
         )
-        self.assertEqual(out["google"], {"id": "geoTargetConstants/1007785", "name": "Bengaluru"})
+        self.assertEqual(
+            out["google"],
+            {"resourceName": "geoTargetConstants/1007785", "name": "Bengaluru"},
+        )
 
     def test_no_match_leaves_no_google_handle(self):
         out = self._map({"name": "Nowhere", "city": "Nowhere"}, [])
