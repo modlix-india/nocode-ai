@@ -25,9 +25,6 @@ from app.agents.adzump.services import competitor_creatives as cc
 
 logger = logging.getLogger(__name__)
 
-# How many creative thumbnails to show per competitor in the craft panel.
-_RENDER_PER_COMPETITOR = 6
-
 
 def _truthy(v) -> bool:
     return str(v or "").strip().lower() in ("true", "1", "yes")
@@ -35,36 +32,24 @@ def _truthy(v) -> bool:
 
 async def _render_creatives(stream, craft_id: str, title: str, competitor_name: str,
                             record: dict) -> None:
-    """Append one competitor's creatives (heading + stats + thumbnails) to the
-    craft panel. Uses the rehosted ``fileUrl`` when present, else the source URL."""
-    creatives = record.get("creatives") or []
-    blocks: list[dict] = [
-        {"type": "divider"},
-        {"type": "heading", "text": f"{competitor_name} — Ad Creatives", "level": 2},
-        {"type": "key_value", "items": [
-            {"key": "Total ads", "value": str(record.get("totalCreatives", 0))},
-            {"key": "Active", "value": str(record.get("activeCreatives", 0))},
-        ]},
-    ]
-    shown = 0
-    for c in creatives:
-        is_video = c.get("mediaType") == "video"
-        # An image block can't play video, so videos are tiled via their poster
-        # still and flagged with ▶. Creatives with no usable image are skipped.
-        url = (c.get("posterUrl") or c.get("posterSourceUrl")) if is_video \
-            else (c.get("fileUrl") or c.get("sourceAssetUrl"))
-        if not url:
-            continue
-        blocks.append({"type": "image", "url": url})
-        caption = str(c.get("headline") or "").strip()
-        if is_video:
-            caption = f"▶ {caption}".strip()
-        if caption:
-            blocks.append({"type": "text", "content": caption[:120]})
-        shown += 1
-        if shown >= _RENDER_PER_COMPETITOR:
-            break
-    if shown == 0:
+    """Append one competitor's creative section (heading + metric tiles + 2-up
+    grid) to the craft panel — the incremental, on-demand path.
+
+    The block layout is delegated to ``craft.render_competitor_creatives`` — the
+    SAME builder the full-panel rebuild (`emit_craft_panel`) uses — so the
+    appended grid and the rebuilt grid are byte-identical, and a rebuild can
+    redraw the creatives instead of dropping them.
+    """
+    from app.agents.adzump.tools.craft import render_competitor_creatives
+    blocks: list[dict] = []
+    render_competitor_creatives(
+        blocks,
+        competitor_name,
+        record.get("creatives") or [],
+        record.get("totalCreatives", 0),
+        record.get("activeCreatives", 0),
+    )
+    if not blocks:
         return
     try:
         await stream.emit_craft(craft_id, title, blocks, append=True)

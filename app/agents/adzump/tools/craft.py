@@ -34,28 +34,99 @@ def render_competitors(
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Competitors"})
 
+    # Comparison table — every rival on one scannable surface. Ad counts aren't
+    # known at analysis time (creatives are fetched separately), so the 4th column
+    # is the strategic Gap rather than an ad count.
+    blocks.append({
+        "type": "table",
+        "headers": ["Rival", "Format", "Pricing", "Gap"],
+        "rows": [
+            [
+                c.get("name") or "?",
+                str(c.get("business_type") or "—"),
+                str(c.get("pricing") or "—"),
+                str(c.get("weakness") or "—"),
+            ]
+            for c in valid
+        ],
+    })
+
+    # Per-rival detail tucked behind a collapsible so the table stays uncluttered:
+    # Location / USPs / why-a-competitor / website (Gap already lives in the table).
     for c in valid:
-        blocks.append({"type": "heading", "text": c.get("name") or "?", "level": 2})
-        kv_items: list[dict] = []
-        if c.get("url"):
-            kv_items.append({"key": "Website", "value": str(c["url"])})
-        if c.get("business_type"):
-            kv_items.append({"key": "Format", "value": str(c["business_type"])})
+        detail: list[dict] = []
         if c.get("location"):
-            kv_items.append({"key": "Location", "value": str(c["location"])})
-        if c.get("pricing"):
-            kv_items.append({"key": "Pricing", "value": str(c["pricing"])})
+            detail.append({"key": "Location", "value": str(c["location"])})
         key_usps = c.get("key_usps") or []
         if isinstance(key_usps, list) and key_usps:
-            kv_items.append(
+            detail.append(
                 {"key": "USPs", "value": ", ".join(str(u) for u in key_usps[:3])}
             )
-        if c.get("weakness"):
-            kv_items.append({"key": "Gap", "value": str(c["weakness"])})
-        if kv_items:
-            blocks.append({"type": "key_value", "items": kv_items})
         if c.get("why_competitor"):
-            blocks.append({"type": "text", "content": str(c["why_competitor"])})
+            detail.append({"key": "Why", "value": str(c["why_competitor"])})
+        if c.get("url"):
+            detail.append({"key": "Website", "value": str(c["url"])})
+        if not detail:
+            continue
+        blocks.append({
+            "type": "collapsible",
+            "summary": c.get("name") or "?",
+            "children": [{"type": "key_value", "items": detail}],
+        })
+
+
+# How many creative thumbnails to show per competitor in the panel.
+_RENDER_PER_COMPETITOR = 6
+
+
+def render_competitor_creatives(
+    blocks: list[dict],
+    competitor_name: str,
+    creatives: list[dict],
+    total,
+    active,
+) -> None:
+    """Append one competitor's creative section: heading + metric tiles
+    (Total/Active/Paused) + a 2-up image grid.
+
+    Shared by the on-demand fetch (`creatives._render_creatives`) and the
+    full-panel rebuild (`emit_craft_panel`) so a rebuild never drops the
+    creatives. Videos tile via their poster still (flagged ▶); creatives with no
+    usable image are skipped. No-op when nothing is renderable.
+    """
+    cards: list[dict] = []
+    for c in (creatives or []):
+        is_video = c.get("mediaType") == "video"
+        url = (c.get("posterUrl") or c.get("posterSourceUrl")) if is_video \
+            else (c.get("fileUrl") or c.get("sourceAssetUrl"))
+        if not url:
+            continue
+        caption = str(c.get("headline") or "").strip()
+        if is_video:
+            caption = f"▶ {caption}".strip()
+        card: dict = {"type": "image", "url": url}
+        if caption:
+            card["caption"] = caption[:120]
+        cards.append(card)
+        if len(cards) >= _RENDER_PER_COMPETITOR:
+            break
+    if not cards:
+        return
+
+    t, a = int(total or 0), int(active or 0)
+    metric_row: list[dict] = [
+        {"type": "metric", "label": "Total ads", "value": str(t)},
+        {"type": "metric", "label": "Active", "value": str(a)},
+    ]
+    if t:
+        metric_row.append({"type": "metric", "label": "Paused", "value": str(max(t - a, 0))})
+
+    blocks.append({"type": "divider"})
+    blocks.append({"type": "heading", "text": f"{competitor_name} — Ad Creatives", "level": 2})
+    blocks.append({"type": "row", "children": metric_row})
+    # 2-up grid: pairs of image blocks per row (each flexes to ~50% width).
+    for i in range(0, len(cards), 2):
+        blocks.append({"type": "row", "children": cards[i:i + 2]})
 
 
 async def emit_craft_panel(
@@ -158,6 +229,23 @@ async def emit_craft_panel(
 
     # 6. Competitors
     render_competitors(blocks, competitive)
+
+    # 7. Competitor creatives — render them HERE, as part of the rebuild, so a
+    # later rebuild never wipes the on-demand-appended grid (the disappearing-
+    # creatives bug). Each competitor carries its own `creatives` + `creativeStats`
+    # once `fetch_competitor_creatives` has run; absent until then.
+    for c in (competitive.get("competitors") or []):
+        creatives = c.get("creatives") or []
+        if not creatives:
+            continue
+        stats = c.get("creativeStats") or {}
+        render_competitor_creatives(
+            blocks,
+            c.get("name") or "?",
+            creatives,
+            stats.get("total", 0),
+            stats.get("active", 0),
+        )
 
     await stream.emit_craft(
         craft_id,
