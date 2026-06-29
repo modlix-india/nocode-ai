@@ -237,7 +237,7 @@ async def _discover_strategic_markets(
                     # Keep the scale the strategist picked (city/state/country) so
                     # platform mapping resolves it as the right Meta location_type
                     # instead of always searching it as a city.
-                    "geo_level": (loc.get("type") or "").strip().lower(),
+                    "scale": (loc.get("type") or "").strip().lower(),
                     "pincode": geo.get("pincode") or "",
                     "city": geo.get("city") or "",
                     "state": geo.get("state") or "",

@@ -1,72 +1,85 @@
 """Geo-targeting location models — the typed contract for platform locations.
 
 MetaGeoLocation makes the original bug structurally impossible: a Meta location
-cannot be constructed without a non-empty meta_type. GoogleGeoLocation normalizes
-google_id to the geoTargetConstants/ resource name Google Ads expects.
+cannot be constructed without a non-empty type. GoogleGeoLocation normalizes id to
+the geoTargetConstants/ resource name. TargetArea composes the generic 'where'
+with at most one platform handle — so a mapped location carries the scale once and
+the platform type once, never a duplicated meta_type + geo_level pair.
 """
 import unittest
 
 import pydantic
 
 from app.agents.adzump.services.geo.models import (
-    GeoLocationBase,
     GoogleGeoLocation,
     MetaGeoLocation,
+    TargetArea,
 )
 
 
 class MetaGeoLocationTests(unittest.TestCase):
-    def test_meta_type_is_required(self):
+    def test_type_is_required(self):
         with self.assertRaises(pydantic.ValidationError):
-            MetaGeoLocation(name="Bandra", meta_key="123")
+            MetaGeoLocation(key="123")
 
-    def test_empty_meta_type_rejected(self):
+    def test_empty_type_rejected(self):
         with self.assertRaises(pydantic.ValidationError):
-            MetaGeoLocation(name="Bandra", meta_type="")
+            MetaGeoLocation(type="")
 
-    def test_valid_location_keeps_fields(self):
-        m = MetaGeoLocation(name="Bandra", meta_type="city", meta_key="123")
-        self.assertEqual(m.meta_type, "city")
-        self.assertEqual(m.meta_key, "123")
+    def test_valid_keeps_fields(self):
+        m = MetaGeoLocation(type="city", key="123", name="Bandra")
+        self.assertEqual((m.type, m.key, m.name), ("city", "123", "Bandra"))
 
     def test_key_optional(self):
-        # No Meta match → typed location with type but no key (radial fallback).
-        m = MetaGeoLocation(name="Nowhere", meta_type="city")
-        self.assertIsNone(m.meta_key)
+        # No Meta match → typed handle with type but no key (radial fallback).
+        m = MetaGeoLocation(type="city")
+        self.assertIsNone(m.key)
 
-    def test_extra_fields_preserved_on_round_trip(self):
-        # Pipeline-accreted keys (distance_km, place_id, geo_level, unknowns)
-        # survive a model round-trip rather than being silently dropped.
-        m = MetaGeoLocation(
-            name="Goa", meta_type="region", place_id="p1", distance_km=3.0, custom="x"
-        )
-        dumped = m.model_dump(exclude_none=True)
-        self.assertEqual(dumped["place_id"], "p1")
-        self.assertEqual(dumped["distance_km"], 3.0)
-        self.assertEqual(dumped["custom"], "x")
+    def test_carries_only_platform_params(self):
+        # The model rejects generic geo fields leaking in — platform-only.
+        self.assertEqual(set(MetaGeoLocation.model_fields), {"type", "key", "name"})
 
 
 class GoogleGeoLocationTests(unittest.TestCase):
     def test_bare_id_normalized_to_resource_name(self):
-        g = GoogleGeoLocation(name="X", google_id="1007785")
-        self.assertEqual(g.google_id, "geoTargetConstants/1007785")
+        g = GoogleGeoLocation(id="1007785")
+        self.assertEqual(g.id, "geoTargetConstants/1007785")
 
     def test_already_resource_name_unchanged(self):
-        g = GoogleGeoLocation(name="X", google_id="geoTargetConstants/1007785")
-        self.assertEqual(g.google_id, "geoTargetConstants/1007785")
+        g = GoogleGeoLocation(id="geoTargetConstants/1007785")
+        self.assertEqual(g.id, "geoTargetConstants/1007785")
 
     def test_id_optional(self):
-        g = GoogleGeoLocation(name="X")
-        self.assertIsNone(g.google_id)
+        self.assertIsNone(GoogleGeoLocation().id)
+
+    def test_carries_only_platform_params(self):
+        self.assertEqual(set(GoogleGeoLocation.model_fields), {"id", "name"})
 
 
-class GeoLocationBaseTests(unittest.TestCase):
+class TargetAreaTests(unittest.TestCase):
     def test_defaults_are_lenient(self):
-        # Discovery hands over only the fields it found; the rest default.
-        b = GeoLocationBase(name="Indiranagar")
-        self.assertEqual(b.city, "")
-        self.assertEqual(b.distance_km, 0.0)
-        self.assertIsNone(b.lat)
+        a = TargetArea(name="Indiranagar")
+        self.assertEqual(a.city, "")
+        self.assertEqual(a.distance_km, 0.0)
+        self.assertIsNone(a.lat)
+        self.assertIsNone(a.meta)
+        self.assertIsNone(a.google)
+
+    def test_nests_platform_handle_and_dumps_clean(self):
+        a = TargetArea(
+            name="India", lat=22.0, lng=79.0, scale="country",
+            meta=MetaGeoLocation(type="country", key="IN", name="India"),
+        )
+        dumped = a.model_dump(exclude_none=True)
+        self.assertEqual(dumped["scale"], "country")
+        self.assertEqual(dumped["meta"], {"type": "country", "key": "IN", "name": "India"})
+        self.assertNotIn("google", dumped)        # unset platform omitted
+        self.assertNotIn("meta_type", dumped)      # no flat/duplicated type
+
+    def test_dict_meta_coerced_to_model(self):
+        a = TargetArea(name="X", meta={"type": "city", "key": "1"})
+        self.assertIsInstance(a.meta, MetaGeoLocation)
+        self.assertEqual(a.meta.type, "city")
 
 
 if __name__ == "__main__":

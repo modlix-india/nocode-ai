@@ -1,38 +1,64 @@
 """Typed geo-targeting location models.
 
-Locations travel the pipeline as plain dicts — they arrive as LLM tool params
-and leave as JSON in storage — so these models are *validate-at-the-boundary*:
-``PlatformGeoMapper`` builds one at the end of mapping, then dumps it back to a
-dict so nothing downstream has to change. The point is to make each platform's
-contract explicit and enforced at the one place locations are produced:
+A target area is the platform-agnostic "where" (name, coordinates, scale). Each
+ad platform then resolves it to its own targeting handle, kept in a *platform-only*
+sub-model so the two concerns never bleed into one another:
 
-  * A ``MetaGeoLocation`` with no ``meta_type`` cannot be constructed — Meta adset
-    creation buckets every target by type (zips/cities/regions/countries), so a
-    typeless location is unusable. That missing invariant caused the original bug.
-  * A ``GoogleGeoLocation``'s ``google_id`` is normalized to the
-    ``geoTargetConstants/{id}`` resource-name form Google Ads expects.
+  * ``MetaGeoLocation`` — Meta's native shape ``{type, key, name}``. ``type`` is
+    required and non-empty: Meta adset creation buckets every target by type
+    (zips/cities/regions/countries), so a typeless location is unusable. That
+    missing invariant caused the original bug.
+  * ``GoogleGeoLocation`` — ``{id, name}``; ``id`` is normalized to the
+    ``geoTargetConstants/{id}`` resource name Google Ads expects.
+
+``TargetArea`` composes them — ``area.meta`` / ``area.google`` is populated for
+the active platform — so a mapped location carries the scale once (``scale``) and
+the platform handle once (``meta.type``), never a duplicated ``meta_type`` +
+``geo_level`` pair.
+
+Locations still travel the pipeline as dicts (LLM tool params in, JSON storage
+out), so ``PlatformGeoMapper`` builds a ``TargetArea`` at the end of mapping and
+``model_dump()``s it straight back to a (now nested) dict.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
-# Meta adgeolocation `type` values we currently resolve to. Not enforced as an
-# enum on the model — Meta may return finer-grained types (subcity, neighborhood,
-# …) and rejecting those would lose a location, which is worse than the bug we're
-# fixing. Kept here as the documented set the mapper produces.
+# Meta adgeolocation `type` values the mapper currently resolves to. Not enforced
+# as an enum — Meta may return finer-grained types (subcity, neighborhood, …) and
+# rejecting those would lose a location, which is worse than the bug we're fixing.
 META_LOCATION_TYPES = frozenset(
     {"zip", "city", "region", "country", "geo_market", "neighborhood"}
 )
 
 
-class GeoLocationBase(BaseModel):
-    """Platform-agnostic target area — the 'where' produced by discovery."""
+class MetaGeoLocation(BaseModel):
+    """Meta Ads targeting handle — Meta's native geolocation shape."""
 
-    # extra="allow": a location accretes transient/optional keys across the
-    # pipeline (and survives platform-switch round-trips). Preserve anything we
-    # don't model rather than silently dropping it on a model round-trip.
-    model_config = ConfigDict(extra="allow")
+    type: str = Field(min_length=1)  # city | zip | region | country
+    key: str | None = None
+    name: str | None = None
+
+
+class GoogleGeoLocation(BaseModel):
+    """Google Ads targeting handle — a geo target constant."""
+
+    id: str | None = None
+    name: str | None = None
+
+    @field_validator("id")
+    @classmethod
+    def _as_resource_name(cls, v: str | None) -> str | None:
+        """Google Ads targets a geo by its ``geoTargetConstants/{id}`` resource name."""
+        if not v:
+            return v
+        v = str(v)
+        return v if v.startswith("geoTargetConstants/") else f"geoTargetConstants/{v}"
+
+
+class TargetArea(BaseModel):
+    """A campaign target area: the generic 'where' plus the active platform handle."""
 
     name: str = ""
     city: str = ""
@@ -43,33 +69,6 @@ class GeoLocationBase(BaseModel):
     distance_km: float = 0.0
     place_id: str | None = None
     # "city" | "state" | "country" — set only for broad (non-local) campaigns.
-    geo_level: str = ""
-
-
-class GoogleGeoLocation(GeoLocationBase):
-    """Target area resolved to a Google Ads geo target constant."""
-
-    google_id: str | None = None
-    google_name: str | None = None
-
-    @field_validator("google_id")
-    @classmethod
-    def _as_resource_name(cls, v: str | None) -> str | None:
-        """Google Ads targets a geo by its ``geoTargetConstants/{id}`` resource name."""
-        if not v:
-            return v
-        v = str(v)
-        return v if v.startswith("geoTargetConstants/") else f"geoTargetConstants/{v}"
-
-
-class MetaGeoLocation(GeoLocationBase):
-    """Target area resolved to a Meta Ads geolocation.
-
-    ``meta_type`` is required and non-empty — it is the bucket key Meta adset
-    creation sorts each target into, so it must always be present even when the
-    key lookup found nothing (the lat/lng radial fallback still needs the type).
-    """
-
-    meta_type: str = Field(min_length=1)
-    meta_key: str | None = None
-    meta_name: str | None = None
+    scale: str | None = None
+    meta: MetaGeoLocation | None = None
+    google: GoogleGeoLocation | None = None
