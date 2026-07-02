@@ -22,7 +22,7 @@ from app.core.base_router import (
 from app.core.session import BaseSession, AuthContext
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
-from app.agents.adzump.agents.geo.craft import handle_widget_message
+from app.agents.adzump.agents.location.craft import handle_widget_message
 
 logger = logging.getLogger(__name__)
 

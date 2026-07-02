@@ -24,7 +24,7 @@ from typing import Any
 from fastapi.responses import StreamingResponse
 
 from app.core.streaming import AgentEventStream
-from app.agents.adzump.agents.geo.agent import get_geo_targeting_service
+from app.agents.adzump.agents.location.agent import get_geo_targeting_service
 
 logger = logging.getLogger(__name__)
 

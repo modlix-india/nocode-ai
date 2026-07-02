@@ -12,7 +12,7 @@ from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import product_location_str as _detected_location
 from app.agents.adzump.tools.campaign_data import is_real_estate
-from app.agents.adzump.agents.geo.agent import get_geo_targeting_service
+from app.agents.adzump.agents.location.agent import get_geo_targeting_service
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +193,7 @@ manage_targeting_locations = ToolDefinition(
         # NOTE: platform-handle params (google_id / meta_key / meta_type /
         # place_id) are deliberately NOT exposed to the LLM. They belong to the
         # search-widget wire format, which calls the geo service directly
-        # (agents/geo/craft.py) and bypasses this schema. Exposing them here
+        # (agents/location/craft.py) and bypasses this schema. Exposing them here
         # would let the model invent platform IDs with no traceability check —
         # accounts are fetch-traceable, geo keys would not be.
     ],

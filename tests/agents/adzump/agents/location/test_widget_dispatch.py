@@ -1,4 +1,4 @@
-"""agents/geo/craft.py — handle_widget_message: the router's widget entry point.
+"""agents/location/craft.py — handle_widget_message: the router's widget entry point.
 
 Locks the step-12 move: the geo layer owns parsing, elicitation housekeeping,
 dispatch, and SSE; natural language returns None (→ normal agent loop); and the
@@ -12,8 +12,8 @@ from types import SimpleNamespace
 from unittest import mock
 
 from app.core.tools.base import ToolResult
-from app.agents.adzump.agents.geo import craft as craft_mod
-from app.agents.adzump.agents.geo.craft import handle_widget_message
+from app.agents.adzump.agents.location import craft as craft_mod
+from app.agents.adzump.agents.location.craft import handle_widget_message
 
 
 def _agent_session():
