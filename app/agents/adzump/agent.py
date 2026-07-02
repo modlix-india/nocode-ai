@@ -271,14 +271,18 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     has_platform = bool(cctx.spec.get("platform"))
     has_location = bool(cctx.spec.get("location"))
     # Coordinates restored from storage count as a valid anchor for discovery —
-    # discover_geo_targets falls back to _location_meta lat/lng when no location
+    # manage_targeting_locations falls back to _location_meta lat/lng when no location
     # string is provided, so we can prescribe it without requiring a fresh confirm.
     _stored_coords = cctx.product.get("product_coordinates") or {}
     has_geo_anchor = has_location or bool(_stored_coords.get("lat"))
     if has_platform and has_geo_anchor and not cctx.has_mapped_geo_targets:
         loc_arg = cctx.spec.get("location") or ""
         missing.append(
-            f"target_areas — call `discover_geo_targets({('location_name=' + repr(loc_arg)) if loc_arg else ''})`"
+            (
+            'target_areas — call `manage_targeting_locations(action="discover")`'
+            if not loc_arg
+            else f'target_areas — call `manage_targeting_locations(action="discover", location_name={loc_arg!r})`'
+        )
         )
 
     if (
@@ -982,8 +986,8 @@ class AdzumpAgent(BaseAgent):
 
         # If platform was just set this turn and mapped locations already exist
         # (storage reuse path), emit the craft panel with platform so the map
-        # appears — discover_geo_targets won't fire because has_mapped_geo_targets
-        # is already True.
+        # appears — manage_targeting_locations won't fire because
+        # has_mapped_geo_targets is already True.
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
         if platform and cctx.has_mapped_geo_targets and ctx.get("_last_craft_platform") != platform:
@@ -1013,7 +1017,7 @@ class AdzumpAgent(BaseAgent):
                     logger.debug("Post-platform craft emit failed (non-fatal): %s", e)
 
                 # Emit a visible locations row so the user sees the stored
-                # targeting areas being applied (mirrors discover_geo_targets UX).
+                # targeting areas being applied (mirrors the discover UX).
                 try:
                     if _is_google(platform):
                         mapped = product.get("google_mapped_locations") or []

@@ -15,6 +15,10 @@ from typing import Any
 
 from app.config import settings
 from app.agents.adzump.adapters.google.maps import google_maps_client
+from app.agents.adzump.services.geo.prompts import (
+    STRATEGIST_SYSTEM_PROMPT,
+    build_strategic_markets_prompt,
+)
 from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
@@ -180,49 +184,35 @@ async def _discover_strategic_markets(
     product_data: dict, scope: str, country_code: str = "IN"
 ) -> list[dict[str, Any]]:
     """Query LLM to recommend prime targeting zones with marketing justifications."""
-    product_name = product_data.get("product_name") or "Product"
-    business_type = product_data.get("business_type") or "Business"
-    summary = product_data.get("summary") or ""
-
-    prompt = f"""
-    Analyze this business profile and recommend target advertising locations:
-    - Name: {product_name}
-    - Category: {business_type}
-    - Operating Scope/Scale: {scope}
-    - Target Country: {country_code}
-    - Business Summary: {summary}
-    
-    INSTRUCTIONS:
-    - Based on the operating scale, recommend the 3 to 6 most profitable geographic targeting locations.
-    - All locations must be within {country_code}.
-    - If the scope is "global" or "international", select high-value country level target nodes.
-    - If the scope is "national", select prime Tier-1/Tier-2 cities or major states with high consumption intent within {country_code}.
-    - If the scope is "regional", select major cities or counties within the home region/state of the business.
-    
-    Return your response ONLY as a JSON block with the following schema:
-    {{
-      "locations": [
-        {{
-          "name": "Location Name (e.g. Bengaluru, Karnataka, India)",
-          "type": "city" // "city", "state", or "country"
-        }}
-      ]
-    }}
-    """
+    prompt = build_strategic_markets_prompt(
+        product_name=product_data.get("product_name") or "Product",
+        business_type=product_data.get("business_type") or "Business",
+        scope=scope,
+        country_code=country_code,
+        summary=product_data.get("summary") or "",
+    )
 
     try:
         provider = get_llm_provider()
         response = await provider.create_completion(
-            system_prompt="You are a senior marketing strategist. Output clean, valid JSON only — no markdown, no explanation.",
+            system_prompt=STRATEGIST_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
             model_tier="fast",
             max_tokens=1024,
         )
-        data = json.loads(response["content"])
+        content = (response.get("content") or "").strip()
+        # Fast-tier models often fence JSON in ``` or add a stray sentence despite
+        # the "JSON only" instruction; extract the outermost {...} so one stray
+        # token doesn't silently wipe every recommended location.
+        start, end = content.find("{"), content.rfind("}")
+        if start == -1 or end == -1:
+            logger.warning("Strategic discovery returned no JSON object; skipping.")
+            return []
+        data = json.loads(content[start : end + 1])
         locations = data.get("locations") or []
 
-        # Geocode the LLM recommended locations in parallel to obtain lat/lng and place IDs
-        tasks = [google_maps_client.geocode(loc["name"]) for loc in locations]
+        # Geocode the recommended locations in parallel to obtain lat/lng and place IDs.
+        tasks = [google_maps_client.geocode(loc.get("name") or "") for loc in locations]
         geocode_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         final_targets = []
@@ -233,7 +223,7 @@ async def _discover_strategic_markets(
 
             final_targets.append(
                 {
-                    "name": loc["name"],
+                    "name": loc.get("name") or "",
                     # Keep the scale the strategist picked (city/state/country) so
                     # platform mapping resolves it as the right Meta location_type
                     # instead of always searching it as a city.

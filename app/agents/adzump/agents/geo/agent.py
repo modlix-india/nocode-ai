@@ -1,8 +1,14 @@
-"""GeoTargetingAgent — orchestrator for geo-target discovery and modification.
+"""GeoTargetingService — deterministic geo-target discovery and modification.
 
 Owns the full geocode → discover → platform-map → persist → craft-re-emit
 pipeline. Exposed as a singleton so location.py tools delegate to it rather
 than embedding the orchestration inline.
+
+Deliberately a SERVICE, not an agent: there is no LLM call in this class —
+in this codebase "agent" means an LLM loop with its own tools (cf. the
+Product Analyst under agents/product/). The one model decision in the geo
+subsystem is the broad-scale strategist (services/geo/discovery.py), a single
+structured-output call whose prompt lives in services/geo/prompts.py.
 """
 
 from __future__ import annotations
@@ -23,17 +29,17 @@ from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
 logger = logging.getLogger(__name__)
 
 
-class GeoTargetingAgent:
+class GeoTargetingService:
     """Singleton that owns the geo-targeting orchestration shared by location tools.
 
     Kept as a class (rather than module-level functions) to make future
     per-session state (e.g. a cached geocode result) easy to attach.
     """
 
-    _instance: "GeoTargetingAgent | None" = None
+    _instance: "GeoTargetingService | None" = None
 
     @classmethod
-    def get_instance(cls) -> "GeoTargetingAgent":
+    def get_instance(cls) -> "GeoTargetingService":
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -125,7 +131,7 @@ class GeoTargetingAgent:
                 coordinates, product, country_code=loc_meta.get("country_code", "IN")
             )
             logger.info(
-                "discover_geo_targets: resolved %d locations for platform=%s",
+                "manage_targeting_locations: resolved %d locations for platform=%s",
                 len(resolved), platform,
             )
 
@@ -166,7 +172,7 @@ class GeoTargetingAgent:
             )
 
         except Exception as e:
-            logger.exception("discover_geo_targets failed: %s", e)
+            logger.exception("manage_targeting_locations failed: %s", e)
             return ToolResult(success=False, error=f"Failed to resolve geo-targeting: {e}")
 
     async def modify(self, params: dict, context: dict) -> ToolResult:
@@ -236,7 +242,7 @@ class GeoTargetingAgent:
         product[mapping_key] = product["target_areas"]
 
         logger.info(
-            "modify_targeting_location: action=%s platform=%s areas=%d "
+            "manage_targeting_locations: action=%s platform=%s areas=%d "
             "mapping_key=%s stream=%s craft_id=%s url=%s first_area=%s",
             action, platform, len(product["target_areas"]),
             mapping_key,
@@ -274,6 +280,6 @@ class GeoTargetingAgent:
         )
 
 
-def get_geo_targeting_agent() -> GeoTargetingAgent:
-    """Module-level accessor for the shared GeoTargetingAgent singleton."""
-    return GeoTargetingAgent.get_instance()
+def get_geo_targeting_service() -> GeoTargetingService:
+    """Module-level accessor for the shared GeoTargetingService singleton."""
+    return GeoTargetingService.get_instance()

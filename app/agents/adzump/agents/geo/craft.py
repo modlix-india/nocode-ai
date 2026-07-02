@@ -1,4 +1,4 @@
-"""Location widget message parsing.
+"""Location widget protocol — parsing AND handling.
 
 The craft-panel map search widget sends machine-readable messages:
 
@@ -6,15 +6,27 @@ The craft-panel map search widget sends machine-readable messages:
   "delete targeting location index <n>"                                   (1-based)
 
 These are NOT natural language — they carry all the parameters needed to
-call modify_targeting_location directly, with no LLM required. Parsing
-lives here (geo layer) so the orchestration driver stays unaware of it.
+call manage_targeting_locations directly, with no LLM required. The whole
+protocol lives here (geo layer): ``handle_widget_message`` is the single
+entry point the HTTP router forwards to — it owns parsing, elicitation
+housekeeping, dispatch to the GeoTargetingService, and SSE emission, so the
+router stays a dumb forwarder and the loop's invariants live in one place.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json as _json
+import logging
 import re
 from typing import Any
+
+from fastapi.responses import StreamingResponse
+
+from app.core.streaming import AgentEventStream
+from app.agents.adzump.agents.geo.agent import get_geo_targeting_service
+
+logger = logging.getLogger(__name__)
 
 _ADD_PREFIXES = ("add targeting location ", "adding location ")
 _DELETE_PREFIXES = (
@@ -106,3 +118,69 @@ def _parse_params(msg: str) -> dict[str, Any]:
             pass
 
     return params
+
+
+# ── Handling: the use-case the HTTP router forwards to ─────────────────────
+
+
+def handle_widget_message(agent, session, message: str) -> StreamingResponse | None:
+    """Widget-protocol entry point for the chat router.
+
+    Returns None when ``message`` is not a widget message (normal chat → the
+    agent loop). Otherwise executes the action directly — no LLM — and returns
+    the SSE response.
+    """
+    params = parse_location_widget_message(message)
+    if params is None:
+        return None
+    return _stream_widget_action(agent, session, params)
+
+
+def _stream_widget_action(agent, session, params: dict) -> StreamingResponse:
+    """Execute a location widget action directly (no LLM) and stream SSE."""
+    event_stream = AgentEventStream()
+
+    async def run() -> None:
+        try:
+            # Same tool context the agent would pass to any tool.
+            ctx = agent.build_tool_context(session)
+            ctx["event_stream"] = event_stream
+            # Clear any pending chip-question so the next real agent turn
+            # doesn't re-ask duration/budget after a location add/delete.
+            session.context.pop("_pending_elicitation", None)
+
+            await event_stream.emit_tool_start(
+                tool_use_id="widget_location",
+                tool_name="manage_targeting_locations",
+                display_name="Geo Targeting",
+                tool_input=params,
+            )
+
+            result = await get_geo_targeting_service().modify(params, ctx)
+            # modify() owns save_campaign + _rerender_craft; nothing extra needed here.
+
+            await event_stream.emit_tool_result(
+                tool_use_id="widget_location",
+                tool_name="manage_targeting_locations",
+                success=result.success,
+                summary=result.summary or result.error or "",
+            )
+        except Exception as e:
+            logger.exception("Location widget action failed")
+            await event_stream.emit_error(str(e))
+        finally:
+            await event_stream.emit_done(session_id=session.session_id)
+
+    async def event_generator():
+        task = asyncio.create_task(run())
+        try:
+            async for event in event_stream.events():
+                yield event.to_sse()
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

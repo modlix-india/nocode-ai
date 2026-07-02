@@ -12,7 +12,7 @@ from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import product_location_str as _detected_location
 from app.agents.adzump.tools.campaign_data import is_real_estate
-from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
+from app.agents.adzump.agents.geo.agent import get_geo_targeting_service
 
 logger = logging.getLogger(__name__)
 
@@ -79,12 +79,30 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
     )
 
 
-async def _discover_geo_targets(params: dict, context: dict) -> ToolResult:
-    return await get_geo_targeting_agent().discover(params, context)
+async def _manage_targeting_locations(params: dict, context: dict) -> ToolResult:
+    """Dispatch a single targeting-area operation to the GeoTargetingService.
 
+    Routes by ``params["action"]``:
+      * ``discover`` — resolve + map target areas for the active platform.
+      * ``add`` — append a target area and re-map.
+      * ``delete`` — remove a target area by 1-based index and re-map.
 
-async def _modify_targeting_location(params: dict, context: dict) -> ToolResult:
-    return await get_geo_targeting_agent().modify(params, context)
+    Any other value returns a structured error without touching the service,
+    so the LLM gets a clean retry signal instead of an exception.
+    """
+    action = params.get("action")
+    if action not in ("discover", "add", "delete"):
+        return ToolResult(
+            success=False,
+            error=(
+                f"Invalid action: {action!r}. "
+                "Expected 'discover', 'add', or 'delete'."
+            ),
+        )
+    service = get_geo_targeting_service()
+    if action == "discover":
+        return await service.discover(params, context)
+    return await service.modify(params, context)
 
 
 confirm_location = ToolDefinition(
@@ -102,38 +120,27 @@ confirm_location = ToolDefinition(
     elicit_expects="single",
 )
 
-discover_geo_targets = ToolDefinition(
-    name="discover_geo_targets",
+manage_targeting_locations = ToolDefinition(
+    name="manage_targeting_locations",
     description=(
-        "Resolve targetable areas/constants for the active ad network (Google Ads or Meta Ads). "
-        "For local physical businesses, it scans neighborhoods within a radius. For broad "
-        "businesses, it resolves country/region names directly."
-    ),
-    display_name="Geo Targeting",
-    parameters=[
-        ToolParameter(
-            name="location_name",
-            type="string",
-            description="Target location, city, state, or country name. Optional.",
-            required=False,
-        ),
-    ],
-    execute=_discover_geo_targets,
-)
-
-modify_targeting_location = ToolDefinition(
-    name="modify_targeting_location",
-    description=(
-        "Add or delete a campaign targeting location. "
-        "Expects 1-based index for delete action."
+        "Discover, add, or delete campaign targeting areas for the active ad network "
+        "(Google Ads or Meta Ads). Use 'discover' on first call or after the location "
+        "changes; 'add' and 'delete' edit the existing list (delete takes a 1-based index)."
     ),
     display_name="Geo Targeting",
     parameters=[
         ToolParameter(
             name="action",
             type="string",
-            description="The action to perform: 'add' or 'delete'.",
+            description="The operation: 'discover', 'add', or 'delete'.",
             required=True,
+            enum=["discover", "add", "delete"],
+        ),
+        ToolParameter(
+            name="location_name",
+            type="string",
+            description="Target location, city, state, or country name. Used by 'discover'.",
+            required=False,
         ),
         ToolParameter(
             name="index",
@@ -183,26 +190,14 @@ modify_targeting_location = ToolDefinition(
             description="Radial distance in km.",
             required=False,
         ),
-        ToolParameter(
-            name="google_id",
-            type="string",
-            description="Google Ads Criteria ID.",
-            required=False,
-        ),
-        ToolParameter(
-            name="meta_key",
-            type="string",
-            description="Meta location key.",
-            required=False,
-        ),
-        ToolParameter(
-            name="place_id",
-            type="string",
-            description="Google Place ID.",
-            required=False,
-        ),
+        # NOTE: platform-handle params (google_id / meta_key / meta_type /
+        # place_id) are deliberately NOT exposed to the LLM. They belong to the
+        # search-widget wire format, which calls the geo service directly
+        # (agents/geo/craft.py) and bypasses this schema. Exposing them here
+        # would let the model invent platform IDs with no traceability check —
+        # accounts are fetch-traceable, geo keys would not be.
     ],
-    execute=_modify_targeting_location,
+    execute=_manage_targeting_locations,
 )
 
-LOCATION_TOOLS = [confirm_location, discover_geo_targets, modify_targeting_location]
+LOCATION_TOOLS = [confirm_location, manage_targeting_locations]

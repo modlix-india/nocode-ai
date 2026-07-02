@@ -487,7 +487,7 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
                 "meta_mapped_locations": (d.get("campaign") or {}).get("metaMappedLocations") or [],
             })
             # Restore campaign_spec.location so _next_action sees has_location=True
-            # and prescribes discover_geo_targets immediately after platform is set,
+            # and prescribes manage_targeting_locations immediately after platform is set,
             # instead of asking for confirm_location again on every reuse.
             if stored_address:
                 session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)

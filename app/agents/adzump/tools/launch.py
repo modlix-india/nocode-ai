@@ -13,12 +13,32 @@ to actually create the campaign in the ad platform.
 from __future__ import annotations
 
 import logging
+import re
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.platform import to_enum_value as platform_enum_value
 from app.agents.adzump.services.business_storage import resolve_url, save_campaign
+from app.agents.adzump.tools.campaign_data import _last_user_text, is_clear_decline_reply
 
 logger = logging.getLogger(__name__)
+
+# Word-boundary affirmatives for the consent gate. This is a GATE on an
+# irreversible action, not NLU — the model still interprets language and
+# decides WHEN to call launch; the harness just refuses when the user's most
+# recent message carries no explicit go-ahead (same backstop philosophy as
+# _field_traceable / F17: the prompt persuades, the code enforces).
+_AFFIRMATIVE_RE = re.compile(
+    r"\b(yes|yeah|yep|launch|confirm(?:ed)?|approve(?:d)?|proceed|publish|"
+    r"go ahead|do it|sure|ok(?:ay)?)\b"
+)
+
+
+def _user_confirmed_launch(last_user: str) -> bool:
+    """True when the user's latest message is an explicit launch go-ahead."""
+    lu = (last_user or "").strip().lower()
+    if not lu or is_clear_decline_reply(lu):
+        return False
+    return bool(_AFFIRMATIVE_RE.search(lu))
 
 
 async def _launch_campaign(params: dict, context: dict) -> ToolResult:
@@ -27,6 +47,21 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error="No session context available.")
 
     spec = session_ctx.get("campaign_spec") or {}
+
+    # Idempotency: a double "Yes, launch" click or a model retry must not
+    # re-run the save. campaign_status is set on success below; honor it here.
+    if spec.get("campaign_status") == "launched" and session_ctx.get("product_id"):
+        record_id = session_ctx["product_id"]
+        logger.info("launch_campaign_idempotent: already launched, product_id=%s", record_id)
+        return ToolResult(
+            success=True,
+            data={"product_id": record_id},
+            summary=(
+                f"Campaign was already launched (product reference: {record_id}). "
+                "Do not launch again — tell the user it is already live."
+            ),
+        )
+
     # Guard: refuse to save a clearly-incomplete spec. Cheap pre-check.
     # (ig_page is intentionally absent — Instagram is optional, v3 · F3.)
     required = ("platform", "duration", "budget", "parent_account", "account")
@@ -56,6 +91,22 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             error=(
                 f"Cannot launch — {', '.join(mismatched)} belong to a different platform "
                 f"than {spec.get('platform')}. Re-select them for the current platform."
+            ),
+        )
+
+    # Consent gate — harness enforcement of the prompt rule "never publish
+    # without an explicit yes in the user's most recent message". Runs last,
+    # directly before the side effect.
+    last_user = _last_user_text(context)
+    if not _user_confirmed_launch(last_user):
+        logger.warning("launch_blocked_no_consent: last_user=%r", (last_user or "")[:120])
+        return ToolResult(
+            success=False,
+            error=(
+                "Cannot launch — the user's most recent message is not an explicit "
+                "launch confirmation. Show the review summary and ask with "
+                'present_options("Ready to launch?") first; call launch_campaign '
+                "only after the user answers yes."
             ),
         )
 
