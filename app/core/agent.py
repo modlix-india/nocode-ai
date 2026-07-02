@@ -254,10 +254,10 @@ class BaseAgent:
         await session.persist_turn_incremental(user_message, "", None)
 
         # Billing — AI is a metered, gated action. Gate this turn against the
-        # consumer's wallet before any LLM call, and snapshot usage so the
-        # finished turn can be charged. ai_turn_allowed fails open.
-        usage_before = dict(session.total_usage)
-        if not await billing.ai_turn_allowed(session.auth):
+        # consumer's wallet before any LLM call. Each LLM call is charged
+        # immediately (below), so there is no end-of-turn settlement to snapshot.
+        # check_serving_status fails open.
+        if not await billing.check_serving_status(session.auth):
             out_msg = "You're out of tokens. Top up your wallet to keep using AI."
             await event_stream.emit_error(out_msg)
             await session.persist_turn(user_message, out_msg, None)
@@ -342,6 +342,12 @@ class BaseAgent:
                 model_used = resolved_model
             session.accumulate_usage(usage)
             await session.record_token_usage(usage, request_id, resolved_model, provider.name.lower())
+
+            # Billing — charge this LLM call's usage immediately. Best-effort;
+            # security weights nothing further (weighting is done in billing.py),
+            # debits allow-negative, and is idempotent per requestId.
+            await billing.charge_llm_call(
+                session.auth, usage, resolved_model, request_id, session.session_id)
 
             # Thinking-mode providers (DeepSeek V4 Pro) stash chain-of-thought
             # in usage["reasoning_content"]. The API requires this text to be
@@ -526,14 +532,7 @@ class BaseAgent:
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
-        # Billing — charge this turn's AI token usage. Best-effort; the server
-        # debits allow-negative and is idempotent per (session, turn).
-        await billing.charge_ai_turn(
-            session.auth,
-            billing.turn_token_delta(usage_before, session.total_usage),
-            session.session_id,
-            session._turn_count,
-        )
+        # (AI billing is charged per LLM call, immediately, inside the loop above.)
 
         # Emit pending suggestions (e.g. quick reply buttons) if any
         suggestions = await self.get_pending_suggestions(session, assistant_summary)
