@@ -1,8 +1,9 @@
 """agents/location/craft.py — handle_widget_message: the router's widget entry point.
 
-Locks the step-12 move: the geo layer owns parsing, elicitation housekeeping,
-dispatch, and SSE; natural language returns None (→ normal agent loop); and the
-fast path NEVER wakes the LLM.
+Locks the fast-path invariants: the geo layer owns parsing, elicitation
+housekeeping, dispatch, and SSE; natural language returns None (→ normal agent
+loop); the widget path routes to LocationAgent.add/.delete directly and NEVER
+wakes the LLM.
 """
 from __future__ import annotations
 
@@ -27,6 +28,13 @@ def _agent_session():
     return agent, session
 
 
+def _location_agent_stub():
+    return SimpleNamespace(
+        add=mock.AsyncMock(return_value=ToolResult(success=True, summary="added")),
+        delete=mock.AsyncMock(return_value=ToolResult(success=True, summary="deleted")),
+    )
+
+
 async def _drain(response):
     """Consume the SSE body to completion (events() ends on the done sentinel)."""
     chunks = []
@@ -42,11 +50,10 @@ class WidgetDispatchTests(unittest.TestCase):
 
     def test_widget_add_dispatches_without_llm(self):
         agent, session = _agent_session()
-        modify = mock.AsyncMock(return_value=ToolResult(success=True, summary="added"))
-        service = SimpleNamespace(modify=modify)
+        stub = _location_agent_stub()
 
         async def scenario():
-            with mock.patch.object(craft_mod, "get_geo_targeting_service", return_value=service), \
+            with mock.patch.object(craft_mod, "get_location_agent", return_value=stub), \
                  mock.patch("app.services.llm_provider.get_llm_provider",
                             side_effect=AssertionError("LLM must not be called on the widget fast path")):
                 resp = handle_widget_message(
@@ -54,13 +61,13 @@ class WidgetDispatchTests(unittest.TestCase):
                     'add targeting location {"name":"Bandra","lat":19.05,"lng":72.83}',
                 )
                 self.assertIsNotNone(resp)
-                body = await asyncio.wait_for(_drain(resp), timeout=5)
-                return body
+                return await asyncio.wait_for(_drain(resp), timeout=5)
 
         body = asyncio.run(scenario())
 
-        modify.assert_awaited_once()                      # dispatched to the geo service
-        params = modify.await_args.args[0]
+        stub.add.assert_awaited_once()                    # routed to LocationAgent.add
+        stub.delete.assert_not_awaited()
+        params = stub.add.await_args.args[0]
         self.assertEqual(params["action"], "add")
         self.assertEqual(params["name"], "Bandra")
         self.assertNotIn("_pending_elicitation", session.context)   # housekeeping owned here
@@ -69,16 +76,17 @@ class WidgetDispatchTests(unittest.TestCase):
 
     def test_widget_delete_dispatches(self):
         agent, session = _agent_session()
-        modify = mock.AsyncMock(return_value=ToolResult(success=True, summary="deleted"))
-        service = SimpleNamespace(modify=modify)
+        stub = _location_agent_stub()
 
         async def scenario():
-            with mock.patch.object(craft_mod, "get_geo_targeting_service", return_value=service):
+            with mock.patch.object(craft_mod, "get_location_agent", return_value=stub):
                 resp = handle_widget_message(agent, session, "delete targeting location index 2")
                 await asyncio.wait_for(_drain(resp), timeout=5)
 
         asyncio.run(scenario())
-        params = modify.await_args.args[0]
+        stub.delete.assert_awaited_once()                 # routed to LocationAgent.delete
+        stub.add.assert_not_awaited()
+        params = stub.delete.await_args.args[0]
         self.assertEqual(params, {"action": "delete", "index": 2})
 
 

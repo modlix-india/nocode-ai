@@ -1,25 +1,22 @@
-"""Geo-targeting discovery service.
+"""discover_neighborhoods — LLM-callable tool for the LOCAL targeting path.
 
-Classifies targeting scales and resolves targetable locations using either
-radial coordinate geocoding (for local scales) or LLM recommendations (for
-regional, national, or international scales).
+Radial grid scan around the confirmed business pin: reverse-geocode ~136 points
+in concentric rings, dedupe by pincode/neighborhood, keep the closest ≤25.
+The scan itself is pure geometry + Google Maps calls — the LLM only decides
+*to* call this tool (local / real-estate businesses); it never supplies
+coordinates (they're read from session state, so the model can't invent them).
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import math
 from typing import Any
 
-from app.config import settings
+from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.adapters.google.maps import google_maps_client
-from app.agents.adzump.services.geo.prompts import (
-    STRATEGIST_SYSTEM_PROMPT,
-    build_strategic_markets_prompt,
-)
-from app.services.llm_provider import get_llm_provider
+from app.agents.adzump.agents.location.tools._shared import finalize_targets
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +27,6 @@ SEARCH_STEPS = [0.33, 0.66, 1.0]
 EARTH_RADIUS_KM = 6371.0
 DEFAULT_LOCAL_RADIUS_KM = 8.0
 MAX_LOCAL_NEIGHBORHOODS = 25
-
-
-def is_local_business(business_scale: str) -> bool:
-    """Check if the resolved scale is local."""
-    return (business_scale or "").strip().lower() == "local"
 
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -49,7 +41,7 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 def generate_radial_offsets(
     lat: float, lng: float, radius_km: float
 ) -> list[tuple[float, float]]:
-    """Generate coordinate sampling points in concentric rings (~49 points grid)."""
+    """Generate coordinate sampling points in concentric rings (~136-point grid: 1 center + 3 rings × 45 bearings)."""
     points = [(lat, lng)]
     distances = [radius_km * step for step in SEARCH_STEPS]
 
@@ -69,7 +61,7 @@ def generate_radial_offsets(
     return points
 
 
-async def discover_neighborhoods(
+async def scan_neighborhoods(
     lat: float, lng: float, radius_km: float
 ) -> list[dict[str, Any]]:
     """Perform radial coordinate lookup to resolve local neighborhood names and pincodes."""
@@ -180,90 +172,62 @@ async def discover_neighborhoods(
     return sorted_targets[:MAX_LOCAL_NEIGHBORHOODS]
 
 
-async def _discover_strategic_markets(
-    product_data: dict, scope: str, country_code: str = "IN"
-) -> list[dict[str, Any]]:
-    """Query LLM to recommend prime targeting zones with marketing justifications."""
-    prompt = build_strategic_markets_prompt(
-        product_name=product_data.get("product_name") or "Product",
-        business_type=product_data.get("business_type") or "Business",
-        scope=scope,
-        country_code=country_code,
-        summary=product_data.get("summary") or "",
+async def _discover_neighborhoods(params: dict, context: dict) -> ToolResult:
+    """Tool execute: scan around the confirmed pin, then finalize (map/persist/render)."""
+    session_ctx = context.get("session_context") or {}
+    loc_meta = session_ctx.get("_location_meta") or {}
+    coords = (session_ctx.get("product_data") or {}).get("product_coordinates") or {}
+
+    lat = loc_meta.get("lat") if loc_meta.get("lat") is not None else coords.get("lat")
+    lng = loc_meta.get("lng") if loc_meta.get("lng") is not None else coords.get("lng")
+    if lat is None or lng is None:
+        return ToolResult(
+            success=False,
+            error=(
+                "No confirmed business coordinates in session state — the location "
+                "must be geocoded before neighborhoods can be scanned. Report this "
+                "to the caller; do not guess coordinates."
+            ),
+        )
+
+    radius_km = float(params.get("radius_km") or DEFAULT_LOCAL_RADIUS_KM)
+    resolved = await scan_neighborhoods(float(lat), float(lng), radius_km)
+    if not resolved:
+        return ToolResult(
+            success=False,
+            error=f"Radial scan found no neighborhoods within {radius_km} km.",
+        )
+
+    mapped = await finalize_targets(resolved, context)
+    names = [a.get("name", "") for a in mapped if a.get("name")]
+    return ToolResult(
+        success=True,
+        data={"count": len(mapped), "locations": names},
+        summary=(
+            f"Scanned {radius_km:g} km around the business pin: {len(mapped)} "
+            f"neighborhoods mapped and saved ({', '.join(names[:6])}"
+            f"{'…' if len(names) > 6 else ''})."
+        ),
     )
 
-    try:
-        provider = get_llm_provider()
-        response = await provider.create_completion(
-            system_prompt=STRATEGIST_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-            model_tier="fast",
-            max_tokens=1024,
-        )
-        content = (response.get("content") or "").strip()
-        # Fast-tier models often fence JSON in ``` or add a stray sentence despite
-        # the "JSON only" instruction; extract the outermost {...} so one stray
-        # token doesn't silently wipe every recommended location.
-        start, end = content.find("{"), content.rfind("}")
-        if start == -1 or end == -1:
-            logger.warning("Strategic discovery returned no JSON object; skipping.")
-            return []
-        data = json.loads(content[start : end + 1])
-        locations = data.get("locations") or []
 
-        # Geocode the recommended locations in parallel to obtain lat/lng and place IDs.
-        tasks = [google_maps_client.geocode(loc.get("name") or "") for loc in locations]
-        geocode_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        final_targets = []
-        for idx, loc in enumerate(locations):
-            geo = geocode_results[idx]
-            if isinstance(geo, Exception) or not geo:
-                continue
-
-            final_targets.append(
-                {
-                    "name": loc.get("name") or "",
-                    # Keep the scale the strategist picked (city/state/country) so
-                    # platform mapping resolves it as the right Meta location_type
-                    # instead of always searching it as a city.
-                    "scale": (loc.get("type") or "").strip().lower(),
-                    "pincode": geo.get("pincode") or "",
-                    "city": geo.get("city") or "",
-                    "state": geo.get("state") or "",
-                    "lat": geo["lat"],
-                    "lng": geo["lng"],
-                    "distance_km": 0.0,
-                    "place_id": geo["place_id"],
-                }
-            )
-
-        return final_targets
-
-    except Exception as e:
-        logger.exception("LLM strategic market discovery failed: %s", e)
-        return []
-
-
-async def discover_geo_targets(
-    coordinates: dict | None, product_data: dict, country_code: str = "IN"
-) -> list[dict[str, Any]]:
-    """Core entrypoint for geocoding scale classification and location discovery."""
-    scale = (product_data.get("business_scale") or "national").strip().lower()
-
-    if is_local_business(scale):
-        if coordinates and "lat" in coordinates and "lng" in coordinates:
-            # Local radius neighborhood grid scan
-            return await discover_neighborhoods(
-                coordinates["lat"],
-                coordinates["lng"],
-                radius_km=DEFAULT_LOCAL_RADIUS_KM,
-            )
-        else:
-            logger.warning(
-                "Local business targeting requested but no coordinates provided."
-            )
-            return []
-
-    # Non-local operating scales (regional, national, international) query the LLM
-    return await _discover_strategic_markets(product_data, scale, country_code)
+discover_neighborhoods_tool = ToolDefinition(
+    name="discover_neighborhoods",
+    description=(
+        "Scan the area around the business's confirmed map pin and resolve nearby "
+        "neighborhoods/pincodes as targeting areas. Use for LOCAL businesses "
+        "(real estate, physical stores). Coordinates come from session state — "
+        "never pass them. Mapping to the ad platform, persistence, and the map "
+        "re-render happen automatically."
+    ),
+    display_name="Scan Neighborhoods",
+    parameters=[
+        ToolParameter(
+            name="radius_km",
+            type="number",
+            description=f"Scan radius in km (default {DEFAULT_LOCAL_RADIUS_KM:g}).",
+            required=False,
+        ),
+    ],
+    execute=_discover_neighborhoods,
+)

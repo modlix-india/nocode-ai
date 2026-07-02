@@ -1,4 +1,4 @@
-"""Typed geo-targeting location models.
+"""Typed geo-targeting location models — the location agent's data vocabulary.
 
 A target area is the platform-agnostic "where" (name, coordinates, scale). Each
 ad platform then resolves it to its own targeting handle, kept in a *platform-only*
@@ -8,8 +8,9 @@ sub-model so the two concerns never bleed into one another:
     required and non-empty: Meta adset creation buckets every target by type
     (zips/cities/regions/countries), so a typeless location is unusable. That
     missing invariant caused the original bug.
-  * ``GoogleGeoLocation`` — ``{id, name}``; ``id`` is normalized to the
-    ``geoTargetConstants/{id}`` resource name Google Ads expects.
+  * ``GoogleGeoLocation`` — ``{resourceName, name}``; the identifier is the
+    geo-target-constant resource name (``geoTargetConstants/{id}``), Google's
+    own field name for it — not the bare numeric ``id``.
 
 ``TargetArea`` composes them — ``area.meta`` / ``area.google`` is populated for
 the active platform — so a mapped location carries the scale once (``scale``) and
@@ -18,12 +19,17 @@ the platform handle once (``meta.type``), never a duplicated ``meta_type`` +
 
 Locations still travel the pipeline as dicts (LLM tool params in, JSON storage
 out), so ``PlatformGeoMapper`` builds a ``TargetArea`` at the end of mapping and
-``model_dump()``s it straight back to a (now nested) dict.
+``model_dump()``s it straight back to a (nested) dict.
 """
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
+
+
+def is_local_business(business_scale: str) -> bool:
+    """Check if the resolved scale is local (radial-scan targeting applies)."""
+    return (business_scale or "").strip().lower() == "local"
 
 
 class MetaGeoLocation(BaseModel):

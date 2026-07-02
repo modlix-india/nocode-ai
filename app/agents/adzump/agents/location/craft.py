@@ -9,7 +9,7 @@ These are NOT natural language — they carry all the parameters needed to
 call manage_targeting_locations directly, with no LLM required. The whole
 protocol lives here (geo layer): ``handle_widget_message`` is the single
 entry point the HTTP router forwards to — it owns parsing, elicitation
-housekeeping, dispatch to the GeoTargetingService, and SSE emission, so the
+housekeeping, dispatch to the LocationAgent, and SSE emission, so the
 router stays a dumb forwarder and the loop's invariants live in one place.
 """
 
@@ -24,7 +24,7 @@ from typing import Any
 from fastapi.responses import StreamingResponse
 
 from app.core.streaming import AgentEventStream
-from app.agents.adzump.agents.location.agent import get_geo_targeting_service
+from app.agents.adzump.agents.location.agent import get_location_agent
 
 logger = logging.getLogger(__name__)
 
@@ -156,8 +156,13 @@ def _stream_widget_action(agent, session, params: dict) -> StreamingResponse:
                 tool_input=params,
             )
 
-            result = await get_geo_targeting_service().modify(params, ctx)
-            # modify() owns save_campaign + _rerender_craft; nothing extra needed here.
+            # Same methods the LLM tool dispatches to — no LLM, no agent loop.
+            location_agent = get_location_agent()
+            if params.get("action") == "add":
+                result = await location_agent.add(params, ctx)
+            else:
+                result = await location_agent.delete(params, ctx)
+            # add/delete own map + save_campaign + re-render; nothing extra here.
 
             await event_stream.emit_tool_result(
                 tool_use_id="widget_location",

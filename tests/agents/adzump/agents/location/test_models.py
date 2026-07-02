@@ -10,7 +10,7 @@ import unittest
 
 import pydantic
 
-from app.agents.adzump.services.geo.models import (
+from app.agents.adzump.agents.location.models import (
     GoogleGeoLocation,
     MetaGeoLocation,
     TargetArea,

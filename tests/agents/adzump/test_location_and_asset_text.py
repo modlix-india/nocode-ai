@@ -1,5 +1,5 @@
 """Lock #7 — small pure helpers:
-  - `_is_real_estate` / `_detected_location`  (tools/location.py)
+  - `is_real_estate` (tools/campaign_data.py) / `_detected_location` (tools/location.py)
   - `_compose_asset_request_text`             (scrape/assets.py)
 
 `_is_real_estate` gates the real-estate conditional (our first vertical);
@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.tools.location import _is_real_estate, _detected_location
+from app.agents.adzump.tools.campaign_data import is_real_estate as _is_real_estate
+from app.agents.adzump.tools.location import _detected_location
 from app.agents.adzump.agents.product.tools.scrape.assets import (
     _compose_asset_request_text,
 )

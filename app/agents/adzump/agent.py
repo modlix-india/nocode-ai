@@ -65,7 +65,7 @@ def _hydrate_location_from_product_data(ctx: dict) -> None:
     local businesses, requires that geo-targets were already resolved (otherwise
     we must go through confirm_location again).
     """
-    from app.agents.adzump.services.geo.discovery import is_local_business
+    from app.agents.adzump.agents.location.models import is_local_business
 
     spec = ctx.setdefault("campaign_spec", {})
     if spec.get("location"):
@@ -962,7 +962,7 @@ class AdzumpAgent(BaseAgent):
         target_areas_eot = product_eot.get("target_areas") or []
         if platform_eot and target_areas_eot:
             from app.agents.adzump.platform import is_google as _ig, is_meta as _im
-            from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+            from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
             loc_meta_eot = ctx.setdefault("_location_meta", {})
             cc_eot = loc_meta_eot.get("country_code") or "IN"
             needs_google = _ig(platform_eot) and not product_eot.get("google_mapped_locations")
@@ -970,7 +970,7 @@ class AdzumpAgent(BaseAgent):
             if needs_google or needs_meta:
                 try:
                     tool_ctx = self.build_tool_context(session)
-                    mapped_eot = await PlatformGeoMapper(ctx, tool_ctx).map_target_areas(
+                    mapped_eot = await PlatformGeoMapper(tool_ctx).map_target_areas(
                         target_areas_eot, platform_eot, cc_eot
                     )
                     if mapped_eot:

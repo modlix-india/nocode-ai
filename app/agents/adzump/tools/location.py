@@ -12,7 +12,7 @@ from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import product_location_str as _detected_location
 from app.agents.adzump.tools.campaign_data import is_real_estate
-from app.agents.adzump.agents.location.agent import get_geo_targeting_service
+from app.agents.adzump.agents.location.agent import get_location_agent
 
 logger = logging.getLogger(__name__)
 
@@ -80,29 +80,32 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
 
 
 async def _manage_targeting_locations(params: dict, context: dict) -> ToolResult:
-    """Dispatch a single targeting-area operation to the GeoTargetingService.
+    """Thin dispatcher to the LocationAgent — no business logic here.
 
     Routes by ``params["action"]``:
-      * ``discover`` — resolve + map target areas for the active platform.
-      * ``add`` — append a target area and re-map.
-      * ``delete`` — remove a target area by 1-based index and re-map.
+      * ``discover`` — LLM-driven: the LocationAgent's loop picks the path
+        (local radial scan vs broad market picking) and lands mapped targets.
+      * ``add`` — deterministic: append a target area and re-map.
+      * ``delete`` — deterministic: remove by 1-based index and re-map.
 
-    Any other value returns a structured error without touching the service,
-    so the LLM gets a clean retry signal instead of an exception.
+    Any other value returns a structured error without touching the agent,
+    so the orchestrator LLM gets a clean retry signal instead of an exception.
     """
     action = params.get("action")
-    if action not in ("discover", "add", "delete"):
-        return ToolResult(
-            success=False,
-            error=(
-                f"Invalid action: {action!r}. "
-                "Expected 'discover', 'add', or 'delete'."
-            ),
-        )
-    service = get_geo_targeting_service()
+    location_agent = get_location_agent()
     if action == "discover":
-        return await service.discover(params, context)
-    return await service.modify(params, context)
+        return await location_agent.discover(params, context)
+    if action == "add":
+        return await location_agent.add(params, context)
+    if action == "delete":
+        return await location_agent.delete(params, context)
+    return ToolResult(
+        success=False,
+        error=(
+            f"Invalid action: {action!r}. "
+            "Expected 'discover', 'add', or 'delete'."
+        ),
+    )
 
 
 confirm_location = ToolDefinition(
@@ -192,7 +195,7 @@ manage_targeting_locations = ToolDefinition(
         ),
         # NOTE: platform-handle params (google_id / meta_key / meta_type /
         # place_id) are deliberately NOT exposed to the LLM. They belong to the
-        # search-widget wire format, which calls the geo service directly
+        # search-widget wire format, which calls the LocationAgent directly
         # (agents/location/craft.py) and bypasses this schema. Exposing them here
         # would let the model invent platform IDs with no traceability check —
         # accounts are fetch-traceable, geo keys would not be.

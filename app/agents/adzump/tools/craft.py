@@ -135,7 +135,7 @@ async def emit_craft_panel(
     lng = coords.get("lng")
     if platform and ((lat is not None and lng is not None) or target_areas):
         from app.config import settings
-        from app.agents.adzump.services.geo.discovery import is_local_business
+        from app.agents.adzump.agents.location.models import is_local_business
         scale = business.get("business_scale", "local")
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Targeting Locations"})

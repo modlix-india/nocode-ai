@@ -12,8 +12,8 @@ import asyncio
 import unittest
 from unittest.mock import patch
 
-from app.agents.adzump.services.geo import mapping as mapping_mod
-from app.agents.adzump.services.geo.mapping import PlatformGeoMapper
+from app.agents.adzump.agents.location import platform_mapping as mapping_mod
+from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
 
 
 def _meta_get(data: list):
@@ -35,7 +35,7 @@ async def _no_geocode(_query):
 
 class MapMetaTypeTests(unittest.TestCase):
     def _map(self, area, meta_get):
-        mapper = PlatformGeoMapper({}, {})
+        mapper = PlatformGeoMapper({})
         with patch.object(mapping_mod.meta_client, "get", side_effect=meta_get), \
                 patch.object(mapping_mod.google_maps_client, "geocode", side_effect=_no_geocode):
             return asyncio.run(mapper._map_meta(dict(area), "IN"))
@@ -131,7 +131,7 @@ class MapGoogleTests(unittest.TestCase):
         async def _suggest(*_a, **_kw):
             return {"geoTargetConstantSuggestions": suggestions}
 
-        mapper = PlatformGeoMapper({}, {})
+        mapper = PlatformGeoMapper({})
         with patch.object(mapping_mod.google_ads_client, "suggest_geo_targets", side_effect=_suggest), \
                 patch.object(mapping_mod.google_maps_client, "geocode", side_effect=_no_geocode):
             return asyncio.run(mapper._map_google(dict(area), "IN"))

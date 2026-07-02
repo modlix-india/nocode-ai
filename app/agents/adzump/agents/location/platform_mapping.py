@@ -1,7 +1,9 @@
-"""Geo-targeting ad platform mapping service.
+"""Platform mapping — deterministic area → platform-handle resolver.
 
-Maps resolved locations to platform-specific keys (Google Ads Criteria IDs
-or Proximity coordinates, Meta Ads ZIP codes or location keys).
+Maps resolved locations to platform-specific handles (Google Ads geo-target
+constants or Meta Ads adgeolocation keys). A shared utility, NOT an LLM tool:
+called by both location-agent tools after discovery, and by the agent's
+``add``/``delete`` methods after the area list changes.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from app.agents.adzump.platform import is_google, is_meta
 from app.agents.adzump.adapters.google.client import google_ads_client
 from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.adapters.meta.client import meta_client
-from app.agents.adzump.services.geo.models import (
+from app.agents.adzump.agents.location.models import (
     GoogleGeoLocation,
     MetaGeoLocation,
     TargetArea,
@@ -27,10 +29,7 @@ logger = logging.getLogger(__name__)
 class PlatformGeoMapper:
     """Orchestrates location mapping for Google Ads and Meta Ads platforms."""
 
-    def __init__(
-        self, session_context: dict[str, Any], tool_context: dict[str, Any]
-    ) -> None:
-        self.session_ctx = session_context
+    def __init__(self, tool_context: dict[str, Any]) -> None:
         self.client_code = tool_context.get("client_code", "")
         self.auth_headers = build_ds_headers(tool_context)
 
