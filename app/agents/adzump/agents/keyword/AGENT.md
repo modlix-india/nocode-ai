@@ -162,6 +162,19 @@ Misspellings are single tokens, never repeats, so they're never touched.
 > volumes differ (`new york new york` ≠ `new york`). Safe de-clutter; left out of the first cut
 > deliberately — implement after review if wanted.
 
+### Why there's no critic / repair pass (considered, prototyped, removed)
+
+We considered a **review-then-repair** pass over the selected set — and actually prototyped a
+deterministic "floor" version — but **removed it**: a live trace showed it was solving a problem
+the recovery step already solves. With a clean pool, the model selects the real head on its own
+and skips the mangled twins; the prototype only **re-injected the mangled forms the model had
+correctly avoided**. It turned out to overlap almost entirely with the de-mangle step above.
+
+> **When an LLM critic would earn its place:** only if future live runs show the draft is
+> genuinely and repeatedly inconsistent in a way the phase prompts can't fix — then a critic is
+> justified with *evidence, not on spec*. A reviewer pass pays off when it grades many decisions
+> at once; for a single keyword set on a clean pool, the model's own pass is enough.
+
 ---
 
 ## 4. The context layer — offering taxonomy
@@ -186,22 +199,29 @@ deliberate **cross-business PHRASE** positive; everything else sibling stays a n
 
 Each type emits a clean, greppable funnel. To follow one type: `grep "type=generic"`.
 
+A real generic run (Warby Parker, US), one line per stage:
+
 ```
-kw_expand type=generic seeds=40 autosuggest=134 pool=172
-keyword_planner: scoring 172 candidates in 12 Planner call(s)
-kw_metrics type=generic sent=172 planner_ideas=88 scored_pool=88
-kw_submit_positive type=generic submitted=17 kept=14 dropped=3
-kw_submit_negative type=generic submitted=21 kept=21 dropped=0
-keyword_research done type=generic positives=14 negatives=21
+kw_expand type=generic seeds=60 autosuggest=445 pool=200 overflow=281
+keyword_planner: scoring 200 candidates in 14 Planner call(s)
+kw_metrics type=generic sent=200 planner_ideas=4793 recovered=123 scored_pool=600
+kw_submit_positive type=generic submitted=15 kept=9 dropped=6
+kw_submit_negative type=generic submitted=14 kept=14 dropped=0
+keyword_research done type=generic positives=9 negatives=14
 ```
 
 | Log line | Read it as |
 |---|---|
-| `kw_expand` | `seeds` drafted → `autosuggest` real queries added → `pool` = deduped candidates |
-| `keyword_planner: scoring N … M call(s)` | the **full** pool reaches the Planner; `M = ceil(N / 15)` calls |
-| `kw_metrics … sent=… planner_ideas=… scored_pool=…` | `sent` = candidates scored, `planner_ideas` = what came back, `scored_pool` = stored for selection |
-| `kw_submit_positive/negative … submitted/kept/dropped` | model proposed → gates kept → gates dropped (overlap/dupes/invalid) |
+| `kw_expand … pool=… overflow=…` | `pool` = top slice sent to the Planner's expansion; `overflow` = real autosuggest queries beyond the cap, scored later (not discarded) |
+| `keyword_planner: scoring N … M call(s)` | the pool reaches `generateKeywordIdeas`; `M = ceil(N / 15)` calls |
+| `kw_metrics … planner_ideas=… recovered=… scored_pool=…` | `planner_ideas` = what the expansion returned; **`recovered`** = clean terms rescued via historical metrics from the overflow + de-mangled repairs (kept only if they have real volume — see §3); `scored_pool` = stored for selection |
+| `kw_submit_positive/negative … submitted/kept/dropped` | model proposed → validated & kept → dropped (not in the scored pool / dupe / overlap) |
 | `keyword_research done` | final counts that reach the panel |
+
+> On this run `recovered=123` is the de-mangle/overflow step doing its job — that's how the clean
+> `prescription glasses` (368k) reached the pool and got selected, instead of only the mangled
+> `prescription glasses prescription` the expansion returned. (There is **no** critic/repair line
+> in the funnel — that was considered and removed; see §3.)
 
 > Tip: the hundreds of `httpx … 200 OK` lines are httpx's own logger. Set
 > `logging.getLogger("httpx").setLevel(logging.WARNING)` to collapse the log to just

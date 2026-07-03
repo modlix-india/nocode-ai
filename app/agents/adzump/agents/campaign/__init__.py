@@ -15,5 +15,5 @@ When implementation begins, mirror the `agents/product/` shape:
 - `prompts/` — domain prompts per platform
 - `tools/google/`, `tools/meta/` — platform-specific tools
 
-See ./README.md for scope details. Status: planned. No ETA committed.
+See ./AGENT.md for scope details. Status: planned. No ETA committed.
 """

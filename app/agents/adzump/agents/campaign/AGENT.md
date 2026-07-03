@@ -30,7 +30,7 @@ sequenceDiagram
     Main->>CC: create_campaign()
     CC->>CA: create(campaign_spec, product_data, craft_id = campaign_<sid>)
     CA->>KR: keyword_research(keyword_type="both")
-    KR->>KA: brand + generic (parallel) — see keyword/README.md
+    KR->>KA: brand + generic (parallel) — see keyword/AGENT.md
     KA-->>KR: positives + negatives
     KR->>Panel: emit_campaign_craft(craft_id)
     KR-->>CA: result bundle
@@ -41,7 +41,7 @@ sequenceDiagram
 ```
 
 The CampaignAgent doesn't do keyword reasoning itself — that lives in the sub-agents (the
-`KeywordResearchAgent`, documented in [`../keyword/README.md`](../keyword/README.md)). Its
+`KeywordResearchAgent`, documented in [`../keyword/AGENT.md`](../keyword/AGENT.md)). Its
 job is to **own and sequence the platform build**; the next section is why that warrants a
 dedicated agent rather than a few tools bolted onto the main agent.
 
@@ -112,7 +112,7 @@ What the agent calls today. It:
 6. Emits the campaign craft via `emit_campaign_craft`.
 
 Keyword internals (seed → expand → score → select → negatives, the prompts, the gates)
-are documented in [`../keyword/README.md`](../keyword/README.md) — not duplicated here.
+are documented in [`../keyword/AGENT.md`](../keyword/AGENT.md) — not duplicated here.
 
 ### `tools/google/keyword_update.py` — review-panel edits (implemented)
 Not an LLM tool. The keyword review panel posts structured widget actions
@@ -165,4 +165,4 @@ next tool).
 
 The campaign craft (`campaign_<session>`) and the product/setup craft (`adzump_<session>`)
 are separate panels. A focus-stealing issue between them — and its fix — is documented in
-[`../keyword/README.md` §10](../keyword/README.md#10-appendix--the-craft-panel-craft-id-issue).
+[`../keyword/AGENT.md` §10](../keyword/AGENT.md#10-appendix--the-craft-panel-craft-id-issue).
