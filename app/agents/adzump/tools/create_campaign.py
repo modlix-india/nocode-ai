@@ -30,7 +30,9 @@ async def _create_campaign(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error="No auth context for campaign creation.")
 
     stream = context.get("event_stream")
-    craft_id = session_ctx.get("craft_id") or f"campaign_{context.get('session_id', '')}"
+    # Always a separate card from the product craft (adzump_{session_id}).
+    craft_id = f"campaign_{context.get('session_id') or ''}"
+    session_ctx["campaign_craft_id"] = craft_id
 
     # Launcher owns the agent-card span: pre-emit started here (bound to this tool call);
     # the CampaignAgent emits agent_finished when it's done.
@@ -45,21 +47,25 @@ async def _create_campaign(params: dict, context: dict) -> ToolResult:
         parent_event_stream=stream,
         auth=auth,
     )
-    session_ctx["keyword_research"] = result
-
     if not result:
         return ToolResult(
             success=False,
             error="Campaign creation produced no keyword results — check the ad account and retry.",
         )
+    session_ctx["keyword_research"] = result
+
+    # The elicitation owns its ask (the deferred break skips the follow-up turn).
+    if stream:
+        await stream.emit_text(
+            "\n\nYour campaign setup is ready in the panel — review it, make any changes, "
+            "then tell me to launch when you're happy.\n"
+        )
+
     return ToolResult(
         success=True,
-        summary=(
-            "Keyword research is complete and shown in the panel for review. The panel is "
-            "already on screen — do NOT restate the keywords. Ask the user to review/edit the "
-            "keywords, then confirm to launch."
-        ),
-        data={"craft_id": craft_id},
+        summary="Campaign setup complete; the review panel and prompt are on screen.",
+        # Multi-message review elicitation: resume on the next real message, not per edit.
+        data={"craft_id": craft_id, "elicited": True, "elicit_expects": "multi"},
     )
 
 

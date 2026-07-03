@@ -59,15 +59,10 @@ SAFETY_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*$"),
 )
 
-# Autosuggest source selection by business profile. Names index the
-# adapters.autosuggest.SOURCES registry. Google-native is primary for a Search
-# campaign; the rest are coverage / conditional supplements.
-SOURCE_GOOGLE = "google"
-SOURCE_BING = "bing"
-SOURCE_DUCKDUCKGO = "duckduckgo"
+# Extensions added per business profile on top of autosuggest's base default
+# (autosuggest.DEFAULT_SOURCE_NAMES). Names index the autosuggest.SOURCES registry.
 SOURCE_AMAZON = "amazon"
 SOURCE_YOUTUBE = "youtube"
 
-DEFAULT_SOURCE_NAMES = (SOURCE_GOOGLE, SOURCE_BING, SOURCE_DUCKDUCKGO)  # web-search coverage
-PRODUCT_SOURCE_NAMES = (SOURCE_AMAZON,)        # added when the business sells physical products
-INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # added when the funnel includes how-to/informational
+PRODUCT_SOURCE_NAMES = (SOURCE_AMAZON,)        # business sells physical products
+INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # funnel includes how-to/informational

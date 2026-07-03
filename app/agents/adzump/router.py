@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional, List
+from typing import Any, Coroutine, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -26,6 +26,10 @@ from app.core.streaming import AgentEventStream
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
 from app.agents.adzump.agents.campaign.api import router as campaign_api_router
+from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
+    _update_keywords,
+    parse_keyword_widget_message,
+)
 from app.agents.adzump.agents.geo.agent import get_geo_targeting_agent
 from app.agents.adzump.agents.geo.widget import parse_location_widget_message
 
@@ -72,9 +76,12 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
             if a.type == "image" and a.data
         ]
 
-    # Location widget messages are machine-readable structured actions from
-    # the craft-panel search widget.  They carry all params needed to call
-    # modify_targeting_location directly — no LLM reasoning required.
+    # Keyword widget: structured JSON action from the campaign keyword panel.
+    kw_widget = parse_keyword_widget_message(body.message)
+    if kw_widget is not None:
+        return _stream_keyword_widget(agent, session, kw_widget)
+
+    # Location widget: structured action from the geo targeting craft panel.
     widget_params = parse_location_widget_message(body.message)
     if widget_params is not None:
         return _stream_location_widget(agent, session, widget_params)
@@ -84,33 +91,45 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
     )
 
 
+def _widget_response(event_stream: AgentEventStream, run_coro: Coroutine[Any, Any, None]) -> StreamingResponse:
+    """Wrap a widget run-coroutine in an SSE StreamingResponse with task cancellation."""
+    async def event_generator():
+        task = asyncio.create_task(run_coro)
+        try:
+            async for event in event_stream.events():
+                yield event.to_sse()
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 def _stream_location_widget(
     agent: AdzumpAgent,
     session: BaseSession,
     params: dict,
 ) -> StreamingResponse:
-    """Execute a location widget action directly (no LLM) and stream SSE."""
     event_stream = AgentEventStream()
 
     async def run() -> None:
         try:
-            # Build the same tool context the agent would pass to any tool.
             ctx = agent.build_tool_context(session)
             ctx["event_stream"] = event_stream
             # Clear any pending chip-question so the next real agent turn
             # doesn't re-ask duration/budget after a location add/delete.
             session.context.pop("_pending_elicitation", None)
-
             await event_stream.emit_tool_start(
                 tool_use_id="widget_location",
                 tool_name="modify_targeting_location",
                 display_name="Geo Targeting",
                 tool_input=params,
             )
-
             result = await get_geo_targeting_agent().modify(params, ctx)
             # modify() owns save_campaign + _rerender_craft; nothing extra needed here.
-
             await event_stream.emit_tool_result(
                 tool_use_id="widget_location",
                 tool_name="modify_targeting_location",
@@ -123,19 +142,42 @@ def _stream_location_widget(
         finally:
             await event_stream.emit_done(session_id=session.session_id)
 
-    async def event_generator():
-        task = asyncio.create_task(run())
-        try:
-            async for event in event_stream.events():
-                yield event.to_sse()
-        except asyncio.CancelledError:
-            task.cancel()
-            raise
-        finally:
-            if not task.done():
-                task.cancel()
+    return _widget_response(event_stream, run())
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+def _stream_keyword_widget(
+    agent: AdzumpAgent,
+    session: BaseSession,
+    params: dict,
+) -> StreamingResponse:
+    event_stream = AgentEventStream()
+
+    async def run() -> None:
+        try:
+            ctx = agent.build_tool_context(session)
+            ctx["event_stream"] = event_stream
+            await event_stream.emit_tool_start(
+                tool_use_id="widget_keyword",
+                tool_name="update_keyword",
+                display_name="Keyword Update",
+                tool_input=params,
+            )
+            result = await _update_keywords(params, ctx)
+            if result.success:
+                await session.save_context()
+            await event_stream.emit_tool_result(
+                tool_use_id="widget_keyword",
+                tool_name="update_keyword",
+                success=result.success,
+                summary=result.summary or result.error or "",
+            )
+        except Exception as e:
+            logger.exception("Keyword widget action failed")
+            await event_stream.emit_error(str(e))
+        finally:
+            await event_stream.emit_done(session_id=session.session_id)
+
+    return _widget_response(event_stream, run())
 
 
 @router.get("/sessions/{session_id}/target-locations/search")

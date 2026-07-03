@@ -8,12 +8,12 @@ regional, national, or international scales).
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import math
 from typing import Any
 
 from app.config import settings
+from app.agents.adzump._shared import extract_json
 from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.services.llm_provider import get_llm_provider
 
@@ -218,7 +218,13 @@ async def _discover_strategic_markets(
             model_tier="fast",
             max_tokens=1024,
         )
-        data = json.loads(response["content"])
+        # Models (Haiku especially) wrap the JSON in a ```json fence despite the
+        # "no markdown" instruction; extract_json tolerates the fence and returns
+        # None instead of raising, so a stray format never zeroes out targeting.
+        data = extract_json(response.get("content") or "")
+        if not data:
+            logger.warning("_discover_strategic_markets: no parseable JSON in LLM response")
+            return []
         locations = data.get("locations") or []
 
         # Geocode the LLM recommended locations in parallel to obtain lat/lng and place IDs

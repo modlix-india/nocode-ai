@@ -1,13 +1,11 @@
 """Google Ads Keyword Planner adapter — generateKeywordIdeas.
 
-The official source of Google search volume, competition, and CPC bid estimates,
-and the relevance gate for candidate keywords (terms with no Google demand drop
-out). Seeds can be keywords and/or the business URL; the Planner both *scores* the
-seeds and *expands* them with related Google ideas.
+The official source of Google search volume, competition, and CPC estimates, and the
+relevance gate for candidates (terms with no demand drop out). Seeds can be keywords
+and/or the business URL; the Planner both scores and expands them with related ideas.
 
-REST returns camelCase; bid values are micros (divided by 1e6). Default network is
-GOOGLE_SEARCH_AND_PARTNERS (Search campaigns commonly include partners; gives the
-fuller volume picture) — overridable per call.
+REST returns camelCase; bid values are micros (/1e6). Default network is
+GOOGLE_SEARCH_AND_PARTNERS (fuller volume picture) — overridable per call.
 Source: https://developers.google.com/google-ads/api/docs/keyword-planning/generate-keyword-ideas
 """
 
@@ -17,7 +15,7 @@ import asyncio
 import logging
 import time
 
-from app.agents.adzump.adapters.google.client import google_ads_client
+from app.agents.adzump.adapters.google.client import GoogleAdsApiError, google_ads_client
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +31,25 @@ _VALID_COMPETITION_LEVELS = {"LOW", "MEDIUM", "HIGH"}
 
 # Request tuning (not hard API limits; documented choices)
 _SEED_CHUNK_SIZE = 15  # proven batch size; smaller chunks expand more focused
-_CHUNK_CONCURRENCY = 3  # bounded — faster than sequential, rate-safe per request
+_CHUNK_CONCURRENCY = 2  # max in-flight Planner requests, shared process-wide (see _concurrency_gate)
 _MAX_RETRIES = 2
 _RETRY_BACKOFF_BASE_SECONDS = 0.5  # exponential: base * 2**attempt (0.5s, then 1.0s)
 _LOG_ERROR_MAXLEN = 160  # truncation for error messages in logs
 
-# Circuit breaker — N consecutive failures open it for a cooldown (fail fast, shared state).
+# One process-global gate shared by EVERY fetch_keyword_ideas call, so parallel agents
+# (brand + generic) can't collectively exceed the burst and trip the Planner's 429 limit.
+# Lazily created so it binds to the running loop, not import time.
+_planner_gate: "asyncio.Semaphore | None" = None
+
+
+def _concurrency_gate() -> asyncio.Semaphore:
+    global _planner_gate
+    if _planner_gate is None:
+        _planner_gate = asyncio.Semaphore(_CHUNK_CONCURRENCY)
+    return _planner_gate
+
+# Circuit breaker — N consecutive failures open it for a cooldown (fail fast).
+# Per-process module state; fine for the single-process uvicorn deploy.
 _BREAKER_THRESHOLD = 5
 _BREAKER_COOLDOWN_SECONDS = 30.0
 _breaker_failures = 0
@@ -70,6 +81,15 @@ def _breaker_record(*, ok: bool) -> None:
             _breaker_failures,
             _BREAKER_COOLDOWN_SECONDS,
         )
+
+
+def _breaker_trip(reason: str) -> None:
+    """Open the breaker on a single definitive back-off signal (e.g. a rate limit),
+    where sending more requests only deepens the problem."""
+    global _breaker_failures, _breaker_open_until
+    _breaker_failures = _BREAKER_THRESHOLD
+    _breaker_open_until = time.monotonic() + _BREAKER_COOLDOWN_SECONDS
+    logger.warning("keyword_planner circuit OPEN (%s); cooling down %.0fs", reason, _BREAKER_COOLDOWN_SECONDS)
 
 
 def _micros_to_currency(value: object) -> float:
@@ -111,8 +131,9 @@ def _parse_idea(idea: dict, metrics_key: str = "keywordIdeaMetrics") -> dict | N
         "competition": competition
         if competition in _VALID_COMPETITION_LEVELS
         else "UNKNOWN",
-        "competition_index": float(metrics.get("competitionIndex") or 0)
-        / _COMPETITION_INDEX_MAX,
+        "competition_index": min(
+            float(metrics.get("competitionIndex") or 0) / _COMPETITION_INDEX_MAX, 1.0
+        ),  # clamp: API says 0-100, but our model rejects >1.0
         # CPC top-of-page bid range — the commercial-value signal.
         "cpc_low": _micros_to_currency(metrics.get("lowTopOfPageBidMicros")),
         "cpc_high": _micros_to_currency(metrics.get("highTopOfPageBidMicros")),
@@ -143,12 +164,20 @@ async def _post_with_retry(
             )
             _breaker_record(ok=True)
             return response
-        except Exception as exc:
-            if attempt < _MAX_RETRIES:
-                await asyncio.sleep(_RETRY_BACKOFF_BASE_SECONDS * (2**attempt))
-                continue
-            _breaker_record(ok=False)
-            raise exc
+        except GoogleAdsApiError as exc:
+            if exc.is_rate_limited:
+                # A 429 is a definitive back-off — retrying the same quota window only
+                # deepens it. Open the breaker so the rest of the burst fails fast.
+                _breaker_trip("rate limited (429)")
+                raise
+            if attempt >= _MAX_RETRIES:
+                _breaker_record(ok=False)
+                raise
+        except Exception:
+            if attempt >= _MAX_RETRIES:
+                _breaker_record(ok=False)
+                raise
+        await asyncio.sleep(_RETRY_BACKOFF_BASE_SECONDS * (2**attempt))
 
 
 async def fetch_keyword_ideas(
@@ -174,12 +203,13 @@ async def fetch_keyword_ideas(
     seeds = [s.strip() for s in seeds if s and s.strip()]
     if not seeds:
         return []
+    _breaker_check()  # surface an open breaker rather than returning a misleading empty set
     geo = geo_target_constants or [INDIA_GEO_TARGET]
     endpoint = f"customers/{customer_id}:generateKeywordIdeas"
-    semaphore = asyncio.Semaphore(_CHUNK_CONCURRENCY)
+    gate = _concurrency_gate()
 
     async def _fetch_chunk(chunk: list[str]) -> list[dict]:
-        async with semaphore:
+        async with gate:
             payload = _build_payload(chunk, url, geo, language, network)
             try:
                 response = await _post_with_retry(
@@ -198,9 +228,11 @@ async def fetch_keyword_ideas(
                 )
                 return []
 
-    groups = await asyncio.gather(
-        *(_fetch_chunk(chunk) for chunk in _chunks(seeds, _SEED_CHUNK_SIZE))
+    chunks = list(_chunks(seeds, _SEED_CHUNK_SIZE))
+    logger.info(
+        "keyword_planner: scoring %d candidates in %d Planner call(s)", len(seeds), len(chunks)
     )
+    groups = await asyncio.gather(*(_fetch_chunk(chunk) for chunk in chunks))
 
     # Dedup keeping the highest-volume occurrence of each keyword.
     best: dict[str, dict] = {}

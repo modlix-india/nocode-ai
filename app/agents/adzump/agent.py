@@ -53,7 +53,7 @@ def _is_custom_reply(text: str) -> bool:
     amount" / "custom budget" also qualifies. Tight on purpose — presets are
     never "custom", so this won't fire on a real value."""
     lu = (text or "").strip().lower()
-    return lu == "custom" or lu.startswith("custom")
+    return lu == "custom" or lu.startswith("custom ")
 
 
 def _hydrate_location_from_product_data(ctx: dict) -> None:
@@ -457,7 +457,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 class AdzumpAgent(BaseAgent):
     """Chat agent that manages ad campaigns through conversation."""
 
-    _instance: "AdzumpAgent | None" = None
+    _instance: "AdzumpAgent | None" = None  # singleton; GIL serialises the attr write
 
     # v9 I-1 · data-backed (two present_options stacked live 2026-05-30). When
     # the LLM batches a deferred elicitation with other tools, run them serially
@@ -640,6 +640,13 @@ class AdzumpAgent(BaseAgent):
         if not pe:
             return ""
         if pe.get("expects") == "multi":
+            if pe.get("tool") == "create_campaign":
+                return (
+                    "## Resuming — campaign review is still open\n"
+                    "The review panel is on screen and the user has been reviewing / editing it "
+                    "across several panel actions. Do NOT restate the setup or re-run the build; "
+                    "acknowledge their changes and, when they signal they're done, move to launch."
+                )
             return (
                 "## Resuming — upload request is still open\n"
                 "Last turn you asked the user to upload assets. They may send "
@@ -697,11 +704,8 @@ class AdzumpAgent(BaseAgent):
 
         # Surface the analyzed URL so the review summary can include it
         # without the LLM hunting for it across nested structures.
-        url = (
-            cctx.product_profile.get("url")
-            or (cctx.product.get("pages_analyzed") or [None])[0]
-            or ""
-        )
+        pages = cctx.product.get("pages_analyzed") or []
+        url = cctx.product_profile.get("url") or (pages[0] if pages else "") or ""
         if url:
             lines.append(f"- Website: {url}")
 
@@ -1002,7 +1006,15 @@ class AdzumpAgent(BaseAgent):
         # is already True.
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
-        if platform and cctx.has_mapped_geo_targets and ctx.get("_last_craft_platform") != platform:
+        # Stop once campaign creation has begun: the campaign craft owns the panel from
+        # then on, so re-emitting the setup craft here is dead traffic (create_campaign
+        # sets campaign_craft_id).
+        if (
+            platform
+            and cctx.has_mapped_geo_targets
+            and ctx.get("_last_craft_platform") != platform
+            and not ctx.get("campaign_craft_id")
+        ):
             ctx["_last_craft_platform"] = platform
             url = resolve_url(ctx)
             product = ctx.get("product_data") or {}

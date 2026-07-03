@@ -1,20 +1,18 @@
 """Search autosuggest adapter — real-query seed expansion from multiple engines.
 
-Feeds the keyword pipeline with the actual phrasings people type, broadening the
-seed set before the Google Keyword Planner (which assigns Google search volume and
-gates relevance). Google's own suggestions are primary for Search campaigns; other
-engines are coverage supplements selected by business context.
+Feeds the pipeline the actual phrasings people type, broadening the seed set before
+the Keyword Planner scores volume and gates relevance. Google's suggestions are primary
+for Search; other engines are coverage supplements selected by business context.
 
-These are UNOFFICIAL endpoints — Google offers no public web-search autosuggest API
-(verify periodically). Each source is isolated and **fail-soft**: a source that
-errors or times out is skipped, never failing the pipeline. Any source can be
-swapped for a paid SERP API behind the same ``SuggestionSource`` interface.
+UNOFFICIAL endpoints — Google offers no public autosuggest API (verify periodically).
+Each source is isolated and fail-soft: one that errors or times out is skipped, never
+failing the pipeline. Any source can swap for a paid SERP API behind ``SuggestionSource``.
 
 Endpoints (response shapes verified 2026-06-22):
   Google      https://suggestqueries.google.com/complete/search?client=firefox  -> JSON [query, [suggestions]]
   YouTube     same endpoint, ds=yt                                              -> JSON [query, [suggestions]]
   DuckDuckGo  https://ac.duckduckgo.com/ac/?type=list                           -> JSON [query, [suggestions]]
-  Bing        https://api.bing.com/qsml.aspx                                    -> XML  (elements w/ Text attr)
+  Bing        https://www.bing.com/osjson.aspx                                  -> JSON [query, [suggestions]]
   Amazon      https://completion.amazon.com/search/complete                     -> JSON [_, [suggestions]]
   Brave       https://search.brave.com/api/suggest?rich=false                   -> JSON [query, [suggestions]]
 All unofficial. Brave also has an *official* keyed + metered Suggest API
@@ -26,7 +24,6 @@ from __future__ import annotations
 import abc
 import asyncio
 import logging
-import xml.etree.ElementTree as ET
 from typing import Optional
 
 import httpx
@@ -51,20 +48,6 @@ def _parse_suggest_array(data: object) -> list[str]:
     if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list):
         return [s for s in data[1] if isinstance(s, str) and s.strip()]
     return []
-
-
-def _parse_bing_xml(text: str) -> list[str]:
-    """Parse Bing qsml XML — suggestions are elements carrying a ``Text`` attribute.
-    Collecting any ``Text`` attribute is namespace-robust (vs hardcoding the path)."""
-    try:
-        root = ET.fromstring(text)
-    except ET.ParseError:
-        return []
-    return [
-        el.get("Text").strip()
-        for el in root.iter()
-        if el.get("Text") and el.get("Text").strip()
-    ]
 
 
 class SuggestionSource(abc.ABC):
@@ -125,17 +108,17 @@ class DuckDuckGoSuggestSource(SuggestionSource):
 
 class BingSuggestSource(SuggestionSource):
     name = "bing"
-    _URL = "https://api.bing.com/qsml.aspx"
+    # qsml.aspx is dead (404); osjson returns the [query, [suggestions]] JSON shape.
+    _URL = "https://www.bing.com/osjson.aspx"
 
     async def fetch(self, seed, *, hl, gl, client):
-        market = f"{hl.lower()}-{gl.upper()}"   # e.g. "en-US"
         resp = await client.get(
             self._URL,
-            params={"query": seed, "Market": market},
+            params={"query": seed, "mkt": f"{hl.lower()}-{gl.upper()}"},
             timeout=_PER_CALL_TIMEOUT,
         )
         resp.raise_for_status()
-        return _parse_bing_xml(resp.text)
+        return _parse_suggest_array(resp.json())
 
 
 class BraveSuggestSource(SuggestionSource):
@@ -194,10 +177,9 @@ AMAZON = AmazonSuggestSource()
 SOURCES: dict[str, SuggestionSource] = {
     s.name: s for s in (GOOGLE, YOUTUBE, DUCKDUCKGO, BING, BRAVE, AMAZON)
 }
-# Safe default for any Search campaign: Google (native) + web-search coverage.
-# Brave is registered but intentionally NOT default — its coverage overlaps DuckDuckGo
-# (same web role, smaller index), so the pipeline opts it in per profile, not always.
-DEFAULT_SOURCES: list[SuggestionSource] = [GOOGLE, DUCKDUCKGO]
+# Base web-search default. Brave is opt-in per product type (overlaps DuckDuckGo).
+DEFAULT_SOURCES: list[SuggestionSource] = [GOOGLE, BING, DUCKDUCKGO]
+DEFAULT_SOURCE_NAMES: tuple[str, ...] = tuple(s.name for s in DEFAULT_SOURCES)
 
 
 async def fetch_suggestions(
@@ -225,31 +207,39 @@ async def fetch_suggestions(
     client = client or httpx.AsyncClient()
     sem = asyncio.Semaphore(concurrency)
 
-    async def _one(src: SuggestionSource, seed: str) -> list[str]:
+    async def _one(src: SuggestionSource, seed: str) -> tuple[str, list[str]]:
         async with sem:
             try:
-                return (await src.fetch(seed, hl=hl, gl=gl, client=client))[:max_per_seed]
+                hits = (await src.fetch(seed, hl=hl, gl=gl, client=client))[:max_per_seed]
+                return src.name, hits
             except Exception as e:  # fail-soft: one source/seed never breaks the run
                 logger.info(
                     "autosuggest: source=%s seed=%r skipped: %s",
                     src.name, seed, str(e)[:_LOG_ERROR_MAXLEN],
                 )
-                return []
+                return src.name, []
 
     try:
-        groups = await asyncio.gather(
+        results = await asyncio.gather(
             *(_one(src, seed) for src in sources for seed in seeds)
         )
     finally:
         if owns_client:
             await client.aclose()
 
+    per_source: dict[str, int] = {}
     seen: set[str] = set()
     merged: list[str] = []
-    for group in groups:
+    for name, group in results:
+        per_source[name] = per_source.get(name, 0) + len(group)
         for kw in group:
             norm = kw.strip().lower()
             if norm and norm not in seen:
                 seen.add(norm)
                 merged.append(kw.strip())
+    logger.info(
+        "autosuggest: %d seeds x %d sources -> per-source raw %s -> %d unique",
+        len(seeds), len(sources),
+        " ".join(f"{n}={c}" for n, c in per_source.items()) or "(none)", len(merged),
+    )
     return merged

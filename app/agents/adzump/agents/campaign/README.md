@@ -1,33 +1,168 @@
-# Campaign sub-agent — RESERVED (not implemented)
+# Campaign Agent
 
-This directory is a **placeholder** for a future Campaign sub-agent. It contains no working code today.
+Platform-agnostic **campaign-creation orchestrator**. The main adzump agent spawns it
+(via the `create_campaign` tool) once the user confirms the campaign summary. It owns the
+campaign **build** sequence — research, then (as tools land) create, configure, and launch
+the campaign on Google/Meta.
 
-## What it WILL do
+It is a thin orchestration layer *by design* — the domain reasoning lives in the tools and
+sub-agents it calls — but a **necessary** one: it's where the multi-step, multi-platform
+build is sequenced and kept isolated from the main conversation agent (see [§2](#2-why-a-dedicated-agent-not-a-function-or-main-agent-tools)).
 
-Take a finalized `CampaignContext` from the main adzump agent and create an ad campaign on Google Ads or Meta:
+Today: **Google Search → keyword research** (brand + generic). Meta, Performance Max, and
+the create/launch steps slot in as more tools without changing this shell.
 
-- Create campaign + ad groups + ads via the respective platform API
-- Upload creative images / videos (the assets already picked by the ProductAgent)
-- Set budget, targeting (locations, demographics), bidding strategy
-- Return the campaign ID + dashboard URL for the user to verify
+---
 
-## Sibling reference — the pattern to mirror
+## 1. Where it sits
 
-`agents/product/` is the implemented sub-agent. Mirror its shape:
+```mermaid
+sequenceDiagram
+    actor User
+    participant Main as Main Agent (adzump)
+    participant CC as create_campaign (tool)
+    participant CA as CampaignAgent
+    participant KR as keyword_research (tool)
+    participant KA as KeywordResearchAgent
+    participant Panel as Review Panel (craft)
 
-- `agent.py` — `CampaignAgent(BaseAgent)` with its own session, tool registry, system prompt
-- `context.py` — system prompt builder (persona + non-negotiable rules)
-- `models.py` — Pydantic output models (e.g. `CampaignCreationOutput`)
-- `prompts/` — domain prompts (one per platform if rules diverge)
-- `tools/google/` and `tools/meta/` — platform-specific tools (`create_campaign`, `create_ad_group`, etc.)
+    User->>Main: confirms summary → "Yes, proceed"
+    Main->>CC: create_campaign()
+    CC->>CA: create(campaign_spec, product_data, craft_id = campaign_<sid>)
+    CA->>KR: keyword_research(keyword_type="both")
+    KR->>KA: brand + generic (parallel) — see keyword/README.md
+    KA-->>KR: positives + negatives
+    KR->>Panel: emit_campaign_craft(craft_id)
+    KR-->>CA: result bundle
+    CA-->>CC: keyword_research result (persisted on the session)
+    CC-->>Main: "shown in panel — ask user to review"
+    User->>Panel: add / edit / delete keywords → keyword_update
+    User->>Main: confirm → launch (future tool)
+```
 
-## Why the empty subdirs already exist
+The CampaignAgent doesn't do keyword reasoning itself — that lives in the sub-agents (the
+`KeywordResearchAgent`, documented in [`../keyword/README.md`](../keyword/README.md)). Its
+job is to **own and sequence the platform build**; the next section is why that warrants a
+dedicated agent rather than a few tools bolted onto the main agent.
 
-`tools/google/__init__.py` and `tools/meta/__init__.py` exist so:
-1. The eventual import path `app.agents.adzump.agents.campaign.tools.google` is reserved
-2. Code searches / IDE navigation already know about the namespace
-3. A flat `agents/` listing communicates that Campaign is on the roadmap (vs the surprise of someone adding `campaign/` later and breaking imports)
+---
 
-## When to delete this stub
+## 2. Why a dedicated agent (not a function or main-agent tools)
 
-When `agents/campaign/agent.py` is committed with a real `CampaignAgent` class, replace this README with real implementation docs and remove the "RESERVED" markers from `__init__.py`.
+Campaign creation is a **multi-step, multi-platform build** — research → create campaign →
+ad groups → ads → budget / targeting → launch — where steps depend on prior results, any
+step can partially fail, and the tool set differs per platform and channel. That shape
+needs an orchestration layer with its own loop and session, for concrete reasons:
+
+- **Context isolation.** It runs in its **own sub-session** with only the build tools +
+  campaign data. The main conversation agent (17 tools, full chat history) never carries
+  platform build tools or their large outputs — its context stays lean and its prompt stays
+  focused on talking to the user.
+- **Platform dispatch seam.** This is the single place that selects a platform's tool set
+  (Google today, Meta next) and branches by channel — Search now; Performance Max has **no
+  keywords** (asset groups instead). The main agent stays platform-agnostic.
+- **A real loop, not a straight-line call.** The build is a dependency chain — an ad group
+  needs the campaign id, ads need the ad group, launch needs all of it — with partial-failure
+  handling. An agent loop can sequence, react to a failed step, and stop; a single function
+  can't do that cleanly.
+- **Clean lifecycle + streaming.** It owns its agent-card span, forwards sub-agent lifecycle
+  to the user, and returns one result for the caller to persist for review and launch.
+- **Extensibility contract.** A new capability = **one tool + one craft section**; the
+  orchestrator, the main agent, and the streaming/craft plumbing don't change.
+
+**Today it runs one tool (`keyword_research`), so the loop is short — but that's the first
+of the build tools, not the whole job.** The layer exists precisely so the create/launch
+tools land as drop-ins instead of forcing a refactor of the main agent later.
+
+---
+
+## 3. The agent (`agent.py`)
+
+`CampaignAgent(BaseAgent)` — singleton, spawned per campaign by `create_campaign`.
+
+| Property | Value | Why |
+|---|---|---|
+| `tools` | `GOOGLE_CAMPAIGN_TOOLS` (= `[keyword_research]`) | one platform's tools at a time |
+| `model_tier` | `balanced` | tool-selection orchestration |
+| `MAX_TURNS` | 5 | run the build tool(s) and stop — small loop |
+| `MAX_TOKENS` | 2000 | it orchestrates; it shouldn't write prose |
+| provider | `openai` | — |
+
+`create(campaign_spec, product_data, craft_id, parent_event_stream, auth)` seeds a fresh
+sub-session with the collected campaign data, runs the loop, and **returns the
+`keyword_research` result** for `create_campaign` to persist on the main session (for review
++ launch). Streaming goes through `_CampaignStream` (a `ChildAgentStream`) which forwards
+panel + sub-agent lifecycle to the parent and swallows the orchestrator's own prose.
+
+`build_dynamic_context` adds one line — `Platform: <x> · Channel: SEARCH` — so the model
+knows what it's building; the static persona lives in `context.py`.
+
+---
+
+## 4. Tools
+
+### `tools/google/keyword_research.py` — the orchestrator's first tool (implemented)
+What the agent calls today. It:
+1. Gates to Google **Search** (PMax/others are skipped honestly).
+2. Derives the **offering taxonomy** from `product_data` (cached; tokens tracked).
+3. Resolves **geo** + **location/service areas**.
+4. Runs **brand + generic in parallel** through the `KeywordResearchAgent` (one failing
+   or timing out still returns the other).
+5. **Idempotent** — same inputs re-show the saved set instead of re-running.
+6. Emits the campaign craft via `emit_campaign_craft`.
+
+Keyword internals (seed → expand → score → select → negatives, the prompts, the gates)
+are documented in [`../keyword/README.md`](../keyword/README.md) — not duplicated here.
+
+### `tools/google/keyword_update.py` — review-panel edits (implemented)
+Not an LLM tool. The keyword review panel posts structured widget actions
+(`add` / `delete` / `edit`) as JSON; `parse_keyword_widget_message()` detects them and the
+router **bypasses the LLM**, calling `_update_keywords()` to mutate
+`session_ctx["keyword_research"]` and re-emit **only** the `keyword_review` block (keyed
+upsert — no panel flash).
+
+### `tools/meta/` — reserved
+Placeholder namespace for Meta campaign tools (mirrors `tools/google/`).
+
+### Coming next (the substantive platform work)
+The create/launch tools — `create_campaign`/`create_ad_group`/`create_ads`,
+budget/targeting, and the **launch mutation** on the Google/Meta API — are where the agent's
+real weight lands. They don't exist yet; the shell is built so each is one tool + one craft
+section.
+
+---
+
+## 5. Supporting files
+
+| File | Role |
+|---|---|
+| `agent.py` | `CampaignAgent` shell + `create()` entry |
+| `context.py` | static system prompt (`build_campaign_context`) — small, tool-driven |
+| `craft.py` | campaign side-panel builder; **platform dispatch** (`_google_campaign_blocks` / `_meta_campaign_blocks`). `emit_campaign_craft` (full) + `emit_section_update` (append, no flash) |
+| `api.py` | HTTP endpoint `keyword/volume` — scores a keyword the user adds in the panel (Planner historical metrics, fail-soft → volume 0) |
+| `tools/google/` | implemented Google tools (above) |
+| `tools/meta/` | reserved |
+
+---
+
+## 6. Adding a platform or campaign type
+
+The shell is built to extend in one place each:
+
+1. **New tool** under `tools/<platform>/` (e.g. `create_ad_group`, `launch_campaign`,
+   Meta equivalents); register it in the agent's tool list.
+2. **New craft section** — add a section builder + one dispatch branch in `craft.py`
+   (`_<platform>_campaign_blocks`). Nowhere else.
+3. The agent shell, `create_campaign`, and the streaming/craft plumbing stay unchanged.
+
+**Still to come:** Meta tools, Performance Max (no keywords — asset groups instead), and
+the actual create/launch mutations (today the flow researches + reviews; launch is the
+next tool).
+
+---
+
+## 7. Craft panel note
+
+The campaign craft (`campaign_<session>`) and the product/setup craft (`adzump_<session>`)
+are separate panels. A focus-stealing issue between them — and its fix — is documented in
+[`../keyword/README.md` §10](../keyword/README.md#10-appendix--the-craft-panel-craft-id-issue).

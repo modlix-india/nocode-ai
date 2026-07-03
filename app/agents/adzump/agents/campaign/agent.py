@@ -17,6 +17,7 @@ from app.core.agent import BaseAgent
 from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream
 
+from app.agents.adzump.agents._child_stream import ChildAgentStream
 from app.agents.adzump.agents.campaign.context import build_campaign_context
 from app.agents.adzump.agents.campaign.tools.google.keyword_research import GOOGLE_CAMPAIGN_TOOLS
 
@@ -26,71 +27,13 @@ PROVIDER = "openai"
 MODEL_TIER = "balanced"
 MAX_TURNS = 5  # call the platform tool(s) and stop — small loop
 MAX_TOKENS = 2000
-_LOG_TRUNCATE = 200
 
 
-class _CampaignStream(AgentEventStream):
-    """Forwards the panel + sub-agent lifecycle events to the parent stream, and
-    swallows the orchestrator's own prose + the terminating done/feedback (the parent
-    — the main agent — owns those for the SSE stream)."""
+class _CampaignStream(ChildAgentStream):
+    """Forwards panel + sub-agent lifecycle (including its own tool calls) to the
+    parent; the base swallows the orchestrator's prose and the parent-owned terminators."""
 
-    def __init__(self, parent: AgentEventStream) -> None:
-        self._parent = parent  # deliberately no super().__init__()
-
-    @property
-    def is_cancelled(self) -> bool:
-        return getattr(self._parent, "is_cancelled", False)
-
-    def cancel(self) -> None:
-        self._parent.cancel()
-
-    async def emit_data(self, *a, **kw):
-        await self._parent.emit_data(*a, **kw)
-
-    async def emit_craft(self, *a, **kw):
-        await self._parent.emit_craft(*a, **kw)
-
-    async def emit_craft_text(self, *a, **kw):
-        await self._parent.emit_craft_text(*a, **kw)
-
-    async def emit_tool_start(self, *a, **kw):
-        await self._parent.emit_tool_start(*a, **kw)
-
-    async def emit_tool_update(self, *a, **kw):
-        await self._parent.emit_tool_update(*a, **kw)
-
-    async def emit_tool_result(self, *a, **kw):
-        await self._parent.emit_tool_result(*a, **kw)
-
-    async def emit_agent_started(self, *a, **kw):
-        await self._parent.emit_agent_started(*a, **kw)
-
-    async def emit_agent_finished(self, *a, **kw):
-        await self._parent.emit_agent_finished(*a, **kw)
-
-    async def emit_agent_usage(self, *a, **kw):
-        await self._parent.emit_agent_usage(*a, **kw)
-
-    async def emit_text(self, text: str) -> None:
-        return
-
-    async def emit_thinking(self, reasoning: str) -> None:
-        return
-
-    async def emit_error(self, message: str) -> None:
-        logger.debug("campaign substream error: %s", message[:_LOG_TRUNCATE])
-
-    async def emit_done(self, *a, **kw) -> None:
-        return
-
-    async def emit_feedback_request(self, *a, **kw) -> None:
-        return
-
-    async def emit_suggestions(self, *a, **kw) -> None:
-        return
-
-    async def emit_keepalive(self) -> None:
-        return
+    label = "campaign"
 
 
 class CampaignAgent(BaseAgent):
@@ -101,7 +44,7 @@ class CampaignAgent(BaseAgent):
 
     def __init__(self) -> None:
         context = build_campaign_context()
-        context._cached_static_text = context._static_prefix  # no async docs to load
+        context.use_static_prefix_only()  # no async docs to load
         super().__init__(
             name="campaign",
             tools=GOOGLE_CAMPAIGN_TOOLS,
@@ -125,6 +68,7 @@ class CampaignAgent(BaseAgent):
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         ctx = super().build_tool_context(session)
         ctx["session_context"] = session.context  # tools read campaign_spec / product_data here
+        ctx["_session"] = session  # so a tool's own LLM call can record token usage
         if session.auth:
             ctx["auth"] = session.auth
         return ctx

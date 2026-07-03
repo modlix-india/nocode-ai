@@ -1,7 +1,7 @@
 """Tools the KeywordResearchAgent calls during its loop.
 
-Five tools — thin wrappers over real I/O or a deterministic validation gate; all
-judgment stays in the agent's reasoning:
+Five thin wrappers over real I/O or a deterministic validation gate; all judgment
+stays in the agent's reasoning:
 
   expand_keywords          autosuggest -> real searched phrasings (broaden the net)
   keyword_metrics          Keyword Planner -> volume / competition / CPC (relevance gate)
@@ -11,9 +11,8 @@ judgment stays in the agent's reasoning:
 
 Per-run state lives in ``session.context`` under ``kw_*`` keys (plain dicts, so it
 survives JSON persistence). The submit tools re-apply safety / dedup / overlap checks
-deterministically: the LLM proposes, this layer disposes, so a bad model turn can
-never produce an unsafe or self-conflicting keyword set. Review-panel emission is
-handled by the orchestrator (keyword_research.py) after both types complete.
+deterministically — the LLM proposes, this layer disposes. Review-panel emission is
+handled by the orchestrator (keyword_research.py).
 """
 
 from __future__ import annotations
@@ -69,9 +68,8 @@ def _planner_args(state: dict, context: dict) -> dict:
 def _candidates_page(state: dict, lead: str) -> ToolResult:
     """Return the next page of scored candidates and advance the cursor.
 
-    The list is the MODEL's working context only (the keyword agent swallows
-    tool_result events, so it never reaches the chat UI); the raised result cap lets
-    a full page through so the agent can judge relevance across all of them.
+    Model-only working context (the agent swallows tool_result events — never hits the
+    chat UI); the raised char cap lets a full page through for relevance judgement.
     """
     ideas = state.get("kw_candidates", [])
     offset = int(state.get("kw_shown_offset", 0))
@@ -114,7 +112,7 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
 
     state = _state(context)
     # Source selection is per business (BusinessProfile.source_names); default if unset.
-    source_names = state.get("kw_sources") or constants.DEFAULT_SOURCE_NAMES
+    source_names = state.get("kw_sources") or autosuggest.DEFAULT_SOURCE_NAMES
     sources = [autosuggest.SOURCES[n] for n in source_names if n in autosuggest.SOURCES]
     try:
         # Fan out autosuggest on the top seeds only — bounds the request count.
@@ -128,11 +126,17 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
         logger.warning("expand_keywords failed: %s", str(exc)[: constants.LOG_TRUNCATE])
         suggestions = []
 
-    # All seeds + suggestions form the candidate pool; dedup and bound before the Planner.
-    pool = list(dict.fromkeys(seeds + suggestions))[
-        : constants.MAX_EXPANSION_CANDIDATES
-    ]
+    # Seeds + suggestions form the candidate pool. The top slice is expanded by the Planner
+    # (generateKeywordIdeas); the overflow is real autosuggest queries we'd otherwise discard —
+    # keyword_metrics scores it cheaply via historical metrics instead of throwing it away.
+    unique = list(dict.fromkeys(seeds + suggestions))
+    pool = unique[: constants.MAX_EXPANSION_CANDIDATES]
     state["kw_pool"] = pool
+    state["kw_overflow"] = unique[constants.MAX_EXPANSION_CANDIDATES :]
+    logger.info(
+        "kw_expand type=%s seeds=%d autosuggest=%d pool=%d overflow=%d",
+        state.get("kw_type"), len(seeds), len(suggestions), len(pool), len(state["kw_overflow"]),
+    )
     return ToolResult(
         success=True,
         summary=f"Expanded to {len(pool)} candidate phrases (seeds + real autosuggest queries):\n"
@@ -143,12 +147,26 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
 # keyword_metrics
 
 
+def _collapse_repeats(keyword: str) -> str | None:
+    """Order-preserving de-duplication of repeated tokens; None if nothing repeats.
+
+    Repairs duplicate-token phrases the Planner sometimes returns ("a glasses a" -> "a glasses").
+    The collapsed form is only a CANDIDATE — it's re-scored via historical metrics and kept
+    only if real, and the original is never dropped, so a wrong collapse can never corrupt data.
+    """
+    toks = keyword.split()
+    out = list(dict.fromkeys(toks))
+    return " ".join(out) if len(out) != len(toks) else None
+
+
 async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
     state = _state(context)
-    keywords = [
+    extra = [
         k for k in (params.get("keywords") or []) if isinstance(k, str) and k.strip()
     ]
-    keywords = keywords or state.get("kw_pool") or []
+    # Score the full pool; the model's list augments it, never replaces it (it can't
+    # reliably re-echo 100+ candidates, so a replace would drop most of the expansion).
+    keywords = list(dict.fromkeys([*(state.get("kw_pool") or []), *extra]))
     if not keywords:
         return ToolResult(
             success=False, error="No keywords to score — expand or provide some first."
@@ -165,6 +183,12 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             url=state.get("kw_business_url") or None,
             **_planner_args(state, context),
         )
+    except keyword_planner.PlannerUnavailable:
+        # Breaker open — be honest, don't imply the seeds have no demand.
+        return ToolResult(
+            success=False,
+            error="Keyword research service is temporarily unavailable — stop and ask the user to retry shortly.",
+        )
     except Exception as exc:
         logger.warning("keyword_metrics failed: %s", str(exc)[: constants.LOG_TRUNCATE])
         return ToolResult(
@@ -172,21 +196,51 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             error=f"Keyword Planner request failed: {str(exc)[: constants.LOG_TRUNCATE]}",
         )
 
-    # Demand gate: GENERIC drops 0-volume terms (they can't get traffic, so they'd
-    # only bloat the list). BRAND keeps everything — brand protection: a new brand can
-    # be 0-volume but we must still own it. The Planner expands well beyond the input
-    # pool, so store a generous with-demand set (the agent pages through it).
+    # Recover clean candidates the Planner's expansion misses: the discarded overflow (real
+    # autosuggest queries beyond the cap) + de-mangled repairs of duplicate-token phrases it
+    # returned. Both are scored EXACTLY via historical metrics (no re-expansion → no new
+    # mangling) and kept only if real; originals are never dropped.
+    idea_keys = {i["keyword"] for i in ideas}
+    repairs = [c for i in ideas if (c := _collapse_repeats(i["keyword"]))]
+    recover = [
+        k for k in dict.fromkeys([*(state.get("kw_overflow") or []), *repairs])
+        if k not in idea_keys
+    ]
+    recovered: list[dict] = []
+    if recover:
+        try:
+            recovered = await keyword_planner.fetch_keyword_historical_metrics(
+                recover, **_planner_args(state, context)
+            )
+        except Exception as exc:
+            logger.warning("keyword_metrics recover failed: %s", str(exc)[: constants.LOG_TRUNCATE])
+        recovered = [r for r in recovered if r.get("volume", 0) > 0]
+
+    # Demand gate: generic drops 0-volume terms (no traffic, just bloat); brand keeps
+    # all — a new brand can be 0-volume but we must still own it (brand protection).
     if state.get("kw_type") == "generic":
         ideas = [i for i in ideas if i.get("volume", 0) > 0]
-    ideas = ideas[: constants.MAX_STORED_CANDIDATES]
-    if not ideas:
+    scored = [*ideas, *recovered]
+    if not scored:
         return ToolResult(
             success=True,
             summary="No keyword ideas with Google demand for these seeds — try broader or different seeds.",
         )
-    state["kw_candidates"] = ideas
+    # Merge (dedup, keep higher volume) instead of replacing — so picks from an earlier
+    # keyword_metrics batch stay selectable if the agent scores seeds across calls.
+    pool = {i["keyword"]: i for i in state.get("kw_candidates", [])}
+    for idea in scored:
+        kw = idea["keyword"]
+        if kw not in pool or idea["volume"] > pool[kw]["volume"]:
+            pool[kw] = idea
+    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[: constants.MAX_STORED_CANDIDATES]
+    state["kw_candidates"] = merged
     state["kw_shown_offset"] = 0
-    return _candidates_page(state, lead=f"Google demand for {len(ideas)} keywords")
+    logger.info(
+        "kw_metrics type=%s sent=%d planner_ideas=%d recovered=%d scored_pool=%d",
+        state.get("kw_type"), len(keywords), len(ideas), len(recovered), len(merged),
+    )
+    return _candidates_page(state, lead=f"Google demand for {len(merged)} keywords")
 
 
 async def _fetch_more_candidates(params: dict, context: dict) -> ToolResult:
@@ -364,12 +418,12 @@ EXPAND_KEYWORDS = ToolDefinition(
 
 KEYWORD_METRICS = ToolDefinition(
     name="keyword_metrics",
-    description="Get real Google search volume, competition and CPC for keywords via the Keyword Planner. This is the relevance gate — terms with no Google demand are not worth bidding on. Pass the expanded candidates.",
+    description="Get real Google search volume, competition and CPC via the Keyword Planner. This is the relevance gate — terms with no Google demand are not worth bidding on. The full expanded pool is always scored; just call it after expand_keywords.",
     parameters=[
         ToolParameter(
             name="keywords",
             type="array",
-            description="Keywords to score; defaults to the expanded pool if omitted.",
+            description="Optional EXTRA keywords to score on top of the expanded pool (the whole pool is always scored). Leave empty unless you have additional terms to add.",
             required=False,
             items={"type": "string"},
         )

@@ -1,10 +1,9 @@
 """Data models for keyword research.
 
-The submit tools construct OptimizedKeyword / NegativeKeyword from the LLM's raw
-output, so the validators here (keyword normalisation, length, match-type/intent
-coercion, cross-business -> phrase) run on every keyword that reaches the campaign;
-the tools add only the cross-item checks (candidate membership, overlap, safety)
-the models can't see.
+The submit tools build OptimizedKeyword / NegativeKeyword from the LLM's raw output,
+so the validators here (normalisation, length, match-type/intent coercion,
+cross-business -> phrase) run on every keyword that reaches the campaign. The tools add
+the cross-item checks (candidate membership, overlap, safety) the models can't see.
 """
 
 from __future__ import annotations
@@ -15,11 +14,12 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
+from app.agents.adzump.adapters.autosuggest import DEFAULT_SOURCE_NAMES
 from app.agents.adzump.agents.keyword.constants import (
     COMMERCIAL_VALUE_COMPETITION_LEVELS,
-    DEFAULT_SOURCE_NAMES,
     INFORMATIONAL_SOURCE_NAMES,
     KEYWORD_MAX_LENGTH,
+    KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
     PRODUCT_SOURCE_NAMES,
 )
@@ -86,7 +86,11 @@ class KeywordSuggestion(BaseModel):
     @field_validator("keyword")
     @classmethod
     def _norm_keyword(cls, v: str) -> str:
-        return normalize(v)
+        text = normalize(v)
+        # Google Ads rejects >10 words (char limit is the Field max_length); both apply.
+        if len(text.split()) > KEYWORD_MAX_WORDS:
+            raise ValueError(f"keyword exceeds {KEYWORD_MAX_WORDS} words")
+        return text
 
     @property
     def roi_score(self) -> float:
@@ -131,7 +135,11 @@ class NegativeKeyword(BaseModel):
     @field_validator("keyword")
     @classmethod
     def _norm_keyword(cls, v: str) -> str:
-        return normalize(v)
+        text = normalize(v)
+        # Google Ads rejects >10 words (char limit is the Field max_length); both apply.
+        if len(text.split()) > KEYWORD_MAX_WORDS:
+            raise ValueError(f"keyword exceeds {KEYWORD_MAX_WORDS} words")
+        return text
 
 
 class KeywordSet(BaseModel):
@@ -148,6 +156,29 @@ class KeywordResearchResult(BaseModel):
     brand: KeywordSet | None = None
     generic: KeywordSet | None = None
     meta: dict = Field(default_factory=dict)  # sources, geo, timings, low_data
+
+
+class OfferingTaxonomy(BaseModel):
+    """Offering boundary derived from product_data.
+    Anchors seed/positive keywords and defines negative siblings
+    without hardcoded category lists."""
+
+    primary_offering: str = ""  # crisp category a buyer shops for, e.g. "duplex villaments"
+    core_terms: list[str] = Field(default_factory=list)          # what they sell — anchor positives here
+    sibling_categories: list[str] = Field(default_factory=list)  # same industry, NOT sold — the negative boundary
+    is_location_specific: bool = True  # LLM-decided: serves specific areas (local/regional) vs national/online
+
+    @field_validator("core_terms", "sibling_categories")
+    @classmethod
+    def _norm_terms(cls, v: list[str]) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for term in v:
+            n = normalize(str(term))
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+        return out
 
 
 @dataclass(frozen=True)
