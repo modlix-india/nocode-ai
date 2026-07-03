@@ -290,7 +290,10 @@ class BaseAgent:
             session.accumulate_usage(usage)
             await session.record_token_usage(usage, request_id, resolved_model, provider.name.lower())
 
-            reasoning_content = None  # TODO: handle thinking mode streaming later
+            # Reasoning models (e.g. MiniMax M3) return interleaved reasoning in
+            # usage["reasoning_content"]; the API requires it echoed back on the next
+            # turn, so persist it on the assistant message and let the provider re-emit it.
+            reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
 
             session.append_assistant_message(content_blocks, reasoning_content)
 
