@@ -1,7 +1,9 @@
 """Keyword research for Google Search campaign creation.
 
-A deterministic pipeline (seed → expand → Planner gate → select → negatives) that
-turns the user-confirmed business into campaign-ready positive + negative keywords
-for brand and generic. Pure logic (constants, text, intent, profile) is
-unit-testable without network or LLM; I/O lives in the shared adapters.
+An agentic ReAct loop (KeywordResearchAgent) that turns the user-confirmed business into
+campaign-ready positive + negative keywords for brand and generic — the agent reasons over
+real Keyword Planner data as it drives the phases (seed → expand → score → select → negatives).
+The tool layer applies deterministic safety gates (candidate membership, length, overlap,
+cross-business → PHRASE); judgment stays in the agent. Pure helpers are unit-testable without
+network or LLM; I/O lives in the shared adapters.
 """
