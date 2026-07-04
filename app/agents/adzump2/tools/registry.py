@@ -16,11 +16,17 @@ P1 surface:
   same ``update_plan`` write path.
 - ``generate_creatives`` (A4) — copy + image briefs + taxonomy attributes +
   lead form for the studied product, gated by a pre-spend critic.
+- ``diagnose`` (A5) — reads the J10 snapshot + J12 ActionSet + J20 attribute
+  map and narrates + prioritizes the gated actions, proposes creative tests
+  grounded in real attribute gaps, and watchlists thin/immature grains;
+  ``propose_action`` runs a genuinely-new action through the J12 gates. Both
+  read/recommend only — A5 recomputes no numbers and applies nothing.
 """
 
 from app.agents.adzump.tools.research import web_fetch
 from app.agents.adzump.tools.suggestions import present_options
 from app.agents.adzump2.creative.tools import CREATIVE_TOOLS
+from app.agents.adzump2.diagnose.tools import DIAGNOSE_TOOLS
 from app.agents.adzump2.planner.loop import draft_plan
 from app.agents.adzump2.product.tools import PRODUCT_STUDY_TOOLS
 from app.agents.adzump2.tools.plan import PLAN_TOOLS
@@ -30,6 +36,7 @@ ALL_TOOLS = [
     *PRODUCT_STUDY_TOOLS,
     draft_plan,
     *CREATIVE_TOOLS,
+    *DIAGNOSE_TOOLS,
     present_options,
     web_fetch,
 ]
