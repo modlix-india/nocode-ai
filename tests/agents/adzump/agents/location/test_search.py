@@ -36,7 +36,7 @@ class SearchAutocompleteTests(unittest.TestCase):
                              side_effect=_geocode_none):
             return asyncio.run(search_autocomplete_locations(
                 q="Mumbai", platform=platform, client_code="C1",
-                auth_headers={}, session_context={},
+                auth_headers={},
             ))
 
     def test_token_outage_propagates(self):
@@ -66,10 +66,18 @@ class SearchAutocompleteTests(unittest.TestCase):
 
     def test_short_query_returns_empty_without_lookups(self):
         candidates = asyncio.run(search_autocomplete_locations(
-            q="M", platform="google", client_code="C1",
-            auth_headers={}, session_context={},
+            q="M", platform="google", client_code="C1", auth_headers={},
         ))
         self.assertEqual(candidates, [])
+
+    def test_platform_variants_use_canonical_matching(self):
+        """S5: platform checks go through is_google/is_meta - 'Google Ads'
+        and 'facebook' route correctly; unknown platforms return []."""
+        async def _suggest(*_a, **_kw):
+            return {"geoTargetConstantSuggestions": []}
+
+        self.assertEqual(self._search("Google Ads", google_suggest=_suggest), [])
+        self.assertEqual(self._search("linkedin"), [])  # unknown → no lookups
 
 
 if __name__ == "__main__":

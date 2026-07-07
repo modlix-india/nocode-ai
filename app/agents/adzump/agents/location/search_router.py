@@ -60,7 +60,6 @@ async def search_target_locations(
             platform=platform,
             client_code=auth.client_code,
             auth_headers=auth.to_headers(),
-            session_context=session.context,
             country_code=country_code,
         )
     except (ValueError, KeyError) as e:
