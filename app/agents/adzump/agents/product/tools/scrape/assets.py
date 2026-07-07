@@ -117,8 +117,12 @@ async def _persist_product_assets(
     )
     # Popped by _parse_result onto AnalysisOutput.asset_requirements. Stored as
     # a dict: save_context json.dumps the context before _parse_result runs.
+    # Direct indexing on purpose (build_tool_context always sets the key): a
+    # defensive `or {}` would swallow the write into a throwaway dict and the
+    # user would never be asked for the missing logo - KeyError is a bug we
+    # WANT to see.
     cc = getattr(assets, "creative_completeness", None)
-    (context.get("session_context") or {})["_asset_requirements"] = AssetRequirements(
+    context["session_context"]["_asset_requirements"] = AssetRequirements(
         logo_missing=not assets.logos,
         missing_categories=list(getattr(cc, "missing_categories", []) or []),
         verdict=getattr(cc, "verdict", ""),
