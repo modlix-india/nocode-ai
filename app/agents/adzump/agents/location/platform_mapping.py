@@ -8,6 +8,7 @@ called by both location-agent tools after discovery, and by the agent's
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any, get_args
@@ -46,26 +47,31 @@ class PlatformGeoMapper:
         platform_name: str,
         country_code: str = "IN",
     ) -> list[dict[str, Any]]:
-        """Map generic targets to platform-specific geolocation fields."""
+        """Map generic targets to platform-specific geolocation fields.
+
+        Areas are independent, so they map concurrently - a re-map of 25
+        discovered neighbourhoods is one round-trip deep, not 50-75."""
         if not target_areas:
             return []
+        return list(await asyncio.gather(*(
+            self._map_one(dict(area), platform_name, country_code)
+            for area in target_areas
+        )))
 
-        mapped_areas = []
+    async def _map_one(
+        self, area: dict[str, Any], platform_name: str, country_code: str
+    ) -> dict[str, Any]:
+        """Enrich one area (platform-agnostic), then resolve its platform handle."""
+        # Enrichment first: Meta's pincode-first query and the backfill's
+        # scale exemption both want the full 'where' before the lookup.
+        await self._geocode_if_missing(area)
+        await self._backfill_pincode(area)
 
-        for area in target_areas:
-            # Create a clean copy to avoid in-place side effects
-            area_copy = dict(area)
-
-            if is_google(platform_name):
-                mapped_area = await self._map_google(area_copy, country_code)
-            elif is_meta(platform_name):
-                mapped_area = await self._map_meta(area_copy, country_code)
-            else:
-                mapped_area = area_copy
-
-            mapped_areas.append(mapped_area)
-
-        return mapped_areas
+        if is_google(platform_name):
+            return await self._map_google(area, country_code)
+        if is_meta(platform_name):
+            return await self._map_meta(area, country_code)
+        return area
 
     async def _map_google(
         self, area: dict[str, Any], country_code: str = "IN"
@@ -100,9 +106,6 @@ class PlatformGeoMapper:
                     google_name = constant.get("canonicalName") or constant.get("name")
             except Exception as e:
                 logger.warning("Google Ads API geo target suggest lookup failed: %s", e)
-
-        await self._geocode_if_missing(area)
-        await self._backfill_pincode(area)
 
         # No constant resolved → keyless area falls back to lat/lng proximity
         # (no google handle attached). The model normalizes to the resource name.
@@ -162,9 +165,6 @@ class PlatformGeoMapper:
                     meta_name = matches[0].get("name")
             except Exception as e:
                 logger.warning("Meta Geolocation search lookup failed: %s", e)
-
-        await self._geocode_if_missing(area)
-        await self._backfill_pincode(area)
 
         # type is always set (required by the model): Meta adset creation buckets
         # each target by type, so it must be present even when the key lookup

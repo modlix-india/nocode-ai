@@ -180,6 +180,37 @@ class BackfillPincodeTests(unittest.TestCase):
                 self.assertEqual(len(calls), expected_calls)
 
 
+class MapTargetAreasTests(unittest.TestCase):
+    """PR #91 J2: enrichment (geocode + pincode backfill) is hoisted out of
+    the mappers and runs BEFORE the platform lookup; areas map concurrently."""
+
+    def test_enriches_then_maps(self):
+        captured = {}
+
+        async def _geocode(_query):
+            return {"lat": 12.97, "lng": 77.64}
+
+        async def _reverse(_lat, _lng):
+            return [{"types": ["postal_code"],
+                     "address_components": [{"types": ["postal_code"],
+                                             "long_name": "560038"}]}]
+
+        async def _get(*_a, **kw):
+            captured["params"] = kw.get("params") or {}
+            return {"data": [{"key": "z1", "name": "560038", "type": "zip"}]}
+
+        mapper = PlatformGeoMapper({})
+        with patch.object(mapping_mod.google_maps_client, "geocode", side_effect=_geocode), \
+                patch.object(mapping_mod.google_maps_client, "reverse_geocode", side_effect=_reverse), \
+                patch.object(mapping_mod.meta_client, "get", side_effect=_get):
+            out = asyncio.run(mapper.map_target_areas(
+                [{"name": "Indiranagar"}], "Meta", "IN"))
+
+        self.assertEqual(out[0]["pincode"], "560038")        # backfilled pre-lookup
+        self.assertEqual(captured["params"]["q"], "560038")  # lookup used the pincode
+        self.assertEqual(out[0]["meta"]["type"], "zip")
+
+
 class MapGoogleTests(unittest.TestCase):
     def _map(self, area, suggestions):
         async def _suggest(*_a, **_kw):
