@@ -99,7 +99,7 @@ class BaseSession:
         self._db_session_created: bool = False
 
     async def get_or_create(self, session_id: Optional[str], auth: AuthContext) -> str:
-        """Initialize the session — reuse existing or create new.
+        """Initialize the session - reuse existing or create new.
 
         Args:
             session_id: Existing session ID to resume, or None to create new.
@@ -178,7 +178,7 @@ class BaseSession:
     def get_usage_summary(self) -> dict[str, Any]:
         """Return a compact usage summary for the client.
 
-        Includes total_tokens, context_percent, and turns — the fields
+        Includes total_tokens, context_percent, and turns - the fields
         the UI needs to display usage indicators.
         """
         input_t = self.total_usage["input_tokens"]
@@ -227,7 +227,7 @@ class BaseSession:
                 {"tool": str, "input": dict, "success": bool, "summary": str}
             model: LLM model name used for this turn.
 
-        This is a best-effort operation — failures are logged but don't
+        This is a best-effort operation - failures are logged but don't
         stop the agent.
 
         Uses upsert so that if persist_turn_incremental() already created
@@ -291,7 +291,7 @@ class BaseSession:
             provider_name: LLM provider name (e.g. "anthropic", "deepseek").
                 Falls back to settings.LLM_PROVIDER if not provided.
 
-        Best-effort — failures are logged but don't stop the agent.
+        Best-effort - failures are logged but don't stop the agent.
         """
         if not self.auth:
             return
@@ -323,7 +323,7 @@ class BaseSession:
     async def complete(self) -> None:
         """Mark session as COMPLETED in the database.
 
-        Best-effort — failures are logged but don't stop the agent.
+        Best-effort - failures are logged but don't stop the agent.
         """
         if not self.auth:
             return
@@ -341,7 +341,7 @@ class BaseSession:
 
         Called at the start of the agent loop so the UI can detect
         an in-progress request after a page refresh.
-        Best-effort — failures are logged but don't stop the agent.
+        Best-effort - failures are logged but don't stop the agent.
         """
         if not self.auth:
             return
@@ -365,7 +365,7 @@ class BaseSession:
 
         Called after each LLM + tool cycle so partial progress survives
         disconnects. Uses INSERT ... ON DUPLICATE KEY UPDATE.
-        Best-effort — failures are logged but don't stop the agent.
+        Best-effort - failures are logged but don't stop the agent.
         """
         if not self.auth:
             return
@@ -393,7 +393,7 @@ class BaseSession:
     async def save_context(self) -> None:
         """Persist the current context dict to the database.
 
-        Best-effort — failures are logged but don't stop the agent.
+        Best-effort - failures are logged but don't stop the agent.
         """
         if not self.context:
             return
@@ -410,7 +410,7 @@ class BaseSession:
 
     # ── Internal helpers ────────────────────────────────────────
 
-    # Transient runtime keys that live for one turn only — never persisted.
+    # Transient runtime keys that live for one turn only - never persisted.
     # _started_tuids is a *set* (opened sub-agent card ids) JSON can't serialize;
     # left in, it sinks the whole context save and the conversation loses its
     # memory next message.
@@ -443,7 +443,7 @@ class BaseSession:
                 self.session_id = session.session_id
                 self._db_session_created = True
             else:
-                # DB not available — generate ID locally
+                # DB not available - generate ID locally
                 self.session_id = f"{self.auth.client_code}_{uuid.uuid4().hex[:8]}"
         except Exception as e:
             logger.warning(f"Failed to create DB session: {e}")
@@ -496,7 +496,10 @@ class BaseSession:
 
             for turn in history:
                 user_text = turn.user_instruction or ""
-                assistant_text = turn.assistant_summary or "(Performed actions via tools)"
+                assistant_text = (
+                    turn.assistant_summary
+                    or _tool_only_turn_note(turn.tool_calls_json)
+                )
 
                 if not user_text:
                     continue
@@ -522,3 +525,24 @@ class BaseSession:
             )
         except Exception as e:
             logger.warning(f"Failed to restore conversation history: {e}")
+
+
+def _tool_only_turn_note(tool_calls_json: str | None) -> str:
+    """Stand-in assistant text for a restored turn that produced no prose.
+
+    Factual and bracketed so the resumed model reads it as a transcript note,
+    not an example reply to imitate: the old generic placeholder
+    "(Performed actions via tools)" was once parroted verbatim to the user."""
+    tool_names: list[str] = []
+    if tool_calls_json:
+        try:
+            calls = json.loads(tool_calls_json)
+            seen = dict.fromkeys(
+                c.get("tool") for c in calls if isinstance(c, dict) and c.get("tool")
+            )
+            tool_names = list(seen)
+        except (ValueError, TypeError):
+            pass
+    if tool_names:
+        return f"[transcript note: this turn had no text reply; tools called: {', '.join(tool_names)}]"
+    return "[transcript note: this turn had no text reply]"
