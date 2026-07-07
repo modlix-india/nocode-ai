@@ -530,19 +530,24 @@ class BaseSession:
 def _tool_only_turn_note(tool_calls_json: str | None) -> str:
     """Stand-in assistant text for a restored turn that produced no prose.
 
-    Factual and bracketed so the resumed model reads it as a transcript note,
-    not an example reply to imitate: the old generic placeholder
-    "(Performed actions via tools)" was once parroted verbatim to the user."""
-    tool_names: list[str] = []
+    Built from the tools' own result summaries so it reads like a NORMAL
+    reply. Any meta-placeholder in this slot eventually gets parroted
+    verbatim into chat by the resumed model - both "(Performed actions via
+    tools)" and a bracketed "[transcript note: ...]" were, live - so the
+    only safe stand-in is text that is also acceptable user-facing prose.
+    Elicitation turns (widget was the reply) restore as the widget's own
+    summary ("Map + prompt shown for ..."), which is exactly the context
+    the resumed model needs."""
+    calls: list[dict] = []
     if tool_calls_json:
         try:
-            calls = json.loads(tool_calls_json)
-            seen = dict.fromkeys(
-                c.get("tool") for c in calls if isinstance(c, dict) and c.get("tool")
-            )
-            tool_names = list(seen)
+            calls = [c for c in json.loads(tool_calls_json) if isinstance(c, dict)]
         except (ValueError, TypeError):
             pass
+    summaries = [s for s in ((c.get("summary") or "").strip() for c in calls) if s]
+    if summaries:
+        return " ".join(summaries)[:500]
+    tool_names = list(dict.fromkeys(c.get("tool") for c in calls if c.get("tool")))
     if tool_names:
-        return f"[transcript note: this turn had no text reply; tools called: {', '.join(tool_names)}]"
-    return "[transcript note: this turn had no text reply]"
+        return f"Done ({', '.join(tool_names)})."
+    return "Done."
