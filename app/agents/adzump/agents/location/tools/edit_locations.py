@@ -39,11 +39,10 @@ async def _add_location(params: dict, context: dict) -> ToolResult:
              "pincode": location.pincode, "lat": location.lat, "lng": location.lng,
              "scale": location.scale}
     area.update({k: v for k, v in where.items() if v not in (None, "")})
-    # TODO: append to a copy and assign back only after finalize succeeds -
-    # a save/render failure currently leaves an unpersisted area in memory.
-    target_areas.append(area)
 
-    mapped = await finalize_targets(target_areas, context)
+    # The funnel owns the commit (it assigns product["target_areas"] itself),
+    # so pass the appended COPY - a save/render failure leaves memory untouched.
+    mapped = await finalize_targets([*target_areas, area], context)
     logger.info("location_agent.add_location: name=%r areas=%d", location.name, len(mapped))
     return ToolResult(
         success=True,
@@ -71,13 +70,12 @@ async def _delete_location(params: dict, context: dict) -> ToolResult:
                 "target area(s)."
             ),
         )
-    # Capture the name BEFORE the pop so the receipt names what was just
-    # deleted - not a surviving neighbour.
     removed_name = target_areas[index - 1].get("name") or "the targeting area"
-    # TODO: same copy-then-assign gap as add_location above.
-    target_areas.pop(index - 1)
+    # Same contract as add_location: the funnel commits, so pass the survivors
+    # as a new list and the deletion only sticks if finalize succeeds.
+    survivors = [a for i, a in enumerate(target_areas) if i != index - 1]
 
-    mapped = await finalize_targets(target_areas, context)
+    mapped = await finalize_targets(survivors, context)
     logger.info("location_agent.delete_location: index=%s areas=%d", index, len(mapped))
     return ToolResult(
         success=True,

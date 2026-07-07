@@ -32,10 +32,20 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+def _fake_finalize():
+    """Emulate the real funnel's commit: it assigns product["target_areas"]
+    itself (see _shared.finalize_targets) - the edit tools pass a NEW list
+    and never touch the live one."""
+    async def _fin(areas, context):
+        context["session_context"]["product_data"]["target_areas"] = areas
+        return areas
+    return mock.AsyncMock(side_effect=_fin)
+
+
 class AddLocationTests(unittest.TestCase):
     def test_add_appends_and_finalizes(self):
         ctx = _ctx()
-        fin = mock.AsyncMock(side_effect=lambda areas, c: areas)
+        fin = _fake_finalize()
         with mock.patch.object(edit_mod, "finalize_targets", fin):
             res = _run(add_location_tool.execute(
                 {"name": "Juhu", "lat": 19.1, "lng": 72.83,
@@ -79,11 +89,22 @@ class AddLocationTests(unittest.TestCase):
         res = _run(add_location_tool.execute({"name": "X"}, {}))
         self.assertFalse(res.success)
 
+    def test_finalize_failure_leaves_memory_untouched(self):
+        """PR #91 J1: the tool passes a NEW list; if the funnel blows up,
+        the live target_areas must not carry an unpersisted area."""
+        ctx = _ctx([{"name": "A"}])
+        fin = mock.AsyncMock(side_effect=RuntimeError("save exploded"))
+        with mock.patch.object(edit_mod, "finalize_targets", fin):
+            with self.assertRaises(RuntimeError):
+                _run(add_location_tool.execute({"name": "Juhu"}, ctx))
+        names = [a["name"] for a in ctx["session_context"]["product_data"]["target_areas"]]
+        self.assertEqual(names, ["A"])
+
 
 class DeleteLocationTests(unittest.TestCase):
     def test_delete_pops_one_based_index(self):
         ctx = _ctx([{"name": "A"}, {"name": "B"}, {"name": "C"}])
-        fin = mock.AsyncMock(side_effect=lambda areas, c: areas)
+        fin = _fake_finalize()
         with mock.patch.object(edit_mod, "finalize_targets", fin):
             res = _run(delete_location_tool.execute({"index": 2}, ctx))
         self.assertTrue(res.success)
