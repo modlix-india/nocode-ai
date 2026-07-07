@@ -1,7 +1,7 @@
-"""geocode_recommendations — LLM-callable tool for the BROAD targeting path.
+"""geocode_recommendations - LLM-callable tool for the BROAD targeting path.
 
-The location agent's LLM reasons about which markets to target (3–6 cities/
-states/countries) and passes them here as structured input — the tool schema
+The location agent's LLM reasons about which markets to target (3-6 cities/
+states/countries) and passes them here as structured input - the tool schema
 IS the structured output, so there is no JSON-in-prose parsing. The tool then
 geocodes each market, tags it with the picked scale (which drives Meta
 location_type resolution), and finalizes (map / persist / re-render).
@@ -32,24 +32,24 @@ async def _geocode_recommendations(params: dict, context: dict) -> ToolResult:
         )
 
     picks: list[dict[str, str]] = []
-    for loc in locations:
-        if not isinstance(loc, dict):
+    for market in locations:
+        if not isinstance(market, dict):
             continue
-        name = (loc.get("name") or "").strip()
-        loc_type = (loc.get("type") or "").strip().lower()
+        name = (market.get("name") or "").strip()
+        market_type = (market.get("type") or "").strip().lower()
         if not name:
             continue
-        if loc_type not in _VALID_TYPES:
-            loc_type = "city"  # tolerate a stray type rather than dropping a market
-        picks.append({"name": name, "type": loc_type})
+        if market_type not in _VALID_TYPES:
+            market_type = "city"  # tolerate a stray type rather than dropping a market
+        picks.append({"name": name, "type": market_type})
     if not picks:
         return ToolResult(
             success=False,
-            error="No usable locations — every entry needs a non-empty `name`.",
+            error="No usable locations - every entry needs a non-empty `name`.",
         )
 
     # Geocode the recommended locations in parallel to obtain lat/lng and place IDs.
-    tasks = [google_maps_client.geocode(p["name"]) for p in picks]
+    tasks = [google_maps_client.geocode(pick["name"]) for pick in picks]
     geocode_results = await asyncio.gather(*tasks, return_exceptions=True)
 
     resolved: list[dict[str, Any]] = []

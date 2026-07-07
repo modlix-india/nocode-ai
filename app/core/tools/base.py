@@ -1,8 +1,8 @@
 """Base classes for agent tools.
 
-ToolDefinition — declares a tool's name, description, parameters, and execute function.
-ToolResult — structured return value from tool execution.
-ToolParameter — declares a single parameter for a tool.
+ToolDefinition - declares a tool's name, description, parameters, and execute function.
+ToolResult - structured return value from tool execution.
+ToolParameter - declares a single parameter for a tool.
 
 Usage:
     async def my_execute(params: dict, context: dict) -> ToolResult:
@@ -77,13 +77,13 @@ class ToolResult:
     summary: str = ""
     error: str = ""
     # Who `summary` is for (MCP annotations.audience). The run loop routes by it:
-    #   "assistant" (default) — model only (tool_result content). Today's tools.
-    #   "user"  — posted to chat for the user; the MODEL gets only model_summary
+    #   "assistant" (default) - model only (tool_result content). Today's tools.
+    #   "user"  - posted to chat for the user; the MODEL gets only model_summary
     #             (or data), never the user prose → it can't paraphrase-double it.
-    #   "both"  — model sees summary AND it's posted to chat (e.g. competitors,
+    #   "both"  - model sees summary AND it's posted to chat (e.g. competitors,
     #             whose list the model reasons over later). LLM writes a lead-in.
     audience: Literal["assistant", "user", "both"] = "assistant"
-    # Terse model-facing note for audience="user" — what the model sees instead
+    # Terse model-facing note for audience="user" - what the model sees instead
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""
 
@@ -99,7 +99,7 @@ class ToolResult:
         if not self.success:
             return f"Error: {self.error}"
         # What the MODEL reads (the user separately sees `summary`). `model_summary`
-        # is a private line to the model — lets a tool say one thing to the user,
+        # is a private line to the model - lets a tool say one thing to the user,
         # another to the model (e.g. user "Updating…", model "rejected budget, re-ask").
         #   audience="user" → model_summary/data only, never the user's `summary`
         #   else            → model_summary if set, else `summary`
@@ -111,8 +111,35 @@ class ToolResult:
         if text is None:
             return "OK"
         if len(text) > self.MAX_RESULT_CHARS:
-            return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
+            return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated - use more specific reads to see details]"
         return text
+
+
+def tool_params_from_model(model_cls) -> list[ToolParameter]:
+    """Derive a tool's parameter list from a pydantic model's JSON schema.
+
+    Keeps the model the single source of truth - a field added there shows up
+    in the tool schema without a second hand-written copy. ``model_cls`` is any
+    pydantic BaseModel subclass (duck-typed to avoid a pydantic import here)."""
+    schema = model_cls.model_json_schema()
+    required = set(schema.get("required") or [])
+    tool_params = []
+    for field_name, field_schema in (schema.get("properties") or {}).items():
+        field_type = field_schema.get("type")
+        if field_type is None:  # Optional[X] renders as anyOf [X, null]
+            field_type = next(
+                (alt.get("type") for alt in field_schema.get("anyOf", [])
+                 if alt.get("type") not in (None, "null")),
+                "string",
+            )
+        tool_params.append(ToolParameter(
+            name=field_name,
+            type=field_type,
+            description=field_schema.get("description", ""),
+            required=field_name in required,
+            default=field_schema.get("default"),
+        ))
+    return tool_params
 
 
 # Type alias for tool execute functions.
@@ -152,7 +179,7 @@ class ToolDefinition:
 
     # Elicitation primitive. A "tool" is silent compute; an "elicitation" asks
     # the user for input. The LLM cannot see this field (it never reaches the
-    # Anthropic API — see to_anthropic_tool); it is a framework hint that drives
+    # Anthropic API - see to_anthropic_tool); it is a framework hint that drives
     # the run-loop's turn-boundary behavior.
     #   kind="elicitation" + elicit_mode="deferred"  → the loop breaks after the
     #       tool returns, yielding the turn to the user, who replies next turn.
@@ -191,7 +218,7 @@ class ToolDefinition:
             }
         }
 
-        If this tool has a `builtin_spec`, a marker dict is returned instead —
+        If this tool has a `builtin_spec`, a marker dict is returned instead -
         providers that understand it pass the spec through, others drop it.
         The ``provider`` key inside ``spec`` identifies the target provider.
         """

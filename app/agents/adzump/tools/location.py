@@ -56,10 +56,10 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
         if display:
             prompt = (
                 f"I've detected the location as **{display}**. Please confirm "
-                f"on the map below — drag the pin if it's off."
+                f"on the map below - drag the pin if it's off."
             )
         else:
-            prompt = "Please confirm the campaign location on the map below — drag the pin if it's off."
+            prompt = "Please confirm the campaign location on the map below - drag the pin if it's off."
 
     stream = context.get("event_stream")
     if stream is not None:
@@ -73,39 +73,37 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
         data={"location": detected, "shown": True},
         summary=(
             f"Map + prompt shown for '{display or 'unknown location'}'. The prompt "
-            "is already on screen — do NOT restate or paraphrase it. Wait for the "
+            "is already on screen - do NOT restate or paraphrase it. Wait for the "
             "user's reply."
         ),
     )
 
 
 async def _manage_targeting_locations(params: dict, context: dict) -> ToolResult:
-    """Thin dispatcher to the LocationAgent — no business logic here.
+    """Orchestrator-facing entry point for geo targeting.
 
-    Routes by ``params["action"]``:
-      * ``discover`` — LLM-driven: the LocationAgent's loop picks the path
-        (local radial scan vs broad market picking) and lands mapped targets.
-      * ``add`` — deterministic: append a target area and re-map.
-      * ``delete`` — deterministic: remove by 1-based index and re-map.
+    The orchestrator (Adzump) is a pure router - it does NOT decide which
+    action to take (discover / add / delete) or extract its parameters. It
+    just routes "this is a geo targeting request" here with the user's
+    verbatim message. ``LocationAgent.handle()`` runs the location agent's
+    own tool-use loop, which acts by picking ONE tool (discovery or edit).
 
-    Any other value returns a structured error without touching the agent,
-    so the orchestrator LLM gets a clean retry signal instead of an exception.
+    This keeps the orchestrator from growing a hallucination surface around
+    geo-targeting domain knowledge as the system scales.
     """
-    action = params.get("action")
+    user_message = (params.get("user_message") or "").strip()
+    if not user_message:
+        return ToolResult(
+            success=False,
+            error=(
+                "manage_targeting_locations requires a `user_message` - the "
+                "orchestrator should forward the user's verbatim text. "
+                "Empty messages are rejected here so the orchestrator gets "
+                "a clean retry signal."
+            ),
+        )
     location_agent = get_location_agent()
-    if action == "discover":
-        return await location_agent.discover(params, context)
-    if action == "add":
-        return await location_agent.add(params, context)
-    if action == "delete":
-        return await location_agent.delete(params, context)
-    return ToolResult(
-        success=False,
-        error=(
-            f"Invalid action: {action!r}. "
-            "Expected 'discover', 'add', or 'delete'."
-        ),
-    )
+    return await location_agent.handle(user_message, context)
 
 
 confirm_location = ToolDefinition(
@@ -126,79 +124,33 @@ confirm_location = ToolDefinition(
 manage_targeting_locations = ToolDefinition(
     name="manage_targeting_locations",
     description=(
-        "Discover, add, or delete campaign targeting areas for the active ad network "
-        "(Google Ads or Meta Ads). Use 'discover' on first call or after the location "
-        "changes; 'add' and 'delete' edit the existing list (delete takes a 1-based index)."
+        "Make any change to the campaign's geo targeting - initial setup, "
+        "adding an area, or removing one. Always pass the user's verbatim "
+        "message via `user_message`; do NOT try to classify it yourself. "
+        "The geo-targeting subsystem interprets the intent (discover / "
+        "add / delete), extracts parameters, and dispatches internally. "
+        "You only route here when the user wants a change to targeting."
     ),
     display_name="Geo Targeting",
     parameters=[
         ToolParameter(
-            name="action",
+            name="user_message",
             type="string",
-            description="The operation: 'discover', 'add', or 'delete'.",
+            description=(
+                "The user's verbatim message about geo targeting. Examples: "
+                "'set targeting for Bangalore', 'add Mumbai', 'delete the "
+                "second area', 'remove that one I just added'. The subsystem "
+                "interprets intent + extracts parameters - do NOT pre-classify."
+            ),
             required=True,
-            enum=["discover", "add", "delete"],
         ),
-        ToolParameter(
-            name="location_name",
-            type="string",
-            description="Target location, city, state, or country name. Used by 'discover'.",
-            required=False,
-        ),
-        ToolParameter(
-            name="index",
-            type="integer",
-            description="The 1-based index to delete. Required for 'delete' action.",
-            required=False,
-        ),
-        ToolParameter(
-            name="name",
-            type="string",
-            description="The location name. Required for 'add' action.",
-            required=False,
-        ),
-        ToolParameter(
-            name="city",
-            type="string",
-            description="The city name.",
-            required=False,
-        ),
-        ToolParameter(
-            name="state",
-            type="string",
-            description="The state name.",
-            required=False,
-        ),
-        ToolParameter(
-            name="pincode",
-            type="string",
-            description="The pincode/ZIP code.",
-            required=False,
-        ),
-        ToolParameter(
-            name="lat",
-            type="number",
-            description="Latitude coordinates.",
-            required=False,
-        ),
-        ToolParameter(
-            name="lng",
-            type="number",
-            description="Longitude coordinates.",
-            required=False,
-        ),
-        ToolParameter(
-            name="radius",
-            type="number",
-            description="Radial distance in km.",
-            required=False,
-        ),
-        # NOTE: platform-handle params (google_id / meta_key / meta_type /
-        # place_id) are deliberately NOT exposed to the LLM. They belong to the
-        # search-widget wire format, which calls the LocationAgent directly
-        # (agents/location/craft.py) and bypasses this schema. Exposing them here
-        # would let the model invent platform IDs with no traceability check —
-        # accounts are fetch-traceable, geo keys would not be.
+        # NOTE: platform-handle params (resourceName / key / type /
+        # place_id) and structured action params (action / index / lat / lng
+        # / etc.) are deliberately NOT exposed here. They belong to the
+        # LocationAgent's own loop (see agents/location/agent.py handle()),
+        # which extracts them from the user's natural-language message when
+        # picking its tool. Exposing them here would let the orchestrator LLM
+        # fabricate structured parameters with no traceability check.
     ],
     execute=_manage_targeting_locations,
 )

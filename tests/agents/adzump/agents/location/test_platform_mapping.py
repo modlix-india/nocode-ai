@@ -1,11 +1,11 @@
-"""PlatformGeoMapper — every mapped location carries a composed platform handle.
+"""PlatformGeoMapper - every mapped location carries a composed platform handle.
 
 Regression for the live finding (meta-location-type-missing): Meta adset creation
 buckets each target by type (zips/cities/regions/…), so the resolved handle must
 always carry a type. The mapper now returns a composed TargetArea: generic 'where'
 at the top level, the platform handle nested under `meta` / `google`.
 
-Below the model — meta_client.get / google_ads_client.suggest_geo_targets /
+Below the model - meta_client.get / google_ads_client.suggest_geo_targets /
 google_maps_client.geocode are mocked.
 """
 import asyncio
@@ -48,7 +48,7 @@ class MapMetaTypeTests(unittest.TestCase):
         self.assertEqual(out["meta"], {"type": "city", "key": "1234", "name": "Bandra"})
 
     def test_prefers_meta_canonical_type_over_assumed(self):
-        # We searched with location_types=["city"] but Meta classified it a region —
+        # We searched with location_types=["city"] but Meta classified it a region -
         # trust Meta's own type, not the field-derived loc_type.
         out = self._map(
             {"name": "Goa", "city": "Goa"},
@@ -73,7 +73,7 @@ class MapMetaTypeTests(unittest.TestCase):
 
     def test_no_duplicated_flat_type_in_output(self):
         out = self._map({"name": "400050", "pincode": "400050"}, _meta_get([]))
-        self.assertNotIn("meta_type", out)   # type lives only under meta.*
+        self.assertNotIn("type", out)       # type lives only under meta.*
         self.assertNotIn("scale", out)        # local area carried no scale
 
     def test_country_level_searches_as_country(self):
@@ -113,17 +113,71 @@ class MapMetaTypeTests(unittest.TestCase):
         self.assertEqual(out["meta"], {"type": "city", "key": "999", "name": "Bandra"})
 
     def test_flat_widget_key_preserved_and_nested(self):
-        # The search widget supplies a flat meta_key → consumed, no re-lookup,
+        # The search widget supplies a flat key → consumed, no re-lookup,
         # emitted in nested form.
         def _should_not_call(*_a, **_kw):
             raise AssertionError("meta_client.get must not be called when key exists")
 
         out = self._map(
-            {"name": "400050", "pincode": "400050", "meta_key": "555"},
+            {"name": "400050", "pincode": "400050", "key": "555"},
             _should_not_call,
         )
         self.assertEqual(out["meta"]["key"], "555")
         self.assertEqual(out["meta"]["type"], "zip")
+
+
+class BackfillPincodeTests(unittest.TestCase):
+    """Neighbourhood-scale areas get their postal code reverse-geocoded so the
+    craft map can draw a real Feature Layer polygon; broad areas must not."""
+
+    _POSTAL_RESULT = [{
+        "types": ["postal_code"],
+        "address_components": [
+            {"types": ["postal_code"], "long_name": "560038"},
+        ],
+    }]
+
+    def _backfill(self, area, reverse_results):
+        calls = []
+
+        async def _reverse(lat, lng):
+            calls.append((lat, lng))
+            if isinstance(reverse_results, Exception):
+                raise reverse_results
+            return reverse_results
+
+        mapper = PlatformGeoMapper({})
+        with patch.object(mapping_mod.google_maps_client, "reverse_geocode",
+                          side_effect=_reverse):
+            asyncio.run(mapper._backfill_pincode(area))
+        return area, calls
+
+    def test_backfill_variants(self):
+        variants = [
+            ("neighbourhood gets pincode",
+             {"name": "Indiranagar", "lat": 12.97, "lng": 77.64},
+             self._POSTAL_RESULT, "560038", 1),
+            ("broad scale skipped",
+             {"name": "Mumbai", "scale": "city", "lat": 19.07, "lng": 72.87},
+             self._POSTAL_RESULT, None, 0),
+            ("existing pincode kept",
+             {"name": "HSR", "pincode": "560102", "lat": 12.9, "lng": 77.6},
+             self._POSTAL_RESULT, "560102", 0),
+            ("no coordinates skipped",
+             {"name": "Juhu"},
+             self._POSTAL_RESULT, None, 0),
+            ("no postal candidate leaves area unchanged",
+             {"name": "Nowhere", "lat": 1.0, "lng": 1.0},
+             [{"types": ["locality"], "address_components": []}], None, 1),
+            ("reverse-geocode failure survives",
+             {"name": "Flaky", "lat": 2.0, "lng": 2.0},
+             RuntimeError("Maps down"), None, 1),
+        ]
+        for label, area, reverse_results, expected_pincode, expected_calls in variants:
+            with self.subTest(label):
+                out, calls = self._backfill(dict(area), reverse_results)
+                self.assertEqual(out.get("pincode"), expected_pincode)
+                self.assertEqual(len(calls), expected_calls)
 
 
 class MapGoogleTests(unittest.TestCase):

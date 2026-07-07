@@ -1,357 +1,341 @@
 # Geo-Targeting Subsystem
 
-> **Status: implemented 2026-07-03** — code and this doc describe the same system.
+> **Status: implemented 2026-07-03, single-agent re-cut 2026-07-07** - code and this doc describe the same system.
 
 ## Purpose
 
-Discovers, maps, and edits the geographic areas an ad campaign targets. For a real-estate project in Bandra it finds the nearby localities/pincodes; for a national brand it picks strategic cities/states; it then resolves every area to the **platform-native targeting handle** (Meta adgeolocation `{type, key, name}` or a Google Ads geo-target-constant `resourceName`) that adset creation needs.
-
-The orchestrator (AdzumpAgent) reaches the agent through the `manage_targeting_locations` tool. The widget (map-search click) bypasses the LLM tool entirely and calls the agent's `add`/`delete` methods directly.
-
----
-
-## How It Works
-
-The `LocationAgent` exposes three public methods: `discover()` (LLM-driven — the LLM picks the path, calls ONE of two tools, and writes a short summary), `add()` and `delete()` (deterministic — no LLM). All three end in the shared `finalize_targets()` (platform-map → persist → re-render). The orchestrator reaches them through the `manage_targeting_locations` tool; the widget reaches `add`/`delete` directly, bypassing the LLM.
-
-### National / International campaign (broad scale)
-
-```
-User asks orchestrator for targeting
-   │
-   ▼
-manage_targeting_locations(action="discover")        [tools/location.py]
-   │  LLM-facing tool; the orchestrator (AdzumpAgent) calls this
-   │
-   ▼
-LocationAgent.discover(...)                          [agents/location/agent.py]
-   │  BaseAgent loop; the LLM runs ONCE
-   │
-   │  ┌─ LLM reasoning ────────────────────────────────────────┐
-   │  │ "National D2C brand in India. Pick 3-6 markets         │
-   │  │  (Bengaluru, Mumbai, Delhi, Pune), then call          │
-   │  │  geocode_recommendations with them."                  │
-   │  └───────────────────────────────────────────────────────┘
-   │
-   │  ┌─ tool: geocode_recommendations ────────────────────────┐
-   │  │  1. Geocode the picked {name, type} via Google Maps    │
-   │  │  2. Call platform_mapping.map_target_areas()          │ ← utility
-   │  │  3. save_campaign()                                    │ ← utility
-   │  │  4. rerender_craft()                                 │ ← utility
-   │  │  Returns: list[TargetArea]                            │
-   │  └───────────────────────────────────────────────────────┘
-   │
-   │  ┌─ LLM summary turn ─────────────────────────────────────┐
-   │  │ "Targeted 4 cities across India: Bengaluru (tech),    │
-   │  │  Mumbai (finance), Delhi NCR (enterprise), Pune         │
-   │  │  (emerging). All mapped to Meta + Google handles."     │
-   │  └───────────────────────────────────────────────────────┘
-   │
-   ▼
-ToolResult(success=True, data={"target_areas": ..., "summary": "..."})
-```
-
-### Local / Real-estate campaign
-
-Same loop, different tool:
-
-```
-LocationAgent.discover(...)
-   │
-   │  LLM reasoning: "Real estate in Bandra. Call discover_neighborhoods."
-   │
-   │  ┌─ tool: discover_neighborhoods ─────────────────────────┐
-   │  │  1. Radial grid scan (~136 points, 8 km default)         │
-   │  │  2. Reverse-geocode, dedupe, keep ≤25                 │
-   │  │  3. Call platform_mapping.map_target_areas()          │ ← utility
-   │  │  4. save_campaign()                                    │ ← utility
-   │  │  5. rerender_craft()                                 │ ← utility
-   │  │  Returns: list[TargetArea]                            │
-   │  └───────────────────────────────────────────────────────┘
-   │
-   │  LLM summary turn: "Mapped 18 nearby neighborhoods..."
-   │
-   ▼
-ToolResult(success=True, data={"target_areas": ..., "summary": "..."})
-```
-
-### Edits (add/delete) — via the orchestrator's tool
-
-```
-Orchestrator (AdzumpAgent) decides to add Juhu
-   │
-   ▼
-manage_targeting_locations(action="add", name="Juhu", lat=..., lng=...)
-   │
-   ▼
-LocationAgent.add(...)                                [agents/location/agent.py]
-   │  deterministic, no LLM
-   │  1. Append area to product.target_areas
-   │  2. Call platform_mapping.map_target_areas()     ← utility
-   │  3. save_campaign() + rerender_craft()
-   │  4. Re-emit suggested_locations SSE
-   │
-   ▼
-ToolResult(success=True, data={"target_areas": ...})
-```
-
-Same shape for `delete`. The agent owns the modify logic, but it's deterministic — no `BaseAgent.run()` is invoked.
-
-### Edits (add/delete) — via the widget (no LLM tool, no agent loop)
-
-```
-Map-widget click on a search result
-   │
-   ▼
-"add targeting location {\"name\":\"Juhu\",\"lat\":19.1,...}"
-   │
-   ▼
-router → craft.handle_widget_message()                [agents/location/craft.py]
-   │  parses + dispatches directly
-   │  clears _pending_elicitation (housekeeping)
-   │
-   ▼
-LocationAgent.add(...)                                [agents/location/agent.py]
-   │  same method the tool calls — no LLM, no agent loop
-   │  just platform_mapping + save + re-render
-   │
-   ▼
-SSE: tool_start, tool_result, done
-```
-
-The widget bypasses both the LLM tool (`manage_targeting_locations`) and the agent loop (`BaseAgent.run()`), but the underlying method is the same. One source of truth for the modify flow.
-
----
+Discovers, maps, and edits the geographic areas an ad campaign targets. For a real-estate project in Bandra it finds the nearby localities/pincodes; for a national brand it picks strategic cities/states; it then resolves every area to the **platform-native targeting handle** (Meta `{type, key, name}` or Google Ads `geoTargetConstants/{id}`) that adset creation needs.
 
 ## Architecture
+
+The system follows a **router-specialist** discipline with exactly ONE agent. The orchestrator (Adzump) is a pure router - it does NOT decide which action to take (discover / add / delete) or extract parameters. It only routes "this is a geo-targeting request" to `LocationAgent.handle(user_message)` with the user's verbatim message. `handle()` runs the LocationAgent's own tool-use loop: the prompt carries the business profile + the current targeting list + the verbatim request, and the model acts by picking ONE of four tools. **Intent classification IS tool selection** - there is no separate interpreter LLM and no code-side dispatch.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Adzump orchestrator (LLM)                                      │
+│  "user wants targeting change" → route                          │
+│  call manage_targeting_locations(user_message=<verbatim>)       │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  LocationAgent.handle(user_message, context)                    │
+│  guards → geocode business pin → sub-session → self.run(...)    │
+│                                                                 │
+│  The loop's LLM picks ONE tool (provider = LOCATION_PROVIDER):  │
+│    ├─ discover_neighborhoods    (discovery, local scan)         │
+│    ├─ geocode_recommendations   (discovery, broad markets)      │
+│    ├─ add_location              (deterministic edit)            │
+│    └─ delete_location           (deterministic edit)            │
+│                                                                 │
+│  Every tool ends in finalize_targets (map → persist → render);  │
+│  handle() composes the ToolResult from the post-run state.      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why this matters:** the orchestrator never reasons over `action` enums, `index` integers, or `lat`/`lng` floats - and neither does any Python dispatch layer. The one LLM that owns geo-targeting sees the *full* state context and expresses its decision as a provider-validated tool call. A previous cut had a second, hidden "intent interpreter" agent in front of the same loop - two agents for one feature, double the prompts/sessions/plumbing for zero capability. One feature, one agent.
+
+### File layout
 
 ```
 app/agents/adzump/
 ├── agents/location/
 │   ├── agent.py                LocationAgent (BaseAgent)
-│   │                         + get_location_agent() singleton
-│   │                         + LocationAgent.discover / .add / .delete
+│   │                           + get_location_agent() singleton
+│   │                           + .handle()  (the ONLY orchestrator-facing entry)
+│   ├── targeting_run.py        step helpers for one run (validate, geocode,
+│   │                           sub-session, prompt, result)
+│   ├── subagent_event_stream.py  _LocationPassthroughEventStream
 │   ├── context.py              LOCATION_SYSTEM_PROMPT + build_location_context()
-│   ├── models.py               All geo types (TargetArea, MetaGeoLocation,
-│   │                           GoogleGeoLocation, …)
-│   ├── platform_mapping.py     PlatformGeoMapper — area → platform handle
-│   │                           (shared utility, called by both tools and by add/delete)
+│   ├── models.py               TargetArea, MetaGeoLocation, GoogleGeoLocation,
+│   │                           AddLocation/DeleteLocation (edit-tool params)
+│   ├── platform_mapping.py     PlatformGeoMapper - area → platform handle (utility)
 │   ├── tools/
-│   │   ├── __init__.py
-│   │   ├── discover_neighborhoods.py   ← LLM-callable tool (local path)
-│   │   └── geocode_recommendations.py  ← LLM-callable tool (broad path)
-│   ├── craft.py                handle_widget_message — router's no-LLM fast path
+│   │   ├── discover_neighborhoods.py   LLM tool (discovery, local path)
+│   │   ├── geocode_recommendations.py  LLM tool (discovery, broad path)
+│   │   └── edit_locations.py           LLM tools add_location + delete_location
 │   └── AGENT.md                this file
-├── services/geo/               ← clean-cut done: only search.py remains
-│   └── search.py               autocomplete adapter (used by the map search box UI)
+├── services/geo/
+│   ├── search.py               autocomplete (map search-box UI)
+│   └── router.py               HTTP router for /target-locations/search
 └── tools/
-    ├── location.py             LLM-facing tools: confirm_location,
-    │                           manage_targeting_locations  ← tool executor dispatches to LocationAgent
-    └── craft.py                Craft-panel renderer — NOT the same file as
-                                agents/location/craft.py (widget protocol)
+    ├── location.py             manage_targeting_locations + confirm_location
+    └── craft.py                Craft-panel renderer
 ```
 
-There are four files whose names collide between layers. Keep them straight:
+There is **no widget fast path** - every geo-targeting action (including map clicks) goes through `handle()` via the orchestrator's LLM. There is no `craft.py` under `agents/location/` (was the deleted widget protocol).
 
-| File | Scope | What it holds |
+---
+
+## Provider configuration
+
+ONE LLM runs on the geo-targeting path - the LocationAgent's own loop:
+
+| Constant | Default | Used by | Set in |
+|---|---|---|---|
+| `LOCATION_PROVIDER` | `"deepseek"` | the whole `LocationAgent` loop (every action) | `agent.py` |
+
+It passes through the same `LLMProvider` factory (`app.services.llm_provider.get_llm_provider(name)`), so the supported set is: `"anthropic"`, `"openai"`, `"deepseek"`. The loop is tool-use driven, so the provider must support tool-use.
+
+**To switch to Claude** (do this if the fast-tier model mispicks tools or picks weak markets):
+
+```python
+# app/agents/adzump/agents/location/agent.py
+LOCATION_PROVIDER = "anthropic"
+```
+
+Restart the service for the change to take effect (the singleton caches the provider at first instantiation).
+
+**Quirks:**
+- Edit params are provider-validated against tool schemas GENERATED from `models.py` (`tool_params_from_model` in `app/core/tools/base.py`), then re-parsed into the pydantic model at the execute boundary - no JSON-in-prose parsing, no hand-rolled envelope check.
+- A run that ends without any mutation reaching `finalize_targets` returns `success=False` (the `_geo_finalized` gate), with the model's own final text as the error.
+- API key for each provider must be set in env (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`); `LLM_PROVIDER` env var is unrelated to this constant - it controls the global default for agents that don't override.
+
+---
+
+## API endpoint
+
+The agent is reached via the orchestrator's chat endpoint:
+
+```
+POST /adzump/sessions/{session_id}/chat
+Headers:
+    Authorization: Bearer {jwt}
+    clientCode: {client_code}
+Body:
+    {
+        "message": "add Juhu to my targeting",   # any natural-language geo request
+        "attachments": []                          # optional images (ignored by location agent)
+    }
+Response:
+    SSE stream (text/event-stream)
+```
+
+The orchestrator's LLM routes the message to `manage_targeting_locations(user_message=<verbatim>)` when it judges a geo-targeting change is needed. The user does not need to know about the agent - they just type (or click the map) and the orchestrator handles routing.
+
+The **map search box** uses a separate endpoint (UI helper, not the agent):
+
+```
+GET /adzump/sessions/{session_id}/target-locations/search?q=Ban&platform=google
+```
+
+Returns place-suggestion candidates for the typeahead. Does not call the agent; does not appear in any conversation history.
+
+---
+
+## SSE events
+
+The agent emits the standard agent event types. EVERY action streams the same shape - AgentCard lifecycle around one sub-agent run (only the picked tool differs):
+
+```
+event: tool_start
+data: {"id": "tc_1", "tool": "manage_targeting_locations",
+       "input": {"user_message": "set up geo targeting for Bengaluru"}}
+
+event: agent_started
+data: {"agent_id": "location_agent", "label": "Location Agent"}
+
+event: tool_start                       # the loop picks a tool (provider = LOCATION_PROVIDER)
+data: {"id": "tc_2", "tool": "geocode_recommendations",
+       "input": {"locations": [{"name": "Bengaluru", "type": "city"}, ...]}}
+
+event: tool_result
+data: {"id": "tc_2", "tool": "geocode_recommendations",
+       "success": true, "summary": "Resolved 4 markets to platform handles"}
+
+event: agent_finished
+data: {"agent_id": "location_agent", "status": "success"}
+
+event: tool_result                      # outer tool's ToolResult (audience="both")
+data: {"id": "tc_1", "tool": "manage_targeting_locations",
+       "success": true,
+       "summary": "Targeted 4 cities across India: Bengaluru, Mumbai, ..."}
+
+event: text                             # auto-emitted from audience="both"
+data: {"text": "Targeted 4 cities across India: Bengaluru, Mumbai, ..."}
+
+event: done
+data: {"session_id": "abc-123", "usage": {...}}
+```
+
+For an `add`, `tc_2` is `add_location` with `{"name": "Juhu"}` and the closing text reads like "Added Juhu to targeting - 5 areas total." (`delete` likewise with `delete_location`/`{"index": 2}`). The sub-loop's own `text` events are dropped by the passthrough stream - the model's final summary reaches chat once, via the outer ToolResult's `audience="both"`.
+
+---
+
+## Error handling
+
+The agent returns `ToolResult(success=False, error=<message>)` on failure. The orchestrator surfaces these to the user via the tool card and to its own LLM via the tool_result block.
+
+| Failure | What happens | Recovery path |
 |---|---|---|
-| `agents/location/agent.py` | the agent | `LocationAgent` (BaseAgent) — exposes `discover`, `add`, `delete` |
-| `agents/location/craft.py` | inbound widget protocol | parses + executes map-search clicks with no LLM |
-| `agents/location/platform_mapping.py` | shared utility | `PlatformGeoMapper.map_target_areas()` — called by tools and by `add`/`delete` |
-| `agents/location/models.py` | all geo types | `TargetArea`, `MetaGeoLocation`, `GoogleGeoLocation` — the resolved shape |
-| `agents/location/tools/*.py` | LLM-callable tools | the two tools the agent exposes to the LLM |
-| `tools/craft.py` | outbound panel rendering | `emit_craft_panel(...)` writes the SSE craft block |
-| `services/geo/search.py` | autocomplete | used by the map search box in the craft panel (UI concern) |
+| Empty `user_message` | `success=False, error="manage_targeting_locations: empty user_message."` (guard fires before the loop) | Orchestrator retries with content; frontend surfaces |
+| No auth context | `success=False, error="No auth context available for the location agent."` (guard fires before the loop) | Programmer error |
+| Edit tool called with invalid params (e.g. `add_location` without `name`) | The execute's pydantic parse fails → `Invalid params: <field> - <msg>` goes back into the LOOP as the tool result; the model states the failure (no invented retry, per prompt) | The final `ToolResult` is `success=False` with the model's explanation |
+| `delete_location` with out-of-range index | Same in-loop path: `"Invalid index N. There are only M target areas."` | Model explains; orchestrator surfaces or asks user |
+| Run ends with no mutation reaching `finalize_targets` | `success=False`, error = the model's own final text (or a generic retry hint) - the `_geo_finalized` gate | Orchestrator retries or asks user |
+| The loop itself raises (provider down) | Caught in `handle()`; AgentCard closes `status="failed"`; the gate then yields `success=False` | Orchestrator surfaces |
 
-There is no `GeoTargetingService` class. The agent owns all three actions (`discover` / `add` / `delete`); the tool executor is a thin dispatcher.
+Failed edits are NOT retried by code - the model sees the tool error and explains; only re-invoking `manage_targeting_locations` (a fresh run) retries.
+
+---
+
+## How it works
+
+### Broad campaign (national / international)
+
+```
+manage_targeting_locations(user_message="set up geo targeting for Bengaluru")
+   │
+   ▼
+LocationAgent.handle(user_message, context)
+   │  Preamble: guards, resolve + geocode business pin (deterministic, no LLM)
+   │  Sub-session with shared context refs (product_data, _location_meta, etc.)
+   │  BaseAgent loop runs ONCE on build_run_prompt(profile, list, request)
+   │
+   │  ┌─ LLM reasoning ──────────────────────────────────────────┐
+   │  │ "National D2C brand in India. Pick 3-6 markets and call │
+   │  │  geocode_recommendations with them."                    │
+   │  └─────────────────────────────────────────────────────────┘
+   │
+   │  ┌─ tool: geocode_recommendations ──────────────────────────┐
+   │  │  1. Geocode the picked {name, type}                       │
+   │  │  2. platform_mapping.map_target_areas()                  │
+   │  │  3. save_campaign() + rerender_craft()                   │
+   │  └─────────────────────────────────────────────────────────┘
+   │
+   │  ┌─ LLM summary turn ───────────────────────────────────────┐
+   │  │ "Targeted 4 cities across India: Bengaluru, Mumbai, ...   │
+   │  │  All mapped to Meta + Google handles."                   │
+   │  └─────────────────────────────────────────────────────────┘
+   │
+   ▼
+build_run_result → ToolResult(success=True, data={...}, audience="both", ...)
+```
+
+### Local / real-estate campaign
+
+Same loop, different tool. The LLM picks `discover_neighborhoods` (radial grid scan ~136 points in 8km default radius, reverse-geocode, dedupe, keep ≤25, then platform-map → save → re-render).
+
+### Edits (add / delete) - same loop, deterministic tools
+
+Map clicks and chat messages go through the same flow:
+
+```
+manage_targeting_locations(user_message="add Juhu to targeting")
+   │  The orchestrator does NOT pick action="add" or extract name="Juhu"
+   │  - it just forwards the user's text.
+   ▼
+LocationAgent.handle(user_message, context)
+   │  Same preamble + loop; the prompt shows the current 1-based list
+   │
+   │  ┌─ tool: add_location {name: "Juhu"} ──────────────────────┐
+   │  │  execute parses params → AddLocation (pydantic boundary) │
+   │  │  1. Append area to product.target_areas                  │
+   │  │  2. platform_mapping.map_target_areas()                  │
+   │  │  3. save_campaign() + rerender_craft()                   │
+   │  └─────────────────────────────────────────────────────────┘
+   │
+   │  LLM summary turn: "Added Juhu - 5 areas total."
+   ▼
+build_run_result → ToolResult(summary="Added Juhu - 5 areas total.", audience="both", ...)
+```
+
+Same shape for `delete` (the model maps "the second one" / "remove Bangalore" to a 1-based `index` using the list in its prompt; the tool pops and re-finalizes).
 
 ---
 
 ## The Agent (`LocationAgent`)
 
-`LocationAgent` is a `BaseAgent` subclass that exposes three public methods:
+`LocationAgent` is a `BaseAgent` subclass. Public surface:
 
-- **`discover(params, context)`** — LLM-driven. Runs the BaseAgent loop with two tools; the LLM picks one and writes a summary. Returns a `ToolResult` with the mapped targets and a 1-2 sentence summary.
-- **`add(params, context)`** — deterministic. No LLM. Appends the area, calls `platform_mapping.map_target_areas()`, persists, re-renders. Returns a `ToolResult`.
-- **`delete(params, context)`** — deterministic. Same shape as `add` but pops the area first.
+- **`handle(user_message, context)`** - the **only** orchestrator-facing entry. Guards, enriches (geocode the business pin), builds a sub-session, then runs the agent's OWN loop once; the model does everything else by picking a tool. Step helpers in `targeting_run.py`.
 
-All three call `platform_mapping.map_target_areas()` as a side effect, so the resolved `TargetArea` is always in the storage layer after a successful action.
-
-### Why an agent, not a direct `provider.create_completion()`
-
-Before this refactor, the LLM call lived in `services/geo/discovery.py :: _discover_strategic_markets` as a bare `provider.create_completion(...)`. That worked but:
-
-- **Token tracking was lost.** The direct call didn't go through `session.record_token_usage(...)`, so the strategist's tokens never hit `ai_tracking_sessions` (FM-06 in the PR #91 review). `BaseAgent.run()` records them on the sub-session.
-- **No session, no audit trail.** The call wasn't a sub-session, so the LLM's reasoning (thinking, the tool call, the summary) wasn't persisted anywhere.
-- **No structure for multi-step judgment.** A single completion can't reason → act → summarize, retry a failed geocode differently, or grow richer inputs (see Future Improvements). The loop provides that structure — and `max_turns=10` caps the loop the refactor itself introduces (a single completion had no loop to cap; this is the honest accounting).
-- **JSON-in-prose parsing.** The strategist returned JSON in free text, guarded by brace-extraction. The tool schema (`geocode_recommendations.locations[{name, type}]`) IS the structured output now — validated by the provider, no parsing.
-- **The intelligence was hidden.** A service file carried a bare LLM call while the subsystem advertised itself as fully deterministic. Lifting the call into an agent makes the one model decision visible, owned, and testable.
-
-### Class shape (mirrors `ProductAgent`)
+### Class shape
 
 ```python
 class LocationAgent(BaseAgent):
     display_name = "Location Agent"
-    _instance: "LocationAgent | None" = None
 
     def __init__(self):
         super().__init__(
             name="location_agent",
             tools=LOCATION_AGENT_TOOLS,     # discover_neighborhoods + geocode_recommendations
+                                            # + add_location + delete_location
             context_builder=build_location_context(),
             model_tier="fast",
             max_turns=10,                   # 1 reasoning + 1 tool + 1 summary + slack
             max_tokens=4096,
-            provider="anthropic",
+            provider=LOCATION_PROVIDER,   # see "Provider configuration" - default "deepseek"
+            # NOTE: no `context_management` - see "Eviction policy" below.
         )
-
-    # discover() — LLM-driven, uses BaseAgent.run()
-    # add() / delete() — deterministic, no LLM
 ```
 
-The agent exposes **two tools** to the LLM. The LLM picks one based on the product's `business_scale`. The tools' `execute` functions do the post-processing (platform mapping, persistence, re-render) as a side effect.
+### Why an agent (not a bare `provider.create_completion()`)
 
-### `discover(...)` — the LLM-driven flow
+The pre-refactor code called `provider.create_completion(...)` directly from a service. That worked but lost:
 
-0. **Deterministic preamble.** Resolve + geocode the campaign location (from params / `_location_meta` / `campaign_spec` / product) so the radial-scan tool has coordinates. No LLM.
-1. **Sub-session.** `BaseSession(agent_name="location_agent")` — the agent gets its own conversation history and its own token audit row.
-2. **Selective context sharing.** Shared *by reference*: `product_data`, `product_profile`, `campaign_spec`, `_location_meta`, `account_names` (+ `competitor_analysis`, craft ids, the parent `_session_id` value) — exactly the keys `finalize_targets`/`save_campaign`/re-render read, so tool writes propagate to the parent. The isolation win is the MESSAGE HISTORY, which stays separate; the shared dicts never enter the sub-LLM's context except through the prompt/tools.
-3. **Wrapped event stream.** `_LocationPassthroughEventStream` — drops the agent's `text`/`done`/`error` events, forwards `tool_*` / `agent_*` / `data` / craft events.
-4. **Run.** `await self.run(user_message=_build_initial_prompt(product, location_name, country_code), session=sub_session, event_stream=wrapped_stream)` — fast tier from the constructor; the launcher pre-emits `agent_started` and emits `agent_finished` after.
-5. **Extract summary + verify.** The final assistant text is the 1-2 sentence summary. Success is judged by the `_geo_finalized` marker `finalize_targets` stamps on the sub-context — a chatty run that never landed targets returns a structured error, not success.
+- **Token tracking** - direct calls didn't go through `session.record_token_usage(...)`; tokens never hit `ai_tracking_sessions`. `BaseAgent.run()` records them.
+- **Audit trail** - no sub-session, so the LLM's reasoning wasn't persisted.
+- **Multi-step structure** - a single completion can't reason → act → summarize or retry a failed geocode differently. The loop provides that.
+- **Structured output** - the strategist returned JSON in free text, guarded by brace-extraction. The tool schema (`geocode_recommendations.locations[{name, type}]`) is now the structured output, provider-validated.
 
-### `add(...)` and `delete(...)` — the deterministic flow
+### Eviction policy - intentionally different from `ProductAgent`
 
-```python
-async def add(self, params, context):
-    # 1. Mutate product.target_areas (append)
-    # 2. platform_mapping.map_target_areas(...)
-    # 3. save_campaign(...)
-    # 4. _rerender_craft(...)
-    # 5. Emit suggested_locations SSE
-    return ToolResult(success=True, data={"target_areas": ...})
+`ProductAgent` passes `context_management={"edits": [{"type": "clear_tool_uses_20250919", ...}]}` that auto-clears old tool results past 15k tokens. `LocationAgent` deliberately omits it. The run is bounded: `max_turns=10`, the two tools return at most ~25 neighborhoods or ~6 markets, and the typical shape is 1 reasoning → 1 tool → 1 summary. If this changes (large payloads, higher turn limit), add the same `context_management` block `ProductAgent` uses.
 
-async def delete(self, params, context):
-    # 1. Mutate product.target_areas (pop by 1-based index)
-    # 2. platform_mapping.map_target_areas(...)
-    # 3. save_campaign(...)
-    # 4. _rerender_craft(...)
-    return ToolResult(success=True, data={"target_areas": ...})
-```
+### One run, every action
 
-No `BaseAgent.run()`. No LLM call. No token cost. The widget calls these methods directly (bypassing the LLM tool); the orchestrator's `manage_targeting_locations` tool calls them through the dispatcher.
-
-### Sub-session isolation — why it matters
-
-The agent's sub-session is **not** the user's chat session. If we shared the parent's session:
-
-- The agent's internal monologue would appear in the user's chat history.
-- The agent's tool calls would show up as "previous turns" the LLM re-reads for context, confusing it.
-- Tokens would be mixed in with the parent's token record — no separate audit.
-
-A separate `BaseSession` keeps the agent's reasoning out of the user's view and gives it its own audit trail.
-
-### The prompt
-
-- **System prompt** — `agents/location/context.py :: LOCATION_SYSTEM_PROMPT`. Describes the workflow: "for local/real-estate, call `discover_neighborhoods`; for broad-scale, reason about markets, then call `geocode_recommendations`; exactly one tool call; end with a 1-2 sentence summary; never invent coordinates."
-- **User prompt** — `agents/location/agent.py :: _build_initial_prompt(product, location_name, country_code)`. Built per call: business name, category, operating scale, target country, confirmed location, summary (truncated).
-
-### Why two tools, not four
-
-The LLM has only two decisions to make:
-
-1. **Which path** — local (real-estate) or broad (regional/national/international)?
-2. **Which markets** (for broad) — the LLM reasons about 3-6 markets based on the business type, country, and scope.
-
-Everything after the tool's call (mapping to Meta/Google, persisting, re-rendering) is mechanical. Making those into LLM-callable tools would add latency, cost, and risk. The post-processing is a side effect of the tool's `execute`, called directly as a Python function — not as a tool the LLM invokes.
-
-### Where the deterministic post-processing actually runs
-
-A common confusion: "does the deterministic part run with the BaseAgent loop?" The answer depends on the action:
-
-- **`discover`** — runs **inside** the agent's loop, as a side effect of the tool's `execute`. `BaseAgent.run()` invokes the tool when the LLM emits a `tool_use` block; the tool's `execute` then calls `platform_mapping.map_target_areas()`, `save_campaign()`, and `rerender_craft()` as Python functions and returns the result. The LLM never sees those as separate tool calls — they're folded into the one tool's `execute`. The loop continues, the LLM writes the summary on a subsequent turn, and `end_turn` exits.
-- **`add` / `delete`** — runs **outside** any loop. The agent's method is called directly (by the `manage_targeting_locations` tool executor, or by the widget's `craft.handle_widget_message`). The entire method body is the deterministic work. No `BaseAgent.run()`. No LLM call. No token cost.
-
-In both cases the deterministic work itself is *Python function calls* — `platform_mapping.map_target_areas()`, `save_campaign()`, `rerender_craft()`. The question is only whether those calls happen *during the agent's loop* (as side effects of the tool's `execute` in `discover`) or *outside the loop* (as the body of the `add`/`delete` methods). Neither case treats them as LLM-callable tools.
+0. **Preamble** (deterministic, no LLM): guards (empty message, auth), resolve + geocode the business pin so the radial-scan tool has coordinates.
+1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `_location_meta`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
+2. **Wrapped event stream** - `_LocationPassthroughEventStream` forwards `tool_*` / `craft` / `data` / `agent_*` / `thinking`, drops `text` / `done` / `error`.
+3. **Run** - `self.run(build_run_prompt(...), sub_session, wrapped_stream)`; the model picks ONE of the four tools.
+4. **Verify + extract** - success is judged by the `_geo_finalized` marker `finalize_targets` stamps on the sub-context. A run where no mutation landed returns a structured error (carrying the model's final text), not success.
 
 ---
 
-## The Tool Dispatcher (`tools/location.py`)
+## The user-facing acknowledgement contract
 
-The `manage_targeting_locations` tool's `execute` function is a thin dispatcher. It does not contain business logic; it routes to the right agent method based on the `action` param:
+Every action's user-visible text comes from ONE place: the model writes a 1-2 sentence summary on its final turn. It is captured post-hoc via `BaseAgent._stream_turn` into the sub-session's messages; `build_run_result` re-reads it via `sub_session.get_messages()` and sets `ToolResult.summary = final_text` with `audience="both"`. The orchestrator's framework sees the audience and emits it as chat text.
+
+**Why explicit:** without the `audience` field, the `summary` string lands only in the tool card and in the `tool_result` block sent to the orchestrator's LLM - **never as an SSE text event** - leaving the chat holding only a tool card with no closing sentence (the historic dead-end bug). The sub-loop's own `text` events are dropped by the passthrough stream, so the summary reaches chat exactly once.
+
+**Sibling consumers:** `manage_assets` uses `audience="user"` (`tools/asset_manage.py`); `analyze_competitors` uses `audience="both"` (`tools/competitor.py`).
+
+---
+
+## The tool dispatcher (`tools/location.py`)
+
+The `manage_targeting_locations` tool's `execute` is a thin forwarder to `LocationAgent.handle()`:
 
 ```python
 async def _manage_targeting_locations(params, context):
-    action = params.get("action")
-    agent = get_location_agent()
-    if action == "discover":
-        return await agent.discover(params, context)
-    elif action == "add":
-        return await agent.add(params, context)
-    elif action == "delete":
-        return await agent.delete(params, context)
-    else:
-        return ToolResult(success=False, error=f"Invalid action: {action!r}")
+    user_message = (params.get("user_message") or "").strip()
+    if not user_message:
+        return ToolResult(success=False, error="manage_targeting_locations requires a user_message")
+    return await get_location_agent().handle(user_message, context)
 ```
 
-The orchestrator (AdzumpAgent) calls this tool. The orchestrator's LLM picks the action; the dispatcher routes to the agent; the agent does the work.
+The orchestrator's LLM picks this tool when the user wants a targeting change; it forwards the user's verbatim message; `handle()` does the interpretation + dispatch.
+
+`confirm_location` is a separate tool: real-estate-only elicitation that emits a map widget + prompt atomically. Does not route through `LocationAgent`.
 
 ---
 
-## The Shared Utility: `platform_mapping.py`
+## The shared utility: `platform_mapping.py`
 
-`agents/location/platform_mapping.py` houses `PlatformGeoMapper`, the deterministic area → platform handle resolver. It's **not** a tool — it's a utility called by:
+`PlatformGeoMapper` resolves areas to platform-native handles. Called as a Python function (not an LLM tool) from `tools/_shared.finalize_targets` - the funnel all four tools end in:
 
-- `tools/discover_neighborhoods.py :: execute` — after the radial scan returns raw targets
-- `tools/geocode_recommendations.py :: execute` — after the geocode returns raw targets
-- `LocationAgent.add()` and `LocationAgent.delete()` — after the area list changes
+- `tools/discover_neighborhoods.py :: execute`
+- `tools/geocode_recommendations.py :: execute`
+- `tools/edit_locations.py :: add_location / delete_location executes`
 
-The LLM never invokes `platform_mapping` directly. Putting it at the location agent root (not in `tools/`) signals "utility, not LLM-callable."
-
-### What it does
-
-```python
-# platform_mapping.py
-class PlatformGeoMapper:
-    def map_target_areas(
-        self,
-        target_areas: list[dict],
-        platform: str,
-        country_code: str,
-    ) -> list[dict]:
-        """Resolve every area to its Meta/Google handle, returning TargetArea dicts.
-
-        Preserves existing handles on re-map. A failed lookup keeps the area
-        (typed, keyless) rather than dropping it. See 'How It Works' for
-        the per-platform flow."""
-```
+Putting it at the location agent root (not in `tools/`) signals "utility, not LLM-callable."
 
 ---
 
-## The Widget Path (`agents/location/craft.py`)
+## Data model
 
-Machine-readable messages from the craft-panel map — **not natural language**:
-
-```
-add targeting location {"name":"Juhu","lat":19.1,"lng":72.83,"pincode":"400049", ...}
-delete targeting location index 2
-```
-
-Accepted JSON fields: `name, lat, lng, place_id, pincode, city, state, google_id, meta_key, meta_type, index` (plus a `key="value"` fallback format).
-
-`handle_widget_message(agent, session, message)`:
-- returns `None` for natural language → the normal agent loop runs;
-- otherwise executes directly and streams SSE;
-- owns the elicitation housekeeping (clears `_pending_elicitation` so the next real turn doesn't re-ask a chip question);
-- calls `LocationAgent.add()` or `LocationAgent.delete()` (no LLM, no agent loop, no tool).
-
-**Invariant, locked by `tests/agents/adzump/agents/location/test_widget_dispatch.py`: this path never calls the LLM.** The test patches `get_llm_provider` to raise if called from the widget path.
-
----
-
-## Data Model (`agents/location/models.py`)
-
-Every *mapped* location is a `TargetArea` — generic "where" + one nested platform handle:
+Every mapped location is a `TargetArea` - generic "where" + nested platform handles:
 
 ```jsonc
 { "name": "Pincode 400050", "city": "Mumbai", "state": "MH", "pincode": "400050",
@@ -363,65 +347,51 @@ Every *mapped* location is a `TargetArea` — generic "where" + one nested platf
 ```
 
 Invariants:
-- **`meta.type` is required and non-empty** — Meta adset creation buckets every target by type; a typeless location cannot be constructed.
-- `google.resourceName` is normalized to the `geoTargetConstants/{id}` form.
-- Field names are **platform-native** (`type`/`key` are Meta's own vocabulary; `resourceName` is Google's).
+- **`meta.type` is required and non-empty** - Meta adset creation buckets every target by type.
+- `google.resourceName` is normalized to `geoTargetConstants/{id}` form.
+- Field names are platform-native (`type`/`key` = Meta, `resourceName` = Google).
 
 ---
 
-## Entry Points
+## Entry points
 
-| # | Path | LLM involved? | Trigger |
-|---|---|---|---|
-| 1 | `manage_targeting_locations` tool → `LocationAgent.discover/add/delete` | Yes (for `discover` — note: TWO models total, the orchestrator that decided to call + the sub-agent's loop); no (for `add`/`delete`) | Orchestrator (AdzumpAgent) decides; tool executor dispatches |
-| 2 | `confirm_location` tool | Elicitation widget (map pin confirm) | Real-estate businesses only |
-| 3 | `craft.handle_widget_message` (router fast path) | **Never** — locked by test | Craft-panel map widget add/delete click |
-| 4 | Orchestrator EOT auto-mapper | No | Platform set while unmapped `target_areas` exist |
-| 5 | `GET /sessions/{id}/target-locations/search` | No | Map search-box autocomplete (`services/geo/search.py`) |
+| Path | LLM involved? | Trigger |
+|---|---|---|
+| `manage_targeting_locations(user_message=...)` → `LocationAgent.handle` → the loop picks one of 4 tools | Yes - orchestrator routes, the LocationAgent's own loop acts | Orchestrator routes a geo-targeting message |
+| `confirm_location` tool | No | Real-estate only - map pin confirmation |
+| Orchestrator EOT auto-mapper | No | Platform set while unmapped `target_areas` exist |
+| `GET /sessions/{id}/target-locations/search` | No | Map search-box autocomplete (UI helper, separate router) |
 
 ---
 
-## LLM-Facing Tools
+## LLM-facing tools
 
 ### `manage_targeting_locations` (display: "Geo Targeting")
 
 | Param | Type | Notes |
 |---|---|---|
-| `action` | string, **required**, `enum: discover \| add \| delete` | routes to `LocationAgent.discover/add/delete` |
-| `location_name` | string | used by `discover` |
-| `index` | integer | 1-based, required for `delete` |
-| `name`, `city`, `state`, `pincode` | string | used by `add` |
-| `lat`, `lng`, `radius` | number | used by `add` (radius in km) |
+| `user_message` | string, **required** | The user's verbatim message. Examples: `"set targeting for Bangalore"`, `"add Mumbai at 19.07 72.87"`, `"delete the second area"`. The subsystem interprets intent + extracts params - the orchestrator does NOT pre-classify. |
 
-**Deliberately NOT exposed to the LLM:** `google_id`, `meta_key`, `meta_type`, `place_id`. Widget-only fields. Exposing them would let the model invent platform IDs with no traceability check.
+**Deliberately NOT exposed:** `action`, `index`, `name`, `lat`, `lng`, `radius`, `key`, `type`, `resourceName`, `place_id`. All of these belong to the LocationAgent's own tool picks (or are widget-only fields). Exposing them would let the orchestrator LLM fabricate structured parameters with no traceability check.
 
 ### `confirm_location` (display: "Confirm Location")
 
-`kind="elicitation"` — emits its own prompt text + map widget atomically. Real-estate only.
+`kind="elicitation"` - emits its own prompt text + map widget atomically. Real-estate only.
 
 ---
 
-## External Dependencies
+## External dependencies
 
 | System | Used for | Via |
 |---|---|---|
 | Google Maps (geocode/reverse-geocode) | business pin, radial scan, area coords | `adapters/google/maps.py` |
 | Google Ads `suggest_geo_targets` | geo-target-constant resolution | `adapters/google/client.py` |
 | Meta Marketing `/search` adgeolocation | Meta key/type resolution | `adapters/meta/client.py` |
-| AISuggestedData storage | persistence + session-restart hydration | `services/business_storage.py` |
-| LLM provider (Anthropic, fast tier) | **The agent only** — reached via `BaseAgent.run()` | `services/llm_provider.py` |
+| AISuggestedData | persistence + session-restart hydration | `services/business_storage.py` |
+| LLM provider - default `LOCATION_PROVIDER="deepseek"` | the whole LocationAgent loop | `services/llm_provider.py` |
+| LLM provider (Anthropic / OpenAI) | optional switch via the constant | `services/llm_provider.py` |
 
-The LLM provider is reached only through `BaseAgent.run()` in the agent. The widget path, the modify methods, the platform mapping, and the autocomplete never call the LLM directly.
-
----
-
-## Consumers of the Mapped Locations
-
-| Consumer | Reads | Notes |
-|---|---|---|
-| Orchestrator (`adzump/agent.py`) | `has_mapped_geo_targets` gate, State block, launch payload, summary text | drives `_next_action` |
-| Craft panel map (`tools/craft.py`) | `target_areas` + nested `meta`/`google` handles | tooltips show `Meta Key` / `Google resourceName` |
-| ds `adzump_session_bridge.py` | per-platform mapped lists | feeds the DS adset builder |
+The LLM is reached only through `BaseAgent.run()` inside `handle()`. The tool executes, platform mapping, and autocomplete never call the LLM directly. See [Provider configuration](#provider-configuration) for how to switch providers.
 
 ---
 
@@ -429,43 +399,63 @@ The LLM provider is reached only through `BaseAgent.run()` in the agent. The wid
 
 | File | Covers |
 |---|---|
-| `tests/agents/adzump/agents/location/test_models.py` | model invariants (required `meta.type`, `resourceName` normalization, platform-only fields) |
+| `tests/agents/adzump/agents/location/test_models.py` | model invariants (`meta.type` required, `resourceName` normalization) |
 | `tests/agents/adzump/agents/location/test_platform_mapping.py` | `PlatformGeoMapper`: Meta/Google handle resolution, scale routing, handle preservation |
-| `tests/agents/adzump/agents/location/test_widget_dispatch.py` | widget fast path: NL→None, routes to `LocationAgent.add/.delete`, housekeeping, **no-LLM invariant** |
-| `tests/agents/adzump/agents/location/test_strategist_tools.py` | the two tools: coordinates-from-session (never the model), radius, scale-tagging, geocode failure modes → `finalize_targets` |
-| `tests/agents/adzump/agents/location/test_agent_add_delete.py` | `LocationAgent.add/delete`: deterministic, no LLM, validation before side effects, mutation → finalize |
+| `tests/agents/adzump/agents/location/test_agent.py` | handle: empty-message/auth guards, prompt carries the verbatim request + 1-based list, `_geo_finalized` result gating, run-exception → structured error, the four-tool registry |
+| `tests/agents/adzump/agents/location/test_strategist_tools.py` | the two discovery tools: coordinates-from-session, radius, scale-tagging, geocode failure modes |
+| `tests/agents/adzump/agents/location/test_edit_locations.py` | `add_location`/`delete_location` executes: pydantic param boundary, mutation → finalize, out-of-range index, schemas mirror the params models |
+| `tests/agents/adzump/agents/location/test_targeting_run.py` | run-prompt rendering (verbatim request, 1-based list, summary truncation) |
 
 Run: `python -m unittest discover -s tests/agents/adzump`.
 
 ---
 
-## Design Decisions
+## Design decisions
 
-- **One agent, three actions.** `discover` (LLM), `add`/`delete` (deterministic). The agent is the single entry point for all location operations.
-- **Two tools, not four.** The LLM has only two decisions: which path (local/broad) and which markets. Mapping, persisting, and re-rendering are mechanical and run as side effects of the tool's `execute`.
-- **`platform_mapping.py` is a shared utility, not a tool.** Both tools call it; `add` and `delete` call it. The LLM never invokes it directly. Putting it at the location agent root signals "first-class utility, not LLM-callable."
-- **No `GeoTargetingService`.** All three actions live on the agent. The tool executor is a thin dispatcher. Minimum service files.
-- **Widget fast path never wakes the LLM.** A map click carries every parameter; routing it through the model buys latency + nondeterminism for zero judgment. The widget calls `LocationAgent.add/delete` directly, bypassing the LLM tool AND the agent loop.
+- **One agent, one loop, four tools.** The LocationAgent's loop IS the intent interpreter - discovery and manual edits are just different tools it can pick. A previous cut ran a second hidden "interpreter" agent in front of the loop and a Python dispatch behind it; both are gone (two agents for one feature is unmanageable - sub-agents are only for genuinely DIFFERENT features where one agent doing both would hallucinate).
+- **Tools carry no LLM judgment.** Mapping, persisting, re-rendering are mechanical and run as side effects of each tool's `execute`; edit params are re-parsed into pydantic models at the execute boundary.
+- **`platform_mapping.py` is a utility, not a tool.** Both tools call it; `add`/`delete` call it. The LLM never invokes it directly.
+- **No `GeoTargetingService`.** All three actions live on the agent. Minimum service files.
 - **Sub-session isolation.** The agent's reasoning is not the user's chat. Separate `BaseSession`, separate token record, separate audit trail.
-- **`services/geo/` was clean-cut, not stubbed.** All in-repo importers were re-pointed in the same change — including the ORCHESTRATOR (`adzump/agent.py` imported `is_local_business` + `PlatformGeoMapper`) and the craft renderer (`tools/craft.py` imported `is_local_business`). The only file left is `search.py` (map-search autocomplete — a UI concern, not an agent concern). No zombie re-export modules.
+- **User-facing acknowledgement uses `audience="user"`, not a prompt-only rule.** Prompt-only rules were tried (commit `87cc5a4`, "capture-ack steer") and broke under model drift. The `audience=` mechanism is the deterministic fix.
+- **`services/geo/` was clean-cut, not stubbed.** All in-repo importers re-pointed in the same change. The only file left is `search.py` + the new `router.py` (UI helper).
 
 ---
 
-## Future Improvements
-
-The architecturally-clean split unlocks fixes that were hard to make when the LLM call was a service primitive. Parked for follow-up:
+## Future improvements
 
 1. **The agent needs better inputs.** The system prompt currently passes `product_name`, `business_type`, `scope`, `country_code`, `summary`. It does NOT see:
-   - User-stated target cities (if the user said "we only operate in Bangalore" in chat, the agent doesn't know)
-   - Brand's own-cities (scraped from the business website, e.g. footer links, contact page)
+   - User-stated target cities (if the user said "we only operate in Bangalore" in chat)
+   - Brand's own-cities (scraped from the business website)
    - Tier preference (Tier-1 only, Tier-2 included, etc.)
 
-   For famous brands (Rapido, Zomato) the LLM infers from training data. For non-famous brands, the agent guesses — often wrong. After this refactor, the fix becomes a one-line update to `_build_initial_prompt()`.
+   For famous brands (Rapido, Zomato) the LLM infers from training data. For non-famous brands, the agent guesses - often wrong. After the refactor, the fix is a one-line update to `build_run_prompt()`.
 
-2. ~~**Strict structured output.**~~ **Resolved by the design**: the market picks arrive as `geocode_recommendations`' tool-input schema (`locations[{name, type∈{city,state,country}}]`) — provider-validated structure, no JSON-in-prose, no brace-extraction anywhere in the subsystem.
+2. ~~**Strict structured output.**~~ **Resolved by the design**: market picks arrive as `geocode_recommendations.locations[{name, type∈{city,state,country}}]` - provider-validated structure, no JSON-in-prose parsing.
 
-3. **Cache agent runs** per `(product_id, scope, country_code, platform)`. The same product shouldn't re-run the agent on every `discover()` call. TTL-based invalidation is sufficient for the broad-scale case.
+3. **Cache discovery runs** per `(product_id, scope, country_code, platform)`. The same product shouldn't re-run discovery every time. TTL-based invalidation is sufficient for the broad-scale case.
 
-4. **A third tool: `user_confirms_cities(...)`.** For ambiguous cases (the LLM is unsure which markets to pick), the tool can elicit the user. Currently the agent picks without confirmation; a tool would let the LLM ask first.
+4. **A fifth tool: `user_confirms_cities(...)`.** For ambiguous cases (the LLM is unsure which markets to pick), the tool can elicit the user. Currently the agent picks without confirmation.
 
-5. **The data-shape defects** (3× duplication, per-platform ghost lists, radius dropped, keyless areas unusable) are documented separately in `TARGETING_SCHEMA_PLAN.html` (repo root). The next planned change is a `geoTargeting` business-level cache + `campaign_spec.targeting` working copy.
+5. **The data-shape defects** (3× duplication, per-platform ghost lists, radius dropped, keyless areas unusable) are documented separately in `TARGETING_SCHEMA_PLAN.html`. The next planned change is a `geoTargeting` business-level cache + `campaign_spec.targeting` working copy.
+
+6. **FM-09 - stale mapped-location IDs across sessions.** *(plain-language walkthrough)*
+
+   **The setup.** When a user picks a target city - say "Bengaluru" - our system looks up the *platform's internal ID* for it on Meta and Google, because those platforms don't accept city names, they accept their own numeric IDs:
+   - On Meta, "Bengaluru" maps to something like `meta.key = "23424848"` with `meta.type = "city"`.
+   - On Google Ads, "Bengaluru" maps to `google.resourceName = "geoTargetConstants/1026181"`.
+
+   Those IDs are saved alongside the friendly name in `AISuggestedData` (`product.google_mapped_locations` / `product.meta_mapped_locations`). On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`app/agents/adzump/agent.py:183`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
+
+   **The risk.** Meta and Google periodically reorganise their geo catalogs. They merge cities, split districts, drop legacy IDs, renumber regions. When they do:
+   - An ID that used to mean "Bengaluru" might now point to "Mysuru" (silent mis-targeting).
+   - Or the ID might be deleted entirely (publish fails with a cryptic 404).
+   - **Either way, our gate still passes**, because `has_mapped_geo_targets` only checks for *presence* of the ID, not its *currency*. The orchestrator happily treats stale data as fresh.
+
+   **Why it bites in practice.** A real-estate client in Bangalore builds a campaign today. They come back a quarter later to tweak the budget. Our orchestrator sees `google_mapped_locations: [...]` and says "geo targeting is set, all good." The client launches - but Meta's `meta.key = "23424848"` was reassigned six weeks ago. Their ads now run in Mysuru. They don't find out until they get suspicious leads from a city they never targeted.
+
+   **What "fix" looks like.** Two complementary options:
+   - **TTL on the mapping** - store a `mapped_at` timestamp alongside each ID; if `now - mapped_at > N days` (e.g. 30), treat as un-mapped and re-look-up before the orchestrator reuses it. Cheap, but blunt (might re-map IDs that are still valid).
+   - **Re-map trigger before reuse** - before reusing cached IDs, ping Meta/Google and ask "does this ID still exist and resolve to the original name?" If yes, refresh `mapped_at`. If no, drop and re-run discovery via `manage_targeting_locations`. More precise; extra API call only for stale-risk campaigns.
+
+   **Status today.** Not fixed. Documented here so the next person who touches the geo-mapping layer sees it before they ship.

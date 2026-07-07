@@ -1,10 +1,10 @@
-"""Geo-targeting location models — the typed contract for platform locations.
+"""Geo-targeting location models - the typed contract for platform locations.
 
 MetaGeoLocation makes the original bug structurally impossible: a Meta location
 cannot be constructed without a non-empty type. GoogleGeoLocation normalizes id to
 the geoTargetConstants/ resource name. TargetArea composes the generic 'where'
-with at most one platform handle — so a mapped location carries the scale once and
-the platform type once, never a duplicated meta_type + geo_level pair.
+with at most one platform handle - so a mapped location carries the scale once and
+the platform type once, never a duplicated type + geo_level pair.
 """
 import unittest
 
@@ -36,7 +36,7 @@ class MetaGeoLocationTests(unittest.TestCase):
         self.assertIsNone(m.key)
 
     def test_carries_only_platform_params(self):
-        # The model rejects generic geo fields leaking in — platform-only.
+        # The model rejects generic geo fields leaking in - platform-only.
         self.assertEqual(set(MetaGeoLocation.model_fields), {"type", "key", "name"})
 
 
@@ -74,7 +74,7 @@ class TargetAreaTests(unittest.TestCase):
         self.assertEqual(dumped["scale"], "country")
         self.assertEqual(dumped["meta"], {"type": "country", "key": "IN", "name": "India"})
         self.assertNotIn("google", dumped)        # unset platform omitted
-        self.assertNotIn("meta_type", dumped)      # no flat/duplicated type
+        self.assertNotIn("type", dumped)            # no flat/duplicated type
 
     def test_dict_meta_coerced_to_model(self):
         a = TargetArea(name="X", meta={"type": "city", "key": "1"})

@@ -1,8 +1,8 @@
-"""The LocationAgent's two LLM-callable tools — execute contracts.
+"""The LocationAgent's two LLM-callable tools - execute contracts.
 
 discover_neighborhoods: coordinates come from session state (never the model);
 scan → finalize. geocode_recommendations: the tool schema IS the structured
-output — {name, type} picks are geocoded, scale-tagged, finalized. finalize is
+output - {name, type} picks are geocoded, scale-tagged, finalized. finalize is
 patched (covered elsewhere); scans/geocodes are canned.
 """
 from __future__ import annotations

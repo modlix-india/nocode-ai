@@ -1,9 +1,9 @@
-"""Platform mapping — deterministic area → platform-handle resolver.
+"""Platform mapping - deterministic area → platform-handle resolver.
 
 Maps resolved locations to platform-specific handles (Google Ads geo-target
 constants or Meta Ads adgeolocation keys). A shared utility, NOT an LLM tool:
 called by both location-agent tools after discovery, and by the agent's
-``add``/``delete`` methods after the area list changes.
+``add_location``/``delete_location`` methods after the area list changes.
 """
 
 from __future__ import annotations
@@ -25,6 +25,10 @@ from app.agents.adzump._shared import build_ds_headers
 
 logger = logging.getLogger(__name__)
 
+# Scales whose map polygon must stay locality-level: stamping a pincode on a
+# city/state/country target would shrink its rendering to one postal code.
+BROAD_SCALES = {"city", "state", "country"}
+
 
 class PlatformGeoMapper:
     """Orchestrates location mapping for Google Ads and Meta Ads platforms."""
@@ -32,21 +36,6 @@ class PlatformGeoMapper:
     def __init__(self, tool_context: dict[str, Any]) -> None:
         self.client_code = tool_context.get("client_code", "")
         self.auth_headers = build_ds_headers(tool_context)
-
-    async def _geocode_if_missing(self, area: dict[str, Any]) -> None:
-        """Populate lat/lng from geocoding when the area has no coordinates yet."""
-        if area.get("lat") is not None:
-            return
-        query = area.get("name") or area.get("city") or area.get("pincode") or ""
-        if not query:
-            return
-        try:
-            geo = await google_maps_client.geocode(query)
-            if geo and geo.get("lat") is not None:
-                area["lat"] = geo["lat"]
-                area["lng"] = geo["lng"]
-        except Exception as e:
-            logger.warning("Geocode failed for area %r: %s", area.get("name"), e)
 
     async def map_target_areas(
         self,
@@ -75,32 +64,6 @@ class PlatformGeoMapper:
 
         return mapped_areas
 
-    def _target_area(
-        self,
-        area: dict[str, Any],
-        *,
-        meta: MetaGeoLocation | None = None,
-        google: GoogleGeoLocation | None = None,
-    ) -> dict[str, Any]:
-        """Compose the generic 'where' with the resolved platform handle.
-
-        Picks fields explicitly so the flat platform inputs (meta_key, google_id…)
-        and the legacy geo_level are dropped — the output carries the scale once
-        and the platform handle once, in nested form."""
-        return TargetArea(
-            name=area.get("name") or "",
-            city=area.get("city") or "",
-            state=area.get("state") or "",
-            pincode=area.get("pincode") or "",
-            lat=area.get("lat"),
-            lng=area.get("lng"),
-            distance_km=area.get("distance_km") or 0.0,
-            place_id=area.get("place_id"),
-            scale=(area.get("scale") or "").strip().lower() or None,
-            meta=meta,
-            google=google,
-        ).model_dump(exclude_none=True)
-
     async def _map_google(
         self, area: dict[str, Any], country_code: str = "IN"
     ) -> dict[str, Any]:
@@ -111,7 +74,7 @@ class PlatformGeoMapper:
         # Existing resolution may arrive nested (a prior mapping round-trip) or
         # flat (the search widget / manual add). Read tolerantly.
         existing = area.get("google") or {}
-        resource_name = existing.get("resourceName") or area.get("google_id")
+        resource_name = existing.get("resourceName") or area.get("resourceName")
         google_name = existing.get("name") or area.get("google_name")
 
         # Query suggest_geo_targets without needing account/parent_account IDs.
@@ -128,13 +91,14 @@ class PlatformGeoMapper:
                 )
                 suggestions = results.get("geoTargetConstantSuggestions") or []
                 if suggestions:
-                    const = suggestions[0].get("geoTargetConstant") or {}
-                    resource_name = const.get("resourceName") or const.get("id")
-                    google_name = const.get("canonicalName") or const.get("name")
+                    constant = suggestions[0].get("geoTargetConstant") or {}
+                    resource_name = constant.get("resourceName") or constant.get("id")
+                    google_name = constant.get("canonicalName") or constant.get("name")
             except Exception as e:
                 logger.warning("Google Ads API geo target suggest lookup failed: %s", e)
 
         await self._geocode_if_missing(area)
+        await self._backfill_pincode(area)
 
         # No constant resolved → keyless area falls back to lat/lng proximity
         # (no google handle attached). The model normalizes to the resource name.
@@ -156,8 +120,8 @@ class PlatformGeoMapper:
         # flat (the search widget / manual add). Read tolerantly so a failed
         # re-lookup never drops what was already resolved.
         existing = area.get("meta") or {}
-        meta_key = existing.get("key") or area.get("meta_key")
-        meta_type = existing.get("type") or area.get("meta_type")
+        meta_key = existing.get("key") or area.get("key")
+        meta_type = existing.get("type") or area.get("type")
         meta_name = existing.get("name") or area.get("meta_name")
 
         # Broad campaigns tag the scale the strategist picked; map it to Meta's
@@ -177,25 +141,26 @@ class PlatformGeoMapper:
             query, loc_type = (area.get("name") or ""), "city"
         if query and not meta_key:
             try:
-                params = {
+                search_params = {
                     "type": "adgeolocation",
                     "q": query,
                     "location_types": json.dumps([loc_type]),
                     "country_code": country_code,
                 }
-                res = await meta_client.get(
-                    "/search", self.client_code, self.auth_headers, params=params
+                response = await meta_client.get(
+                    "/search", self.client_code, self.auth_headers, params=search_params
                 )
-                data = res.get("data") or []
-                if data:
-                    meta_key = data[0].get("key")
+                matches = response.get("data") or []
+                if matches:
+                    meta_key = matches[0].get("key")
                     # Prefer Meta's canonical type for the matched result.
-                    meta_type = data[0].get("type") or loc_type
-                    meta_name = data[0].get("name")
+                    meta_type = matches[0].get("type") or loc_type
+                    meta_name = matches[0].get("name")
             except Exception as e:
                 logger.warning("Meta Geolocation search lookup failed: %s", e)
 
         await self._geocode_if_missing(area)
+        await self._backfill_pincode(area)
 
         # type is always set (required by the model): Meta adset creation buckets
         # each target by type, so it must be present even when the key lookup
@@ -206,3 +171,78 @@ class PlatformGeoMapper:
             name=(meta_name or area.get("name")) if meta_key else None,
         )
         return self._target_area(area, meta=meta)
+
+    async def _geocode_if_missing(self, area: dict[str, Any]) -> None:
+        """Populate lat/lng (and any missing address fields) when the area has
+        no coordinates yet."""
+        if area.get("lat") is not None:
+            return
+        query = area.get("name") or area.get("city") or area.get("pincode") or ""
+        if not query:
+            return
+        try:
+            geo = await google_maps_client.geocode(query)
+        except Exception as e:
+            logger.warning("Geocode failed for area %r: %s", area.get("name"), e)
+            return
+        if not geo or geo.get("lat") is None:
+            return
+        area["lat"] = geo["lat"]
+        area["lng"] = geo["lng"]
+        for field in ("pincode", "city", "state"):
+            if not area.get(field) and geo.get(field):
+                area[field] = geo[field]
+
+    async def _backfill_pincode(self, area: dict[str, Any]) -> None:
+        """Stamp the postal code on a neighbourhood-scale area missing one.
+
+        The craft map's Feature Layer draws reliable polygons only for postal
+        codes (bare neighbourhood names often have no polygon), so a
+        pincode-less area would render invisibly. Forward geocodes of
+        neighbourhoods frequently omit the postal_code component - reverse
+        geocoding the coordinates is the dependable source, the same one
+        discover_neighborhoods uses."""
+        if area.get("pincode") or (area.get("scale") or "").lower() in BROAD_SCALES:
+            return
+        if area.get("lat") is None or area.get("lng") is None:
+            return
+        try:
+            candidates = await google_maps_client.reverse_geocode(area["lat"], area["lng"])
+        except Exception as e:
+            logger.warning(
+                "Pincode backfill reverse-geocode failed for %r: %s", area.get("name"), e
+            )
+            return
+        for candidate in candidates:
+            if "postal_code" not in candidate.get("types", []):
+                continue
+            for comp in candidate.get("address_components", []):
+                if "postal_code" in comp.get("types", []):
+                    area["pincode"] = comp.get("long_name", "").strip()
+                    return
+
+    def _target_area(
+        self,
+        area: dict[str, Any],
+        *,
+        meta: MetaGeoLocation | None = None,
+        google: GoogleGeoLocation | None = None,
+    ) -> dict[str, Any]:
+        """Compose the generic 'where' with the resolved platform handle.
+
+        Picks fields explicitly so the flat platform inputs (key, type,
+        resourceName…) and the legacy geo_level are dropped - the output carries
+        the scale once and the platform handle once, in nested form."""
+        return TargetArea(
+            name=area.get("name") or "",
+            city=area.get("city") or "",
+            state=area.get("state") or "",
+            pincode=area.get("pincode") or "",
+            lat=area.get("lat"),
+            lng=area.get("lng"),
+            distance_km=area.get("distance_km") or 0.0,
+            place_id=area.get("place_id"),
+            scale=(area.get("scale") or "").strip().lower() or None,
+            meta=meta,
+            google=google,
+        ).model_dump(exclude_none=True)
