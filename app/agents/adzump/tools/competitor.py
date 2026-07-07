@@ -248,7 +248,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     else:
         # Clear stale results so the pipeline runs fresh.
         session_ctx.pop("competitor_analysis", None)
-        session_ctx.get("research_state", {}).clear()
+        session_ctx.get("_research_state", {}).clear()
 
     if auth is None:
         return ToolResult(success=False, error="Authentication required.")

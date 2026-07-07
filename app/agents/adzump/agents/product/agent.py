@@ -52,13 +52,21 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
 
     product_data = session_ctx.get("product_data") or {}
     research_state = session_ctx.get("_research_state") or {}
-    merged_searches = research_state.get("search_results_merged") or []
     primary_screenshot = primary_screenshot_url(product_data)
 
+    # search_results entries are {query, candidates:[{name, url, ...}]} -
+    # the shape shortlist_competitors stashes (see comp_discovery.py).
     search_snippets: list[str] = []
-    for r in merged_searches:
-        if isinstance(r, dict) and r.get("text"):
-            search_snippets.append(f"[{r.get('query','')}]\n{r['text']}")
+    for search in research_state.get("search_results") or []:
+        if not isinstance(search, dict):
+            continue
+        hits = [
+            f"- {candidate.get('name', '')} ({candidate.get('url', '')})"
+            for candidate in search.get("candidates") or []
+            if isinstance(candidate, dict) and candidate.get("name")
+        ]
+        if hits:
+            search_snippets.append(f"[{search.get('query', '')}]\n" + "\n".join(hits))
 
     from urllib.parse import urlparse as _urlparse
     host = ""
@@ -312,7 +320,7 @@ class ProductAgent(BaseAgent):
             sub_session.context = {
                 "product_data": product_data,
                 "product_profile": parent_session_context.setdefault("product_profile", {}),
-                "research_state": parent_session_context.setdefault("research_state", {}),
+                "_research_state": parent_session_context.setdefault("_research_state", {}),
                 "craft_id": parent_session_context.get("craft_id", ""),
             }
 
