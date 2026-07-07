@@ -939,81 +939,94 @@ class AdzumpAgent(BaseAgent):
         self, session: BaseSession, tool_call_log: list[dict[str, Any]],
     ) -> None:
         await super()._on_loop_complete(session, tool_call_log)
+        await self._autosave_campaign(session)
+        await self._map_targets_for_new_platform(session)
+        await self._emit_stored_targeting_panel(session)
+
+    async def _autosave_campaign(self, session: BaseSession) -> None:
+        """Every-turn durable save of whatever the spec holds (draft status)."""
         ctx = session.context
         from app.agents.adzump.services.business_storage import save_campaign, resolve_url
-        if resolve_url(ctx):
-            try:
-                await save_campaign(ctx, self.build_tool_context(session))
-            except Exception as e:
-                logger.debug("End-of-turn campaign save failed (non-fatal): %s", e)
+        if not resolve_url(ctx):
+            return
+        try:
+            await save_campaign(ctx, self.build_tool_context(session))
+        except Exception as e:
+            logger.warning("End-of-turn campaign save failed (non-fatal): %s", e)
 
-        # If platform was set this turn but existing locations aren't yet mapped
-        # for it (storage-reuse path: locations existed before platform was chosen),
-        # map them now so has_mapped_geo_targets is true for the next turn's prompt.
-        # This runs at end-of-turn where external I/O belongs - NOT in build_turn_reminder.
-        spec = ctx.get("campaign_spec") or {}
-        platform_eot = spec.get("platform") or ""
-        product_eot = ctx.get("product_data") or {}
-        target_areas_eot = product_eot.get("target_areas") or []
-        if platform_eot and target_areas_eot and not is_mapped_for(target_areas_eot, platform_eot):
-            from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
-            loc_meta_eot = ctx.setdefault("_location_meta", {})
-            cc_eot = loc_meta_eot.get("country_code") or "IN"
-            try:
-                tool_ctx = self.build_tool_context(session)
-                mapped_eot = await PlatformGeoMapper(tool_ctx).map_target_areas(
-                    target_areas_eot, platform_eot, cc_eot
-                )
-                if mapped_eot:
-                    product_eot["target_areas"] = mapped_eot
-            except Exception as e:
-                logger.warning("End-of-turn geo auto-mapping failed (non-fatal): %s", e)
+    async def _map_targets_for_new_platform(self, session: BaseSession) -> None:
+        """If platform was set this turn but existing locations aren't yet mapped
+        for it (storage-reuse path: locations existed before platform was chosen),
+        map them now so has_mapped_geo_targets is true for the next turn's prompt.
+        Runs at end-of-turn where external I/O belongs - NOT in build_turn_reminder."""
+        ctx = session.context
+        platform = (ctx.get("campaign_spec") or {}).get("platform") or ""
+        product = ctx.get("product_data") or {}
+        target_areas = product.get("target_areas") or []
+        if not (platform and target_areas) or is_mapped_for(target_areas, platform):
+            return
+        from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
+        country_code = ctx.setdefault("_location_meta", {}).get("country_code") or "IN"
+        try:
+            mapped = await PlatformGeoMapper(self.build_tool_context(session)).map_target_areas(
+                target_areas, platform, country_code
+            )
+            if mapped:
+                product["target_areas"] = mapped
+        except Exception as e:
+            logger.warning("End-of-turn geo auto-mapping failed (non-fatal): %s", e)
 
-        # If platform was just set this turn and mapped locations already exist
-        # (storage reuse path), emit the craft panel with platform so the map
-        # appears - manage_targeting_locations won't fire because
-        # has_mapped_geo_targets is already True.
+    async def _emit_stored_targeting_panel(self, session: BaseSession) -> None:
+        """If platform was just set this turn and mapped locations already exist
+        (storage reuse path), emit the craft panel with platform so the map
+        appears - manage_targeting_locations won't fire because
+        has_mapped_geo_targets is already True."""
+        ctx = session.context
+        from app.agents.adzump.services.business_storage import resolve_url
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
-        if platform and cctx.has_mapped_geo_targets and ctx.get("_last_craft_platform") != platform:
-            ctx["_last_craft_platform"] = platform
-            url = resolve_url(ctx)
-            product = ctx.get("product_data") or {}
-            stream = self._current_stream
-            craft_id = ctx.get("craft_id") or ctx.get("_craft_id")
-            if stream and craft_id and url:
-                from app.agents.adzump.tools.craft import emit_craft_panel
-                try:
-                    await emit_craft_panel(
-                        stream, craft_id, url, product,
-                        ctx.get("competitor_analysis") or {},
-                        screenshot_url=primary_screenshot_url(product),
-                        baked_summary=(
-                            (ctx.get("product_profile") or {}).get("summary")
-                            or product.get("summary", "")
-                        ),
-                        platform=platform,
-                    )
-                except Exception as e:
-                    logger.debug("Post-platform craft emit failed (non-fatal): %s", e)
+        if not (platform and cctx.has_mapped_geo_targets) \
+                or ctx.get("_last_craft_platform") == platform:
+            return
+        ctx["_last_craft_platform"] = platform
+        url = resolve_url(ctx)
+        product = ctx.get("product_data") or {}
+        stream = self._current_stream
+        craft_id = ctx.get("craft_id") or ctx.get("_craft_id")
+        if not (stream and craft_id and url):
+            return
+        from app.agents.adzump.tools.craft import emit_craft_panel
+        try:
+            await emit_craft_panel(
+                stream, craft_id, url, product,
+                ctx.get("competitor_analysis") or {},
+                screenshot_url=primary_screenshot_url(product),
+                baked_summary=(
+                    (ctx.get("product_profile") or {}).get("summary")
+                    or product.get("summary", "")
+                ),
+                platform=platform,
+            )
+        except Exception as e:
+            logger.debug("Post-platform craft emit failed (non-fatal): %s", e)
 
-                # Emit a visible locations row so the user sees the stored
-                # targeting areas being applied (mirrors the discover UX).
-                try:
-                    mapped = product.get("target_areas") or []
-                    if mapped:
-                        loc_meta = ctx.get("_location_meta") or {}
-                        await stream.emit_data(
-                            "suggested_locations",
-                            {
-                                "locations": [loc["name"] for loc in mapped if loc.get("name")],
-                                "targeting_type": product.get("business_scale", "local"),
-                                "location": loc_meta.get("address") or "",
-                                "from_storage": True,
-                            },
-                        )
-                except Exception as e:
-                    logger.debug("Stored-locations row emit failed (non-fatal): %s", e)
+        # Emit a visible locations row so the user sees the stored
+        # targeting areas being applied (mirrors the discover UX).
+        try:
+            mapped = product.get("target_areas") or []
+            if mapped:
+                loc_meta = ctx.get("_location_meta") or {}
+                await stream.emit_data(
+                    "suggested_locations",
+                    {
+                        "locations": [loc["name"] for loc in mapped if loc.get("name")],
+                        "targeting_type": product.get("business_scale", "local"),
+                        "location": loc_meta.get("address") or "",
+                        "from_storage": True,
+                    },
+                )
+        except Exception as e:
+            logger.debug("Stored-locations row emit failed (non-fatal): %s", e)
 
     @staticmethod
     def _advance_chip(text: str) -> dict[str, Any] | None:
