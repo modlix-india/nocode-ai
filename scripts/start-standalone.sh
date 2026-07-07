@@ -36,9 +36,9 @@ export EUREKA_ENABLED="false"
 # X-Path-Prefix header (extracted from the incoming URL by webpack) is used
 # to dynamically prepend /{appCode}/{clientCode}/page to outgoing API paths.
 export STANDALONE_MODE="true"
-export GATEWAY_URL="${GATEWAY_URL:-https://dev.adzump.ai}"
-export SECURITY_SERVICE_URL="${SECURITY_SERVICE_URL:-https://dev.adzump.ai}"
-export FILES_SERVICE_URL="${FILES_SERVICE_URL:-https://dev.adzump.ai}"
+export GATEWAY_URL="${GATEWAY_URL:-http://localhost:4321}"
+export SECURITY_SERVICE_URL="${SECURITY_SERVICE_URL:-http://localhost:4321}"
+export FILES_SERVICE_URL="${FILES_SERVICE_URL:-http://localhost:4321}"
 
 # Default to Anthropic for AppBuilder in standalone mode (override with APPBUILDER_PROVIDER env var)
 export LLM_PROVIDER="${LLM_PROVIDER:-anthropic}"
