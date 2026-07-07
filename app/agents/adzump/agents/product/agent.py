@@ -126,17 +126,17 @@ class _PassthroughEventStream(AgentEventStream):
     """
 
     def __init__(self, parent: AgentEventStream, parent_tool_use_id: str) -> None:
-        # Deliberately do NOT call super().__init__(): we don't want a local
-        # queue; this wrapper only delegates to the parent stream.
+        # super().__init__() so un-overridden base members (emit_complete,
+        # request_confirmation, events, ...) find their queue instead of
+        # crashing; the local queue is never consumed - overrides delegate.
+        super().__init__()
         self._parent = parent
         self._parent_tool_use_id = parent_tool_use_id
 
     @property
     def is_cancelled(self) -> bool:
         # Delegate to parent so a top-level user cancel propagates into the
-        # sub-agent's run loop. Without this, BaseAgent._run_loop's
-        # `event_stream.is_cancelled` check raises AttributeError because
-        # we skip super().__init__() (which would set self._cancelled = False).
+        # sub-agent's run loop.
         return getattr(self._parent, "is_cancelled", False)
 
     def cancel(self) -> None:

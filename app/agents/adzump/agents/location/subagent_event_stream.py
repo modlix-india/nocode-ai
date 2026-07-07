@@ -50,11 +50,14 @@ logger = logging.getLogger(__name__)
 class LocationPassthroughEventStream(AgentEventStream):
     """Wraps a parent stream: forwards some events, drops others.
 
-    Deliberately does NOT call ``super().__init__()`` - this wrapper is a
-    pure delegator, not an independent queue.
+    ``super().__init__()`` is called so base members this class does NOT
+    override (emit_complete, request_confirmation, events, ...) find their
+    queue instead of crashing on a missing attribute. Nothing consumes the
+    local queue - the overrides below decide what actually reaches the user.
     """
 
     def __init__(self, parent: AgentEventStream) -> None:
+        super().__init__()
         self._parent = parent
 
     # ── Cancellation: delegate ─────────────────────────────────────────────
