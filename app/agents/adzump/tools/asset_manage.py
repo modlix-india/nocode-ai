@@ -1,7 +1,7 @@
-"""manage_assets — the ONE asset front door (replaces save_uploaded_assets).
+"""manage_assets - the ONE asset front door (replaces save_uploaded_assets).
 
 Design C: the orchestrator hands over; this tool gathers the pending uploads,
-runs the VisionAnalyst ONCE (review-each), then CODE dispositions each verdict —
+runs the VisionAnalyst ONCE (review-each), then CODE dispositions each verdict -
 store the confident-relevant, reject the off-product, and escalate the unsure
 back to the orchestrator to ask the user. No tool-loop, no completion oracle.
 The reviewer decides per image (relevant? role? name? unsure?); code executes.
@@ -19,17 +19,18 @@ logger = logging.getLogger(__name__)
 
 def _build_brief(sctx: dict, note: str = "") -> str:
     """Context the VisionAnalyst reviews relevance against: what the product is,
-    what's already on file, and what the user said about THIS upload (note) — the
+    what's already on file, and what the user said about THIS upload (note) - the
     user's own claim is the strongest identity signal we have (PR1)."""
     pd = sctx.get("product_data") or {}
     name = pd.get("product_name") or "(unknown product)"
     summary = (pd.get("summary") or "").strip()
-    logos = len(pd.get("logo_urls") or ([pd["logo_url"]] if pd.get("logo_url") else []))
-    creatives = len(pd.get("creative_images") or [])
+    assets = pd.get("assets") or {}
+    logos = len(assets.get("logos") or [])
+    images = len(assets.get("images") or [])
     lines = [
         f"Product (these uploads are claimed to be for THIS product): {name}",
         f"Summary: {summary[:1500]}" if summary else "Summary: (none yet)",
-        f"Already on file: {logos} logo(s), {creatives} product image(s).",
+        f"Already on file: {logos} logo(s), {images} product image(s).",
     ]
     note = (note or "").strip()
     if note:
@@ -69,7 +70,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
     auth = context.get("auth")
     if auth is None:
         return ToolResult(success=False, error=(
-            "No auth context — the vision reviewer needs auth to run."
+            "No auth context - the vision reviewer needs auth to run."
         ))
 
     stream = context.get("event_stream")
@@ -77,7 +78,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
 
     from app.agents.adzump.agents.vision.agent import get_reviewer
     from app.agents.adzump._asset_store import (
-        classify_verdict, dedup_by_content, store_logo, store_creative,
+        classify_verdict, dedup_by_content, store_logo, store_image,
     )
     from app.agents.adzump._uploads import upload_and_analyze
     from app.core.streaming import pre_emit_agent_started
@@ -92,7 +93,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
         if raw:
             images.append({"data": raw, "content_type": up.get("mime") or "image/png"})
     images = dedup_by_content(images)
-    sctx["_pending_uploads"] = []  # consumed — never re-ingest next turn
+    sctx["_pending_uploads"] = []  # consumed - never re-ingest next turn
     if not images:
         return ToolResult(success=False, error=(
             "Uploaded image bytes are unreadable; ask the user to retry."
@@ -137,13 +138,13 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
             )
             if not res:
                 ambiguous.append({"idx": v.idx, "question": (
-                    f"Upload failed for image {v.idx + 1} — ask the user to retry."
+                    f"Upload failed for image {v.idx + 1} - ask the user to retry."
                 )})
                 continue
             if role == "logo":
                 store_logo(product_data, res, v.name, sctx)
             else:
-                store_creative(product_data, res, role, v.name, sctx)
+                store_image(product_data, res, role, v.name, sctx)
             stored.append({"role": role, "name": v.name or role})
         elif action == "reject":
             rejected.append({"idx": v.idx, "reason": v.reasoning or "not relevant to the product"})
@@ -159,14 +160,14 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
             except Exception:
                 logger.exception("manage_assets: receipts emit failed")
 
-    # User-facing summary (tool-text contract — the orchestrator only adds a lead-in).
+    # User-facing summary (tool-text contract - the orchestrator only adds a lead-in).
     parts: list[str] = []
     parts += _saved_summary(stored)
     if rejected:
         parts.append("Skipped " + ", ".join(f"image {d['idx'] + 1} ({d['reason']})" for d in rejected) + ".")
     if ambiguous:
         parts.append("Need your help on " + ", ".join(
-            f"image {d['idx'] + 1} — {d['question']}" for d in ambiguous) + "")
+            f"image {d['idx'] + 1} - {d['question']}" for d in ambiguous) + "")
     summary = " ".join(parts) or "No assets were changed."
 
     logger.info("manage_assets: stored=%d rejected=%d ambiguous=%d",
@@ -176,7 +177,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
         # Unsure image(s): yield the turn so the question is actually ASKED.
         # Without this the loop rolls on to the next missing field and the ask
         # is swallowed (F1 Step 3). One batched question per turn; the reply is
-        # handled conversationally (no elicit_field — the re-review round-trip
+        # handled conversationally (no elicit_field - the re-review round-trip
         # for consumed bytes is a separate follow-up).
         result_data["elicited"] = True
     return ToolResult(
@@ -197,7 +198,7 @@ manage_assets = ToolDefinition(
     description=(
         "Handle images the user uploaded for the ad campaign. Call this whenever "
         "the user attaches one or more images (a logo, a building/render shot, a "
-        "floor plan, lifestyle photos) — for the first upload, a correction, or a "
+        "floor plan, lifestyle photos) - for the first upload, a correction, or a "
         "replacement. You do NOT pick what each image is or pass the file: the "
         "vision reviewer looks at each pending image and decides its role; code then "
         "saves the relevant ones, skips off-product ones, and flags anything "
@@ -210,7 +211,7 @@ manage_assets = ToolDefinition(
             name="note", type="string", required=False,
             description="Optional: what the user said about the upload(s), e.g. "
                         "'this is our logo' or 'replace the hero shot'. A hint for "
-                        "the VisionAnalyst — it still reviews each image itself.",
+                        "the VisionAnalyst - it still reviews each image itself.",
         ),
     ],
     execute=_manage_assets,

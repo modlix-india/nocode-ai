@@ -1,4 +1,4 @@
-"""update — generic update tool definition."""
+"""update - generic update tool definition."""
 
 from __future__ import annotations
 

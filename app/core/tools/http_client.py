@@ -2,7 +2,7 @@
 
 All agent tools route their API calls through this client.
 Auth headers (Authorization, clientCode, appCode) are passed per-call
-from the session context — the client itself is stateless.
+from the session context - the client itself is stateless.
 
 Usage:
     client = SaasClient("http://localhost:8080")
@@ -128,7 +128,7 @@ class SaasClient:
 
         # Standalone mode: extract path prefix from headers and prepend to URL.
         # The X-Path-Prefix header is set by the webpack proxy and carried in
-        # the tool context headers — it is stripped before forwarding to the backend.
+        # the tool context headers - it is stripped before forwarding to the backend.
         if headers and "X-Path-Prefix" in headers:
             url = headers.pop("X-Path-Prefix") + url
 

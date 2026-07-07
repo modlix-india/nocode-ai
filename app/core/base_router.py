@@ -1,4 +1,4 @@
-"""Base router — shared session CRUD, models, image handling, and SSE streaming.
+"""Base router - shared session CRUD, models, image handling, and SSE streaming.
 
 Provides a factory that creates common endpoints and reusable helpers.
 Agent routers call `create_common_routes()` to get the shared endpoints
@@ -53,11 +53,11 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
     """Register shared endpoints on the given router.
 
     Includes:
-        GET /models          — List available LLM models
-        GET /sessions        — List sessions (paginated)
-        GET /sessions/{id}   — Session detail with conversation history
-        PATCH /sessions/{id} — Rename session
-        DELETE /sessions/{id} — Delete session
+        GET /models          - List available LLM models
+        GET /sessions        - List sessions (paginated)
+        GET /sessions/{id}   - Session detail with conversation history
+        PATCH /sessions/{id} - Rename session
+        DELETE /sessions/{id} - Delete session
 
     Args:
         router: The APIRouter to add endpoints to.

@@ -75,7 +75,7 @@ async def _list_versions_execute(params: dict[str, Any], context: dict[str, Any]
         vid = v.get("id", "?")
         label = f"v{vnum}"
         if msg:
-            label += f" — {msg}"
+            label += f" - {msg}"
         lines.append(f"- {label} (id={vid}, created={created})")
 
     summary = f"Found {total} version(s) for {entity_type} '{object_id}':\n" + "\n".join(lines)

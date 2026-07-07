@@ -25,7 +25,7 @@ def _add_tests() -> None:
             kept = _prefilter_candidates(fixtures.parsed(fx_path).images, TOP_N_CANDIDATES)
             got = [{"src": c.src, "source": c.source} for c in kept]
             fixtures.check(self, got, fx_path, "prefilter")
-            # cap is the prefilter's whole job — never exceed it.
+            # cap is the prefilter's whole job - never exceed it.
             self.assertLessEqual(len(got), TOP_N_CANDIDATES, f"{name}: over TOP_N cap")
 
         setattr(PrefilterGoldenTests, f"test_{name}", test)
@@ -36,7 +36,7 @@ _add_tests()
 
 class LooksLikeImageResponseTests(unittest.TestCase):
     """Some CDNs serve image bytes with no Content-Type; fall back to URL ext or
-    we drop valid images. Type edge-cases real fixtures don't carry — kept as units."""
+    we drop valid images. Type edge-cases real fixtures don't carry - kept as units."""
 
     def test_proper_image_content_type_passes(self):
         from app.agents.adzump._uploads import looks_like_image_response
@@ -76,7 +76,7 @@ class FilenameSuggestsLogoTests(unittest.TestCase):
             "https://x.com/CLUBLOGO.png",
             "https://x.com/club_logo.png",
             "https://x.com/brand-logo-white.svg",
-            "https://x.com/logos/main.png",  # path token 'logos' but filename 'main' — should NOT match
+            "https://x.com/logos/main.png",  # path token 'logos' but filename 'main' - should NOT match
             "https://x.com/wordmark_dark.svg",
             "https://x.com/products/villa-1.jpg",
         ]
@@ -86,9 +86,9 @@ class FilenameSuggestsLogoTests(unittest.TestCase):
         self.assertTrue(results[1][1])   # CLUBLOGO.png (case-insensitive)
         self.assertTrue(results[2][1])   # club_logo.png
         self.assertTrue(results[3][1])   # brand-logo-white.svg
-        self.assertFalse(results[4][1])  # logos/ in PATH but filename is 'main' — no match
+        self.assertFalse(results[4][1])  # logos/ in PATH but filename is 'main' - no match
         self.assertTrue(results[5][1])   # wordmark_dark.svg
-        self.assertFalse(results[6][1])  # villa-1.jpg — clearly a product
+        self.assertFalse(results[6][1])  # villa-1.jpg - clearly a product
 
 
 if __name__ == "__main__":

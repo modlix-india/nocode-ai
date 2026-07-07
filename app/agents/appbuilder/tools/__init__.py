@@ -1,1 +1,1 @@
-"""AppBuilder agent tools — page, component, event, style, entity CRUD."""
+"""AppBuilder agent tools - page, component, event, style, entity CRUD."""

@@ -1,9 +1,9 @@
-"""Session context serialization — `_serialize_context` (below the model).
+"""Session context serialization - `_serialize_context` (below the model).
 
 Regression for the bug found in live testing 2026-06-22: `_started_tuids` is a
 *set* (opened sub-agent card ids, written by core/streaming.pre_emit_agent_started).
 It lived in session.context, so save_context's json.dumps raised "Object of type
-set is not JSON serializable" — sinking the ENTIRE context. On AdPilot's
+set is not JSON serializable" - sinking the ENTIRE context. On AdPilot's
 reload-per-message model that wiped the conversation's memory (incl. the open
 _pending_elicitation), so every fresh-scrape + upload looped forever.
 
@@ -52,7 +52,7 @@ class SerializeContextTests(unittest.TestCase):
         self.assertIn("_pending_suggestions", loaded)
 
     def test_stray_set_degrades_to_list_not_catastrophe(self):
-        # Defensive net: a future stray set anywhere becomes a list — the whole
+        # Defensive net: a future stray set anywhere becomes a list - the whole
         # context still saves rather than being lost.
         ctx = {"product_data": {"name": "X"}, "some_future_set": {"a", "b"}}
         loaded = json.loads(_serialize_context(ctx))

@@ -1,4 +1,4 @@
-"""Account selection tools — matches the ds/chatv2 two-step flow.
+"""Account selection tools - matches the ds/chatv2 two-step flow.
 
 For both Google Ads and Meta, account selection is a two-step pick:
 
@@ -33,10 +33,10 @@ def _remember_names(context: dict, accounts: list[dict], id_key: str,
 
     Every fetched ID becomes a key in ``account_names`` so the guard in
     ``set_campaign_spec`` can confirm the ID was shown to the user. The value
-    is the descriptive name when the API returned one, or an empty string —
+    is the descriptive name when the API returned one, or an empty string -
     which renderers treat as "name not available, show ID only".
 
-    v3 · F2 — when ``platform`` ("google"/"meta") is given, also tag each id in
+    v3 · F2 - when ``platform`` ("google"/"meta") is given, also tag each id in
     ``account_platforms`` so the launch boundary can refuse a cross-platform id
     (defence-in-depth behind the dependency-clear cascade).
     """
@@ -68,8 +68,8 @@ def _list_summary(
         f"Pairs (label → value): {pairs}. "
         f"Now call `present_options(question=\"<one short question>\", "
         f"options=[<{{label, value, answer}} dicts from these pairs, with answer == value (the id)>], "
-        f"field=\"{spec_field}\")` and STOP — no chat text. "
-        f"(The harness stores the picked id on click — no set_campaign_spec needed.)"
+        f"field=\"{spec_field}\")` and STOP - no chat text. "
+        f"(The harness stores the picked id on click - no set_campaign_spec needed.)"
     )
     return "\n".join(lines)
 
@@ -203,18 +203,18 @@ _NO_FB_PAGES = (
 )
 
 
-# v3 · F3 — empty IG is no longer a dead end. Instagram is optional, so offer a
+# v3 · F3 - empty IG is no longer a dead end. Instagram is optional, so offer a
 # tagged Facebook-only choice (deterministically captured) + a connect-and-retry
 # fall-through. The "Continue with Facebook only" click stores
 # ig_page_declined="true"; "I'll connect Instagram first" falls through to the LLM.
 _NO_IG_ACCOUNTS = (
-    "No Instagram account is linked to this Facebook page. Instagram is OPTIONAL — "
+    "No Instagram account is linked to this Facebook page. Instagram is OPTIONAL - "
     "the campaign can run on Facebook alone. Call `present_options(question=\"No "
-    "Instagram is linked to this page. Instagram is optional — continue with Facebook "
+    "Instagram is linked to this page. Instagram is optional - continue with Facebook "
     "only, or connect an Instagram account and retry.\", options=[{\"label\":\"Continue "
     "with Facebook only\",\"value\":\"Facebook only\",\"answer\":\"true\"}, {\"label\":"
     "\"I'll connect Instagram first\",\"value\":\"I'll connect Instagram first\"}], "
-    "field=\"ig_page_declined\")` and STOP — no chat text. Do NOT invent an Instagram id."
+    "field=\"ig_page_declined\")` and STOP - no chat text. Do NOT invent an Instagram id."
 )
 
 
@@ -339,10 +339,10 @@ async def _fetch_meta_fb_pages(params: dict, context: dict) -> ToolResult:
             success=True,
             data={"page": page, "auto_selected": True},
             summary=(
-                # v3 · F3 — store the page and STOP. Don't auto-chain into the IG
+                # v3 · F3 - store the page and STOP. Don't auto-chain into the IG
                 # fetch; the next-action step offers Instagram (now optional).
                 f"Only one Facebook page: {_format_account(page)}. Store via "
-                f"`set_campaign_spec(fb_page='{page['id']}')`. Instagram is optional — "
+                f"`set_campaign_spec(fb_page='{page['id']}')`. Instagram is optional - "
                 f"the next step offers it."
             ),
         )
@@ -376,14 +376,14 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
                        page_id, str(e)[:200])
         return ToolResult(success=False, error=_META_NOT_CONNECTED)
 
-    # v3 · F3 — Instagram is OPTIONAL. Mark that we've offered it so _next_action
+    # v3 · F3 - Instagram is OPTIONAL. Mark that we've offered it so _next_action
     # won't re-prescribe this fetch every turn (the cityville no-escape loop).
     sc = context.get("session_context")
     if sc is not None:
         sc["_ig_offered"] = True
 
     if not accounts:
-        # No IG linked is NOT an error anymore — it's a valid Facebook-only path.
+        # No IG linked is NOT an error anymore - it's a valid Facebook-only path.
         # Offer the choice as a tagged decline so "Facebook only" is captured
         # deterministically (field=ig_page_declined, answer="true").
         return ToolResult(
@@ -412,7 +412,7 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
             _list_summary("Instagram account", accounts,
                           _options_pairs(accounts, "id"), "ig_page")
             + " ALSO append one final option {\"label\":\"Continue with Facebook only\","
-              "\"value\":\"Facebook only\"} (no answer — Instagram is optional)."
+              "\"value\":\"Facebook only\"} (no answer - Instagram is optional)."
         ),
     )
 

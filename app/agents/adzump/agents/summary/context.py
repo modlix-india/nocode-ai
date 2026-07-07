@@ -31,7 +31,7 @@ def build_summary_context() -> BaseContext:
     """Build the BaseContext for SummaryAgent.
 
     The agent is single-shot (no tool decisions, no iteration), so the
-    context is just the static system prompt — no dynamic per-turn slot
+    context is just the static system prompt - no dynamic per-turn slot
     filling.
     """
     return BaseContext(

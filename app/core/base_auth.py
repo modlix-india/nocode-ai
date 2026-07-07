@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 
+from app.config import settings
 from fastapi import HTTPException, Request
 
 from app.core.session import AuthContext
@@ -66,7 +67,7 @@ async def _authenticate(
     # of the JWT's userId → clientId → client.code and surfaces it as the
     # top-level `clientCode` on ContextAuthentication (set from typ.getT2() in
     # AuthenticationService.makeSpringAuthentication). Note: user.clientCode
-    # is NOT populated by saas's User.toContextUser() — only user.clientId is.
+    # is NOT populated by saas's User.toContextUser() - only user.clientId is.
     if not ctx_auth.clientCode:
         raise HTTPException(
             status_code=401,
@@ -84,7 +85,6 @@ async def _authenticate(
         forwarded_port=forwarded_port,
     )
 
-
 async def require_auth_context(request: Request) -> AuthContext:
     """FastAPI dependency: extract headers, validate token, return AuthContext."""
     auth_header = _extract_token(request)
@@ -93,6 +93,16 @@ async def require_auth_context(request: Request) -> AuthContext:
 
     if not auth_header:
         raise HTTPException(status_code=401, detail="Missing Authorization header or token cookie")
+    
+    # Standalone/dev: webpack proxy forwards X-Path-Prefix (/{appCode}/{clientCode}/page)
+    # instead of injecting clientCode/appCode headers as the gateway does in production.
+    if settings.STANDALONE_MODE and (not client_code or not access_app_code):
+        parts = [p for p in request.headers.get("X-Path-Prefix", "").strip("/").split("/") if p]
+        if len(parts) >= 2 and not client_code:
+            client_code = parts[1]
+        if len(parts) >= 1 and not access_app_code:
+            access_app_code = parts[0]
+
     if not client_code:
         raise HTTPException(status_code=400, detail="Missing clientCode header")
 

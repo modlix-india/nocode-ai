@@ -1,6 +1,6 @@
-"""Unit: app/agents/adzump/services/business_storage.py — pure record/helper builders.
+"""Unit: app/agents/adzump/services/business_storage.py - pure record/helper builders.
 
-Covers `_normalize_url` (the storage key — http→https, www-strip, trailing-slash),
+Covers `_normalize_url` (the storage key - http→https, www-strip, trailing-slash),
 `_build_location_object` (legacy ds-v1 location precedence: map-confirmed →
 user-typed → scraped), and `_build_full_record`'s competitive-block honesty
 (attempted-wins-over-stale-declined backstop).
@@ -46,11 +46,12 @@ class BuildLocationObjectLock(unittest.TestCase):
 
     def test_spec_then_scraped_fallback_no_coords(self):
         # No map address → user-typed spec.location wins; no lat/lng → coords None.
-        out = _build_location_object({}, {"location": "Whitefield"}, {"location": "from-site"})
+        out = _build_location_object(
+            {}, {"location": "Whitefield"}, {"place": {"address": "from-site"}})
         self.assertEqual(out["product_location"], "Whitefield")
         self.assertIsNone(out["product_coordinates"])
-        # spec empty too → scraped product.location.
-        out2 = _build_location_object({}, {}, {"location": "Hosur Road"})
+        # spec empty too → scraped product.place.address.
+        out2 = _build_location_object({}, {}, {"place": {"address": "Hosur Road"}})
         self.assertEqual(out2["product_location"], "Hosur Road")
 
 

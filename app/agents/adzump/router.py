@@ -1,7 +1,10 @@
-"""Adzump router — chat endpoint.
+"""Adzump orchestrator router - chat endpoint only.
 
-Common endpoints (models, sessions) are registered via create_common_routes().
-Only the /chat endpoint with adzump-specific logic lives here.
+Common endpoints (models, sessions) are registered via ``create_common_routes``.
+Geo-search typeahead is NOT here - it lives at
+``app/agents/adzump/services/geo/router.py`` as a UI helper. The
+orchestrator's HTTP surface is intentionally small: the LLM is the
+interface, the chat endpoint is the only entry point.
 """
 
 from __future__ import annotations
@@ -9,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context
@@ -22,7 +25,6 @@ from app.core.base_router import (
 from app.core.session import BaseSession, AuthContext
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
-from app.agents.adzump.agents.location.craft import handle_widget_message
 
 logger = logging.getLogger(__name__)
 
@@ -57,51 +59,14 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
     # v9 I-0 · stash raw image uploads so manage_assets can persist them
     # as campaign assets. build_image_blocks only formats them for LLM vision
     # (then drops the bytes); the ingest tool needs the raw base64. Overwrites
-    # any prior stash — only this turn's uploads are pending ingest.
+    # any prior stash - only this turn's uploads are pending ingest.
     if body.attachments:
         session.context["_pending_uploads"] = [
-            {"data": a.data, "mime": a.mime_type, "name": a.name}
+            {"data": a.data, "mime_type": a.mime_type, "name": a.name}
             for a in body.attachments
             if a.type == "image" and a.data
         ]
 
-    # Widget messages (craft-panel map search) are machine-readable structured
-    # actions — the geo layer owns the whole protocol; the router just forwards.
-    widget_response = handle_widget_message(agent, session, body.message)
-    if widget_response is not None:
-        return widget_response
-
     return stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )
-
-
-@router.get("/sessions/{session_id}/target-locations/search")
-async def search_target_locations(
-    session_id: str,
-    q: str,
-    platform: str = "google",
-    auth: AuthContext = Depends(require_auth_context),
-):
-    session = BaseSession(agent_name="adzump")
-    await session.get_or_create(session_id, auth)
-
-    from app.agents.adzump.services.geo.search import search_autocomplete_locations
-
-    loc_meta = session.context.get("_location_meta") or {}
-    country_code = loc_meta.get("country_code") or "IN"
-
-    try:
-        return await search_autocomplete_locations(
-            q=q,
-            platform=platform,
-            client_code=auth.client_code,
-            auth_headers=auth.to_headers(),
-            session_context=session.context,
-            country_code=country_code,
-        )
-    except (ValueError, KeyError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.exception("Geo location search failed: %s", e)
-        raise HTTPException(status_code=500, detail="Geo search unavailable")

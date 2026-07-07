@@ -1,4 +1,4 @@
-"""Analytics service — aggregates learning loop metrics.
+"""Analytics service - aggregates learning loop metrics.
 
 Provides data for dashboards: daily/weekly/monthly trends,
 top error patterns, knowledge base health.

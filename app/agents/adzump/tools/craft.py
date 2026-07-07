@@ -1,9 +1,9 @@
-"""Craft panel builder — assembles and emits the campaign side-panel.
+"""Craft panel builder - assembles and emits the campaign side-panel.
 
 Single responsibility: turn product_data + competitive + geo-target state
 into the ordered list of craft blocks and push them to the event stream.
 
-Imported by product.py, geo/agent.py, and competitor.py — none of those
+Imported by product.py, geo/agent.py, and competitor.py - none of those
 modules contain rendering logic directly.
 """
 
@@ -70,12 +70,10 @@ async def emit_craft_panel(
 ) -> None:
     """Rebuild the full campaign craft panel.
 
-    Map section is suppressed until `platform` is set — avoids a stale
+    Map section is suppressed until `platform` is set - avoids a stale
     render followed by a re-render once geo-targeting resolves.
     """
-    loc = business.get("location") or ""
-    if isinstance(loc, dict):
-        loc = loc.get("location", "")
+    loc = (business.get("place") or {}).get("address") or ""
 
     kv_items: list[dict] = [{"key": "Website", "value": url}]
     if loc:
@@ -89,26 +87,25 @@ async def emit_craft_panel(
     if screenshot_url:
         blocks.append({"id": "panel_image", "type": "image", "url": screenshot_url})
 
-    # 2. Assets (logos + creatives)
-    logo_urls = list(business.get("logo_urls") or [])
-    if not logo_urls and business.get("logo_url"):
-        logo_urls = [business["logo_url"]]
-    logo_displays = list(business.get("logo_displays") or [])
-    if not logo_displays and business.get("logo_display"):
-        logo_displays = [business["logo_display"]]
+    # 2. Assets (logos + product images)
+    assets = business.get("assets") or {}
+    logos = assets.get("logos") or []
+    logo_urls = [l.get("url") for l in logos if l.get("url")]
+    logo_displays = [l.get("display") or {} for l in logos]
 
-    creative_image_urls = list(business.get("creative_images") or [])
-    creative_displays = list(business.get("creative_displays") or [])
+    images = assets.get("images") or []
+    image_urls = [i.get("url") for i in images if i.get("url")]
+    image_displays = [i.get("display") or {} for i in images]
 
-    if logo_urls or creative_image_urls:
+    if logo_urls or image_urls:
         from app.agents.adzump.agents.product.tools.scrape.receipts import (
             _asset_label,
             _build_thumbnail_row,
         )
-        asset_summary = _asset_label(len(logo_urls), len(creative_image_urls))
+        asset_summary = _asset_label(len(logo_urls), len(image_urls))
         thumbnail_row = (
             _build_thumbnail_row(logo_urls, logo_displays)
-            + _build_thumbnail_row(creative_image_urls, creative_displays)
+            + _build_thumbnail_row(image_urls, image_displays)
         )
         blocks.append({"id": "assets_label", "type": "text", "content": asset_summary})
         blocks.append({"id": "assets_row", "type": "row", "children": thumbnail_row})
@@ -120,19 +117,12 @@ async def emit_craft_panel(
     if kv_items:
         blocks.append({"type": "key_value", "items": kv_items})
 
-    # 4. Targeting map — only after platform is known
-    from app.agents.adzump.platform import is_google as _is_google, is_meta as _is_meta
-    if _is_google(platform):
-        target_areas = business.get("google_mapped_locations") or []
-    elif _is_meta(platform):
-        target_areas = business.get("meta_mapped_locations") or []
-    else:
-        target_areas = business.get("target_areas") or []
-    business["target_areas"] = target_areas
+    # 4. Targeting map - only after platform is known
+    target_areas = business.get("target_areas") or []
 
-    coords = business.get("product_coordinates") or {}
-    lat = coords.get("lat")
-    lng = coords.get("lng")
+    place = business.get("place") or {}
+    lat = place.get("lat")
+    lng = place.get("lng")
     if platform and ((lat is not None and lng is not None) or target_areas):
         from app.config import settings
         from app.agents.adzump.agents.location.models import is_local_business

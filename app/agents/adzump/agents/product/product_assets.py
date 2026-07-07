@@ -9,7 +9,7 @@ list of image URLs. This module:
    which picks logo + up to 5 creatives based on what each image *depicts*,
    not what its filename suggests.
 4. Returns ProductAssets (URLs the LLM picked) plus the pre-fetched bytes
-   for those picks — so the persister can upload them directly without
+   for those picks - so the persister can upload them directly without
    re-downloading.
 
 This is content-grounded selection: the LLM sees actual image content +
@@ -48,31 +48,31 @@ FETCH_TIMEOUT_S = 8.0
 MAX_BYTES_PER_IMAGE = 5 * 1024 * 1024
 MIN_USEFUL_BYTES = 2 * 1024  # below this is almost always a decorative icon
 
-# LLM-input thumbnail size — small enough to keep token cost low but big
+# LLM-input thumbnail size - small enough to keep token cost low but big
 # enough that a vision model can read the gist (testimonial vs villa vs award).
 THUMB_LONG_EDGE = 256
 THUMB_JPEG_QUALITY = 75
 
 # Source-quality priority for pre-filtering when we have more candidates than TOP_N.
 _SOURCE_PRIORITY = {
-    "jsonld": 0,   # explicit Organization.logo / Product.image — strongest signal
+    "jsonld": 0,   # explicit Organization.logo / Product.image - strongest signal
     "og": 1,       # author-curated share image / logo
     "img": 2,      # DOM image with alt/class context
     "picture": 3,  # responsive image (largest source)
-    "link": 4,     # icon / apple-touch-icon — useful as logo fallback
-    "network": 5,  # captured at browser network layer — high recall, low metadata
+    "link": 4,     # icon / apple-touch-icon - useful as logo fallback
+    "network": 5,  # captured at browser network layer - high recall, low metadata
 }
 
 
 class _LogoChoice(BaseModel):
     """One brand-logo selection in the LLM's JSON output. Carries the
-    candidate INDEX, not the URL — `_resolve` maps idx → URL and builds the
+    candidate INDEX, not the URL - `_resolve` maps idx → URL and builds the
     public `models.LogoPick` from this. Don't confuse the two: this is the
     wire shape the model fills, `LogoPick` is the resolved domain shape."""
     idx: int = Field(description="Index into the candidate list.")
     role: str = Field(
         default="",
-        description="Short label for this brand mark — 'developer', 'project', 'cobrand', or 'main' if singular. Leave blank when unsure.",
+        description="Short label for this brand mark - 'developer', 'project', 'cobrand', or 'main' if singular. Leave blank when unsure.",
     )
     reasoning: str = Field(
         default="",
@@ -82,11 +82,11 @@ class _LogoChoice(BaseModel):
         default="",
         description=(
             "UI tile contrast hint based on the thumbnail you're looking at. "
-            "'dark' if the logo is mostly light/white (wordmark designed for a dark header — "
+            "'dark' if the logo is mostly light/white (wordmark designed for a dark header - "
             "needs a dark tile to read). 'light' if the logo is mostly dark (designed for a "
-            "white header — needs a light tile). Empty string ('') if the logo has its own "
+            "white header - needs a light tile). Empty string ('') if the logo has its own "
             "non-transparent background, or if the color is mid-tone, or if you have no "
-            "thumbnail (SVG-only candidates). Only the thumbnail tells you this — never guess "
+            "thumbnail (SVG-only candidates). Only the thumbnail tells you this - never guess "
             "from the filename."
         ),
     )
@@ -97,11 +97,11 @@ class _AssetSelection(BaseModel):
     logos: list[_LogoChoice] = Field(
         default_factory=list,
         max_length=3,
-        description="Brand logos visible in the candidates. Most sites have one; some (real estate, franchise, parent+sub-brand) display two co-equal marks — a developer/parent brand and a project/product brand. Return both when both are clearly present, developer first. Default to one. Return [] if no brand logo qualifies — never pick a hero photo, payment badge, or partner mark as a logo.",
+        description="Brand logos visible in the candidates. Most sites have one; some (real estate, franchise, parent+sub-brand) display two co-equal marks - a developer/parent brand and a project/product brand. Return both when both are clearly present, developer first. Default to one. Return [] if no brand logo qualifies - never pick a hero photo, payment badge, or partner mark as a logo.",
     )
     creative_idxs: list[int] = Field(
         default_factory=list,
-        description="Indices of images that genuinely depict the product/service the business sells, ranked best first. Return as many as are good — don't pad with weak picks, don't cap at an arbitrary number. A site with rich photography may yield 8–10; a sparse site may yield 2–3.",
+        description="Indices of images that genuinely depict the product/service the business sells, ranked best first. Return as many as are good - don't pad with weak picks, don't cap at an arbitrary number. A site with rich photography may yield 8–10; a sparse site may yield 2–3.",
     )
     confidence: float = Field(
         default=0.0,
@@ -131,7 +131,7 @@ _LOGO_MIN_H, _LOGO_MAX_H = 15, 200
 
 
 def _is_header_visual(img: SiteImage) -> bool:
-    """Image is rendered in the header region with logo-shaped dimensions —
+    """Image is rendered in the header region with logo-shaped dimensions -
     the visual definition of a header brand mark. Works on framework sites
     that don't use semantic <header>/<nav> tags."""
     t = img.rendered_top
@@ -148,7 +148,7 @@ def _is_header_visual(img: SiteImage) -> bool:
 def _prefilter_candidates(images: list[SiteImage], top_n: int) -> list[SiteImage]:
     """Cap candidate count for the vision LLM. Sorts by source-quality
     priority first (strong-signal sources like jsonld/og/link first), then
-    by DOM/insertion order within each priority tier — so the LLM sees
+    by DOM/insertion order within each priority tier - so the LLM sees
     candidates in roughly the order they appear on the page.
 
     v9 (2026-05-22, Shift 6): SVG-penalty branch retired. SVGs are filtered
@@ -166,7 +166,7 @@ def _prefilter_candidates(images: list[SiteImage], top_n: int) -> list[SiteImage
 
 
 def _filenames(urls: list[str], limit: int = 12) -> str:
-    """Compact URL list for log lines — strips to filenames, truncates if
+    """Compact URL list for log lines - strips to filenames, truncates if
     many, so a stage line stays under a screen width."""
     files = [u.rsplit("/", 1)[-1][:50] for u in urls if u]
     if len(files) > limit:
@@ -178,7 +178,7 @@ def _filenames(urls: list[str], limit: int = 12) -> str:
 def _stage(name: str, **fields) -> None:
     """Single-line stage marker for the image-selection pipeline.
 
-    Format: `assets_stage:NAME k=v k=v ...` — uniform prefix makes the
+    Format: `assets_stage:NAME k=v k=v ...` - uniform prefix makes the
     full journey of an image greppable in production logs."""
     parts = " ".join(f"{k}={v}" for k, v in fields.items() if v is not None)
     logger.info("assets_stage:%s %s", name, parts)
@@ -186,7 +186,7 @@ def _stage(name: str, **fields) -> None:
 
 def _render_candidate_meta(images: list[SiteImage]) -> str:
     """Per-candidate metadata sent to the LLM. The `file` field carries the
-    filename + extension — load-bearing for SVG candidates, which have no
+    filename + extension - load-bearing for SVG candidates, which have no
     thumbnail and rely on metadata-only judgment (NavLogo.svg, white-logo.svg,
     cricket-icon.svg all encode meaning in the filename)."""
     rows = []
@@ -259,7 +259,7 @@ async def select_product_assets(
     # v4 (2026-05-25, I-1): allocate VisionAnalyst's own tool_use_id so DISCOVER + SELECT
     # stage events attribute to VisionAnalyst's row rather than collapsing onto the parent
     # scrape tool's row in the UI. SAVE_LOGO + SAVE_IMG (later, in tools/scrape/assets.py)
-    # stay on the parent scrape's tool_use_id — they're post-pick filesystem writes by the
+    # stay on the parent scrape's tool_use_id - they're post-pick filesystem writes by the
     # scrape tool, not select work (Kiran's panel-review correction).
     # v6 S2 (2026-05-27): pre-emit agent_started BEFORE DISCOVER stage_emit so
     # the UI has an open span for the tool_update to route to. The launcher
@@ -289,7 +289,7 @@ async def select_product_assets(
     await stage_emit(context, ScrapeStage.SELECT, tool_use_id=select_tuid)
 
     # Build the vision message: prompt text + summary + per-candidate thumbs.
-    # SVG candidates have no thumbnail (vector — see _fetch_one); they appear
+    # SVG candidates have no thumbnail (vector - see _fetch_one); they appear
     # as text-only entries and the LLM reviews by metadata signals.
     n_svg = sum(1 for c in available if fetched[c.src].get("is_svg"))
     meta_json = _render_candidate_meta(available)
@@ -302,13 +302,13 @@ async def select_product_assets(
     )
     # Diagnostic: capture the exact metadata the LLM sees. Truncated for log
     # noise control. When picks are unexpectedly empty, this is the first
-    # thing to check — the prompt rules are only useful if the data backs them.
+    # thing to check - the prompt rules are only useful if the data backs them.
     _stage("llm_input_meta", n=len(available), meta=meta_json[:1200])
 
     # Vision pick runs through VisionAnalyst (single-shot BaseAgent that
     # wraps the gpt-4o-mini call). The agent handles message construction,
     # Anthropic→OpenAI image-block conversion, JSON parsing, and resolve
-    # internally — the caller still owns the safety net + bytes dict.
+    # internally - the caller still owns the safety net + bytes dict.
     if context.get("auth") is None:
         logger.warning("vision_select_skip_no_auth url=%s", page.url)
         return ProductAssets(), {}
@@ -360,7 +360,7 @@ async def select_product_assets(
 def _resolve(sel: _AssetSelection, candidates: list[SiteImage]) -> ProductAssets:
     n = len(candidates)
 
-    # Resolve logo picks (dedup by URL; cap at 3 — schema also bounds this).
+    # Resolve logo picks (dedup by URL; cap at 3 - schema also bounds this).
     logo_picks: list[LogoPick] = []
     logo_urls_seen: set[str] = set()
     for pick in (sel.logos or [])[:3]:
@@ -419,7 +419,7 @@ def _resolve(sel: _AssetSelection, candidates: list[SiteImage]) -> ProductAssets
         # back-compat URL list but keep the role record so v8 can still see
         # what the model rejected and why (FYI for v9 calibration).
         if role and role not in {"hero", "amenity", "floor_plan", "unused"}:
-            # Unknown role label — keep but normalize to '' so the
+            # Unknown role label - keep but normalize to '' so the
             # downstream consumer treats it as a generic creative.
             role = ""
         if role != "unused":
@@ -432,7 +432,7 @@ def _resolve(sel: _AssetSelection, candidates: list[SiteImage]) -> ProductAssets
         seen.add(url)
 
     # Derive creative_completeness from per-candidate roles (policy in code,
-    # perception in model — Kiran's Q3 pick). When the model returned the
+    # perception in model - Kiran's Q3 pick). When the model returned the
     # legacy creative_idxs shape, all picks are role="" and verdict is
     # 'needs_upload' (we don't know what's missing). v8 prompt should
     # always emit roles, so this fallback is defensive.
@@ -446,11 +446,11 @@ def _resolve(sel: _AssetSelection, candidates: list[SiteImage]) -> ProductAssets
     else:
         verdict = "needs_upload"
     # v9 I-8 fix: missing_categories must agree with the 'complete' bar
-    # (complete = hero AND >=1 amenity — see CreativeCompleteness). floor_plan
+    # (complete = hero AND >=1 amenity - see CreativeCompleteness). floor_plan
     # is tracked (floor_plan_found) but is NOT required for launch-readiness, so
-    # it must not appear in missing_categories — otherwise a 'complete' campaign
-    # still surfaces a "missing floor plan" ask. (Rejected the inverse fix —
-    # requiring floor_plan for 'complete' — because floor plans rarely live on
+    # it must not appear in missing_categories - otherwise a 'complete' campaign
+    # still surfaces a "missing floor plan" ask. (Rejected the inverse fix -
+    # requiring floor_plan for 'complete' - because floor plans rarely live on
     # marketing sites, so it would leave most real-estate campaigns perpetually
     # 'needs_upload'.)
     missing = []
@@ -498,7 +498,7 @@ _LOGO_FILENAME_TOKENS = ("logo", "wordmark", "brandmark", "monogram")
 
 def _filename_suggests_logo(url: str) -> bool:
     """True if the URL's filename strongly indicates a logo. Used only as a
-    post-LLM-pick safety net for the 'creative' bucket — content-based
+    post-LLM-pick safety net for the 'creative' bucket - content-based
     selection remains primary; this catches the narrow case where the
     vision pass let a sub-brand wordmark through (e.g. `clublogo.png`)."""
     filename = url.rsplit("/", 1)[-1].lower()
@@ -532,7 +532,7 @@ async def _fetch_candidates(candidates: list[SiteImage]) -> dict[str, dict]:
 async def _fetch_one(client, url: str) -> dict | None:
     """Download one candidate; downscale to a JPEG thumbnail when possible.
 
-    SVGs are kept as candidates with no thumbnail — PIL can't open them and
+    SVGs are kept as candidates with no thumbnail - PIL can't open them and
     we don't want a Cairo system dependency. The LLM evaluates SVG candidates
     by their text metadata (in_header / in_nav / alt / class / filename),
     which is enough to discriminate brand logos from decorative icons.
@@ -556,7 +556,7 @@ async def _fetch_one(client, url: str) -> dict | None:
         return None
 
     is_svg = "svg" in ctype
-    # SVGs are vector — byte size is unrelated to visual size, so the min-bytes
+    # SVGs are vector - byte size is unrelated to visual size, so the min-bytes
     # filter would drop legitimate logos. Apply the floor only to raster formats.
     if not is_svg and len(data) < MIN_USEFUL_BYTES:
         return None
@@ -588,14 +588,14 @@ async def _fetch_one(client, url: str) -> dict | None:
 # Shift 2 (2026-05-21): full-page screenshot resampling. Pages can render
 # 5000–15000 px tall; we cap at 2000 px long-edge so the vision LLM input
 # stays predictable and the storage upload doesn't blow up. Decided via the
-# grilling session — Q1: "scaled full-page" (≤ 2000 px) was the user pick.
+# grilling session - Q1: "scaled full-page" (≤ 2000 px) was the user pick.
 SCREENSHOT_LONG_EDGE = 2000
 SCREENSHOT_JPEG_QUALITY = 75
 
 
 def _downscale_screenshot_to_jpeg_bytes(image_bytes: bytes) -> bytes | None:
     """Resample a full-page screenshot so its long edge ≤ SCREENSHOT_LONG_EDGE.
-    Accepts JPEG/PNG bytes; emits JPEG. No mode coercion needed — Playwright
+    Accepts JPEG/PNG bytes; emits JPEG. No mode coercion needed - Playwright
     emits RGB JPEG with no alpha channel.
     """
     try:

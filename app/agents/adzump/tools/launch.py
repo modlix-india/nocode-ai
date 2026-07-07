@@ -1,10 +1,10 @@
-"""launch_campaign — persist the assembled campaign to AISuggestedData.
+"""launch_campaign - persist the assembled campaign to AISuggestedData.
 
 Called by the LLM when the user confirms launch ("Yes, launch"). Writes the
 full campaign record (including the analysis snapshot + lat/lng location +
 account hierarchy) under the same per-URL key `ds/chatv2` already uses.
 
-This is the single deterministic save action — the LLM's job on launch
+This is the single deterministic save action - the LLM's job on launch
 confirm is exactly one tool call, no transcription, no field assembly.
 Future work: also call `publish_google_campaign` / `publish_meta_campaign`
 to actually create the campaign in the ad platform.
@@ -23,7 +23,7 @@ from app.agents.adzump.tools.campaign_data import _last_user_text, is_clear_decl
 logger = logging.getLogger(__name__)
 
 # Word-boundary affirmatives for the consent gate. This is a GATE on an
-# irreversible action, not NLU — the model still interprets language and
+# irreversible action, not NLU - the model still interprets language and
 # decides WHEN to call launch; the harness just refuses when the user's most
 # recent message carries no explicit go-ahead (same backstop philosophy as
 # _field_traceable / F17: the prompt persuades, the code enforces).
@@ -58,22 +58,22 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             data={"product_id": record_id},
             summary=(
                 f"Campaign was already launched (product reference: {record_id}). "
-                "Do not launch again — tell the user it is already live."
+                "Do not launch again - tell the user it is already live."
             ),
         )
 
     # Guard: refuse to save a clearly-incomplete spec. Cheap pre-check.
-    # (ig_page is intentionally absent — Instagram is optional, v3 · F3.)
+    # (ig_page is intentionally absent - Instagram is optional, v3 · F3.)
     required = ("platform", "duration", "budget", "parent_account", "account")
     missing = [k for k in required if not spec.get(k)]
     if missing:
         return ToolResult(
             success=False,
-            error=f"Cannot launch — missing required fields: {', '.join(missing)}.",
+            error=f"Cannot launch - missing required fields: {', '.join(missing)}.",
         )
 
     # v3 · F2 defence-in-depth: refuse to persist an account id that belongs to a
-    # DIFFERENT ad platform than the one selected — catches a dependency-cascade
+    # DIFFERENT ad platform than the one selected - catches a dependency-cascade
     # miss before a stale Google id leaks into a Meta launch (or vice-versa).
     # Only enforced for ids we actually tagged at fetch time (account_platforms);
     # untagged ids from older sessions skip the check (back-compat safe).
@@ -89,12 +89,12 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
         return ToolResult(
             success=False,
             error=(
-                f"Cannot launch — {', '.join(mismatched)} belong to a different platform "
+                f"Cannot launch - {', '.join(mismatched)} belong to a different platform "
                 f"than {spec.get('platform')}. Re-select them for the current platform."
             ),
         )
 
-    # Consent gate — harness enforcement of the prompt rule "never publish
+    # Consent gate - harness enforcement of the prompt rule "never publish
     # without an explicit yes in the user's most recent message". Runs last,
     # directly before the side effect.
     last_user = _last_user_text(context)
@@ -103,7 +103,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
         return ToolResult(
             success=False,
             error=(
-                "Cannot launch — the user's most recent message is not an explicit "
+                "Cannot launch - the user's most recent message is not an explicit "
                 "launch confirmation. Show the review summary and ask with "
                 'present_options("Ready to launch?") first; call launch_campaign '
                 "only after the user answers yes."
@@ -121,7 +121,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
         )
 
     # The storage record is keyed by businessUrl (one record per product),
-    # so the returned id is the product's stable reference — same id across
+    # so the returned id is the product's stable reference - same id across
     # re-launches for the same URL. Persist it under `product_id` so future
     # turns can resolve it and survive session restore.
     session_ctx["product_id"] = record_id
@@ -129,7 +129,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
     logger.info("launch_campaign_ok: product_id=%s", record_id)
 
     # Signal the host page (LazyPrompt onComplete / completeBindingPath) that
-    # adzump reached a successful terminal state. Fire-and-forget — failure
+    # adzump reached a successful terminal state. Fire-and-forget - failure
     # to emit must not roll back the save.
     stream = context.get("event_stream")
     if stream is not None:
@@ -137,7 +137,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             await stream.emit_complete({
                 "product_id": record_id,
                 "session_id": context.get("session_id", ""),
-                # Same URL the storage record is keyed by — resolve_url checks
+                # Same URL the storage record is keyed by - resolve_url checks
                 # product_profile.url, then product_data.pages_analyzed[0],
                 # so it works after a fresh scrape AND after a storage hydrate
                 # (where product_data.primary_url is not preserved).
@@ -165,7 +165,7 @@ launch_campaign = ToolDefinition(
     description=(
         "Persist the user's assembled campaign to storage. Call this exactly "
         "once when the user clicks 'Yes, launch' on the review chip. Takes "
-        "no parameters — reads everything from session.context. Returns a "
+        "no parameters - reads everything from session.context. Returns a "
         "campaign id on success."
     ),
     display_name="Launch Campaign",

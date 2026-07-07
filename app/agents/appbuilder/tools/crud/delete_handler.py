@@ -1,4 +1,4 @@
-"""delete — generic delete tool definition."""
+"""delete - generic delete tool definition."""
 
 from __future__ import annotations
 

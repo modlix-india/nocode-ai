@@ -1,4 +1,4 @@
-"""Outcome analyzer — computes session success scores.
+"""Outcome analyzer - computes session success scores.
 
 Scoring formula (v1):
   success_score = (
@@ -67,7 +67,7 @@ class OutcomeAnalyzer:
 
             # Efficiency: lower tokens per successful tool call is better
             # 10K tokens/success = 1.0, 100K = 0.0
-            # Cast to float — MySQL may return total_tokens as decimal.Decimal,
+            # Cast to float - MySQL may return total_tokens as decimal.Decimal,
             # which can't mix with float literals like 1.0 below.
             tokens_per_success = (
                 float(session_meta["total_tokens"]) / max(tool_stats["success_count"], 1)

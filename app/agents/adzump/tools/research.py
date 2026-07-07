@@ -66,13 +66,13 @@ async def _web_fetch(params: dict, context: dict) -> ToolResult:
         "FIRST line of your answer: write either 'TYPE: BRAND' (single project/"
         "brand/company official site) or 'TYPE: AGGREGATOR' (a directory listing "
         "many unrelated brands, comparison portal, or marketplace). Judge from "
-        "the page content — many unrelated brand names = aggregator.\n\n"
+        "the page content - many unrelated brand names = aggregator.\n\n"
         f"Then answer this question: {question}"
     )
 
     await emit_progress(
         context,
-        f'web_fetch · {short_url(url)} — {_short_text(question)}',
+        f'web_fetch · {short_url(url)} - {_short_text(question)}',
     )
 
     result = await fetch_and_answer(url, augmented_question)
@@ -95,7 +95,7 @@ async def _web_fetch(params: dict, context: dict) -> ToolResult:
     }
     if is_aggregator:
         summary = (
-            f"⚠ AGGREGATOR detected at {result.get('url')} — DO NOT use as a competitor. "
+            f"⚠ AGGREGATOR detected at {result.get('url')} - DO NOT use as a competitor. "
             f"Try another URL from your search results.\n\n{answer[:500]}"
         )
     else:
@@ -113,7 +113,7 @@ web_fetch = ToolDefinition(
         "Fetch a URL and get a focused answer from its content (via a cheap "
         "extractor). Use for verifying information about a specific URL: "
         "'What's the pricing?', 'Is this in the right city?', 'What are the "
-        "key features?'. Lighter than a full page scrape — no screenshot, "
+        "key features?'. Lighter than a full page scrape - no screenshot, "
         "no browser render. Safe to call in parallel for multiple URLs."
     ),
     display_name="Web Fetch",

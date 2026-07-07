@@ -108,7 +108,7 @@ class BaseContext:
 
         blocks: list[dict[str, Any]] = []
 
-        # Block 1: Static docs — large and cacheable
+        # Block 1: Static docs - large and cacheable
         if self._cached_static_text:
             blocks.append({
                 "type": "text",
@@ -116,7 +116,7 @@ class BaseContext:
                 "cache_control": {"type": "ephemeral"},
             })
 
-        # Block 2: Dynamic context — small, changes per session
+        # Block 2: Dynamic context - small, changes per session
         if dynamic_context:
             blocks.append({
                 "type": "text",

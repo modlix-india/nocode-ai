@@ -4,9 +4,9 @@ All page and component tools go through these helpers to avoid
 exposing the full 30K+ page JSON to the LLM.
 
 Workflow:
-1. fetch_page() — GET page by name+appCode
+1. fetch_page() - GET page by name+appCode
 2. Modify componentDefinition in Python
-3. save_page() — PUT modified page back
+3. save_page() - PUT modified page back
 
 The executor handles version management (optimistic locking).
 """
@@ -324,7 +324,7 @@ def _summary_sections(comp_def: dict[str, Any], root_key: str, event_refs: dict[
         label = _get_label(child.get("properties", {}))
         label_str = f' "{label}"' if label else ""
         event_str = ", has events" if child_key in event_refs else ""
-        lines.append(f"  - {child_key} ({child_type}){label_str} — {desc_count} descendants{event_str}")
+        lines.append(f"  - {child_key} ({child_type}){label_str} - {desc_count} descendants{event_str}")
     lines.append("")
     return lines
 
@@ -338,7 +338,7 @@ def build_page_summary(page_data: dict[str, Any]) -> str:
     event_refs = _get_event_refs(event_fns)
 
     lines: list[str] = [
-        f"Page '{page_name}' — {len(comp_def)} components, {len(event_fns)} event functions",
+        f"Page '{page_name}' - {len(comp_def)} components, {len(event_fns)} event functions",
         "",
     ]
 
@@ -476,7 +476,7 @@ def build_subtree(
     root_type = comp_def[subtree_root].get("type", "?")
 
     lines: list[str] = [
-        f"Subtree of '{subtree_root}' ({root_type}) — {desc_count + 1} components:",
+        f"Subtree of '{subtree_root}' ({root_type}) - {desc_count + 1} components:",
         "",
     ]
     _build_subtree_recursive(comp_def, event_refs, subtree_root, lines, prefix="", is_last=True, is_root=True)

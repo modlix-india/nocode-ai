@@ -1,4 +1,4 @@
-"""Characterization golden for _resolve_picks — the deterministic seam
+"""Characterization golden for _resolve_picks - the deterministic seam
 BELOW the vision model (real logic, no mocks, no model call).
 
 The analyst's model returns an AssetSelection (indices + roles); _resolve_picks
@@ -11,7 +11,7 @@ our canonical real-estate test product): developer + project logos, a lakefront
 elevation hero, a clubhouse amenity, a 3BHK floor plan, and a RERA disclaimer
 banner (the quintessential real-estate "unused" creative). idx 6 re-lists the
 developer logo url to exercise dedup. Raster-only: html_parser drops every SVG
-at the parser (v9 — _is_svg_src, "raster-only candidates by contract"), so an
+at the parser (v9 - _is_svg_src, "raster-only candidates by contract"), so an
 .svg never reaches _resolve_picks; logos here are png/webp accordingly.
 
 Run:
@@ -31,12 +31,12 @@ from app.agents.adzump.agents.product.models import SiteImage
 
 _SITE = "https://purvasparklingspring.com/img"
 
-DEV_LOGO = f"{_SITE}/puravankara-logo.png"          # 0 — developer (parent) logo
-PROJ_LOGO = f"{_SITE}/sparkling-springs-logo.webp"  # 1 — project logo
-HERO = f"{_SITE}/lakefront-elevation.webp"          # 2 — hero render
-AMENITY = f"{_SITE}/clubhouse-infinity-pool.jpg"    # 3 — amenity
-FLOOR_PLAN = f"{_SITE}/3bhk-villa-floor-plan.png"   # 4 — floor plan
-RERA_BANNER = f"{_SITE}/rera-disclaimer-banner.jpg" # 5 — unused (RERA junk)
+DEV_LOGO = f"{_SITE}/puravankara-logo.png"          # 0 - developer (parent) logo
+PROJ_LOGO = f"{_SITE}/sparkling-springs-logo.webp"  # 1 - project logo
+HERO = f"{_SITE}/lakefront-elevation.webp"          # 2 - hero render
+AMENITY = f"{_SITE}/clubhouse-infinity-pool.jpg"    # 3 - amenity
+FLOOR_PLAN = f"{_SITE}/3bhk-villa-floor-plan.png"   # 4 - floor plan
+RERA_BANNER = f"{_SITE}/rera-disclaimer-banner.jpg" # 5 - unused (RERA junk)
 
 
 def _img(src: str, source: str = "img") -> SiteImage:
@@ -44,13 +44,13 @@ def _img(src: str, source: str = "img") -> SiteImage:
 
 
 CANDS = [
-    _img(DEV_LOGO, "jsonld"),    # 0 — developer logo (Organization.logo)
-    _img(PROJ_LOGO, "og"),       # 1 — project logo (og:image)
-    _img(HERO),                  # 2 — hero
-    _img(AMENITY),               # 3 — amenity
-    _img(FLOOR_PLAN),            # 4 — floor plan
-    _img(RERA_BANNER),           # 5 — unused
-    _img(DEV_LOGO),              # 6 — DUP url of idx 0
+    _img(DEV_LOGO, "jsonld"),    # 0 - developer logo (Organization.logo)
+    _img(PROJ_LOGO, "og"),       # 1 - project logo (og:image)
+    _img(HERO),                  # 2 - hero
+    _img(AMENITY),               # 3 - amenity
+    _img(FLOOR_PLAN),            # 4 - floor plan
+    _img(RERA_BANNER),           # 5 - unused
+    _img(DEV_LOGO),              # 6 - DUP url of idx 0
 ]
 
 

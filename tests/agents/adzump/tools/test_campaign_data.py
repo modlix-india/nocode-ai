@@ -1,60 +1,42 @@
-"""campaign_data — is_decline, _field_traceable, _set_campaign_spec (below the model).
-Regressions tagged inline (F11 decline capture, F12 invention-retry breaker)."""
+"""campaign_data below-the-model mechanics: is_decline, the _apply_field
+dependency cascade, _set_campaign_spec (invention breaker, kept-noop, leak
+containment), and clear_competitor_decline. Traceability + parse tables live
+in tests/agents/adzump/test_answer_capture.py.
+
+Run:
+    cd nocode-ai && ./venv/bin/python -m unittest tests.agents.adzump.tools.test_campaign_data -v
+"""
 import asyncio
-import types
 import unittest
 
 from app.agents.adzump.tools.campaign_data import (
-    ALLOWED_FIELDS, _apply_field, _clear_dependents, _field_traceable,
-    _set_campaign_spec, clear_competitor_decline, is_clear_decline_reply,
-    is_decline,
+    _apply_field, _clear_dependents, _set_campaign_spec,
+    clear_competitor_decline, is_clear_decline_reply, is_decline, is_real_estate,
 )
-from app.agents.adzump.answer_parse import parse_typed_answer
 from app.agents.adzump.services.business_storage import _build_full_record
-from tests.agents.adzump._fixtures import spec_context
-
-
-DECLINES = [
-    "No, skip competitor analysis for now",  # the live F11 phrase (comma!)
-    "no", "n", "No", "skip", "skip it", "not now", "no need", "no thanks",
-    "maybe later", "don't bother",
-]
-NOT_DECLINES = [  # polarity-flips: 'no' rejects something ELSE, not the offer
-    "no, change the budget to 20k",
-    "no, that competitor is wrong",
-    "yes", "go ahead, analyze them", "analyze competitors", "",
-]
+from tests.agents.adzump._fixtures import RE, spec_context
 
 
 class IsDeclineTests(unittest.TestCase):
-    def test_declines_true(self):
-        for t in DECLINES:
-            self.assertTrue(is_decline(t), f"expected decline: {t!r}")
-
-    def test_polarity_flips_false(self):
-        for t in NOT_DECLINES:
-            self.assertFalse(is_decline(t), f"expected NOT a decline: {t!r}")
-
-
-class FieldTraceableTests(unittest.TestCase):
-    def test_typed_decline_traces(self):  # regression: F11 (comma broke exact-match)
-        self.assertTrue(_field_traceable(
-            "competitive_analysis_declined", "true", "No, skip competitor analysis for now", {}))
-
-    def test_chip_decline_traces(self):  # chip "No" carries answer="true"
-        self.assertTrue(_field_traceable("competitive_analysis_declined", "true", "No", {}))
-
-    def test_polarity_flip_rejected(self):
-        self.assertFalse(_field_traceable(
-            "competitive_analysis_declined", "true", "no, change the budget to 20k", {}))
-
-    def test_non_true_value_rejected(self):
-        self.assertFalse(_field_traceable(
-            "competitive_analysis_declined", "false", "no", {}))
+    def test_table(self):
+        declines = [
+            "No, skip competitor analysis for now",  # the live F11 phrase (comma!)
+            "no", "n", "No", "skip", "skip it", "not now", "no need", "no thanks",
+            "maybe later", "don't bother",
+        ]
+        not_declines = [  # polarity-flips: 'no' rejects something ELSE, not the offer
+            "no, change the budget to 20k",
+            "no, that competitor is wrong",
+            "yes", "go ahead, analyze them", "analyze competitors", "",
+        ]
+        for text, expected in [(t, True) for t in declines] + \
+                              [(t, False) for t in not_declines]:
+            with self.subTest(text=text):
+                self.assertEqual(bool(is_decline(text)), expected)
 
 
 class InventionRetryLoopTests(unittest.TestCase):
-    # regression: F12 — decline→invent values→retry-with-fresh-values evaded the v5 breaker
+    # regression: F12 - decline→invent values→retry-with-fresh-values evaded the v5 breaker
     def test_invented_fields_after_decline_store_nothing_and_steer_ask(self):
         ctx, sc = spec_context({}, "No, skip competitor analysis for now")
         r = asyncio.run(_set_campaign_spec({"duration": "30 days", "budget": "₹5,000/day"}, ctx))
@@ -89,57 +71,13 @@ class InventionRetryLoopTests(unittest.TestCase):
         self.assertIsNone(ctx["session_context"].get("_spec_reject_streak"))
 
 
-# ── scaffolding (kept from sources; behavior-identical) ────────────────────
-# v3 product shapes + _ctx (DependencyCascadeTests, DurationParseGuardTests).
-RE_V3 = {"business_type": "real estate", "product_name": "Skyline Villas"}
-
-
+# ── F2 · dependency-clear cascade ─────────────────────────────────────────
 def _ctx(spec=None, **extra):
-    c = {"product_data": RE_V3, "campaign_spec": dict(spec or {}), "_spec_set_at": {}}
+    c = {"product_data": dict(RE), "campaign_spec": dict(spec or {}), "_spec_set_at": {}}
     c.update(extra)
     return c
 
 
-# v6 product shape + _spec_ctx (NoProgressFloorTests, BleedContainmentTests).
-RE_V6 = {"product_name": "Sumadhura Solea", "summary": "Luxury 3 & 4 BHK apartments.",
-         "business_type": "real estate"}
-ADDR = "3J8G+23, Rachenahalli, Thanisandra, Bengaluru, Karnataka 560045, India"
-
-
-def _spec_ctx(spec, last_user):
-    sc = {"campaign_spec": dict(spec), "_spec_set_at": {}, "product_data": dict(RE_V6)}
-    session = types.SimpleNamespace(
-        messages=[{"role": "user", "content": last_user}], _turn_count=7,
-    )
-    return {"session_context": sc, "_session": session}, sc
-
-
-# ── F1 · guard hardening ──────────────────────────────────────────────────
-class DurationParseGuardTests(unittest.TestCase):
-    def test_bare_number_reads_as_days(self):
-        self.assertEqual(parse_typed_answer("duration", "30", "$"), "30 days")
-        self.assertEqual(parse_typed_answer("duration", "1", "$"), "1 day")
-        self.assertEqual(parse_typed_answer("duration", " 45 ", "$"), "45 days")
-
-    def test_budget_bare_number_still_none(self):
-        # F1 is duration-only; budget keeps requiring a currency/suffix/per-day.
-        self.assertIsNone(parse_typed_answer("budget", "4000", "₹"))
-
-    def test_bare_number_is_traceable_canonically(self):
-        # The legit case the deleted fallback used to cover, now canonical.
-        self.assertTrue(_field_traceable("duration", "30 days", "30", _ctx()))
-
-    def test_digit_substring_leak_is_closed(self):
-        # OLD fallback accepted these (digits ⊂ digits). They must now reject.
-        self.assertFalse(_field_traceable("duration", "5 days", "I have 15 properties", _ctx()))
-        self.assertFalse(_field_traceable("budget", "₹5,000/day", "call me at 5000", _ctx()))
-
-    def test_existing_canonical_match_preserved(self):
-        self.assertTrue(_field_traceable("budget", "₹4,000/day", "4k", _ctx()))
-        self.assertFalse(_field_traceable("budget", "₹4,000/day", "no competitors", _ctx()))
-
-
-# ── F2 · dependency-clear cascade ─────────────────────────────────────────
 class DependencyCascadeTests(unittest.TestCase):
     def test_platform_change_clears_accounts(self):
         sc = _ctx({"platform": "Google Ads", "parent_account": "111", "account": "222"},
@@ -161,14 +99,13 @@ class DependencyCascadeTests(unittest.TestCase):
         _apply_field("platform", "Meta", "Meta", sc, 2, batch_fields={"platform", "account"})
         self.assertEqual(sc["campaign_spec"].get("account"), "222")   # preserved
 
-    def test_idempotent_resend_does_not_cascade(self):
+    def test_no_cascade_on_resend_or_first_set(self):
+        # idempotent re-send of the same value → untouched
         sc = _ctx({"platform": "Meta", "account": "222"}, account_names={"222": ""})
-        _apply_field("platform", "Meta", "Meta", sc, 2)               # same value
-        self.assertEqual(sc["campaign_spec"].get("account"), "222")   # untouched
-
-    def test_first_set_does_not_cascade(self):
-        sc = _ctx({"account": "222"}, account_names={"222": ""})
+        _apply_field("platform", "Meta", "Meta", sc, 2)
+        self.assertEqual(sc["campaign_spec"].get("account"), "222")
         # platform set for the first time (prior None) → no cascade
+        sc = _ctx({"account": "222"}, account_names={"222": ""})
         _apply_field("platform", "Meta", "Meta", sc, 2)
         self.assertEqual(sc["campaign_spec"].get("account"), "222")
 
@@ -242,7 +179,7 @@ class SpecRetryBreakerTests(unittest.TestCase):
         self.assertIn("ig_page_declined", r.error or "")
 
     def test_stored_account_field_unknown_id_still_rejected(self):
-        # Kiran (v5 review): the kept-noop must NOT swallow account fields —
+        # Kiran (v5 review): the kept-noop must NOT swallow account fields -
         # a different unknown id on a stored account is an attempted switch
         # and stays an actionable rejection (re-fetch), never a silent keep.
         ctx, sc = spec_context({"account": "act_111"}, "switch to act_999")
@@ -261,13 +198,16 @@ class SpecRetryBreakerTests(unittest.TestCase):
         self.assertEqual(sc["campaign_spec"]["ig_page"], "12345")
 
 
-# ── (b) F17c — the breaker blind spot: partial that stores nothing ──
+# ── F17c · the breaker blind spot: partial that stores nothing ─────────────
+ADDR = "3J8G+23, Rachenahalli, Thanisandra, Bengaluru, Karnataka 560045, India"
+
+
 class NoProgressFloorTests(unittest.TestCase):
     def test_kept_plus_rejected_storing_nothing_flags_no_progress(self):
         # exact F17c shape: location kept (paraphrase of stored), duration="true"
         # rejected (invented). Nothing NEW stored → must flag no_progress so the
         # stuck-step breaker counts it (this is what looped 18×).
-        ctx, sc = _spec_ctx({"location": ADDR}, "")
+        ctx, sc = spec_context({"location": ADDR}, "")
         r = asyncio.run(_set_campaign_spec(
             {"location": "Bengaluru", "duration": "true"}, ctx))
         self.assertTrue(r.success)                                  # partial = success
@@ -277,7 +217,7 @@ class NoProgressFloorTests(unittest.TestCase):
     def test_partial_that_stores_something_is_not_no_progress(self):
         # boundary: a real store + a rejected invent is genuine progress → no flag,
         # so a legit correction bundled with a stray field never trips the breaker.
-        ctx, sc = _spec_ctx({}, "make it 30 days")
+        ctx, sc = spec_context({}, "make it 30 days")
         r = asyncio.run(_set_campaign_spec(
             {"duration": "30 days", "budget": "true"}, ctx))
         self.assertTrue(r.success)
@@ -300,7 +240,7 @@ class ValidatorLeakContainmentTests(unittest.TestCase):
 
     def test_partial_reject_summary_clean_steer_model_only(self):
         # stores duration (traceable), rejects budget="true" (invented) → partial
-        ctx, sc = _spec_ctx({}, "make it 30 days")
+        ctx, sc = spec_context({}, "make it 30 days")
         r = asyncio.run(_set_campaign_spec({"duration": "30 days", "budget": "true"}, ctx))
         self.assertTrue(r.success)
         self.assertEqual(sc["campaign_spec"]["duration"], "30 days")
@@ -309,17 +249,17 @@ class ValidatorLeakContainmentTests(unittest.TestCase):
         self.assertIn("rejected", r.to_tool_result_content().lower())  # model: still steered
 
     def test_all_rejected_summary_clean_steer_in_error(self):
-        ctx, sc = _spec_ctx({}, "continue")
+        ctx, sc = spec_context({}, "continue")
         r = asyncio.run(_set_campaign_spec({"platform": "Google Ads"}, ctx))
         self.assertFalse(r.success)
         self._assert_clean(r.summary)                            # user/card: clean
         self.assertIn("traceable", (r.error or "").lower())      # model: steer in error
 
 
-# ── (a) F17a — bleed containment: only the traceable declined field lands ──
+# ── F17a · bleed containment: only the traceable declined field lands ──
 class BleedContainmentTests(unittest.TestCase):
     def test_decline_bleed_stores_only_the_declined_field(self):
-        ctx, sc = _spec_ctx({"platform": "Google Ads"}, "no thanks, skip it")
+        ctx, sc = spec_context({"platform": "Google Ads"}, "no thanks, skip it")
         r = asyncio.run(_set_campaign_spec({
             "competitive_analysis_declined": "true", "duration": "true",
             "budget": "true", "account": "true",
@@ -330,7 +270,7 @@ class BleedContainmentTests(unittest.TestCase):
             self.assertNotIn(f, sc["campaign_spec"])               # bleed contained
 
 
-# ── (★) F17b — record the decline deterministically (chip + tight typed) ──
+# ── F17b · record the decline deterministically (chip + tight typed) ──
 class ClearDeclineReplyTableTests(unittest.TestCase):
     def test_table(self):
         clear = ["no", "n", "no thanks", "no thanks, skip it", "skip it",
@@ -338,32 +278,13 @@ class ClearDeclineReplyTableTests(unittest.TestCase):
         ambiguous = ["no competitors named yet", "not now, first tell me about the audience",
                      "no, make it Meta", "what about competitors?", "no — which ones?",
                      "skip — but tell me how it works"]
-        for t in clear:
-            self.assertTrue(is_clear_decline_reply(t), f"should be a clear decline: {t!r}")
-        for t in ambiguous:
-            self.assertFalse(is_clear_decline_reply(t), f"should NOT auto-record: {t!r}")
-
-
-# ── PR2 · _field_traceable normalization (duration/budget canonical compare) ──
-class NormalizationGuardTests(unittest.TestCase):
-    ctx = {"product_data": {"business_type": "real estate"}}
-
-    def test_canonical_match_accepts(self):
-        self.assertTrue(_field_traceable("budget", "₹4,000/day", "4k", self.ctx))
-
-    def test_off_topic_rejected(self):
-        self.assertFalse(_field_traceable("budget", "₹4,000/day", "no competitors", self.ctx))
-
-    def test_idempotent_resend_no_op(self):
-        sc = {"product_data": {"business_type": "real estate"},
-              "campaign_spec": {"competitive_analysis_declined": "true"}, "_spec_set_at": {}}
-        # caller (set_campaign_spec) filters unchanged values before _apply_field;
-        # the guard itself still passes "true" on a "No" reply.
-        self.assertTrue(_field_traceable("competitive_analysis_declined", "true", "No", sc))
+        for text, expected in [(t, True) for t in clear] + \
+                              [(t, False) for t in ambiguous]:
+            with self.subTest(text=text):
+                self.assertEqual(bool(is_clear_decline_reply(text)), expected)
 
 
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────
-# B1 — the clear helper (pop flag + set_at, idempotent, surgical).
 class ClearHelperTests(unittest.TestCase):
     def test_pops_flag_and_provenance(self):
         sc = {"campaign_spec": {"platform": "Google Ads",
@@ -375,23 +296,17 @@ class ClearHelperTests(unittest.TestCase):
         self.assertIn("platform", sc["campaign_spec"])            # untouched
         self.assertIn("platform", sc["_spec_set_at"])
 
-    def test_idempotent_noop_when_absent(self):
+    def test_idempotent_and_missing_dicts_safe(self):
         sc = {"campaign_spec": {"platform": "Google Ads"}, "_spec_set_at": {}}
-        self.assertFalse(clear_competitor_decline(sc))
+        self.assertFalse(clear_competitor_decline(sc))            # flag absent → noop
         self.assertEqual(sc["campaign_spec"], {"platform": "Google Ads"})
-
-    def test_missing_dicts_safe(self):
         self.assertFalse(clear_competitor_decline({}))            # no crash
-
-
-# B2 — after clear, no contradiction reaches the durable launch record.
-RE_F26 = {"business_type": "real estate", "product_name": "Sattva Bliss", "summary": "x"}
 
 
 class PostClearConsistencyTests(unittest.TestCase):
     def test_clear_then_record_is_consistent(self):
         # simulate the tool path: contradiction state → clear → build record.
-        sc = {"product_data": dict(RE_F26),
+        sc = {"product_data": dict(RE),
               "campaign_spec": {"platform": "Google Ads",
                                 "competitive_analysis_declined": "true"},
               "_spec_set_at": {"competitive_analysis_declined": 4},
@@ -401,6 +316,21 @@ class PostClearConsistencyTests(unittest.TestCase):
         self.assertTrue(c["attempted"])
         self.assertFalse(c["declined"])
         self.assertNotIn("competitive_analysis_declined", sc["campaign_spec"])
+
+
+class IsRealEstateTests(unittest.TestCase):
+    """Gates the real-estate conditional (our first vertical)."""
+
+    def test_table(self):
+        for bt, expected in [
+            ("Real Estate Developer", True), ("Luxury Villas", True),
+            ("3BHK Apartments", True), ("Residential Township", True),
+            ("Property Management", True), ("realty group", True),
+            ("SaaS platform", False), ("Restaurant chain", False),
+            ("Law firm", False), ("", False), (None, False),
+        ]:
+            with self.subTest(bt=bt):
+                self.assertEqual(bool(is_real_estate(bt)), expected)
 
 
 if __name__ == "__main__":

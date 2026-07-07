@@ -21,7 +21,7 @@ from app.db.models import (
 
 logger = logging.getLogger(__name__)
 
-# Common SELECT columns for session queries (order matters — matches _row_to_session)
+# Common SELECT columns for session queries (order matters - matches _row_to_session)
 _SESSION_COLUMNS = """
     ID, SESSION_ID, CLIENT_CODE, CLIENT_ID, USER_ID,
     OBJECT_NAME, AGENT_NAME, APP_CODE, TITLE, CONTEXT_JSON, STATUS,

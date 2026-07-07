@@ -1,4 +1,4 @@
-"""Unit: app/agents/adzump/tools/launch.py — _launch_campaign guards.
+"""Unit: app/agents/adzump/tools/launch.py - _launch_campaign guards.
 
 Gate order under test: idempotency → required-fields → platform-mismatch →
 user-consent → save. Consent is the harness enforcement of the prompt rule

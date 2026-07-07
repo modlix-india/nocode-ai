@@ -2,7 +2,7 @@
 
 When the user TYPES an answer to a chip question ("25 days", "4k", "facebook")
 instead of clicking, ``parse_typed_answer`` reads a clean canonical value for the
-tagged field — or returns ``None`` so the turn falls through to the LLM.
+tagged field - or returns ``None`` so the turn falls through to the LLM.
 
 High precision over recall: parse only the *unambiguous*. Any correction cue
 ("no", "not", "instead", …) or more than one distinct number → ``None``. The
@@ -14,7 +14,7 @@ is trusted by the same validation the LLM's own writes go through.
 from __future__ import annotations
 
 # TODO(harness): replace these hardcoded per-field parsers with context-driven
-# structured capture — code gathers (pending field + last reply), model decides
+# structured capture - code gathers (pending field + last reply), model decides
 # the canonical value (or null). Frontier models handle corrections, ₹/$ and new
 # fields without regex/_CUE upkeep. Keep a thin parser only as a last-resort net.
 # Measure how often this actually catches a drop the LLM would've missed first.
@@ -27,7 +27,7 @@ from app.agents.adzump.platform import (
 
 # Real-estate detection mirrors CampaignContext.is_real_estate / _next_action's
 # currency pick (agent.py). Kept here (not imported from agent.py) to avoid a
-# circular import — campaign_data + agent both import this module.
+# circular import - campaign_data + agent both import this module.
 _RE_KEYWORDS = (
     "real estate", "realty", "villa", "apartment", "residential",
     "property", "housing", "homes", "realtor", "township", "builder", "developer",
@@ -46,14 +46,14 @@ _AMOUNT = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(k|l|lac|lakh|cr|crore|m|mn)?\b", 
 _MULT = {"k": 1_000, "l": 100_000, "lac": 100_000, "lakh": 100_000,
          "cr": 10_000_000, "crore": 10_000_000, "m": 1_000_000, "mn": 1_000_000}
 _PERDAY = re.compile(r"(/\s?d(ay)?\b|per\s+day|a\s+day|daily)", re.I)
-_SYMBOLS = [  # (detector, canonical symbol) — order: longest/specific first
+_SYMBOLS = [  # (detector, canonical symbol) - order: longest/specific first
     (re.compile(r"₹|\brs\.?\b|\binr\b|rupees?\b", re.I), "₹"),
     (re.compile(r"\$|\busd\b|dollars?\b", re.I), "$"),
 ]
 
 
 def currency_for(session_ctx: dict | None) -> str:
-    """₹ for real-estate sessions, else $ — matches _next_action's chip presets."""
+    """₹ for real-estate sessions, else $ - matches _next_action's chip presets."""
     bt = ((session_ctx or {}).get("product_data") or {}).get("business_type", "")
     return "₹" if any(kw in bt.lower() for kw in _RE_KEYWORDS) else "$"
 
@@ -74,11 +74,11 @@ def _parse_duration(text: str) -> str | None:
         if m1:
             n, unit = 1, _UNIT.get(m1.group(2).lower())
         elif (m2 := re.fullmatch(r"\s*(\d{1,3})\s*", text)):
-            # v3 · F1 — a bare integer with NO unit, asked in a DURATION context,
+            # v3 · F1 - a bare integer with NO unit, asked in a DURATION context,
             # reads as days: typed "30" → "30 days". Reached only when the caller
             # passes field=="duration" (the pending elicitation field, or the
             # field the LLM is writing), so it is pending-field-gated by
-            # construction — budget keeps requiring a currency/suffix/per-day
+            # construction - budget keeps requiring a currency/suffix/per-day
             # marker. Bounded to 1–999 so a stray id/year can't masquerade as a
             # duration; >1 distinct number is already rejected upstream.
             n, unit = int(m2.group(1)), "day"
@@ -136,14 +136,14 @@ def parse_typed_answer(field: str, text: str, currency: str = "$") -> str | None
 
 
 # ── F24 · traceability-side reading (NOT auto-capture) ─────────────────────
-# parse_typed_answer is deliberately conservative — it bails on a correction cue
+# parse_typed_answer is deliberately conservative - it bails on a correction cue
 # ("no wait, make it 60") or >1 number ("60 day, ₹15000 budget"). That is right
 # for AUTO-capture but too strict as the traceability gate on the model's OWN
 # set_campaign_spec write: the user stated a real value the gate then dropped
-# (F24 — silent "No changes." / volunteered fields lost). field_candidates reads
+# (F24 - silent "No changes." / volunteered fields lost). field_candidates reads
 # EVERY value the text genuinely supports for a field, with no cue gate and no
 # multi-number bail. Anti-invention is preserved by _field_traceable's canonical
-# equality (the model's value must equal one of these), NOT by digit-substring —
+# equality (the model's value must equal one of these), NOT by digit-substring -
 # so an invented value that matches no number/amount is still rejected (F1 stays
 # closed). ASYMMETRY (Kiran): duration may read a FREE bare number (days implied
 # by the field context); budget requires a money marker LOCAL to the amount, so a
@@ -155,7 +155,7 @@ _SUFFIX_AFTER = re.compile(r"\s*(k|l|lac|lakh|cr|crore|m|mn)\b", re.I)
 
 
 def _money_local(text: str, start: int, end: int) -> bool:
-    """A money marker sits adjacent to text[start:end] — currency symbol just
+    """A money marker sits adjacent to text[start:end] - currency symbol just
     before, magnitude suffix just after, or a per-day phrase just after."""
     left = text[max(0, start - 5):start]
     right = text[end:end + 9]

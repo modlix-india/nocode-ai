@@ -29,7 +29,7 @@ def require_app_code(context: dict) -> tuple[str, ToolResult | None]:
 
 
 def validate_name(name: str) -> ToolResult | None:
-    """Validate an entity name — must contain only letters (a-z, A-Z).
+    """Validate an entity name - must contain only letters (a-z, A-Z).
 
     Returns a ToolResult with an error if invalid, or None if valid.
     """
@@ -54,7 +54,7 @@ async def save_entity(
     """Save an entity with override-awareness.
 
     If the entity's ``clientCode`` matches the user's client, performs a normal
-    PUT update.  Otherwise the user is editing a shared object — strip the
+    PUT update.  Otherwise the user is editing a shared object - strip the
     ``id`` and POST so the backend creates an override for the user's client.
 
     Callers should set ``entity_data["message"]`` to the commit message before

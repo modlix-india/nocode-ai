@@ -1,4 +1,4 @@
-"""ToolResult.to_tool_result_content — what the MODEL sees, routed by audience.
+"""ToolResult.to_tool_result_content - what the MODEL sees, routed by audience.
 Pure, below the model. The user-facing relay (emit + persist) is the run loop's
 job and lives in test_agent_loop.py; here we lock only the model-facing string.
 
@@ -50,7 +50,7 @@ class ToModelContentTests(unittest.TestCase):
     def test_long_text_truncates(self):
         r = ToolResult(success=True, summary="x" * (ToolResult.MAX_RESULT_CHARS + 50))
         out = r.to_tool_result_content()
-        self.assertTrue(out.endswith("[truncated — use more specific reads to see details]"))
+        self.assertTrue(out.endswith("[truncated - use more specific reads to see details]"))
 
 
 if __name__ == "__main__":

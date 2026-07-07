@@ -1,4 +1,4 @@
-"""Object type registry — maps each object_type to its API config.
+"""Object type registry - maps each object_type to its API config.
 
 Central routing table used by all generic CRUD handlers.
 """

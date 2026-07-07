@@ -1,9 +1,9 @@
-"""Prompt enhancer — injects learned knowledge into system prompts.
+"""Prompt enhancer - injects learned knowledge into system prompts.
 
 Design principles:
 - Hard token budget: MAX_ENHANCEMENT_TOKENS (2000 tokens ~ 8000 chars)
 - Priority-based: pitfalls > examples > patterns > lessons
-- Appends as dynamic context — does NOT modify static docs (preserves prompt caching)
+- Appends as dynamic context - does NOT modify static docs (preserves prompt caching)
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
-"""Feedback collection — explicit and implicit signal tracking.
+"""Feedback collection - explicit and implicit signal tracking.
 
 Explicit: User clicks thumbs up/down, provides text corrections.
-Implicit: Detected from session patterns — retries, undos, abandonments.
+Implicit: Detected from session patterns - retries, undos, abandonments.
 """
 
 from __future__ import annotations

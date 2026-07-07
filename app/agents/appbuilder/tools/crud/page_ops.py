@@ -1,4 +1,4 @@
-"""Page sub-operations — list, create, read (structure/properties/events/component/event),
+"""Page sub-operations - list, create, read (structure/properties/events/component/event),
 update (properties/component batch/event functions).
 
 Absorbs logic from page_tools.py, component_tools.py, batch_tools.py, event_tools.py.
@@ -137,7 +137,7 @@ async def page_create(params: dict[str, Any], context: dict[str, Any]) -> ToolRe
 
 
 async def page_read(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Read page data — dispatches based on params.
+    """Read page data - dispatches based on params.
 
     - component_key → specific component
     - event_function_name → specific event function
@@ -327,7 +327,7 @@ def _read_event_functions_list(page_data: dict, page_name: str) -> ToolResult:
 
 
 async def page_update(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Update page — supports properties, component batch ops, event functions.
+    """Update page - supports properties, component batch ops, event functions.
 
     Can combine multiple sub-operations in a single call (one fetch + one save).
     """
