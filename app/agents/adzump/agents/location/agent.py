@@ -74,12 +74,9 @@ class LocationAgent(BaseAgent):
         The orchestrator does no interpretation and neither does Python code:
         the prompt carries the business profile + current targeting list + the
         user's verbatim request, and the model acts by picking ONE tool.
+        Empty messages are rejected by the tool wrapper (the entry point) -
+        by the time handle() runs, user_message is non-empty.
         """
-        if not (user_message or "").strip():
-            return ToolResult(
-                success=False,
-                error="manage_targeting_locations: empty user_message.",
-            )
         error = validate_run_context(context)
         if error is not None:
             return error

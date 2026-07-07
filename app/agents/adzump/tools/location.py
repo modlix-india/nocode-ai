@@ -51,15 +51,15 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
         "location_found": bool(detected),
     }
 
-    prompt = (params.get("prompt") or "").strip()
-    if not prompt:
-        if display:
-            prompt = (
-                f"I've detected the location as **{display}**. Please confirm "
-                f"on the map below - drag the pin if it's off."
-            )
-        else:
-            prompt = "Please confirm the campaign location on the map below - drag the pin if it's off."
+    # The tool declares no parameters (see ToolDefinition below) - the prompt
+    # is always built here, never model-supplied.
+    if display:
+        prompt = (
+            f"I've detected the location as **{display}**. Please confirm "
+            f"on the map below - drag the pin if it's off."
+        )
+    else:
+        prompt = "Please confirm the campaign location on the map below - drag the pin if it's off."
 
     stream = context.get("event_stream")
     if stream is not None:

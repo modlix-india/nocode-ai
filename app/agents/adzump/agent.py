@@ -131,14 +131,8 @@ class CampaignContext:
         ctx = session.context
         competitive_raw = ctx.get("competitor_analysis")
         competitive = competitive_raw or {}
-        marker = ctx.get("_pending_location_confirm")
-        # Marker may be a plain string (legacy) or dict (forward-compatible).
-        if isinstance(marker, dict):
-            pending_location = marker.get("location") or None
-        elif isinstance(marker, str) and marker:
-            pending_location = marker
-        else:
-            pending_location = None
+        # Sole writer (tools/location.py) stores the detected location string.
+        pending_location = ctx.get("_pending_location_confirm") or None
         # v4 · F10 - the field whose chip ask was escaped via "Custom" (awaiting a
         # typed value). Computed before the return; a conditional expression would
         # evaluate the condition before the walrus and raise UnboundLocalError.

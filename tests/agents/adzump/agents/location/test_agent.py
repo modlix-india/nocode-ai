@@ -69,8 +69,9 @@ class HandleTests(unittest.TestCase):
             yield
 
     def test_guards_reject_without_running_the_loop(self):
-        """Empty message, missing auth, missing session context - each fails
-        fast and never wakes the LLM."""
+        """Missing auth / session context fail fast and never wake the LLM.
+        (The empty-message guard lives in the TOOL WRAPPER - the entry point
+        owns it; see ToolWrapperGuardTests. PR #91 J4 deleted the duplicate.)"""
         def no_session_ctx():
             ctx = _ctx()
             ctx.pop("session_context")
@@ -82,7 +83,6 @@ class HandleTests(unittest.TestCase):
             return ctx
 
         guards = [
-            ("", _ctx(), "empty"),
             ("add Mumbai", no_auth(), "auth"),
             ("add Mumbai", no_session_ctx(), "session context"),
         ]
@@ -150,6 +150,20 @@ class HandleTests(unittest.TestCase):
         with self._patched(sub, mock.AsyncMock(side_effect=RuntimeError("provider down"))):
             res = _run(get_location_agent().handle("add Mumbai", _ctx()))
         self.assertFalse(res.success)
+
+
+class ToolWrapperGuardTests(unittest.TestCase):
+    """The orchestrator-side tool wrapper is the ONE owner of the
+    empty-message guard - its retry-hint error is what the orchestrator
+    relays; handle() assumes a non-empty message."""
+
+    def test_empty_user_message_rejected_with_retry_hint(self):
+        from app.agents.adzump.tools.location import manage_targeting_locations
+        for params in ({}, {"user_message": ""}, {"user_message": "   "}):
+            with self.subTest(params=params):
+                res = _run(manage_targeting_locations.execute(params, {}))
+                self.assertFalse(res.success)
+                self.assertIn("verbatim", res.error)
 
 
 class ToolRegistryTests(unittest.TestCase):
