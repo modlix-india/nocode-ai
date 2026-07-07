@@ -1,4 +1,4 @@
-"""Knowledge extractor - mines successful sessions for reusable patterns.
+"""Knowledge extractor — mines successful sessions for reusable patterns.
 
 Two extraction strategies:
 1. Rule-based: Detect common tool sequences from high-scoring sessions

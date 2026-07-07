@@ -1,4 +1,4 @@
-"""F13 · deterministic stuck-loop breaker - BaseAgent._stuck_step (below the model).
+"""F13 · deterministic stuck-loop breaker — BaseAgent._stuck_step (below the model).
 
 When every tool call in a turn fails with the SAME tool-name signature N turns
 running, the offending tools are quarantined for the rest of the run (so the
@@ -24,7 +24,7 @@ def _noop(tool):  # F15: success but stored nothing new (kept-noop)
     return {"tool": tool, "success": True, "no_progress": True}
 
 
-def _elicit(tool):  # asked the user - progress
+def _elicit(tool):  # asked the user — progress
     return {"tool": tool, "success": True, "elicited": True}
 
 

@@ -1,4 +1,4 @@
-"""F16 · scrub leaked tool-call syntax from assistant text - BaseAgent._strip_tool_syntax.
+"""F16 · scrub leaked tool-call syntax from assistant text — BaseAgent._strip_tool_syntax.
 
 The orchestrator sometimes echoes the internal prescription (e.g.
 `present_options(question=..., field="duration")`) into the user bubble. The scrub

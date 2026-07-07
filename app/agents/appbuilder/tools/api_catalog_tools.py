@@ -1,4 +1,4 @@
-"""API catalog lookup tool - on-demand endpoint detail retrieval.
+"""API catalog lookup tool — on-demand endpoint detail retrieval.
 
 Instead of injecting the full API catalog into every system prompt,
 the agent gets a compact summary and uses this tool to look up

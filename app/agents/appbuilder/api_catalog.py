@@ -1,4 +1,4 @@
-"""API catalog - loads and formats REST API endpoint metadata.
+"""API catalog — loads and formats REST API endpoint metadata.
 
 The API catalog describes all REST endpoints across the backend services
 (UI, Core, Security, Files) that the AI agent can call via tools or
@@ -76,7 +76,7 @@ class ApiCatalog:
             "`X-Forwarded-Host`, `X-Forwarded-Port`, `clientCode`, `appCode`.\n"
         )
 
-        # CRUD patterns - one-line summaries
+        # CRUD patterns — one-line summaries
         patterns = self._catalog.get("crudPatterns", {})
         if patterns:
             pattern_parts = []
@@ -92,7 +92,7 @@ class ApiCatalog:
         if operators:
             lines.append(f"Condition operators: {', '.join(operators)}\n")
 
-        # Services - just names and entity lists
+        # Services — just names and entity lists
         lines.append("### Services & Entities\n")
         services = self._catalog.get("services", {})
         for svc_name, svc in services.items():
@@ -139,7 +139,7 @@ class ApiCatalog:
             for ent_name, ent in entities.items():
                 pattern = ent.get("pattern", "custom")
                 desc = ent.get("description", "")
-                lines.append(f"- **{ent_name}** (`{base_path}{ent.get('path', '')}`) - {pattern} - {desc}")
+                lines.append(f"- **{ent_name}** (`{base_path}{ent.get('path', '')}`) — {pattern} — {desc}")
             return "\n".join(lines)
 
         # Entity-level: full details
@@ -184,10 +184,10 @@ class ApiCatalog:
             param_str = ""
             if params:
                 param_parts = [f"{k}: {v}" for k, v in params.items()]
-                param_str = f" - params: {', '.join(param_parts)}"
+                param_str = f" — params: {', '.join(param_parts)}"
             lines.append(
                 f"  - `{ep.get('method', '')} {full_path}{ep.get('path', '')}` "
-                f"- {ep.get('description', '')}{param_str}"
+                f"— {ep.get('description', '')}{param_str}"
             )
         lines.append("")
 
@@ -219,10 +219,10 @@ class ApiCatalog:
                 param_parts = [f"{k}={v}" for k, v in params.items()]
                 param_str = f"?{'&'.join(param_parts)}"
             body = ep.get("body", "")
-            body_str = f" - body: {body}" if body else ""
+            body_str = f" — body: {body}" if body else ""
             lines.append(
                 f"  - `{ep.get('method', 'GET')} {full_path}{ep.get('path', '')}"
-                f"{param_str}` - {ep.get('description', '')}{body_str}"
+                f"{param_str}` — {ep.get('description', '')}{body_str}"
             )
 
     def _append_query_format(self, lines: list[str]) -> None:

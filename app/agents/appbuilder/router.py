@@ -1,4 +1,4 @@
-"""AppBuilder router - chat endpoint.
+"""AppBuilder router — chat endpoint.
 
 Common endpoints (models, sessions) are registered via create_common_routes().
 Only the /chat endpoint with appbuilder-specific logic lives here.

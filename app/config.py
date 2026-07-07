@@ -91,15 +91,15 @@ class Settings(BaseSettings):
     # Used for Google AI services (e.g. image generation)
     GOOGLE_API_KEY: str = ""
 
-    # Google Maps key - separate from the Gemini/LLM key so they can be
+    # Google Maps key — separate from the Gemini/LLM key so they can be
     # rotated / restricted independently. Requires "Geocoding API" and
     # "Maps Static API" enabled on the GCP project.
     # Can be overridden by config server: ai.secrets.googleMapsAPIKey
     GOOGLE_MAPS_API_KEY: str = ""
 
-    # Google Maps Map ID - required for Vector rendering with Feature Layers
+    # Google Maps Map ID — required for Vector rendering with Feature Layers
     # (POSTAL_CODE, LOCALITY, COUNTRY, etc.). Must be a real Map ID from
-    # Google Cloud Console - DEMO_MAP_ID does NOT support Feature Layers.
+    # Google Cloud Console — DEMO_MAP_ID does NOT support Feature Layers.
     # Can be overridden by config server: ai.secrets.googleMapID
     GOOGLE_MAP_ID: str = ""
 
@@ -129,7 +129,7 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.gateway.url
     GATEWAY_URL: str = "https://dev.adzump.ai"
 
-    # Standalone mode - when true, the AI service reads the X-Path-Prefix header
+    # Standalone mode — when true, the AI service reads the X-Path-Prefix header
     # from incoming requests and prepends it to all outgoing API calls.
     # This allows routing through the webpack dev server with the correct
     # /{appCode}/{clientCode}/page prefix. Has no effect in production.
@@ -226,7 +226,7 @@ class Settings(BaseSettings):
         except (KeyError, TypeError, AttributeError):
             pass
 
-        # Agent-level config - adzump credentials under ai.adzump.*
+        # Agent-level config — adzump credentials under ai.adzump.*
         try:
             from app.agents.adzump.config import load_from_config_server as _load_adzump
             _load_adzump(config)
@@ -251,7 +251,7 @@ async def initialize_settings():
         config = await initialize_config_from_server()
         settings.apply_config_server_values(config)
     else:
-        # No config server - still load adzump config from env vars alone.
+        # No config server — still load adzump config from env vars alone.
         try:
             from app.agents.adzump.config import load_from_config_server as _load_adzump
             _load_adzump({})

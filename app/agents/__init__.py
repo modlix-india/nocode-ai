@@ -1,1 +1,1 @@
-"""Agents package - contains the appbuilder agentic agent."""
+"""Agents package — contains the appbuilder agentic agent."""

@@ -1,4 +1,4 @@
-"""Unit: core BaseAgent run-loop - _with_tail_reminder (replace-not-append,
+"""Unit: core BaseAgent run-loop — _with_tail_reminder (replace-not-append,
 tail-placed) + audience routing in _run_tool_block (user/both → emit + persist)."""
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ class WithTailReminderTests(unittest.TestCase):
         orig_content = original[-1]["content"]
         orig_blocks = list(orig_content)
         out = BaseAgent._with_tail_reminder(original, REMINDER)
-        # input untouched - the no-persist / replace-not-append guarantee
+        # input untouched — the no-persist / replace-not-append guarantee
         self.assertEqual(len(original), 1)
         self.assertIs(original[-1]["content"], orig_content)
         self.assertEqual(original[-1]["content"], orig_blocks)
@@ -61,7 +61,7 @@ class WithTailReminderTests(unittest.TestCase):
 
 class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
     """_run_tool_block posts the summary to chat (emit + persist) iff audience
-    targets the user. Replaces relay_summary; NO de-dup - the tool-text contract
+    targets the user. Replaces relay_summary; NO de-dup — the tool-text contract
     keeps the model to a lead-in, a rare verbatim echo is accepted."""
 
     async def _run(self, result: ToolResult, streamed: str = ""):
@@ -110,7 +110,7 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
         for aud in ("both", "user"):
             texts, _ = await self._run(
                 ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience=aud),
-                streamed="Sure - Found 2 competitors: Sobha, Prestige. Continue?")
+                streamed="Sure — Found 2 competitors: Sobha, Prestige. Continue?")
             self.assertEqual(texts, ["Found 2 competitors: Sobha, Prestige."], aud)
 
 

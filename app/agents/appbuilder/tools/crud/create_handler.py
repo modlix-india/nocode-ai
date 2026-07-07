@@ -1,4 +1,4 @@
-"""create - generic create tool definition."""
+"""create — generic create tool definition."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ create_tool = ToolDefinition(
     name="create",
     display_name="Create",
     # v8 Plan B WS4 · declarative only. This tool already elicits the user via
-    # request_confirmation (blocking, in-tool) - see AppBuilderAgent.CONFIRMATION_TOOLS.
+    # request_confirmation (blocking, in-tool) — see AppBuilderAgent.CONFIRMATION_TOOLS.
     # Marking it keeps the registry honest; zero runtime change (the run-loop
     # break fires only for elicit_mode="deferred").
     kind="elicitation",

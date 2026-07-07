@@ -1,4 +1,4 @@
-"""Generic CRUD tools package - 5 tools for all entity types.
+"""Generic CRUD tools package — 5 tools for all entity types.
 
 Exports CRUD_TOOLS for registration in the tool registry.
 """

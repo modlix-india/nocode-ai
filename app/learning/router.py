@@ -1,16 +1,16 @@
 """Learning loop API endpoints.
 
 Endpoints:
-    POST /feedback                  - Submit user feedback for a turn
-    GET  /feedback                  - List feedback history
-    GET  /analytics/summary         - Aggregate analytics
-    GET  /knowledge                 - List knowledge entries (admin)
-    GET  /knowledge/{id}            - Full knowledge entry detail
-    PATCH /knowledge/{id}           - Update knowledge entry status (admin)
-    GET  /tool-errors               - List tool error patterns
-    PATCH /tool-errors/{id}         - Resolve/ignore a tool error pattern
-    GET  /session-scores            - List session scores
-    GET  /session-scores/{session_id} - Score detail for a session
+    POST /feedback                  — Submit user feedback for a turn
+    GET  /feedback                  — List feedback history
+    GET  /analytics/summary         — Aggregate analytics
+    GET  /knowledge                 — List knowledge entries (admin)
+    GET  /knowledge/{id}            — Full knowledge entry detail
+    PATCH /knowledge/{id}           — Update knowledge entry status (admin)
+    GET  /tool-errors               — List tool error patterns
+    PATCH /tool-errors/{id}         — Resolve/ignore a tool error pattern
+    GET  /session-scores            — List session scores
+    GET  /session-scores/{session_id} — Score detail for a session
 """
 
 from __future__ import annotations

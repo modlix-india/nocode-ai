@@ -1,4 +1,4 @@
-"""Built-in (server-executed) tool stream handling - web_search / web_fetch rows.
+"""Built-in (server-executed) tool stream handling — web_search / web_fetch rows.
 
 Renders server-tool results into the agent event stream as display rows.
 Extracted verbatim from ``BaseAgent._run_loop``: the loop owns the per-turn
@@ -11,9 +11,9 @@ open row is flushed at end-of-stream by ``close_builtin_rows``.
 
 NOTE: assumes the Anthropic builtin chunk shape (``chunk.type`` /
 ``tool_id`` / ``tool_name`` / ``hits`` / ``text``; OpenAI ``web_search_preview``
-rides the same types). Not provider-agnostic yet - an unknown ``tool_name``
+rides the same types). Not provider-agnostic yet — an unknown ``tool_name``
 falls through to the web_search formatter.
-TODO: builtin streaming has no full characterization coverage yet - only the
+TODO: builtin streaming has no full characterization coverage yet — only the
 orphaned-result crash guard (``on_builtin_tool_result``) is tested.
 """
 
@@ -45,7 +45,7 @@ def _format_web_search_hits(hits: list[dict[str, Any]], error: str) -> str:
     """Render a pretty list of hits for a builtin web_search row.
 
     All hits are shown (the UI scrolls). One line per hit:
-    ``N. Title - host.com``. On error, returns ``"search failed: <code>"``.
+    ``N. Title — host.com``. On error, returns ``"search failed: <code>"``.
     """
     if error:
         return f"search failed: {error}"
@@ -58,7 +58,7 @@ def _format_web_search_hits(hits: list[dict[str, Any]], error: str) -> str:
         title = (h.get("title") or "").strip()
         host = _compact_host(h.get("url") or "")
         if title and host:
-            lines.append(f"  {i}. {title} - {host}")
+            lines.append(f"  {i}. {title} — {host}")
         elif title:
             lines.append(f"  {i}. {title}")
         elif host:
@@ -160,7 +160,7 @@ async def close_builtin_rows(
 
     Anthropic's batch pattern (tool_use×N then result×N) leaves multiple rows
     open at once; each gets its final ``emit_tool_result`` here. MUST be called
-    after the stream loop. NOT guarded on exception/cancel today - if the stream
+    after the stream loop. NOT guarded on exception/cancel today — if the stream
     loop raises mid-turn, open rows won't be closed (deferred: a try/finally
     guard at the call site).
     """

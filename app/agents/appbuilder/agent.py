@@ -1,4 +1,4 @@
-"""AppBuilderAgent - builds entire applications through conversation.
+"""AppBuilderAgent — builds entire applications through conversation.
 
 Extends BaseAgent with:
 - AppBuilder-specific tools (pages, components, events, styles, entities)
@@ -136,7 +136,7 @@ class AppBuilderAgent(BaseAgent):
         message = tool_input.get("message", "")
 
         if tool_name == "create":
-            return f"Create {object_type} '{name}'" + (f" - {message}" if message else "")
+            return f"Create {object_type} '{name}'" + (f" — {message}" if message else "")
         if tool_name == "update":
             parts = []
             if tool_input.get("properties"):
@@ -158,7 +158,7 @@ class AppBuilderAgent(BaseAgent):
             if tool_input.get("definition"):
                 parts.append("definition update")
             detail = "; ".join(parts) if parts else message
-            return f"Update {object_type} '{name}'" + (f" - {detail}" if detail else "")
+            return f"Update {object_type} '{name}'" + (f" — {detail}" if detail else "")
         if tool_name == "delete":
             return f"Delete {object_type} '{name}'"
         if tool_name == "copy":

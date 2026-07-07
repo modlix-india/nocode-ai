@@ -1,4 +1,4 @@
-"""Copy tool - duplicate definitions across or within applications.
+"""Copy tool — duplicate definitions across or within applications.
 
 Supports three modes:
 1. Copy a whole definition (page, style, theme, function, etc.) to another app

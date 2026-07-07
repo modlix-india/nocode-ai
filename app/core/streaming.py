@@ -95,7 +95,7 @@ class AgentEventStream:
         self._queue: asyncio.Queue[AgentEvent | object] = asyncio.Queue()
         # Pending confirmation requests: confirmation_id → Future[dict]
         self._pending_confirmations: dict[str, asyncio.Future[dict[str, Any]]] = {}
-        # Cancellation flag - set by POST /stop, checked by the agent loop
+        # Cancellation flag — set by POST /stop, checked by the agent loop
         self._cancelled = False
 
     # ── Cancellation ─────────────────────────────────────────────
@@ -186,14 +186,14 @@ class AgentEventStream:
         the UI should bind to THIS agent's row for subsequent tool_updates.
         Industry-aligned with Claude Agent SDK's parent_tool_use_id pattern
         and OTel GenAI invoke_agent span semantics. Defaults to empty for
-        backwards compatibility - UI falls back to parent_tool_use_id
+        backwards compatibility — UI falls back to parent_tool_use_id
         matching when this is empty (legacy behavior).
 
         Race-safety invariant: SSE preserves order on this async queue, so
         a tool_update bearing ``agent_tool_use_id`` always arrives after
         the matching emit_agent_started. Any future caller emitting
         tool_updates DURING the emit_agent_started await would break this
-        invariant - flag as a regression risk.
+        invariant — flag as a regression risk.
         """
         await self._queue.put(AgentEvent(
             event=AgentEventType.AGENT_STARTED,
@@ -291,7 +291,7 @@ class AgentEventStream:
         """Emit an agent-defined inline payload.
 
         The UI dispatches on `type` and renders a matching widget. Keeps the
-        core domain-agnostic - each agent picks its own widget types.
+        core domain-agnostic — each agent picks its own widget types.
         """
         await self._queue.put(AgentEvent(
             event=AgentEventType.DATA,
@@ -461,9 +461,9 @@ async def pre_emit_agent_started(
     from the current_agent_id ContextVar), and registers the tuid in
     context["_started_tuids"] so stage-emit guard-rails can verify the span
     was opened. The launcher owns BOTH lifecycle ends: this pre-emit and the
-    agent_finished after post-processing - BaseAgent.run() emits neither.
+    agent_finished after post-processing — BaseAgent.run() emits neither.
 
-    Returns the minted tuid (always, even when stream is None - callers
+    Returns the minted tuid (always, even when stream is None — callers
     still use it to attribute stage emits). Emit failures are logged, never
     raised: a tracing fault must not kill the sub-agent launch.
     """

@@ -1,4 +1,4 @@
-"""read - generic read tool definition."""
+"""read — generic read tool definition."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ read_tool = ToolDefinition(
         "For pages: pass name (page name) + app_code instead of id.\n\n"
         "Page sub-operations (object_type='page'):\n"
         "- Default: returns component tree structure (hierarchy with types and labels)\n"
-        "- include='summary': condensed page overview - component type counts, top-level sections with descendant counts, event names, bindings, labeled components\n"
+        "- include='summary': condensed page overview — component type counts, top-level sections with descendant counts, event names, bindings, labeled components\n"
         "- include='search': find components by type/name/text/bindings/events using search_* params\n"
         "- include='subtree': detailed subtree with inline properties, event refs, and binding indicators (requires subtree_root)\n"
         "- include='properties': page-level properties (title, permissions, translations, version)\n"

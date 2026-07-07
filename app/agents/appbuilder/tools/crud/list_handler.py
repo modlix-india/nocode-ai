@@ -1,4 +1,4 @@
-"""list - generic list tool definition."""
+"""list — generic list tool definition."""
 
 from __future__ import annotations
 

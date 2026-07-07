@@ -31,7 +31,7 @@ def _extract_web_search_queries(event_or_item: Any) -> list[str]:
     """Return every search query string on a web_search_call event/item.
 
     OpenAI's web_search may run MULTIPLE internal queries per tool call,
-    exposed via ``action.queries`` (list) - the singular ``action.query``
+    exposed via ``action.queries`` (list) — the singular ``action.query``
     is only populated for single-query searches. We surface all of them
     so the UI can show each one.
     """
@@ -82,7 +82,7 @@ def _extract_web_search_query(event_or_item: Any) -> str:
 
 
 def _dump_attrs(obj: Any) -> str:
-    """Tiny diagnostic helper - stringify top-level attr names of an SDK object."""
+    """Tiny diagnostic helper — stringify top-level attr names of an SDK object."""
     if obj is None:
         return "None"
     try:
@@ -136,7 +136,7 @@ def _parse_server_tool_query(input_json: str) -> str:
 
 
 def _get_field(obj: Any, name: str, default: Any = None) -> Any:
-    """Read ``name`` from a pydantic model or dict - whichever ``obj`` is."""
+    """Read ``name`` from a pydantic model or dict — whichever ``obj`` is."""
     if isinstance(obj, dict):
         return obj.get(name, default)
     return getattr(obj, name, default)
@@ -146,8 +146,8 @@ def _parse_web_search_hits(block: Any) -> "tuple[list[dict], str]":
     """Extract (hits, error) from a web_search_tool_result SDK block or dict.
 
     Returns:
-        (hits, "") on success - hits is a list of ``{"title": str, "url": str}``.
-        ([], error_code) on failure - e.g. ``"max_uses_exceeded"``,
+        (hits, "") on success — hits is a list of ``{"title": str, "url": str}``.
+        ([], error_code) on failure — e.g. ``"max_uses_exceeded"``,
         ``"too_many_requests"``, ``"unavailable"``.
     """
     content = _get_field(block, "content")
@@ -186,7 +186,7 @@ def _parse_web_fetch_result(block: Any) -> "tuple[list[dict], str]":
     """
     content = _get_field(block, "content")
 
-    # Error variants - SDK model or dict form
+    # Error variants — SDK model or dict form
     if content is not None and not isinstance(content, (list, dict)):
         err_code = _get_field(content, "error_code")
         if err_code:
@@ -194,7 +194,7 @@ def _parse_web_fetch_result(block: Any) -> "tuple[list[dict], str]":
     if isinstance(content, dict) and content.get("type") == "web_fetch_tool_result_error":
         return [], str(content.get("error_code") or "")
 
-    # Success - content is the fetched-page record (not a list)
+    # Success — content is the fetched-page record (not a list)
     if content is None:
         return [], ""
     if isinstance(content, list):
@@ -256,7 +256,7 @@ class StreamChunk:
     # For message_complete: the authoritative list of content blocks for the
     # assistant turn, assembled by the provider (e.g. Anthropic's
     # stream.get_final_message()). Consumer should persist this verbatim to
-    # history - in particular, Anthropic server-tool blocks
+    # history — in particular, Anthropic server-tool blocks
     # (server_tool_use, web_search_tool_result) must round-trip unchanged.
     blocks: list = field(default_factory=list)
     # For builtin_tool_result: the hits returned by a server-executed tool
@@ -336,7 +336,7 @@ class LLMProvider(ABC):
         Create a completion with tool-use support (for agentic loops).
 
         Args:
-            system_prompt: System prompt - either a string or a list of
+            system_prompt: System prompt — either a string or a list of
                 Anthropic content blocks (with cache_control).
             messages: Conversation history in Anthropic format.
             tools: List of tool definitions in Anthropic format
@@ -442,7 +442,7 @@ class AnthropicProvider(LLMProvider):
         - Function tools (no ``__builtin__`` marker): passed through as-is.
         - Builtin tools marked for Anthropic: ``spec`` is forwarded verbatim
           (e.g. ``{"type": "web_search_20250305", "name": "web_search",
-          "max_uses": 10}``). The ``provider`` key inside spec is stripped -
+          "max_uses": 10}``). The ``provider`` key inside spec is stripped —
           it's our routing hint, not part of Anthropic's API.
         - Builtin tools for other providers: dropped.
         """
@@ -571,7 +571,7 @@ class AnthropicProvider(LLMProvider):
 
         # Convert content blocks to serializable dicts. Unknown block types
         # (server_tool_use, web_search_tool_result, etc.) are preserved
-        # verbatim - Anthropic rejects subsequent requests if the prior
+        # verbatim — Anthropic rejects subsequent requests if the prior
         # assistant turn is missing them.
         content = []
         for block in response.content:
@@ -664,7 +664,7 @@ class AnthropicProvider(LLMProvider):
 
         # Streaming path only drives UI-visible events (text, tool_use rows,
         # web_search rows). The ("final", Message) item carries the full
-        # assembled content via ``message_complete`` - that's what the
+        # assembled content via ``message_complete`` — that's what the
         # consumer persists to history. Keep per-index state only for
         # what the UI events need.
         block_types_by_index: Dict[int, str] = {}
@@ -813,7 +813,7 @@ class AnthropicProvider(LLMProvider):
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI GPT provider - uses the Responses API.
+    """OpenAI GPT provider — uses the Responses API.
 
     Supports built-in tools: web_search_preview, code_interpreter.
     Custom function tools work alongside built-in tools.
@@ -887,7 +887,7 @@ class OpenAIProvider(LLMProvider):
                 # User content can be a mix of: text, tool_result, image
                 # (Anthropic-format). The Responses API takes either a flat
                 # string per message OR a list of typed parts under a single
-                # `content` array - so we accumulate the multimodal parts and
+                # `content` array — so we accumulate the multimodal parts and
                 # emit one input item per logical chunk.
                 multimodal_parts: list[dict[str, Any]] = []
                 for item in content:
@@ -919,7 +919,7 @@ class OpenAIProvider(LLMProvider):
                                 "image_url": src.get("url", ""),
                             })
                     elif item.get("type") == "image_url":
-                        # OpenAI Chat-Completions shape - passed through for
+                        # OpenAI Chat-Completions shape — passed through for
                         # callers that already build OpenAI image blocks.
                         url = (item.get("image_url") or {}).get("url") or item.get("image_url")
                         if isinstance(url, str) and url:
@@ -1048,7 +1048,7 @@ class OpenAIProvider(LLMProvider):
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Responses API.
 
-        ``extra_request_kwargs`` is merged into the ``responses.create`` call -
+        ``extra_request_kwargs`` is merged into the ``responses.create`` call —
         used by callers to inject provider-specific knobs such as
         ``tool_choice={"type": "web_search_preview"}`` for a single turn.
         """
@@ -1129,7 +1129,7 @@ class OpenAIProvider(LLMProvider):
 
             elif etype == "response.output_item.done":
                 # web_search_call queries are typically populated by the
-                # time the item completes - emit one chunk per query.
+                # time the item completes — emit one chunk per query.
                 item = getattr(event, 'item', None)
                 if item is not None and getattr(item, 'type', '') == "web_search_call":
                     queries = _extract_web_search_queries(item)
@@ -1196,7 +1196,7 @@ class OpenAIProvider(LLMProvider):
 
 
 class DeepSeekProvider(LLMProvider):
-    """DeepSeek provider - OpenAI-compatible Chat Completions API.
+    """DeepSeek provider — OpenAI-compatible Chat Completions API.
 
     Uses Chat Completions API (not Responses API) since DeepSeek
     doesn't support OpenAI's Responses API.

@@ -117,5 +117,5 @@ def compress_image_base64(
 
     except Exception as e:
         logger.error("Image compression failed: %s", e)
-        # Return original - let the API error handle it
+        # Return original — let the API error handle it
         return base64_data, media_type

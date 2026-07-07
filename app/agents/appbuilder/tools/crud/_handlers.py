@@ -1,4 +1,4 @@
-"""Generic CRUD handler functions - dispatches by ObjectTypeConfig.
+"""Generic CRUD handler functions — dispatches by ObjectTypeConfig.
 
 Reuses shared utilities from _shared.py and _executor.py.
 Each handler branches on config flags for entity-specific behaviour.

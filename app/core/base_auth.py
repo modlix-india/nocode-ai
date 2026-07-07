@@ -67,7 +67,7 @@ async def _authenticate(
     # of the JWT's userId → clientId → client.code and surfaces it as the
     # top-level `clientCode` on ContextAuthentication (set from typ.getT2() in
     # AuthenticationService.makeSpringAuthentication). Note: user.clientCode
-    # is NOT populated by saas's User.toContextUser() - only user.clientId is.
+    # is NOT populated by saas's User.toContextUser() — only user.clientId is.
     if not ctx_auth.clientCode:
         raise HTTPException(
             status_code=401,

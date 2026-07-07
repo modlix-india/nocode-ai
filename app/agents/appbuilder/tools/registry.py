@@ -1,4 +1,4 @@
-"""Tool registry - imports and exports ALL appbuilder tools.
+"""Tool registry — imports and exports ALL appbuilder tools.
 
 Used by AppBuilderAgent.__init__() to register all available tools.
 
@@ -29,16 +29,16 @@ _ROUTER_DESCRIPTION = """\
 Execute an appbuilder tool.  Pass the tool name and its parameters.
 
 Tools:
-- list(object_type, app_code?) - list entities
-- create(object_type, name, message, ...) - create entity
-- read(object_type, id|name, include?, component_key?, ...) - read entity
-- update(object_type, message, id|page_name, operations?, ...) - update entity
-- delete(object_type, id|app_code) - delete entity
-- copy(object_type, source_app_code, source_name, target_app_code, ...) - copy definitions
-- list_versions(object_id, entity_type) - version history
-- read_version(version_id, entity_type) - read a version snapshot
-- rollback_version(version_id, entity_type, message) - rollback to version
-- lookup_api(service, entity?) - API reference lookup
+- list(object_type, app_code?) — list entities
+- create(object_type, name, message, ...) — create entity
+- read(object_type, id|name, include?, component_key?, ...) — read entity
+- update(object_type, message, id|page_name, operations?, ...) — update entity
+- delete(object_type, id|app_code) — delete entity
+- copy(object_type, source_app_code, source_name, target_app_code, ...) — copy definitions
+- list_versions(object_id, entity_type) — version history
+- read_version(version_id, entity_type) — read a version snapshot
+- rollback_version(version_id, entity_type, message) — rollback to version
+- lookup_api(service, entity?) — API reference lookup
 
 See the system prompt for detailed parameter docs per tool."""
 
