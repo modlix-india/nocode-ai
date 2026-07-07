@@ -127,7 +127,7 @@ class Settings(BaseSettings):
     # Gateway URL (nocode-saas API gateway)
     # All agent tool calls route through this gateway
     # Can be overridden by config server: ai.gateway.url
-    GATEWAY_URL: str = "https://dev.adzump.ai"
+    GATEWAY_URL: str = "http://localhost:8080"
 
     # Standalone mode — when true, the AI service reads the X-Path-Prefix header
     # from incoming requests and prepends it to all outgoing API calls.
