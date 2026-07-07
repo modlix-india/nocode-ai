@@ -157,6 +157,9 @@ class BackfillPincodeTests(unittest.TestCase):
             ("broad scale skipped",
              {"name": "Mumbai", "scale": "city", "lat": 19.07, "lng": 72.87},
              self._POSTAL_RESULT, None, 0),
+            ("region scale skipped",  # PR #91 B6: was missing from BROAD_SCALES
+             {"name": "South India", "scale": "region", "lat": 12.0, "lng": 78.0},
+             self._POSTAL_RESULT, None, 0),
             ("existing pincode kept",
              {"name": "HSR", "pincode": "560102", "lat": 12.9, "lng": 77.6},
              self._POSTAL_RESULT, "560102", 0),

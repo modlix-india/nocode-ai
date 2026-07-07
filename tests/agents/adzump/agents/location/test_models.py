@@ -11,6 +11,7 @@ import unittest
 import pydantic
 
 from app.agents.adzump.agents.location.models import (
+    AddLocation,
     GoogleGeoLocation,
     MetaGeoLocation,
     TargetArea,
@@ -80,6 +81,30 @@ class TargetAreaTests(unittest.TestCase):
         a = TargetArea(name="X", meta={"type": "city", "key": "1"})
         self.assertIsInstance(a.meta, MetaGeoLocation)
         self.assertEqual(a.meta.type, "city")
+
+
+class ScaleVocabularyTests(unittest.TestCase):
+    """scale is a closed Literal (PR #91 B6): every accepted value must be a
+    broad scale the pincode-backfill exemption knows, so the vocabulary can't
+    drift into a value that gets its map polygon pincode-shrunk."""
+
+    def test_every_scale_value_accepted(self):
+        for scale in ("city", "state", "region", "country"):
+            with self.subTest(scale):
+                self.assertEqual(TargetArea(name="X", scale=scale).scale, scale)
+                self.assertEqual(AddLocation(name="X", scale=scale).scale, scale)
+
+    def test_out_of_vocabulary_scale_rejected(self):
+        for model_cls in (TargetArea, AddLocation):
+            with self.subTest(model_cls.__name__):
+                with self.assertRaises(pydantic.ValidationError):
+                    model_cls(name="X", scale="metro")
+
+    def test_broad_scales_derived_from_vocabulary(self):
+        from app.agents.adzump.agents.location.models import Scale
+        from app.agents.adzump.agents.location.platform_mapping import BROAD_SCALES
+        from typing import get_args
+        self.assertEqual(BROAD_SCALES, set(get_args(Scale)))
 
 
 if __name__ == "__main__":

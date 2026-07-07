@@ -24,7 +24,17 @@ out), so ``PlatformGeoMapper`` builds a ``TargetArea`` at the end of mapping and
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
+
+# The broad-campaign scale vocabulary - the ONLY values ``scale`` may carry.
+# Set only for broad (non-local) areas; neighbourhoods/localities omit it.
+# platform_mapping derives BROAD_SCALES from this, so a scale accepted here
+# can never be missed by the pincode-backfill exemption (PR #91 B6: "region"
+# was mapped to a Meta location_type but absent from BROAD_SCALES, so a
+# region-scale area got its polygon shrunk to one postal code).
+Scale = Literal["city", "state", "region", "country"]
 
 
 class MetaGeoLocation(BaseModel):
@@ -71,8 +81,7 @@ class TargetArea(BaseModel):
     lng: float | None = None
     distance_km: float = 0.0
     place_id: str | None = None
-    # "city" | "state" | "country" - set only for broad (non-local) campaigns.
-    scale: str | None = None
+    scale: Scale | None = None
     meta: MetaGeoLocation | None = None
     google: GoogleGeoLocation | None = None
 
@@ -103,10 +112,10 @@ class AddLocation(BaseModel):
     lat: float | None = Field(None, description="Latitude, only if the user gave coordinates.")
     lng: float | None = Field(None, description="Longitude, only if the user gave coordinates.")
     radius: float = Field(5.0, description="Targeting radius in km around the area.")
-    scale: str | None = Field(
+    scale: Scale | None = Field(
         None,
         description=(
-            "'city' | 'state' | 'country' when the area is that broad "
+            "'city' | 'state' | 'region' | 'country' when the area is that broad "
             "(e.g. 'add Mumbai' is a city). Omit for neighbourhoods/localities."
         ),
     )

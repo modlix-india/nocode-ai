@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, get_args
 
 from app.agents.adzump.platform import is_google, is_meta
 from app.agents.adzump.adapters.google.client import google_ads_client
@@ -19,15 +19,18 @@ from app.agents.adzump.adapters.meta.client import meta_client
 from app.agents.adzump.agents.location.models import (
     GoogleGeoLocation,
     MetaGeoLocation,
+    Scale,
     TargetArea,
 )
 from app.agents.adzump._shared import build_ds_headers
 
 logger = logging.getLogger(__name__)
 
-# Scales whose map polygon must stay locality-level: stamping a pincode on a
-# city/state/country target would shrink its rendering to one postal code.
-BROAD_SCALES = {"city", "state", "country"}
+# Every broad scale is exempt from pincode backfill: stamping a pincode on a
+# city/state/region/country target would shrink its map polygon to one postal
+# code. Derived from the Scale vocabulary so a newly accepted scale can never
+# be missed here (PR #91 B6: a hand-written set lacked "region").
+BROAD_SCALES = set(get_args(Scale))
 
 
 class PlatformGeoMapper:
