@@ -84,6 +84,23 @@ class CampaignStatusTests(unittest.TestCase):
                 self.assertEqual(self._status(spec), expected)
 
 
+class SessionProvenanceTests(unittest.TestCase):
+    """campaign.sessionId carries the chat session id passed by save_campaign.
+    regression: PR #91 B7 - the record read `_session_id` straight off
+    session context (zero writers), so provenance was always empty."""
+
+    def _session_id(self, chat_session_id):
+        sc = {"product_data": dict(RE), "campaign_spec": {"platform": "Google Ads"}}
+        record = _build_full_record(sc, "https://example.com", chat_session_id)
+        return record["campaign"]["sessionId"]
+
+    def test_stamped_when_given(self):
+        self.assertEqual(self._session_id("adzump-C1-42"), "adzump-C1-42")
+
+    def test_empty_when_unknown(self):
+        self.assertEqual(self._session_id(""), "")
+
+
 class LaunchRecordTests(unittest.TestCase):
     """_build_full_record competitive block stays honest. regression: F26 (decline→reverse)."""
 

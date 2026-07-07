@@ -135,7 +135,11 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     # Schema drift check at the durable boundary - warn-only, never blocks a save.
     check_product(session_ctx.get("product_data") or {}, where="save_campaign")
 
-    record = _build_full_record(session_ctx, url)
+    # Chat-session provenance: a sub-agent save carries the parent chat id
+    # (stamped into shared context by build_sub_session); a direct save uses
+    # the tool context's own session id.
+    chat_session_id = session_ctx.get("_session_id") or ctx.get("session_id", "")
+    record = _build_full_record(session_ctx, url, chat_session_id)
     logger.info(
         "save_campaign_assets: url=%s logo=%s rule=%s conf=%.2f creatives=%d",
         url,
@@ -243,7 +247,7 @@ def _build_map_embeds(loc_meta: dict) -> list[dict]:
     }]
 
 
-def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
+def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -> dict[str, Any]:
     """Build the AISuggestedData record from session.context. Pure function."""
     product = session_ctx.get("product_data") or {}
     profile = session_ctx.get("product_profile") or {}
@@ -328,7 +332,7 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # ── Campaign sub-object ──
         "campaign": {
             "savedAt": _now_iso(),
-            "sessionId": session_ctx.get("_session_id", ""),
+            "sessionId": chat_session_id,
             # Mirror the launch flag, never assert it: the every-turn autosave
             # writes this record too, and a draft stored as "launched" is a
             # consent bypass. launch_campaign sets the flag; any spec edit pops it.

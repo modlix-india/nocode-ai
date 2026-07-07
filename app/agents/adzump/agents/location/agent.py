@@ -98,7 +98,9 @@ class LocationAgent(BaseAgent):
         if coordinates:
             product.setdefault("place", {}).update(coordinates)
 
-        sub_session = await build_sub_session(parent_ctx, auth)
+        sub_session = await build_sub_session(
+            parent_ctx, auth, chat_session_id=context.get("session_id", ""),
+        )
         country_code = loc_meta.get("country_code") or "IN"
 
         # Launcher owns both AgentCard ends: agent_started here, finished below.

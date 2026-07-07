@@ -97,7 +97,7 @@ async def resolve_coordinates(
 
 
 # ── Step 4: sub-session construction ───────────────────────────────────────
-async def build_sub_session(parent_ctx: dict, auth) -> BaseSession:
+async def build_sub_session(parent_ctx: dict, auth, chat_session_id: str = "") -> BaseSession:
     """Create a sub-session with shared context refs but isolated message history.
 
     Shared dict refs let the sub-agent's tools write through to the parent
@@ -116,8 +116,9 @@ async def build_sub_session(parent_ctx: dict, auth) -> BaseSession:
         "account_names": parent_ctx.setdefault("account_names", {}),
         "craft_id": parent_ctx.get("craft_id", ""),
         "_craft_id": parent_ctx.get("_craft_id", ""),
-        # Parent chat session id - save_campaign stamps it on the record.
-        "_session_id": parent_ctx.get("_session_id", ""),
+        # Parent chat session id - save_campaign stamps it on the record so
+        # storage provenance points at the conversation, not this sub-session.
+        "_session_id": chat_session_id,
     }
     if isinstance(parent_ctx.get("competitor_analysis"), dict):
         shared["competitor_analysis"] = parent_ctx["competitor_analysis"]
