@@ -50,14 +50,14 @@ app/agents/adzump/
 │   ├── models.py               TargetArea, MetaGeoLocation, GoogleGeoLocation,
 │   │                           AddLocation/DeleteLocation (edit-tool params)
 │   ├── platform_mapping.py     PlatformGeoMapper - area → platform handle (utility)
+│   ├── search.py               autocomplete (map search-box UI)
+│   ├── search_router.py        HTTP route for /target-locations/search
+│   │                           (folded into the adzump router - one mount)
 │   ├── tools/
 │   │   ├── discover_neighborhoods.py   LLM tool (discovery, local path)
 │   │   ├── geocode_recommendations.py  LLM tool (discovery, broad path)
 │   │   └── edit_locations.py           LLM tools add_location + delete_location
 │   └── AGENT.md                this file
-├── services/geo/
-│   ├── search.py               autocomplete (map search-box UI)
-│   └── router.py               HTTP router for /target-locations/search
 └── tools/
     ├── location.py             manage_targeting_locations + confirm_location
     └── craft.py                Craft-panel renderer
@@ -418,7 +418,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
 - **No `GeoTargetingService`.** All three actions live on the agent. Minimum service files.
 - **Sub-session isolation.** The agent's reasoning is not the user's chat. Separate `BaseSession`, separate token record, separate audit trail.
 - **User-facing acknowledgement uses `audience="user"`, not a prompt-only rule.** Prompt-only rules were tried (commit `87cc5a4`, "capture-ack steer") and broke under model drift. The `audience=` mechanism is the deterministic fix.
-- **`services/geo/` was clean-cut, not stubbed.** All in-repo importers re-pointed in the same change. The only file left is `search.py` + the new `router.py` (UI helper).
+- **`services/geo/` was dissolved, not stubbed.** All in-repo importers re-pointed in the same change; its survivors (`search.py` + the UI-helper route, now `search_router.py`) moved into this package - the location agent owns geo search - and the route is folded into the adzump router so main.py mounts one router.
 
 ---
 

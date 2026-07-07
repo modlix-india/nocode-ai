@@ -1,10 +1,11 @@
-"""Geo-search HTTP router - UI helper for the map widget's typeahead search.
+"""Geo-search HTTP route - UI helper for the map widget's typeahead search.
 
 This is a *UI helper*, not part of the orchestrator's chat flow. The map
 widget calls this endpoint on every keystroke to populate its search-box
-suggestions; the orchestrator's LLM never invokes it. Keeping it on its own
-router (separate from the orchestrator's chat router) makes that
-distinction explicit: the orchestrator routes intent, this serves UI data.
+suggestions; the orchestrator's LLM never invokes it. It lives in the
+location agent's package (the owner of geo targeting) and is folded into
+the adzump chat router (``router.include_router``) so main.py mounts ONE
+adzump router: the orchestrator routes intent, this serves UI data.
 
 Why not through the LLM? Typeahead fires per keystroke. An LLM roundtrip
 would add ~800ms × 10–20 keystrokes per search = 8–20s of typing lag and
@@ -23,7 +24,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.agents.adzump.services.geo.search import search_autocomplete_locations
+from app.agents.adzump.agents.location.search import search_autocomplete_locations
 from app.core.base_auth import require_auth_context, AuthContext
 from app.core.session import BaseSession
 

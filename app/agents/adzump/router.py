@@ -1,10 +1,10 @@
 """Adzump orchestrator router - chat endpoint only.
 
-Common endpoints (models, sessions) are registered via ``create_common_routes``.
-Geo-search typeahead is NOT here - it lives at
-``app/agents/adzump/services/geo/router.py`` as a UI helper. The
-orchestrator's HTTP surface is intentionally small: the LLM is the
-interface, the chat endpoint is the only entry point.
+Common endpoints (models, sessions) are registered via ``create_common_routes``;
+the location agent's geo-search typeahead route (a UI helper, see
+``agents/location/search_router.py``) is folded in below so main.py mounts
+ONE adzump router. The orchestrator's HTTP surface is intentionally small:
+the LLM is the interface, the chat endpoint is the only conversational entry.
 """
 
 from __future__ import annotations
@@ -25,11 +25,13 @@ from app.core.base_router import (
 from app.core.session import BaseSession, AuthContext
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
+from app.agents.adzump.agents.location.search_router import router as location_search_router
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 create_common_routes(router, agent_name="adzump")
+router.include_router(location_search_router)
 
 
 class ChatRequest(BaseModel):

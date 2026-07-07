@@ -191,14 +191,9 @@ app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
-# Adzump agent router
+# Adzump agent router (chat + common routes + location geo-search typeahead)
 from app.agents.adzump.router import router as adzump_router
 app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"])
-
-# Geo-search UI helper router (map widget typeahead - separate from
-# the orchestrator's chat router; see services/geo/router.py for rationale).
-from app.agents.adzump.services.geo.router import router as geo_router
-app.include_router(geo_router, prefix=f"{API_PREFIX}/adzump", tags=["Geo Search"])
 
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
