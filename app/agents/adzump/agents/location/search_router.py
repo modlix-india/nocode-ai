@@ -24,6 +24,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.agents.adzump.adapters.connections import TokenServiceError
 from app.agents.adzump.agents.location.search import search_autocomplete_locations
 from app.core.base_auth import require_auth_context, AuthContext
 from app.core.session import BaseSession
@@ -64,6 +65,11 @@ async def search_target_locations(
         )
     except (ValueError, KeyError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except TokenServiceError as e:
+        # Lived bug: token failures once rendered as HTTP 200 [] - "search is
+        # broken" with a green status. 503 = platform auth outage, retryable.
+        logger.error("geo_search_token_outage: platform=%s err=%s", platform, str(e)[:200])
+        raise HTTPException(status_code=503, detail="Ad platform authentication unavailable")
     except Exception as e:
         logger.exception("Geo location search failed: %s", e)
         raise HTTPException(status_code=500, detail="Geo search unavailable")

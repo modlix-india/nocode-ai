@@ -11,6 +11,7 @@ import json
 import logging
 from typing import Any
 
+from app.agents.adzump.adapters.connections import TokenServiceError
 from app.agents.adzump.adapters.google.maps import google_maps_client
 from app.agents.adzump.adapters.meta.client import meta_client
 
@@ -89,6 +90,10 @@ async def search_autocomplete_locations(
 
             for idx, geo in enumerate(geocode_results):
                 candidates.append(_geo_to_candidate(suggest_data[idx], geo))
+        except TokenServiceError:
+            # Auth outage is NOT "no matches" - let the route answer 503, or
+            # the UI renders a broken search as a confident empty list.
+            raise
         except Exception as e:
             logger.exception("Google Ads geolocations suggest autocomplete failed: %s", e)
 
@@ -127,6 +132,8 @@ async def search_autocomplete_locations(
 
             for idx, geo in enumerate(geocode_results):
                 candidates.append(_geo_to_candidate(suggest_data[idx], geo))
+        except TokenServiceError:
+            raise  # same contract as the google branch above
         except Exception as e:
             logger.exception("Meta Ads geolocations search failed: %s", e)
 
