@@ -329,7 +329,10 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         "campaign": {
             "savedAt": _now_iso(),
             "sessionId": session_ctx.get("_session_id", ""),
-            "status": "launched",
+            # Mirror the launch flag, never assert it: the every-turn autosave
+            # writes this record too, and a draft stored as "launched" is a
+            # consent bypass. launch_campaign sets the flag; any spec edit pops it.
+            "status": spec.get("campaign_status") or "draft",
             "platform": spec.get("platform", ""),
             "duration": spec.get("duration", ""),
             "dailyBudget": spec.get("budget", ""),

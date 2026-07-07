@@ -570,6 +570,10 @@ def _apply_field(
     prior = spec.get(field)
     spec[field] = value
     set_at[field] = turn
+    # Any successful edit reopens the draft: the launch-idempotency flag must
+    # not outlive the spec it launched, or edit-then-relaunch is refused
+    # forever while the every-turn autosave silently updates the "live" record.
+    spec.pop("campaign_status", None)
     if field == "location":
         _store_location_meta(session_ctx, value, last_user)
     # v3 · F2 - cascade ONLY on a genuine change (overwrite), never on first-set

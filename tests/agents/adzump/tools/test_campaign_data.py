@@ -109,6 +109,23 @@ class DependencyCascadeTests(unittest.TestCase):
         _apply_field("platform", "Meta", "Meta", sc, 2)
         self.assertEqual(sc["campaign_spec"].get("account"), "222")
 
+    def test_any_edit_reopens_the_launched_draft(self):
+        # regression: campaign_status had one writer (launch) and zero clearers,
+        # so edit-budget-then-relaunch was refused forever. Any successful spec
+        # write must pop it - relaunch then re-asks consent through the gate.
+        sc = _ctx({"platform": "Google Ads", "budget": "₹5,000/day",
+                   "campaign_status": "launched"})
+        stored, _ = _apply_field("budget", "₹10,000/day", "₹10,000/day", sc, 5)
+        self.assertTrue(stored)
+        self.assertNotIn("campaign_status", sc["campaign_spec"])
+
+    def test_rejected_write_keeps_launched_status(self):
+        # an untraceable value stores nothing - the launch lock must survive.
+        sc = _ctx({"platform": "Google Ads", "campaign_status": "launched"})
+        stored, _ = _apply_field("budget", "₹9,999/day", "unrelated message", sc, 5)
+        self.assertFalse(stored)
+        self.assertEqual(sc["campaign_spec"].get("campaign_status"), "launched")
+
     def test_fb_page_change_clears_ig(self):
         sc = _ctx({"fb_page": "p1", "ig_page": "i1", "ig_page_declined": "true"},
                   account_names={"p1": "", "p2": "", "i1": ""})

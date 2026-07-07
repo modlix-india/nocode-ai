@@ -62,6 +62,28 @@ def _rec(spec, *, competitors=None):
     return _build_full_record(sc, "https://example.com")["campaign"]["competitive"]
 
 
+class CampaignStatusTests(unittest.TestCase):
+    """Stored campaign.status mirrors the launch flag, never asserts it.
+    regression: the every-turn autosave hardcoded "launched", so drafts
+    persisted as live campaigns from turn 2."""
+
+    def _status(self, spec):
+        sc = {"product_data": dict(RE), "campaign_spec": dict(spec)}
+        return _build_full_record(sc, "https://example.com")["campaign"]["status"]
+
+    def test_status_variants(self):
+        variants = [
+            ("pre-launch autosave stores draft", {"platform": "Google Ads"}, "draft"),
+            ("launched flag persists as launched",
+             {"platform": "Google Ads", "campaign_status": "launched"}, "launched"),
+            ("cleared flag reopens the draft",
+             {"platform": "Google Ads", "budget": "₹5,000/day"}, "draft"),
+        ]
+        for label, spec, expected in variants:
+            with self.subTest(label):
+                self.assertEqual(self._status(spec), expected)
+
+
 class LaunchRecordTests(unittest.TestCase):
     """_build_full_record competitive block stays honest. regression: F26 (decline→reverse)."""
 
