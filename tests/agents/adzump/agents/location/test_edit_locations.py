@@ -138,6 +138,9 @@ class ToolSchemaTests(unittest.TestCase):
             [name for name, p in params.items() if p.required], ["name"])
         # Optional[float] must flatten anyOf[number, null] → "number"
         self.assertEqual(params["lat"].type, "number")
+        # B6's Scale Literal reaches the LLM as an enum (S3), not a bare string.
+        self.assertEqual(params["scale"].enum,
+                         ["city", "state", "region", "country"])
 
     def test_delete_schema_mirrors_model(self):
         params = {p.name: p for p in delete_location_tool.parameters}
