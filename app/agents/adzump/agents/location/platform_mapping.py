@@ -71,11 +71,12 @@ class PlatformGeoMapper:
         pincode = area.get("pincode")
         city = area.get("city")
 
-        # Existing resolution may arrive nested (a prior mapping round-trip) or
-        # flat (the search widget / manual add). Read tolerantly.
+        # Only a prior mapping round-trip (nested handle) is trusted - it came
+        # from the suggest lookup below. Flat handles are NOT read: they'd be
+        # LLM-writable and would skip the lookup that validates them.
         existing = area.get("google") or {}
-        resource_name = existing.get("resourceName") or area.get("resourceName")
-        google_name = existing.get("name") or area.get("google_name")
+        resource_name = existing.get("resourceName")
+        google_name = existing.get("name")
 
         # Query suggest_geo_targets without needing account/parent_account IDs.
         # Fall back to area name so manually-added areas (no pincode/city parsed)
@@ -116,13 +117,13 @@ class PlatformGeoMapper:
         pincode = area.get("pincode")
         city = area.get("city")
 
-        # Existing resolution may arrive nested (a prior mapping round-trip) or
-        # flat (the search widget / manual add). Read tolerantly so a failed
-        # re-lookup never drops what was already resolved.
+        # Only a prior mapping round-trip (nested handle) is trusted - it came
+        # from the /search lookup below. Flat handles are NOT read: they'd be
+        # LLM-writable and would skip the lookup that validates them.
         existing = area.get("meta") or {}
-        meta_key = existing.get("key") or area.get("key")
-        meta_type = existing.get("type") or area.get("type")
-        meta_name = existing.get("name") or area.get("meta_name")
+        meta_key = existing.get("key")
+        meta_type = existing.get("type")
+        meta_name = existing.get("name")
 
         # Broad campaigns tag the scale the strategist picked; map it to Meta's
         # location_types so a country/state is searched as such, not as a city.

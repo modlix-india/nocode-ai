@@ -89,11 +89,12 @@ class AddLocation(BaseModel):
     """Params for ``add_location`` - the area to append to targeting.
 
     ``radius`` is the wire name the model emits (km); ``add_location``
-    stores it as ``TargetArea.distance_km``. The pre-resolved platform-handle
-    fields (``place_id``/``resourceName``/``key``/``type``) are dormant today -
-    the model never extracts them from a chat message - but kept so a future
-    structured caller (e.g. a search-widget payload) isn't lossy; the mapper
-    re-derives them from name/city/pincode when absent."""
+    stores it as ``TargetArea.distance_km``. Deliberately NO platform-handle
+    fields (``resourceName``/``key``/``type``/``place_id``): anything in this
+    schema is LLM-writable, and a hallucinated handle would skip the mapper's
+    lookup - the one step that validates it. Handles are ALWAYS re-derived by
+    ``PlatformGeoMapper`` from name/city/pincode; a future search-widget caller
+    that already holds a handle gets its own structured (non-LLM) entry point."""
 
     name: str = Field(min_length=1, description="Display name of the area, e.g. 'Juhu'.")
     city: str = Field("", description="City the area belongs to, if the user gave one.")
@@ -109,10 +110,6 @@ class AddLocation(BaseModel):
             "(e.g. 'add Mumbai' is a city). Omit for neighbourhoods/localities."
         ),
     )
-    place_id: str | None = Field(None, description="Google Maps place_id, if pre-resolved.")
-    resourceName: str | None = Field(None, description="Google Ads geoTargetConstants/{id}, if pre-resolved.")
-    key: str | None = Field(None, description="Meta adgeolocation key, if pre-resolved.")
-    type: str | None = Field(None, description="Meta location type (zip|city|region|country), if pre-resolved.")
 
 
 class DeleteLocation(BaseModel):

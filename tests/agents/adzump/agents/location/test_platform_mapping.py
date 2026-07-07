@@ -112,18 +112,15 @@ class MapMetaTypeTests(unittest.TestCase):
         )
         self.assertEqual(out["meta"], {"type": "city", "key": "999", "name": "Bandra"})
 
-    def test_flat_widget_key_preserved_and_nested(self):
-        # The search widget supplies a flat key → consumed, no re-lookup,
-        # emitted in nested form.
-        def _should_not_call(*_a, **_kw):
-            raise AssertionError("meta_client.get must not be called when key exists")
-
+    def test_flat_key_is_untrusted_and_relooked_up(self):
+        # PR #91 B2: a flat key is LLM-writable, so it must NOT skip the
+        # lookup - the mapper re-derives the handle from Meta's own /search.
         out = self._map(
-            {"name": "400050", "pincode": "400050", "key": "555"},
-            _should_not_call,
+            {"name": "400050", "pincode": "400050", "key": "hallucinated"},
+            _meta_get([{"key": "1234", "name": "400050", "type": "zip"}]),
         )
-        self.assertEqual(out["meta"]["key"], "555")
-        self.assertEqual(out["meta"]["type"], "zip")
+        self.assertEqual(out["meta"]["key"], "1234")   # lookup wins, flat ignored
+        self.assertNotIn("key", out)                    # flat field not persisted
 
 
 class BackfillPincodeTests(unittest.TestCase):

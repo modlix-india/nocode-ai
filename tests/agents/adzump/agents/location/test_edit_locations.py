@@ -39,8 +39,11 @@ class AddLocationTests(unittest.TestCase):
         with mock.patch.object(edit_mod, "finalize_targets", fin):
             res = _run(add_location_tool.execute(
                 {"name": "Juhu", "lat": 19.1, "lng": 72.83,
-                 "pincode": "400049", "radius": 3, "key": "555", "type": "zip",
-                 "scale": "city"},
+                 "pincode": "400049", "radius": 3, "scale": "city",
+                 # hallucination guard (PR #91 B2): platform handles are NOT in
+                 # the schema - if the model invents them anyway they must be
+                 # dropped at the boundary, never stored past the mapper lookup.
+                 "key": "555", "resourceName": "geoTargetConstants/999", "type": "zip"},
                 ctx,
             ))
         self.assertTrue(res.success)
@@ -50,9 +53,10 @@ class AddLocationTests(unittest.TestCase):
         area = areas[0]
         self.assertEqual(area["name"], "Juhu")
         self.assertEqual(area["distance_km"], 3)          # radius → distance_km
-        self.assertEqual(area["key"], "555")              # widget wire fields preserved
-        self.assertEqual(area["type"], "zip")
         self.assertEqual(area["scale"], "city")           # guards pincode backfill scope
+        for handle in ("key", "resourceName", "type", "place_id",
+                       "google_name", "meta_name"):
+            self.assertNotIn(handle, area)
         # the receipt names the area so the agent's summary stays grounded
         self.assertIn("Juhu", res.summary)
 

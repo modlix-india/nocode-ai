@@ -39,18 +39,6 @@ async def _add_location(params: dict, context: dict) -> ToolResult:
              "pincode": location.pincode, "lat": location.lat, "lng": location.lng,
              "scale": location.scale}
     area.update({k: v for k, v in where.items() if v not in (None, "")})
-    # Pre-resolved platform handles - dormant today (the model never extracts
-    # them from a chat message); see AddLocation for the full rationale.
-    if location.place_id:
-        area["place_id"] = location.place_id
-    if location.resourceName:
-        area["resourceName"] = location.resourceName
-        area["google_name"] = location.name
-    if location.key:
-        area["key"] = location.key
-        area["meta_name"] = location.name
-    if location.type:
-        area["type"] = location.type
     # TODO: append to a copy and assign back only after finalize succeeds -
     # a save/render failure currently leaves an unpersisted area in memory.
     target_areas.append(area)
