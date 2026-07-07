@@ -9,11 +9,12 @@ Why an agent and not a direct call: same reason as SummaryAgent - Adzump's
 convention is "every LLM work unit is a BaseAgent subclass". See
 ``feedback_traced_llm_not_agent.md`` in workspace memory.
 
-The vision LLM is the sole authority on logo picks. Earlier versions had a
-deterministic safety net (``_filename_logo_picks``) in the caller that
-filled the slot when the LLM declined; v9 (2026-05-22) deleted it. When the
-LLM declines, the pipeline returns ``logos=[]`` and the user uploads via
-the AD Pilot UI.
+The vision LLM is the sole authority on logo picks - v9 (2026-05-22)
+deleted the deterministic logo-FILLING fallback; when the LLM declines,
+the pipeline returns ``logos=[]`` and the user uploads via the AD Pilot UI.
+One deterministic guard remains, on the CREATIVE bucket:
+``_filename_suggests_logo`` drops a logo-named URL the vision pass let
+through as a creative (e.g. ``clublogo.png`` - seen in the wild).
 
 Cost: ~same as today (sticking with gpt-4o-mini · see D5b in notes).
 """
@@ -139,16 +140,27 @@ def _parse_review(final_text: str) -> ReviewResult:
         return ReviewResult()
 
 
+_LOGO_FILENAME_TOKENS = ("logo", "wordmark", "brandmark", "monogram")
+
+
+def _filename_suggests_logo(url: str) -> bool:
+    """True if the URL's filename strongly indicates a logo. Used only as a
+    post-pick safety net for the 'creative' bucket - content-based selection
+    remains primary; this catches the narrow case where the vision pass let
+    a sub-brand wordmark through (e.g. ``clublogo.png``)."""
+    filename = url.rsplit("/", 1)[-1].lower()
+    name_part = filename.rsplit(".", 1)[0]
+    return any(tok in name_part for tok in _LOGO_FILENAME_TOKENS)
+
+
 def _resolve_picks(
     selection: AssetSelection,
     candidates: list[SiteImage],
 ) -> ProductAssets:
     """Map LLM indices + roles onto ``ProductAssets`` (URLs + metadata).
 
-    Mirrors the legacy ``_resolve`` in ``product_assets.py:566`` but
-    inlined here so the agent owns the full input→output transform.
-    Caller still owns: byte fetching, the filename-safety-net, and
-    final persistence.
+    Owns the full input→output transform including the creative-bucket
+    filename guard. Caller still owns: byte fetching and final persistence.
     """
     n = len(candidates)
 
@@ -201,6 +213,9 @@ def _resolve_picks(
         url = candidates[idx].src
         if not url or url in seen_urls or url in logo_urls_seen:
             continue
+        if _filename_suggests_logo(url):
+            logger.info("vision_safety_filter: dropped logo-named creative %s", url)
+            continue
         if role and role not in {"hero", "amenity", "floor_plan", "unused"}:
             role = ""
         if role != "unused":
@@ -223,13 +238,15 @@ def _resolve_picks(
         verdict = "partial"
     else:
         verdict = "needs_upload"
+    # missing_categories must agree with the 'complete' bar (hero AND >=1
+    # amenity). floor_plan is tracked but NOT required for launch-readiness -
+    # listing it would make a 'complete' campaign still surface a "missing
+    # floor plan" ask (v9 I-8; floor plans rarely live on marketing sites).
     missing: list[str] = []
     if not hero_found:
         missing.append("hero")
     if amenities_count < 1:
         missing.append("amenity")
-    if not floor_plan_found:
-        missing.append("floor_plan")
     completeness = CreativeCompleteness(
         hero_found=hero_found,
         amenities_count=amenities_count,
@@ -681,9 +698,6 @@ class VisionAnalyst(BaseAgent):
             # Observability hook - never fail the pick on emit error.
             pass
 
-
-# Back-compat alias - existing importers and telemetry still say "VisionAnalyst".
-VisionAnalyst = VisionAnalyst
 
 _REVIEW_INSTANCE: "VisionAnalyst | None" = None
 

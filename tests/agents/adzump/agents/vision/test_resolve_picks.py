@@ -23,7 +23,10 @@ from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.agents.vision.agent import _resolve_picks
+from app.agents.adzump.agents.vision.agent import (
+    _filename_suggests_logo,
+    _resolve_picks,
+)
 from app.agents.adzump.agents.vision.models import (
     AssetSelection, LogoChoice, CreativeChoice,
 )
@@ -95,6 +98,22 @@ class ResolvePicksGoldenTests(unittest.TestCase):
 
         self.assertEqual(out.confidence, 0.9)
 
+    def test_logo_named_creative_dropped_by_safety_net(self):
+        """PR #91 J3: the filename guard is wired INSIDE _resolve_picks - a
+        sub-brand wordmark the vision pass let through (clublogo.png) never
+        reaches the creative bucket."""
+        cands = CANDS + [_img(f"{_SITE}/clublogo.png")]  # idx 7
+        sel = AssetSelection(
+            creatives=[CreativeChoice(idx=2, role="hero"),
+                       CreativeChoice(idx=7, role="amenity")],
+        )
+        out = _resolve_picks(sel, cands)
+        self.assertEqual(out.creative_image_urls, [HERO])
+        self.assertEqual([c.role for c in out.creatives_with_role], ["hero"])
+        # v9 I-8: floor_plan is tracked but never a missing category -
+        # 'complete' only needs hero + amenity.
+        self.assertEqual(out.creative_completeness.missing_categories, ["amenity"])
+
     def test_resolve_picks_drops_out_of_range_indices(self):
         # OOB indices must be silently dropped, not crash.
         sel = AssetSelection(
@@ -107,6 +126,25 @@ class ResolvePicksGoldenTests(unittest.TestCase):
         self.assertEqual([l.url for l in out.logos], [DEV_LOGO])
         self.assertEqual(out.creative_image_urls, [HERO])
         self.assertEqual([c.role for c in out.creatives_with_role], ["hero"])
+
+
+class FilenameSuggestsLogoTests(unittest.TestCase):
+    """The creative-bucket guard: filename token says wordmark (clublogo.png
+    etc.). Path tokens don't count - only the filename itself."""
+
+    def test_logo_substring_matches(self):
+        variants = [
+            ("https://x.com/clublogo.png", True),
+            ("https://x.com/CLUBLOGO.png", True),          # case-insensitive
+            ("https://x.com/club_logo.png", True),
+            ("https://x.com/brand-logo-white.svg", True),
+            ("https://x.com/logos/main.png", False),       # 'logos' in PATH only
+            ("https://x.com/wordmark_dark.svg", True),
+            ("https://x.com/products/villa-1.jpg", False),  # clearly a product
+        ]
+        for url, expected in variants:
+            with self.subTest(url):
+                self.assertEqual(_filename_suggests_logo(url), expected)
 
 
 if __name__ == "__main__":

@@ -23,16 +23,10 @@ import asyncio
 import base64
 import json
 import logging
-import re
 from io import BytesIO
 from pathlib import Path
 
-from pydantic import BaseModel, Field
-
 from app.agents.adzump.agents.product.models import (
-    CreativeCompleteness,
-    CreativeRole,
-    LogoPick,
     PageContent,
     ProductAssets,
     SiteImage,
@@ -62,55 +56,6 @@ _SOURCE_PRIORITY = {
     "link": 4,     # icon / apple-touch-icon - useful as logo fallback
     "network": 5,  # captured at browser network layer - high recall, low metadata
 }
-
-
-class _LogoChoice(BaseModel):
-    """One brand-logo selection in the LLM's JSON output. Carries the
-    candidate INDEX, not the URL - `_resolve` maps idx → URL and builds the
-    public `models.LogoPick` from this. Don't confuse the two: this is the
-    wire shape the model fills, `LogoPick` is the resolved domain shape."""
-    idx: int = Field(description="Index into the candidate list.")
-    role: str = Field(
-        default="",
-        description="Short label for this brand mark - 'developer', 'project', 'cobrand', or 'main' if singular. Leave blank when unsure.",
-    )
-    reasoning: str = Field(
-        default="",
-        description="One short sentence: why this image is the named brand's logo.",
-    )
-    background_hint: str = Field(
-        default="",
-        description=(
-            "UI tile contrast hint based on the thumbnail you're looking at. "
-            "'dark' if the logo is mostly light/white (wordmark designed for a dark header - "
-            "needs a dark tile to read). 'light' if the logo is mostly dark (designed for a "
-            "white header - needs a light tile). Empty string ('') if the logo has its own "
-            "non-transparent background, or if the color is mid-tone, or if you have no "
-            "thumbnail (SVG-only candidates). Only the thumbnail tells you this - never guess "
-            "from the filename."
-        ),
-    )
-
-
-class _AssetSelection(BaseModel):
-    """Schema the LLM fills. Indices into the candidate list."""
-    logos: list[_LogoChoice] = Field(
-        default_factory=list,
-        max_length=3,
-        description="Brand logos visible in the candidates. Most sites have one; some (real estate, franchise, parent+sub-brand) display two co-equal marks - a developer/parent brand and a project/product brand. Return both when both are clearly present, developer first. Default to one. Return [] if no brand logo qualifies - never pick a hero photo, payment badge, or partner mark as a logo.",
-    )
-    creative_idxs: list[int] = Field(
-        default_factory=list,
-        description="Indices of images that genuinely depict the product/service the business sells, ranked best first. Return as many as are good - don't pad with weak picks, don't cap at an arbitrary number. A site with rich photography may yield 8–10; a sparse site may yield 2–3.",
-    )
-    confidence: float = Field(
-        default=0.0,
-        description="Self-assessed precision on the logo picks, 0.0 to 1.0.",
-    )
-    note: str = Field(
-        default="",
-        description="When logos=[] OR a candidate that LOOKS like a brand logo was deliberately rejected, write ONE short sentence explaining why. Leave empty otherwise. Helps debug why a logo wasn't picked.",
-    )
 
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "product_assets.txt"
@@ -355,155 +300,6 @@ async def select_product_assets(
                 "thumb_content_type": fetched[url].get("thumb_content_type"),
             }
     return assets, picked_bytes
-
-
-def _resolve(sel: _AssetSelection, candidates: list[SiteImage]) -> ProductAssets:
-    n = len(candidates)
-
-    # Resolve logo picks (dedup by URL; cap at 3 - schema also bounds this).
-    logo_picks: list[LogoPick] = []
-    logo_urls_seen: set[str] = set()
-    for pick in (sel.logos or [])[:3]:
-        if not (0 <= pick.idx < n):
-            continue
-        chosen = candidates[pick.idx]
-        if chosen.src in logo_urls_seen:
-            continue
-        logo_urls_seen.add(chosen.src)
-        # Format = file extension from URL (cheap, no content-type sniff needed
-        # at this layer; persist step has the upload's real content-type).
-        ext = chosen.src.lower().rsplit("?", 1)[0].rsplit(".", 1)[-1]
-        fmt = ext if ext in {"svg", "png", "jpg", "jpeg", "webp", "gif", "avif"} else ""
-        if fmt == "jpeg":
-            fmt = "jpg"
-        bg = (pick.background_hint or "").strip().lower()
-        if bg not in ("light", "dark"):
-            bg = ""
-        logo_picks.append(LogoPick(
-            url=chosen.src,
-            source=chosen.source,
-            role=(pick.role or "").strip()[:32],
-            reasoning=(pick.reasoning or "").strip()[:200],
-            format=fmt,
-            background=bg,
-        ))
-
-    # Apply the safety net (dedup + logo-filename guard) on creative picks.
-    # Shift 2 (post-v7): prefer the new per-candidate `creatives` field
-    # (list of CreativeChoice with role enum). If absent, fall back to the
-    # v6/v7 `creative_idxs` shape. Track per-candidate role through the
-    # pipeline so downstream ad-assembly knows which URL is the hero,
-    # amenity, floor_plan without re-classifying.
-    creative_urls: list[str] = []
-    creatives_with_role: list[CreativeRole] = []
-    dropped_by_safety: list[str] = []
-    seen: set[str] = set(logo_urls_seen)
-
-    use_role_shape = bool(getattr(sel, "creatives", None))
-    role_iter = (
-        [(c.idx, (c.role or "").strip().lower(), (c.reasoning or "").strip()) for c in sel.creatives]
-        if use_role_shape
-        else [(i, "", "") for i in (sel.creative_idxs or [])]
-    )
-    for idx, role, reasoning in role_iter:
-        if not (0 <= idx < n):
-            continue
-        chosen = candidates[idx]
-        url = chosen.src
-        if not url or url in seen:
-            continue
-        if _filename_suggests_logo(url):
-            dropped_by_safety.append(url)
-            continue
-        # 'unused' = model considered it but rejected as ad-usable; skip the
-        # back-compat URL list but keep the role record so v8 can still see
-        # what the model rejected and why (FYI for v9 calibration).
-        if role and role not in {"hero", "amenity", "floor_plan", "unused"}:
-            # Unknown role label - keep but normalize to '' so the
-            # downstream consumer treats it as a generic creative.
-            role = ""
-        if role != "unused":
-            creative_urls.append(url)
-        creatives_with_role.append(CreativeRole(
-            url=url,
-            role=role,
-            reasoning=reasoning[:200],
-        ))
-        seen.add(url)
-
-    # Derive creative_completeness from per-candidate roles (policy in code,
-    # perception in model - Kiran's Q3 pick). When the model returned the
-    # legacy creative_idxs shape, all picks are role="" and verdict is
-    # 'needs_upload' (we don't know what's missing). v8 prompt should
-    # always emit roles, so this fallback is defensive.
-    hero_found = any(c.role == "hero" for c in creatives_with_role)
-    amenities_count = sum(1 for c in creatives_with_role if c.role == "amenity")
-    floor_plan_found = any(c.role == "floor_plan" for c in creatives_with_role)
-    if hero_found and amenities_count >= 1:
-        verdict = "complete"
-    elif hero_found or amenities_count >= 1:
-        verdict = "partial"
-    else:
-        verdict = "needs_upload"
-    # v9 I-8 fix: missing_categories must agree with the 'complete' bar
-    # (complete = hero AND >=1 amenity - see CreativeCompleteness). floor_plan
-    # is tracked (floor_plan_found) but is NOT required for launch-readiness, so
-    # it must not appear in missing_categories - otherwise a 'complete' campaign
-    # still surfaces a "missing floor plan" ask. (Rejected the inverse fix -
-    # requiring floor_plan for 'complete' - because floor plans rarely live on
-    # marketing sites, so it would leave most real-estate campaigns perpetually
-    # 'needs_upload'.)
-    missing = []
-    if not hero_found: missing.append("hero")
-    if amenities_count < 1: missing.append("amenity")
-    creative_completeness = CreativeCompleteness(
-        hero_found=hero_found,
-        amenities_count=amenities_count,
-        floor_plan_found=floor_plan_found,
-        verdict=verdict,
-        missing_categories=missing,
-    )
-
-    _stage(
-        "llm_pick",
-        logos=_filenames([p.url for p in logo_picks]) if logo_picks else "[none]",
-        logo_roles=",".join(p.role or "main" for p in logo_picks) or "(none)",
-        conf=f"{float(sel.confidence or 0.0):.2f}",
-        creative_count=len(creative_urls),
-        creatives=_filenames(creative_urls),
-        reason=(logo_picks[0].reasoning if logo_picks else "")[:120],
-        note=(sel.note or "")[:200],
-    )
-    if dropped_by_safety:
-        _stage(
-            "safety_filter",
-            dropped=len(dropped_by_safety),
-            reason="logo_filename",
-            urls=_filenames(dropped_by_safety),
-        )
-
-    conf = max(0.0, min(1.0, float(sel.confidence or 0.0)))
-    return ProductAssets(
-        logos=logo_picks,
-        creative_image_urls=creative_urls,
-        creatives_with_role=creatives_with_role,
-        creative_completeness=creative_completeness,
-        confidence=conf,
-        note=(sel.note or "").strip()[:300],
-    )
-
-
-_LOGO_FILENAME_TOKENS = ("logo", "wordmark", "brandmark", "monogram")
-
-
-def _filename_suggests_logo(url: str) -> bool:
-    """True if the URL's filename strongly indicates a logo. Used only as a
-    post-LLM-pick safety net for the 'creative' bucket - content-based
-    selection remains primary; this catches the narrow case where the
-    vision pass let a sub-brand wordmark through (e.g. `clublogo.png`)."""
-    filename = url.rsplit("/", 1)[-1].lower()
-    name_part = filename.rsplit(".", 1)[0]
-    return any(tok in name_part for tok in _LOGO_FILENAME_TOKENS)
 
 
 # ─── Candidate fetch + downscale ─────────────────────────────────────────

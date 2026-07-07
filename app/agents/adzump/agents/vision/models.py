@@ -1,9 +1,9 @@
 """Wire-shape models for the VisionAnalyst's LLM output.
 
-These mirror the private ``_LogoChoice`` / ``_AssetSelection`` classes that
-lived inside ``agents/product/product_assets.py``. Moved here so the agent
-owns its own contract - and so the JSON shape and the Pydantic validator
-share a single source of truth.
+These replaced the private ``_LogoChoice`` / ``_AssetSelection`` classes
+that once lived inside ``agents/product/product_assets.py`` (deleted with
+the legacy ``_resolve`` path). The agent owns its own contract - the JSON
+shape and the Pydantic validator share a single source of truth.
 
 The agent's public output is still ``ProductAssets`` (with ``LogoPick``
 entries), imported from ``agents.product.models`` for now. See D4 in the

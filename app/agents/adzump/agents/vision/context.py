@@ -26,8 +26,8 @@ _SELECT_PROMPT_PATH = (
 )
 
 
-# Output-contract suffix. The original code got this for free from
-# ``response_format=_AssetSelection``; without that, the model needs an
+# Output-contract suffix. The legacy direct call got this for free from
+# OpenAI's ``response_format`` (schema-enforced); without that, the model needs an
 # explicit JSON shape instruction. Keep it short - the heavy prompt-
 # engineering already lives in product_assets.txt.
 _JSON_OUTPUT_CONTRACT = """

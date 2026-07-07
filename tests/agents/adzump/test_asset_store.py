@@ -1,7 +1,7 @@
 """Asset store: verdict disposition, dedup, product_data write shapes, and the
 AssetRequirements lifecycle (elicitation payload decremented as uploads land).
 
-Merges the old test_asset_disposition.py + test_asset_requirements.py.
+Merges the old test_asset_disposition.py + test_asset_gaps.py.
 Design locks worth keeping: disposition is model-led with explicit-only
 escalation (no confidence threshold); requirements ride the elicitation
 payload as a JSON-safe dict (context is json.dumps'd across turns).
