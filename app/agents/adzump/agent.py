@@ -395,8 +395,8 @@ class AdzumpAgent(BaseAgent):
                     self._resume_elicitation_section(session, turn),
                     _state_section(cctx),
                     _user_said_section(last_user),
-                    _missing_section(missing),
                     _how_to_respond_section(),
+                    _missing_section(missing),
                 ],
             )
         )
