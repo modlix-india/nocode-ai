@@ -119,6 +119,13 @@ class AddLocation(BaseModel):
             "(e.g. 'add Mumbai' is a city). Omit for neighbourhoods/localities."
         ),
     )
+    place_type: str | None = Field(
+        None,
+        description=(
+            "Raw ad-platform geo type (e.g. 'Neighborhood', 'City', 'Postal code'). "
+            "Pass through verbatim from the message when present; never invent it."
+        ),
+    )
 
 
 class DeleteLocation(BaseModel):

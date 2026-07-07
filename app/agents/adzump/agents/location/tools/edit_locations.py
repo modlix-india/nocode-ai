@@ -25,6 +25,20 @@ from app.agents.adzump.agents.location.tools._shared import finalize_targets
 logger = logging.getLogger(__name__)
 
 
+# Widget adds carry the platform's own geo type (Google targetType / Meta
+# adgeolocation type). When present it decides scale DETERMINISTICALLY - the
+# LLM's inference from the canonical name is ignored. Both drifts are bugs:
+# a "Neighborhood" inferred as city skips pincode backfill (no map polygon);
+# a "City" with no scale gets backfilled and its polygon shrinks to one
+# postal code. Types absent from this map (neighborhood, zip, postal code,
+# sublocality, ...) are sub-city → scale None → backfill runs.
+_PLACE_TYPE_SCALE: dict[str, str] = {
+    "city": "city", "municipality": "city",
+    "state": "state", "province": "state", "region": "region",
+    "country": "country",
+}
+
+
 async def _add_location(params: dict, context: dict) -> ToolResult:
     """Append a targeting area and re-sync platform handles + craft panel."""
     location, invalid = _parse_params(AddLocation, params)
@@ -34,10 +48,16 @@ async def _add_location(params: dict, context: dict) -> ToolResult:
     if target_areas is None:
         return ToolResult(success=False, error="No session context available.")
 
+    # Platform type beats name-inferred scale (see _PLACE_TYPE_SCALE).
+    if location.place_type:
+        scale = _PLACE_TYPE_SCALE.get(location.place_type.strip().lower())
+    else:
+        scale = location.scale
+
     area: dict = {"name": location.name, "distance_km": location.radius}
     where = {"city": location.city, "state": location.state,
              "pincode": location.pincode, "lat": location.lat, "lng": location.lng,
-             "scale": location.scale}
+             "scale": scale}
     area.update({k: v for k, v in where.items() if v not in (None, "")})
 
     # The funnel owns the commit (it assigns product["target_areas"] itself),

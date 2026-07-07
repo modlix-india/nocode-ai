@@ -89,6 +89,35 @@ class AddLocationTests(unittest.TestCase):
         res = _run(add_location_tool.execute({"name": "X"}, {}))
         self.assertFalse(res.success)
 
+    def test_place_type_decides_scale_over_llm_inference(self):
+        """Widget adds carry the platform's geo type - it beats the LLM's
+        name-inferred scale in BOTH directions. Live bug: 'Indiranagar,
+        Bengaluru, ...' inferred scale=city → pincode backfill skipped → no
+        map polygon. Inverse: a City with no scale would get pincode-shrunk."""
+        variants = [
+            ("sub-city type clears wrong city scale",
+             {"place_type": "Neighborhood", "scale": "city"}, None),
+            ("google postal code type is sub-city",
+             {"place_type": "Postal Code", "scale": "city"}, None),
+            ("meta zip type is sub-city", {"place_type": "zip"}, None),
+            ("city type sets scale even when LLM omitted it",
+             {"place_type": "City"}, "city"),
+            ("region type maps into the Scale vocabulary",
+             {"place_type": "Region"}, "region"),
+            ("no place_type keeps the LLM's scale", {"scale": "city"}, "city"),
+            ("no place_type, no scale", {}, None),
+        ]
+        for label, extra, expected_scale in variants:
+            with self.subTest(label):
+                ctx = _ctx()
+                with mock.patch.object(edit_mod, "finalize_targets", _fake_finalize()):
+                    res = _run(add_location_tool.execute(
+                        {"name": "Indiranagar", **extra}, ctx))
+                self.assertTrue(res.success)
+                area = ctx["session_context"]["product_data"]["target_areas"][0]
+                self.assertEqual(area.get("scale"), expected_scale)
+                self.assertNotIn("place_type", area)  # hint, never stored
+
     def test_finalize_failure_leaves_memory_untouched(self):
         """PR #91 J1: the tool passes a NEW list; if the funnel blows up,
         the live target_areas must not carry an unpersisted area."""
