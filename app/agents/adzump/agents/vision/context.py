@@ -26,9 +26,9 @@ _SELECT_PROMPT_PATH = (
 )
 
 
-# Output-contract suffix. The original code got this for free from
-# ``response_format=_AssetSelection``; without that, the model needs an
-# explicit JSON shape instruction. Keep it short — the heavy prompt-
+# Output-contract suffix. The legacy direct call got this for free from
+# OpenAI's ``response_format`` (schema-enforced); without that, the model needs an
+# explicit JSON shape instruction. Keep it short - the heavy prompt-
 # engineering already lives in product_assets.txt.
 _JSON_OUTPUT_CONTRACT = """
 
@@ -42,15 +42,15 @@ The schema is:
   "logos": [
     {
       "idx": 0,                       // index into the candidate list
-      "role": "developer",            // "developer" | "project" | "cobrand" | "main" — short label, may be ""
+      "role": "developer",            // "developer" | "project" | "cobrand" | "main" - short label, may be ""
       "reasoning": "one sentence",
-      "background_hint": "light"      // "light" | "dark" | "" — UI tile contrast from the thumbnail
+      "background_hint": "light"      // "light" | "dark" | "" - UI tile contrast from the thumbnail
     }
   ],
   "creatives": [
     {
       "idx": 3,                       // index into the candidate list
-      "role": "hero",                 // "hero" | "amenity" | "floor_plan" | "unused" — MUST be one of these four exactly
+      "role": "hero",                 // "hero" | "amenity" | "floor_plan" | "unused" - MUST be one of these four exactly
       "reasoning": "main exterior shot" // <= 120 chars
     },
     {"idx": 7, "role": "amenity", "reasoning": "pool"},
@@ -61,8 +61,8 @@ The schema is:
 }
 ```
 
-Hard caps: at most 3 logos. Use empty list/string/0 when there's no signal — do not invent.
-**Always emit `creatives` (the role-tagged list), NOT a flat `creative_idxs` array** — the older shape is deprecated and produces empty roles downstream.
+Hard caps: at most 3 logos. Use empty list/string/0 when there's no signal - do not invent.
+**Always emit `creatives` (the role-tagged list), NOT a flat `creative_idxs` array** - the older shape is deprecated and produces empty roles downstream.
 """
 
 
@@ -86,7 +86,7 @@ def build_select_context() -> BaseContext:
 # ── review-each mode (upload path) ───────────────────────────────────────────
 # Select-subset PICKS from scraped candidates; review-each returns a verdict per
 # image. Different task → different prompt. The key behavior: never guess when
-# unsure — flag needs_user and ask.
+# unsure - flag needs_user and ask.
 _REVIEW_PROMPT = """You are a vision reviewer for advertising assets. You will be \
 shown N images (pasted by a user for their product/service). For EACH image, in \
 order, decide:
@@ -95,16 +95,16 @@ order, decide:
 an unrelated stock photo → relevant=false).
 - confidence: 0.0..1.0 in your own verdict.
 - needs_user: if you are NOT confident what the image is or whether to use it, \
-set true and write a short question for the user. Do NOT guess — asking is \
+set true and write a short question for the user. Do NOT guess - asking is \
 better than a wrong silent choice.
 
 You CANNOT confirm from an image alone that it belongs to the user's specific \
-project (two real-estate projects look alike) — do NOT try, and do NOT reject a \
+project (two real-estate projects look alike) - do NOT try, and do NOT reject a \
 plausible asset just because you can't verify the project. BUT if an image \
 clearly shows a DIFFERENT brand or project than the brief (a competitor's name \
 or logo, or content that contradicts the product), set needs_user=true and ask \
 the user to confirm it's their own. The user's note, if given, is their claim of \
-ownership — weigh it.
+ownership - weigh it.
 
 Review every image independently. Do not select a subset; emit one verdict per \
 image."""
@@ -125,7 +125,7 @@ exactly one verdict per input image, in input order:
 }
 ```
 
-Emit a verdict for every image. Use empty string / 0.0 / false when there's no signal — do not invent."""
+Emit a verdict for every image. Use empty string / 0.0 / false when there's no signal - do not invent."""
 
 
 def build_review_context() -> BaseContext:

@@ -1,4 +1,4 @@
-"""Competitor discovery tool — shortlist competitors from web search results.
+"""Competitor discovery tool - shortlist competitors from web search results.
 
 Scores candidates on code signals (frequency, domain) + semantic signals
 (format/geo/price match via batched classifier), fetches top-K candidate
@@ -22,7 +22,7 @@ from app.agents.adzump._shared import (
 
 logger = logging.getLogger(__name__)
 
-# Extends the shared AGGREGATOR_HOSTS with google.com — covers Maps citation
+# Extends the shared AGGREGATOR_HOSTS with google.com - covers Maps citation
 # URLs that show up in search results (google.com/maps/search/<brand>).
 _AGGREGATOR_EXTRA: frozenset[str] = frozenset({"google.com"})
 
@@ -63,11 +63,11 @@ def _normalize_name(name: str) -> str:
 
 
 # Local aliases over the shared helpers. ``_is_aggregator_host`` extends the
-# shared set with google.com (Maps citation URLs) — specific to this tool.
+# shared set with google.com (Maps citation URLs) - specific to this tool.
 _host_of = host_of
 
 
-# Whole-word markers — a token equal to one of these signals a sub-city
+# Whole-word markers - a token equal to one of these signals a sub-city
 # anchor. E.g. "Bannerghatta Road" has the token "road"; "JP Nagar Phase 5"
 # has "nagar" AND "phase".
 _SPECIFIC_GEO_MARKER_WORDS = frozenset({
@@ -78,7 +78,7 @@ _SPECIFIC_GEO_MARKER_WORDS = frozenset({
     "nagar", "layout", "colony", "extension", "phase", "sector", "block",
 })
 
-# Compound-suffix markers — localities whose name BAKES the marker into the
+# Compound-suffix markers - localities whose name BAKES the marker into the
 # word itself (common in Indian cities: "Indiranagar", "Koramangala",
 # "JP Nagar" collapsed into "jpnagar", "Malleshpalya"). We match if a token
 # ENDS with one of these.
@@ -92,7 +92,7 @@ def _is_specific_geography(geo_text: str | None) -> bool:
 
     Triggers the geo hard-floor for geo-bound verticals (real-estate,
     restaurants, local services). False for global/regional/city-level
-    profiles — keeps SaaS & D2C flows untouched.
+    profiles - keeps SaaS & D2C flows untouched.
 
     Heuristic (any of):
       - A whole-word marker token is present (road / street / nagar etc.)
@@ -183,7 +183,7 @@ def _score_code_signals(
             # Prefer URL host as dedup key (same site = same brand); fall back
             # to normalized name so we still merge when the URL is missing.
             # Use brand name for dedup when URL is an aggregator/citation
-            # (e.g. google.com/maps) — all such URLs share the same host,
+            # (e.g. google.com/maps) - all such URLs share the same host,
             # which would incorrectly merge unrelated brands into one entry.
             key = host if (host and not _is_aggregator_host(host)) else _normalize_name(name)
             if not key:
@@ -265,21 +265,21 @@ _CLASSIFIER_SCHEMA: dict = {
 }
 
 
-_CLASSIFIER_PROMPT = """You are a strict market-fit classifier. Given a business profile and a list of candidate competitors, decide for each candidate whether it matches on FOUR dimensions. Be CONSERVATIVE — when in doubt, mark FALSE.
+_CLASSIFIER_PROMPT = """You are a strict market-fit classifier. Given a business profile and a list of candidate competitors, decide for each candidate whether it matches on FOUR dimensions. Be CONSERVATIVE - when in doubt, mark FALSE.
 
 - format_match: TRUE if the candidate serves the same buyer need at the granularity the BUYER cares about. Use the BUYER'S lens, not the seller's label.
-  * Real-estate: a luxury apartment and a luxury villament at similar price on the same road both serve "affluent-residence buyers" — format_match=TRUE. A 2 BHK budget apartment vs a 4 BHK luxury villament — format_match=FALSE (different buyers).
-  * SaaS: a mid-market CRM and a mid-market helpdesk both serve "SMB customer-ops teams" — format_match=TRUE. A scheduling tool vs a CRM — format_match=FALSE (different jobs).
-  * Restaurants: a premium North Indian restaurant vs a premium Italian restaurant in the same neighborhood at the same price — format_match=TRUE (same date-night buyer). A premium restaurant vs a fast-food chain — format_match=FALSE.
+  * Real-estate: a luxury apartment and a luxury villament at similar price on the same road both serve "affluent-residence buyers" - format_match=TRUE. A 2 BHK budget apartment vs a 4 BHK luxury villament - format_match=FALSE (different buyers).
+  * SaaS: a mid-market CRM and a mid-market helpdesk both serve "SMB customer-ops teams" - format_match=TRUE. A scheduling tool vs a CRM - format_match=FALSE (different jobs).
+  * Restaurants: a premium North Indian restaurant vs a premium Italian restaurant in the same neighborhood at the same price - format_match=TRUE (same date-night buyer). A premium restaurant vs a fast-food chain - format_match=FALSE.
 
-- buyer_profile_match: TRUE if the target CUSTOMER overlaps significantly — same demographics, same budget tier, same purchase trigger — INDEPENDENT of format.
-  * Real-estate: Prestige Southern Star apartments ₹2-4 Cr and Valmark CityVille villaments ₹3-5 Cr both target affluent families 35-55 in South Bangalore — buyer_profile_match=TRUE even though one is apartment and one is villament.
-  * SaaS: a CRM for 10-person startups vs a CRM for 1000-person enterprises — buyer_profile_match=FALSE even though both are CRMs.
-  * D2C: a ₹1500 face serum and a ₹1500 face cream targeting the same skincare-conscious urban women — buyer_profile_match=TRUE.
+- buyer_profile_match: TRUE if the target CUSTOMER overlaps significantly - same demographics, same budget tier, same purchase trigger - INDEPENDENT of format.
+  * Real-estate: Prestige Southern Star apartments ₹2-4 Cr and Valmark CityVille villaments ₹3-5 Cr both target affluent families 35-55 in South Bangalore - buyer_profile_match=TRUE even though one is apartment and one is villament.
+  * SaaS: a CRM for 10-person startups vs a CRM for 1000-person enterprises - buyer_profile_match=FALSE even though both are CRMs.
+  * D2C: a ₹1500 face serum and a ₹1500 face cream targeting the same skincare-conscious urban women - buyer_profile_match=TRUE.
   * If the candidate's target customer is unknown, buyer_profile_match=FALSE (don't give benefit of the doubt).
 
 - geo_match: Match at the SAME GEOGRAPHIC SPECIFICITY the profile uses.
-  * If the profile names a specific road / neighborhood / micro-market (e.g. "Bannerghatta Road, South Bangalore", "Indiranagar", "SoMa, San Francisco"), geo_match is TRUE only if the candidate is in that SAME road / neighborhood / quadrant. A candidate in a different part of the same city (e.g. North Bangalore vs South Bangalore, Koramangala vs Whitefield, Brooklyn vs Manhattan) is geo_match=FALSE — they serve different buyer pools.
+  * If the profile names a specific road / neighborhood / micro-market (e.g. "Bannerghatta Road, South Bangalore", "Indiranagar", "SoMa, San Francisco"), geo_match is TRUE only if the candidate is in that SAME road / neighborhood / quadrant. A candidate in a different part of the same city (e.g. North Bangalore vs South Bangalore, Koramangala vs Whitefield, Brooklyn vs Manhattan) is geo_match=FALSE - they serve different buyer pools.
   * If the profile's geography is only city-level (e.g. "Mumbai"), city-level candidates match.
   * If the profile's geography is regional ("South India", "EMEA") or national, match at that level.
   * If the profile has NO geographic anchor (pure online/global SaaS, D2C shipping worldwide), geo_match=TRUE for everyone.
@@ -294,7 +294,7 @@ async def _classify_via_anthropic(payload_json: str) -> dict:
     """One batched Claude Haiku call with json_schema structured output.
 
     Uses Anthropic's ``output_config`` (GA on Haiku 4.5) so the model is
-    constrained to the schema — no post-hoc regex parsing. Runs the sync
+    constrained to the schema - no post-hoc regex parsing. Runs the sync
     SDK in a thread to stay async-compatible with the rest of the tool.
     """
     import anthropic
@@ -327,7 +327,7 @@ async def _classify_via_anthropic(payload_json: str) -> dict:
 
 
 async def _classify_via_openai(payload_json: str) -> dict:
-    """Legacy classifier path — kept behind the env kill switch."""
+    """Legacy classifier path - kept behind the env kill switch."""
     from openai import AsyncOpenAI
     from app.config import settings
 
@@ -359,10 +359,10 @@ async def _classify_candidates(
     """One batched call classifying every candidate on the three
     semantic signals. Returns ``{normalized_name: {format_match, geo_match, price_match}}``.
 
-    Provider selection: ``SHORTLIST_CLASSIFIER_PROVIDER`` env — ``anthropic``
+    Provider selection: ``SHORTLIST_CLASSIFIER_PROVIDER`` env - ``anthropic``
     (default) uses Claude Haiku, ``openai`` keeps the legacy gpt-4o-mini path.
 
-    Fail-soft: if the call errors, returns an empty dict — code_score alone
+    Fail-soft: if the call errors, returns an empty dict - code_score alone
     still drives ranking. The shortlist tool won't block on classifier failure.
     """
     if not candidates:
@@ -416,7 +416,7 @@ _FETCH_QUESTION_TEMPLATE = (
     "or review site).\n"
     "SECOND line (only if AGGREGATOR): write 'OFFICIAL_URL: <url>' with the brand's "
     "own website URL if it is explicitly linked on this page, OR 'OFFICIAL_URL: none' "
-    "if no such link is present. Do NOT invent a URL — only use one that appears on the page.\n\n"
+    "if no such link is present. Do NOT invent a URL - only use one that appears on the page.\n\n"
     "Then answer: What does this page describe? What does the brand offer, where do "
     "they operate, what's their pricing or business model, and what stands out "
     "(trust signals, differentiators, target customer)?"
@@ -622,7 +622,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     if not search_results:
         return ToolResult(
             success=False,
-            error="No search results available — run web_search first, then call shortlist_competitors.",
+            error="No search results available - run web_search first, then call shortlist_competitors.",
         )
 
     # Profile + primary-host context for scoring.
@@ -635,7 +635,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     await emit_progress(context, "Scoring candidates…")
     product_name = (session_ctx.get("product_data") or {}).get("product_name", "")
     scored = _score_code_signals(search_results, primary_host, primary_name=product_name)
-    # Filter only self-references. Aggregator-URL candidates are kept — they go
+    # Filter only self-references. Aggregator-URL candidates are kept - they go
     # through URL resolution + aggregator-follow fetch to recover their real URLs.
     pre_filtered = [c for c in scored if not c["is_primary"]]
 
@@ -643,7 +643,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     await emit_progress(context,f"Classifying {len(pre_filtered)} candidates…")
     classifications = await _classify_candidates(pre_filtered, profile_summary)
 
-    # Composite score — weights prioritize location + buyer-pool over
+    # Composite score - weights prioritize location + buyer-pool over
     # granular format. Format becomes a tie-breaker instead of a gate.
     # Rationale: a luxury apartment at the same price on the same road
     # IS a competitor for a villament; a villa in the wrong city is NOT.
@@ -665,7 +665,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         )
 
     # Geo hard-floor: for geo-bound profiles (specific road/neighborhood),
-    # exclude candidates that miss BOTH geo_match AND buyer_profile_match —
+    # exclude candidates that miss BOTH geo_match AND buyer_profile_match -
     # they aren't competing for the same buyer pool. They can still appear
     # via ALTERNATIVE (not a full drop) but won't dominate DIRECT.
     if specific_geo:
@@ -691,7 +691,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         if c["composite_score"] >= _SHORTLIST_MIN_COMPOSITE_SCORE
     ][:max_fetches + 4]  # take a few extra in case URL resolution fails for some
 
-    # Let ALL candidates with URLs through to the fetch stage — including
+    # Let ALL candidates with URLs through to the fetch stage - including
     # Maps/aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
     # extracts the official URL from the page and re-fetches.
     fetch_candidates = [c for c in above_threshold if c.get("url")][:max_fetches]
@@ -738,7 +738,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     # Build evidence block.
     if not verified:
         lines = [
-            "## Shortlist Competitors — ALL FETCHES FAILED OR WERE AGGREGATORS",
+            "## Shortlist Competitors - ALL FETCHES FAILED OR WERE AGGREGATORS",
             "",
             f"Scored {len(pre_filtered)} candidates, fetched top {len(fetched)}, "
             f"kept 0. ({len(aggregator_drops)} were aggregators, {len(fetch_fails)} failed).",
@@ -769,7 +769,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         geo = bool(c.get("geo_match"))
         price = bool(c.get("price_match"))
         # Segment hint. For geo-bound businesses (specific road/neighborhood),
-        # location is the dominant signal — any verified competitor on the same
+        # location is the dominant signal - any verified competitor on the same
         # road is head-to-head, regardless of format or price-tier misses from
         # the classifier. For non-geo-bound businesses (SaaS, D2C), require
         # format or buyer match alongside geo for DIRECT.

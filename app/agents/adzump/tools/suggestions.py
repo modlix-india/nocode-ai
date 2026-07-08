@@ -1,9 +1,9 @@
-"""Suggestion tools — present a question + clickable options atomically.
+"""Suggestion tools - present a question + clickable options atomically.
 
 `present_options` owns the *full* assistant turn for a discrete-choice ask:
 it streams the question text into the assistant message AND emits the chips
 event. The LLM can no longer write a question as free text and forget to
-call the tool — because the question text is a tool argument, not free text.
+call the tool - because the question text is a tool argument, not free text.
 
 `infer_suggestions` remains as a safety net for the rare case where the LLM
 ignores the contract and writes a question without calling the tool.
@@ -32,11 +32,11 @@ def _norm_q(s: str) -> str:
 async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Stream a question to the user + emit clickable option chips.
 
-    The tool owns the user-facing question text — pass it as ``question``.
+    The tool owns the user-facing question text - pass it as ``question``.
     Free-text echoing of the question by the LLM is unnecessary (and in the
     summary we ask it not to). Each option is either a string (label==value)
     or a ``{label, value}`` dict (label is what the user sees; value is what
-    the backend receives — needed for account picks where the label is a
+    the backend receives - needed for account picks where the label is a
     name but value must be a customer_id / business id).
     """
     question = (params.get("question") or "").strip()
@@ -45,7 +45,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             success=False,
             error=(
                 "`question` is required. Pass the exact question text the user "
-                "should see — the tool emits it; do not also write it as free text."
+                "should see - the tool emits it; do not also write it as free text."
             ),
         )
 
@@ -65,7 +65,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             normalized.append({"label": label, "value": value})
             # PR2 · a capturable option declares `answer` (the value to store on
             # click). Options without `answer` (e.g. "Custom", competitor "Yes")
-            # are fall-through — absent from the map → capture defers to the LLM.
+            # are fall-through - absent from the map → capture defers to the LLM.
             if opt.get("answer") is not None:
                 answer_map[value] = str(opt["answer"])
         else:
@@ -90,11 +90,11 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     # the chips. Wrapped in newlines so it separates from any conversational
     # lead-in the LLM streamed before this tool call.
     #
-    # v4 · F9 — the tool OWNS the question, but the model sometimes ALSO writes
+    # v4 · F9 - the tool OWNS the question, but the model sometimes ALSO writes
     # it as prose this turn (the system prompt forbids it; F4's steer discourages
     # it; it still happens). Emitting then would double-render the question (live
     # bug #10). So skip our emit when the question already appears in this turn's
-    # streamed assistant text — exactly one copy either way. Normalized-contains
+    # streamed assistant text - exactly one copy either way. Normalized-contains
     # match (panel rec); a divergent paraphrase still falls through to emit.
     stream = context.get("event_stream")
     if stream is not None:
@@ -103,7 +103,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
         nq = _norm_q(question)
         already = bool(nq) and nq in _norm_q(streamed)
         if already:
-            logger.info("present_options: question already in streamed prose — skip emit (F9)")
+            logger.info("present_options: question already in streamed prose - skip emit (F9)")
         else:
             await stream.emit_text(f"\n\n{question}\n")
 
@@ -117,7 +117,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
         data=({"elicit_field": field, "elicit_answers": answer_map} if field else None),
         summary=(
             f"Asked the user: \"{question[:120]}\" with {len(options)} options. "
-            "Question is already on screen — do not write it again. "
+            "Question is already on screen - do not write it again. "
             "Stop generating text now; wait for the user's reply."
         ),
     )
@@ -127,13 +127,13 @@ present_options = ToolDefinition(
     name="present_options",
     description=(
         "Ask the user a discrete-choice question with clickable option chips. "
-        "This tool emits BOTH the question text and the chips — do not write "
+        "This tool emits BOTH the question text and the chips - do not write "
         "the question as free text yourself. You may write a brief one-line "
         "conversational lead-in (e.g. \"Got it.\") before calling the tool. "
         "Use whenever the answer is a small set (2-6) of meaningful choices: "
         "platform, duration, budget presets, accounts, Yes/No confirms. Each "
         "option is a plain string (label==value) or a {label, value} object "
-        "(label is what the user sees; value is what you receive back — needed "
+        "(label is what the user sees; value is what you receive back - needed "
         "for account picks where the label is the human name but value must "
         "be the customer_id / business id)."
     ),
@@ -145,7 +145,7 @@ present_options = ToolDefinition(
             description=(
                 "The exact question text shown to the user above the chips. "
                 "End with '?'. Be concise (one sentence). Don't repeat options "
-                "in the text — the chips show them."
+                "in the text - the chips show them."
             ),
             required=True,
         ),
@@ -199,7 +199,7 @@ present_options = ToolDefinition(
     # v8 Plan B WS3 · deferred elicitation. The run loop breaks after this so
     # the chips are the only ask in the turn. (The `mode` param above is the
     # chip selection mode; elicit_expects="single" because the user sends one
-    # reply — a click or a confirmed multi-select — regardless of chip mode.)
+    # reply - a click or a confirmed multi-select - regardless of chip mode.)
     kind="elicitation",
     elicit_mode="deferred",
     elicit_expects="single",
@@ -210,7 +210,7 @@ SUGGESTION_TOOLS = [present_options]
 
 # ── Fallback inference ────────────────────────────────────────────────────
 
-_INFER_PROMPT = """You decide whether an assistant message ends with a choice question that warrants clickable option buttons — and when it does, you propose SMART, CONTEXT-AWARE options tailored to the business the user is advertising.
+_INFER_PROMPT = """You decide whether an assistant message ends with a choice question that warrants clickable option buttons - and when it does, you propose SMART, CONTEXT-AWARE options tailored to the business the user is advertising.
 
 Return STRICT JSON in one of these shapes:
 - No buttons:  {"needs_options": false}
@@ -228,7 +228,7 @@ How to use the business context:
 - If the context shows a D2C consumer product at ₹500-1500, tune down accordingly.
 - Match labels to the currency/format already used in the conversation (₹/day vs $/day).
 - Always include a sensible "Custom" option for numeric presets so the user can override.
-- If the message lists options inline (e.g. "Google Ads or Meta?"), honour those exact labels — don't invent new ones.
+- If the message lists options inline (e.g. "Google Ads or Meta?"), honour those exact labels - don't invent new ones.
 
 Other rules:
 - Use mode "multi" ONLY if the question explicitly asks for multiple selections; otherwise "single".
@@ -251,11 +251,9 @@ def _build_context_snippet(ctx: dict[str, Any] | None) -> str:
             bits.append(f"type={business['business_type']}")
         if business.get("pricing"):
             bits.append(f"pricing={str(business['pricing'])[:120]}")
-        loc = business.get("location")
-        if isinstance(loc, str) and loc:
+        loc = (business.get("place") or {}).get("address") or ""
+        if loc:
             bits.append(f"location={loc}")
-        elif isinstance(loc, dict) and loc.get("location"):
-            bits.append(f"location={loc['location']}")
         if bits:
             lines.append("Business: " + ", ".join(bits))
         summary = business.get("summary")

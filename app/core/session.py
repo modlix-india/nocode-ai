@@ -496,7 +496,10 @@ class BaseSession:
 
             for turn in history:
                 user_text = turn.user_instruction or ""
-                assistant_text = turn.assistant_summary or "(Performed actions via tools)"
+                assistant_text = (
+                    turn.assistant_summary
+                    or _tool_only_turn_note(turn.tool_calls_json)
+                )
 
                 if not user_text:
                     continue
@@ -522,3 +525,29 @@ class BaseSession:
             )
         except Exception as e:
             logger.warning(f"Failed to restore conversation history: {e}")
+
+
+def _tool_only_turn_note(tool_calls_json: str | None) -> str:
+    """Stand-in assistant text for a restored turn that produced no prose.
+
+    Built from the tools' own result summaries so it reads like a NORMAL
+    reply. Any meta-placeholder in this slot eventually gets parroted
+    verbatim into chat by the resumed model - both "(Performed actions via
+    tools)" and a bracketed "[transcript note: ...]" were, live - so the
+    only safe stand-in is text that is also acceptable user-facing prose.
+    Elicitation turns (widget was the reply) restore as the widget's own
+    summary ("Map + prompt shown for ..."), which is exactly the context
+    the resumed model needs."""
+    calls: list[dict] = []
+    if tool_calls_json:
+        try:
+            calls = [c for c in json.loads(tool_calls_json) if isinstance(c, dict)]
+        except (ValueError, TypeError):
+            pass
+    summaries = [s for s in ((c.get("summary") or "").strip() for c in calls) if s]
+    if summaries:
+        return " ".join(summaries)[:500]
+    tool_names = list(dict.fromkeys(c.get("tool") for c in calls if c.get("tool")))
+    if tool_names:
+        return f"Done ({', '.join(tool_names)})."
+    return "Done."

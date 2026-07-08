@@ -1,4 +1,4 @@
-"""Competitor analysis tool — discover and profile competitors.
+"""Competitor analysis tool - discover and profile competitors.
 
 Spawns the Product Analyst sub-agent with competitor-focused instructions,
 cleans the results (filter self-references, bad URLs, aggregators), and
@@ -16,6 +16,7 @@ from app.agents.adzump._shared import (
     emit_progress,
     host_of,
     is_aggregator_host,
+    primary_screenshot_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -143,7 +144,7 @@ def _filter_self_references(
     return dropped
 
 
-# ── Craft panel rendering — delegated to tools/craft.py ──────────────
+# ── Craft panel rendering - delegated to tools/craft.py ──────────────
 from app.agents.adzump.tools.craft import (
     emit_craft_panel as _emit_final_craft,
     append_competitor_blocks as _append_competitor_craft,
@@ -247,7 +248,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     else:
         # Clear stale results so the pipeline runs fresh.
         session_ctx.pop("competitor_analysis", None)
-        session_ctx.get("research_state", {}).clear()
+        session_ctx.get("_research_state", {}).clear()
 
     if auth is None:
         return ToolResult(success=False, error="Authentication required.")
@@ -256,7 +257,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         from app.agents.adzump.agents.product.agent import get_product_agent
 
         await emit_progress(context, "Starting competitor research…")
-        # Symmetric lifecycle: the launcher owns both AgentCard ends —
+        # Symmetric lifecycle: the launcher owns both AgentCard ends -
         # agent_started here, agent_finished after post-processing.
         from app.core.streaming import pre_emit_agent_started
 
@@ -276,7 +277,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             user_message=(
                 f"Run competitor research for: {product_name}\n\n"
                 f"Product profile:\n{product_summary[:1500]}\n\n"
-                "SCOPE: Do NOT call scrape_url — the business is already analyzed.\n"
+                "SCOPE: Do NOT call scrape_url - the business is already analyzed.\n"
                 "1) Derive 7 search queries from the profile:\n"
                 "   - Queries 1-5: direct discovery (offering_type, geography, price_tier, "
                 "adjacent format, customer overlap). At least 2 spec-anchored to specific "
@@ -284,13 +285,13 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 '   - Queries 6-7: review/comparison (e.g. "best {offering} in {geography} '
                 'reviews", "{offering} market report", "{offering} vs alternatives"). '
                 "These target expert/media content for authority signal.\n"
-                "2) Issue SEVEN `web_search` calls — one per query. The server runs each "
+                "2) Issue SEVEN `web_search` calls - one per query. The server runs each "
                 "search and returns results inline.\n"
                 "3) After ALL searches complete, call `shortlist_competitors()` in the SAME "
                 "response. It scores, classifies, filters aggregators, fetches the top 6-8 "
                 "in parallel, drops fetch failures, and returns a verified evidence block.\n"
                 "4) FINAL MESSAGE must be a SINGLE ```json fenced block per the schema "
-                "in your system prompt. Include ONLY direct head-to-head competitors — "
+                "in your system prompt. Include ONLY direct head-to-head competitors - "
                 "skip anything the shortlist marked ADJACENT or ALTERNATIVE. Transcribe "
                 "from the shortlist evidence; do not re-add anything it dropped. "
                 "No prose outside the JSON."
@@ -307,7 +308,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         _filter_self_references(business, competitive, primary_url=url)
 
         session_ctx["competitor_analysis"] = competitive
-        # F26 — fresh analysis ran (even if 0 found): a prior decline is void.
+        # F26 - fresh analysis ran (even if 0 found): a prior decline is void.
         if clear_competitor_decline(session_ctx):
             logger.info("competitor_decline_cleared: analyze_competitors ran")
 
@@ -409,7 +410,7 @@ async def _lookup_single_competitor(
         from app.agents.adzump.agents.product.agent import get_product_agent
 
         await emit_progress(context, f"Looking up {query}…")
-        # Symmetric lifecycle: the launcher owns both AgentCard ends —
+        # Symmetric lifecycle: the launcher owns both AgentCard ends -
         # agent_started here, agent_finished after post-processing.
         from app.core.streaming import pre_emit_agent_started
 
@@ -428,7 +429,7 @@ async def _lookup_single_competitor(
             parent_session_context=session_ctx,
             user_message=(
                 f"Look up these businesses as potential direct competitors: {query}\n\n"
-                f"Our product: {product_name} — {product_summary[:500]}\n\n"
+                f"Our product: {product_name} - {product_summary[:500]}\n\n"
                 "Check existing research data in context first; for any not found, "
                 "use web_search. Do NOT call scrape_url.\n\n"
                 "For EACH queried business, decide:\n"
@@ -440,7 +441,7 @@ async def _lookup_single_competitor(
                 "name, url, business_type, location, pricing, key_usps, weakness, "
                 "why_competitor.\n"
                 "- 'competitive.skipped' array: one entry per SKIPPED business with "
-                "{name, reason} — reason is ≤15 words (e.g. 'different area', "
+                "{name, reason} - reason is ≤15 words (e.g. 'different area', "
                 "'different price tier', 'not found on web').\n"
                 "- Empty 'business' section.\n"
                 "Every queried name must appear in exactly one of the two arrays."
@@ -467,7 +468,7 @@ async def _lookup_single_competitor(
         skipped = (output.competitive or {}).get("skipped") or []
 
         competitors_list.extend(new_competitors)
-        # F26 — competitors were ADDED by name → a prior decline is void. (Not on
+        # F26 - competitors were ADDED by name → a prior decline is void. (Not on
         # a pure removal: zeroing the list isn't a reversal of the decline.)
         if new_competitors and clear_competitor_decline(session_ctx):
             logger.info("competitor_decline_cleared: competitors added by name")
@@ -484,14 +485,14 @@ async def _lookup_single_competitor(
     craft_id = session_ctx.get("craft_id", "")
     if stream and craft_id:
         if removed_names:
-            # Full rebuild — append=False replaces the panel entirely.
+            # Full rebuild - append=False replaces the panel entirely.
             await _emit_final_craft(
                 stream,
                 craft_id,
                 primary_url,
                 business,
                 competitive,
-                screenshot_url=(business.get("primary_screenshot_url") or business.get("screenshot_url")),
+                screenshot_url=primary_screenshot_url(business),
                 baked_summary=product_summary,
             )
         elif new_competitors:
