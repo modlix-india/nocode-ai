@@ -1,4 +1,4 @@
-"""Adzump tool registry — aggregates all tools for the chat agent.
+"""Adzump tool registry - aggregates all tools for the chat agent.
 
 Tools are organized by domain:
 - Business analysis (scrape, product profiling)

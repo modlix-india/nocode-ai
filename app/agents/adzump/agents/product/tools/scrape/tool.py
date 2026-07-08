@@ -1,8 +1,8 @@
-"""Scrape tool — Playwright-based page scraping for the ProductAgent.
+"""Scrape tool - Playwright-based page scraping for the ProductAgent.
 
 Tool definition + orchestrator. The heavy concerns split out:
-  - scrape_profile.py — gpt-4o summary, craft panel layout, summary input
-  - scrape_assets.py  — logo/creative selection, upload, receipts row
+  - scrape_profile.py - gpt-4o summary, craft panel layout, summary input
+  - scrape_assets.py  - logo/creative selection, upload, receipts row
 
 Closures `paint_initial_screenshot` and `start_parallel_summary` stay here so they can
 mutate the shared `state` dict on `_scrape_url`'s frame.
@@ -40,7 +40,7 @@ MAX_HEADINGS = 50
 MAX_LINKS = 50
 MAX_PARAGRAPH_CHARS = 1000
 
-# Hard budget enforced in code — prompt-level budgets are routinely ignored
+# Hard budget enforced in code - prompt-level budgets are routinely ignored
 # by gpt-4o-mini. After this many successful scrapes the tool refuses further
 # calls and tells the model to move on (web_search or final JSON).
 MAX_SCRAPE_CALLS = 5
@@ -51,7 +51,7 @@ scrape_url = ToolDefinition(
         "Fetch a webpage and return its headings, paragraphs, links, meta description, "
         "and a screenshot URL. Only scrape URLs you have been explicitly told to scrape "
         "or that appear in search results. Do NOT guess sub-page URLs (like /about, "
-        "/amenities) — they may not exist. Output is trimmed; headings + first 20 "
+        "/amenities) - they may not exist. Output is trimmed; headings + first 20 "
         "paragraphs are enough to reason about a page."
     ),
     display_name="Scrape URL",
@@ -97,10 +97,11 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         primary_url = url
 
     # ── 2. Reject duplicate urls + over the 5-scrape cap ────────────
-    # Prompt-level caps are unreliable with gpt-4o-mini — enforce in code.
-    scraped_urls: list[str] = product_data.setdefault("scraped_urls", [])
-    scrape_count = len(scraped_urls)
-    if (reject := _reject_if_duplicate_or_over_cap(url, scraped_urls, scrape_count)):
+    # Prompt-level caps are unreliable with gpt-4o-mini - enforce in code.
+    # A pages entry = a successful scrape; failures leave no entry (retryable).
+    pages: dict = product_data.setdefault("pages", {})
+    scrape_count = len(pages)
+    if (reject := _reject_if_duplicate_or_over_cap(url, pages)):
         return reject
 
     # ── 3. Init scrape-local state ──────────────────────────────────
@@ -111,10 +112,10 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
     scrape_id = md5(url.encode()).hexdigest()[:8]
     # Thread scrape_id so every stage_emit downstream tags its log line.
     context["scrape_id"] = scrape_id
-    # Filename example: apple.com_a3b8f1c2.jpg — host makes it human-readable
+    # Filename example: apple.com_a3b8f1c2.jpg - host makes it human-readable
     screenshot_filename = f"{host_of(url)}_{scrape_id}.jpg".lstrip("_")
     # State shared with the streaming callbacks below. Plain dict (BashTool-style
-    # mutable captures) instead of `nonlocal` rewrites — fewer syntactic gymnastics,
+    # mutable captures) instead of `nonlocal` rewrites - fewer syntactic gymnastics,
     # same lifetime: locals on `_scrape_url`'s frame.
     state: dict = {"screenshot_url": None, "profile_task": None}
 
@@ -134,8 +135,6 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         if not uploaded:
             return
         state["screenshot_url"] = uploaded
-        if is_primary and "primary_screenshot_url" not in product_data:
-            product_data["primary_screenshot_url"] = uploaded
         if is_primary and craft_id:
             try:
                 await stream.emit_craft(craft_id, url, [
@@ -147,7 +146,7 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
 
     async def start_parallel_summary(early_page) -> None:
         """Kick off summary in parallel with the slow scroll. Skips if not
-        primary or if early HTML is thin (SPA fallback — summary then uses
+        primary or if early HTML is thin (SPA fallback - summary then uses
         the post-scroll Page)."""
         if not is_primary_scrape or state["profile_task"] is not None:
             return
@@ -201,7 +200,8 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
         )
 
     # ── 6. Build result data + accumulate site links ────────────────
-    scraped_urls.append(url)
+    # Success - record the page (early screenshot now; post-scroll upgrades it).
+    pages[url] = {"screenshot_url": state["screenshot_url"] or ""}
     page = result.content
     data: dict = {
         "url": url,
@@ -233,9 +233,7 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
             )
             if uploaded:
                 state["screenshot_url"] = uploaded
-                data["screenshot_url"] = uploaded
-                if is_primary:
-                    product_data["primary_screenshot_url"] = uploaded
+                pages[url]["screenshot_url"] = uploaded
                 if is_primary and craft_id and state["profile_task"] is not None:
                     try:
                         await stream.emit_craft(craft_id, url, [
@@ -259,7 +257,7 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
 
     # ── 8. Branch: primary vs non-primary post-processing ───────────
     same_host = _is_same_website(url, primary_url)
-    new_count = len(scraped_urls)
+    new_count = len(pages)
     remaining = MAX_SCRAPE_CALLS - new_count
 
     summary_lines = [
@@ -276,7 +274,7 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
             state["profile_task"], page, url, stream, state["screenshot_url"], craft_id, context, scrape_id,
         )
 
-        # Mutate the existing product_profile dict — parent chat-agent shares
+        # Mutate the existing product_profile dict - parent chat-agent shares
         # it by reference (see agents/product/agent.py:306-311). Reassignment
         # detaches the sub-agent's copy and the summary never reaches the
         # parent for the storage save.
@@ -302,7 +300,7 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
             await _update_assets_from_extra_page(page, product_data, context, url)
         if remaining == 0:
             summary_lines.append(
-                "NEXT STEP: Budget exhausted. Write the FINAL JSON analysis now — "
+                "NEXT STEP: Budget exhausted. Write the FINAL JSON analysis now - "
                 "do not scrape again."
             )
         elif remaining <= 2:
@@ -325,7 +323,7 @@ def _has_enough_text_for_summary(page) -> bool:
 def _is_same_website(a: str, b: str) -> bool:
     """Rough check: both URLs share the same registered domain suffix."""
     try:
-        # removeprefix, not lstrip — lstrip("www.") treats "www." as a char SET
+        # removeprefix, not lstrip - lstrip("www.") treats "www." as a char SET
         # {w, .} and would mangle real domains like "wisco.com" → "isco.com".
         ha = urlparse(a).netloc.lower().removeprefix("www.")
         hb = urlparse(b).netloc.lower().removeprefix("www.")
@@ -344,12 +342,10 @@ def _trim_paragraphs(paragraphs: list[str]) -> list[str]:
     return trimmed
 
 
-def _reject_if_duplicate_or_over_cap(
-    url: str, scraped_urls: list[str], scrape_count: int,
-) -> ToolResult | None:
+def _reject_if_duplicate_or_over_cap(url: str, pages: dict) -> ToolResult | None:
     """Reject re-scrapes and over-budget calls. Returns the error result to
     return to the agent, or None to proceed."""
-    if url in scraped_urls:
+    if url in pages:
         return ToolResult(
             success=False,
             error=(
@@ -358,11 +354,11 @@ def _reject_if_duplicate_or_over_cap(
                 "call web_search for competitors or write the final JSON now."
             ),
         )
-    if scrape_count >= MAX_SCRAPE_CALLS:
+    if len(pages) >= MAX_SCRAPE_CALLS:
         return ToolResult(
             success=False,
             error=(
-                f"Scrape budget exhausted ({scrape_count}/{MAX_SCRAPE_CALLS} pages scraped). "
+                f"Scrape budget exhausted ({len(pages)}/{MAX_SCRAPE_CALLS} pages scraped). "
                 "Stop scraping. If you have not yet discovered competitors, call web_search "
                 "ONCE. Otherwise, write the final JSON analysis NOW using the data you have."
             ),
