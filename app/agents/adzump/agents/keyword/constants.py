@@ -32,6 +32,7 @@ MAX_EXPANSION_CANDIDATES = 200  # seeds+suggestions sent TO the Planner (caps AP
 MAX_STORED_CANDIDATES = 600     # scored ideas kept FROM the Planner (it expands beyond the input)
 TARGET_POSITIVE_COUNT = 30      # positives selected per type
 MAX_NEGATIVE_COUNT = 40         # negatives kept per type
+TARGET_COMPETITOR_POSITIVE_COUNT = 10  # positives selected PER COMPETITOR — thinner demand than a full brand set
 
 # Display / logging bounds.
 MAX_CANDIDATES_SHOWN = 120  # expansion-pool phrases echoed back from expand_keywords
@@ -41,6 +42,7 @@ CANDIDATES_PAGE = 300       # scored candidates shown per keyword_metrics / fetc
 # sees only the curated positives/negatives in the review panel).
 KEYWORD_METRICS_RESULT_MAX = 16000
 BUSINESS_TEXT_MAX = 4000    # business-context chars injected into the system prompt
+COMPETITOR_SUMMARY_MAX = 600  # per-competitor rich_summary chars injected into the system prompt
 LOG_TRUNCATE = 160          # max chars of an exception/error string in logs and messages
 
 # A candidate negative sharing >= 80% of its tokens with the positive set is

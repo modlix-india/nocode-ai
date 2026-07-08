@@ -130,6 +130,15 @@ class CampaignContext:
     # branch from "build the campaign" (run keyword research) to "launch". Defaulted so
     # existing test fixtures that build CampaignContext directly need no change.
     keyword_research_done: bool = False
+    # True once research_competitor_keywords has run and stored competitor_keywords —
+    # stops _next_action from re-offering it. Defaulted for the same reason as above.
+    competitor_keywords_done: bool = False
+    # The field of the deferred elicitation currently on screen (from
+    # `_pending_elicitation`), or None. Lets _next_action tell "haven't offered
+    # yet" from "already offered, awaiting the reply" for a Yes/No offer, so it
+    # stops prescribing "ask" once the widget is up (otherwise a "Yes" whose
+    # accept runs a tool — not stored as a field — loops the offer). Defaulted.
+    pending_elicitation_field: str | None = None
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -170,6 +179,8 @@ class CampaignContext:
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
             keyword_research_done=bool(ctx.get("keyword_research")),
+            competitor_keywords_done=bool(ctx.get("competitor_keywords")),
+            pending_elicitation_field=pe.get("field"),
         )
 
     @property
@@ -292,24 +303,35 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         and "competitive_analysis_declined" not in cctx.spec
     ):
         # F11 · agentic, not a hardcoded phrase ladder: the MODEL interprets the
-        # user's reply to THIS competitor offer (the old `lu in (...)` exact-match
-        # missed "No, skip competitor analysis for now" → re-ask loop). Scoped +
-        # biased to re-ask on doubt so a polarity-flip ("no, change the budget")
-        # is never read as a decline. The _field_traceable guard backstops it.
-        missing.append(
-            "competitive analysis — offer it ONCE as a Yes/No question, then react:\n"
-            "  • if you have not offered competitor analysis yet → ask via the "
-            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
-            "analyze competitors before we set things up?\" with chips Yes / No. A No "
-            "(or a clear typed decline) is recorded for you automatically — do NOT call "
-            "set_campaign_spec for it, and never set a field the user hasn't stated "
-            "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
-            "  • they want it (yes / go ahead) → run analyze_competitors.\n"
-            "  • the reply is unclear or about something ELSE (budget, a named competitor) "
-            "→ re-ask the same Yes/No present_options; do NOT treat a doubtful reply as a "
-            "decline.\n"
-            "(These are instructions to CALL tools — never type tool-call syntax into your reply.)"
-        )
+        # user's reply. The offer LIFECYCLE is tracked deterministically via
+        # `_pending_elicitation` (pending_elicitation_field) so once the widget is
+        # on screen we stop prescribing "ask". Accepting the offer runs a tool
+        # (analyze_competitors) rather than storing a field, so it has no
+        # deterministic capture rail like a decline does — leaving an "if not
+        # offered → ask" bullet in place after the offer was shown made the model
+        # re-emit the question every turn (the Yes loop). Splitting on the pending
+        # state removes that bullet once asked, so a "Yes" resolves to the tool.
+        if cctx.pending_elicitation_field == "competitive_analysis_declined":
+            missing.append(
+                "competitive analysis — you ALREADY asked this; the Yes/No is on "
+                "screen and the user's last message IS their reply. Do NOT call "
+                "present_options again.\n"
+                "  • they accepted (yes / go ahead / sure) → run analyze_competitors now.\n"
+                "  • the reply is about something ELSE (a question, budget, a named "
+                "competitor) → handle that; do NOT re-show the Yes/No.\n"
+                "(A clear No is already recorded for you automatically. These are "
+                "instructions to CALL tools — never type tool-call syntax into your reply.)"
+            )
+        else:
+            missing.append(
+                "competitive analysis — offer it ONCE via the present_options tool "
+                "(field \"competitive_analysis_declined\"): \"Want me to analyze "
+                "competitors before we set things up?\" with chips Yes / No. A No (or a "
+                "clear typed decline) is recorded for you automatically — do NOT call "
+                "set_campaign_spec for it, and never set a field the user hasn't stated "
+                "(F17/F12: don't copy a value into duration/budget/account to 'proceed'). "
+                "CALL the tool — never type the call into your reply."
+            )
 
     if not cctx.spec.get("duration"):
         if cctx.awaiting_custom_field == "duration":
@@ -440,6 +462,42 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "to CALL — never type tool-call syntax into your reply, only the markdown "
             "summary above is text."
         )
+    elif (
+        not missing
+        and cctx.keyword_research_done
+        and cctx.competitor_names
+        and not cctx.competitor_keywords_done
+        and "competitor_keywords_declined" not in cctx.spec
+    ):
+        # Only reachable once brand/generic keyword research has finished (explicit
+        # here, not just relied on via the elif chain above). Google only — this
+        # branch only ever reaches non-empty competitor_names, which requires
+        # analyze_competitors to have run (already Google-gated). Same lifecycle
+        # split as competitive analysis above: once the offer is on screen
+        # (pending_elicitation_field) stop prescribing "ask" so a "Yes" — which
+        # runs a tool, not a stored field — resolves instead of looping.
+        if cctx.pending_elicitation_field == "competitor_keywords_declined":
+            missing.append(
+                "competitor keyword research — you ALREADY asked this; the Yes/No is on "
+                "screen and the user's last message IS their reply. Do NOT call "
+                "present_options again.\n"
+                "  • they accepted (yes / go ahead / sure) → call "
+                "`research_competitor_keywords()` (no arguments) now.\n"
+                "  • the reply is about something ELSE → handle that; do NOT re-show the "
+                "Yes/No.\n"
+                "(A clear No is already recorded for you automatically. These are "
+                "instructions to CALL tools — never type tool-call syntax into your reply.)"
+            )
+        else:
+            missing.append(
+                "competitor keyword research — offer it ONCE via the present_options tool "
+                "(field \"competitor_keywords_declined\"): \"Want me to also research "
+                "keyword terms for your competitors (e.g. 'CompetitorX pricing', "
+                "'CompetitorX reviews') so you could run conquest campaigns against them "
+                "later?\" with chips Yes / No. A No (or a clear typed decline) is recorded "
+                "for you automatically — do NOT call set_campaign_spec for it. CALL the "
+                "tool — never type the call into your reply."
+            )
     elif not missing:
         # keyword_research already done — keywords are in the panel; confirm launch.
         missing.append(
@@ -519,8 +577,9 @@ class AdzumpAgent(BaseAgent):
             value = parse_typed_answer(
                 field, last_user, currency_for(session.context)
             )  # (b) typed
-        if value is None and field == "competitive_analysis_declined" \
-                and is_clear_decline_reply(last_user):
+        if value is None and field in (
+            "competitive_analysis_declined", "competitor_keywords_declined"
+        ) and is_clear_decline_reply(last_user):
             value = "true"  # (c) F17 · typed clear decline
         if value is None:
             # v4 · F10 — the user picked the "Custom" escape on a duration/budget
@@ -597,26 +656,48 @@ class AdzumpAgent(BaseAgent):
         clear-decline reply (``is_clear_decline_reply`` excludes ambiguous "no…"
         like "no competitors named yet" / "not now, first tell me about X"), and
         never when a competitor elicitation is already pending (tagged-capture
-        owns that). Gated agentic ``turn == 1``. Returns True iff it stored."""
+        owns that). Gated agentic ``turn == 1``. Returns True iff it stored.
+
+        Same logic applies to ``competitor_keywords_declined`` (the Yes/No for
+        competitor brand keyword research after brand+generic keywords are done)."""
         if turn != 1 or not last_user:
-            return False
-        pe = session.context.get("_pending_elicitation")
-        if pe and pe.get("field") == "competitive_analysis_declined":
-            return False                                     # tagged-capture owns it
-        if not (cctx.is_google
-                and not cctx.competitor_analysis_attempted
-                and "competitive_analysis_declined" not in cctx.spec):
             return False
         if not is_clear_decline_reply(last_user):
             return False                                     # ambiguous → let the LLM judge
-        stored, _ = _apply_field(
-            "competitive_analysis_declined", "true", last_user,
-            session.context, _current_turn({"_session": session}),
-        )
-        if stored:
-            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
-                        last_user[:80])
-        return bool(stored)
+        pe = session.context.get("_pending_elicitation")
+
+        # (a) competitive analysis offer
+        if (pe is None or pe.get("field") != "competitive_analysis_declined") and (
+            cctx.is_google
+            and not cctx.competitor_analysis_attempted
+            and "competitive_analysis_declined" not in cctx.spec
+        ):
+            stored, _ = _apply_field(
+                "competitive_analysis_declined", "true", last_user,
+                session.context, _current_turn({"_session": session}),
+            )
+            if stored:
+                logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+                            last_user[:80])
+                return True
+
+        # (b) competitor keyword research offer — same pattern, different guard
+        if (pe is None or pe.get("field") != "competitor_keywords_declined") and (
+            cctx.keyword_research_done
+            and cctx.competitor_names
+            and not cctx.competitor_keywords_done
+            and "competitor_keywords_declined" not in cctx.spec
+        ):
+            stored, _ = _apply_field(
+                "competitor_keywords_declined", "true", last_user,
+                session.context, _current_turn({"_session": session}),
+            )
+            if stored:
+                logger.info("prose_decline_recorded: competitor_keywords_declined=true user_said=%r",
+                            last_user[:80])
+                return True
+
+        return False
 
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
         """v8 Plan B WS2 · when the previous turn ended on a deferred

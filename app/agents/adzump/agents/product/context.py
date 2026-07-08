@@ -142,7 +142,8 @@ Schema with hard caps:
         "pricing": "string or null",
         "key_usps": ["≤2 entries, each ≤10 words"],
         "weakness": "string ≤15 words, or null",
-        "why_competitor": "1 sentence ≤20 words — why they're a direct competitor"
+        "why_competitor": "1 sentence ≤20 words — why they're a direct competitor",
+        "rich_summary": "3-5 sentence paragraph — pricing model, target customer, positioning, key differentiator; ≤600 chars"
       }
     ]
   },
@@ -153,6 +154,7 @@ Schema with hard caps:
 Caps (hard):
 - `competitors`: include ONLY DIRECT competitors from the shortlist (typically 3-6). Skip adjacent/alternative entirely.
 - Respect per-field word budgets above — they keep the JSON under ~2K output tokens.
+- `rich_summary`: condense the competitor's `Answer:` evidence line from `shortlist_competitors` into 3-5 sentences — do not invent beyond it. If there's no `Answer:` evidence for a competitor, use the same short facts as `why_competitor`/`key_usps` instead, expanded to full sentences — never fabricate pricing, positioning, or differentiators that aren't in the evidence.
 
 Use tool evidence only; when a field has no evidence, use empty/null/[] — do not invent.
 """

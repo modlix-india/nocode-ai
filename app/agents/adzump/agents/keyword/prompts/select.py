@@ -85,3 +85,41 @@ the brand makes it brand-focused; reject only if no brand word or too long.
 
 PAGING: brand runs are compact, but if key brand variations are missing, page through more FIRST,
 then submit ONCE. Use the keyword text EXACTLY; never invent."""
+
+SELECT_COMPETITOR_BRAND = """\
+STEP — SELECT POSITIVES (competitor brand). You now have real Google data (keyword | volume |
+competition | CPC) covering all competitors. You MUST select keywords for EVERY single competitor listed above, 
+aiming for up to $target_count PER COMPETITOR. Let real demand set the exact count, but you CANNOT skip a competitor. Call submit_competitor_keywords EXACTLY ONCE, each item:
+{ keyword (exact text from the data), competitor_name (must match a competitor listed above),
+  match_type (EXACT|PHRASE), intent (commercial|transactional|informational|navigational),
+  is_cross_business, rationale }.
+
+ELIGIBILITY (per competitor, same brand-protection logic as a brand campaign): keep ONLY
+keywords containing at least one significant word of THAT competitor's own brand name. A
+keyword with no competitor brand word is NOT eligible — reject it. Never attribute a keyword to
+the wrong competitor.
+
+There is NO negatives phase for this type — the exclusions below are permanent rejections, not
+a later cleanup step:
+- SUPPORT / ACCOUNT-MANAGEMENT — login, sign in, account, customer care, download: reject, these
+  are the competitor's own existing users, not conquest targets.
+- DISTRUST / COMPLAINT — scam, fraud, "is [competitor] legit", lawsuit, complaints: reject, these
+  searchers are vetting trust, not shopping. Plain "reviews" and "vs" / "alternatives" / "pricing"
+  ARE kept — real pre-purchase comparison searches, the prime conquest surface.
+- CAREERS / JOBS — reject, not buyers.
+- keywords over 5 words; technical specs / measurements; any term with no competitor brand word.
+
+PRIORITISE in this order, per competitor:
+1. The competitor's brand name and close variants / misspellings.
+2. High-volume brand + core-term / location / buying-intent combinations.
+3. Brand + comparison intent — reviews, vs, alternatives, pricing.
+
+MATCH TYPE (aim ~80-90% PHRASE, ~10-20% EXACT): PHRASE is the default; EXACT only for tight,
+high-intent, conversion-ready terms.
+
+PAGING: fetch_more_candidates shows the next (lower-volume) page. 
+If any competitor listed above has NO keywords visible on this first page, you MUST call fetch_more_candidates to page through the data before submitting. 
+Smaller competitors' terms may be on page 2 or 3 because they have lower search volumes than the large competitors. Gather all picks across pages, then submit ONCE.
+
+Use the keyword text EXACTLY; never invent. Rationale: one line — why selected + why that match
+type."""

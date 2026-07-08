@@ -78,3 +78,29 @@ EXAMPLE (adapt to THIS brand — do NOT copy these words):
 
 SHAPE: every seed carries a significant brand word; keep seeds to 2-3 words — except the first
 (full brand) and "near me" terms (up to 4); lowercase; no duplicates."""
+
+SEED_COMPETITOR_BRAND = """\
+STEP — SEED + EXPAND (competitor brand). Draft up to $max_seeds seed phrases covering EVERY
+competitor listed above, then call expand_keywords ONCE with the combined list, then
+keyword_metrics. These seeds intercept searches for a competitor so THIS advertiser's ad can
+show instead — you are seeding conquest terms, not terms the competitor would run themselves.
+
+FOR EACH COMPETITOR LISTED, draft 3-5 seeds using THAT competitor's own name + THAT competitor's
+own core terms/offering (never another competitor's terms, never this advertiser's own terms):
+1. CORE NAVIGATION — the competitor's brand name alone, and its distinctive words.
+2. BRAND + LOCATION — brand + the served city / service areas above (served area ONLY).
+3. BRAND + OFFERING — brand + what THAT competitor sells (from its own core terms). Strict
+   product-vs-feature: seed the MAIN offering, never an amenity/feature/finish.
+4. BRAND + INTENT — reviews, price, alternatives, vs, near me (the ones that fit this business).
+5. MISSPELLINGS — 1-2 ACTUAL typo'd variants of the brand name.
+
+RELEVANCE CHECK: only seed a competitor+offering combination that THIS advertiser can also
+serve — a buyer comparing "CompetitorX <offering>" is a conquest target only if we sell that
+too. If a competitor's core term has no analog in this business, skip it and favor
+navigation/location/intent seeds for that competitor instead.
+
+QUALITY BAR: every seed carries a significant word of THAT competitor's brand name; 2-4 words;
+lowercase; no duplicates.
+
+Before adding a seed, check: would someone searching it be worth intercepting for THIS
+advertiser? If not, drop it."""

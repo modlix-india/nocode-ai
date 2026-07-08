@@ -82,6 +82,7 @@ ALLOWED_FIELDS = {
     "fb_page",
     "ig_page",
     "competitive_analysis_declined",
+    "competitor_keywords_declined",
     "ig_page_declined",  # v3 · F3 — Instagram is optional; "true" = Facebook-only
 }
 
@@ -100,6 +101,7 @@ _USER_TEXT_FIELDS = {
     "budget",
     "location",
     "competitive_analysis_declined",
+    "competitor_keywords_declined",
     "ig_page_declined",
 }
 
@@ -117,6 +119,7 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
         "ig_page",
         "ig_page_declined",
         "competitive_analysis_declined",
+        "competitor_keywords_declined",
     ),
     "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
     "fb_page": ("ig_page", "ig_page_declined"),
@@ -241,7 +244,7 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
     # Decline flag — accept "true" when the user declines (chip or typed). Uses
     # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
     # silently rejected "no, skip competitor analysis for now" → re-ask loop).
-    if field == "competitive_analysis_declined":
+    if field in ("competitive_analysis_declined", "competitor_keywords_declined"):
         return v in ("true", "yes", "1") and is_decline(lu)
 
     # v3 · F3 — Instagram-skip flag. Accept "true" when the user opts out of

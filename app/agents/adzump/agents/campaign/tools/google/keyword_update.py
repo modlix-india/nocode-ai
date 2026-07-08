@@ -134,17 +134,85 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
     return None
 
 
+def _apply_row_action(
+    action: str, rows: list[dict], params: dict, value_field: str, owner_label: str
+) -> tuple[list[dict], str] | ToolResult:
+    """Add/delete/edit one keyword within `rows` — normalize, validate, dedupe
+    within THIS list, then mutate. Shared by brand/generic and competitor
+    updates; callers needing cross-list checks (opposite section, other type,
+    content heuristics) must run them before calling this for add/edit.
+    `owner_label` names the list in error/summary text.
+    """
+    if action == "add":
+        keyword = _normalize(str(params.get("keyword", "")))
+        err = _validate_keyword(keyword)
+        if err:
+            return ToolResult(success=False, error=err)
+        if any(_row_key(r) == keyword for r in rows):
+            return ToolResult(success=False, error=f"'{keyword}' already exists in {owner_label}.")
+        new_row: dict = {
+            "keyword": keyword,
+            "volume": int(params.get("volume", 0) or 0),
+            "match_type": _coerce_match_type(params.get("match_type")),
+            value_field: str(params.get(value_field, "") or ""),
+        }
+        return [new_row, *rows], f"Added '{keyword}' to {owner_label}."  # newest on top
+
+    if action == "delete":
+        keyword = _normalize(str(params.get("keyword", "")))
+        updated = [r for r in rows if _row_key(r) != keyword]
+        if len(updated) == len(rows):
+            return ToolResult(success=False, error=f"'{keyword}' not found in {owner_label}.")
+        return updated, f"Removed '{keyword}' from {owner_label}."
+
+    # edit
+    old_keyword = _normalize(str(params.get("old_keyword", "")))
+    new_keyword = _normalize(str(params.get("keyword", old_keyword)))
+    err = _validate_keyword(new_keyword)
+    if err:
+        return ToolResult(success=False, error=err)
+    target = next((r for r in rows if _row_key(r) == old_keyword), None)
+    if target is None:
+        return ToolResult(success=False, error=f"'{old_keyword}' not found in {owner_label}.")
+    if new_keyword != old_keyword and any(_row_key(r) == new_keyword for r in rows if r is not target):
+        return ToolResult(success=False, error=f"'{new_keyword}' already exists in {owner_label}.")
+    target["keyword"] = new_keyword
+    target["match_type"] = _coerce_match_type(params.get("match_type"), target.get("match_type", "PHRASE"))
+    target["volume"] = int(params.get("volume", target.get("volume", 0)) or 0)
+    target[value_field] = str(params.get(value_field, target.get(value_field, "")) or "")
+    return rows, f"Updated '{old_keyword}' in {owner_label}."
+
+
+async def _emit_review_update(session_ctx: dict, context: dict) -> None:
+    """Keyed re-emit of the keyword_review block after a mutation (both keyword
+    types render into the same block, so rebuild it from both dicts)."""
+    craft_id = session_ctx.get("campaign_craft_id") or f"campaign_{context.get('session_id', '')}"
+    block = keyword_review_block(
+        session_ctx.get("keyword_research") or {},
+        session_ctx.get("competitor_keywords"),
+    )
+    await emit_section_update(context.get("event_stream"), craft_id, block)
+
+
 async def _update_keywords(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context")
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
 
+    action = str(params.get("action", "")).lower()
+    keyword_type = str(params.get("keyword_type", "")).lower()
+
+    if keyword_type == "competitors":
+        # section carries the competitor name (the accordion's key), not
+        # positives/negatives — competitor tabs have no negatives section.
+        return await _update_competitor_keywords(
+            action, str(params.get("section", "")), params, session_ctx, context
+        )
+
     dump = session_ctx.get("keyword_research")
     if not dump:
         return ToolResult(success=False, error="No keyword research in session — run keyword research first.")
 
-    action = str(params.get("action", "")).lower()
-    keyword_type = str(params.get("keyword_type", "")).lower()
     section = str(params.get("section", "")).lower()
 
     if action not in _VALID_ACTIONS:
@@ -168,13 +236,7 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
     # a negative in the other (standard Google Ads isolation pattern).
     cross_type_rows: list[dict] = list(other_kset.get("positives") or [])
 
-    if action == "add":
-        keyword = _normalize(str(params.get("keyword", "")))
-        err = _validate_keyword(keyword)
-        if err:
-            return ToolResult(success=False, error=err)
-        if any(_row_key(r) == keyword for r in rows):
-            return ToolResult(success=False, error=f"'{keyword}' already exists in {keyword_type} {section}.")
+    def _cross_list_error(keyword: str) -> ToolResult | None:
         if any(_row_key(r) == keyword for r in opposite_rows):
             return ToolResult(
                 success=False,
@@ -189,64 +251,25 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
             section_err = _check_section_signal(keyword, keyword_type, session_ctx)
             if section_err:
                 return ToolResult(success=False, error=section_err)
-        match_type = _coerce_match_type(params.get("match_type"))
-        new_row: dict = {
-            "keyword": keyword,
-            "volume": int(params.get("volume", 0) or 0),
-            "match_type": match_type,
-        }
-        if section == "positives":
-            new_row["intent"] = str(params.get("intent", "") or "")
-        else:
-            new_row["reason"] = str(params.get("reason", "") or "")
-        rows.insert(0, new_row)  # newest on top so the user sees their add immediately
-        summary = f"Added '{keyword}' to {keyword_type} {section}."
+        return None
 
-    elif action == "delete":
-        keyword = _normalize(str(params.get("keyword", "")))
-        updated = [r for r in rows if _row_key(r) != keyword]
-        if len(updated) == len(rows):
-            return ToolResult(success=False, error=f"'{keyword}' not found in {keyword_type} {section}.")
-        rows = updated
-        summary = f"Removed '{keyword}' from {keyword_type} {section}."
-
-    else:  # edit
+    if action == "add":
+        err = _cross_list_error(_normalize(str(params.get("keyword", ""))))
+        if err:
+            return err
+    elif action == "edit":
         old_keyword = _normalize(str(params.get("old_keyword", "")))
         new_keyword = _normalize(str(params.get("keyword", old_keyword)))
-        err = _validate_keyword(new_keyword)
-        if err:
-            return ToolResult(success=False, error=err)
-
-        target = next((r for r in rows if _row_key(r) == old_keyword), None)
-        if target is None:
-            return ToolResult(success=False, error=f"'{old_keyword}' not found in {keyword_type} {section}.")
-
         if new_keyword != old_keyword:
-            if any(_row_key(r) == new_keyword for r in rows if r is not target):
-                return ToolResult(success=False, error=f"'{new_keyword}' already exists in {keyword_type} {section}.")
-            if any(_row_key(r) == new_keyword for r in opposite_rows):
-                return ToolResult(
-                    success=False,
-                    error=f"'{new_keyword}' is in {keyword_type} {opposite} — a keyword can't be in both lists.",
-                )
-            if any(_row_key(r) == new_keyword for r in cross_type_rows):
-                return ToolResult(
-                    success=False,
-                    error=f"'{new_keyword}' already exists in {other_type} positives — a keyword can't be a positive in both brand and generic.",
-                )
-            if section == "positives":
-                section_err = _check_section_signal(new_keyword, keyword_type, session_ctx)
-                if section_err:
-                    return ToolResult(success=False, error=section_err)
+            err = _cross_list_error(new_keyword)
+            if err:
+                return err
 
-        target["keyword"] = new_keyword
-        target["match_type"] = _coerce_match_type(params.get("match_type"), target.get("match_type", "PHRASE"))
-        target["volume"] = int(params.get("volume", target.get("volume", 0)) or 0)
-        if section == "positives":
-            target["intent"] = str(params.get("intent", target.get("intent", "")) or "")
-        else:
-            target["reason"] = str(params.get("reason", target.get("reason", "")) or "")
-        summary = f"Updated '{old_keyword}' in {keyword_type} {section}."
+    value_field = "intent" if section == "positives" else "reason"
+    outcome = _apply_row_action(action, rows, params, value_field, f"{keyword_type} {section}")
+    if isinstance(outcome, ToolResult):
+        return outcome
+    rows, summary = outcome
 
     # Persist mutations back into session state.
     kset[section] = rows
@@ -260,11 +283,50 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
         len(rows),
     )
 
-    craft_id = session_ctx.get("campaign_craft_id") or f"campaign_{context.get('session_id', '')}"
-    await emit_section_update(context.get("event_stream"), craft_id, keyword_review_block(dump))
+    await _emit_review_update(session_ctx, context)
 
     return ToolResult(
         success=True,
         summary=summary,
         data={"action": action, "keyword_type": keyword_type, "section": section},
+    )
+
+
+async def _update_competitor_keywords(
+    action: str, name: str, params: dict, session_ctx: dict, context: dict
+) -> ToolResult:
+    """Add/delete/edit within ONE competitor's own positives list — no negatives
+    section exists for this tab, and no cross-competitor checks (each
+    competitor's list is independent)."""
+    if action not in _VALID_ACTIONS:
+        return ToolResult(success=False, error=f"Invalid action '{action}'. Must be: add, delete, or edit.")
+
+    competitor_keywords = session_ctx.get("competitor_keywords") or {}
+    kset = competitor_keywords.get(name)
+    if kset is None:
+        return ToolResult(success=False, error=f"No competitor keywords found for '{name}'.")
+
+    rows: list[dict] = list(kset.get("positives") or [])
+    outcome = _apply_row_action(action, rows, params, "intent", name)
+    if isinstance(outcome, ToolResult):
+        return outcome
+    rows, summary = outcome
+
+    kset["positives"] = rows
+    competitor_keywords[name] = kset
+    session_ctx["competitor_keywords"] = competitor_keywords
+
+    logger.info(
+        "kw_update_competitor name=%r action=%s keyword=%r rows=%d",
+        name, action,
+        _normalize(str(params.get("keyword") or params.get("old_keyword") or "")),
+        len(rows),
+    )
+
+    await _emit_review_update(session_ctx, context)
+
+    return ToolResult(
+        success=True,
+        summary=summary,
+        data={"action": action, "keyword_type": "competitors", "section": name},
     )

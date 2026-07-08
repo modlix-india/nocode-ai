@@ -10,9 +10,21 @@ from __future__ import annotations
 from enum import Enum
 
 from app.agents.adzump.agents.keyword.models import KeywordType
-from app.agents.adzump.agents.keyword.prompts.negatives import NEGATIVES_BRAND, NEGATIVES_GENERIC
-from app.agents.adzump.agents.keyword.prompts.seed import SEED_BRAND, SEED_GENERIC
-from app.agents.adzump.agents.keyword.prompts.select import SELECT_BRAND, SELECT_GENERIC
+from app.agents.adzump.agents.keyword.prompts.negatives import (
+    NEGATIVES_BRAND,
+    NEGATIVES_COMPETITOR_BRAND,
+    NEGATIVES_GENERIC,
+)
+from app.agents.adzump.agents.keyword.prompts.seed import (
+    SEED_BRAND,
+    SEED_COMPETITOR_BRAND,
+    SEED_GENERIC,
+)
+from app.agents.adzump.agents.keyword.prompts.select import (
+    SELECT_BRAND,
+    SELECT_COMPETITOR_BRAND,
+    SELECT_GENERIC,
+)
 
 
 class Phase(str, Enum):
@@ -24,10 +36,13 @@ class Phase(str, Enum):
 _REGISTRY: dict[tuple[Phase, KeywordType], str] = {
     (Phase.SEED, KeywordType.BRAND): SEED_BRAND,
     (Phase.SEED, KeywordType.GENERIC): SEED_GENERIC,
+    (Phase.SEED, KeywordType.COMPETITOR_BRAND): SEED_COMPETITOR_BRAND,
     (Phase.SELECT, KeywordType.BRAND): SELECT_BRAND,
     (Phase.SELECT, KeywordType.GENERIC): SELECT_GENERIC,
+    (Phase.SELECT, KeywordType.COMPETITOR_BRAND): SELECT_COMPETITOR_BRAND,
     (Phase.NEGATIVES, KeywordType.BRAND): NEGATIVES_BRAND,
     (Phase.NEGATIVES, KeywordType.GENERIC): NEGATIVES_GENERIC,
+    (Phase.NEGATIVES, KeywordType.COMPETITOR_BRAND): NEGATIVES_COMPETITOR_BRAND,
 }
 
 # Fail fast at import — every (phase, type) must exist; a gap can never reach a live campaign.

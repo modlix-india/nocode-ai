@@ -45,22 +45,30 @@ def _spec_blocks(spec: dict) -> list[dict]:
     return blocks
 
 
-def keyword_review_block(dump: dict) -> dict:
-    """Exported so update handlers can re-emit only this block (keyed upsert, no panel flash)."""
+def _positive_rows(positives: list[dict]) -> list[dict]:
+    return [
+        {
+            "keyword": p.get("keyword", ""),
+            "volume": p.get("volume", 0),
+            "match_type": p.get("match_type", "PHRASE"),
+            "intent": p.get("intent", ""),
+        }
+        for p in positives
+    ]
+
+
+def keyword_review_block(dump: dict, competitor_keywords: dict | None = None) -> dict:
+    """Exported so update handlers can re-emit only this block (keyed upsert, no panel flash).
+
+    ``competitor_keywords`` (optional) adds a third "Competitors" tab, one section
+    (accordion) per competitor, positives only — no negatives phase for that type.
+    """
     tabs: list[dict] = []
     for key, label in (("brand", "Brand"), ("generic", "Generic")):
         kset = dump.get(key)
         if not kset:
             continue
-        pos_rows = [
-            {
-                "keyword": p.get("keyword", ""),
-                "volume": p.get("volume", 0),
-                "match_type": p.get("match_type", "PHRASE"),
-                "intent": p.get("intent", ""),
-            }
-            for p in (kset.get("positives") or [])
-        ]
+        pos_rows = _positive_rows(kset.get("positives") or [])
         neg_rows = [
             {
                 "keyword": n.get("keyword", ""),
@@ -92,6 +100,24 @@ def keyword_review_block(dump: dict) -> dict:
                 ],
             }
         )
+
+    competitor_sections = []
+    for name, kset in (competitor_keywords or {}).items():
+        if not kset:
+            continue
+        pos_rows = _positive_rows(kset.get("positives") or [])
+        competitor_sections.append(
+            {
+                "key": name,
+                "label": f"{name} ({len(pos_rows)})",
+                "columns": ["keyword", "volume", "match_type", "intent"],
+                "rows": pos_rows,
+                "actions": ["add", "edit", "delete"],
+            }
+        )
+    if competitor_sections:
+        tabs.append({"key": "competitors", "label": "Competitors", "sections": competitor_sections})
+
     return {"id": "keyword_review", "type": "keyword_review", "tabs": tabs}
 
 
@@ -108,10 +134,11 @@ def _google_campaign_blocks(session_ctx: dict) -> list[dict]:
     blocks: list[dict] = []
 
     dump = session_ctx.get("keyword_research") or {}
-    if dump:
+    competitor_keywords = session_ctx.get("competitor_keywords") or {}
+    if dump or competitor_keywords:
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Keyword Suggestions"})
-        blocks.append(keyword_review_block(dump))
+        blocks.append(keyword_review_block(dump, competitor_keywords))
 
     # Future sections (ad copy, quality score …) extend blocks here.
     return blocks

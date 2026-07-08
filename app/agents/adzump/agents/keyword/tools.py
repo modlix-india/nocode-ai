@@ -135,7 +135,11 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
     state["kw_overflow"] = unique[constants.MAX_EXPANSION_CANDIDATES :]
     logger.info(
         "kw_expand type=%s seeds=%d autosuggest=%d pool=%d overflow=%d",
-        state.get("kw_type"), len(seeds), len(suggestions), len(pool), len(state["kw_overflow"]),
+        state.get("kw_type"),
+        len(seeds),
+        len(suggestions),
+        len(pool),
+        len(state["kw_overflow"]),
     )
     return ToolResult(
         success=True,
@@ -203,7 +207,8 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
     idea_keys = {i["keyword"] for i in ideas}
     repairs = [c for i in ideas if (c := _collapse_repeats(i["keyword"]))]
     recover = [
-        k for k in dict.fromkeys([*(state.get("kw_overflow") or []), *repairs])
+        k
+        for k in dict.fromkeys([*(state.get("kw_overflow") or []), *repairs])
         if k not in idea_keys
     ]
     recovered: list[dict] = []
@@ -213,12 +218,16 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
                 recover, **_planner_args(state, context)
             )
         except Exception as exc:
-            logger.warning("keyword_metrics recover failed: %s", str(exc)[: constants.LOG_TRUNCATE])
+            logger.warning(
+                "keyword_metrics recover failed: %s", str(exc)[: constants.LOG_TRUNCATE]
+            )
         recovered = [r for r in recovered if r.get("volume", 0) > 0]
 
-    # Demand gate: generic drops 0-volume terms (no traffic, just bloat); brand keeps
-    # all — a new brand can be 0-volume but we must still own it (brand protection).
-    if state.get("kw_type") == "generic":
+    # Demand gate: only the advertiser's OWN brand keeps 0-volume terms (a new brand
+    # can be 0-volume but we must still own it — brand protection). Generic AND
+    # competitor-brand both drop 0-volume: competitors are established businesses, so
+    # 0-volume means nobody searches for that term — no traffic to intercept.
+    if state.get("kw_type") != "brand":
         ideas = [i for i in ideas if i.get("volume", 0) > 0]
     scored = [*ideas, *recovered]
     if not scored:
@@ -233,12 +242,18 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
         kw = idea["keyword"]
         if kw not in pool or idea["volume"] > pool[kw]["volume"]:
             pool[kw] = idea
-    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[: constants.MAX_STORED_CANDIDATES]
+    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[
+        : constants.MAX_STORED_CANDIDATES
+    ]
     state["kw_candidates"] = merged
     state["kw_shown_offset"] = 0
     logger.info(
         "kw_metrics type=%s sent=%d planner_ideas=%d recovered=%d scored_pool=%d",
-        state.get("kw_type"), len(keywords), len(ideas), len(recovered), len(merged),
+        state.get("kw_type"),
+        len(keywords),
+        len(ideas),
+        len(recovered),
+        len(merged),
     )
     return _candidates_page(state, lead=f"Google demand for {len(merged)} keywords")
 
@@ -246,46 +261,74 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
 async def _fetch_more_candidates(params: dict, context: dict) -> ToolResult:
     state = _state(context)
     if not state.get("kw_candidates"):
-        return ToolResult(success=False, error="No candidates yet — call keyword_metrics first.")
+        return ToolResult(
+            success=False, error="No candidates yet — call keyword_metrics first."
+        )
     return _candidates_page(state, lead="More candidates")
 
 
 # submit tools (deterministic gate + panel emission)
 
 
+def _build_optimized_keyword(
+    kw: str, item: dict, cand: dict
+) -> OptimizedKeyword | None:
+    """Validate + build one positive from a scored candidate; None if invalid.
+
+    Shared by submit_positive_keywords and submit_competitor_keywords — the model
+    coerces match_type/intent and forces cross-business -> phrase.
+    """
+    try:
+        return OptimizedKeyword(
+            keyword=kw,
+            volume=cand.get("volume", 0),
+            competition=cand.get("competition", "UNKNOWN"),
+            competition_index=cand.get("competition_index", 0.0),
+            cpc_low=cand.get("cpc_low", 0.0),
+            cpc_high=cand.get("cpc_high", 0.0),
+            source="planner",
+            match_type=item.get("match_type"),
+            intent=item.get("intent"),
+            is_cross_business=bool(item.get("is_cross_business")),
+            rationale=str(item.get("rationale", "")).strip(),
+        )
+    except ValidationError as exc:
+        logger.debug("skip positive %r: %s", kw, exc)
+        return None
+
+
 async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
+    state = _state(context)
+    if state.get("kw_type") == "competitor_brand":
+        return ToolResult(
+            success=False,
+            error="Wrong tool. Use submit_competitor_keywords for competitor brand research.",
+        )
+    
     items = params.get("keywords") or []
     if not items:
         return ToolResult(success=False, error="No keywords provided.")
-    state = _state(context)
     by_kw = _candidates_by_keyword(state)
 
     kept: list[dict] = []
     seen: set[str] = set()
+    drop_reasons: dict[str, int] = {}
     for item in items:
         if not isinstance(item, dict):
             continue
         kw = normalize(item.get("keyword", ""))
         cand = by_kw.get(kw)
-        if not kw or kw in seen or cand is None:
+        if not kw:
+            continue
+        if kw in seen:
+            drop_reasons["duplicate"] = drop_reasons.get("duplicate", 0) + 1
+            continue
+        if cand is None:
+            drop_reasons["not_in_scored_data"] = drop_reasons.get("not_in_scored_data", 0) + 1
             continue  # must be a real scored candidate — no invented keywords
-        try:
-            # Model coerces match_type/intent and forces cross-business -> phrase.
-            positive = OptimizedKeyword(
-                keyword=kw,
-                volume=cand.get("volume", 0),
-                competition=cand.get("competition", "UNKNOWN"),
-                competition_index=cand.get("competition_index", 0.0),
-                cpc_low=cand.get("cpc_low", 0.0),
-                cpc_high=cand.get("cpc_high", 0.0),
-                source="planner",
-                match_type=item.get("match_type"),
-                intent=item.get("intent"),
-                is_cross_business=bool(item.get("is_cross_business")),
-                rationale=str(item.get("rationale", "")).strip(),
-            )
-        except ValidationError as exc:
-            logger.debug("skip positive %r: %s", kw, exc)
+        positive = _build_optimized_keyword(kw, item, cand)
+        if positive is None:
+            drop_reasons["validation_failed"] = drop_reasons.get("validation_failed", 0) + 1
             continue
         seen.add(kw)
         kept.append(positive.model_dump(mode="json"))
@@ -299,18 +342,100 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
     state["kw_positives"] = kept
     dropped = len(items) - len(kept)
     logger.info(
-        "kw_submit_positive type=%s submitted=%d kept=%d dropped=%d",
-        state.get("kw_type"), len(items), len(kept), dropped,
+        "kw_submit_positive type=%s submitted=%d kept=%d dropped=%d drop_reasons=%r",
+        state.get("kw_type"),
+        len(items),
+        len(kept),
+        dropped,
+        drop_reasons,
     )
-    note = f" ({dropped} not in the scored data or duplicate)" if dropped > 0 else ""
+    note = f" ({dropped} dropped: {drop_reasons})" if dropped > 0 else ""
     return ToolResult(
         success=True, summary=f"Recorded {len(kept)} positive keywords{note}."
     )
 
 
-async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
-    items = params.get("keywords") or []
+async def _submit_competitor_keywords(params: dict, context: dict) -> ToolResult:
+    """Like submit_positive_keywords, but grouped by competitor_name — one shared
+    candidate pool covers every competitor in the batch, so each item must say
+    which competitor it belongs to."""
     state = _state(context)
+    if state.get("kw_type") != "competitor_brand":
+        return ToolResult(
+            success=False,
+            error="Wrong tool. This tool is only for competitor brand research. Use submit_positive_keywords instead.",
+        )
+    
+    items = params.get("keywords") or []
+    if not items:
+        return ToolResult(success=False, error="No keywords provided.")
+    by_kw = _candidates_by_keyword(state)
+    known_names = {c.get("name", "") for c in state.get("kw_competitors") or []}
+
+    grouped: dict[str, list[dict]] = {}
+    seen: set[tuple[str, str]] = set()
+    drop_reasons: dict[str, int] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        kw = normalize(item.get("keyword", ""))
+        name = str(item.get("competitor_name", "")).strip()
+        cand = by_kw.get(kw)
+        if not kw:
+            continue
+        if not name or name not in known_names:
+            drop_reasons["unknown_competitor"] = drop_reasons.get("unknown_competitor", 0) + 1
+            continue
+        if (name, kw) in seen:
+            drop_reasons["duplicate"] = drop_reasons.get("duplicate", 0) + 1
+            continue
+        if cand is None:
+            drop_reasons["not_in_scored_data"] = drop_reasons.get("not_in_scored_data", 0) + 1
+            continue
+        positive = _build_optimized_keyword(kw, item, cand)
+        if positive is None:
+            drop_reasons["validation_failed"] = drop_reasons.get("validation_failed", 0) + 1
+            continue
+        seen.add((name, kw))
+        grouped.setdefault(name, []).append(positive.model_dump(mode="json"))
+
+    kept = sum(len(v) for v in grouped.values())
+    if not kept:
+        return ToolResult(
+            success=False,
+            error="None of your submitted keywords matched the scored candidates and a known competitor_name. Please select exact keywords from the data and a valid competitor_name.",
+        )
+
+    state["kw_competitor_positives"] = grouped
+    dropped = len(items) - kept
+    logger.info(
+        "kw_submit_competitor competitors=%d submitted=%d kept=%d dropped=%d drop_reasons=%r",
+        len(grouped),
+        len(items),
+        kept,
+        dropped,
+        drop_reasons,
+    )
+    note = (
+        f" ({dropped} dropped: {drop_reasons})"
+        if dropped > 0
+        else ""
+    )
+    return ToolResult(
+        success=True,
+        summary=f"Recorded {kept} competitor keywords across {len(grouped)} competitors{note}.",
+    )
+
+
+async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
+    state = _state(context)
+    if state.get("kw_type") == "competitor_brand":
+        return ToolResult(
+            success=False,
+            error="Wrong tool. Competitor brand research has no negatives phase.",
+        )
+    
+    items = params.get("keywords") or []
     positive_kws = {p.get("keyword", "") for p in state.get("kw_positives", [])}
     positive_tokens: set[str] = set()
     for p in state.get("kw_positives", []):
@@ -360,7 +485,10 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
     dropped = len(items) - len(kept)
     logger.info(
         "kw_submit_negative type=%s submitted=%d kept=%d dropped=%d",
-        state.get("kw_type"), len(items), len(kept), dropped,
+        state.get("kw_type"),
+        len(items),
+        len(kept),
+        dropped,
     )
     note = (
         f" ({dropped} dropped: overlap with positives, unsafe, or duplicate)"
@@ -393,7 +521,9 @@ async def _attach_negative_volumes(context: dict, negatives: list[dict]) -> None
         missing, **_planner_args(state, context)
     )
     if not metrics and missing:
-        logger.warning("historical_metrics returned empty for %d negatives", len(missing))
+        logger.warning(
+            "historical_metrics returned empty for %d negatives", len(missing)
+        )
     fetched = {m["keyword"]: m["volume"] for m in metrics}
     for neg in negatives:
         if neg["volume"] == 0:
@@ -490,10 +620,46 @@ SUBMIT_NEGATIVE_KEYWORDS = ToolDefinition(
     execute=_submit_negative_keywords,
 )
 
+SUBMIT_COMPETITOR_KEYWORDS = ToolDefinition(
+    name="submit_competitor_keywords",
+    description="Record the final competitor-brand positive keywords, grouped by competitor. Each must be an exact keyword from the scored data, tagged with which competitor it belongs to. Call this last to finish the run — competitor-brand research has no negatives phase.",
+    parameters=[
+        ToolParameter(
+            name="keywords",
+            type="array",
+            description="Chosen positives, one entry per keyword.",
+            items={
+                "type": "object",
+                "properties": {
+                    "keyword": {"type": "string"},
+                    "competitor_name": {
+                        "type": "string",
+                        "description": "Must match one of the competitor names given in the context.",
+                    },
+                    "match_type": {"type": "string", "enum": ["exact", "phrase"]},
+                    "intent": {
+                        "type": "string",
+                        "enum": [
+                            "commercial",
+                            "transactional",
+                            "informational",
+                            "navigational",
+                        ],
+                    },
+                    "is_cross_business": {"type": "boolean"},
+                    "rationale": {"type": "string"},
+                },
+            },
+        )
+    ],
+    execute=_submit_competitor_keywords,
+)
+
 ALL_TOOLS = [
     EXPAND_KEYWORDS,
     KEYWORD_METRICS,
     FETCH_MORE_CANDIDATES,
     SUBMIT_POSITIVE_KEYWORDS,
     SUBMIT_NEGATIVE_KEYWORDS,
+    SUBMIT_COMPETITOR_KEYWORDS,
 ]

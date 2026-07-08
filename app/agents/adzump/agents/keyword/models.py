@@ -45,6 +45,7 @@ class CompetitionLevel(str, Enum):
 class KeywordType(str, Enum):
     BRAND = "brand"
     GENERIC = "generic"
+    COMPETITOR_BRAND = "competitor_brand"
 
 
 class Intent(str, Enum):

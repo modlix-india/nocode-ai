@@ -38,6 +38,12 @@ GUARDRAILS:
 - Each reason names the category (e.g. "sibling category — sells villaments, not budget apartments").
 - Be thorough; a strong set is fine and welcome (20+ is OK)."""
 
+# NOTE for future publish_google_campaign() implementers:
+# When the advertiser's brand negatives include competitor brand names (to stop the
+# brand campaign from showing on competitor searches), those negatives MUST be scoped
+# to the brand ad group only — never campaign-wide or account-wide. Otherwise they
+# would block the future competitor-conquest ad group from bidding on those exact
+# competitor names, defeating the purpose of this feature.
 NEGATIVES_BRAND = """\
 STEP — NEGATIVE KEYWORDS (brand). Protect the brand campaign from spend that won't convert.
 REASON from the BUSINESS and your brand POSITIVES — do NOT scavenge leftover scored candidates.
@@ -58,3 +64,13 @@ GUARDRAILS:
 - Prefer specific, multi-word exclusions; default match_type PHRASE; no duplicates.
 - Each reason names the category (e.g. "competitor — different builder", "support-only — not a buyer").
 - Be thorough; a strong negative set protects the brand budget."""
+
+# Competitor-brand research has no negatives phase (exclusions are folded into
+# SELECT_COMPETITOR_BRAND — see prompts/select.py). This string is unreachable at
+# runtime; it exists only so the prompt registry's import-time completeness check
+# (every (Phase, KeywordType) pair must exist) doesn't fail when COMPETITOR_BRAND
+# is added to KeywordType.
+NEGATIVES_COMPETITOR_BRAND = (
+    "STEP — NEGATIVE KEYWORDS (competitor brand). Unreachable — this keyword type has no "
+    "negatives phase."
+)
