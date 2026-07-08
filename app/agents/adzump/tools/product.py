@@ -1,4 +1,4 @@
-"""Product analysis tool — runs the ProductAnalyst sub-agent to scrape + profile
+"""Product analysis tool - runs the ProductAnalyst sub-agent to scrape + profile
 a business website. The sub-agent owns the live Playwright scrape + gpt-4o profile."""
 
 from __future__ import annotations
@@ -6,7 +6,8 @@ from __future__ import annotations
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump._shared import emit_progress
+from app.agents.adzump._shared import emit_progress, primary_screenshot_url
+from app.agents.adzump.models import check_product
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +68,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
                 await _emit_final_craft(
                     stream, craft_id, url, product_now,
                     session_memory.get("competitor_analysis") or {},
-                    screenshot_url=(
-                        product_now.get("primary_screenshot_url")
-                        or product_now.get("screenshot_url")
-                    ),
+                    screenshot_url=primary_screenshot_url(product_now),
                     baked_summary=early_summary,
                 )
             except Exception as e:
@@ -82,17 +80,19 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         )
 
         # upload prompt fires on PARENT stream (picker can't: _PassthroughEventStream
-        # drops emit_text). reads typed analysis.asset_gaps, not a product_data key.
-        elicited = await _emit_asset_upload_prompt(stream, analysis.asset_gaps, session_memory, url)
+        # drops emit_text). reads typed analysis.asset_requirements, not a product_data key.
+        elicited = await _emit_asset_upload_prompt(
+            stream, analysis.asset_requirements, session_memory, url)
 
         result_data: dict = {"product": product}
         if elicited:
             # deferred elicit → break loop, yield turn. multi = uploads span msgs.
-            # gaps ride elicit_payload → _pending_elicitation.payload; _asset_store decrements.
+            # requirements ride elicit_payload → _pending_elicitation.payload;
+            # _asset_store decrements.
             result_data["elicited"] = True
             result_data["elicit_expects"] = "multi"
-            if analysis.asset_gaps:
-                result_data["elicit_payload"] = analysis.asset_gaps.to_dict()
+            if analysis.asset_requirements:
+                result_data["elicit_payload"] = analysis.asset_requirements.to_dict()
 
         return ToolResult(
             success=True,
@@ -115,7 +115,7 @@ analyze_business = ToolDefinition(
     description=(
         "Scrape a business website and generate a product profile: what they sell "
         "(all variants), location, pricing, USPs, target customer. This is the FIRST "
-        "step when the user gives a URL. Does NOT do competitor research — that "
+        "step when the user gives a URL. Does NOT do competitor research - that "
         "happens separately later. Returns a structured product profile."
     ),
     display_name="Analyze Product",
@@ -153,7 +153,7 @@ async def _run_product_agent(
         parent_session_context=session_ctx,
         user_message=f"Analyze this business website: {url}\n\n"
             f"SCOPE: Scrape the homepage ONCE and generate a product profile. "
-            f"Do NOT scrape sub-pages — one scrape_url call only. "
+            f"Do NOT scrape sub-pages - one scrape_url call only. "
             f"Do NOT call web_search or web_fetch. "
             f"After scraping, write the final JSON with the 'business' section filled "
             f"and an empty 'competitive' section.",
@@ -169,8 +169,20 @@ def _merge_product_into_context(
     - product_data: merge not replace (keep runtime artifacts; JSON wins).
     - product_profile: url+title only (sub-agent owns .summary).
     - competitor_analysis: set if any."""
-    product = analysis.product or {}
-    session_memory["product_data"] = {**(session_memory.get("product_data") or {}), **product}
+    product = dict(analysis.product or {})
+    # The LLM emits `location` as a string (or {"location": str}); normalize it
+    # into the nested `place` object here so session state has ONE shape.
+    raw_loc = product.pop("location", "") or ""
+    if isinstance(raw_loc, dict):
+        raw_loc = raw_loc.get("location") or ""
+    merged = {**(session_memory.get("product_data") or {}), **product}
+    place = dict(merged.get("place") or {})
+    if raw_loc.strip():
+        place["address"] = raw_loc.strip()
+    merged["place"] = place
+    # The LLM→session boundary: warn on schema drift as it arrives, not at save.
+    check_product(merged, where="merge_product")
+    session_memory["product_data"] = merged
     profile = session_memory.setdefault("product_profile", {})
     profile["url"] = url
     profile["title"] = product.get("product_name", "") or profile.get("title", "")
@@ -182,13 +194,13 @@ def _merge_product_into_context(
 
 # ── Cross-session cache ──────────────────────────────────────────────────────
 
-# TODO: no force-refresh path — both caches short-circuit unconditionally + the
+# TODO: no force-refresh path - both caches short-circuit unconditionally + the
 # tool has no `force` param, so "re-scrape this site" can't bypass the cache.
 # Add `force` → skip both caches + upsert (don't dup) the stored record.
 async def _serve_from_storage(url: str, stream, context: dict, session_memory: dict) -> ToolResult | None:
     """Cross-session cache: if this URL was analyzed before, hydrate session_memory +
     re-render the craft panel (same UI as a fresh scrape) and return the reuse
-    ToolResult. Returns None on miss/error — caller falls through to a fresh scrape."""
+    ToolResult. Returns None on miss/error - caller falls through to a fresh scrape."""
     try:
         from app.agents.adzump.services.business_storage import hydrate_from_storage
         from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
@@ -204,8 +216,7 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
             try:
                 await _emit_final_craft(
                     stream, craft_id, url, product, competitive,
-                    screenshot_url=(product.get("primary_screenshot_url")
-                                    or product.get("screenshot_url")),
+                    screenshot_url=primary_screenshot_url(product),
                     baked_summary=(
                         (session_memory.get("product_profile") or {}).get("summary")
                         or product.get("summary", "")
@@ -229,18 +240,18 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
         return None
 
 
-async def _emit_asset_upload_prompt(stream, gaps, session_memory: dict, url: str) -> bool:
-    """Emit the asset-upload prompt if the picker left gaps; no-op otherwise.
-    `gaps` is the typed AnalysisOutput.asset_gaps. Returns True iff a prompt was
-    emitted — caller flags the result as a (deferred, multi) elicitation so the
-    run loop yields the turn."""
+async def _emit_asset_upload_prompt(stream, requirements, session_memory: dict, url: str) -> bool:
+    """Emit the asset-upload prompt if the picker left requirements open;
+    no-op otherwise. `requirements` is the typed AnalysisOutput.asset_requirements.
+    Returns True iff a prompt was emitted - caller flags the result as a
+    (deferred, multi) elicitation so the run loop yields the turn."""
     if stream is None:
         return False
-    if not (gaps and gaps.any_open()):   # no gaps object, or nothing missing → nothing to ask
+    if not (requirements and requirements.any_open()):   # nothing missing → nothing to ask
         return False
 
-    missing_logo = gaps.logo_missing
-    missing_creatives = list(gaps.missing_categories)
+    missing_logo = requirements.logo_missing
+    missing_creatives = list(requirements.missing_categories)
 
     from app.agents.adzump.agents.product.tools.scrape.assets import (
         _compose_asset_request_text,  # pure, unit-tested composer
@@ -260,7 +271,7 @@ async def _emit_asset_upload_prompt(stream, gaps, session_memory: dict, url: str
         return False
 
     # Quick-action chip so the user needn't type to continue (upload optional).
-    # On session_memory so get_pending_suggestions returns it this turn — popped
+    # On session_memory so get_pending_suggestions returns it this turn - popped
     # before the elicitation guard, so the open upload elicitation can't suppress it.
     session_memory["_pending_suggestions"] = {
         "options": [{"label": "Continue without uploading",
@@ -276,7 +287,7 @@ async def _emit_asset_upload_prompt(stream, gaps, session_memory: dict, url: str
 
 def _build_llm_summary(product: dict) -> str:
     """The tool-result summary the orchestrator LLM sees. Deliberately OMITs location
-    — echoing it made the LLM ask "confirm location?" as free text before
+    - echoing it made the LLM ask "confirm location?" as free text before
     confirm_location's widget fired (dup question); it stays in product_data."""
     lines: list[str] = []
     if product.get("product_name"):

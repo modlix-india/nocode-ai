@@ -31,7 +31,7 @@ def short_url(url: str, max_len: int = 55) -> str:
     - Keeps host + last 1-2 path segments; elides middle segments as ``/…/``.
     - Hard-caps length, end-truncates with ``…``.
 
-    Display-only — never persist this form. Stored URLs always use the full
+    Display-only - never persist this form. Stored URLs always use the full
     URL (see business_storage._normalize_url for the storage-canonical form).
     """
     from urllib.parse import urlparse
@@ -62,7 +62,7 @@ def clean_input_url(raw) -> str | None:
 
     Trims whitespace, defaults the scheme to ``https://`` if missing,
     and returns ``None`` when the input is empty or whitespace-only.
-    Leaves explicit ``http://`` alone — caller decides whether to keep
+    Leaves explicit ``http://`` alone - caller decides whether to keep
     or force-upgrade to https (see business_storage._normalize_url for
     the storage-canonicalization concern).
     """
@@ -146,16 +146,17 @@ def is_aggregator_host(host: str, extra_hosts: frozenset[str] | set[str] = froze
 # ─── Shared product-data helpers ─────────────────────────────────────────
 
 def product_location_str(product_data: dict) -> str:
-    """Return the business location as a plain string from product_data.location.
+    """The business address from product_data.place (the LLM's wire shapes are
+    normalized into place at the merge boundary - tools/product.py)."""
+    return ((product_data.get("place") or {}).get("address") or "").strip()
 
-    The LLM emits location as either a plain string or {"location": "<string>"}.
-    """
-    loc = product_data.get("location") or {}
-    if isinstance(loc, str):
-        return loc.strip()
-    if isinstance(loc, dict):
-        return (loc.get("location") or "").strip()
-    return ""
+
+def primary_screenshot_url(product_data: dict) -> str:
+    """The primary page's full-page screenshot upload; "" until scraped.
+    Derived from pages[primary_url] - the single home of per-page state."""
+    pages = product_data.get("pages") or {}
+    page = pages.get(product_data.get("primary_url") or "") or {}
+    return page.get("screenshot_url") or ""
 
 
 # ─── Shared progress emission ────────────────────────────────────────────
@@ -169,10 +170,10 @@ async def emit_progress(
       · If ``tool_use_id`` kwarg is provided (non-None, non-empty), use it.
         Callers pass this to override the default (e.g., a sub-agent
         attributing its own stage emits to its own row instead of the
-        parent tool's row — see asset-picker-fixes-v4 I-1).
+        parent tool's row - see asset-picker-fixes-v4 I-1).
       · Else fall back to ``context["tool_use_id"]`` (the BaseAgent loop
         injects this at tool-call time).
-    Safe to call even when either stream or id is missing — swallows all
+    Safe to call even when either stream or id is missing - swallows all
     exceptions so tools can use it unconditionally.
     """
     stream = context.get("event_stream")

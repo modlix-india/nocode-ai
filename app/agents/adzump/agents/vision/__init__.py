@@ -1,4 +1,4 @@
-"""Vision package — public surface for the logo/creative vision agent.
+"""Vision package - public surface for the logo/creative vision agent.
 
 Re-exports only; the agent, its rationale, and config live in ``agent.py``.
 """

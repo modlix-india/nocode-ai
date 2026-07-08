@@ -34,9 +34,9 @@ def _b64(raw: bytes) -> str:
 # (no thumbnail → text-only entry, the case under test), and a hero render
 # (thumbnailed, but its thumb has no content-type → image/jpeg default).
 _SITE = "https://purvasparklingspring.com/img"
-DEV_LOGO = f"{_SITE}/puravankara-logo.png"       # 0 — thumbnailed
-PROJECT_SVG = f"{_SITE}/sparkling-springs.svg"   # 1 — SVG, no thumbnail
-HERO = f"{_SITE}/lakefront-elevation.webp"       # 2 — thumbnailed
+DEV_LOGO = f"{_SITE}/puravankara-logo.png"       # 0 - thumbnailed
+PROJECT_SVG = f"{_SITE}/sparkling-springs.svg"   # 1 - SVG, no thumbnail
+HERO = f"{_SITE}/lakefront-elevation.webp"       # 2 - thumbnailed
 LOGO_THUMB, HERO_THUMB = b"LOGO_PNG", b"HERO_JPG"
 
 

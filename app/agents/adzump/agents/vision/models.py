@@ -1,9 +1,9 @@
 """Wire-shape models for the VisionAnalyst's LLM output.
 
-These mirror the private ``_LogoChoice`` / ``_AssetSelection`` classes that
-lived inside ``agents/product/product_assets.py``. Moved here so the agent
-owns its own contract — and so the JSON shape and the Pydantic validator
-share a single source of truth.
+These replaced the private ``_LogoChoice`` / ``_AssetSelection`` classes
+that once lived inside ``agents/product/product_assets.py`` (deleted with
+the legacy ``_resolve`` path). The agent owns its own contract - the JSON
+shape and the Pydantic validator share a single source of truth.
 
 The agent's public output is still ``ProductAssets`` (with ``LogoPick``
 entries), imported from ``agents.product.models`` for now. See D4 in the
@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 class LogoChoice(BaseModel):
     """One brand-logo selection in the LLM's JSON output.
 
-    Carries the candidate ``idx``, not the URL — the agent's post-loop
+    Carries the candidate ``idx``, not the URL - the agent's post-loop
     resolver maps idx → URL and builds the public ``LogoPick``. Don't
     confuse the two: this is the wire shape the model fills.
     """
@@ -29,7 +29,7 @@ class LogoChoice(BaseModel):
     )
     reasoning: str = Field(
         default="",
-        description="One short sentence — why this image is the named brand's logo.",
+        description="One short sentence - why this image is the named brand's logo.",
     )
     background_hint: str = Field(
         default="",
@@ -45,7 +45,7 @@ class CreativeChoice(BaseModel):
     role, code derives the aggregate ``creative_completeness`` shape.
 
     Roles are intentionally a tight enum (3 ad-usable categories plus
-    ``unused``). Per Kiran's Q3 pick: "code gathers, model decides" —
+    ``unused``). Per Kiran's Q3 pick: "code gathers, model decides" -
     model labels each candidate visually, code counts.
     """
     idx: int = Field(description="Index into the candidate list.")
@@ -75,7 +75,7 @@ class AssetSelection(BaseModel):
         default_factory=list,
         description=(
             "Shift 2: per-candidate role assignment for ad creatives. "
-            "One entry per candidate the model considers a usable creative — "
+            "One entry per candidate the model considers a usable creative - "
             "ranked best first. Code derives the aggregate creative_completeness "
             "(hero_found, amenities_count, floor_plan_found, verdict, missing_categories)."
         ),
@@ -85,7 +85,7 @@ class AssetSelection(BaseModel):
         description=(
             "[Deprecated post-Shift-2 · kept for back-compat with v6/v7 logs.] "
             "Indices of product/service photographs, ranked best first. "
-            "Use `creatives` field for new code — derive idxs from it."
+            "Use `creatives` field for new code - derive idxs from it."
         ),
     )
     confidence: float = Field(
@@ -100,7 +100,7 @@ class AssetSelection(BaseModel):
 
 class ImageVerdict(BaseModel):
     """Review-each verdict for ONE image (the upload path). Where select-subset
-    mode PICKS a subset, review-each returns a verdict per image — so the model
+    mode PICKS a subset, review-each returns a verdict per image - so the model
     can say 'not relevant' or 'unsure, ask the user' instead of being forced to
     choose."""
     idx: int = Field(description="Index into the images list (verdict order = input order).")
@@ -118,7 +118,7 @@ class ImageVerdict(BaseModel):
     )
     needs_user: bool = Field(
         default=False,
-        description="True when unsure — the orchestrator should ask the user, not guess.",
+        description="True when unsure - the orchestrator should ask the user, not guess.",
     )
     question: str = Field(
         default="",

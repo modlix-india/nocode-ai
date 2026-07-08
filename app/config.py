@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     # Optional override for service log directory used by tail_service_logs.
     # When empty the tool tries ../nocode-saas/logs relative to nocode-ai.
     MODLIX_LOG_DIR: str = ""
-    
+
     # Google Settings
     # Can be overridden by config server: ai.secrets.googleAPIKey
     # Used for Google AI services (e.g. image generation)
@@ -179,7 +179,8 @@ class Settings(BaseSettings):
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
-    ADZUMP_PROVIDER: str = "openai"  # Adzump LLM provider
+    ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
+    ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
     class Config:
@@ -211,6 +212,7 @@ class Settings(BaseSettings):
             ("secrets", "anthropicAPIKey"): "ANTHROPIC_API_KEY",
             ("secrets", "openaiAPIKey"): "OPENAI_API_KEY",
             ("secrets", "deepSeekAPIKey"): "DEEPSEEK_API_KEY",
+            ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
             ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
@@ -323,7 +325,14 @@ async def initialize_settings():
             logger.info(f"MiniMax API Key: {'*' * 20 + settings.MINIMAX_API_KEY[-8:] if settings.MINIMAX_API_KEY else 'NOT SET'}")
             logger.info(f"MiniMax Base URL: {settings.MINIMAX_BASE_URL}")
             logger.info(f"MiniMax Models: Fast={settings.MINIMAX_MODEL_FAST}, Balanced={settings.MINIMAX_MODEL_BALANCED}")
-    
+
+    if settings.ADZUMP2_PROVIDER != settings.LLM_PROVIDER:
+        logger.info(f"Adzump2 Provider Override: {settings.ADZUMP2_PROVIDER.upper()}")
+        if settings.ADZUMP2_PROVIDER == "minimax":
+            logger.info(f"MiniMax API Key: {'*' * 20 + settings.MINIMAX_API_KEY[-8:] if settings.MINIMAX_API_KEY else 'NOT SET'}")
+            logger.info(f"MiniMax Base URL: {settings.MINIMAX_BASE_URL}")
+            logger.info(f"MiniMax Models: Fast={settings.MINIMAX_MODEL_FAST}, Balanced={settings.MINIMAX_MODEL_BALANCED}")
+
     logger.info(f"Google API Key: {'*' * 20 + settings.GOOGLE_API_KEY[-8:] if settings.GOOGLE_API_KEY else 'NOT SET'}")
     logger.info(f"Redis: {'ENABLED - ' + settings.REDIS_URL[:30] + '...' if settings.REDIS_ENABLED else 'DISABLED'}")
     logger.info(f"Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min, {settings.RATE_LIMIT_PER_HOUR}/hour")

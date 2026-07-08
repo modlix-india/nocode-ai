@@ -216,9 +216,13 @@ app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["
 from app.agents.appbuilderv4.router import router as appbuilderv4_router
 app.include_router(appbuilderv4_router, prefix=f"{API_PREFIX}/appbuilderv4", tags=["AppBuilderV4"])
 
-# Adzump agent router
+# Adzump agent router (chat + common routes + location geo-search typeahead)
 from app.agents.adzump.router import router as adzump_router
 app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"])
+
+# Adzump2 agent router (CampaignPlan builder)
+from app.agents.adzump2.router import router as adzump2_router
+app.include_router(adzump2_router, prefix=f"{API_PREFIX}/adzump2", tags=["Adzump2"])
 
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
@@ -248,6 +252,7 @@ async def root():
             "health": "/api/ai/health",
             "appbuilder_chat": "/api/ai/appbuilder/chat",
             "adzump_chat": "/api/ai/adzump/chat",
+            "adzump2_chat": "/api/ai/adzump2/chat",
             "docs": "/api/ai/docs"
         }
     }
@@ -262,7 +267,8 @@ async def api_root():
         "endpoints": {
             "health": "/api/ai/health",
             "appbuilder_chat": "/api/ai/appbuilder/chat",
-            "adzump_chat": "/api/ai/adzump/chat"
+            "adzump_chat": "/api/ai/adzump/chat",
+            "adzump2_chat": "/api/ai/adzump2/chat"
         }
     }
 

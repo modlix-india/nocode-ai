@@ -27,6 +27,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Awaitable, Literal, Optional
 
+from pydantic import BaseModel
+
 
 def _data_text(data: Any) -> str | None:
     """Render tool `data` as text for the model, or None when there's nothing."""
@@ -160,6 +162,46 @@ class ToolResult:
                     continue
                 _push(shot.get("image_base64"), shot.get("image_mime"))
         return blocks
+
+
+def tool_params_from_model(model_cls: type[BaseModel]) -> list[ToolParameter]:
+    """Derive a tool's parameter list from a pydantic model's JSON schema.
+
+    Keeps the model the single source of truth - a field added there reaches
+    the LLM without a second hand-written copy, INCLUDING enum (Literal),
+    items (lists), and properties (nested objects). A field whose schema has
+    no resolvable type is a model bug - raise instead of silently telling
+    the LLM it's a string."""
+    schema = model_cls.model_json_schema()
+    required = set(schema.get("required") or [])
+    tool_params = []
+    for field_name, field_schema in (schema.get("properties") or {}).items():
+        # Optional[X] renders as anyOf [X, null]: description/default stay on
+        # the outer schema, type/enum/items/properties live on the typed alt.
+        typed = field_schema
+        if typed.get("type") is None:
+            typed = next(
+                (alt for alt in field_schema.get("anyOf", [])
+                 if alt.get("type") not in (None, "null")),
+                None,
+            )
+            if typed is None:
+                raise ValueError(
+                    f"{model_cls.__name__}.{field_name}: no resolvable JSON-schema "
+                    "type (a $ref/nested model needs its own explicit handling) - "
+                    "refusing to describe it to the LLM as a bare string"
+                )
+        tool_params.append(ToolParameter(
+            name=field_name,
+            type=typed["type"],
+            description=field_schema.get("description", ""),
+            required=field_name in required,
+            default=field_schema.get("default"),
+            enum=typed.get("enum") or field_schema.get("enum"),
+            items=typed.get("items") or field_schema.get("items"),
+            properties=typed.get("properties") or field_schema.get("properties"),
+        ))
+    return tool_params
 
 
 # Type alias for tool execute functions.

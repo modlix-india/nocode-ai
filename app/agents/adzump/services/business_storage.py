@@ -2,7 +2,7 @@
 
 Single record per businessUrl in the shared `AISuggestedData` collection
 (appCode `marketingai`). Adds a `campaign` sub-object alongside the existing
-analysis fields. Latest-launch-wins per URL — no history (yet).
+analysis fields. Latest-launch-wins per URL - no history (yet).
 
 Reuses:
 - `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
@@ -18,8 +18,12 @@ from datetime import datetime, timezone
 from typing import Any  # noqa: F401  (used in type hints below)
 from urllib.parse import urlparse
 
-from app.agents.adzump.platform import is_meta as _platform_is_meta
-from app.agents.adzump._shared import build_ds_headers
+from app.agents.adzump.platform import (
+    is_google as _platform_is_google,
+    is_meta as _platform_is_meta,
+)
+from app.agents.adzump.models import Image, Logo, check_product
+from app.agents.adzump._shared import build_ds_headers, primary_screenshot_url
 from app.agents.appbuilder.tools._shared import get_saas_client
 
 logger = logging.getLogger(__name__)
@@ -54,7 +58,7 @@ def _now_iso() -> str:
 
 def _storage_headers(ctx: dict) -> dict[str, str]:
     """Auth headers for storage calls. AppCode pinned to ``marketingai``
-    because the storage collection is appCode-scoped — clientCode stays
+    because the storage collection is appCode-scoped - clientCode stays
     from the user's session (privacy boundary)."""
     h = build_ds_headers(ctx)
     h["AppCode"] = APP_CODE
@@ -120,7 +124,7 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     on each launch. Returns the storage record id (existing or new), or
     None on failure.
 
-    Payload shapes match ds's `oserver.services.storage_service` — the
+    Payload shapes match ds's `oserver.services.storage_service` - the
     gateway expects `dataObject` / `dataObjectId` / `isPartial`.
     """
     url = resolve_url(session_ctx)
@@ -128,7 +132,14 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         logger.warning("save_campaign_skipped: no businessUrl in session")
         return None
 
-    record = _build_full_record(session_ctx, url)
+    # Schema drift check at the durable boundary - warn-only, never blocks a save.
+    check_product(session_ctx.get("product_data") or {}, where="save_campaign")
+
+    # Chat-session provenance: a sub-agent save carries the parent chat id
+    # (stamped into shared context by build_sub_session); a direct save uses
+    # the tool context's own session id.
+    chat_session_id = session_ctx.get("_session_id") or ctx.get("session_id", "")
+    record = _build_full_record(session_ctx, url, chat_session_id)
     logger.info(
         "save_campaign_assets: url=%s logo=%s rule=%s conf=%.2f creatives=%d",
         url,
@@ -149,7 +160,7 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
                 "appCode": APP_CODE,
                 "dataObjectId": existing_id,
                 "dataObject": record,
-                "isPartial": True,  # merge — preserves existing fields not in record
+                "isPartial": True,  # merge - preserves existing fields not in record
             }
             result = await get_saas_client().post(
                 UPDATE, headers=_storage_headers(ctx), json=payload,
@@ -214,14 +225,14 @@ def _build_location_object(loc_meta: dict, spec: dict, product: dict) -> dict:
         "product_location": (
             loc_meta.get("address")
             or spec.get("location")
-            or product.get("location", "")
+            or (product.get("place") or {}).get("address", "")
         ),
         "product_coordinates": coords,
     }
 
 
 def _build_map_embeds(loc_meta: dict) -> list[dict]:
-    """Mirror ds-v1's mapEmbeds entry — empty when we have no coords."""
+    """Mirror ds-v1's mapEmbeds entry - empty when we have no coords."""
     if loc_meta.get("lat") is None or loc_meta.get("lng") is None:
         return []
     lat = loc_meta["lat"]
@@ -236,7 +247,7 @@ def _build_map_embeds(loc_meta: dict) -> list[dict]:
     }]
 
 
-def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
+def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -> dict[str, Any]:
     """Build the AISuggestedData record from session.context. Pure function."""
     product = session_ctx.get("product_data") or {}
     profile = session_ctx.get("product_profile") or {}
@@ -248,6 +259,9 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
     is_meta = _platform_is_meta(spec.get("platform"))
 
     summary = profile.get("summary") or product.get("summary", "")
+    assets = product.get("assets") or {}
+    primary_logo = (assets.get("logos") or [{}])[0]
+    images = assets.get("images") or []
 
     return {
         "businessUrl": _normalize_url(url),
@@ -266,42 +280,37 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         "mapEmbeds": _build_map_embeds(loc_meta),
         # `suggestedGeoTargets` and top-level `locations` are deliberately NOT
         # written here. ds resolves them via its geo-target service (Google Ads
-        # geoTargetConstants lookup) when needed. The LLM's free-text guesses
-        # in product.suggested_locations are unreliable and would shadow the
-        # real resolution.
-        "screenshot": (
-            product.get("primary_screenshot_url")
-            or product.get("screenshot_url")
-            or product.get("screenshot")
-            or ""
-        ),
-        "externalLinks": product.get("external_links") or [],
+        # geoTargetConstants lookup) when needed.
+        "screenshot": primary_screenshot_url(product),
         # ds asset services (lead_form, call_assets, whatsapp, site_link)
         # all read siteLinks; default empty so they no-op gracefully
         "siteLinks": product.get("site_links") or [],
-        # Product assets — LLM-selected logo + ad-creative-suitable images,
+        # Product assets - LLM-selected logo + ad-creative-suitable images,
         # already re-hosted on our file service. Consumed by creative-gen.
-        "logoUrl": product.get("logo_url") or "",
-        "logoSourceUrl": product.get("logo_source_url") or "",
+        # Only the primary logo (logos[0]) is persisted; the stored shape
+        # (logoUrl/logoMeta) is the ds-side contract, kept flat here.
+        "logoUrl": primary_logo.get("url") or "",
+        "logoSourceUrl": primary_logo.get("source_url") or "",
         "logoMeta": {
-            "source": product.get("logo_source") or "",
-            "reasoning": product.get("logo_reasoning") or "",
-            "confidence": float(product.get("logo_confidence") or 0.0),
-            # Content-derived render hints (background, fit) — the agent
+            "source": primary_logo.get("source") or "",
+            "reasoning": primary_logo.get("reasoning") or "",
+            "confidence": float(primary_logo.get("confidence") or 0.0),
+            # Content-derived render hints (background, fit) - the agent
             # analyzed the image at rehost time and emits these to the UI.
-            "display": product.get("logo_display") or {},
+            "display": primary_logo.get("display") or {},
         },
-        # The LLM returns as many real creatives as the site has — no fixed
+        # The LLM returns as many real images as the site has - no fixed
         # per-page cap. Across multi-page scrapes this can grow; bound the
         # stored record at a high ceiling so a runaway page can't blow the
-        # document size, but otherwise let the selector decide.
-        "creativeImages": (product.get("creative_images") or [])[:30],
-        # Per-creative render hints, parallel-indexed with creativeImages.
-        "creativeDisplays": (product.get("creative_displays") or [])[:30],
+        # document size. The stored parallel-array shape (creativeImages +
+        # creativeDisplays) is the ds-side contract; session shape is
+        # assets.images (one object per image).
+        "creativeImages": [i.get("url") or "" for i in images][:30],
+        "creativeDisplays": [i.get("display") or {} for i in images][:30],
         # Persist scrape budget state so resume hydration can dedupe against
         # what we've already scraped instead of resetting to 0.
-        "scrapedUrls": product.get("scraped_urls") or [],
-        "scrapeCount": int(product.get("scrape_count") or 0),
+        "scrapedUrls": list(product.get("pages") or {}),
+        "scrapeCount": len(product.get("pages") or {}),
         # ds-v1 writes/reads `businessName`; nocode-ai's analyst calls it
         # `productName`. Mirror both so ds APIs (chatv2/confirm.py,
         # third_party/google/.../build_google_search_ad_payload.py,
@@ -323,8 +332,11 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
         # ── Campaign sub-object ──
         "campaign": {
             "savedAt": _now_iso(),
-            "sessionId": session_ctx.get("_session_id", ""),
-            "status": "launched",
+            "sessionId": chat_session_id,
+            # Mirror the launch flag, never assert it: the every-turn autosave
+            # writes this record too, and a draft stored as "launched" is a
+            # consent bypass. launch_campaign sets the flag; any spec edit pops it.
+            "status": spec.get("campaign_status") or "draft",
             "platform": spec.get("platform", ""),
             "duration": spec.get("duration", ""),
             "dailyBudget": spec.get("budget", ""),
@@ -342,17 +354,23 @@ def _build_full_record(session_ctx: dict, url: str) -> dict[str, Any]:
             },
             "competitive": {
                 "attempted": session_ctx.get("competitor_analysis") is not None,
-                # F26 backstop — never persist declined=true alongside attempted
+                # F26 backstop - never persist declined=true alongside attempted
                 # (analysis having run voids a prior decline; clear_competitor_decline
                 # handles the realistic paths, this keeps the durable record honest
                 # even if a stale flag survives an un-instrumented path).
                 "declined": (spec.get("competitive_analysis_declined") == "true"
                              and session_ctx.get("competitor_analysis") is None),
             },
-            # Persist target areas + platform mappings so they survive session restarts
+            # Persist target areas so they survive session restarts. The
+            # per-platform keys are the ds-side contract - projected from
+            # target_areas (the handle rides nested per-area).
             "targetAreas": product.get("target_areas") or [],
-            "googleMappedLocations": loc_meta.get("google_mapped_locations") or [],
-            "metaMappedLocations": loc_meta.get("meta_mapped_locations") or [],
+            "googleMappedLocations": (
+                product.get("target_areas") or []
+            ) if _platform_is_google(spec.get("platform")) else [],
+            "metaMappedLocations": (
+                product.get("target_areas") or []
+            ) if is_meta else [],
         },
     }
 
@@ -376,6 +394,33 @@ def _record_data(record: dict) -> dict:
     return record
 
 
+def _record_to_assets(d: dict) -> dict:
+    """Rebuild product_data["assets"] from the stored flat asset fields.
+    Logos from the logoUrl/logoMeta pair; images by zipping the stored
+    creativeImages/creativeDisplays parallel arrays (role/source aren't
+    stored - a known one-way loss)."""
+    logos: list[dict] = []
+    logo_url = d.get("logoUrl") or ""
+    if logo_url:
+        meta = d.get("logoMeta") or {}
+        logos.append(Logo(
+            url=logo_url,
+            display=meta.get("display") or {},
+            source=meta.get("source") or "",
+            source_url=d.get("logoSourceUrl") or "",
+            reasoning=meta.get("reasoning") or "",
+            confidence=float(meta.get("confidence") or 0.0),
+        ).model_dump())
+
+    urls = d.get("creativeImages") or []
+    displays = d.get("creativeDisplays") or []
+    images = [
+        Image(url=url, display=displays[i] if i < len(displays) else {}).model_dump()
+        for i, url in enumerate(urls) if url
+    ]
+    return {"logos": logos, "images": images}
+
+
 def _extract_campaign_coords(d: dict) -> dict | None:
     """Pull lat/lng from the stored campaign.location sub-object."""
     loc = (d.get("campaign") or {}).get("location") or {}
@@ -388,62 +433,45 @@ def _extract_campaign_coords(d: dict) -> dict | None:
 def _record_to_business(record: dict) -> dict:
     """Translate AISuggestedData (camelCase) → adzump's product_data shape."""
     d = _record_data(record)
-    screenshot = d.get("screenshot", "")
     # `location` was a plain string historically; nocode-ai now writes the
     # ds-v1 object shape `{area_location, product_location, product_coordinates}`.
-    # Hydrate to a string for product_data.location consumers.
+    # Hydrate into product_data.place.
     raw_loc = d.get("location") or ""
     if isinstance(raw_loc, dict):
         location_str = raw_loc.get("product_location") or raw_loc.get("area_location") or ""
     else:
         location_str = raw_loc
+    # scrapedUrls seed pages (resume keeps the scrape budget); the one stored
+    # screenshot re-attaches to the primary page.
+    primary = d.get("businessUrl") or (d.get("pagesAnalyzed") or [""])[0]
+    pages = {u: {"screenshot_url": ""} for u in d.get("scrapedUrls") or []}
+    if primary:
+        pages[primary] = {"screenshot_url": d.get("screenshot", "")}
+    contact = d.get("contact") or {}
     return {
         # Tolerate ds-v1 records that only set `businessName` (we now write
-        # both — see _build_full_record).
+        # both - see _build_full_record).
         "product_name": d.get("productName") or d.get("businessName", ""),
         "business_type": d.get("businessType", ""),
         "business_scale": d.get("businessScale", "national"),
         "summary": d.get("summary", ""),
-        "location": location_str,
-        "suggested_locations": d.get("suggestedGeoTargets") or [],
-        # Populate both keys so downstream consumers (craft renderers,
-        # competitor.py's `_emit_final_craft` etc.) find a screenshot under
-        # whichever name they expect.
-        "primary_screenshot_url": screenshot,
-        "screenshot_url": screenshot,
-        "external_links": d.get("externalLinks") or [],
+        "place": {"address": location_str, **(_extract_campaign_coords(d) or {})},
         "unique_features": d.get("uniqueFeatures") or [],
         "products_services": d.get("productsServices") or [],
         "pricing": d.get("pricing", ""),
-        "contact": d.get("contact") or {},
+        # Legacy records may carry contact.address - dropped; place owns location.
+        "contact": {"phone": contact.get("phone", ""), "email": contact.get("email", "")},
+        "primary_url": primary,
+        "pages": pages,
         "pages_analyzed": d.get("pagesAnalyzed") or [],
-        # Existing latent silent losses — siteLinks / scraped state was written
-        # but never hydrated back into session_ctx on resume. Restore them so
-        # multi-turn flows (re-scrape budget, link-aware assets) survive.
         "site_links": d.get("siteLinks") or [],
-        "scraped_urls": d.get("scrapedUrls") or [],
-        "scrape_count": int(d.get("scrapeCount") or 0),
-        # New product-asset fields (write-side: _build_full_record above).
-        "logo_url": d.get("logoUrl") or "",
-        "logo_source_url": d.get("logoSourceUrl") or "",
-        "logo_source": (d.get("logoMeta") or {}).get("source") or "",
-        "logo_reasoning": (d.get("logoMeta") or {}).get("reasoning") or "",
-        "logo_confidence": float((d.get("logoMeta") or {}).get("confidence") or 0.0),
-        "logo_display": (d.get("logoMeta") or {}).get("display") or {},
-        "creative_images": d.get("creativeImages") or [],
-        "creative_displays": d.get("creativeDisplays") or [],
-        # Persisted target areas + platform mappings (written inside campaign sub-object)
-        "_campaign": d.get("campaign") or {},
+        "assets": _record_to_assets(d),
         "target_areas": (d.get("campaign") or {}).get("targetAreas") or [],
-        "google_mapped_locations": (d.get("campaign") or {}).get("googleMappedLocations") or [],
-        "meta_mapped_locations": (d.get("campaign") or {}).get("metaMappedLocations") or [],
-        # Restore product coordinates so the map center pin renders on reuse
-        "product_coordinates": _extract_campaign_coords(d),
     }
 
 
 def _record_to_competitive(record: dict) -> dict | None:
-    """Pull the competitors array out of the record. Returns None if empty —
+    """Pull the competitors array out of the record. Returns None if empty -
     so callers can distinguish 'never analyzed' from 'analyzed but empty'."""
     d = _record_data(record)
     competitors = d.get("competitors") or []
@@ -457,7 +485,7 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     session.context with product_data, product_profile, and (if present)
     competitor_analysis. Returns True on hit, False on miss.
 
-    Skips overwrite when session already has the field — the caller has
+    Skips overwrite when session already has the field - the caller has
     already done a per-session cache check; we only fill empty slots.
     """
     record = await get_by_url(url, ctx)
@@ -466,6 +494,8 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
 
     if not session_ctx.get("product_data"):
         session_ctx["product_data"] = _record_to_business(record)
+        # Schema drift check at the durable boundary - warn-only.
+        check_product(session_ctx["product_data"], where="hydrate_from_storage")
         d = _record_data(record)
         session_ctx.setdefault("product_profile", {}).update({
             "url": d.get("businessUrl") or url,
@@ -483,11 +513,9 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
                 "lat": coords["lat"],
                 "lng": coords["lng"],
                 "address": stored_address,
-                "google_mapped_locations": (d.get("campaign") or {}).get("googleMappedLocations") or [],
-                "meta_mapped_locations": (d.get("campaign") or {}).get("metaMappedLocations") or [],
             })
             # Restore campaign_spec.location so _next_action sees has_location=True
-            # and prescribes discover_geo_targets immediately after platform is set,
+            # and prescribes manage_targeting_locations immediately after platform is set,
             # instead of asking for confirm_location again on every reuse.
             if stored_address:
                 session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)

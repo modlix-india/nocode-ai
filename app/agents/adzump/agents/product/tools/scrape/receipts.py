@@ -23,21 +23,20 @@ async def _emit_asset_receipts(
     """
     if not stream or not craft_id:
         return
-    logo_urls = list(product_data.get("logo_urls") or [])
-    if not logo_urls and product_data.get("logo_url"):
-        logo_urls = [product_data["logo_url"]]
-    logo_displays = list(product_data.get("logo_displays") or [])
-    if not logo_displays and product_data.get("logo_display"):
-        logo_displays = [product_data["logo_display"]]
-    creative_image_urls = list(product_data.get("creative_images") or [])
-    creative_displays = list(product_data.get("creative_displays") or [])
-    if not logo_urls and not creative_image_urls:
+    assets = product_data.get("assets") or {}
+    logos = assets.get("logos") or []
+    logo_urls = [l.get("url") for l in logos if l.get("url")]
+    logo_displays = [l.get("display") or {} for l in logos]
+    images = assets.get("images") or []
+    image_urls = [i.get("url") for i in images if i.get("url")]
+    image_displays = [i.get("display") or {} for i in images]
+    if not logo_urls and not image_urls:
         return
 
-    summary = _asset_label(len(logo_urls), len(creative_image_urls))
+    summary = _asset_label(len(logo_urls), len(image_urls))
     thumbnail_row = (
         _build_thumbnail_row(logo_urls, logo_displays)
-        + _build_thumbnail_row(creative_image_urls, creative_displays)
+        + _build_thumbnail_row(image_urls, image_displays)
     )
     blocks = [
         {"id": "assets_label", "type": "text", "content": summary},

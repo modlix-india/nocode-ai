@@ -1,4 +1,4 @@
-"""Meta accounts adapter — lists business, ad, page and IG assets via Graph API.
+"""Meta accounts adapter - lists business, ad, page and IG assets via Graph API.
 
 Ported from ``ds/adapters/meta/accounts.py``. Auth headers are passed per-call.
 """
@@ -52,10 +52,10 @@ class MetaAccountsAdapter:
         client_code: str,
         auth_headers: dict[str, str],
     ) -> list[dict[str, Any]]:
-        """Facebook pages the connected user can actually POST FROM — i.e. pages
+        """Facebook pages the connected user can actually POST FROM - i.e. pages
         they have a role on, which carry a Page Access Token (via /me/accounts).
         Business client/owned pages the user has NO token for are EXCLUDED: picking
-        one dead-ends the campaign (no page token → can't fetch IG or publish — the
+        one dead-ends the campaign (no page token → can't fetch IG or publish - the
         live `client_pages` loop). Scoped to `business_id` when the user's pages
         overlap it, but never over-filtered to empty (fall back to all token-backed
         pages). Tokening client pages is the separate System-User flow, not this."""

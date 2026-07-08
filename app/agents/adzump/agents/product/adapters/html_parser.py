@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 _SKIP_TAGS = {"script", "style", "noscript", "svg", "path", "meta", "link", "head"}
 
 # Cap the per-page image candidate list. Above this is almost always icons,
-# tracking pixels, payment-method logos — and the LLM selector sees a smaller
+# tracking pixels, payment-method logos - and the LLM selector sees a smaller
 # prompt with the same useful signal.
 MAX_IMAGES = 50
 
@@ -34,7 +34,7 @@ def parse_html(
     network_images: list[dict] | None = None,
     image_positions: dict[str, dict] | None = None,
 ) -> PageContent:
-    """Parse HTML into structured PageContent. No selection logic — this is
+    """Parse HTML into structured PageContent. No selection logic - this is
     pure evidence gathering for the LLM selector in product_assets.py.
 
     `network_images` is an optional list of `{url, content_type, size}` dicts
@@ -148,7 +148,7 @@ def _collect_image_candidates(
 
     def add(img: SiteImage) -> None:
         """Append `img` to the candidate list unless its src is already
-        present. Silent dedup — caller checks `len(images) >= MAX_IMAGES`
+        present. Silent dedup - caller checks `len(images) >= MAX_IMAGES`
         separately to decide when to stop iterating.
 
         v9 (2026-05-22): SVG candidates dropped at the parser. The picker
@@ -197,7 +197,7 @@ def _merge_network_images(
 
     DOM candidates carry richer metadata (alt, in_header, class). When a
     network URL matches an existing DOM candidate's src we keep the DOM
-    entry — same image, better signal. Anything new gets a `source="network"`
+    entry - same image, better signal. Anything new gets a `source="network"`
     entry with bare metadata; the LLM still has the URL + the screenshot to
     reason about it."""
     seen = {img.src for img in candidates}

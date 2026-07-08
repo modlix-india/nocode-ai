@@ -1205,7 +1205,7 @@ class OpenAIProvider(LLMProvider):
 
 class _StreamError:
     """Queue-passable wrapper for exceptions raised inside the streaming
-    worker thread of `DeepSeekProvider.stream_completion` (and
+    worker thread of `DeepSeekProvider.stream_completion_with_tools` (and
     MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
     leaves the consumer's `await queue.get()` hung forever.
     """
@@ -1536,8 +1536,9 @@ class DeepSeekProvider(LLMProvider):
                     oai_msg["content"] = "\n".join(text_parts)
                 if tool_calls:
                     oai_msg["tool_calls"] = tool_calls
-                # Round-trip reasoning_content for V4 Pro thinking mode — the
-                # API rejects multi-turn conversations that drop it.
+                # Round-trip reasoning_content for thinking-mode models — the
+                # DeepSeek API rejects multi-turn conversations that drop it,
+                # and MiniMax M3 wants its interleaved reasoning passed back.
                 reasoning = msg.get("_reasoning_content")
                 if reasoning:
                     oai_msg["reasoning_content"] = reasoning
@@ -1581,8 +1582,9 @@ class DeepSeekProvider(LLMProvider):
         tool_call_buffer: Dict[int, Dict[str, str]] = {}
         final_stop_reason = "end_turn"
         final_usage: Dict[str, Any] = {}
-        # DeepSeek V4 Pro's thinking mode emits chain-of-thought via
-        # `delta.reasoning_content`. The API REQUIRES this text to be passed
+        # Thinking-mode models emit chain-of-thought via
+        # `delta.reasoning_content` (DeepSeek thinking mode, MiniMax M3
+        # interleaved reasoning). DeepSeek REQUIRES this text to be passed
         # back on every follow-up turn or returns HTTP 400 with
         # "reasoning_content in the thinking mode must be passed back".
         # Accumulate across deltas and surface on the `done` chunk via usage
@@ -1609,7 +1611,7 @@ class DeepSeekProvider(LLMProvider):
             finish_reason = chunk.choices[0].finish_reason
             if delta and delta.content:
                 yield StreamChunk(type="text_delta", text=delta.content)
-            # V4 Pro reasoning stream — buffer for round-trip, also yield for live UI.
+            # Reasoning stream — buffer for round-trip, also yield for live UI.
             reasoning_delta = getattr(delta, "reasoning_content", None) if delta else None
             if reasoning_delta:
                 reasoning_text_parts.append(reasoning_delta)
@@ -2113,12 +2115,15 @@ def get_available_models() -> list[dict[str, str]]:
         ("deepseek", "DeepSeek", "fast", settings.DEEPSEEK_MODEL_FAST, ""),
         ("deepseek", "DeepSeek", "balanced", settings.DEEPSEEK_MODEL_BALANCED,
          " (thinking)" if settings.DEEPSEEK_THINKING_ENABLED else ""),
+        ("minimax", "MiniMax", "fast", settings.MINIMAX_MODEL_FAST, ""),
+        ("minimax", "MiniMax", "balanced", settings.MINIMAX_MODEL_BALANCED, ""),
     ]
 
     api_keys = {
         "anthropic": settings.ANTHROPIC_API_KEY,
         "openai": settings.OPENAI_API_KEY,
         "deepseek": settings.DEEPSEEK_API_KEY,
+        "minimax": settings.MINIMAX_API_KEY,
     }
 
     models: list[dict[str, str]] = []

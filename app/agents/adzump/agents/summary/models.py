@@ -1,6 +1,6 @@
 """Models for SummaryAgent.
 
-The agent emits free-form prose (the product summary text) — there's no
+The agent emits free-form prose (the product summary text) - there's no
 structured-output schema to enforce. This file exists for symmetry with
 the other agents' folder shapes (every agent has its own ``models.py``)
 and to hold the input shape if we need one later (e.g. when the prompt

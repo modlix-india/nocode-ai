@@ -1,7 +1,7 @@
 """Agent-level credential config for adzump.
 
 Sourced from ``ai.adzump.*`` in the nocode-saas config server at startup,
-with env-var overrides for local dev. Per-user OAuth tokens are NOT here —
+with env-var overrides for local dev. Per-user OAuth tokens are NOT here -
 those come from the connection service per request.
 
 Access via ``get_adzump_config()``. Models are frozen; ``load_from_config_server``

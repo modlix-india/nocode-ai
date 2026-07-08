@@ -349,11 +349,12 @@ class BaseAgent:
             await billing.charge_llm_call(
                 session.auth, usage, resolved_model, request_id, session.session_id)
 
-            # Thinking-mode providers (DeepSeek V4 Pro) stash chain-of-thought
-            # in usage["reasoning_content"]. The API requires this text to be
-            # passed back on every follow-up turn — `append_assistant_message`
-            # stores it as `_reasoning_content` and the provider re-emits it.
-            # Pop here so it doesn't leak into the persisted usage record.
+            # Thinking-mode providers (DeepSeek V4 Pro, MiniMax M3) stash
+            # interleaved chain-of-thought in usage["reasoning_content"]. The API
+            # requires this text to be passed back on every follow-up turn —
+            # `append_assistant_message` stores it as `_reasoning_content` and the
+            # provider re-emits it. Pop here so it doesn't leak into the persisted
+            # usage record.
             reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
 
             session.append_assistant_message(content_blocks, reasoning_content)
@@ -976,7 +977,7 @@ class BaseAgent:
             "elicit_field": (result.data.get("elicit_field") if isinstance(result.data, dict) else None),
             "elicit_answers": (result.data.get("elicit_answers") if isinstance(result.data, dict) else None),
             # Generic typed payload an elicitation collects across turns (e.g.
-            # the still-missing AssetGaps). Opaque to core — a subclass owns its
+            # the still-missing AssetRequirements). Opaque to core - a subclass owns its
             # shape + (de)serialization. Inert (None) for every other tool.
             "elicit_payload": (result.data.get("elicit_payload") if isinstance(result.data, dict) else None),
             # A success that stored nothing new (kept-noop). The stuck-loop
