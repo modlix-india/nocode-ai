@@ -3,7 +3,7 @@
 Moved out of `_shared.py` (which became a 6-concern junk drawer). This is the
 transport layer: push image bytes to the gateway files API, guess content
 types, rehost remote URLs. Knows nothing about the asset domain (roles, the
-product_data lists) — that's the picker's / T-014's concern.
+product_data lists) - that's the picker's / T-014's concern.
 """
 
 from __future__ import annotations
@@ -38,14 +38,14 @@ _IMAGE_URL_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif", ".
 
 def looks_like_image_response(content_type: str, url: str) -> bool:
     """True if the response is an image. Accepts a proper `image/*` content-
-    type OR — when the server didn't set one — a URL ending in a known image
+    type OR - when the server didn't set one - a URL ending in a known image
     extension. Some CDNs (cdn.modlix.com is one) serve image bytes with no
     Content-Type header; the browser sniffs them as images, so we should
     too. Anything with a non-image content-type is always rejected."""
     ct = (content_type or "").lower().split(";", 1)[0].strip()
     if ct.startswith("image/"):
         return True
-    if ct:  # has a content-type but it's not image/* — definitely not an image
+    if ct:  # has a content-type but it's not image/* - definitely not an image
         return False
     path = url.lower().split("?", 1)[0]
     return path.endswith(_IMAGE_URL_EXTS)
@@ -77,7 +77,7 @@ async def upload_image(
 
     `kind` ∈ {"screenshot", "logo", "creative"}.
     `content_type` is what we declare in the multipart form so the gateway
-    stores it correctly — without this the form was hardcoded to image/jpeg
+    stores it correctly - without this the form was hardcoded to image/jpeg
     and SVG / WebP uploads were getting mis-labeled.
     """
     folder = _IMAGE_KIND_FOLDERS.get(kind, "screenshots")
@@ -141,7 +141,7 @@ async def upload_screenshot(screenshot_bytes: bytes, filename: str, context: dic
 
 
 # content-type → file extension. Generic "image/svg+xml" naturally becomes
-# "svg+xml" via str.split("/")[1] which breaks the filename — map explicitly.
+# "svg+xml" via str.split("/")[1] which breaks the filename - map explicitly.
 _CTYPE_EXT = {
     "image/jpeg": "jpg",
     "image/jpg": "jpg",
@@ -167,13 +167,13 @@ def _asset_filename(
 ) -> str:
     """The one place an asset filename is built: <product>_<name|kind>_<hash6>.<ext>.
 
-    `name` comes from the LLM that saw the image — slugified here, never
+    `name` comes from the LLM that saw the image - slugified here, never
     trusted raw. Product prefix = product_name (host fallback, since the
     profile writer hasn't merged during a scrape). Hash is of the BYTES, not
-    the url — every pasted upload is "image.png", so a url-hash collided and
+    the url - every pasted upload is "image.png", so a url-hash collided and
     the file store served stale images.
     """
-    def slug(s: str, n: int) -> str:  # trust boundary — LLM strings never hit the fs raw
+    def slug(s: str, n: int) -> str:  # trust boundary - LLM strings never hit the fs raw
         return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:n].rstrip("-")
 
     pd = (context.get("session_context") or {}).get("product_data") or {}
@@ -196,7 +196,7 @@ async def upload_and_analyze(
 ) -> dict | None:
     """Upload bytes + attach render hints. Returns {url, format, **hints} or
     None on upload failure. Hints (`background`, `fit`) are passed in by the
-    caller — typically derived from the vision LLM that already inspected the
+    caller - typically derived from the vision LLM that already inspected the
     thumbnail to pick the asset. Empty/None hints just produce a {url, format}
     block; the UI renders that on its neutral default tile.
 
@@ -221,7 +221,7 @@ async def rehost_image(
 ) -> dict | None:
     """Download an image and re-host on our service, attaching render hints.
 
-    Third-party CDN URLs rot — re-hosting gives creative-gen a stable URL.
+    Third-party CDN URLs rot - re-hosting gives creative-gen a stable URL.
     `hints` (`background`, `fit`) are passed through to the upload record
     so the UI can render with the right tile contrast; the LLM that picked
     the asset is the source of truth for those, not pixel sampling here.

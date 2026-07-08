@@ -69,13 +69,13 @@ async def stage_emit(
     """Emit a tool_update for the user + a structured log line.
 
     Accepts either a ScrapeStage (tool-side callers) or a generic adapter
-    name string like ``"fetch"`` (adapter callbacks) — strings are looked up
+    name string like ``"fetch"`` (adapter callbacks) - strings are looked up
     via ADAPTER_TO_SCRAPE. Unknown names are silently ignored so a new
     adapter stage can ship before its mapping does.
 
     ``kwargs`` fill the message template (e.g. n=23 for DISCOVER). Missing
     placeholders fall back to their template tokens so we never crash on
-    a formatting bug — visible weirdness > silent skipped events.
+    a formatting bug - visible weirdness > silent skipped events.
 
     ``tool_use_id`` overrides the context's tool_use_id when provided. Used
     by sub-agents (SummaryAgent · AssetPickerAgent) to attribute their own
@@ -98,15 +98,15 @@ async def stage_emit(
     # fires with a tool_use_id that hasn't been pre-emitted via
     # agent_started yet. Post-v6 this should never log. If it does, a new
     # spawn site is firing stage_emits without pre-emitting (regression).
-    # The set lives on the context dict — pre_emit_agent_started (the shared
+    # The set lives on the context dict - pre_emit_agent_started (the shared
     # launcher helper) registers each tuid there. Per-scrape lifecycle, no globals.
     effective_id = tool_use_id or context.get("tool_use_id", "")
     started_tuids = context.get("_started_tuids") or set()
     # Only warn for sub-agent tuids (those the spawn sites explicitly pre-
     # emitted). The parent scrape tool's own tuid isn't tracked on the
-    # context — its card is opened by the parent agent's launcher, not here.
+    # context - its card is opened by the parent agent's launcher, not here.
     # Empty `started_tuids` set means no spawn has pre-emitted yet on this
-    # context — skip the check.
+    # context - skip the check.
     if started_tuids and tool_use_id and effective_id not in started_tuids:
         logger.warning(
             "stage_emit_before_agent_started: stage=%s scrape_id=%s tuid=%s "

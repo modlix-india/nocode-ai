@@ -41,7 +41,7 @@ def check(case, got, input_path: str, stage: str) -> None:
             json.dump(got, f, indent=2)
         return
     case.assertTrue(os.path.exists(gp),
-                    f"no {stage} golden for {name(input_path)} — bless with BLESS_FIXTURES=1")
+                    f"no {stage} golden for {name(input_path)} - bless with BLESS_FIXTURES=1")
     with open(gp, encoding="utf-8") as f:
         want = json.load(f)
     case.assertEqual(got, want, f"{name(input_path)} [{stage}]: output changed vs golden")
