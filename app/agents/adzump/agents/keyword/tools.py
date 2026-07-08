@@ -304,7 +304,7 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
             success=False,
             error="Wrong tool. Use submit_competitor_keywords for competitor brand research.",
         )
-    
+
     items = params.get("keywords") or []
     if not items:
         return ToolResult(success=False, error="No keywords provided.")
@@ -324,11 +324,15 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
             drop_reasons["duplicate"] = drop_reasons.get("duplicate", 0) + 1
             continue
         if cand is None:
-            drop_reasons["not_in_scored_data"] = drop_reasons.get("not_in_scored_data", 0) + 1
+            drop_reasons["not_in_scored_data"] = (
+                drop_reasons.get("not_in_scored_data", 0) + 1
+            )
             continue  # must be a real scored candidate — no invented keywords
         positive = _build_optimized_keyword(kw, item, cand)
         if positive is None:
-            drop_reasons["validation_failed"] = drop_reasons.get("validation_failed", 0) + 1
+            drop_reasons["validation_failed"] = (
+                drop_reasons.get("validation_failed", 0) + 1
+            )
             continue
         seen.add(kw)
         kept.append(positive.model_dump(mode="json"))
@@ -365,7 +369,7 @@ async def _submit_competitor_keywords(params: dict, context: dict) -> ToolResult
             success=False,
             error="Wrong tool. This tool is only for competitor brand research. Use submit_positive_keywords instead.",
         )
-    
+
     items = params.get("keywords") or []
     if not items:
         return ToolResult(success=False, error="No keywords provided.")
@@ -384,17 +388,23 @@ async def _submit_competitor_keywords(params: dict, context: dict) -> ToolResult
         if not kw:
             continue
         if not name or name not in known_names:
-            drop_reasons["unknown_competitor"] = drop_reasons.get("unknown_competitor", 0) + 1
+            drop_reasons["unknown_competitor"] = (
+                drop_reasons.get("unknown_competitor", 0) + 1
+            )
             continue
         if (name, kw) in seen:
             drop_reasons["duplicate"] = drop_reasons.get("duplicate", 0) + 1
             continue
         if cand is None:
-            drop_reasons["not_in_scored_data"] = drop_reasons.get("not_in_scored_data", 0) + 1
+            drop_reasons["not_in_scored_data"] = (
+                drop_reasons.get("not_in_scored_data", 0) + 1
+            )
             continue
         positive = _build_optimized_keyword(kw, item, cand)
         if positive is None:
-            drop_reasons["validation_failed"] = drop_reasons.get("validation_failed", 0) + 1
+            drop_reasons["validation_failed"] = (
+                drop_reasons.get("validation_failed", 0) + 1
+            )
             continue
         seen.add((name, kw))
         grouped.setdefault(name, []).append(positive.model_dump(mode="json"))
@@ -416,11 +426,7 @@ async def _submit_competitor_keywords(params: dict, context: dict) -> ToolResult
         dropped,
         drop_reasons,
     )
-    note = (
-        f" ({dropped} dropped: {drop_reasons})"
-        if dropped > 0
-        else ""
-    )
+    note = f" ({dropped} dropped: {drop_reasons})" if dropped > 0 else ""
     return ToolResult(
         success=True,
         summary=f"Recorded {kept} competitor keywords across {len(grouped)} competitors{note}.",
@@ -434,7 +440,7 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
             success=False,
             error="Wrong tool. Competitor brand research has no negatives phase.",
         )
-    
+
     items = params.get("keywords") or []
     positive_kws = {p.get("keyword", "") for p in state.get("kw_positives", [])}
     positive_tokens: set[str] = set()
