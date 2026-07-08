@@ -1,8 +1,8 @@
-"""Code disposition for reviewed upload assets — the deterministic HOW behind the
+"""Code disposition for reviewed upload assets - the deterministic HOW behind the
 manage_assets front door (design C), acting on the VisionAnalyst's verdicts.
 
 `classify_verdict` is model-led (the model's relevant/needs_user/role own the
-call; no confidence threshold — asking is the model's job, not a code ladder).
+call; no confidence threshold - asking is the model's job, not a code ladder).
 The store writers below are the canonical product_data write path; the old
 separate asset-manager agent that once held them has been removed.
 """
@@ -13,25 +13,27 @@ from hashlib import md5
 from typing import Any
 
 from app.agents.adzump.agents.vision.models import ImageVerdict
-from app.agents.adzump.agents.product.models import AssetGaps
+from app.agents.adzump.agents.product.models import AssetRequirements
+from app.agents.adzump.models import Image, Logo
 
 USABLE_ROLES = {"logo", "hero", "amenity", "floor_plan"}
 
 
-def _fulfill_gap(sctx: dict, mutate) -> None:
-    """Apply a decrement to the open asset-upload elicitation's gap payload.
-    The payload rides _pending_elicitation as a JSON-safe dict (persisted across
-    turns); rehydrate → mutate → re-store. No-op when no elicitation is open."""
+def _fulfill_requirement(sctx: dict, mutate) -> None:
+    """Apply a decrement to the open asset-upload elicitation's requirements
+    payload. The payload rides _pending_elicitation as a JSON-safe dict
+    (persisted across turns); rehydrate → mutate → re-store. No-op when no
+    elicitation is open."""
     elicit = (sctx or {}).get("_pending_elicitation") or {}
-    gaps = AssetGaps.from_dict(elicit.get("payload"))
-    if gaps is None:
+    requirements = AssetRequirements.from_dict(elicit.get("payload"))
+    if requirements is None:
         return
-    mutate(gaps)
-    elicit["payload"] = gaps.to_dict()
+    mutate(requirements)
+    elicit["payload"] = requirements.to_dict()
 
 
 def classify_verdict(v: ImageVerdict) -> str:
-    """'store' | 'reject' | 'escalate'. Explicit-only escalation — no numeric
+    """'store' | 'reject' | 'escalate'. Explicit-only escalation - no numeric
     backstop; the model owns 'should I ask?' via needs_user."""
     if v.needs_user:                       # model said it's unsure → ask
         return "escalate"
@@ -61,34 +63,34 @@ def dedup_by_content(images: list[dict[str, Any]]) -> list[dict[str, Any]]:
 # ── product_data writers (canonical write shape for product_data) ────────────
 
 def store_logo(product_data: dict, res: dict, name: str, sctx: dict) -> None:
+    assets = product_data.setdefault("assets", {})
     # First logo store of THIS run clears the auto-detected logo (user upload
     # wins); later stores append (developer + project).
     if not sctx.get("_asset_logo_cleared"):
-        product_data["logo_urls"] = []
-        product_data["logo_displays"] = []
-        product_data["logo_meta"] = []
+        assets["logos"] = []
         sctx["_asset_logo_cleared"] = True
-    product_data["logo_urls"].append(res["url"])
-    product_data["logo_displays"].append({k: v for k, v in res.items() if k != "url"})
-    product_data["logo_meta"].append({
-        "source_url": "user_upload", "source": "user_upload", "role": "main",
-        "reasoning": f"User-uploaded ({name})", "format": res.get("format", ""),
-    })
-    product_data["logo_url"] = product_data["logo_urls"][0]
-    product_data["logo_display"] = product_data["logo_displays"][0]
-    product_data["logo_source_url"] = "user_upload"
-    product_data["logo_source"] = "user_upload"
-    product_data["logo_reasoning"] = "User-uploaded logo"
-    product_data["logo_confidence"] = 1.0
-    _fulfill_gap(sctx, lambda g: g.fulfill_logo())
+    assets.setdefault("logos", []).append(Logo(
+        url=res["url"],
+        display={k: v for k, v in res.items() if k != "url"},
+        source="user_upload",
+        source_url="user_upload",
+        role="main",
+        reasoning=f"User-uploaded ({name})",
+        format=res.get("format", ""),
+        confidence=1.0,
+    ).model_dump())
+    _fulfill_requirement(sctx, lambda r: r.fulfill_logo())
 
 
-def store_creative(product_data: dict, res: dict, role: str, name: str, sctx: dict) -> bool:
-    urls = product_data.setdefault("creative_images", [])
-    displays = product_data.setdefault("creative_displays", [])
-    if res["url"] in set(urls):
+def store_image(product_data: dict, res: dict, role: str, name: str, sctx: dict) -> bool:
+    images = product_data.setdefault("assets", {}).setdefault("images", [])
+    if res["url"] in {img.get("url") for img in images}:
         return False
-    urls.append(res["url"])
-    displays.append({k: v for k, v in res.items() if k != "url"})
-    _fulfill_gap(sctx, lambda g: g.fulfill_category(role))
+    images.append(Image(
+        url=res["url"],
+        display={k: v for k, v in res.items() if k != "url"},
+        role=role,
+        source="user_upload",
+    ).model_dump())
+    _fulfill_requirement(sctx, lambda r: r.fulfill_category(role))
     return True

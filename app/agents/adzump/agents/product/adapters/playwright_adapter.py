@@ -26,7 +26,7 @@ from app.agents.adzump.agents.product.models import ScrapeResult, ScrapeTimings
 logger = logging.getLogger(__name__)
 
 MAX_CONCURRENT_BROWSERS = 3
-NAVIGATION_TIMEOUT_MS = 30_000  # primary goto() ceiling — domcontentloaded usually fires in 1-3s
+NAVIGATION_TIMEOUT_MS = 30_000  # primary goto() ceiling - domcontentloaded usually fires in 1-3s
 NETWORKIDLE_SETTLE_MS = 5_000   # best-effort post-load wait; timeout is non-fatal
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -38,7 +38,7 @@ USER_AGENT = (
 # tracking pixels / decorative sprites. content-length headers are usually
 # present; when missing we keep the candidate (filter is best-effort).
 MIN_IMAGE_BYTES = 2048
-MIN_GIF_BYTES = 20 * 1024  # animated GIFs are rare on SMB sites — most GIFs are tracking
+MIN_GIF_BYTES = 20 * 1024  # animated GIFs are rare on SMB sites - most GIFs are tracking
 
 # Hosts that serve tracking / analytics / ad imagery. Drop their responses
 # even if they pass the size filter.
@@ -57,7 +57,7 @@ _PIXEL_PATH_TOKENS: tuple[str, ...] = (
 )
 
 
-# Common cookie/consent accept buttons — tried in order.
+# Common cookie/consent accept buttons - tried in order.
 COOKIE_CONSENT_SELECTORS = [
     'button:has-text("Accept all")',
     'button:has-text("Accept All")',
@@ -101,7 +101,7 @@ def _ms(start: float) -> float:
 
 def _build_timings(raw: dict, t_start: float) -> "ScrapeTimings | None":
     """Finalize the raw stage dict into a ScrapeTimings. Returns None (never
-    raises) if anything is malformed — timing must never break a scrape."""
+    raises) if anything is malformed - timing must never break a scrape."""
     try:
         data = dict(raw or {})
         total = _ms(t_start)
@@ -122,8 +122,8 @@ async def scrape_page(
 
     Returns a ScrapeResult with parsed content and the post-scroll screenshot.
     `on_progress(msg)` is awaited at major stages. `on_early_screenshot(b64)`
-    — when provided — is fired with a top-of-page screenshot taken immediately
-    after DOM ready. `on_early_html(page)` — when provided — is fired with the
+    - when provided - is fired with a top-of-page screenshot taken immediately
+    after DOM ready. `on_early_html(page)` - when provided - is fired with the
     parsed DOM-ready Page so callers can kick off summary generation in
     parallel with the slow scroll. Asset selection still uses the post-scroll
     Page returned via the normal return value. Parse failures suppress the
@@ -177,7 +177,7 @@ async def _fetch_page(
 
     Returns (html, base64_screenshot, network_images, image_positions).
     `network_images` is a list of `{url, content_type, size}` dicts for image/*
-    responses the browser actually fetched — load-bearing for SPAs whose DOM
+    responses the browser actually fetched - load-bearing for SPAs whose DOM
     has no `<img>` tags. `image_positions` maps image URL → rendered bounding
     box so `_is_header_visual` can identify framework-site header logos."""
     from playwright.async_api import async_playwright
@@ -201,7 +201,7 @@ async def _fetch_page(
 
                 # Wire image-response capture BEFORE goto so we don't miss the
                 # document-load wave of image fetches. Listener stores only
-                # primitives — never the Response object (which pins the CDP
+                # primitives - never the Response object (which pins the CDP
                 # session and can leak across browser.close()).
                 captured: dict[str, dict] = {}
                 main_frame = page.main_frame
@@ -231,7 +231,7 @@ async def _fetch_page(
                         host = (urlparse(resp_url).netloc or "").lower().removeprefix("www.")
                         if any(host == h or host.endswith("." + h) for h in _AD_TRACKING_HOSTS):
                             return
-                        # Size filter — known small images are noise; unknown size kept.
+                        # Size filter - known small images are noise; unknown size kept.
                         size_raw = headers.get("content-length")
                         try:
                             size = int(size_raw) if size_raw else None
@@ -248,7 +248,7 @@ async def _fetch_page(
                             "status": resp.status,
                         }
                     except Exception:
-                        # Listener errors must never propagate — they would tear
+                        # Listener errors must never propagate - they would tear
                         # down the page mid-render.
                         pass
 
@@ -258,11 +258,11 @@ async def _fetch_page(
                 try:
                     # Primary wait: DOM parsed. Real-world ad-pixels / chat widgets /
                     # analytics beacons keep the network "busy" indefinitely on many
-                    # sites — ``networkidle`` would wedge us at the 60s timeout for
+                    # sites - ``networkidle`` would wedge us at the 60s timeout for
                     # no content gain. Wait for HTML, then politely give the network
                     # up to 5s more (errors swallowed).
                     # on_progress fires canonical stage names ("fetch", "read",
-                    # "capture", "scroll") — the caller translates to user
+                    # "capture", "scroll") - the caller translates to user
                     # messages. Keeps this adapter free of tool-specific copy.
                     await _emit(on_progress, "fetch")
                     _t = time.monotonic()
@@ -281,10 +281,10 @@ async def _fetch_page(
                     try:
                         await page.wait_for_load_state("networkidle", timeout=NETWORKIDLE_SETTLE_MS)
                     except Exception:
-                        pass  # networkidle never fires on tracker-heavy sites — fine.
+                        pass  # networkidle never fires on tracker-heavy sites - fine.
                     _safe_set(timings, "networkidle_ms", _ms(_t))
 
-                    # Cloudflare / interstitial challenge — wait briefly and retry content.
+                    # Cloudflare / interstitial challenge - wait briefly and retry content.
                     _t = time.monotonic()
                     await _handle_cloudflare_challenge(page, url)
                     _safe_set(timings, "cloudflare_ms", _ms(_t))
@@ -372,7 +372,7 @@ async def _fetch_page(
                         # Downscale to ≤2000 px long-edge to keep payload bounded
                         # (real-estate microsites can render 5000-15000 px tall).
                         # Helper is colocated in product_assets.py for cross-package
-                        # reuse — defensive import here to avoid an import cycle if
+                        # reuse - defensive import here to avoid an import cycle if
                         # the adapter is loaded before product_assets is ready.
                         try:
                             from app.agents.adzump.agents.product.product_assets import (
@@ -442,7 +442,7 @@ async def _scroll_full_page(page, timings=None) -> None:
     """Scroll viewport-by-viewport with a fixed dwell at each step.
 
     A fast bulk scroll (400px every 120ms) is too quick for IntersectionObserver
-    callbacks to fire — gallery carousels and section-scoped lazy loads only
+    callbacks to fire - gallery carousels and section-scoped lazy loads only
     trigger when their parent enters viewport AND stays there long enough.
 
     We can't rely on `networkidle` here: tracker-heavy SPAs (analytics
@@ -452,8 +452,8 @@ async def _scroll_full_page(page, timings=None) -> None:
     observers time to fire; a follow-up bounded networkidle wait then lets
     triggered image loads complete before we move on.
 
-    Timing split (eval): ``scroll_dwell_ms`` is the fixed-dwell budget — the
-    knob we own (steps x DWELL_MS) — vs ``scroll_loadwait_ms``, the
+    Timing split (eval): ``scroll_dwell_ms`` is the fixed-dwell budget - the
+    knob we own (steps x DWELL_MS) - vs ``scroll_loadwait_ms``, the
     network-dependent settle. Plus ``step_count`` and ``scroll_height_px`` so
     a long scroll can be attributed to page tallness vs the dwell constant.
     """

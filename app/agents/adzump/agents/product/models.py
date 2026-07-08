@@ -1,6 +1,6 @@
 """Data models for the scraping pipeline.
 
-Ported from ds/core/models/scraping.py — simplified to remove geo/location
+Ported from ds/core/models/scraping.py - simplified to remove geo/location
 models not needed in nocode-ai.
 """
 
@@ -32,7 +32,7 @@ class SiteImage(BaseModel):
     id_attr: str = ""
     # Rendered position + dimensions captured by Playwright (top-of-page).
     # Lets us recognize header logos on framework sites that don't use
-    # semantic <header>/<nav> tags — the only reliable signal on Wix/Webflow.
+    # semantic <header>/<nav> tags - the only reliable signal on Wix/Webflow.
     rendered_top: int | None = None
     rendered_left: int | None = None
     rendered_width: int | None = None
@@ -47,10 +47,10 @@ class LogoPick(BaseModel):
     source: str = ""         # which candidate source signal (img/og/jsonld/…)
     role: str = ""           # free-text role label from the LLM (e.g. "developer", "project", "main")
     reasoning: str = ""      # 1-line LLM explanation
-    format: str = ""         # "svg" | "png" | "jpg" | "webp" | … — derived from content-type at fetch.
+    format: str = ""         # "svg" | "png" | "jpg" | "webp" | … - derived from content-type at fetch.
                              # Lets downstream consumers (creative-gen, etc.) branch on format
                              # without sniffing bytes. SVG needs rasterization before image-gen APIs.
-    background: str = ""     # "light" | "dark" | "" — UI tile contrast hint from the vision LLM.
+    background: str = ""     # "light" | "dark" | "" - UI tile contrast hint from the vision LLM.
                              # A white wordmark designed for a dark header needs a dark backing tile
                              # to read against; the LLM looks at the thumbnail and decides. Empty
                              # = no hint = UI renders on its neutral default tile.
@@ -71,7 +71,7 @@ class CreativeRole(BaseModel):
 
 
 class CreativeCompleteness(BaseModel):
-    """Derived aggregate of `creatives_with_role` — code-computed, not model-
+    """Derived aggregate of `creatives_with_role` - code-computed, not model-
     emitted. Per Kiran's Q3 pick: model labels each candidate (perception),
     code applies the launch-readiness policy (derivation).
     """
@@ -95,7 +95,7 @@ class ProductAssets(BaseModel):
     note: str = ""                       # LLM's refusal/rejection rationale when a
                                          # logo-looking candidate was deliberately
                                          # rejected, or when no logo qualifies.
-                                         # Load-bearing for regression triage —
+                                         # Load-bearing for regression triage -
                                          # without it, every miss looks identical.
 
     # Convenience accessors for callers that only need the primary logo.
@@ -127,7 +127,7 @@ class PageContent(BaseModel):
 class ScrapeTimings(BaseModel):
     """Per-stage scrape timing in ms, populated by the Playwright adapter.
 
-    Eval/observability only — the production scrape path ignores this field.
+    Eval/observability only - the production scrape path ignores this field.
     A stage left ``None`` did not run (distinct from a measured ``0.0``).
     ``intrinsic_ms = total_ms - sem_wait_ms`` is the honest "scrape cost",
     free of the inner browser-semaphore queue wait; never report raw work_s.
@@ -140,7 +140,7 @@ class ScrapeTimings(BaseModel):
     cookie_ms: float | None = None           # consent-banner dismissal
     early_ms: float | None = None            # early screenshot + early-html callbacks (~0 when unused)
     scroll_ms: float | None = None           # full-page scroll (dwell + load-wait), the suspected dominant
-    scroll_dwell_ms: float | None = None     # fixed dwell budget (steps x DWELL_MS) — the knob we own
+    scroll_dwell_ms: float | None = None     # fixed dwell budget (steps x DWELL_MS) - the knob we own
     scroll_loadwait_ms: float | None = None  # network-dependent load-wait inside scroll
     positions_ms: float | None = None        # image bounding-box JS eval
     screenshot_ms: float | None = None       # final full-page screenshot + downscale
@@ -163,14 +163,14 @@ class ScrapeResult(BaseModel):
     timings: ScrapeTimings | None = None
 
 
-@dataclass
-class AssetGaps:
-    """Assets the picker couldn't satisfy from the site → the user is asked to
-    upload them. fulfill_* is the single decrement path as uploads arrive.
-    Travels JSON-safe (to_dict/from_dict): it rides the elicitation payload,
-    which is persisted via json.dumps — never store a live instance on context."""
+class AssetRequirements(BaseModel):
+    """Assets the campaign still needs - the picker couldn't satisfy them from
+    the site, so the user is asked to upload. fulfill_* is the single decrement
+    path as uploads arrive. Travels JSON-safe (to_dict/from_dict): it rides the
+    elicitation payload, which is persisted via json.dumps - never store a live
+    instance on context."""
     logo_missing: bool = False
-    missing_categories: list[str] = field(default_factory=list)
+    missing_categories: list[str] = []
     verdict: str = ""
 
     def fulfill_logo(self) -> None:
@@ -183,12 +183,10 @@ class AssetGaps:
         return self.logo_missing or bool(self.missing_categories)
 
     def to_dict(self) -> dict:
-        return {"logo_missing": self.logo_missing,
-                "missing_categories": list(self.missing_categories),
-                "verdict": self.verdict}
+        return self.model_dump()
 
     @classmethod
-    def from_dict(cls, d) -> "AssetGaps | None":
+    def from_dict(cls, d) -> "AssetRequirements | None":
         if not isinstance(d, dict):
             return None
         return cls(logo_missing=bool(d.get("logo_missing")),
@@ -207,6 +205,5 @@ class AnalysisOutput:
     product: dict | None   # model emits it as JSON key "business"
     competitive: dict | None
     notes: list[str] = field(default_factory=list)
-    screenshot_url: str | None = None
     raw_text: str = ""
-    asset_gaps: AssetGaps | None = None
+    asset_requirements: AssetRequirements | None = None

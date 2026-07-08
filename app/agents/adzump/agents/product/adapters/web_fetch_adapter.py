@@ -13,7 +13,7 @@ Usage (async):
     # -> {"url": ..., "title": ..., "answer": "3-4 BHK apartments, ₹1.2–2.8 Cr, ..."}
 
 Caches ``(url, question)`` pairs in-memory for 15 minutes to match Claude
-Code's cache TTL — re-asks against the same page are free.
+Code's cache TTL - re-asks against the same page are free.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ async def _cache_get(key: _CacheKey) -> dict[str, Any] | None:
 async def _cache_put(key: _CacheKey, payload: dict[str, Any]) -> None:
     async with _cache_lock:
         _cache[key] = (time.time(), payload)
-        # Very light LRU — cap 256 entries
+        # Very light LRU - cap 256 entries
         if len(_cache) > 256:
             oldest = min(_cache.items(), key=lambda kv: kv[1][0])
             _cache.pop(oldest[0], None)
@@ -178,7 +178,7 @@ async def _extract_via_anthropic(user_prompt: str) -> str:
 
 
 async def _extract_via_openai(user_prompt: str) -> str:
-    """Legacy extractor path — gpt-4o-mini behind the env kill switch."""
+    """Legacy extractor path - gpt-4o-mini behind the env kill switch."""
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
@@ -199,7 +199,7 @@ async def _extract_via_openai(user_prompt: str) -> str:
 async def _extract_answer(url: str, title: str, markdown: str, question: str) -> str:
     """Ask a small model the focused question against the page content.
 
-    Provider selection: ``SHORTLIST_CLASSIFIER_PROVIDER`` env — ``anthropic``
+    Provider selection: ``SHORTLIST_CLASSIFIER_PROVIDER`` env - ``anthropic``
     (default) uses Claude Haiku, ``openai`` keeps the legacy gpt-4o-mini path.
     """
     import os

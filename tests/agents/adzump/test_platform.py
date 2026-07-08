@@ -1,8 +1,8 @@
-"""Lock for Platform.from_value — the word-boundary keyword match (platform.py:50).
+"""Lock for Platform.from_value - the word-boundary keyword match (platform.py:50).
 
 Pure deterministic seam: maps a chip label OR a raw user message → Platform.
 The `\\b` boundary is the bug-guard: short keywords ("ig", "fb", "meta") must
-NOT match as substrings of unrelated words ("right", "fbi", "metaphor") — that
+NOT match as substrings of unrelated words ("right", "fbi", "metaphor") - that
 mis-match silently routed campaigns to the wrong platform.
 
 Run:
@@ -22,7 +22,7 @@ from app.agents.adzump.platform import (
 class PlatformFromValueTests(unittest.TestCase):
 
     def test_chip_labels_and_messages_map(self):
-        # (input, expected) — chip labels + realistic real-estate user messages.
+        # (input, expected) - chip labels + realistic real-estate user messages.
         cases = [
             ("Google Ads", Platform.GOOGLE),
             ("google", Platform.GOOGLE),

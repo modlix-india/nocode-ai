@@ -1,4 +1,4 @@
-"""SummaryAgent — minimal one-shot BaseAgent wrapping the gpt-4o profile-summary call.
+"""SummaryAgent - minimal one-shot BaseAgent wrapping the gpt-4o profile-summary call.
 
 Replaces the direct ``openai.chat.completions.create(...)`` call in
 ``agents/product/tools/scrape/profile.py`` with a properly-named agent so it

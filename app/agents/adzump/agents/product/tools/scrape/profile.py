@@ -1,4 +1,4 @@
-"""Product profile generation — gpt-4o summary + craft-panel layout.
+"""Product profile generation - gpt-4o summary + craft-panel layout.
 
 The craft panel layout is emitted from here (in `_generate_business_profile`)
 with stable block ids: `panel_image`, `assets_label`, `assets_row`,
@@ -48,7 +48,7 @@ async def _generate_business_profile(
     """Generate a product profile from scraped content via SummaryAgent.
 
     Emits the panel's FINAL layout (image, asset receipt placeholders,
-    divider, heading, summary text) before the LLM stream starts — receipt
+    divider, heading, summary text) before the LLM stream starts - receipt
     blocks fill in later via id-based replace from `_emit_asset_receipts`.
 
     Streaming + cancellation now live inside `SummaryAgent.summarize()`
@@ -109,7 +109,7 @@ async def _get_primary_profile(
     started in `start_parallel_summary` when DOM-ready HTML was rich enough;
     otherwise runs the fallback on the post-scroll Page.
 
-    `screenshot_url` is passed by value — the parallel task already captured
+    `screenshot_url` is passed by value - the parallel task already captured
     its own snapshot at create time. Do NOT change this to read from a shared
     state object; the post-scroll URL would leak into the provisional panel.
     """
@@ -124,7 +124,7 @@ async def _get_primary_profile(
     # tool_use_id, not the parent scrape tool's. See asset-picker-fixes-v4.
     # Symmetric lifecycle: the launcher pre-emits agent_started BEFORE the
     # SUMMARIZE stage_emit so the stage's tool_update has an open span to
-    # route to — mirrors the parallel path (scrape/tool.py).
+    # route to - mirrors the parallel path (scrape/tool.py).
     from app.core.streaming import pre_emit_agent_started
     summary_tuid = await pre_emit_agent_started(
         stream, agent_id="summary_gen", label="Profile Writer",
