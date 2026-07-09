@@ -1,4 +1,4 @@
-"""ProductAgent — sub-agent for deep business + competitor analysis.
+"""ProductAgent - sub-agent for deep business + competitor analysis.
 
 Lives behind the ``analyze_business`` tool exposed to the AdPilot chat agent.
 Runs a tool loop (scrape_url + Anthropic built-in web_search + shortlist)
@@ -6,11 +6,11 @@ against Claude Sonnet 4.6, then returns a structured JSON analysis.
 
 Design notes:
 - Isolated sub-session (own message history, own DB row).
-- Wrapped event stream — craft + progress passes through to the parent,
+- Wrapped event stream - craft + progress passes through to the parent,
   done/error are silenced (the parent owns those).
 - Hard-capped at 25 turns, balanced model tier.
 - On failure the caller (tools/product.py) returns a structured error to
-  the main chat agent — no deterministic fallback pipeline.
+  the main chat agent - no deterministic fallback pipeline.
 """
 
 from __future__ import annotations
@@ -23,20 +23,20 @@ from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 from app.agents.adzump.agents.product.context import build_product_context
 from app.agents.adzump.agents.product.tools import PRODUCT_TOOLS
-from app.agents.adzump.agents.product.models import AnalysisOutput, AssetGaps
-from app.agents.adzump._shared import extract_json
+from app.agents.adzump.agents.product.models import AnalysisOutput, AssetRequirements
+from app.agents.adzump._shared import extract_json, primary_screenshot_url
 
 logger = logging.getLogger(__name__)
 
 # Anthropic Sonnet 4.6 handles the 25-turn research flow with the built-in
 # server-side web_search tool (see tools/__init__.py). Pinned to Anthropic
-# so the server tool is available — other providers lack this capability.
+# so the server tool is available - other providers lack this capability.
 ANALYST_PROVIDER = "anthropic"
 ANALYST_MODEL_TIER = "balanced"  # kept for the BaseAgent constructor
 ANALYST_MODEL_OVERRIDE = "anthropic:claude-sonnet-4-6"
 ANALYST_MAX_TURNS = 25  # 1 scrape + multiple web_search + 3-5 web_fetch + final JSON turn + slack
 # The final-JSON turn emits 6-12 competitors with segments, positioning,
-# USPs, and narratives — easily 3-5K output tokens. 4K truncated mid-JSON
+# USPs, and narratives - easily 3-5K output tokens. 4K truncated mid-JSON
 # and left us with unparseable output (stop_reason=max_tokens).
 ANALYST_MAX_TOKENS = 16384
 
@@ -52,17 +52,21 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
 
     product_data = session_ctx.get("product_data") or {}
     research_state = session_ctx.get("_research_state") or {}
-    merged_searches = (
-        research_state.get("search_results_merged")
-        or product_data.get("search_results_merged")
-        or []
-    )
-    primary_screenshot = product_data.get("primary_screenshot_url")
+    primary_screenshot = primary_screenshot_url(product_data)
 
+    # search_results entries are {query, candidates:[{name, url, ...}]} -
+    # the shape shortlist_competitors stashes (see comp_discovery.py).
     search_snippets: list[str] = []
-    for r in merged_searches:
-        if isinstance(r, dict) and r.get("text"):
-            search_snippets.append(f"[{r.get('query','')}]\n{r['text']}")
+    for search in research_state.get("search_results") or []:
+        if not isinstance(search, dict):
+            continue
+        hits = [
+            f"- {candidate.get('name', '')} ({candidate.get('url', '')})"
+            for candidate in search.get("candidates") or []
+            if isinstance(candidate, dict) and candidate.get("name")
+        ]
+        if hits:
+            search_snippets.append(f"[{search.get('query', '')}]\n" + "\n".join(hits))
 
     from urllib.parse import urlparse as _urlparse
     host = ""
@@ -77,7 +81,6 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
             "business_type": "",
             "business_scale": "national",
             "location": "",
-            "suggested_locations": [],
             "summary": (
                 "Automated research failed. Please retry or provide details "
                 "manually. Search evidence is attached in notes."
@@ -85,7 +88,7 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
             "unique_features": [],
             "products_services": [],
             "pricing": "",
-            "contact": {"phone": "", "email": "", "address": ""},
+            "contact": {"phone": "", "email": ""},
             "pages_analyzed": [primary_url] if primary_url else [],
         },
         "competitive": {
@@ -119,21 +122,21 @@ class _PassthroughEventStream(AgentEventStream):
 
     Forwards user-visible progress (craft + tool_update rewritten to the
     parent's tool_use_id) to the parent stream, and drops everything else
-    (text, tool_start/result, done, error) — the parent agent owns those.
+    (text, tool_start/result, done, error) - the parent agent owns those.
     """
 
     def __init__(self, parent: AgentEventStream, parent_tool_use_id: str) -> None:
-        # Deliberately do NOT call super().__init__(): we don't want a local
-        # queue; this wrapper only delegates to the parent stream.
+        # super().__init__() so un-overridden base members (emit_complete,
+        # request_confirmation, events, ...) find their queue instead of
+        # crashing; the local queue is never consumed - overrides delegate.
+        super().__init__()
         self._parent = parent
         self._parent_tool_use_id = parent_tool_use_id
 
     @property
     def is_cancelled(self) -> bool:
         # Delegate to parent so a top-level user cancel propagates into the
-        # sub-agent's run loop. Without this, BaseAgent._run_loop's
-        # `event_stream.is_cancelled` check raises AttributeError because
-        # we skip super().__init__() (which would set self._cancelled = False).
+        # sub-agent's run loop.
         return getattr(self._parent, "is_cancelled", False)
 
     def cancel(self) -> None:
@@ -143,7 +146,7 @@ class _PassthroughEventStream(AgentEventStream):
             pass
 
     async def emit_text(self, text: str) -> None:
-        # The sub-agent's text is the JSON output — don't leak it to the user.
+        # The sub-agent's text is the JSON output - don't leak it to the user.
         return
 
     async def emit_thinking(self, reasoning: str) -> None:
@@ -215,7 +218,7 @@ class ProductAgent(BaseAgent):
 
     def __init__(self) -> None:
         context = build_product_context()
-        # Skip the async doc load step — static_prefix is all we have.
+        # Skip the async doc load step - static_prefix is all we have.
         context._cached_static_text = context._static_prefix
 
         super().__init__(
@@ -272,18 +275,17 @@ class ProductAgent(BaseAgent):
         product = payload.get("business") if payload else None
         competitive = payload.get("competitive") if payload else None
         notes = payload.get("notes", []) if payload else []
-        product_data = sub_session.context.get("product_data") or {}
-        screenshot_url = product_data.get("primary_screenshot_url")
-        # Lift the picker's gaps onto the typed return and pop the transient key
-        # — the parent reads AnalysisOutput.asset_gaps, never product_data.
-        asset_gaps = AssetGaps.from_dict(product_data.pop("_asset_gaps", None))
+        # Lift the picker's requirements onto the typed return and pop the
+        # transient key - it rides the sub-session context (flow bookkeeping,
+        # not business data; product_data stays purely facts).
+        requirements = AssetRequirements.from_dict(
+            sub_session.context.pop("_asset_requirements", None))
         return AnalysisOutput(
             product=product,
             competitive=competitive,
             notes=notes,
-            screenshot_url=screenshot_url,
             raw_text=final_text,
-            asset_gaps=asset_gaps,
+            asset_requirements=requirements,
         )
 
     async def analyze(
@@ -311,16 +313,14 @@ class ProductAgent(BaseAgent):
         if parent_session_context is not None:
             product_data = parent_session_context.setdefault("product_data", {})
             product_data["primary_url"] = url
-            # Reset per-run counters; the parent may reuse its session context
-            # across multiple analyses.
-            product_data["scrape_count"] = 0
-            product_data["scraped_urls"] = []
-            product_data.pop("primary_screenshot_url", None)
+            # Reset the scrape budget + per-page state; the parent may reuse
+            # its session context across multiple analyses.
+            product_data["pages"] = {}
 
             sub_session.context = {
                 "product_data": product_data,
                 "product_profile": parent_session_context.setdefault("product_profile", {}),
-                "research_state": parent_session_context.setdefault("research_state", {}),
+                "_research_state": parent_session_context.setdefault("_research_state", {}),
                 "craft_id": parent_session_context.get("craft_id", ""),
             }
 
@@ -334,7 +334,7 @@ class ProductAgent(BaseAgent):
             model_override=ANALYST_MODEL_OVERRIDE,
         )
 
-        # Find the last assistant message's text — that's the JSON output.
+        # Find the last assistant message's text - that's the JSON output.
         final_text = ""
         for msg in reversed(sub_session.get_messages()):
             if msg.get("role") != "assistant":

@@ -1,5 +1,5 @@
 """asset_manage pure text builders: _build_brief, _saved_summary (below the model).
-Regression: PR1a project-identity grounding — story in plans/asset-upload-qa-findings.md."""
+Regression: PR1a project-identity grounding - story in plans/asset-upload-qa-findings.md."""
 import unittest
 
 from app.agents.adzump.tools.asset_manage import _build_brief, _saved_summary

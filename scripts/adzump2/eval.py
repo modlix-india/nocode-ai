@@ -57,11 +57,17 @@ from app.core.session import AuthContext, BaseSession
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.tools.http_client import SaasClient
 from app.agents.adzump2.agent import Adzump2Agent
+from app.agents.adzump2.diagnose.diagnose import MAX_LLM_CALLS, get_diagnose_agent
 from app.agents.adzump2.tools.registry import ALL_TOOLS
 
 from tests.agents.adzump2.fixtures import (
     BUDGET_PATCH,
     BUDGET_SCHEDULE_PATCH,
+    DIAG_ACTION_SET,
+    DIAG_ATTRIBUTE_GAPS,
+    DIAG_ATTRIBUTE_MAP,
+    DIAG_LLM_DIAGNOSIS,
+    DIAG_SNAPSHOT,
     GROUPS_CREATIVES_PATCH,
     OBJECTIVE_PATCH,
     OBJECTIVE_SCHEDULE_PATCH,
@@ -184,6 +190,13 @@ class FakePlanBackend:
                headers: dict[str, str]) -> ToolResult:
         path = path if path.startswith("/") else f"/{path}"
         path = path.rstrip("/")
+        # A5 read/recommend surface (J10/J12/J20 + propose) — served from seeds.
+        a5 = re.fullmatch(
+            r"/api/adzump/plans/([^/]+)/(performance|recommendations|attribute-map|actions/propose)",
+            path,
+        )
+        if a5:
+            return self._a5(method, a5.group(2), body)
         m = re.fullmatch(r"/api/adzump/plans(?:/([^/]+))?(?:/(completeness|validate))?", path)
         if not m:
             return ToolResult(success=False, error=f"HTTP 404: no route {method} {path}")
@@ -213,6 +226,28 @@ class FakePlanBackend:
         out = copy.deepcopy(plan)
         out["completeness"] = derive_completeness(plan)
         return out
+
+    # -- A5 read/recommend surface (served from the seeded fixtures) --------
+
+    @staticmethod
+    def _a5(method: str, sub: str, body: Any) -> ToolResult:
+        """J10 snapshot / J12 ActionSet / J20 map (GET) + propose (POST). The
+        propose gate ACCEPTS and requires approval — it applies nothing (P3)."""
+        seeds = {
+            "performance": DIAG_SNAPSHOT,
+            "recommendations": DIAG_ACTION_SET,
+            "attribute-map": DIAG_ATTRIBUTE_MAP,
+        }
+        if method == "GET" and sub in seeds:
+            return ToolResult(success=True, data=copy.deepcopy(seeds[sub]))
+        if method == "POST" and sub == "actions/propose":
+            b = body if isinstance(body, dict) else {}
+            return ToolResult(success=True, data={
+                "type": b.get("type"), "targetId": b.get("targetId"),
+                "change": b.get("change") or {}, "rationale": b.get("rationale") or "",
+                "significanceVerdict": "SIGNIFICANT", "risk": "LOW", "requiresApproval": True,
+            })
+        return ToolResult(success=False, error=f"HTTP 405: {method} /{sub}")
 
 
 class PatchedSaasClient:
@@ -588,6 +623,95 @@ def _print_summary(reports: list[ScenarioReport]) -> None:
     print("=" * 96)
 
 
+# ── A5 diagnose scenario (offline: seam monkeypatched, SaasClient faked) ─────
+
+@dataclass
+class DiagnoseReport:
+    name: str = "diagnose"
+    description: str = "read J10+J12+J20 → narrate + prioritize + watchlist + grounded tests"
+    checks: list[tuple[str, bool]] = field(default_factory=list)
+
+    @property
+    def passed(self) -> bool:
+        return bool(self.checks) and all(ok for _, ok in self.checks)
+
+
+async def run_diagnose_scenario() -> DiagnoseReport:
+    """Drive the real ``diagnose`` + ``propose_action`` tools against the seeded
+    A5 read surface, with the DiagnoseAgent's LLM seam monkeypatched to a canned
+    Diagnosis. Asserts A5's discipline: narrate + prioritize J12 (verbatim
+    numbers), watchlist thin grains (never act-now), ground tests in real gaps,
+    bounded LLM calls, and apply nothing."""
+    backend = FakePlanBackend()
+    report = DiagnoseReport()
+    tools = {t.name: t for t in ALL_TOOLS}
+    ctx: dict[str, Any] = {
+        "session_context": {"plan_id": "cp_EVAL_DIAG"},
+        "headers": {"clientCode": "SYSTEM"},
+    }
+
+    counter: dict[str, int] = {}
+
+    async def seam(task: str, *, purpose: str, auth=None, event_stream=None):
+        counter[purpose] = counter.get(purpose, 0) + 1
+        return copy.deepcopy(DIAG_LLM_DIAGNOSIS)
+
+    singleton = get_diagnose_agent()
+    original = singleton._llm_json
+    singleton._llm_json = seam  # type: ignore[assignment]
+    try:
+        with PatchedSaasClient(backend):
+            res = await tools["diagnose"].execute({"window": "30d"}, ctx)
+            data = res.data if isinstance(res.data, dict) else {}
+            sig = data.get("signals", {})
+            watch_ids = {w["targetId"] for w in data.get("watchlist", [])}
+            ranked = data.get("rankedActions", [])
+            ranked_ids = {a["targetId"] for a in ranked}
+            tests = data.get("testProposals", [])
+            shift = next((a for a in ranked if a["type"] == "SHIFT_BUDGET"), {})
+
+            report.checks.append(("diagnose succeeds", res.success))
+            report.checks.append((
+                "winning angle investment_roi located",
+                any(w["value"] == "investment_roi" for w in sig.get("winningAttributes", [])),
+            ))
+            report.checks.append((
+                "junk source adset_broad located",
+                bool(sig.get("junkSources")) and sig["junkSources"][0]["targetId"] == "adset_broad",
+            ))
+            report.checks.append(("thin grain adset_new on watchlist", "adset_new" in watch_ids))
+            report.checks.append(("thin grain NOT ranked act-now", "adset_new" not in ranked_ids))
+            report.checks.append(("ranked ⊆ J12 (2 gated actions)", len(ranked) == 2))
+            report.checks.append(("J12 numbers verbatim (expectedDelta 4.2)",
+                                  shift.get("expectedDelta") == 4.2))
+            report.checks.append((
+                "test proposals grounded in real J20 gaps",
+                len(tests) == 2 and all(t["grounded"] for t in tests)
+                and all((t["groundsOn"]["axis"], t["groundsOn"]["value"]) in DIAG_ATTRIBUTE_GAPS
+                        for t in tests),
+            ))
+            report.checks.append(("bounded LLM calls (1, no thrash)",
+                                  data.get("llmCalls") == 1 and counter.get("diagnose") == 1
+                                  and counter.get("diagnose", 0) <= MAX_LLM_CALLS))
+
+            pres = await tools["propose_action"].execute(
+                {"type": "REFINE_AUDIENCE", "target_id": "adset_roi",
+                 "change": {"expand": ["nri_investors"]}, "rationale": "scale the winner"},
+                ctx,
+            )
+            report.checks.append(("propose_action routes through the J12 gate",
+                                  pres.success and "gate" in pres.summary.lower()))
+    finally:
+        singleton._llm_json = original  # type: ignore[assignment]
+    return report
+
+
+def _print_diagnose(report: DiagnoseReport) -> None:
+    print(f"\n== {report.name} :: {report.description}")
+    for label, ok in report.checks:
+        print(f"   {'OK' if ok else 'FAIL':<5} {label}")
+
+
 async def main() -> int:
     print("adzump2 offline eval — deterministic tool + rail harness (no network, no LLM)")
     agent = Adzump2Agent.get_instance()
@@ -597,7 +721,13 @@ async def main() -> int:
         reports.append(report)
         _print_scenario(report)
     _print_summary(reports)
+
+    diag = await run_diagnose_scenario()
+    _print_diagnose(diag)
+
     failed = [r.scenario.name for r in reports if not r.passed]
+    if not diag.passed:
+        failed.append(diag.name)
     if failed:
         print(f"\nFAILED scenarios: {', '.join(failed)}")
         return 1

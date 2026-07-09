@@ -1,4 +1,4 @@
-"""OAuth token fetcher — talks to the nocode-saas connection service.
+"""OAuth token fetcher - talks to the nocode-saas connection service.
 
 Ported from ``ds/oserver/services/connection.py``. Key adaptation: auth headers
 are passed in explicitly instead of pulled from a global ContextVar. This file
@@ -44,7 +44,7 @@ async def fetch_oauth_token(
     ``auth_headers`` comes from the tool context (Authorization, X-Forwarded-Host,
     X-Forwarded-Port, appCode). We forward whatever the calling user presented,
     which is how ds authenticates inbound requests today. Header lookup is
-    case-insensitive — incoming headers arrive in varying cases depending on
+    case-insensitive - incoming headers arrive in varying cases depending on
     the transport.
     """
     url = f"{settings.GATEWAY_URL}/api/core/connections/internal/oauth2/token/{connection_name}"

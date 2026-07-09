@@ -1,6 +1,6 @@
-"""Unit: app/agents/adzump/services/business_storage.py — pure record/helper builders.
+"""Unit: app/agents/adzump/services/business_storage.py - pure record/helper builders.
 
-Covers `_normalize_url` (the storage key — http→https, www-strip, trailing-slash),
+Covers `_normalize_url` (the storage key - http→https, www-strip, trailing-slash),
 `_build_location_object` (legacy ds-v1 location precedence: map-confirmed →
 user-typed → scraped), and `_build_full_record`'s competitive-block honesty
 (attempted-wins-over-stale-declined backstop).
@@ -46,11 +46,12 @@ class BuildLocationObjectLock(unittest.TestCase):
 
     def test_spec_then_scraped_fallback_no_coords(self):
         # No map address → user-typed spec.location wins; no lat/lng → coords None.
-        out = _build_location_object({}, {"location": "Whitefield"}, {"location": "from-site"})
+        out = _build_location_object(
+            {}, {"location": "Whitefield"}, {"place": {"address": "from-site"}})
         self.assertEqual(out["product_location"], "Whitefield")
         self.assertIsNone(out["product_coordinates"])
-        # spec empty too → scraped product.location.
-        out2 = _build_location_object({}, {}, {"location": "Hosur Road"})
+        # spec empty too → scraped product.place.address.
+        out2 = _build_location_object({}, {}, {"place": {"address": "Hosur Road"}})
         self.assertEqual(out2["product_location"], "Hosur Road")
 
 
@@ -59,6 +60,45 @@ def _rec(spec, *, competitors=None):
     if competitors is not None:
         sc["competitor_analysis"] = {"competitors": competitors}
     return _build_full_record(sc, "https://example.com")["campaign"]["competitive"]
+
+
+class CampaignStatusTests(unittest.TestCase):
+    """Stored campaign.status mirrors the launch flag, never asserts it.
+    regression: the every-turn autosave hardcoded "launched", so drafts
+    persisted as live campaigns from turn 2."""
+
+    def _status(self, spec):
+        sc = {"product_data": dict(RE), "campaign_spec": dict(spec)}
+        return _build_full_record(sc, "https://example.com")["campaign"]["status"]
+
+    def test_status_variants(self):
+        variants = [
+            ("pre-launch autosave stores draft", {"platform": "Google Ads"}, "draft"),
+            ("launched flag persists as launched",
+             {"platform": "Google Ads", "campaign_status": "launched"}, "launched"),
+            ("cleared flag reopens the draft",
+             {"platform": "Google Ads", "budget": "₹5,000/day"}, "draft"),
+        ]
+        for label, spec, expected in variants:
+            with self.subTest(label):
+                self.assertEqual(self._status(spec), expected)
+
+
+class SessionProvenanceTests(unittest.TestCase):
+    """campaign.sessionId carries the chat session id passed by save_campaign.
+    regression: PR #91 B7 - the record read `_session_id` straight off
+    session context (zero writers), so provenance was always empty."""
+
+    def _session_id(self, chat_session_id):
+        sc = {"product_data": dict(RE), "campaign_spec": {"platform": "Google Ads"}}
+        record = _build_full_record(sc, "https://example.com", chat_session_id)
+        return record["campaign"]["sessionId"]
+
+    def test_stamped_when_given(self):
+        self.assertEqual(self._session_id("adzump-C1-42"), "adzump-C1-42")
+
+    def test_empty_when_unknown(self):
+        self.assertEqual(self._session_id(""), "")
 
 
 class LaunchRecordTests(unittest.TestCase):

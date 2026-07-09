@@ -101,7 +101,7 @@ class GoogleAdsClient:
         client_code: str,
         auth_headers: dict[str, str],
     ) -> dict:
-        """Call geoTargetConstants:suggest — no customer_id needed."""
+        """Call geoTargetConstants:suggest - no customer_id needed."""
         token = await self._get_api_token(client_code, auth_headers)
         url = f"{self.BASE_URL}/{self.API_VERSION}/geoTargetConstants:suggest"
         async with httpx.AsyncClient(timeout=self._timeout) as client:
