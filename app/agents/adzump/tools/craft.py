@@ -20,7 +20,9 @@ def render_competitors(
     *,
     include_headers: bool = True,
 ) -> None:
-    """Append competitor cards to an existing blocks list."""
+    """Append one collapsible card per competitor — first expanded, rest collapsed.
+    Name (+ format) is the summary; website/location/pricing are key-values, USPs a
+    bulleted list, the gap a warning callout, and the why-a-competitor note."""
     competitors = competitive.get("competitors") or []
     valid: list[dict] = [
         c
@@ -34,28 +36,49 @@ def render_competitors(
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Competitors"})
 
-    for c in valid:
-        blocks.append({"type": "heading", "text": c.get("name") or "?", "level": 2})
+    for i, c in enumerate(valid):
+        name = (c.get("name") or "?").strip()
+        fmt = (c.get("business_type") or "").strip()  # schema-capped at ≤10 words upstream
+
+        children: list[dict] = []
         kv_items: list[dict] = []
         if c.get("url"):
             kv_items.append({"key": "Website", "value": str(c["url"])})
-        if c.get("business_type"):
-            kv_items.append({"key": "Format", "value": str(c["business_type"])})
         if c.get("location"):
             kv_items.append({"key": "Location", "value": str(c["location"])})
         if c.get("pricing"):
             kv_items.append({"key": "Pricing", "value": str(c["pricing"])})
-        key_usps = c.get("key_usps") or []
-        if isinstance(key_usps, list) and key_usps:
-            kv_items.append(
-                {"key": "USPs", "value": ", ".join(str(u) for u in key_usps[:3])}
-            )
-        if c.get("weakness"):
-            kv_items.append({"key": "Gap", "value": str(c["weakness"])})
         if kv_items:
-            blocks.append({"type": "key_value", "items": kv_items})
+            children.append({"type": "key_value", "items": kv_items})
+
+        key_usps = c.get("key_usps") or []
+        usps = (
+            [str(u).strip() for u in key_usps[:3] if str(u).strip()]
+            if isinstance(key_usps, list)
+            else []
+        )
+        if usps:
+            children.append({"type": "heading", "text": "Strengths", "level": 3})
+            children.append({"type": "list", "items": usps})
+
+        if c.get("weakness"):
+            children.append(
+                {"type": "callout", "variant": "warning", "text": f"Gap — {c['weakness']}"}
+            )
+
         if c.get("why_competitor"):
-            blocks.append({"type": "text", "content": str(c["why_competitor"])})
+            children.append({"type": "text", "content": str(c["why_competitor"])})
+
+        block = {
+            "type": "collapsible",
+            "variant": "card",
+            "summary": name,
+            "default_expanded": i == 0,
+            "children": children,
+        }
+        if fmt:
+            block["subtitle"] = fmt
+        blocks.append(block)
 
 
 async def emit_craft_panel(

@@ -1,18 +1,19 @@
 """Tools the KeywordResearchAgent calls during its loop.
 
-Five thin wrappers over real I/O or a deterministic validation gate; all judgment
+Six thin wrappers over real I/O or a deterministic validation gate; all judgment
 stays in the agent's reasoning:
 
-  expand_keywords          autosuggest -> real searched phrasings (broaden the net)
-  keyword_metrics          Keyword Planner -> volume / competition / CPC (relevance gate)
-  fetch_more_candidates    paginate through lower-volume scored candidates
-  submit_positive_keywords validate + record positives
-  submit_negative_keywords validate + record negatives, fetch their volumes
+  expand_keywords            autosuggest -> real searched phrasings (broaden the net)
+  keyword_metrics            Keyword Planner -> volume / competition / CPC (relevance gate)
+  fetch_more_candidates      paginate through lower-volume scored candidates
+  submit_positive_keywords   validate + record positives
+  submit_negative_keywords   validate + record negatives, fetch their volumes
+  submit_competitor_keywords validate + record competitor positives
 
 Per-run state lives in ``session.context`` under ``kw_*`` keys (plain dicts, so it
 survives JSON persistence). The submit tools re-apply safety / dedup / overlap checks
 deterministically — the LLM proposes, this layer disposes. Review-panel emission is
-handled by the orchestrator (keyword_research.py).
+handled by the orchestrators (keyword_research.py / competitor_keywords.py).
 """
 
 from __future__ import annotations
@@ -163,6 +164,32 @@ def _collapse_repeats(keyword: str) -> str | None:
     return " ".join(out) if len(out) != len(toks) else None
 
 
+def _store_scored_candidates(state: dict, scored: list[dict]) -> ToolResult:
+    """Merge scored ideas into the candidate pool (higher volume wins on a dup),
+    cap by volume, reset the page cursor, and return the first page. Shared by the
+    offering (generateKeywordIdeas) and competitor-brand (exact historical metrics)
+    scoring paths so they can't drift on how candidates are stored/paged."""
+    if not scored:
+        return ToolResult(
+            success=True,
+            summary="No keyword ideas with Google demand for these seeds — try broader or different seeds.",
+        )
+    # Merge (dedup, keep higher volume) instead of replacing — so picks from an earlier
+    # keyword_metrics batch stay selectable if the agent scores seeds across calls.
+    pool = {i["keyword"]: i for i in state.get("kw_candidates", [])}
+    for idea in scored:
+        kw = idea["keyword"]
+        if kw not in pool or idea["volume"] > pool[kw]["volume"]:
+            pool[kw] = idea
+    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[
+        : constants.MAX_STORED_CANDIDATES
+    ]
+    state["kw_candidates"] = merged
+    state["kw_shown_offset"] = 0
+    logger.info("kw_candidates: scored=%d stored_pool=%d", len(scored), len(merged))
+    return _candidates_page(state, lead=f"Google demand for {len(merged)} keywords")
+
+
 async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
     state = _state(context)
     extra = [
@@ -180,6 +207,9 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             success=False,
             error="Ad account is not set for this run; cannot query the Planner.",
         )
+
+    if state.get("kw_type") == "competitor_brand":
+        return await _competitor_keyword_metrics(extra, state, context)
 
     try:
         ideas = await keyword_planner.fetch_keyword_ideas(
@@ -223,39 +253,53 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             )
         recovered = [r for r in recovered if r.get("volume", 0) > 0]
 
-    # Demand gate: only the advertiser's OWN brand keeps 0-volume terms (a new brand
-    # can be 0-volume but we must still own it — brand protection). Generic AND
-    # competitor-brand both drop 0-volume: competitors are established businesses, so
-    # 0-volume means nobody searches for that term — no traffic to intercept.
+    # Demand gate: the advertiser's OWN brand keeps 0-volume terms (a new brand can be
+    # 0-volume but we must still own it — brand protection); generic drops them (a term
+    # nobody searches is dead weight). Competitor-brand is scored on its own path above.
     if state.get("kw_type") != "brand":
         ideas = [i for i in ideas if i.get("volume", 0) > 0]
     scored = [*ideas, *recovered]
-    if not scored:
-        return ToolResult(
-            success=True,
-            summary="No keyword ideas with Google demand for these seeds — try broader or different seeds.",
-        )
-    # Merge (dedup, keep higher volume) instead of replacing — so picks from an earlier
-    # keyword_metrics batch stay selectable if the agent scores seeds across calls.
-    pool = {i["keyword"]: i for i in state.get("kw_candidates", [])}
-    for idea in scored:
-        kw = idea["keyword"]
-        if kw not in pool or idea["volume"] > pool[kw]["volume"]:
-            pool[kw] = idea
-    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[
-        : constants.MAX_STORED_CANDIDATES
-    ]
-    state["kw_candidates"] = merged
-    state["kw_shown_offset"] = 0
     logger.info(
-        "kw_metrics type=%s sent=%d planner_ideas=%d recovered=%d scored_pool=%d",
+        "kw_metrics type=%s sent=%d planner_ideas=%d recovered=%d",
         state.get("kw_type"),
         len(keywords),
         len(ideas),
         len(recovered),
-        len(merged),
     )
-    return _candidates_page(state, lead=f"Google demand for {len(merged)} keywords")
+    return _store_scored_candidates(state, scored)
+
+
+async def _competitor_keyword_metrics(
+    extra: list[str], state: dict, context: dict
+) -> ToolResult:
+    """Score competitor-brand terms EXACTLY via historical metrics — no
+    generateKeywordIdeas expansion.
+
+    Conquest keywords must contain a competitor's brand name (SELECT_COMPETITOR_BRAND),
+    so the Planner's generic expansion only floods the shared pool with high-volume
+    non-brand terms that crowd the low-volume competitors out of the volume-capped top
+    slots. Scoring the brand seed + autosuggest terms directly (one exact-metrics call,
+    no expansion) keeps every competitor's terms in the pool and available to select."""
+    keywords = list(
+        dict.fromkeys(
+            [*(state.get("kw_pool") or []), *(state.get("kw_overflow") or []), *extra]
+        )
+    )
+    if not keywords:
+        return ToolResult(
+            success=False, error="No keywords to score — expand or provide some first."
+        )
+    # fetch_keyword_historical_metrics is fail-soft (returns [] on error); an empty
+    # result surfaces as the "no demand" message from _store_scored_candidates.
+    scored = await keyword_planner.fetch_keyword_historical_metrics(
+        keywords, **_planner_args(state, context)
+    )
+    # Demand gate: a 0-volume competitor term has no traffic to intercept.
+    scored = [i for i in scored if i.get("volume", 0) > 0]
+    logger.info(
+        "kw_metrics type=competitor_brand sent=%d scored=%d", len(keywords), len(scored)
+    )
+    return _store_scored_candidates(state, scored)
 
 
 async def _fetch_more_candidates(params: dict, context: dict) -> ToolResult:
