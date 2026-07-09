@@ -14,7 +14,7 @@ from typing import Any
 
 from app.agents.adzump.agents.vision.models import ImageVerdict
 from app.agents.adzump.agents.product.models import AssetRequirements
-from app.agents.adzump.models import Image, Logo
+from app.agents.adzump.models.product import Image, Logo
 
 USABLE_ROLES = {"logo", "hero", "amenity", "floor_plan"}
 

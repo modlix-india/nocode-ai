@@ -43,29 +43,36 @@ class MetaGeoLocation(BaseModel):
     ``type``/``key``/``name`` are Meta's own field names (a ``geo_locations``
     entry is ``{key, name, …}`` bucketed by ``type``)."""
 
-    # Required & non-empty (that's the invariant). Typically zip|city|region|
-    # country, but left as a free string, not an enum: Meta can return finer types
+    # type & key are both required & non-empty - Meta's ``geo_locations``
+    # targeting rejects an entry that lacks either (``key`` is the geo id it
+    # buckets under ``type``), so a handle without a key is unusable and must
+    # never be built: the mapper attaches ``area.meta`` only after a key lookup
+    # succeeds, else leaves it None (lat/lng radius targeting instead).
+    # ``type`` is a free string, not an enum: Meta can return finer types
     # (subcity, neighborhood, …) and rejecting those would lose a location.
     type: str = Field(min_length=1)
-    key: str | None = None
-    name: str | None = None
+    key: str = Field(min_length=1)
+    name: str | None = None  # display label only - Meta does not require it
 
 
 class GoogleGeoLocation(BaseModel):
     """Google Ads targeting handle - a geo target constant.
 
     Uses Google's own field name: the identifier is the constant's
-    ``resourceName`` (``geoTargetConstants/{id}``), not the bare numeric ``id``."""
+    ``resourceName`` (``geoTargetConstants/{id}``), not the bare numeric ``id``.
 
-    resourceName: str | None = None
-    name: str | None = None
+    ``resourceName`` is required & non-empty - it IS the geo-target constant
+    Google Ads targets on; without it the handle is meaningless, so the mapper
+    attaches ``area.google`` only when a constant resolves, else leaves it None
+    (lat/lng proximity targeting instead)."""
+
+    resourceName: str = Field(min_length=1)
+    name: str | None = None  # canonical display name only - not required by the API
 
     @field_validator("resourceName")
     @classmethod
-    def _as_resource_name(cls, v: str | None) -> str | None:
+    def _as_resource_name(cls, v: str) -> str:
         """Normalize to the ``geoTargetConstants/{id}`` resource-name form."""
-        if not v:
-            return v
         v = str(v)
         return v if v.startswith("geoTargetConstants/") else f"geoTargetConstants/{v}"
 

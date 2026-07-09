@@ -1,6 +1,6 @@
 """Product model ↔ storage contract.
 
-The Product model (app/agents/adzump/models.py) is the written-down schema of
+The Product model (app/agents/adzump/models/product.py) is the written-down schema of
 session_ctx["product_data"]. It is not yet enforced at runtime - these tests
 are what make it load-bearing: the storage restore path must produce a dict
 the model fully understands. A new key added to _record_to_business without a
@@ -13,7 +13,8 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump._shared import primary_screenshot_url
-from app.agents.adzump.models import Place, Product, check_product
+from app.agents.adzump.models import Place
+from app.agents.adzump.models.product import Product, check_product
 from app.agents.adzump.services.business_storage import (
     _build_full_record,
     _record_to_business,
@@ -143,17 +144,17 @@ class CheckProductTests(unittest.TestCase):
     """check_product - the warn-only runtime boundary check."""
 
     def test_valid_product_logs_nothing(self):
-        with mock.patch("app.agents.adzump.models.logger") as log:
+        with mock.patch("app.agents.adzump.models.product.logger") as log:
             check_product({"product_name": "X"}, where="test")
         log.warning.assert_not_called()
 
     def test_unknown_keys_warn_but_never_raise(self):
-        with mock.patch("app.agents.adzump.models.logger") as log:
+        with mock.patch("app.agents.adzump.models.product.logger") as log:
             check_product({"product_name": "X", "brand_new_key": 1}, where="test")
         self.assertIn("product_schema_unknown_keys", log.warning.call_args.args[0])
 
     def test_wrong_shape_warns_but_never_raises(self):
-        with mock.patch("app.agents.adzump.models.logger") as log:
+        with mock.patch("app.agents.adzump.models.product.logger") as log:
             check_product({"pages": "not-a-dict"}, where="test")
         self.assertIn("product_schema_drift", log.warning.call_args.args[0])
 

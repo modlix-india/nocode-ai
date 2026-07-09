@@ -1,8 +1,10 @@
 """Geo-targeting location models - the typed contract for platform locations.
 
 MetaGeoLocation makes the original bug structurally impossible: a Meta location
-cannot be constructed without a non-empty type. GoogleGeoLocation normalizes id to
-the geoTargetConstants/ resource name. TargetArea composes the generic 'where'
+cannot be constructed without a non-empty type AND key (Meta targeting rejects a
+keyless entry). GoogleGeoLocation likewise requires a non-empty resourceName and
+normalizes a bare id to the geoTargetConstants/ resource name. TargetArea composes
+the generic 'where'
 with at most one platform handle - so a mapped location carries the scale once and
 the platform type once, never a duplicated type + geo_level pair.
 """
@@ -31,10 +33,15 @@ class MetaGeoLocationTests(unittest.TestCase):
         m = MetaGeoLocation(type="city", key="123", name="Bandra")
         self.assertEqual((m.type, m.key, m.name), ("city", "123", "Bandra"))
 
-    def test_key_optional(self):
-        # No Meta match → typed handle with type but no key (radial fallback).
-        m = MetaGeoLocation(type="city")
-        self.assertIsNone(m.key)
+    def test_key_required(self):
+        # A typed-but-keyless handle is rejected by Meta, so the model forbids
+        # it: no match → the mapper attaches no handle at all (radius fallback).
+        with self.assertRaises(pydantic.ValidationError):
+            MetaGeoLocation(type="city")
+
+    def test_empty_key_rejected(self):
+        with self.assertRaises(pydantic.ValidationError):
+            MetaGeoLocation(type="city", key="")
 
     def test_carries_only_platform_params(self):
         # The model rejects generic geo fields leaking in - platform-only.
@@ -50,8 +57,13 @@ class GoogleGeoLocationTests(unittest.TestCase):
         g = GoogleGeoLocation(resourceName="geoTargetConstants/1007785")
         self.assertEqual(g.resourceName, "geoTargetConstants/1007785")
 
-    def test_resource_name_optional(self):
-        self.assertIsNone(GoogleGeoLocation().resourceName)
+    def test_resource_name_required(self):
+        # A handle without a geo-target constant is meaningless, so the model
+        # forbids it: no constant resolved → no handle (lat/lng proximity).
+        with self.assertRaises(pydantic.ValidationError):
+            GoogleGeoLocation()
+        with self.assertRaises(pydantic.ValidationError):
+            GoogleGeoLocation(resourceName="")
 
     def test_carries_only_platform_params(self):
         self.assertEqual(set(GoogleGeoLocation.model_fields), {"resourceName", "name"})

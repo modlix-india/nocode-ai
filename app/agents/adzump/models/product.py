@@ -5,6 +5,10 @@ discoverable only by grep). The live session object stays a plain dict -
 mutated by reference across sub-sessions, serialized at many boundaries -
 so adoption is incremental: ``check_product`` warns at the save/restore
 boundary, tests enforce strictly (test_product_model.py).
+
+``Place`` (the business's own location) lives in the sibling ``place`` leaf
+module so downstream targeting builders can import it without dragging in
+this product schema. This module composes it here.
 """
 
 from __future__ import annotations
@@ -14,18 +18,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.agents.adzump.models.place import Place
 from app.agents.adzump.agents.location.models import TargetArea
 from app.agents.adzump.agents.product.models import SiteLink
 
 logger = logging.getLogger(__name__)
-
-
-class Place(BaseModel):
-    """Where the business is - scraped address + geocoded point."""
-
-    address: str = ""
-    lat: float | None = None
-    lng: float | None = None
 
 
 class Contact(BaseModel):

@@ -22,7 +22,7 @@ from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_meta as _platform_is_meta,
 )
-from app.agents.adzump.models import Image, Logo, check_product
+from app.agents.adzump.models.product import Image, Logo, check_product
 from app.agents.adzump._shared import build_ds_headers, primary_screenshot_url
 from app.agents.appbuilder.tools._shared import get_saas_client
 
