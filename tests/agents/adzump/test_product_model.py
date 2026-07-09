@@ -111,9 +111,9 @@ class SaveRestoreRoundTripTests(unittest.TestCase):
                                   "distance_km": 5.0,
                                   "meta": {"type": "city", "key": "777",
                                            "name": "Whitefield"}}],
+                "place": {"address": "Bengaluru", "lat": 12.96, "lng": 77.75},
             },
             "campaign_spec": {"platform": "Meta", "location": "Bengaluru"},
-            "_location_meta": {"lat": 12.96, "lng": 77.75, "address": "Bengaluru"},
         }
 
         record = _build_full_record(session_ctx, "https://dahliasgurgaon.com/")

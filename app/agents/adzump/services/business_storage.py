@@ -209,34 +209,32 @@ def resolve_url(session_ctx: dict) -> str:
     return ""
 
 
-def _build_location_object(loc_meta: dict, spec: dict, product: dict) -> dict:
+def _build_location_object(spec: dict, product: dict) -> dict:
     """Match the legacy ds-v1 location object shape so ds downstream services
     (chatv2 confirm-location, business_service.update lookup, geo-target
-    builders) can keep reading the same keys. Map-confirmed location wins,
-    then user-typed spec, then scraped-from-website.
+    builders) can keep reading the same keys. Sourced from the confirmed
+    product.place, then user-typed spec.
     """
+    place = product.get("place") or {}
     coords = (
-        {"lng": loc_meta.get("lng"), "lat": loc_meta.get("lat")}
-        if loc_meta.get("lat") is not None and loc_meta.get("lng") is not None
+        {"lng": place.get("lng"), "lat": place.get("lat")}
+        if place.get("lat") is not None and place.get("lng") is not None
         else None
     )
     return {
         "area_location": "",
-        "product_location": (
-            loc_meta.get("address")
-            or spec.get("location")
-            or (product.get("place") or {}).get("address", "")
-        ),
+        "product_location": place.get("address") or spec.get("location") or "",
         "product_coordinates": coords,
     }
 
 
-def _build_map_embeds(loc_meta: dict) -> list[dict]:
+def _build_map_embeds(product: dict) -> list[dict]:
     """Mirror ds-v1's mapEmbeds entry - empty when we have no coords."""
-    if loc_meta.get("lat") is None or loc_meta.get("lng") is None:
+    place = product.get("place") or {}
+    if place.get("lat") is None or place.get("lng") is None:
         return []
-    lat = loc_meta["lat"]
-    lng = loc_meta["lng"]
+    lat = place["lat"]
+    lng = place["lng"]
     return [{
         "src": (
             f"https://www.google.com/maps/embed/v1/place?"
@@ -252,7 +250,7 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
     product = session_ctx.get("product_data") or {}
     profile = session_ctx.get("product_profile") or {}
     spec = session_ctx.get("campaign_spec") or {}
-    loc_meta = session_ctx.get("_location_meta") or {}
+    place = product.get("place") or {}
     account_names = session_ctx.get("account_names") or {}
     competitive = session_ctx.get("competitor_analysis") or {}
 
@@ -276,8 +274,8 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
         # legacy ds-v1 shape: object with area_location / product_location /
         # product_coordinates. ds chatv2 confirm_location and business_service
         # both read from this dict.
-        "location": _build_location_object(loc_meta, spec, product),
-        "mapEmbeds": _build_map_embeds(loc_meta),
+        "location": _build_location_object(spec, product),
+        "mapEmbeds": _build_map_embeds(product),
         # `suggestedGeoTargets` and top-level `locations` are deliberately NOT
         # written here. ds resolves them via its geo-target service (Google Ads
         # geoTargetConstants lookup) when needed.
@@ -341,10 +339,11 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
             "duration": spec.get("duration", ""),
             "dailyBudget": spec.get("budget", ""),
             "location": {
-                "address": loc_meta.get("address") or spec.get("location", ""),
-                "lat": loc_meta.get("lat"),
-                "lng": loc_meta.get("lng"),
-                "displayName": loc_meta.get("displayName", ""),
+                "address": place.get("address") or spec.get("location", ""),
+                "lat": place.get("lat"),
+                "lng": place.get("lng"),
+                "displayName": place.get("display_name", ""),
+                "country_code": place.get("country_code", ""),
             },
             "accounts": {
                 "parent": _account_pair(spec.get("parent_account"), account_names),
@@ -448,6 +447,14 @@ def _record_to_business(record: dict) -> dict:
     if primary:
         pages[primary] = {"screenshot_url": d.get("screenshot", "")}
     contact = d.get("contact") or {}
+    # Rebuild the single location cache: address (ds-v1 object) + coords,
+    # country_code and display label from the stored campaign.location.
+    campaign_loc = (d.get("campaign") or {}).get("location") or {}
+    place = {"address": location_str, **(_extract_campaign_coords(d) or {})}
+    if campaign_loc.get("country_code"):
+        place["country_code"] = campaign_loc["country_code"]
+    if campaign_loc.get("displayName"):
+        place["display_name"] = campaign_loc["displayName"]
     return {
         # Tolerate ds-v1 records that only set `businessName` (we now write
         # both - see _build_full_record).
@@ -455,7 +462,7 @@ def _record_to_business(record: dict) -> dict:
         "business_type": d.get("businessType", ""),
         "business_scale": d.get("businessScale", "national"),
         "summary": d.get("summary", ""),
-        "place": {"address": location_str, **(_extract_campaign_coords(d) or {})},
+        "place": place,
         "unique_features": d.get("uniqueFeatures") or [],
         "products_services": d.get("productsServices") or [],
         "pricing": d.get("pricing", ""),
@@ -503,22 +510,15 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
             "title": d.get("productName") or d.get("businessName", ""),
             "summary": d.get("summary", ""),
         })
-        # Restore _location_meta so geo discovery can reuse coordinates
-        # without re-geocoding, and so the map pin renders immediately.
-        coords = _extract_campaign_coords(d)
-        if coords:
-            campaign_loc = (d.get("campaign") or {}).get("location") or {}
-            stored_address = campaign_loc.get("address") or ""
-            session_ctx.setdefault("_location_meta", {}).update({
-                "lat": coords["lat"],
-                "lng": coords["lng"],
-                "address": stored_address,
-            })
-            # Restore campaign_spec.location so _next_action sees has_location=True
-            # and prescribes manage_targeting_locations immediately after platform is set,
-            # instead of asking for confirm_location again on every reuse.
-            if stored_address:
-                session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)
+        # product_data.place already carries the restored coords + country (see
+        # _record_to_business), so discovery reuses them without re-geocoding and
+        # the map pin renders immediately. Restore campaign_spec.location too so
+        # _next_action sees has_location=True and prescribes
+        # manage_targeting_locations right after platform is set, instead of
+        # asking for confirm_location again on every reuse.
+        stored_address = (d.get("campaign") or {}).get("location", {}).get("address") or ""
+        if stored_address:
+            session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)
         logger.info("hydrate_from_storage: business loaded url=%s", url)
 
     if not session_ctx.get("competitor_analysis"):

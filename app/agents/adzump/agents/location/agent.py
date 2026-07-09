@@ -84,21 +84,21 @@ class LocationAgent(BaseAgent):
         parent_ctx = context["session_context"]
         product = parent_ctx.setdefault("product_data", {})
         spec = parent_ctx.setdefault("campaign_spec", {})
-        loc_meta = parent_ctx.setdefault("_location_meta", {})
+        place = product.setdefault("place", {})
 
         stream = context.get("event_stream")
         tool_use_id = context.get("tool_use_id", "")
         auth = context.get("auth")
 
-        location_name = resolve_location_name(loc_meta, spec, product)
-        coordinates = await resolve_coordinates(location_name, loc_meta)
-        if coordinates:
-            product.setdefault("place", {}).update(coordinates)
+        # resolve_coordinates geocodes on a cache miss and stamps coords +
+        # country_code straight onto place (the single location cache).
+        location_name = resolve_location_name(product, spec)
+        await resolve_coordinates(location_name, place)
 
         sub_session = await build_sub_session(
             parent_ctx, auth, chat_session_id=context.get("session_id", ""),
         )
-        country_code = loc_meta.get("country_code") or "IN"
+        country_code = place.get("country_code") or "IN"
 
         # Launcher owns both AgentCard ends: agent_started here, finished below.
         if stream is not None:
