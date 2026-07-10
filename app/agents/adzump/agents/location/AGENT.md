@@ -347,8 +347,8 @@ Every mapped location is a `TargetArea` - generic "where" + nested platform hand
 ```
 
 Invariants:
-- **`meta.type` is required and non-empty** - Meta adset creation buckets every target by type.
-- `google.resourceName` is normalized to `geoTargetConstants/{id}` form.
+- **`meta.type` and `meta.key` are required and non-empty** - Meta rejects an entry lacking either; a failed key lookup attaches NO handle.
+- **`google.resourceName` is required**, normalized to `geoTargetConstants/{id}` form; no constant → no handle.
 - Field names are platform-native (`type`/`key` = Meta, `resourceName` = Google).
 
 ---
@@ -445,7 +445,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
    - On Meta, "Bengaluru" maps to something like `meta.key = "23424848"` with `meta.type = "city"`.
    - On Google Ads, "Bengaluru" maps to `google.resourceName = "geoTargetConstants/1026181"`.
 
-   Those IDs are saved alongside the friendly name in `AISuggestedData` (`product.google_mapped_locations` / `product.meta_mapped_locations`). On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`app/agents/adzump/agent.py:183`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
+   Those IDs ride nested on each `product_data.target_areas` entry (`area.meta` / `area.google`) and are projected into the stored record as `campaign.googleMappedLocations` / `metaMappedLocations`. On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`next_action.py`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
 
    **The risk.** Meta and Google periodically reorganise their geo catalogs. They merge cities, split districts, drop legacy IDs, renumber regions. When they do:
    - An ID that used to mean "Bengaluru" might now point to "Mysuru" (silent mis-targeting).
