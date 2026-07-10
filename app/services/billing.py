@@ -74,9 +74,16 @@ async def check_serving_status(auth: AuthContext) -> bool:
             )
             if resp.status_code == 200:
                 return resp.json() is not False
+            logger.warning(
+                "AI billing gate failed open (non-200): status=%s client=%s app=%s body=%.200s",
+                resp.status_code, auth.client_code, auth.access_app_code, resp.text,
+            )
             return True
     except Exception as e:  # noqa: BLE001
-        logger.warning("AI billing gate failed open: %s", e)
+        logger.warning(
+            "AI billing gate failed open (error): client=%s app=%s err=%s",
+            auth.client_code, auth.access_app_code, e,
+        )
         return True
 
 
@@ -93,7 +100,7 @@ async def charge_llm_call(
         return
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            await client.post(
+            resp = await client.post(
                 f"{_internal_base(auth)}/charge-ai",
                 json={
                     "clientCode": auth.client_code,
@@ -105,5 +112,18 @@ async def charge_llm_call(
                 },
                 headers=auth.to_headers(),
             )
+        if resp.status_code >= 300:
+            # Uncharged AI usage: security rejected/failed the debit. Revenue-impacting,
+            # so log loud with full context. The charge is idempotent per requestId, so
+            # these lines are enough to replay/reconcile later.
+            logger.warning(
+                "AI usage UNCHARGED (non-2xx): status=%s tokens=%s model=%s client=%s app=%s "
+                "requestId=%s session=%s body=%.200s",
+                resp.status_code, tokens, model, auth.client_code, auth.access_app_code,
+                request_id, session_id, resp.text,
+            )
     except Exception as e:  # noqa: BLE001
-        logger.warning("AI call charge failed (best-effort): %s", e)
+        logger.warning(
+            "AI usage UNCHARGED (error): tokens=%s model=%s client=%s app=%s requestId=%s session=%s err=%s",
+            tokens, model, auth.client_code, auth.access_app_code, request_id, session_id, e,
+        )
