@@ -10,7 +10,7 @@ NEGATIVES_GENERIC = """\
 STEP — NEGATIVE KEYWORDS (generic). Negatives matter as much as positives — they stop the budget
 bleeding on searches that will never convert. REASON them from the BUSINESS and the POSITIVES you
 just selected — do NOT scavenge leftover scored candidates. Call submit_negative_keywords, each:
-{ keyword, reason, match_type (EXACT|PHRASE) }.
+{ keyword, reason, match_type (PHRASE|BROAD) }.
 
 FIRST, read the business model — it decides what is a negative vs a real lead:
 - Does it sell new / premium, or budget / used? Local or national / online? B2C or B2B? Does it
@@ -34,14 +34,18 @@ GUARDRAILS:
 - Make each negative DISTINCT from your positives — a negative that's mostly the same words as a
   positive is auto-rejected by the system (it would block real traffic), so don't waste a slot on it.
 - Prefer specific, multi-word exclusions — a broad single word over-blocks real traffic.
-- Default match_type PHRASE; no duplicates or near-duplicates (keep the representative one).
+- MATCH TYPE — exclude the CONCEPT, not one string. PHRASE (default) blocks the term and anything
+  containing it in order ("free glasses" also stops "free glasses uk"). BROAD blocks a search with
+  ALL the words in any order — for multi-word concepts whose order varies ("cheap eyewear" ≈
+  "eyewear cheap"). Never EXACT: it blocks only the literal query, letting every variation leak
+  through. No duplicates or near-duplicates (keep the representative one).
 - Each reason names the category (e.g. "sibling category — sells villaments, not budget apartments").
 - Be thorough; a strong set is fine and welcome (20+ is OK)."""
 
 NEGATIVES_BRAND = """\
 STEP — NEGATIVE KEYWORDS (brand). Protect the brand campaign from spend that won't convert.
 REASON from the BUSINESS and your brand POSITIVES — do NOT scavenge leftover scored candidates.
-Call submit_negative_keywords, each: { keyword, reason, match_type (EXACT|PHRASE) }.
+Call submit_negative_keywords, each: { keyword, reason, match_type (PHRASE|BROAD) }.
 
 Brand negatives are DIFFERENT from generic — focus on:
 1. COMPETITOR brand names — you don't want to pay on competitors inside a brand campaign.
@@ -55,6 +59,9 @@ GUARDRAILS:
 - NEVER exclude a positive brand keyword.
 - Make each negative DISTINCT from your positives — one that's mostly the same words as a positive
   is auto-rejected by the system, so don't waste a slot on it.
-- Prefer specific, multi-word exclusions; default match_type PHRASE; no duplicates.
+- Prefer specific, multi-word exclusions; no duplicates.
+- MATCH TYPE — PHRASE (default) blocks the term + anything containing it in order; BROAD blocks all
+  the words in any order (multi-word concepts). Never EXACT — it blocks only the literal query and
+  lets every variation leak through.
 - Each reason names the category (e.g. "competitor — different builder", "support-only — not a buyer").
 - Be thorough; a strong negative set protects the brand budget."""

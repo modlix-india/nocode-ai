@@ -115,11 +115,11 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
         # Rides _pending_elicitation via core (same channel as elicit_expects);
         # None when untagged, so this stays inert for control-flow asks.
         data=({"elicit_field": field, "elicit_answers": answer_map} if field else None),
-        summary=(
-            f"Asked the user: \"{question[:120]}\" with {len(options)} options. "
-            "Question is already on screen - do not write it again. "
-            "Stop generating text now; wait for the user's reply."
-        ),
+        # Doubles as the restore stand-in for this tool-only turn and gets parroted
+        # into chat verbatim, so it must read as plain prose — no model instructions
+        # here (see session._tool_only_turn_note). The "don't restate" nudge already
+        # rides the resume turn in agent.py.
+        summary=f'Presented quick-reply options for: "{question[:120]}"',
     )
 
 

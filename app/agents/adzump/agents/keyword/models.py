@@ -33,6 +33,7 @@ class MatchType(str, Enum):
     # Google Ads KeywordMatchType values (used verbatim at campaign creation).
     EXACT = "EXACT"
     PHRASE = "PHRASE"
+    BROAD = "BROAD"
 
 
 class CompetitionLevel(str, Enum):
@@ -55,9 +56,17 @@ class Intent(str, Enum):
     UNKNOWN = "unknown"
 
 
-def _coerce_match_type(v: object) -> str:
+def _coerce_positive_match_type(v: object) -> str:
+    # Positives target: exact or phrase, never broad (broad positives over-spend).
     s = str(v or "").upper()
     return s if s in ("EXACT", "PHRASE") else "PHRASE"
+
+
+def _coerce_negative_match_type(v: object) -> str:
+    # Negatives exclude a concept: phrase or broad. Exact blocks only the literal
+    # query (every variation leaks through), so it's coerced up to phrase.
+    s = str(v or "").upper()
+    return s if s in ("PHRASE", "BROAD") else "PHRASE"
 
 
 def _coerce_intent(v: object) -> str:
@@ -65,9 +74,10 @@ def _coerce_intent(v: object) -> str:
     return s if s in {i.value for i in Intent} else "unknown"
 
 
-# An LLM-supplied label is coerced to a valid enum rather than raising, so a stray
-# value ("broad", "buy") never discards an otherwise-good keyword.
-CoercedMatchType = Annotated[MatchType, BeforeValidator(_coerce_match_type)]
+# An LLM label is coerced to a valid enum rather than raising, so a stray value never
+# discards an otherwise-good keyword. Positives and negatives allow different sets.
+CoercedPositiveMatchType = Annotated[MatchType, BeforeValidator(_coerce_positive_match_type)]
+CoercedNegativeMatchType = Annotated[MatchType, BeforeValidator(_coerce_negative_match_type)]
 CoercedIntent = Annotated[Intent, BeforeValidator(_coerce_intent)]
 
 
@@ -120,7 +130,7 @@ class KeywordSuggestion(BaseModel):
 class OptimizedKeyword(KeywordSuggestion):
     """A selected positive with its match type + rationale."""
 
-    match_type: CoercedMatchType = MatchType.PHRASE
+    match_type: CoercedPositiveMatchType = MatchType.PHRASE
     rationale: str = ""
     is_cross_business: bool = False
 
@@ -138,7 +148,7 @@ class NegativeKeyword(BaseModel):
     reason: str = ""
     volume: int = Field(default=0, ge=0)  # shown in the panel; via historical metrics
     kind: KeywordType = KeywordType.GENERIC  # brand vs generic exclusion
-    match_type: CoercedMatchType = MatchType.PHRASE
+    match_type: CoercedNegativeMatchType = MatchType.PHRASE
 
     @field_validator("keyword")
     @classmethod

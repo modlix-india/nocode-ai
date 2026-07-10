@@ -170,6 +170,26 @@ coercion, **cross-business → PHRASE** enforcement (`models.py`), candidate-mem
 on positives, and a **token-overlap drop** on negatives that collide with positives
 (`tools.py`). A bad model turn can't produce an unsafe or self-conflicting set.
 
+### Negative match types (phrase / broad — never exact)
+
+Negatives exclude a *concept*, so the agent picks **phrase** or **broad**, never **exact**. Exact is
+the narrowest — it blocks only the literal query and lets every longer variation leak through, so it
+barely excludes anything. Google's own "running shoes" example ([match types][neg-mt]):
+
+| Search query | neg **broad** `running shoes` | neg **phrase** `"running shoes"` | neg **exact** `[running shoes]` |
+|---|:---:|:---:|:---:|
+| `running shoes` | blocked | blocked | blocked |
+| `blue running shoes` | blocked | blocked | **shows** |
+| `shoes running` | blocked | shows | shows |
+| `buy running shoes online` | blocked | blocked | **shows** |
+
+So **phrase** (default) blocks the term plus anything containing it in order; **broad** blocks a
+search with all the words in any order (multi-word concepts whose order varies). The schema
+(`submit_negative_keywords`) and the validator (`_coerce_negative_match_type`, `models.py`) allow
+only these two — a stray `exact` is coerced to phrase.
+
+[neg-mt]: https://support.google.com/google-ads/answer/2453972
+
 ### Candidate recovery (why `keyword_metrics` calls two Planner APIs)
 
 `generateKeywordIdeas` (the expansion) is powerful but has two failure modes: it caps how

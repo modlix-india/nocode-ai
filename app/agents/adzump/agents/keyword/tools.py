@@ -505,7 +505,7 @@ SUBMIT_NEGATIVE_KEYWORDS = ToolDefinition(
                 "properties": {
                     "keyword": {"type": "string"},
                     "reason": {"type": "string"},
-                    "match_type": {"type": "string", "enum": ["exact", "phrase"]},
+                    "match_type": {"type": "string", "enum": ["phrase", "broad"]},
                 },
             },
         )
