@@ -1,6 +1,6 @@
 """Product model ↔ storage contract.
 
-The Product model (app/agents/adzump/models.py) is the written-down schema of
+The Product model (app/agents/adzump/models/product.py) is the written-down schema of
 session_ctx["product_data"]. It is not yet enforced at runtime - these tests
 are what make it load-bearing: the storage restore path must produce a dict
 the model fully understands. A new key added to _record_to_business without a
@@ -13,7 +13,8 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump._shared import primary_screenshot_url
-from app.agents.adzump.models import Place, Product, check_product
+from app.agents.adzump.models import Place
+from app.agents.adzump.models.product import Product, check_product
 from app.agents.adzump.services.business_storage import (
     _build_full_record,
     _record_to_business,
@@ -110,9 +111,12 @@ class SaveRestoreRoundTripTests(unittest.TestCase):
                                   "distance_km": 5.0,
                                   "meta": {"type": "city", "key": "777",
                                            "name": "Whitefield"}}],
+                "place": {"address": "Bengaluru", "lat": 12.96, "lng": 77.75,
+                          "country_code": "IN",
+                          "country_geo_constant": "geoTargetConstants/2356",
+                          "display_name": "Sumadhura Solea, Bengaluru"},
             },
             "campaign_spec": {"platform": "Meta", "location": "Bengaluru"},
-            "_location_meta": {"lat": 12.96, "lng": 77.75, "address": "Bengaluru"},
         }
 
         record = _build_full_record(session_ctx, "https://dahliasgurgaon.com/")
@@ -135,25 +139,32 @@ class SaveRestoreRoundTripTests(unittest.TestCase):
         self.assertEqual(restored.assets.logos[0].confidence, 0.9)
         self.assertEqual(restored.assets.images[0].url, "https://cdn/c1.png")
         self.assertEqual(restored.assets.images[0].display, {"fit": "cover"})
+        # country_code + geo constant (scope geo lookups) must survive the round trip.
         self.assertEqual(
-            restored.place, Place(address="Bengaluru", lat=12.96, lng=77.75))
+            restored.place,
+            Place(address="Bengaluru", lat=12.96, lng=77.75, country_code="IN",
+                  country_geo_constant="geoTargetConstants/2356",
+                  display_name="Sumadhura Solea, Bengaluru"))
+        self.assertEqual(record["campaign"]["location"]["country_code"], "IN")
+        self.assertEqual(
+            record["campaign"]["location"]["country_geo_constant"], "geoTargetConstants/2356")
 
 
 class CheckProductTests(unittest.TestCase):
     """check_product - the warn-only runtime boundary check."""
 
     def test_valid_product_logs_nothing(self):
-        with mock.patch("app.agents.adzump.models.logger") as log:
+        with mock.patch("app.agents.adzump.models.product.logger") as log:
             check_product({"product_name": "X"}, where="test")
         log.warning.assert_not_called()
 
     def test_unknown_keys_warn_but_never_raise(self):
-        with mock.patch("app.agents.adzump.models.logger") as log:
+        with mock.patch("app.agents.adzump.models.product.logger") as log:
             check_product({"product_name": "X", "brand_new_key": 1}, where="test")
         self.assertIn("product_schema_unknown_keys", log.warning.call_args.args[0])
 
     def test_wrong_shape_warns_but_never_raises(self):
-        with mock.patch("app.agents.adzump.models.logger") as log:
+        with mock.patch("app.agents.adzump.models.product.logger") as log:
             check_product({"pages": "not-a-dict"}, where="test")
         self.assertIn("product_schema_drift", log.warning.call_args.args[0])
 

@@ -32,11 +32,10 @@ MAX_LOCAL_NEIGHBORHOODS = 25
 async def _discover_neighborhoods(params: dict, context: dict) -> ToolResult:
     """Tool execute: scan around the confirmed pin, then finalize (map/persist/render)."""
     session_ctx = context.get("session_context") or {}
-    loc_meta = session_ctx.get("_location_meta") or {}
-    coords = (session_ctx.get("product_data") or {}).get("place") or {}
+    place = (session_ctx.get("product_data") or {}).get("place") or {}
 
-    lat = loc_meta.get("lat") if loc_meta.get("lat") is not None else coords.get("lat")
-    lng = loc_meta.get("lng") if loc_meta.get("lng") is not None else coords.get("lng")
+    lat = place.get("lat")
+    lng = place.get("lng")
     if lat is None or lng is None:
         return ToolResult(
             success=False,
