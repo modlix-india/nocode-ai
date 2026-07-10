@@ -344,6 +344,7 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
                 "lng": place.get("lng"),
                 "displayName": place.get("display_name", ""),
                 "country_code": place.get("country_code", ""),
+                "country_geo_constant": place.get("country_geo_constant", ""),
             },
             "accounts": {
                 "parent": _account_pair(spec.get("parent_account"), account_names),
@@ -452,6 +453,8 @@ def _record_to_business(record: dict) -> dict:
     place = {"address": location_str, **(_extract_campaign_coords(d) or {})}
     if campaign_loc.get("country_code"):
         place["country_code"] = campaign_loc["country_code"]
+    if campaign_loc.get("country_geo_constant"):
+        place["country_geo_constant"] = campaign_loc["country_geo_constant"]
     if campaign_loc.get("displayName"):
         place["display_name"] = campaign_loc["displayName"]
     return {

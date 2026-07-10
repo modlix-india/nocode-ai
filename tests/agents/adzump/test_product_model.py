@@ -113,6 +113,7 @@ class SaveRestoreRoundTripTests(unittest.TestCase):
                                            "name": "Whitefield"}}],
                 "place": {"address": "Bengaluru", "lat": 12.96, "lng": 77.75,
                           "country_code": "IN",
+                          "country_geo_constant": "geoTargetConstants/2356",
                           "display_name": "Sumadhura Solea, Bengaluru"},
             },
             "campaign_spec": {"platform": "Meta", "location": "Bengaluru"},
@@ -138,12 +139,15 @@ class SaveRestoreRoundTripTests(unittest.TestCase):
         self.assertEqual(restored.assets.logos[0].confidence, 0.9)
         self.assertEqual(restored.assets.images[0].url, "https://cdn/c1.png")
         self.assertEqual(restored.assets.images[0].display, {"fit": "cover"})
-        # country_code (scopes geo discovery) must survive the round trip.
+        # country_code + geo constant (scope geo lookups) must survive the round trip.
         self.assertEqual(
             restored.place,
             Place(address="Bengaluru", lat=12.96, lng=77.75, country_code="IN",
+                  country_geo_constant="geoTargetConstants/2356",
                   display_name="Sumadhura Solea, Bengaluru"))
         self.assertEqual(record["campaign"]["location"]["country_code"], "IN")
+        self.assertEqual(
+            record["campaign"]["location"]["country_geo_constant"], "geoTargetConstants/2356")
 
 
 class CheckProductTests(unittest.TestCase):

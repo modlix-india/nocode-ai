@@ -6,6 +6,7 @@ and never imports the agent. In call order:
     1. validate_run_context   → bail with ToolResult(error) if no auth
     2. resolve_location_name  → product_data.place / spec
     3. resolve_coordinates    → product_data.place OR geocode via google_maps_client
+       resolve_country_geo_constant → place.country_geo_constant (best-effort)
     4. build_sub_session      → BaseSession with shared context refs
        (the agent then runs its LLM loop on that sub-session)
     5. build_run_prompt       → business profile + current targeting list +
@@ -60,9 +61,10 @@ def resolve_location_name(product: dict, spec: dict) -> str | None:
 # ── Step 3: coordinate resolution ───────────────────────────────────────────
 async def resolve_coordinates(
     location_name: str | None, place: dict
-) -> dict[str, float] | None:
+) -> dict[str, Any] | None:
     """Reuse cached coords from ``place`` (product_data.place); geocode if absent.
-    A successful geocode stamps coords + country_code + address back onto it."""
+    A successful geocode stamps coords + country_code + address back onto it.
+    Returns the coords (plus ``country`` name on a fresh geocode) or None."""
     if place.get("lat") is not None and place.get("lng") is not None:
         return {"lat": float(place["lat"]), "lng": float(place["lng"])}
 
@@ -84,7 +86,35 @@ async def resolve_coordinates(
         place["country_code"] = geo["country_code"]
     if not place.get("address") and geo.get("address"):
         place["address"] = geo["address"]
-    return {"lat": float(geo["lat"]), "lng": float(geo["lng"])}
+    return {"lat": float(geo["lat"]), "lng": float(geo["lng"]),
+            "country": geo.get("country")}
+
+
+# ── Step 3b: country geo constant ───────────────────────────────────────────
+async def resolve_country_geo_constant(
+    place: dict, country_name: str, client_code: str, auth_headers: dict
+) -> None:
+    """Stamp place.country_geo_constant (Google geoTargetConstants/{id} for the
+    country) once per session. Best-effort: failure never blocks the run."""
+    if place.get("country_geo_constant") or not (country_name and place.get("country_code")):
+        return
+    from app.agents.adzump.adapters.google.client import google_ads_client
+
+    try:
+        results = await google_ads_client.suggest_geo_targets(
+            query=country_name,
+            country_code=place["country_code"],
+            client_code=client_code,
+            auth_headers=auth_headers,
+        )
+    except Exception as e:
+        logger.warning("Country geo-constant lookup failed for %r: %s", country_name, e)
+        return
+    for suggestion in results.get("geoTargetConstantSuggestions") or []:
+        constant = suggestion.get("geoTargetConstant") or {}
+        if constant.get("targetType") == "Country" and constant.get("resourceName"):
+            place["country_geo_constant"] = constant["resourceName"]
+            return
 
 
 # ── Step 4: sub-session construction ───────────────────────────────────────

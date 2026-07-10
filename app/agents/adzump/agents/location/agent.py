@@ -32,11 +32,13 @@ from app.agents.adzump.agents.location.context import build_location_context
 from app.agents.adzump.agents.location.subagent_event_stream import (
     LocationPassthroughEventStream,
 )
+from app.agents.adzump._shared import build_ds_headers
 from app.agents.adzump.agents.location.targeting_run import (
     build_run_prompt,
     build_run_result,
     build_sub_session,
     resolve_coordinates,
+    resolve_country_geo_constant,
     resolve_location_name,
     validate_run_context,
 )
@@ -92,7 +94,11 @@ class LocationAgent(BaseAgent):
 
         # Geocodes on cache miss; stamps coords + country_code onto place.
         location_name = resolve_location_name(product, spec)
-        await resolve_coordinates(location_name, place)
+        coords = await resolve_coordinates(location_name, place)
+        await resolve_country_geo_constant(
+            place, (coords or {}).get("country") or "",
+            context.get("client_code", ""), build_ds_headers(context),
+        )
 
         sub_session = await build_sub_session(
             parent_ctx, auth, chat_session_id=context.get("session_id", ""),
