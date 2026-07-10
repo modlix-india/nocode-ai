@@ -1,20 +1,9 @@
-"""LocationAgent - the ONE agent that owns campaign geo-targeting.
+"""LocationAgent - the one agent that owns campaign geo-targeting.
 
-Sits behind the ``manage_targeting_locations`` orchestrator tool. The
-orchestrator is a pure router: it forwards the user's verbatim message to
-``handle()``, which runs the agent's own tool-use loop. The LLM interprets
-the request by picking a tool - discovery (``discover_neighborhoods`` /
-``geocode_recommendations``) or a manual edit (``add_location`` /
-``delete_location``). There is NO separate interpreter agent and no code-side
-dispatch: intent classification IS tool selection.
-
-The step helpers for one run (validate → resolve coords → sub-session →
-prompt → result) live in ``targeting_run.py``, a leaf module that never
-imports the agent. All mutations end in ``tools._shared.finalize_targets``
-(map → persist → re-render): the single source of truth for "targets changed".
-
-Design rationale, module layout, and the "no widget fast path" decision live in
-AGENT.md - this docstring is orientation only.
+``handle()`` (behind the ``manage_targeting_locations`` tool) runs the agent's
+own tool-use loop; the model acts by picking one of the four location tools.
+Step helpers live in ``targeting_run.py``; every mutation ends in
+``tools._shared.finalize_targets``. Design rationale: AGENT.md.
 """
 
 from __future__ import annotations
@@ -73,11 +62,8 @@ class LocationAgent(BaseAgent):
     async def handle(self, user_message: str, context: dict) -> ToolResult:
         """Run one targeting request through the agent's own loop.
 
-        The orchestrator does no interpretation and neither does Python code:
-        the prompt carries the business profile + current targeting list + the
-        user's verbatim request, and the model acts by picking ONE tool.
-        Empty messages are rejected by the tool wrapper (the entry point) -
-        by the time handle() runs, user_message is non-empty.
+        The prompt carries profile + current list + the verbatim request; the
+        model picks ONE tool. The tool wrapper already rejected empty messages.
         """
         error = validate_run_context(context)
         if error is not None:
