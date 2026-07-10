@@ -166,13 +166,15 @@ class PlatformGeoMapper:
             except Exception as e:
                 logger.warning("Meta Geolocation search lookup failed: %s", e)
 
-        # type is always set (required by the model): Meta adset creation buckets
-        # each target by type, so it must be present even when the key lookup
-        # found nothing (the lat/lng radial fallback still needs the type).
-        meta = MetaGeoLocation(
-            type=meta_type or loc_type,
-            key=str(meta_key) if meta_key else None,
-            name=(meta_name or area.get("name")) if meta_key else None,
+        # No key resolved → no handle (Meta rejects keyless entries); mirrors Google.
+        meta = (
+            MetaGeoLocation(
+                type=meta_type or loc_type,
+                key=str(meta_key),
+                name=meta_name or area.get("name"),
+            )
+            if meta_key
+            else None
         )
         return self._target_area(area, meta=meta)
 

@@ -26,10 +26,10 @@ _ECHO = lambda areas, c, **kw: areas  # finalize stub: return what it was given
 
 class DiscoverNeighborhoodsToolTests(unittest.TestCase):
     def _ctx(self, lat=19.06, lng=72.83):
-        loc_meta = {}
+        place = {}
         if lat is not None:
-            loc_meta = {"lat": lat, "lng": lng}
-        return {"session_context": {"_location_meta": loc_meta, "product_data": {}}}
+            place = {"lat": lat, "lng": lng}
+        return {"session_context": {"product_data": {"place": place}}}
 
     def test_scans_from_session_coordinates_and_finalizes(self):
         scanned = [{"name": "Bandra", "pincode": "400050", "lat": 19.05, "lng": 72.83,

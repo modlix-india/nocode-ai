@@ -4,8 +4,9 @@ Leaf-helper module: the agent method orchestrates; each step below is pure
 and never imports the agent. In call order:
 
     1. validate_run_context   → bail with ToolResult(error) if no auth
-    2. resolve_location_name  → loc_meta / spec / product_data
-    3. resolve_coordinates    → loc_meta OR geocode via google_maps_client
+    2. resolve_location_name  → product_data.place / spec
+    3. resolve_coordinates    → product_data.place OR geocode via google_maps_client
+       resolve_country_geo_constant → place.country_geo_constant (best-effort)
     4. build_sub_session      → BaseSession with shared context refs
        (the agent then runs its LLM loop on that sub-session)
     5. build_run_prompt       → business profile + current targeting list +
@@ -52,26 +53,20 @@ def validate_run_context(context: dict) -> ToolResult | None:
 
 
 # ── Step 2: location name resolution ────────────────────────────────────────
-def resolve_location_name(loc_meta: dict, spec: dict, product: dict) -> str | None:
-    """Pick the business location name in priority order: geocoded → spec → product."""
-    return (
-        loc_meta.get("address")
-        or spec.get("location")
-        or product_location_str(product)
-    )
+def resolve_location_name(product: dict, spec: dict) -> str | None:
+    """Pick the business location name: confirmed place address, else spec."""
+    return product_location_str(product) or spec.get("location")
 
 
 # ── Step 3: coordinate resolution ───────────────────────────────────────────
 async def resolve_coordinates(
-    location_name: str | None, loc_meta: dict
-) -> dict[str, float] | None:
-    """Reuse cached coordinates from loc_meta; geocode the address if absent.
-
-    On successful geocode, mutates ``loc_meta`` with the resolved fields so
-    downstream lookups (the radial-scan tool) don't re-geocode.
-    """
-    if loc_meta.get("lat") is not None and loc_meta.get("lng") is not None:
-        return {"lat": float(loc_meta["lat"]), "lng": float(loc_meta["lng"])}
+    location_name: str | None, place: dict
+) -> dict[str, Any] | None:
+    """Reuse cached coords from ``place`` (product_data.place); geocode if absent.
+    A successful geocode stamps coords + country_code + address back onto it.
+    Returns the coords (plus ``country`` name on a fresh geocode) or None."""
+    if place.get("lat") is not None and place.get("lng") is not None:
+        return {"lat": float(place["lat"]), "lng": float(place["lng"])}
 
     if not location_name:
         return None
@@ -85,15 +80,41 @@ async def resolve_coordinates(
     if not geo or geo.get("lat") is None or geo.get("lng") is None:
         return None
 
-    loc_meta["lat"] = geo["lat"]
-    loc_meta["lng"] = geo["lng"]
+    place["lat"] = geo["lat"]
+    place["lng"] = geo["lng"]
     if geo.get("country_code"):
-        loc_meta["country_code"] = geo["country_code"]
-    if not loc_meta.get("address") and geo.get("address"):
-        loc_meta["address"] = geo["address"]
-    if "place_id" in geo:
-        loc_meta["place_id"] = geo["place_id"]
-    return {"lat": float(geo["lat"]), "lng": float(geo["lng"])}
+        place["country_code"] = geo["country_code"]
+    if not place.get("address") and geo.get("address"):
+        place["address"] = geo["address"]
+    return {"lat": float(geo["lat"]), "lng": float(geo["lng"]),
+            "country": geo.get("country")}
+
+
+# ── Step 3b: country geo constant ───────────────────────────────────────────
+async def resolve_country_geo_constant(
+    place: dict, country_name: str, client_code: str, auth_headers: dict
+) -> None:
+    """Stamp place.country_geo_constant (Google geoTargetConstants/{id} for the
+    country) once per session. Best-effort: failure never blocks the run."""
+    if place.get("country_geo_constant") or not (country_name and place.get("country_code")):
+        return
+    from app.agents.adzump.adapters.google.client import google_ads_client
+
+    try:
+        results = await google_ads_client.suggest_geo_targets(
+            query=country_name,
+            country_code=place["country_code"],
+            client_code=client_code,
+            auth_headers=auth_headers,
+        )
+    except Exception as e:
+        logger.warning("Country geo-constant lookup failed for %r: %s", country_name, e)
+        return
+    for suggestion in results.get("geoTargetConstantSuggestions") or []:
+        constant = suggestion.get("geoTargetConstant") or {}
+        if constant.get("targetType") == "Country" and constant.get("resourceName"):
+            place["country_geo_constant"] = constant["resourceName"]
+            return
 
 
 # ── Step 4: sub-session construction ───────────────────────────────────────
@@ -112,7 +133,6 @@ async def build_sub_session(parent_ctx: dict, auth, chat_session_id: str = "") -
         "product_data": parent_ctx.setdefault("product_data", {}),
         "product_profile": parent_ctx.setdefault("product_profile", {}),
         "campaign_spec": parent_ctx.setdefault("campaign_spec", {}),
-        "_location_meta": parent_ctx.setdefault("_location_meta", {}),
         "account_names": parent_ctx.setdefault("account_names", {}),
         "craft_id": parent_ctx.get("craft_id", ""),
         "_craft_id": parent_ctx.get("_craft_id", ""),

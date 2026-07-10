@@ -51,8 +51,8 @@ async def search_target_locations(
     session = BaseSession(agent_name="adzump")
     await session.get_or_create(session_id, auth)
 
-    loc_meta = session.context.get("_location_meta") or {}
-    country_code = loc_meta.get("country_code") or "IN"
+    place = (session.context.get("product_data") or {}).get("place") or {}
+    country_code = place.get("country_code") or "IN"
 
     try:
         return await search_autocomplete_locations(
