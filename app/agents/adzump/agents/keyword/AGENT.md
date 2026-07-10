@@ -75,8 +75,9 @@ When `create_campaign` shows the panel it returns `elicited=True, elicit_expects
 same primitive the asset-upload step uses. The main-agent loop **pauses** there instead of
 barrelling to launch; `_pending_elicitation` records that a review is open.
 
-Panel edits (`add` / `edit` / `delete`) post to `keyword_update` on a **separate fast path**
-([`router.py`](../../router.py) `_stream_keyword_widget`) that mutates
+Panel edits (`add` / `edit` / `delete`) post to the chat endpoint, which hands them to a
+**separate fast path** ([`router.py`](../../router.py) → `stream_keyword_widget` in
+[`keyword_update.py`](../campaign/tools/google/keyword_update.py)) that mutates
 `session_ctx["keyword_research"]` and re-emits the panel — **no LLM turn, nothing written to
 chat history**. The agent isn't called per click.
 
@@ -85,6 +86,38 @@ closes, `_resume_elicitation_section` steers it to acknowledge the edits and mov
 `launch_campaign` reads the already-edited `keyword_research` from the session. So edits are honored
 without the agent re-enumerating them. (See [`create_campaign.py`](../../tools/create_campaign.py)
 and `agent.py._resume_elicitation_section`.)
+
+### Why keyword edits diverge from location edits (a deliberate choice)
+
+The location sub-agent made the **opposite** call. It has **no widget fast path** — every geo
+edit (even a map click) runs through its own LLM loop (`LocationAgent.handle`), so the agent is
+always the one driving. We kept a fast path for keywords. This is a real, deliberate divergence,
+not an oversight — and it's worth writing down so a reviewer doesn't read it as inconsistency:
+
+| | Location edits | Keyword edits (here) |
+|---|---|---|
+| **Path** | LLM-mediated — every edit → `handle()` | Fast path — widget → `keyword_update`, no LLM |
+| **Agent aware?** | Always (it's driving) | Kept in sync by the elicitation above |
+| **Cost** | 1 LLM call per edit | 0 LLM calls per edit |
+
+Both are correct — the choice tracks **edit frequency and complexity**:
+
+- **Location edits are few and complex.** Adding a city or a service area is a handful of
+  deliberate actions, so an LLM turn per edit is affordable and keeps the agent authoritative.
+- **Keyword edits are many and simple.** A user prunes a long list, adding/removing rows in
+  quick succession. An LLM turn per click would be slow and costly for what is a plain set
+  mutation, so we mutate `session_ctx["keyword_research"]` directly and re-render. The
+  **elicitation** buys back the awareness the fast path gives up: the agent reads the
+  fully-edited set **once**, on resume, instead of being pinged per row.
+
+So the elicitation isn't a workaround — it's the piece that makes a 0-LLM-per-edit path safe:
+the user edits freely and cheaply, and the agent still sees a correct, final set before launch.
+
+**Honest flag for reviewers:** the two subsystems now differ in how panel edits flow — the
+location agent deliberately deleted its widget protocol, `keyword_research` deliberately keeps
+one. Neither is wrong for its own edit profile, but if the team wants a single pattern across
+the product, that's a worthwhile conversation — and the edit-frequency difference above is the
+ground to have it on.
 
 ---
 

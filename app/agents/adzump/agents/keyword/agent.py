@@ -98,13 +98,23 @@ class KeywordResearchAgent(BaseAgent):
     async def build_dynamic_context(self, session: BaseSession) -> str:
         """Stable per-run business framing folded into the system prompt."""
         ctx = session.context
-        category = ctx.get("kw_category") or "(identify the exact offering from the business below)"
-        core = ", ".join(ctx.get("kw_core_terms") or []) or "(derive from the business below)"
-        siblings = ", ".join(ctx.get("kw_siblings") or []) or "(infer adjacent categories from the business)"
+        category = (
+            ctx.get("kw_category")
+            or "(identify the exact offering from the business below)"
+        )
+        core = (
+            ", ".join(ctx.get("kw_core_terms") or [])
+            or "(derive from the business below)"
+        )
+        siblings = (
+            ", ".join(ctx.get("kw_siblings") or [])
+            or "(infer adjacent categories from the business)"
+        )
         loc = (ctx.get("kw_location") or "").strip()
         areas = ", ".join(ctx.get("kw_service_areas") or [])
         location_line = (
-            f"{loc} (service areas: {areas})" if loc and areas
+            f"{loc} (service areas: {areas})"
+            if loc and areas
             else (loc or "national / online — not location-specific")
         )
         return (
@@ -209,7 +219,12 @@ class KeywordResearchAgent(BaseAgent):
             # Orchestrator wait_for timeout cancels us with CancelledError (a
             # BaseException the handler below misses) — close the card, then re-raise.
             await self._emit_finished(
-                parent_event_stream, agent_id, run_start, session, "error", "cancelled",
+                parent_event_stream,
+                agent_id,
+                run_start,
+                session,
+                "error",
+                "cancelled",
             )
             raise
         except Exception as exc:
@@ -226,7 +241,9 @@ class KeywordResearchAgent(BaseAgent):
         result = self._build_result(keyword_type, session.context)
         logger.info(
             "keyword_research done type=%s positives=%d negatives=%d",
-            keyword_type, len(result.positives), len(result.negatives),
+            keyword_type,
+            len(result.positives),
+            len(result.negatives),
         )
         await self._emit_finished(
             parent_event_stream,

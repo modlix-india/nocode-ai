@@ -133,7 +133,10 @@ async def emit_campaign_craft(stream, craft_id: str, session_ctx: dict) -> None:
     a full-panel flash.
     """
     if stream is None:
-        logger.info("emit_campaign_craft: stream is None — craft NOT emitted (craft_id=%s)", craft_id)
+        logger.info(
+            "emit_campaign_craft: stream is None — craft NOT emitted (craft_id=%s)",
+            craft_id,
+        )
         return
     spec = session_ctx.get("campaign_spec") or {}
     platform = str(spec.get("platform") or "")
@@ -146,12 +149,18 @@ async def emit_campaign_craft(stream, craft_id: str, session_ctx: dict) -> None:
         blocks.extend(_meta_campaign_blocks(session_ctx))
 
     if not blocks:
-        logger.info("emit_campaign_craft: no blocks — craft NOT emitted (craft_id=%s)", craft_id)
+        logger.info(
+            "emit_campaign_craft: no blocks — craft NOT emitted (craft_id=%s)", craft_id
+        )
         return
     try:
         await stream.emit_craft(craft_id, "Campaign", blocks, append=False)
-        logger.info("emit_campaign_craft: emitted craft_id=%s blocks=%d types=%s",
-                    craft_id, len(blocks), [b.get("type") for b in blocks])
+        logger.info(
+            "emit_campaign_craft: emitted craft_id=%s blocks=%d types=%s",
+            craft_id,
+            len(blocks),
+            [b.get("type") for b in blocks],
+        )
     except Exception as exc:
         logger.debug("emit_campaign_craft failed: %s", str(exc)[:_LOG_TRUNCATE])
 

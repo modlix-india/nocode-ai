@@ -135,7 +135,11 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
     state["kw_overflow"] = unique[constants.MAX_EXPANSION_CANDIDATES :]
     logger.info(
         "kw_expand type=%s seeds=%d autosuggest=%d pool=%d overflow=%d",
-        state.get("kw_type"), len(seeds), len(suggestions), len(pool), len(state["kw_overflow"]),
+        state.get("kw_type"),
+        len(seeds),
+        len(suggestions),
+        len(pool),
+        len(state["kw_overflow"]),
     )
     return ToolResult(
         success=True,
@@ -203,7 +207,8 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
     idea_keys = {i["keyword"] for i in ideas}
     repairs = [c for i in ideas if (c := _collapse_repeats(i["keyword"]))]
     recover = [
-        k for k in dict.fromkeys([*(state.get("kw_overflow") or []), *repairs])
+        k
+        for k in dict.fromkeys([*(state.get("kw_overflow") or []), *repairs])
         if k not in idea_keys
     ]
     recovered: list[dict] = []
@@ -213,7 +218,9 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
                 recover, **_planner_args(state, context)
             )
         except Exception as exc:
-            logger.warning("keyword_metrics recover failed: %s", str(exc)[: constants.LOG_TRUNCATE])
+            logger.warning(
+                "keyword_metrics recover failed: %s", str(exc)[: constants.LOG_TRUNCATE]
+            )
         recovered = [r for r in recovered if r.get("volume", 0) > 0]
 
     # Demand gate: generic drops 0-volume terms (no traffic, just bloat); brand keeps
@@ -233,12 +240,18 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
         kw = idea["keyword"]
         if kw not in pool or idea["volume"] > pool[kw]["volume"]:
             pool[kw] = idea
-    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[: constants.MAX_STORED_CANDIDATES]
+    merged = sorted(pool.values(), key=lambda i: i["volume"], reverse=True)[
+        : constants.MAX_STORED_CANDIDATES
+    ]
     state["kw_candidates"] = merged
     state["kw_shown_offset"] = 0
     logger.info(
         "kw_metrics type=%s sent=%d planner_ideas=%d recovered=%d scored_pool=%d",
-        state.get("kw_type"), len(keywords), len(ideas), len(recovered), len(merged),
+        state.get("kw_type"),
+        len(keywords),
+        len(ideas),
+        len(recovered),
+        len(merged),
     )
     return _candidates_page(state, lead=f"Google demand for {len(merged)} keywords")
 
@@ -246,7 +259,9 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
 async def _fetch_more_candidates(params: dict, context: dict) -> ToolResult:
     state = _state(context)
     if not state.get("kw_candidates"):
-        return ToolResult(success=False, error="No candidates yet — call keyword_metrics first.")
+        return ToolResult(
+            success=False, error="No candidates yet — call keyword_metrics first."
+        )
     return _candidates_page(state, lead="More candidates")
 
 
@@ -300,7 +315,10 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
     dropped = len(items) - len(kept)
     logger.info(
         "kw_submit_positive type=%s submitted=%d kept=%d dropped=%d",
-        state.get("kw_type"), len(items), len(kept), dropped,
+        state.get("kw_type"),
+        len(items),
+        len(kept),
+        dropped,
     )
     note = f" ({dropped} not in the scored data or duplicate)" if dropped > 0 else ""
     return ToolResult(
@@ -360,7 +378,10 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
     dropped = len(items) - len(kept)
     logger.info(
         "kw_submit_negative type=%s submitted=%d kept=%d dropped=%d",
-        state.get("kw_type"), len(items), len(kept), dropped,
+        state.get("kw_type"),
+        len(items),
+        len(kept),
+        dropped,
     )
     note = (
         f" ({dropped} dropped: overlap with positives, unsafe, or duplicate)"
@@ -393,7 +414,9 @@ async def _attach_negative_volumes(context: dict, negatives: list[dict]) -> None
         missing, **_planner_args(state, context)
     )
     if not metrics and missing:
-        logger.warning("historical_metrics returned empty for %d negatives", len(missing))
+        logger.warning(
+            "historical_metrics returned empty for %d negatives", len(missing)
+        )
     fetched = {m["keyword"]: m["volume"] for m in metrics}
     for neg in negatives:
         if neg["volume"] == 0:

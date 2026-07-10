@@ -14,11 +14,16 @@ upsert, no panel flash).
 
 from __future__ import annotations
 
+import asyncio
 import difflib
 import json as _json
 import logging
-from typing import Any
+from typing import Any, Coroutine
 
+from fastapi.responses import StreamingResponse
+
+from app.core.session import BaseSession
+from app.core.streaming import AgentEventStream
 from app.core.tools.base import ToolResult
 
 from app.agents.adzump.agents.campaign.craft import emit_section_update, keyword_review_block
@@ -268,3 +273,55 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
         summary=summary,
         data={"action": action, "keyword_type": keyword_type, "section": section},
     )
+
+
+def _widget_response(
+    event_stream: AgentEventStream, run_coro: Coroutine[Any, Any, None]
+) -> StreamingResponse:
+    """Wrap a widget run-coroutine in an SSE StreamingResponse with task cancellation."""
+    async def event_generator():
+        task = asyncio.create_task(run_coro)
+        try:
+            async for event in event_stream.events():
+                yield event.to_sse()
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+def stream_keyword_widget(agent: Any, session: BaseSession, params: dict) -> StreamingResponse:
+    """Fast-path SSE for a keyword panel action (add/edit/delete): mutate the keyword set
+    and re-emit the review block WITHOUT an LLM turn. Called from the adzump chat router."""
+    event_stream = AgentEventStream()
+
+    async def run() -> None:
+        try:
+            ctx = agent.build_tool_context(session)
+            ctx["event_stream"] = event_stream
+            await event_stream.emit_tool_start(
+                tool_use_id="widget_keyword",
+                tool_name="update_keyword",
+                display_name="Keyword Update",
+                tool_input=params,
+            )
+            result = await _update_keywords(params, ctx)
+            if result.success:
+                await session.save_context()
+            await event_stream.emit_tool_result(
+                tool_use_id="widget_keyword",
+                tool_name="update_keyword",
+                success=result.success,
+                summary=result.summary or result.error or "",
+            )
+        except Exception as e:
+            logger.exception("Keyword widget action failed")
+            await event_stream.emit_error(str(e))
+        finally:
+            await event_stream.emit_done(session_id=session.session_id)
+
+    return _widget_response(event_stream, run())

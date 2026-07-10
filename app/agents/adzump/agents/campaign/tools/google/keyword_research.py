@@ -117,9 +117,7 @@ async def _resolve_geo(
 
     if not country_code:
         mapped = (
-            product.get("google_mapped_locations")
-            or product.get("target_areas")
-            or []
+            product.get("google_mapped_locations") or product.get("target_areas") or []
         )
         if mapped:
             country_code = await _country_from_mapped(mapped)

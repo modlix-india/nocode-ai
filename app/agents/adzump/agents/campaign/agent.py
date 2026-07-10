@@ -19,7 +19,9 @@ from app.core.streaming import AgentEventStream
 
 from app.agents.adzump.agents._child_stream import ChildAgentStream
 from app.agents.adzump.agents.campaign.context import build_campaign_context
-from app.agents.adzump.agents.campaign.tools.google.keyword_research import GOOGLE_CAMPAIGN_TOOLS
+from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
+    GOOGLE_CAMPAIGN_TOOLS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +65,15 @@ class CampaignAgent(BaseAgent):
 
     async def build_dynamic_context(self, session: BaseSession) -> str:
         spec = session.context.get("campaign_spec") or {}
-        return f"Platform: {spec.get('platform', '')} · Channel: SEARCH (keywords apply)."
+        return (
+            f"Platform: {spec.get('platform', '')} · Channel: SEARCH (keywords apply)."
+        )
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         ctx = super().build_tool_context(session)
-        ctx["session_context"] = session.context  # tools read campaign_spec / product_data here
+        ctx["session_context"] = (
+            session.context
+        )  # tools read campaign_spec / product_data here
         ctx["_session"] = session  # so a tool's own LLM call can record token usage
         if session.auth:
             ctx["auth"] = session.auth
@@ -104,21 +110,34 @@ class CampaignAgent(BaseAgent):
                 event_stream=_CampaignStream(parent_event_stream),
             )
         except Exception as exc:
-            await self._emit_finished(parent_event_stream, run_start, session, "error", type(exc).__name__)
+            await self._emit_finished(
+                parent_event_stream, run_start, session, "error", type(exc).__name__
+            )
             raise
 
         result = session.context.get("keyword_research")
-        await self._emit_finished(parent_event_stream, run_start, session, "success", "keyword research complete")
+        await self._emit_finished(
+            parent_event_stream,
+            run_start,
+            session,
+            "success",
+            "keyword research complete",
+        )
         return result
 
     @staticmethod
     async def _emit_finished(
-        parent: AgentEventStream, run_start: float, session: BaseSession, status: str, summary: str,
+        parent: AgentEventStream,
+        run_start: float,
+        session: BaseSession,
+        status: str,
+        summary: str,
     ) -> None:
         try:
             usage = session.total_usage or {}
             await parent.emit_agent_finished(
-                agent_id="campaign", status=status,
+                agent_id="campaign",
+                status=status,
                 duration_ms=int((time.monotonic() - run_start) * 1000),
                 tokens_in=int(usage.get("input_tokens") or 0),
                 tokens_out=int(usage.get("output_tokens") or 0),

@@ -78,7 +78,9 @@ async def derive_offering_taxonomy(product: dict) -> tuple[OfferingTaxonomy, dic
     error, returns a minimal taxonomy (primary_offering from business_type) + ``{}``.
     """
     # core_terms must be non-empty so a failed derivation still anchors the agent.
-    primary = (product.get("business_type") or product.get("product_name") or "").strip()
+    primary = (
+        product.get("business_type") or product.get("product_name") or ""
+    ).strip()
     fallback = OfferingTaxonomy(
         primary_offering=primary,
         core_terms=[primary] if primary else [],

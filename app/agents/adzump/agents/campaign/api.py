@@ -50,9 +50,11 @@ async def keyword_volume(
     auth: AuthContext = Depends(require_auth_context),
 ) -> KeywordVolumeResponse:
     """Return Google volume/competition/CPC for user-added keywords in the panel."""
-    keywords = list(dict.fromkeys(
-        normalize(k) for k in body.keywords if isinstance(k, str) and k.strip()
-    ))[:_MAX_KEYWORDS]
+    keywords = list(
+        dict.fromkeys(
+            normalize(k) for k in body.keywords if isinstance(k, str) and k.strip()
+        )
+    )[:_MAX_KEYWORDS]
     if not keywords:
         return KeywordVolumeResponse()
 
@@ -77,15 +79,20 @@ async def keyword_volume(
         )
         by_kw = {m["keyword"]: m for m in metrics}
     else:
-        logger.info("keyword_volume: no ad account in session %s — returning 0 volumes", body.session_id)
-
-    return KeywordVolumeResponse(results=[
-        KeywordVolume(
-            keyword=k,
-            volume=int(by_kw.get(k, {}).get("volume", 0)),
-            competition=str(by_kw.get(k, {}).get("competition", "UNKNOWN")),
-            cpc_low=float(by_kw.get(k, {}).get("cpc_low", 0.0)),
-            cpc_high=float(by_kw.get(k, {}).get("cpc_high", 0.0)),
+        logger.info(
+            "keyword_volume: no ad account in session %s — returning 0 volumes",
+            body.session_id,
         )
-        for k in keywords
-    ])
+
+    return KeywordVolumeResponse(
+        results=[
+            KeywordVolume(
+                keyword=k,
+                volume=int(by_kw.get(k, {}).get("volume", 0)),
+                competition=str(by_kw.get(k, {}).get("competition", "UNKNOWN")),
+                cpc_low=float(by_kw.get(k, {}).get("cpc_low", 0.0)),
+                cpc_high=float(by_kw.get(k, {}).get("cpc_high", 0.0)),
+            )
+            for k in keywords
+        ]
+    )

@@ -14,9 +14,11 @@ import re
 # Google Ads keyword limits (hard): a keyword is <= 80 chars and <= 10 words.
 #   https://developers.google.com/google-ads/api/reference/rpc/v23/KeywordInfo
 #   https://support.google.com/google-ads/answer/6372655
-KEYWORD_MIN_LENGTH = 2      # chars — drop fragments
-KEYWORD_MAX_LENGTH = 80     # chars — Google Ads keyword text limit (negatives use this too)
-KEYWORD_MAX_WORDS = 10      # words — Google Ads keyword word limit
+KEYWORD_MIN_LENGTH = 2  # chars — drop fragments
+KEYWORD_MAX_LENGTH = (
+    80  # chars — Google Ads keyword text limit (negatives use this too)
+)
+KEYWORD_MAX_WORDS = 10  # words — Google Ads keyword word limit
 
 # Commercial-value signal: Google returns a competition level and top-of-page CPC;
 # advertiser competition indicates a commercial query. Used only as a tiebreaker
@@ -25,23 +27,25 @@ KEYWORD_MAX_WORDS = 10      # words — Google Ads keyword word limit
 COMMERCIAL_VALUE_COMPETITION_LEVELS = frozenset({"MEDIUM", "HIGH"})
 
 # Count caps — bound the work so the pipeline stays inside its latency budget.
-MAX_SEEDS = 80                  # seeds generated per type
-MAX_SEEDS_TO_EXPAND = 30        # top seeds sent to autosuggest (caps fan-out)
-MAX_MODIFIERS_PER_SEED = 8      # intent-modifier variants appended per seed
+MAX_SEEDS = 80  # seeds generated per type
+MAX_SEEDS_TO_EXPAND = 30  # top seeds sent to autosuggest (caps fan-out)
+MAX_MODIFIERS_PER_SEED = 8  # intent-modifier variants appended per seed
 MAX_EXPANSION_CANDIDATES = 200  # seeds+suggestions sent TO the Planner (caps API calls)
-MAX_STORED_CANDIDATES = 600     # scored ideas kept FROM the Planner (it expands beyond the input)
-TARGET_POSITIVE_COUNT = 30      # positives selected per type
-MAX_NEGATIVE_COUNT = 40         # negatives kept per type
+MAX_STORED_CANDIDATES = (
+    600  # scored ideas kept FROM the Planner (it expands beyond the input)
+)
+TARGET_POSITIVE_COUNT = 30  # positives selected per type
+MAX_NEGATIVE_COUNT = 40  # negatives kept per type
 
 # Display / logging bounds.
 MAX_CANDIDATES_SHOWN = 120  # expansion-pool phrases echoed back from expand_keywords
-CANDIDATES_PAGE = 300       # scored candidates shown per keyword_metrics / fetch_more page
+CANDIDATES_PAGE = 300  # scored candidates shown per keyword_metrics / fetch_more page
 # Tool-result cap for the candidate page. This is the MODEL's working context only
 # (the keyword agent swallows tool_result events — never reaches the chat UI; the user
 # sees only the curated positives/negatives in the review panel).
 KEYWORD_METRICS_RESULT_MAX = 16000
-BUSINESS_TEXT_MAX = 4000    # business-context chars injected into the system prompt
-LOG_TRUNCATE = 160          # max chars of an exception/error string in logs and messages
+BUSINESS_TEXT_MAX = 4000  # business-context chars injected into the system prompt
+LOG_TRUNCATE = 160  # max chars of an exception/error string in logs and messages
 
 # A candidate negative sharing >= 80% of its tokens with the positive set is
 # dropped — it would block core business traffic.
@@ -64,5 +68,5 @@ SAFETY_PATTERNS: tuple[re.Pattern[str], ...] = (
 SOURCE_AMAZON = "amazon"
 SOURCE_YOUTUBE = "youtube"
 
-PRODUCT_SOURCE_NAMES = (SOURCE_AMAZON,)        # business sells physical products
+PRODUCT_SOURCE_NAMES = (SOURCE_AMAZON,)  # business sells physical products
 INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # funnel includes how-to/informational

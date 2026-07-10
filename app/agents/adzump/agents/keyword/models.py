@@ -74,7 +74,9 @@ CoercedIntent = Annotated[Intent, BeforeValidator(_coerce_intent)]
 class KeywordSuggestion(BaseModel):
     """A Planner-scored candidate: real Google volume, competition, CPC."""
 
-    keyword: str = Field(..., min_length=KEYWORD_MIN_LENGTH, max_length=KEYWORD_MAX_LENGTH)
+    keyword: str = Field(
+        ..., min_length=KEYWORD_MIN_LENGTH, max_length=KEYWORD_MAX_LENGTH
+    )
     volume: int = Field(default=0, ge=0)
     competition: CompetitionLevel = CompetitionLevel.UNKNOWN
     competition_index: float = Field(default=0.0, ge=0.0, le=1.0)
@@ -94,7 +96,11 @@ class KeywordSuggestion(BaseModel):
 
     @property
     def roi_score(self) -> float:
-        return self.volume / (1 + self.competition_index) if self.competition_index else float(self.volume)
+        return (
+            self.volume / (1 + self.competition_index)
+            if self.competition_index
+            else float(self.volume)
+        )
 
     @property
     def commercial_value(self) -> float:
@@ -126,7 +132,9 @@ class OptimizedKeyword(KeywordSuggestion):
 
 
 class NegativeKeyword(BaseModel):
-    keyword: str = Field(..., min_length=KEYWORD_MIN_LENGTH, max_length=KEYWORD_MAX_LENGTH)
+    keyword: str = Field(
+        ..., min_length=KEYWORD_MIN_LENGTH, max_length=KEYWORD_MAX_LENGTH
+    )
     reason: str = ""
     volume: int = Field(default=0, ge=0)  # shown in the panel; via historical metrics
     kind: KeywordType = KeywordType.GENERIC  # brand vs generic exclusion
@@ -163,10 +171,18 @@ class OfferingTaxonomy(BaseModel):
     Anchors seed/positive keywords and defines negative siblings
     without hardcoded category lists."""
 
-    primary_offering: str = ""  # crisp category a buyer shops for, e.g. "duplex villaments"
-    core_terms: list[str] = Field(default_factory=list)          # what they sell — anchor positives here
-    sibling_categories: list[str] = Field(default_factory=list)  # same industry, NOT sold — the negative boundary
-    is_location_specific: bool = True  # LLM-decided: serves specific areas (local/regional) vs national/online
+    primary_offering: str = (
+        ""  # crisp category a buyer shops for, e.g. "duplex villaments"
+    )
+    core_terms: list[str] = Field(
+        default_factory=list
+    )  # what they sell — anchor positives here
+    sibling_categories: list[str] = Field(
+        default_factory=list
+    )  # same industry, NOT sold — the negative boundary
+    is_location_specific: bool = (
+        True  # LLM-decided: serves specific areas (local/regional) vs national/online
+    )
 
     @field_validator("core_terms", "sibling_categories")
     @classmethod
