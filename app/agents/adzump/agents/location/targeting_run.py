@@ -61,12 +61,8 @@ def resolve_location_name(product: dict, spec: dict) -> str | None:
 async def resolve_coordinates(
     location_name: str | None, place: dict
 ) -> dict[str, float] | None:
-    """Reuse cached coordinates from ``place``; geocode the address if absent.
-
-    On successful geocode, mutates ``place`` with the resolved fields (coords,
-    country_code, address) so downstream lookups don't re-geocode. ``place``
-    is ``product_data["place"]`` - the session's single location cache.
-    """
+    """Reuse cached coords from ``place`` (product_data.place); geocode if absent.
+    A successful geocode stamps coords + country_code + address back onto it."""
     if place.get("lat") is not None and place.get("lng") is not None:
         return {"lat": float(place["lat"]), "lng": float(place["lng"])}
 

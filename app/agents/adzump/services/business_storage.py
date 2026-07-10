@@ -447,8 +447,7 @@ def _record_to_business(record: dict) -> dict:
     if primary:
         pages[primary] = {"screenshot_url": d.get("screenshot", "")}
     contact = d.get("contact") or {}
-    # Rebuild the single location cache: address (ds-v1 object) + coords,
-    # country_code and display label from the stored campaign.location.
+    # Rebuild place: address + coords, country/label from stored campaign.location.
     campaign_loc = (d.get("campaign") or {}).get("location") or {}
     place = {"address": location_str, **(_extract_campaign_coords(d) or {})}
     if campaign_loc.get("country_code"):
@@ -510,13 +509,9 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
             "title": d.get("productName") or d.get("businessName", ""),
             "summary": d.get("summary", ""),
         })
-        # product_data.place already carries the restored coords + country (see
-        # _record_to_business), so discovery reuses them without re-geocoding and
-        # the map pin renders immediately. Restore campaign_spec.location too so
-        # _next_action sees has_location=True and prescribes
-        # manage_targeting_locations right after platform is set, instead of
-        # asking for confirm_location again on every reuse.
-        stored_address = (d.get("campaign") or {}).get("location", {}).get("address") or ""
+        # place already carries restored coords+country (_record_to_business).
+        # Restore spec.location so _next_action skips a fresh confirm_location.
+        stored_address = ((d.get("campaign") or {}).get("location") or {}).get("address") or ""
         if stored_address:
             session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)
         logger.info("hydrate_from_storage: business loaded url=%s", url)

@@ -43,16 +43,11 @@ class MetaGeoLocation(BaseModel):
     ``type``/``key``/``name`` are Meta's own field names (a ``geo_locations``
     entry is ``{key, name, …}`` bucketed by ``type``)."""
 
-    # type & key are both required & non-empty - Meta's ``geo_locations``
-    # targeting rejects an entry that lacks either (``key`` is the geo id it
-    # buckets under ``type``), so a handle without a key is unusable and must
-    # never be built: the mapper attaches ``area.meta`` only after a key lookup
-    # succeeds, else leaves it None (lat/lng radius targeting instead).
-    # ``type`` is a free string, not an enum: Meta can return finer types
-    # (subcity, neighborhood, …) and rejecting those would lose a location.
+    # Both required & non-empty: Meta rejects a geo_locations entry lacking
+    # either. type stays a free string - Meta returns finer types (subcity, …).
     type: str = Field(min_length=1)
     key: str = Field(min_length=1)
-    name: str | None = None  # display label only - Meta does not require it
+    name: str | None = None  # display label only
 
 
 class GoogleGeoLocation(BaseModel):
@@ -60,14 +55,10 @@ class GoogleGeoLocation(BaseModel):
 
     Uses Google's own field name: the identifier is the constant's
     ``resourceName`` (``geoTargetConstants/{id}``), not the bare numeric ``id``.
-
-    ``resourceName`` is required & non-empty - it IS the geo-target constant
-    Google Ads targets on; without it the handle is meaningless, so the mapper
-    attaches ``area.google`` only when a constant resolves, else leaves it None
-    (lat/lng proximity targeting instead)."""
+    Required & non-empty - a handle without its constant is meaningless."""
 
     resourceName: str = Field(min_length=1)
-    name: str | None = None  # canonical display name only - not required by the API
+    name: str | None = None  # display label only
 
     @field_validator("resourceName")
     @classmethod

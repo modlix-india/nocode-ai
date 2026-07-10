@@ -470,11 +470,8 @@ async def _set_campaign_spec(
 def _store_confirmed_location(
     session_ctx: dict, location_value: Any, last_user: str
 ) -> None:
-    """Location side-effect: clear the map-confirm marker + write the confirmed
-    location onto product_data.place (the single location home). A map-pin
-    payload carries coords; plain "confirm" / typed-city paths clear coords so
-    the next targeting run re-geocodes. Country fields are preserved across the
-    update - a re-geocode refreshes country_code when coords are cleared."""
+    """Write the confirmed location onto product_data.place + clear the confirm
+    marker. Map-pin carries coords; typed-city clears them → next run re-geocodes."""
     session_ctx.pop("_pending_location_confirm", None)
     from app.agents.adzump.services.business_storage import parse_location_update
 

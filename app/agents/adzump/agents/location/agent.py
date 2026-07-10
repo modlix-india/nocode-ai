@@ -90,8 +90,7 @@ class LocationAgent(BaseAgent):
         tool_use_id = context.get("tool_use_id", "")
         auth = context.get("auth")
 
-        # resolve_coordinates geocodes on a cache miss and stamps coords +
-        # country_code straight onto place (the single location cache).
+        # Geocodes on cache miss; stamps coords + country_code onto place.
         location_name = resolve_location_name(product, spec)
         await resolve_coordinates(location_name, place)
 

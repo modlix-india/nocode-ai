@@ -166,10 +166,7 @@ class PlatformGeoMapper:
             except Exception as e:
                 logger.warning("Meta Geolocation search lookup failed: %s", e)
 
-        # A Meta handle needs both a type AND a key (see MetaGeoLocation): a
-        # typed-but-keyless geo_locations entry is rejected by Meta. So attach
-        # the handle only when the key lookup matched; otherwise leave meta None
-        # and let the lat/lng radius fallback target the area (mirrors Google).
+        # No key resolved → no handle (Meta rejects keyless entries); mirrors Google.
         meta = (
             MetaGeoLocation(
                 type=meta_type or loc_type,

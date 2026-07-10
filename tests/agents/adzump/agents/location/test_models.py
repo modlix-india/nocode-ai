@@ -34,8 +34,7 @@ class MetaGeoLocationTests(unittest.TestCase):
         self.assertEqual((m.type, m.key, m.name), ("city", "123", "Bandra"))
 
     def test_key_required(self):
-        # A typed-but-keyless handle is rejected by Meta, so the model forbids
-        # it: no match → the mapper attaches no handle at all (radius fallback).
+        # Meta rejects keyless entries; no match → mapper attaches no handle.
         with self.assertRaises(pydantic.ValidationError):
             MetaGeoLocation(type="city")
 
@@ -58,8 +57,7 @@ class GoogleGeoLocationTests(unittest.TestCase):
         self.assertEqual(g.resourceName, "geoTargetConstants/1007785")
 
     def test_resource_name_required(self):
-        # A handle without a geo-target constant is meaningless, so the model
-        # forbids it: no constant resolved → no handle (lat/lng proximity).
+        # No constant resolved → no handle at all.
         with self.assertRaises(pydantic.ValidationError):
             GoogleGeoLocation()
         with self.assertRaises(pydantic.ValidationError):

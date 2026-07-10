@@ -6,9 +6,8 @@ mutated by reference across sub-sessions, serialized at many boundaries -
 so adoption is incremental: ``check_product`` warns at the save/restore
 boundary, tests enforce strictly (test_product_model.py).
 
-``Place`` (the business's own location) lives in the sibling ``place`` leaf
-module so downstream targeting builders can import it without dragging in
-this product schema. This module composes it here.
+``Place`` lives in the sibling ``place`` leaf so downstream builders can
+import it without dragging in this schema.
 """
 
 from __future__ import annotations

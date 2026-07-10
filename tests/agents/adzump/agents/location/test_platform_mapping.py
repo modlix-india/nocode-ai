@@ -57,8 +57,7 @@ class MapMetaTypeTests(unittest.TestCase):
         self.assertEqual(out["meta"]["type"], "region")
 
     def test_no_handle_when_lookup_returns_empty(self):
-        # No match → no handle (a keyless Meta entry is invalid); the area falls
-        # back to lat/lng radius targeting downstream.
+        # No match → no handle (keyless Meta entries are invalid).
         out = self._map({"name": "400050", "pincode": "400050"}, _meta_get([]))
         self.assertNotIn("meta", out)
 
@@ -67,8 +66,7 @@ class MapMetaTypeTests(unittest.TestCase):
         self.assertNotIn("meta", out)
 
     def test_name_only_area_defaults_to_city_type(self):
-        # Name-only area (no pincode/city/scale) searches as a city; when Meta's
-        # match omits a type, the assumed city loc_type stands on the handle.
+        # Name-only area searches as city; typeless Meta match keeps that type.
         out = self._map(
             {"name": "Some Neighborhood"},
             _meta_get([{"key": "999", "name": "Some Neighborhood"}]),

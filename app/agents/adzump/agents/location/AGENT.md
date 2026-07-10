@@ -189,7 +189,7 @@ manage_targeting_locations(user_message="set up geo targeting for Bengaluru")
    ▼
 LocationAgent.handle(user_message, context)
    │  Preamble: guards, resolve + geocode business pin (deterministic, no LLM)
-   │  Sub-session with shared context refs (product_data, _location_meta, etc.)
+   │  Sub-session with shared context refs (product_data, campaign_spec, etc.)
    │  BaseAgent loop runs ONCE on build_run_prompt(profile, list, request)
    │
    │  ┌─ LLM reasoning ──────────────────────────────────────────┐
@@ -286,7 +286,7 @@ The pre-refactor code called `provider.create_completion(...)` directly from a s
 ### One run, every action
 
 0. **Preamble** (deterministic, no LLM): guards (empty message, auth), resolve + geocode the business pin so the radial-scan tool has coordinates.
-1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `_location_meta`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
+1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
 2. **Wrapped event stream** - `_LocationPassthroughEventStream` forwards `tool_*` / `craft` / `data` / `agent_*` / `thinking`, drops `text` / `done` / `error`.
 3. **Run** - `self.run(build_run_prompt(...), sub_session, wrapped_stream)`; the model picks ONE of the four tools.
 4. **Verify + extract** - success is judged by the `_geo_finalized` marker `finalize_targets` stamps on the sub-context. A run where no mutation landed returns a structured error (carrying the model's final text), not success.
