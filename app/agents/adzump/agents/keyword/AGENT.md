@@ -313,12 +313,9 @@ agents/keyword/
 ├── taxonomy.py         derive_offering_taxonomy — the business-agnostic context layer
 ├── models.py           KeywordSet / OptimizedKeyword / NegativeKeyword + validators
 ├── constants.py        pool/seed/selection size knobs (see below)
-└── prompts/
-    ├── base.py         small static system prompt
-    ├── seed.py         SEED_GENERIC / SEED_BRAND
-    ├── select.py       SELECT_GENERIC / SELECT_BRAND
-    ├── negatives.py    NEGATIVES_GENERIC / NEGATIVES_BRAND
-    └── registry.py     typed (phase, type) → prompt, validated complete at import
+└── context.py          all prompt text: BASE system prompt, the SEED/SELECT/NEGATIVES
+                        phase templates, and the typed (phase, type) → prompt registry
+                        (validated complete at import)
 
 agents/campaign/                     CampaignAgent shell + keyword_research orchestrator tool
 adapters/autosuggest.py              multi-source autosuggest

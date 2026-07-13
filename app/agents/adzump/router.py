@@ -25,8 +25,8 @@ from app.core.base_router import (
 from app.core.session import BaseSession, AuthContext
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
-from app.agents.adzump.agents.campaign.api import router as campaign_api_router
-from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
+from app.agents.adzump.agents.campaign.api import (
+    router as campaign_api_router,
     parse_keyword_widget_message,
     stream_keyword_widget,
 )

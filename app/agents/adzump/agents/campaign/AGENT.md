@@ -36,7 +36,7 @@ sequenceDiagram
     KR-->>CA: result bundle
     CA-->>CC: keyword_research result (persisted on the session)
     CC-->>Main: "shown in panel — ask user to review"
-    User->>Panel: add / edit / delete keywords → keyword_update
+    User->>Panel: add / edit / delete keywords → update_keywords (api.py, no LLM)
     User->>Main: confirm → launch (future tool)
 ```
 
@@ -104,7 +104,7 @@ knows what it's building; the static persona lives in `context.py`.
 ### `tools/google/keyword_research.py` — the orchestrator's first tool (implemented)
 What the agent calls today. It:
 1. Gates to Google **Search** (PMax/others are skipped honestly).
-2. Derives the **offering taxonomy** from `product_data` (cached; tokens tracked).
+2. Derives the **offering taxonomy** from `product_data` (cached, fail-soft).
 3. Resolves **geo** + **location/service areas**.
 4. Runs **brand + generic in parallel** through the `KeywordResearchAgent` (one failing
    or timing out still returns the other).
@@ -115,18 +115,18 @@ Keyword internals (seed → expand → score → select → negatives, the promp
 are documented in [`../keyword/AGENT.md`](../keyword/AGENT.md) — not duplicated here.
 
 ### `tools/google/keyword_update.py` — review-panel edits (implemented)
-Not an LLM tool. The keyword review panel posts structured widget actions
-(`add` / `delete` / `edit`) as JSON; `parse_keyword_widget_message()` detects them and the
-router **bypasses the LLM**, calling `_update_keywords()` to mutate
-`session_ctx["keyword_research"]` and re-emit **only** the `keyword_review` block (keyed
-upsert — no panel flash).
+Not an LLM tool — just the mutation logic. The keyword review panel posts structured
+widget actions (`add` / `delete` / `edit`) as JSON; the HTTP transport lives in `api.py`
+(`parse_keyword_widget_message()` + `stream_keyword_widget()`), which **bypasses the LLM**
+and calls `update_keywords()` to mutate `session_ctx["keyword_research"]` and re-emit
+**only** the `keyword_review` block (keyed upsert — no panel flash).
 
 ### `tools/meta/` — reserved
 Placeholder namespace for Meta campaign tools (mirrors `tools/google/`).
 
 ### Coming next (the substantive platform work)
-The create/launch tools — `prepare_campaign_review`/`create_ad_group`/`create_ads`,
-budget/targeting, and the **launch mutation** on the Google/Meta API — are where the agent's
+The platform create/launch tools — creating the campaign, ad groups, and ads, plus
+budget/targeting and the **launch mutation** on the Google/Meta API — are where the agent's
 real weight lands. They don't exist yet; the shell is built so each is one tool + one craft
 section.
 
@@ -139,7 +139,7 @@ section.
 | `agent.py` | `CampaignAgent` shell + `create()` entry |
 | `context.py` | static system prompt (`build_campaign_context`) — small, tool-driven |
 | `craft.py` | campaign side-panel builder; **platform dispatch** (`_google_campaign_blocks` / `_meta_campaign_blocks`). `emit_campaign_craft` (full) + `emit_section_update` (append, no flash) |
-| `api.py` | HTTP endpoint `keyword/volume` — scores a keyword the user adds in the panel (Planner historical metrics, fail-soft → volume 0) |
+| `api.py` | Campaign HTTP: `keyword/volume` (scores a panel-added keyword via Planner historical metrics, fail-soft → 0) **and** the review-panel widget transport (`parse_keyword_widget_message` + `stream_keyword_widget` → `update_keywords`; fast path, no LLM) |
 | `tools/google/` | implemented Google tools (above) |
 | `tools/meta/` | reserved |
 

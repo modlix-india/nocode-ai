@@ -34,7 +34,7 @@ from app.agents.adzump.agents.keyword.models import (
     NegativeKeyword,
     OptimizedKeyword,
 )
-from app.agents.adzump.agents.keyword.prompts import BASE, Phase, phase_prompt
+from app.agents.adzump.agents.keyword.context import BASE, Phase, phase_prompt
 from app.agents.adzump.agents.keyword.tools import ALL_TOOLS
 
 logger = logging.getLogger(__name__)

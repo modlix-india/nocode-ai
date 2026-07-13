@@ -1,29 +1,23 @@
-"""keyword_update — keyword panel widget parser + mutation handler.
+"""keyword_update — the keyword-review-panel mutation logic.
 
-The keyword review panel sends structured actions as pure JSON:
+The panel sends structured actions as pure JSON:
   {"type": "keyword_widget", "action": "add|delete|edit", "keyword_type": "brand|generic",
-   "section": "positives|negatives", "keyword": "...", "match_type": "PHRASE|EXACT",
+   "section": "positives|negatives", "keyword": "...",
+   "match_type": "EXACT|PHRASE (positives) or PHRASE|BROAD (negatives)",
    "volume": 1200, "intent": "transactional"}   (intent/reason differ by section)
    "old_keyword": "..."  (edit only)
 
-parse_keyword_widget_message() detects these and returns the payload — the router
-bypasses the LLM and calls _update_keywords() directly, which mutates
-session_ctx["keyword_research"] and re-emits only the keyword_review block (keyed
-upsert, no panel flash).
+update_keywords() applies the action to session_ctx["keyword_research"] and re-emits only
+the keyword_review block (keyed upsert, no panel flash). The HTTP transport that routes
+these actions to it lives in campaign/api.py.
 """
 
 from __future__ import annotations
 
-import asyncio
 import difflib
 import json as _json
 import logging
-from typing import Any, Coroutine
 
-from fastapi.responses import StreamingResponse
-
-from app.core.session import BaseSession
-from app.core.streaming import AgentEventStream
 from app.core.tools.base import ToolResult
 
 from app.agents.adzump.agents.campaign.craft import emit_section_update, keyword_review_block
@@ -37,23 +31,11 @@ from app.agents.adzump.agents.keyword.models import normalize as _normalize
 logger = logging.getLogger(__name__)
 
 
-def parse_keyword_widget_message(msg: str) -> dict[str, Any] | None:
-    """Return the decoded payload if msg is a keyword widget JSON action, else None."""
-    stripped = msg.strip()
-    if not (stripped.startswith("{") and stripped.endswith("}")):
-        return None
-    try:
-        payload = _json.loads(stripped)
-    except _json.JSONDecodeError:
-        return None
-    if isinstance(payload, dict) and payload.get("type") == "keyword_widget":
-        return payload
-    return None
-
 _VALID_ACTIONS = frozenset({"add", "delete", "edit"})
 _VALID_KEYWORD_TYPES = frozenset({"brand", "generic"})
 _VALID_SECTIONS = frozenset({"positives", "negatives"})
-_VALID_MATCH_TYPES = frozenset({"EXACT", "PHRASE"})
+_POSITIVE_MATCH_TYPES = frozenset({"EXACT", "PHRASE"})  # positives target
+_NEGATIVE_MATCH_TYPES = frozenset({"PHRASE", "BROAD"})  # negatives exclude a concept
 
 
 def _row_key(row: dict) -> str:
@@ -71,9 +53,11 @@ def _validate_keyword(kw: str) -> str | None:
     return None
 
 
-def _coerce_match_type(raw: object, fallback: str = "PHRASE") -> str:
+def _coerce_match_type(raw: object, section: str, fallback: str = "PHRASE") -> str:
+    # Positives are EXACT/PHRASE; negatives are PHRASE/BROAD (mirrors the keyword models).
     mt = str(raw or "").upper()
-    return mt if mt in _VALID_MATCH_TYPES else fallback
+    allowed = _NEGATIVE_MATCH_TYPES if section == "negatives" else _POSITIVE_MATCH_TYPES
+    return mt if mt in allowed else fallback
 
 
 def _tokens(text: str) -> frozenset[str]:
@@ -139,7 +123,7 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
     return None
 
 
-async def _update_keywords(params: dict, context: dict) -> ToolResult:
+async def update_keywords(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context")
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
@@ -194,7 +178,7 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
             section_err = _check_section_signal(keyword, keyword_type, session_ctx)
             if section_err:
                 return ToolResult(success=False, error=section_err)
-        match_type = _coerce_match_type(params.get("match_type"))
+        match_type = _coerce_match_type(params.get("match_type"), section)
         new_row: dict = {
             "keyword": keyword,
             "volume": int(params.get("volume", 0) or 0),
@@ -245,7 +229,7 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
                     return ToolResult(success=False, error=section_err)
 
         target["keyword"] = new_keyword
-        target["match_type"] = _coerce_match_type(params.get("match_type"), target.get("match_type", "PHRASE"))
+        target["match_type"] = _coerce_match_type(params.get("match_type"), section, target.get("match_type", "PHRASE"))
         target["volume"] = int(params.get("volume", target.get("volume", 0)) or 0)
         if section == "positives":
             target["intent"] = str(params.get("intent", target.get("intent", "")) or "")
@@ -273,55 +257,3 @@ async def _update_keywords(params: dict, context: dict) -> ToolResult:
         summary=summary,
         data={"action": action, "keyword_type": keyword_type, "section": section},
     )
-
-
-def _widget_response(
-    event_stream: AgentEventStream, run_coro: Coroutine[Any, Any, None]
-) -> StreamingResponse:
-    """Wrap a widget run-coroutine in an SSE StreamingResponse with task cancellation."""
-    async def event_generator():
-        task = asyncio.create_task(run_coro)
-        try:
-            async for event in event_stream.events():
-                yield event.to_sse()
-        except asyncio.CancelledError:
-            task.cancel()
-            raise
-        finally:
-            if not task.done():
-                task.cancel()
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-def stream_keyword_widget(agent: Any, session: BaseSession, params: dict) -> StreamingResponse:
-    """Fast-path SSE for a keyword panel action (add/edit/delete): mutate the keyword set
-    and re-emit the review block WITHOUT an LLM turn. Called from the adzump chat router."""
-    event_stream = AgentEventStream()
-
-    async def run() -> None:
-        try:
-            ctx = agent.build_tool_context(session)
-            ctx["event_stream"] = event_stream
-            await event_stream.emit_tool_start(
-                tool_use_id="widget_keyword",
-                tool_name="update_keyword",
-                display_name="Keyword Update",
-                tool_input=params,
-            )
-            result = await _update_keywords(params, ctx)
-            if result.success:
-                await session.save_context()
-            await event_stream.emit_tool_result(
-                tool_use_id="widget_keyword",
-                tool_name="update_keyword",
-                success=result.success,
-                summary=result.summary or result.error or "",
-            )
-        except Exception as e:
-            logger.exception("Keyword widget action failed")
-            await event_stream.emit_error(str(e))
-        finally:
-            await event_stream.emit_done(session_id=session.session_id)
-
-    return _widget_response(event_stream, run())
