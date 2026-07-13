@@ -42,6 +42,28 @@ _LOG_ERROR_MAXLEN = 160  # truncation for error messages in logs
 _planner_gate: "asyncio.Semaphore | None" = None
 
 
+def planner_call_args(
+    *,
+    customer_id: str,
+    login_customer_id: str = "",
+    client_code: str = "",
+    auth_headers: dict | None = None,
+    geo_target_constants: list[str] | None = None,
+    language: str | None = None,
+) -> dict:
+    """The ad-account + geo + language kwargs every Keyword Planner fetch takes, with the
+    defaults applied in one place. Callers supply their own values (agent run state vs the
+    /keyword/volume request); this centralizes the shape and the fallbacks."""
+    return dict(
+        customer_id=customer_id,
+        login_customer_id=login_customer_id,
+        client_code=client_code,
+        auth_headers=auth_headers or {},
+        geo_target_constants=geo_target_constants or None,
+        language=language or DEFAULT_LANGUAGE,
+    )
+
+
 def _concurrency_gate() -> asyncio.Semaphore:
     global _planner_gate
     if _planner_gate is None:

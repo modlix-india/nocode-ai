@@ -1,4 +1,4 @@
-"""create_campaign — spawn the CampaignAgent after the user confirms the summary.
+"""prepare_campaign_review — spawn the CampaignAgent after the user confirms the summary.
 
 Called by the main agent once the campaign details are collected and confirmed. Reads
 campaign_spec + product_data from the session, spawns the CampaignAgent (which runs the
@@ -18,7 +18,7 @@ from app.agents.adzump.agents.campaign.agent import get_campaign_agent
 logger = logging.getLogger(__name__)
 
 
-async def _create_campaign(params: dict, context: dict) -> ToolResult:
+async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context")
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
@@ -69,16 +69,16 @@ async def _create_campaign(params: dict, context: dict) -> ToolResult:
     )
 
 
-create_campaign = ToolDefinition(
-    name="create_campaign",
+prepare_campaign_review = ToolDefinition(
+    name="prepare_campaign_review",
     description=(
-        "Build the campaign for the confirmed details — researches brand + generic keywords "
-        "(Google Search) and shows them in the review panel. Call once, after the user confirms "
-        "the campaign summary and before launch. Takes no parameters."
+        "Prepare the confirmed campaign for review — runs the selected platform's campaign "
+        "build and opens the review panel for edits before launch. Call once, after the user "
+        "confirms the campaign summary. Takes no parameters."
     ),
-    display_name="Create Campaign",
+    display_name="Prepare Campaign Review",
     parameters=[],
-    execute=_create_campaign,
+    execute=_prepare_campaign_review,
 )
 
-CREATE_CAMPAIGN_TOOLS = [create_campaign]
+PREPARE_CAMPAIGN_REVIEW_TOOLS = [prepare_campaign_review]

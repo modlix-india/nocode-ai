@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -551,3 +552,25 @@ def _tool_only_turn_note(tool_calls_json: str | None) -> str:
     if tool_names:
         return f"Done ({', '.join(tool_names)})."
     return "Done."
+
+
+# The session being billed for the currently-running agent. BaseAgent.run sets it
+# (alongside current_agent_id) so a standalone one-shot LLM call — outside the tool
+# loop, e.g. offering-taxonomy — bills its tokens to the right agent without the
+# session being threaded through tool contexts.
+current_session: ContextVar[Optional["BaseSession"]] = ContextVar(
+    "current_session", default=None
+)
+
+
+async def record_oneshot_usage(
+    usage: dict[str, int], model: str, provider: str = "openai"
+) -> None:
+    """Bill a standalone one-shot LLM call to the active agent's session — the SAME
+    path the loop uses (``accumulate_usage`` + ``record_token_usage``), so it lands as
+    a normal per-agent row. No-op when no session is active; never raises."""
+    session = current_session.get()
+    if session is None:
+        return
+    session.accumulate_usage(usage)
+    await session.record_token_usage(usage, str(uuid.uuid4()), model, provider)

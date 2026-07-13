@@ -271,7 +271,7 @@ class AdzumpAgent(BaseAgent):
         if not pe:
             return ""
         if pe.get("expects") == "multi":
-            if pe.get("tool") == "create_campaign":
+            if pe.get("tool") == "prepare_campaign_review":
                 return (
                     "## Resuming — campaign review is still open\n"
                     "The review panel is on screen and the user has been reviewing / editing it "
@@ -467,8 +467,8 @@ class AdzumpAgent(BaseAgent):
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
         # Stop once campaign creation has begun: the campaign craft owns the panel from
-        # then on, so re-emitting the setup craft here just steals focus (create_campaign
-        # sets campaign_craft_id).
+        # then on, so re-emitting the setup craft here just steals focus
+        # (prepare_campaign_review sets campaign_craft_id).
         if not (platform and cctx.has_mapped_geo_targets) \
                 or ctx.get("_last_craft_platform") == platform \
                 or ctx.get("campaign_craft_id"):

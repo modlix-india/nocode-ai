@@ -5,24 +5,23 @@ run from the user-confirmed fields (business_type, products/services, USPs, summ
 It gives the agent its offering boundary: what the business sells (core) vs adjacent
 same-industry categories it does NOT sell (siblings).
 
-Business-agnostic (derived per business, never hardcoded). One balanced-tier LLM call,
-no web search; routed through get_llm_provider() so token usage is tracked. Fail-soft:
-any failure returns a minimal taxonomy so research never blocks.
+Business-agnostic (derived per business, never hardcoded). One balanced-tier LLM call
+(AsyncOpenAI one-shot, JSON mode), no web search. Fail-soft: any failure returns a
+minimal taxonomy so research never blocks.
 """
 
 from __future__ import annotations
 
 import logging
 
-from app.services.llm_provider import get_llm_provider
+from app.config import settings
+from app.core.session import record_oneshot_usage
 
 from app.agents.adzump._shared import extract_json
 from app.agents.adzump.agents.keyword.models import OfferingTaxonomy
 
 logger = logging.getLogger(__name__)
 
-_PROVIDER = "openai"  # match the keyword agent's provider (adzump runs on OpenAI)
-_MODEL_TIER = "balanced"
 _MAX_TOKENS = 700
 
 _SYSTEM = "You are a paid-search strategist. Output strict JSON only — no markdown, no commentary."
@@ -39,7 +38,9 @@ Return JSON exactly in this shape:
   "primary_offering": "the crisp category a buyer shops for (buyer's words, not the seller's marketing label)",
   "core_terms": ["the actual products/services they sell — terms a buyer would type"],
   "sibling_categories": ["adjacent categories in the SAME industry they do NOT sell"],
-  "is_location_specific": true
+  "is_location_specific": true,
+  "sells_physical_products": false,
+  "includes_informational_funnel": false
 }}
 
 Rules:
@@ -48,6 +49,14 @@ Rules:
   so they can be kept out of positives and used as negatives.
 - is_location_specific: true if the business serves specific geographic areas (local/regional — a shop,
   clinic, real-estate project, city service); false if it sells nationally or online with no served area.
+- sells_physical_products: true ONLY if the business sells a tangible, shippable product a shopper buys
+  on a retail/marketplace site (physical-goods ecommerce, D2C product brands). false for services,
+  software/SaaS, real estate, restaurants/hospitality, and local services with no shippable product
+  (eyewear brand -> true; no-code CRM -> false; real-estate project -> false; italian restaurant -> false).
+- includes_informational_funnel: true ONLY if buyers commonly research this offering through how-to /
+  tutorial / comparison / educational content BEFORE buying (considered or learning-curve purchases).
+  false for plain transactional or local intent with no research phase (a standing desk or a no-code
+  crm -> true; a taxi ride or a pizza place -> false).
 - Works for ANY business. The core-vs-sibling distinction, by example:
   - duplex villaments -> core: villament, duplex villa, 3 bhk villa | siblings: apartment, flat, plot, independent house
   - no-code CRM -> core: no-code crm, sales pipeline software | siblings: erp, helpdesk, marketing automation
@@ -70,12 +79,9 @@ def _brief(product: dict) -> str:
     return "\n".join(parts)
 
 
-async def derive_offering_taxonomy(product: dict) -> tuple[OfferingTaxonomy, dict]:
-    """Derive the offering taxonomy from confirmed product_data.
-
-    Returns ``(taxonomy, usage)``. ``usage`` is the provider's token-usage dict for
-    the caller to ``session.accumulate_usage(...)``. Fail-soft: on empty input or any
-    error, returns a minimal taxonomy (primary_offering from business_type) + ``{}``.
+async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
+    """Derive the offering taxonomy from confirmed product_data. Fail-soft: on empty
+    input or any error, returns a minimal taxonomy (primary_offering from business_type).
     """
     # core_terms must be non-empty so a failed derivation still anchors the agent.
     primary = (
@@ -87,22 +93,37 @@ async def derive_offering_taxonomy(product: dict) -> tuple[OfferingTaxonomy, dic
     )
     brief = _brief(product)
     if not brief.strip():
-        return fallback, {}
+        return fallback
 
     try:
-        provider = get_llm_provider(_PROVIDER)
-        resp = await provider.create_completion(
-            system_prompt=_SYSTEM,
-            messages=[{"role": "user", "content": _PROMPT.format(brief=brief)}],
-            model_tier=_MODEL_TIER,
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        resp = await client.chat.completions.create(
+            model=settings.OPENAI_MODEL_BALANCED,
+            messages=[
+                {"role": "system", "content": _SYSTEM},
+                {"role": "user", "content": _PROMPT.format(brief=brief)},
+            ],
+            temperature=0,
             max_tokens=_MAX_TOKENS,
+            response_format={"type": "json_object"},
         )
+        # Bill this one-shot to the active agent's session (the loop can't see it).
+        if resp.usage is not None:
+            await record_oneshot_usage(
+                {
+                    "input_tokens": resp.usage.prompt_tokens,
+                    "output_tokens": resp.usage.completion_tokens,
+                },
+                settings.OPENAI_MODEL_BALANCED,
+            )
         # extract_json tolerates a ```json fence and returns None (never raises) on
         # unparseable output; return the fallback so core_terms stays non-empty.
-        data = extract_json(resp.get("content", ""))
+        data = extract_json(resp.choices[0].message.content or "")
         if not data:
             logger.warning("offering_taxonomy: no parseable JSON (fail-soft)")
-            return fallback, {}
+            return fallback
         taxonomy = OfferingTaxonomy(
             primary_offering=str(
                 data.get("primary_offering") or fallback.primary_offering
@@ -110,17 +131,23 @@ async def derive_offering_taxonomy(product: dict) -> tuple[OfferingTaxonomy, dic
             core_terms=list(data.get("core_terms") or []),
             sibling_categories=list(data.get("sibling_categories") or []),
             is_location_specific=bool(data.get("is_location_specific", True)),
+            sells_physical_products=bool(data.get("sells_physical_products", False)),
+            includes_informational_funnel=bool(
+                data.get("includes_informational_funnel", False)
+            ),
         )
         logger.info(
-            "offering_taxonomy: primary=%r core=%d siblings=%d local=%s",
+            "offering_taxonomy: primary=%r core=%d siblings=%d local=%s product=%s informational=%s",
             taxonomy.primary_offering,
             len(taxonomy.core_terms),
             len(taxonomy.sibling_categories),
             taxonomy.is_location_specific,
+            taxonomy.sells_physical_products,
+            taxonomy.includes_informational_funnel,
         )
-        return taxonomy, (resp.get("usage") or {})
+        return taxonomy
     except Exception as exc:
         logger.warning(
             "offering_taxonomy derivation failed (fail-soft): %s", str(exc)[:200]
         )
-        return fallback, {}
+        return fallback

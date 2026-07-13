@@ -1,7 +1,7 @@
 # Campaign Agent
 
 Platform-agnostic **campaign-creation orchestrator**. The main adzump agent spawns it
-(via the `create_campaign` tool) once the user confirms the campaign summary. It owns the
+(via the `prepare_campaign_review` tool) once the user confirms the campaign summary. It owns the
 campaign **build** sequence — research, then (as tools land) create, configure, and launch
 the campaign on Google/Meta.
 
@@ -20,14 +20,14 @@ the create/launch steps slot in as more tools without changing this shell.
 sequenceDiagram
     actor User
     participant Main as Main Agent (adzump)
-    participant CC as create_campaign (tool)
+    participant CC as prepare_campaign_review (tool)
     participant CA as CampaignAgent
     participant KR as keyword_research (tool)
     participant KA as KeywordResearchAgent
     participant Panel as Review Panel (craft)
 
     User->>Main: confirms summary → "Yes, proceed"
-    Main->>CC: create_campaign()
+    Main->>CC: prepare_campaign_review()
     CC->>CA: create(campaign_spec, product_data, craft_id = campaign_<sid>)
     CA->>KR: keyword_research(keyword_type="both")
     KR->>KA: brand + generic (parallel) — see keyword/AGENT.md
@@ -78,7 +78,7 @@ tools land as drop-ins instead of forcing a refactor of the main agent later.
 
 ## 3. The agent (`agent.py`)
 
-`CampaignAgent(BaseAgent)` — singleton, spawned per campaign by `create_campaign`.
+`CampaignAgent(BaseAgent)` — singleton, spawned per campaign by `prepare_campaign_review`.
 
 | Property | Value | Why |
 |---|---|---|
@@ -90,7 +90,7 @@ tools land as drop-ins instead of forcing a refactor of the main agent later.
 
 `create(campaign_spec, product_data, craft_id, parent_event_stream, auth)` seeds a fresh
 sub-session with the collected campaign data, runs the loop, and **returns the
-`keyword_research` result** for `create_campaign` to persist on the main session (for review
+`keyword_research` result** for `prepare_campaign_review` to persist on the main session (for review
 + launch). Streaming goes through `_CampaignStream` (a `ChildAgentStream`) which forwards
 panel + sub-agent lifecycle to the parent and swallows the orchestrator's own prose.
 
@@ -125,7 +125,7 @@ upsert — no panel flash).
 Placeholder namespace for Meta campaign tools (mirrors `tools/google/`).
 
 ### Coming next (the substantive platform work)
-The create/launch tools — `create_campaign`/`create_ad_group`/`create_ads`,
+The create/launch tools — `prepare_campaign_review`/`create_ad_group`/`create_ads`,
 budget/targeting, and the **launch mutation** on the Google/Meta API — are where the agent's
 real weight lands. They don't exist yet; the shell is built so each is one tool + one craft
 section.
@@ -153,7 +153,7 @@ The shell is built to extend in one place each:
    Meta equivalents); register it in the agent's tool list.
 2. **New craft section** — add a section builder + one dispatch branch in `craft.py`
    (`_<platform>_campaign_blocks`). Nowhere else.
-3. The agent shell, `create_campaign`, and the streaming/craft plumbing stay unchanged.
+3. The agent shell, `prepare_campaign_review`, and the streaming/craft plumbing stay unchanged.
 
 **Still to come:** Meta tools, Performance Max (no keywords — asset groups instead), and
 the actual create/launch mutations (today the flow researches + reviews; launch is the

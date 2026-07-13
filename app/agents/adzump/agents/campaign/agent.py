@@ -1,7 +1,7 @@
 """CampaignAgent — platform-agnostic campaign-creation orchestrator.
 
 A BaseAgent (same shape as the optimization agent) spawned by the main adzump
-agent's create_campaign tool once the user confirms the campaign summary. It runs
+agent's prepare_campaign_review tool once the user confirms the campaign summary. It runs
 the selected platform's creation tools; each tool calls the relevant sub-agent
 (keyword_research -> the keyword agent). For now: Google Search -> keyword_research.
 More tools and campaign types slot in without changing this shell.
@@ -74,7 +74,6 @@ class CampaignAgent(BaseAgent):
         ctx["session_context"] = (
             session.context
         )  # tools read campaign_spec / product_data here
-        ctx["_session"] = session  # so a tool's own LLM call can record token usage
         if session.auth:
             ctx["auth"] = session.auth
         return ctx
@@ -90,7 +89,7 @@ class CampaignAgent(BaseAgent):
     ) -> dict | None:
         """Run campaign creation and return the keyword_research result (or None).
 
-        Spawned by the main agent's create_campaign tool. Seeds a sub-session with the
+        Spawned by the main agent's prepare_campaign_review tool. Seeds a sub-session with the
         collected campaign data; the platform tools read it and write their output
         (keyword_research) back into that session, which we return for the caller to
         persist on the main session.
@@ -103,48 +102,26 @@ class CampaignAgent(BaseAgent):
             "craft_id": craft_id,
         }
         run_start = time.monotonic()
+        stream = _CampaignStream(parent_event_stream)
         try:
             await self.run(
                 user_message="Create the campaign.",
                 session=session,
-                event_stream=_CampaignStream(parent_event_stream),
+                event_stream=stream,
             )
         except Exception as exc:
-            await self._emit_finished(
-                parent_event_stream, run_start, session, "error", type(exc).__name__
+            await stream._emit_finished(
+                agent_id="campaign", run_start=run_start, session=session,
+                status="error", summary=type(exc).__name__,
             )
             raise
 
         result = session.context.get("keyword_research")
-        await self._emit_finished(
-            parent_event_stream,
-            run_start,
-            session,
-            "success",
-            "keyword research complete",
+        await stream._emit_finished(
+            agent_id="campaign", run_start=run_start, session=session,
+            status="success", summary="keyword research complete",
         )
         return result
-
-    @staticmethod
-    async def _emit_finished(
-        parent: AgentEventStream,
-        run_start: float,
-        session: BaseSession,
-        status: str,
-        summary: str,
-    ) -> None:
-        try:
-            usage = session.total_usage or {}
-            await parent.emit_agent_finished(
-                agent_id="campaign",
-                status=status,
-                duration_ms=int((time.monotonic() - run_start) * 1000),
-                tokens_in=int(usage.get("input_tokens") or 0),
-                tokens_out=int(usage.get("output_tokens") or 0),
-                summary=summary,
-            )
-        except Exception:
-            pass
 
 
 def get_campaign_agent() -> CampaignAgent:

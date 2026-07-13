@@ -70,12 +70,14 @@ async def keyword_volume(
         geo = ((sctx.get("keyword_research") or {}).get("meta") or {}).get("geo") or {}
         metrics = await keyword_planner.fetch_keyword_historical_metrics(
             keywords,
-            customer_id=customer_id,
-            login_customer_id=str(spec.get("parent_account") or "").strip(),
-            client_code=auth.client_code,
-            auth_headers=auth.to_headers(),
-            geo_target_constants=geo.get("geo_target_constants") or None,
-            language=geo.get("language") or keyword_planner.DEFAULT_LANGUAGE,
+            **keyword_planner.planner_call_args(
+                customer_id=customer_id,
+                login_customer_id=str(spec.get("parent_account") or "").strip(),
+                client_code=auth.client_code,
+                auth_headers=auth.to_headers(),
+                geo_target_constants=geo.get("geo_target_constants") or None,
+                language=geo.get("language"),
+            ),
         )
         by_kw = {m["keyword"]: m for m in metrics}
     else:

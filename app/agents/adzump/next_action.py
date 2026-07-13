@@ -65,8 +65,8 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
-    # True once create_campaign has run and stored keyword_research - flips the review
-    # branch from "build the campaign" (run keyword research) to "launch". Defaulted so
+    # True once prepare_campaign_review has run and stored keyword_research - flips the review
+    # branch from "prepare the campaign" (run keyword research) to "launch". Defaulted so
     # existing test fixtures that build CampaignContext directly need no change.
     keyword_research_done: bool = False
 
@@ -369,7 +369,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "EVERY bullet must be present - do not omit any.\n"
             "(2) THEN, separately, use the present_options tool to ask \"Proceed to build "
             "the campaign?\" with chips: Yes, proceed / No, make changes. When the user "
-            "picks 'Yes, proceed', run the create_campaign tool (no arguments) - it "
+            "picks 'Yes, proceed', run the prepare_campaign_review tool (no arguments) - it "
             "researches the keywords and shows them in the review panel. These are tools "
             "to CALL - never type tool-call syntax into your reply, only the markdown "
             "summary above is text."

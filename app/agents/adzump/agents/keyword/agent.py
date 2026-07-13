@@ -179,7 +179,7 @@ class KeywordResearchAgent(BaseAgent):
         ``ad_account`` = {customer_id, login_customer_id}; ``geo`` =
         {geo_target_constants, hl, gl, language}; ``sources`` = autosuggest source
         names (from ``BusinessProfile.source_names()``; defaults applied if empty).
-        The submit tools stream the positives/negatives slices to the review panel.
+        The submit tools only record state; the orchestrator emits the panel once.
         """
         session = BaseSession(agent_name="keyword_research")
         await session.get_or_create(None, auth)
@@ -209,32 +209,25 @@ class KeywordResearchAgent(BaseAgent):
             label=f"Keyword Research · {keyword_type}",
             parent_id=current_agent_id.get(),
         )
+        stream = _ReviewStream(parent_event_stream)
         try:
             await self.run(
                 user_message="Begin keyword research.",
                 session=session,
-                event_stream=_ReviewStream(parent_event_stream),
+                event_stream=stream,
             )
         except asyncio.CancelledError:
             # Orchestrator wait_for timeout cancels us with CancelledError (a
             # BaseException the handler below misses) — close the card, then re-raise.
-            await self._emit_finished(
-                parent_event_stream,
-                agent_id,
-                run_start,
-                session,
-                "error",
-                "cancelled",
+            await stream._emit_finished(
+                agent_id=agent_id, run_start=run_start, session=session,
+                status="error", summary="cancelled",
             )
             raise
         except Exception as exc:
-            await self._emit_finished(
-                parent_event_stream,
-                agent_id,
-                run_start,
-                session,
-                "error",
-                type(exc).__name__,
+            await stream._emit_finished(
+                agent_id=agent_id, run_start=run_start, session=session,
+                status="error", summary=type(exc).__name__,
             )
             raise
 
@@ -245,13 +238,10 @@ class KeywordResearchAgent(BaseAgent):
             len(result.positives),
             len(result.negatives),
         )
-        await self._emit_finished(
-            parent_event_stream,
-            agent_id,
-            run_start,
-            session,
-            "success",
-            f"{len(result.positives)} positive / {len(result.negatives)} negative",
+        await stream._emit_finished(
+            agent_id=agent_id, run_start=run_start, session=session,
+            status="success",
+            summary=f"{len(result.positives)} positive / {len(result.negatives)} negative",
         )
         return result
 
@@ -273,28 +263,6 @@ class KeywordResearchAgent(BaseAgent):
             except (ValidationError, TypeError) as exc:
                 logger.debug("skip negative %r: %s", n.get("keyword"), exc)
         return KeywordSet(keyword_type=kt, positives=positives, negatives=negatives)
-
-    @staticmethod
-    async def _emit_finished(
-        parent: AgentEventStream,
-        agent_id: str,
-        run_start: float,
-        session: BaseSession,
-        status: str,
-        summary: str,
-    ) -> None:
-        try:
-            usage = session.total_usage or {}
-            await parent.emit_agent_finished(
-                agent_id=agent_id,
-                status=status,
-                duration_ms=int((time.monotonic() - run_start) * 1000),
-                tokens_in=int(usage.get("input_tokens") or 0),
-                tokens_out=int(usage.get("output_tokens") or 0),
-                summary=summary,
-            )
-        except Exception:
-            pass  # observability only
 
 
 def get_keyword_research_agent() -> KeywordResearchAgent:

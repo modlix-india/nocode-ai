@@ -3,7 +3,7 @@
 API limits and count caps live here as named constants so the pipeline has no
 magic numbers. There are deliberately no business or linguistic word lists here:
 intent is read from the ad market (the Planner's CPC + competition) and the
-selection LLM, and negatives are mined from real rejected queries — so nothing
+selection LLM, and negatives are reasoned from the business model — so nothing
 depends on a hand-maintained dictionary that would go stale.
 """
 
@@ -29,7 +29,6 @@ COMMERCIAL_VALUE_COMPETITION_LEVELS = frozenset({"MEDIUM", "HIGH"})
 # Count caps — bound the work so the pipeline stays inside its latency budget.
 MAX_SEEDS = 80  # seeds generated per type
 MAX_SEEDS_TO_EXPAND = 30  # top seeds sent to autosuggest (caps fan-out)
-MAX_MODIFIERS_PER_SEED = 8  # intent-modifier variants appended per seed
 MAX_EXPANSION_CANDIDATES = 200  # seeds+suggestions sent TO the Planner (caps API calls)
 MAX_STORED_CANDIDATES = (
     600  # scored ideas kept FROM the Planner (it expands beyond the input)

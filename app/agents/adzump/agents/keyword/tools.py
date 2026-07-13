@@ -54,14 +54,14 @@ def _candidates_by_keyword(state: dict) -> dict[str, dict]:
 
 
 def _planner_args(state: dict, context: dict) -> dict:
-    """Shared Keyword Planner call kwargs (ad account + geo + language) from run state."""
-    return dict(
+    """Keyword Planner call kwargs from the agent's run state (shared builder applies defaults)."""
+    return keyword_planner.planner_call_args(
         customer_id=state["kw_customer_id"],
         login_customer_id=state.get("kw_login_customer_id", ""),
         client_code=context.get("client_code", ""),
         auth_headers=context.get("headers", {}),
         geo_target_constants=state.get("kw_geo") or None,
-        language=state.get("kw_language") or keyword_planner.DEFAULT_LANGUAGE,
+        language=state.get("kw_language"),
     )
 
 

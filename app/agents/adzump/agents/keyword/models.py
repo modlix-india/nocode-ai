@@ -193,6 +193,12 @@ class OfferingTaxonomy(BaseModel):
     is_location_specific: bool = (
         True  # LLM-decided: serves specific areas (local/regional) vs national/online
     )
+    sells_physical_products: bool = (
+        False  # ships a tangible retail product → adds Amazon product-intent autosuggest
+    )
+    includes_informational_funnel: bool = (
+        False  # buyers research via how-to/educational content → adds YouTube autosuggest
+    )
 
     @field_validator("core_terms", "sibling_categories")
     @classmethod
@@ -209,17 +215,11 @@ class OfferingTaxonomy(BaseModel):
 
 @dataclass(frozen=True)
 class BusinessProfile:
-    """Orthogonal flags + category that parameterize the pipeline for any vertical."""
+    """Category + the autosuggest-source signals for one run (both from the taxonomy step)."""
 
     category: str
-    category_siblings: tuple[str, ...] = ()
-    brand_name: str = ""
-    location: str = ""
-    is_location_bound: bool = False
-    sells_physical_products: bool = False
-    is_online_only: bool = False
-    audience: str = "b2c"  # b2c | b2b | mixed
-    includes_informational_funnel: bool = False
+    sells_physical_products: bool = False  # → Amazon product-intent autosuggest
+    includes_informational_funnel: bool = False  # → YouTube informational autosuggest
 
     def source_names(self) -> list[str]:
         """Autosuggest surfaces to query — data-driven, no per-vertical branches."""

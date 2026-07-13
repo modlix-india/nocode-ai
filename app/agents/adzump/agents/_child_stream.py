@@ -13,8 +13,13 @@ the parent-less base.
 from __future__ import annotations
 
 import logging
+import time
+from typing import TYPE_CHECKING
 
 from app.core.streaming import AgentEventStream
+
+if TYPE_CHECKING:
+    from app.core.session import BaseSession
 
 logger = logging.getLogger(__name__)
 
@@ -93,3 +98,28 @@ class ChildAgentStream(AgentEventStream):
 
     async def emit_error(self, message: str) -> None:
         logger.debug("%s stream error: %s", self.label, message[:_LOG_TRUNCATE])
+
+    # Composite — close a sub-agent's card with its run duration + token totals.
+    async def _emit_finished(
+        self,
+        *,
+        agent_id: str,
+        run_start: float,
+        session: "BaseSession",
+        status: str,
+        summary: str,
+    ) -> None:
+        """Emit agent_finished for a sub-agent run (forwarded to the parent).
+        Observability only — failures are swallowed."""
+        try:
+            usage = session.total_usage or {}
+            await self.emit_agent_finished(
+                agent_id=agent_id,
+                status=status,
+                duration_ms=int((time.monotonic() - run_start) * 1000),
+                tokens_in=int(usage.get("input_tokens") or 0),
+                tokens_out=int(usage.get("output_tokens") or 0),
+                summary=summary,
+            )
+        except Exception:
+            logger.debug("%s _emit_finished failed", self.label)

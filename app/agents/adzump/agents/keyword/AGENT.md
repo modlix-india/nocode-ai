@@ -33,7 +33,7 @@ works for *any* business without hardcoded category rules.
 sequenceDiagram
     actor User
     participant Main as Main Agent (adzump)
-    participant CC as create_campaign (tool)
+    participant CC as prepare_campaign_review (tool)
     participant CA as CampaignAgent
     participant KR as keyword_research (tool)
     participant Tax as offering taxonomy
@@ -41,7 +41,7 @@ sequenceDiagram
     participant Panel as Review Panel (craft)
 
     User->>Main: confirms summary → "Yes, proceed"
-    Main->>CC: create_campaign()  (no params)
+    Main->>CC: prepare_campaign_review()  (no params)
     CC->>CA: create(spec, product_data, craft_id = campaign_<sid>)
     CA->>KR: keyword_research(keyword_type="both")
     KR->>Tax: derive_offering_taxonomy(product)  (1 LLM call, cached)
@@ -63,15 +63,15 @@ sequenceDiagram
 
 | Layer | Responsibility | Lives in |
 |---|---|---|
-| **Main agent** (`adzump`) | Collects + confirms campaign details; calls `create_campaign` | `agents/adzump/agent.py` |
-| **`create_campaign` tool** | Spawns the `CampaignAgent`, persists its result for launch | `tools/create_campaign.py` |
+| **Main agent** (`adzump`) | Collects + confirms campaign details; calls `prepare_campaign_review` | `agents/adzump/agent.py` |
+| **`prepare_campaign_review` tool** | Spawns the `CampaignAgent`, persists its result for launch | `tools/prepare_campaign_review.py` |
 | **`CampaignAgent`** | Platform-agnostic shell — runs the chosen platform's creation tools (Google Search → `keyword_research`). New platforms/channels slot in here without touching keywords | `agents/campaign/agent.py` |
 | **`keyword_research` tool** | Derives the taxonomy, resolves geo/location, runs brand + generic **in parallel**, emits the craft | `agents/campaign/tools/google/keyword_research.py` |
 | **`KeywordResearchAgent`** | The agentic loop for ONE type (brand or generic) | `agents/keyword/agent.py` |
 
 ### Review & edit — the elicitation model
 
-When `create_campaign` shows the panel it returns `elicited=True, elicit_expects="multi"` — the
+When `prepare_campaign_review` shows the panel it returns `elicited=True, elicit_expects="multi"` — the
 same primitive the asset-upload step uses. The main-agent loop **pauses** there instead of
 barrelling to launch; `_pending_elicitation` records that a review is open.
 
@@ -84,7 +84,7 @@ chat history**. The agent isn't called per click.
 The agent is called **once**, when the user sends a real message (e.g. "launch"): the elicitation
 closes, `_resume_elicitation_section` steers it to acknowledge the edits and move to launch, and
 `launch_campaign` reads the already-edited `keyword_research` from the session. So edits are honored
-without the agent re-enumerating them. (See [`create_campaign.py`](../../tools/create_campaign.py)
+without the agent re-enumerating them. (See [`prepare_campaign_review.py`](../../tools/prepare_campaign_review.py)
 and `agent.py._resume_elicitation_section`.)
 
 ### Why keyword edits diverge from location edits (a deliberate choice)
@@ -234,12 +234,18 @@ correctly avoided**. It turned out to overlap almost entirely with the de-mangle
 
 Product analysis doesn't persist a category/sibling taxonomy, so we **derive one once
 per run** from the confirmed `product_data` (business_type, products/services, USPs,
-summary) via a single balanced-tier LLM call (cached by an offering fingerprint, token
-usage tracked, fail-soft). It yields:
+summary) via a single balanced-tier LLM call (cached by an offering fingerprint,
+fail-soft). It yields:
 
 - **`core_terms`** — what the business actually sells (anchor every seed here)
 - **`sibling_categories`** — adjacent same-industry things it does *not* sell (→ negatives)
 - **`is_location_specific`** — local/regional vs national/online (drives location anchoring)
+- **`sells_physical_products`** — a shippable retail/ecommerce product → adds **Amazon** product-intent autosuggest
+- **`includes_informational_funnel`** — buyers research via how-to/educational content → adds **YouTube** autosuggest
+
+The last two drive **`BusinessProfile.source_names()`** — which autosuggest surfaces `expand_keywords`
+queries per business (web-search default: Google/Bing/DuckDuckGo; plus Amazon/YouTube when the signal
+fits). Data-driven per run, so it works for any vertical without hardcoded rules.
 
 This is what makes the agent **business-agnostic** — no hardcoded verticals, no
 `business_scale` string-matching. An upsell-adjacent sibling (same buyer, adjacent
@@ -317,7 +323,7 @@ agents/keyword/
 agents/campaign/                     CampaignAgent shell + keyword_research orchestrator tool
 adapters/autosuggest.py              multi-source autosuggest
 adapters/google/keyword_planner.py   Keyword Planner (generateKeywordIdeas), chunked + breaker
-tools/create_campaign.py             main-agent entry that spawns the CampaignAgent
+tools/prepare_campaign_review.py             main-agent entry that spawns the CampaignAgent
 ```
 
 ## 8. Tuning knobs (`constants.py`)
@@ -334,92 +340,37 @@ tools/create_campaign.py             main-agent entry that spawns the CampaignAg
 
 ---
 
-## 9. LLM provider (and switching it)
+## 9. LLM provider
 
-The keyword agent runs on **OpenAI** today, set in two places:
+The agent's **tool-use loop** runs on **OpenAI** today (`PROVIDER = "openai"` in `agent.py`)
+through one abstraction — `app/services/llm_provider.py` → `get_llm_provider(name)`, an
+`LLMProvider` ABC with a uniform tool-calling + streaming interface, implemented by
+`AnthropicProvider`, `OpenAIProvider`, and `DeepSeekProvider`. The loop talks
+to the **interface, never a vendor SDK**, so it switches at config level: set `PROVIDER` to
+`"anthropic"` / `"deepseek"` and the `balanced` tier maps to each provider's model via config
+(`CLAUDE_SONNET`, etc.). The target must support tool/function calling.
 
-| Where | Constant | Used for |
-|---|---|---|
-| `agent.py` | `PROVIDER = "openai"` | the agent's tool-use loop |
-| `taxonomy.py` | `_PROVIDER = "openai"` | the standalone offering-taxonomy call |
+**The taxonomy step is the exception** — `taxonomy.py` makes a direct **AsyncOpenAI one-shot**
+call in JSON mode (the sanctioned pattern for a self-contained inference), so it is
+**OpenAI-only** and independent of `PROVIDER`.
 
-Both go through one abstraction — `app/services/llm_provider.py` → `get_llm_provider(name)`,
-an `LLMProvider` ABC with a uniform interface (`create_completion`,
-`create_completion_with_tools`, `stream_completion_with_tools`) implemented by
-`AnthropicProvider`, `OpenAIProvider`, and `DeepSeekProvider`. The agent code talks to the
-**interface, never a vendor SDK**.
-
-**Can we switch providers? Yes — and it's easy** (config-level, not a rewrite). Change the
-two constants to `"anthropic"` (or `"deepseek"`). No loop / tool / prompt code changes:
-tool-calling and streaming are normalised by the provider classes, and the `balanced`
-model tier maps to each provider's own model via config (`CLAUDE_SONNET`, etc.).
-
-**What to mind:**
-- **Keep the two constants in sync** — the taxonomy must use the same provider as the agent
-  (there's a note in `taxonomy.py` saying so). Drift = two vendors billed in one run.
-- The target provider must support **tool / function calling** (the loop) and **JSON output**
-  (taxonomy). Anthropic, OpenAI, and DeepSeek all do.
-- Provider-only features stay inside the provider (e.g. prompt caching is Anthropic-only) —
-  nothing for the agent to handle.
-
-**To make it a one-liner later:** hoist the provider to config/env and have `taxonomy.py`
-read the same source, so the two can't drift and a deploy can flip providers with no code
-change.
+**Billing for the one-shot.** A one-shot bypasses the loop, so it isn't auto-tracked. It's
+still billed **per-agent** via `record_oneshot_usage` (core `session.py`), which records to the
+currently-running agent's session with `record_token_usage` — the **same DB path the loop
+uses**. `BaseAgent.run` publishes that session through the `current_session` contextvar (next to
+`current_agent_id`), so no session is threaded through tool contexts. The taxonomy call is thus
+attributed to the agent that invoked it (`campaign`), not dropped or lumped onto the main agent.
 
 ---
 
-## 10. Appendix — the craft-panel ("craft id") issue
+## 10. Craft-panel focus (the two-craft rule)
 
-A **global** UI/panel issue (not keyword-specific) we found and fixed during this work.
+This flow uses two crafts — the setup craft (`adzump_<session>`) and the campaign
+keyword-review craft (`campaign_<session>`). To stop a trailing setup re-emit from
+stealing the panel once `prepare_campaign_review` has opened the review:
 
-### What a craft is
-The right-hand side panel is a **craft**, keyed by a `craft_id`. This flow uses **two**:
-the product/setup craft (`adzump_<session>`) and the campaign keyword-review craft
-(`campaign_<session>`).
-
-### What you saw, and what caused it
-After `create_campaign` showed the campaign panel, it got **replaced by the product
-panel ~2 s later**. Two things combined — a redundant backend re-emit, and a UI that
-surfaced *any* incoming craft:
-
-```mermaid
-sequenceDiagram
-    participant BE as Backend
-    participant UI as Craft Panel
-    Note over BE,UI: create_campaign finishes
-    BE->>UI: craft(campaign_<sid>)   [NEW id]
-    UI->>UI: first time seen → activate ✅  (keywords shown)
-    Note over BE: main agent end-of-turn hook (_on_loop_complete)
-    BE-->>UI: craft(adzump_<sid>)    [product re-emit]
-    rect rgb(255,235,235)
-    UI->>UI: OLD behavior → activate again ❌  (product steals focus)
-    end
-    rect rgb(235,245,235)
-    UI->>UI: NEW behavior → id already seen → update in place, keep focus ✅
-    end
-```
-
-Root mechanism: the UI called `setActiveCraftId` on **every** craft event, so the
-trailing product re-emit hijacked the panel. It would recur on any future multi-craft
-flow — hence a UI-level fix, not a one-off.
-
-### Current fix (shipped)
-1. **UI (root) — `nocode-ui/.../Prompt/LazyPrompt.tsx`:** a craft surfaces the panel
-   **only the first time its id is seen** (tracked in a `seenCraftIds` ref); later
-   updates/re-emits of a known craft update content **without** stealing focus. The
-   campaign craft opens and stays; the product re-emit no longer hijacks it. Generalizes
-   to every future stage.
-2. **Backend cleanup — `agents/adzump/agent.py` `_on_loop_complete`:** the end-of-turn
-   hook is now **stage-aware** — once `create_campaign` has begun (`campaign_craft_id`
-   is set), it stops re-emitting the setup craft. Removes the now-harmless wasted event
-   at the source. One guard.
-
-The UI fix is the permanent guarantee; the backend guard keeps the wire clean.
-
-### Future options (only if a concrete need appears)
-- **Backend "focus intent":** give crafts an explicit `focus`/stage flag so the backend
-  *declares* whether a craft should grab the panel, instead of the UI inferring from
-  novelty. More flexible, more plumbing — worth it only when a flow needs an *existing*
-  craft to deliberately re-grab focus.
-- **UI persistence:** persist crafts to session history so a hard reload re-hydrates the
-  campaign panel (today crafts are in-memory).
+- **UI** (`nocode-ui/.../Prompt/LazyPrompt.tsx`): a craft surfaces the panel only the
+  first time its id is seen (`seenCraftIds` ref); later re-emits of a known craft update
+  content in place without stealing focus. Generalizes to every multi-craft stage.
+- **Backend** (`agent.py._on_loop_complete`): once `prepare_campaign_review` has begun
+  (`campaign_craft_id` set), the end-of-turn hook stops re-emitting the setup craft.

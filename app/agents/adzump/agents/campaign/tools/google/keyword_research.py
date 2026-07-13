@@ -118,22 +118,18 @@ def _resolve_location(
     return primary, service_areas
 
 
-def _business_profile(product: dict) -> BusinessProfile:
-    # category hint = business_type; the agent derives the exact category + siblings.
-    # Source-selection flags stay default (web-search coverage) for v1 — Amazon/YouTube
-    # are conditional, future. brand_name = product_name.
-    siblings = (
-        product.get("category_siblings") or product.get("sibling_categories") or ()
-    )
-    if isinstance(siblings, str):
-        siblings = [s.strip() for s in siblings.split(",") if s.strip()]
+def _business_profile(product: dict, taxonomy: dict) -> BusinessProfile:
+    # category hint = business_type (the taxonomy refines it). The taxonomy also decides
+    # which autosuggest surfaces fit this business — Amazon for physical products, YouTube
+    # for an informational funnel — data-driven per run, no hardcoded verticals.
     return BusinessProfile(
         category=(
             product.get("business_type") or product.get("product_name") or ""
         ).strip(),
-        brand_name=(product.get("product_name") or "").strip(),
-        location=_location_text(product),
-        category_siblings=tuple(siblings),
+        sells_physical_products=bool(taxonomy.get("sells_physical_products", False)),
+        includes_informational_funnel=bool(
+            taxonomy.get("includes_informational_funnel", False)
+        ),
     )
 
 
@@ -212,23 +208,19 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
 
     # Offering taxonomy (core vs sibling + local-vs-national) — product analysis doesn't
     # persist one, so derive it from confirmed product_data; cached by offering fingerprint
-    # (re-derives only when the product changes), tokens tracked.
+    # (re-derives only when the product changes).
     tax_key = _taxonomy_key(product)
     cache = session_ctx.get("_offering_taxonomy") or {}
     if cache.get("key") == tax_key:
         taxonomy = cache["data"]
     else:
-        tax_obj, usage = await derive_offering_taxonomy(product)
-        taxonomy = tax_obj.model_dump()
+        taxonomy = (await derive_offering_taxonomy(product)).model_dump()
         session_ctx["_offering_taxonomy"] = {"key": tax_key, "data": taxonomy}
-        session = context.get("_session")
-        if session is not None and usage:
-            session.accumulate_usage(usage)
 
     loc_text, service_areas = _resolve_location(
         product, taxonomy.get("is_location_specific", True)
     )
-    profile = _business_profile(product)
+    profile = _business_profile(product, taxonomy)
     agent = get_keyword_research_agent()
     common = dict(
         ad_account={

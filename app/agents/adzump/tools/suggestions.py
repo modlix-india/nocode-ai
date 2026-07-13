@@ -17,6 +17,7 @@ import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.core.session import record_oneshot_usage
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -292,6 +293,15 @@ async def infer_suggestions(
             max_tokens=300,
             response_format={"type": "json_object"},
         )
+        # Bill this one-shot to the active agent's session (the loop can't see it).
+        if resp.usage is not None:
+            await record_oneshot_usage(
+                {
+                    "input_tokens": resp.usage.prompt_tokens,
+                    "output_tokens": resp.usage.completion_tokens,
+                },
+                "gpt-4o-mini",
+            )
         data = json.loads((resp.choices[0].message.content or "").strip())
     except Exception as e:
         logger.debug("infer_suggestions failed: %s: %s", type(e).__name__, str(e)[:200])

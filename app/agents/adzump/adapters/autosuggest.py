@@ -126,7 +126,10 @@ class BraveSuggestSource(SuggestionSource):
     the flat ``[query, [suggestions]]`` shape (``rich=true`` returns objects we don't
     want). Independent index → web-search coverage like DuckDuckGo; geo is IP-based
     (no verified country param, so none sent). Brave's *official* keyed+metered Suggest
-    API is the stable alternative if this one ever proves unreliable in production."""
+    API is the stable alternative if this one ever proves unreliable in production.
+
+    NOTE: registered in ``SOURCES`` but not yet auto-selected (no ``BusinessProfile``
+    signal maps to it) — kept ready for a future web-search-coverage rule."""
 
     name = "brave"
     _URL = "https://search.brave.com/api/suggest"
