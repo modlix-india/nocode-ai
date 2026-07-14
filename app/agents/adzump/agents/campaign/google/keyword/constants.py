@@ -64,8 +64,6 @@ SAFETY_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 # Extensions added per business profile on top of autosuggest's base default
 # (autosuggest.DEFAULT_SOURCE_NAMES). Names index the autosuggest.SOURCES registry.
-SOURCE_AMAZON = "amazon"
 SOURCE_YOUTUBE = "youtube"
 
-PRODUCT_SOURCE_NAMES = (SOURCE_AMAZON,)  # business sells physical products
 INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # funnel includes how-to/informational

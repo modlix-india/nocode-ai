@@ -13,7 +13,6 @@ Endpoints (response shapes verified 2026-06-22):
   YouTube     same endpoint, ds=yt                                              -> JSON [query, [suggestions]]
   DuckDuckGo  https://ac.duckduckgo.com/ac/?type=list                           -> JSON [query, [suggestions]]
   Bing        https://www.bing.com/osjson.aspx                                  -> JSON [query, [suggestions]]
-  Amazon      https://completion.amazon.com/search/complete                     -> JSON [_, [suggestions]]
   Brave       https://search.brave.com/api/suggest?rich=false                   -> JSON [query, [suggestions]]
 All unofficial. Brave also has an *official* keyed + metered Suggest API
 (api.search.brave.com) — not used here to keep every source keyless and free.
@@ -30,21 +29,21 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-_AMAZON_MARKETPLACE_US = "1"   # Amazon ``mkt`` code (country→mkt mapping is a TODO)
-
 # Autosuggest is a fast endpoint (~100-300ms); keep the per-call timeout tight so a
 # slow source can't drag the pipeline. A timed-out call is treated as "no results".
 _CALL_TIMEOUT_SECONDS = 3.0
 _CONNECT_TIMEOUT_SECONDS = 2.0
-_PER_CALL_TIMEOUT = httpx.Timeout(_CALL_TIMEOUT_SECONDS, connect=_CONNECT_TIMEOUT_SECONDS)
-_DEFAULT_MAX_PER_SEED = 10            # suggestions kept per seed per source
-_DEFAULT_CONCURRENCY = 10            # max in-flight autosuggest requests
-_LOG_ERROR_MAXLEN = 120             # truncation for error messages in logs
+_PER_CALL_TIMEOUT = httpx.Timeout(
+    _CALL_TIMEOUT_SECONDS, connect=_CONNECT_TIMEOUT_SECONDS
+)
+_DEFAULT_MAX_PER_SEED = 10  # suggestions kept per seed per source
+_DEFAULT_CONCURRENCY = 10  # max in-flight autosuggest requests
+_LOG_ERROR_MAXLEN = 120  # truncation for error messages in logs
 
 
 def _parse_suggest_array(data: object) -> list[str]:
     """Parse the ``[query, [suggestions], ...]`` shape Google, YouTube, DuckDuckGo,
-    and Amazon return."""
+    Bing, and Brave return."""
     if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list):
         return [s for s in data[1] if isinstance(s, str) and s.strip()]
     return []
@@ -137,29 +136,7 @@ class BraveSuggestSource(SuggestionSource):
     async def fetch(self, seed, *, hl, gl, client):
         resp = await client.get(
             self._URL,
-            params={"q": seed, "rich": "false"},   # rich=true → objects, not strings
-            timeout=_PER_CALL_TIMEOUT,
-        )
-        resp.raise_for_status()
-        return _parse_suggest_array(resp.json())
-
-
-class AmazonSuggestSource(SuggestionSource):
-    """Commercial/product-intent suggestions — selected only for ecommerce/product
-    businesses. ``mkt`` is the marketplace (US default; country→mkt mapping TODO)."""
-
-    name = "amazon"
-    _URL = "https://completion.amazon.com/search/complete"
-
-    async def fetch(self, seed, *, hl, gl, client):
-        resp = await client.get(
-            self._URL,
-            params={
-                "client": "amazon-search-ui",
-                "search-alias": "aps",
-                "mkt": _AMAZON_MARKETPLACE_US,
-                "q": seed,
-            },
+            params={"q": seed, "rich": "false"},  # rich=true → objects, not strings
             timeout=_PER_CALL_TIMEOUT,
         )
         resp.raise_for_status()
@@ -168,17 +145,16 @@ class AmazonSuggestSource(SuggestionSource):
 
 # Source instances. ``google_native`` (Google web) is primary for a Search campaign;
 # the rest are supplements the pipeline selects per BusinessProfile (Bing/DuckDuckGo/
-# Brave = web-search coverage; Amazon = product intent; YouTube = informational).
+# Brave = web-search coverage; YouTube = informational).
 GOOGLE = GoogleFamilySuggestSource(name="google", google_native=True)
 YOUTUBE = GoogleFamilySuggestSource(name="youtube", ds="yt")
 DUCKDUCKGO = DuckDuckGoSuggestSource()
 BING = BingSuggestSource()
 BRAVE = BraveSuggestSource()
-AMAZON = AmazonSuggestSource()
 
 # Name-keyed registry for the pipeline's data-driven, profile-based selection.
 SOURCES: dict[str, SuggestionSource] = {
-    s.name: s for s in (GOOGLE, YOUTUBE, DUCKDUCKGO, BING, BRAVE, AMAZON)
+    s.name: s for s in (GOOGLE, YOUTUBE, DUCKDUCKGO, BING, BRAVE)
 }
 # Base web-search default. Brave is opt-in per product type (overlaps DuckDuckGo).
 DEFAULT_SOURCES: list[SuggestionSource] = [GOOGLE, BING, DUCKDUCKGO]
@@ -195,7 +171,7 @@ async def fetch_suggestions(
     concurrency: int = _DEFAULT_CONCURRENCY,
     client: Optional[httpx.AsyncClient] = None,
 ) -> list[str]:
-    """Fan out ``seeds × sources`` concurrently and return de-duplicated suggestions
+    """Fan out ``seeds * sources`` concurrently and return de-duplicated suggestions
     with original order preserved.
 
     Never raises: a source/seed that fails is logged and skipped (fail-soft), so the
@@ -213,12 +189,16 @@ async def fetch_suggestions(
     async def _one(src: SuggestionSource, seed: str) -> tuple[str, list[str]]:
         async with sem:
             try:
-                hits = (await src.fetch(seed, hl=hl, gl=gl, client=client))[:max_per_seed]
+                hits = (await src.fetch(seed, hl=hl, gl=gl, client=client))[
+                    :max_per_seed
+                ]
                 return src.name, hits
             except Exception as e:  # fail-soft: one source/seed never breaks the run
                 logger.info(
                     "autosuggest: source=%s seed=%r skipped: %s",
-                    src.name, seed, str(e)[:_LOG_ERROR_MAXLEN],
+                    src.name,
+                    seed,
+                    str(e)[:_LOG_ERROR_MAXLEN],
                 )
                 return src.name, []
 
@@ -242,7 +222,9 @@ async def fetch_suggestions(
                 merged.append(kw.strip())
     logger.info(
         "autosuggest: %d seeds x %d sources -> per-source raw %s -> %d unique",
-        len(seeds), len(sources),
-        " ".join(f"{n}={c}" for n, c in per_source.items()) or "(none)", len(merged),
+        len(seeds),
+        len(sources),
+        " ".join(f"{n}={c}" for n, c in per_source.items()) or "(none)",
+        len(merged),
     )
     return merged

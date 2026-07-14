@@ -41,7 +41,6 @@ Return JSON exactly in this shape:
   "core_terms": ["the actual products/services they sell — terms a buyer would type"],
   "sibling_categories": ["adjacent categories in the SAME industry they do NOT sell"],
   "is_location_specific": true,
-  "sells_physical_products": false,
   "includes_informational_funnel": false
 }}
 
@@ -51,10 +50,6 @@ Rules:
   so they can be kept out of positives and used as negatives.
 - is_location_specific: true if the business serves specific geographic areas (local/regional — a shop,
   clinic, real-estate project, city service); false if it sells nationally or online with no served area.
-- sells_physical_products: true ONLY if the business sells a tangible, shippable product a shopper buys
-  on a retail/marketplace site (physical-goods ecommerce, D2C product brands). false for services,
-  software/SaaS, real estate, restaurants/hospitality, and local services with no shippable product
-  (eyewear brand -> true; no-code CRM -> false; real-estate project -> false; italian restaurant -> false).
 - includes_informational_funnel: true ONLY if buyers commonly research this offering through how-to /
   tutorial / comparison / educational content BEFORE buying (considered or learning-curve purchases).
   false for plain transactional or local intent with no research phase (a standing desk or a no-code
@@ -135,18 +130,16 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
             core_terms=list(data.get("core_terms") or []),
             sibling_categories=list(data.get("sibling_categories") or []),
             is_location_specific=bool(data.get("is_location_specific", True)),
-            sells_physical_products=bool(data.get("sells_physical_products", False)),
             includes_informational_funnel=bool(
                 data.get("includes_informational_funnel", False)
             ),
         )
         logger.info(
-            "offering_taxonomy: primary=%r core=%d siblings=%d local=%s product=%s informational=%s",
+            "offering_taxonomy: primary=%r core=%d siblings=%d local=%s informational=%s",
             taxonomy.primary_offering,
             len(taxonomy.core_terms),
             len(taxonomy.sibling_categories),
             taxonomy.is_location_specific,
-            taxonomy.sells_physical_products,
             taxonomy.includes_informational_funnel,
         )
         return taxonomy

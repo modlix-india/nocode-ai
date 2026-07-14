@@ -40,7 +40,7 @@ def _fake_openai(*, content=None, usage=None, raise_exc=None):
 _VALID_JSON = (
     '{"primary_offering": "eyewear", "core_terms": ["eyeglasses", "sunglasses"], '
     '"sibling_categories": ["contact lenses"], "is_location_specific": false, '
-    '"sells_physical_products": true, "includes_informational_funnel": false}'
+    '"includes_informational_funnel": false}'
 )
 
 
@@ -70,7 +70,7 @@ class TaxonomyFailSoftTests(unittest.TestCase):
         self.assertTrue(tax.complete)
         self.assertEqual(tax.primary_offering, "eyewear")
         self.assertIn("eyeglasses", tax.core_terms)
-        self.assertTrue(tax.sells_physical_products)
+        self.assertTrue(tax.includes_informational_funnel is False)
 
     def test_usage_present_does_not_crash_billing(self):
         # resp.usage populated + no active session -> record_oneshot_usage no-ops safely.

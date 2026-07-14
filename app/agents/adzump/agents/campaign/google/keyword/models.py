@@ -21,7 +21,6 @@ from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_LENGTH,
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
-    PRODUCT_SOURCE_NAMES,
 )
 
 
@@ -193,9 +192,6 @@ class OfferingTaxonomy(BaseModel):
     is_location_specific: bool = (
         True  # LLM-decided: serves specific areas (local/regional) vs national/online
     )
-    sells_physical_products: bool = (
-        False  # ships a tangible retail product → adds Amazon product-intent autosuggest
-    )
     includes_informational_funnel: bool = (
         False  # buyers research via how-to/educational content → adds YouTube autosuggest
     )
@@ -221,14 +217,14 @@ class BusinessProfile:
     """Category + the autosuggest-source signals for one run (both from the taxonomy step)."""
 
     category: str
-    sells_physical_products: bool = False  # → Amazon product-intent autosuggest
     includes_informational_funnel: bool = False  # → YouTube informational autosuggest
 
-    def source_names(self) -> list[str]:
-        """Autosuggest surfaces to query — data-driven, no per-vertical branches."""
+    def source_names(self, keyword_type: str = "generic") -> list[str]:
+        """Autosuggest surfaces to query for one keyword type. The default web-search
+        sources are always the primary set; YouTube is appended only when the type is
+        GENERIC and the business has an informational funnel (it is off-intent for brand
+        keywords, so it is never added there)."""
         names = list(DEFAULT_SOURCE_NAMES)
-        if self.sells_physical_products:
-            names += [n for n in PRODUCT_SOURCE_NAMES if n not in names]
-        if self.includes_informational_funnel:
+        if keyword_type == "generic" and self.includes_informational_funnel:
             names += [n for n in INFORMATIONAL_SOURCE_NAMES if n not in names]
         return names

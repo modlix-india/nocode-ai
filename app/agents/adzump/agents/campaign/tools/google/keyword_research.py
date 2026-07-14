@@ -126,13 +126,12 @@ def _resolve_location(
 
 def _business_profile(product: dict, taxonomy: dict) -> BusinessProfile:
     # category hint = business_type (the taxonomy refines it). The taxonomy also decides
-    # which autosuggest surfaces fit this business — Amazon for physical products, YouTube
-    # for an informational funnel — data-driven per run, no hardcoded verticals.
+    # which autosuggest surfaces fit this business — YouTube for an informational funnel —
+    # data-driven per run, no hardcoded verticals.
     return BusinessProfile(
         category=(
             product.get("business_type") or product.get("product_name") or ""
         ).strip(),
-        sells_physical_products=bool(taxonomy.get("sells_physical_products", False)),
         includes_informational_funnel=bool(
             taxonomy.get("includes_informational_funnel", False)
         ),
@@ -246,7 +245,6 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
         category=taxonomy.get("primary_offering") or profile.category,
         core_terms=taxonomy.get("core_terms") or [],
         siblings=taxonomy.get("sibling_categories") or [],
-        sources=profile.source_names(),
         location=loc_text,
         service_areas=service_areas,
         business_url=resolve_url(session_ctx) or "",
@@ -254,10 +252,14 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     )
 
     # Brand & generic independent — one failing/timing-out still returns the other.
+    # Sources are per keyword_type: YouTube joins only the generic run (see source_names).
     results = await asyncio.gather(
         *(
             asyncio.wait_for(
-                agent.research(keyword_type=t, **common), _RESEARCH_TIMEOUT_SECONDS
+                agent.research(
+                    keyword_type=t, sources=profile.source_names(t), **common
+                ),
+                _RESEARCH_TIMEOUT_SECONDS,
             )
             for t in types
         ),

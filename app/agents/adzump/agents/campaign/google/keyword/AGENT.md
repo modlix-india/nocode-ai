@@ -241,11 +241,10 @@ fail-soft). It yields:
 - **`core_terms`** — what the business actually sells (anchor every seed here)
 - **`sibling_categories`** — adjacent same-industry things it does *not* sell (→ negatives)
 - **`is_location_specific`** — local/regional vs national/online (drives location anchoring)
-- **`sells_physical_products`** — a shippable retail/ecommerce product → adds **Amazon** product-intent autosuggest
 - **`includes_informational_funnel`** — buyers research via how-to/educational content → adds **YouTube** autosuggest
 
-The last two drive **`BusinessProfile.source_names()`** — which autosuggest surfaces `expand_keywords`
-queries per business (web-search default: Google/Bing/DuckDuckGo; plus Amazon/YouTube when the signal
+The last signal drives **`BusinessProfile.source_names()`** — which autosuggest surfaces `expand_keywords`
+queries per business (web-search default: Google/Bing/DuckDuckGo; plus YouTube when the funnel
 fits). Data-driven per run, so it works for any vertical without hardcoded rules.
 
 This is what makes the agent **business-agnostic** — no hardcoded verticals, no
