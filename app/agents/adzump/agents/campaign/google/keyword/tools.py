@@ -336,13 +336,18 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
 
     kept: list[dict] = []
     seen: set[str] = set()
+    rejected = 0  # items actually filtered (overlap, safety, duplicate, invalid)
+    examined = 0  # total items the loop looked at (kept + rejected + non-dict)
     for item in items:
+        examined += 1
         if not isinstance(item, dict):
             continue
         kw = normalize(item.get("keyword", ""))
         if not kw or kw in seen or kw in positive_kws:
+            rejected += 1
             continue
         if any(p.search(kw) for p in constants.SAFETY_PATTERNS):
+            rejected += 1
             continue
         kw_tokens = _tokens(kw)
         if (
@@ -350,6 +355,7 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
             and len(kw_tokens & positive_tokens) / len(kw_tokens)
             >= constants.NEGATIVE_POSITIVE_TOKEN_OVERLAP_MAX
         ):
+            rejected += 1
             continue  # too close to a positive — would block real traffic
         try:
             # Model coerces match_type and enforces the length limit; volume filled below.
@@ -361,6 +367,7 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
             )
         except ValidationError as exc:
             logger.debug("skip negative %r: %s", kw, exc)
+            rejected += 1
             continue
         seen.add(kw)
         kept.append(negative.model_dump(mode="json"))
@@ -375,19 +382,24 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
 
     await _attach_negative_volumes(context, kept)
     state["kw_negatives"] = kept
-    dropped = len(items) - len(kept)
+    not_reviewed = len(items) - examined
     logger.info(
-        "kw_submit_negative type=%s submitted=%d kept=%d dropped=%d",
+        "kw_submit_negative type=%s submitted=%d kept=%d rejected=%d not_reviewed=%d",
         state.get("kw_type"),
         len(items),
         len(kept),
-        dropped,
+        rejected,
+        not_reviewed,
     )
-    note = (
-        f" ({dropped} dropped: overlap with positives, unsafe, or duplicate)"
-        if dropped > 0
-        else ""
-    )
+    # Build an honest summary so the model knows exactly what happened.
+    parts: list[str] = []
+    if rejected:
+        parts.append(f"{rejected} dropped: overlap with positives, unsafe, or duplicate")
+    if not_reviewed > 0:
+        parts.append(
+            f"{not_reviewed} not reviewed (cap of {constants.MAX_NEGATIVE_COUNT} reached)"
+        )
+    note = f" ({'; '.join(parts)})" if parts else ""
     return ToolResult(
         success=True,
         summary=f"Recorded {len(kept)} negative keywords{note}. Keyword research complete.",

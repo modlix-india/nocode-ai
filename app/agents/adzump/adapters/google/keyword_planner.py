@@ -192,6 +192,11 @@ async def _post_with_retry(
                 # deepens it. Open the breaker so the rest of the burst fails fast.
                 _breaker_trip("rate limited (429)")
                 raise
+            if 400 <= exc.status_code < 500 and exc.status_code not in (408, 429):
+                # Client error (bad credentials, wrong customer-id, etc.) —
+                # not a service-health problem, so don't count toward the
+                # breaker.  Just surface it immediately.
+                raise
             if attempt >= _MAX_RETRIES:
                 _breaker_record(ok=False)
                 raise
