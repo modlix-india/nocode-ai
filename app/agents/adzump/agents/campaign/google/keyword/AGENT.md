@@ -120,6 +120,28 @@ one. Neither is wrong for its own edit profile, but if the team wants a single p
 the product, that's a worthwhile conversation — and the edit-frequency difference above is the
 ground to have it on.
 
+### Persistence & the volume-freshness tradeoff
+
+`keyword_research` lives in `session_ctx` — persisted **with the session** (survives reload), not in
+the durable per-business store (`AISuggestedData`, which holds product / asset / location / competitive
+data). This is deliberate, because of what the volume number is. `avgMonthlySearches` (from the
+Planner's `generateKeywordHistoricalMetrics`) is, per Google's docs, the **average monthly searches
+over the trailing 12 months, recomputed monthly** — the window rolls forward each month
+(`monthly_search_volumes` carries the 12 per-month points), reported for exact-match + close variants
+regardless of the campaign's match type, and rounded. A stored snapshot therefore drifts
+month-over-month, so durably caching it would surface stale numbers.
+
+- **Volumes** — never durably cached; fresh on each research run (idempotent within a session via
+  `_research_key`).
+- **The curated set** (which positives / negatives, match types, intent / reason) is the durable
+  *decision*, volume-free. If pre-launch cross-session resume is ever required, store the **set** and
+  **re-fetch volumes on load** — split the durable decision from the perishable metric.
+- **At launch** (future) — snapshot the as-launched set (+ volumes at that time) as an audit /
+  optimization baseline; Google Ads becomes the live source of truth for the campaign's keywords after.
+
+Sources: [Planner historical metrics](https://developers.google.com/google-ads/api/docs/keyword-planning/generate-historical-metrics)
+· [About Keyword Planner metrics](https://support.google.com/google-ads/answer/3022575).
+
 ---
 
 ## 3. Inside the keyword agent (one run = brand OR generic)
