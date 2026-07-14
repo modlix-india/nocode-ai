@@ -351,12 +351,14 @@ class ReviewPublishPrescriptionTests(unittest.TestCase):
         review = next((m for m in missing if "review & publish" in m), None)
         self.assertIsNotNone(review, f"review&publish should appear; got: {missing}")
         # F20: the live leak was the model echoing this prescription's copyable
-        # present_options(...)/launch_campaign() syntax into the launch bubble.
+        # present_options(...) / tool-call syntax into the reply bubble. The confirm
+        # step now routes to keyword research (prepare_campaign_review); launch is a
+        # separate later step, so this message names prepare_campaign_review, not launch.
         self.assertNotIn("present_options(", review)
-        self.assertNotIn("launch_campaign(", review)
+        self.assertNotIn("prepare_campaign_review(", review)
         # but it must still instruct CALLING those tools (intent prose form)
         self.assertIn("present_options tool", review)
-        self.assertIn("launch_campaign tool", review)
+        self.assertIn("prepare_campaign_review tool", review)
 
 
 # ── F23/F27 · value-only advance chip for prose asks ────────────────────────
