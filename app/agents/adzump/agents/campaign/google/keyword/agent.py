@@ -27,15 +27,15 @@ from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream, current_agent_id
 
 from app.agents.adzump.agents._child_stream import ChildAgentStream
-from app.agents.adzump.agents.keyword import constants
-from app.agents.adzump.agents.keyword.models import (
+from app.agents.adzump.agents.campaign.google.keyword import constants
+from app.agents.adzump.agents.campaign.google.keyword.models import (
     KeywordSet,
     KeywordType,
     NegativeKeyword,
     OptimizedKeyword,
 )
-from app.agents.adzump.agents.keyword.context import BASE, Phase, phase_prompt
-from app.agents.adzump.agents.keyword.tools import ALL_TOOLS
+from app.agents.adzump.agents.campaign.google.keyword.context import BASE, Phase, phase_prompt
+from app.agents.adzump.agents.campaign.google.keyword.tools import ALL_TOOLS
 
 logger = logging.getLogger(__name__)
 

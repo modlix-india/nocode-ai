@@ -18,11 +18,13 @@ from app.config import settings
 from app.core.session import record_oneshot_usage
 
 from app.agents.adzump._shared import extract_json
-from app.agents.adzump.agents.keyword.models import OfferingTaxonomy
+from app.agents.adzump.agents.campaign.google.keyword.models import OfferingTaxonomy
 
 logger = logging.getLogger(__name__)
 
-_MAX_TOKENS = 700
+# Headroom for the richest inputs (up to 10 core + 10 sibling terms + fields); a truncated
+# JSON object would be unparseable and silently drop to the minimal fallback.
+_MAX_TOKENS = 1200
 
 _SYSTEM = "You are a paid-search strategist. Output strict JSON only — no markdown, no commentary."
 
@@ -109,7 +111,8 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
             max_tokens=_MAX_TOKENS,
             response_format={"type": "json_object"},
         )
-        # Bill this one-shot to the active agent's session (the loop can't see it).
+        # Bill this one-shot to the active agent's session (the loop can't see it);
+        # `step` gives it its own line in per-agent cost breakdowns.
         if resp.usage is not None:
             await record_oneshot_usage(
                 {
@@ -117,13 +120,14 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
                     "output_tokens": resp.usage.completion_tokens,
                 },
                 settings.OPENAI_MODEL_BALANCED,
+                step="offering_taxonomy",
             )
         # extract_json tolerates a ```json fence and returns None (never raises) on
         # unparseable output; return the fallback so core_terms stays non-empty.
         data = extract_json(resp.choices[0].message.content or "")
         if not data:
             logger.warning("offering_taxonomy: no parseable JSON (fail-soft)")
-            return fallback
+            return fallback.model_copy(update={"complete": False})
         taxonomy = OfferingTaxonomy(
             primary_offering=str(
                 data.get("primary_offering") or fallback.primary_offering
@@ -150,4 +154,4 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
         logger.warning(
             "offering_taxonomy derivation failed (fail-soft): %s", str(exc)[:200]
         )
-        return fallback
+        return fallback.model_copy(update={"complete": False})

@@ -28,7 +28,7 @@ from app.agents.adzump.adapters.google import keyword_planner
 from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
     update_keywords,
 )
-from app.agents.adzump.agents.keyword.models import normalize
+from app.agents.adzump.agents.campaign.google.keyword.models import normalize
 
 logger = logging.getLogger(__name__)
 

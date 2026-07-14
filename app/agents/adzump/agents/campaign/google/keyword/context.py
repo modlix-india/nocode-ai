@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from app.agents.adzump.agents.keyword.models import KeywordType
+from app.agents.adzump.agents.campaign.google.keyword.models import KeywordType
 
 
 BASE = """\

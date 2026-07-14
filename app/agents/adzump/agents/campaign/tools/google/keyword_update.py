@@ -15,18 +15,17 @@ these actions to it lives in campaign/api.py.
 from __future__ import annotations
 
 import difflib
-import json as _json
 import logging
 
 from app.core.tools.base import ToolResult
 
 from app.agents.adzump.agents.campaign.craft import emit_section_update, keyword_review_block
-from app.agents.adzump.agents.keyword.constants import (
+from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_LENGTH,
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
 )
-from app.agents.adzump.agents.keyword.models import normalize as _normalize
+from app.agents.adzump.agents.campaign.google.keyword.models import normalize as _normalize
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +54,15 @@ def _validate_keyword(kw: str) -> str | None:
 
 def _coerce_match_type(raw: object, section: str, fallback: str = "PHRASE") -> str:
     # Positives are EXACT/PHRASE; negatives are PHRASE/BROAD (mirrors the keyword models).
-    mt = str(raw or "").upper()
+    # The fallback is validated too: an edit that omits match_type passes the row's stored
+    # value here, which may be out-of-section (e.g. a legacy EXACT negative) — coerce it
+    # rather than persist it. PHRASE is valid for both sections, so it's the safe default.
     allowed = _NEGATIVE_MATCH_TYPES if section == "negatives" else _POSITIVE_MATCH_TYPES
-    return mt if mt in allowed else fallback
+    mt = str(raw or "").upper()
+    if mt in allowed:
+        return mt
+    fb = str(fallback or "").upper()
+    return fb if fb in allowed else "PHRASE"
 
 
 def _tokens(text: str) -> frozenset[str]:

@@ -27,8 +27,8 @@ from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.adapters import autosuggest
 from app.agents.adzump.adapters.google import keyword_planner
 
-from app.agents.adzump.agents.keyword import constants
-from app.agents.adzump.agents.keyword.models import (
+from app.agents.adzump.agents.campaign.google.keyword import constants
+from app.agents.adzump.agents.campaign.google.keyword.models import (
     NegativeKeyword,
     OptimizedKeyword,
     normalize,

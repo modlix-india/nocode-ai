@@ -21,12 +21,12 @@ from app.agents.adzump.platform import to_enum_value as platform_enum_value
 from app.agents.adzump.services.business_storage import resolve_url
 
 from app.agents.adzump.agents.campaign.craft import emit_campaign_craft
-from app.agents.adzump.agents.keyword.agent import get_keyword_research_agent
-from app.agents.adzump.agents.keyword.models import (
+from app.agents.adzump.agents.campaign.google.keyword.agent import get_keyword_research_agent
+from app.agents.adzump.agents.campaign.google.keyword.models import (
     BusinessProfile,
     KeywordResearchResult,
 )
-from app.agents.adzump.agents.keyword.taxonomy import derive_offering_taxonomy
+from app.agents.adzump.agents.campaign.google.keyword.taxonomy import derive_offering_taxonomy
 from app.agents.adzump.agents.location.targeting_run import (
     resolve_coordinates,
     resolve_country_geo_constant,
@@ -45,7 +45,13 @@ async def _resolve_geo(session_ctx: dict, context: dict) -> dict:
     """Country-level geo for keyword research, from the confirmed Place the location
     agent populates (city volumes read too low to show a user)."""
     product = session_ctx.get("product_data") or {}
-    place = product.setdefault("place", {})
+    # place can round-trip from persisted JSON as an explicit null, so a setdefault would
+    # hand back None (key present) and the .get below would crash — normalise to a dict,
+    # kept on product so the resolve chain's writes below persist for reuse.
+    place = product.get("place")
+    if not isinstance(place, dict):
+        place = {}
+        product["place"] = place
     geo_const = (place.get("country_geo_constant") or "").strip()
 
     # Location agent resolves this best-effort; if it didn't run, reuse its own chain.
@@ -214,8 +220,14 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     if cache.get("key") == tax_key:
         taxonomy = cache["data"]
     else:
-        taxonomy = (await derive_offering_taxonomy(product)).model_dump()
-        session_ctx["_offering_taxonomy"] = {"key": tax_key, "data": taxonomy}
+        derived = await derive_offering_taxonomy(product)
+        taxonomy = derived.model_dump()
+        # `complete` is False only for a transient fail-soft fallback — don't cache that
+        # (it would poison the session for this product); a real derivation is cached so
+        # it re-derives only when the offering changes.
+        cacheable = taxonomy.pop("complete", True)
+        if cacheable:
+            session_ctx["_offering_taxonomy"] = {"key": tax_key, "data": taxonomy}
 
     loc_text, service_areas = _resolve_location(
         product, taxonomy.get("is_location_specific", True)

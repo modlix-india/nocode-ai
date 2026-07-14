@@ -282,6 +282,7 @@ class BaseSession:
         request_id: str,
         model: str,
         provider_name: str | None = None,
+        agent_type: str | None = None,
     ) -> None:
         """Record token usage for a single LLM call.
 
@@ -291,6 +292,10 @@ class BaseSession:
             model: Model name used for this call.
             provider_name: LLM provider name (e.g. "anthropic", "deepseek").
                 Falls back to settings.LLM_PROVIDER if not provided.
+            agent_type: Override for the recorded agent label. Defaults to this
+                session's agent_name; a one-shot sub-step passes a distinct value
+                (e.g. "campaign:offering_taxonomy") so it lands as its own line in
+                per-agent breakdowns without changing the session/billing identity.
 
         Best-effort — failures are logged but don't stop the agent.
         """
@@ -308,7 +313,7 @@ class BaseSession:
                 client_code=self.auth.client_code,
                 client_id=self.auth.client_id,
                 user_id=self.auth.user_id,
-                agent_type=self.agent_name,
+                agent_type=agent_type or self.agent_name,
                 model=model,
                 llm_provider=provider_name or settings.LLM_PROVIDER,
                 input_tokens=usage.get("input_tokens", 0),
@@ -564,13 +569,24 @@ current_session: ContextVar[Optional["BaseSession"]] = ContextVar(
 
 
 async def record_oneshot_usage(
-    usage: dict[str, int], model: str, provider: str = "openai"
+    usage: dict[str, int], model: str, provider: str = "openai", step: str | None = None
 ) -> None:
     """Bill a standalone one-shot LLM call to the active agent's session — the SAME
     path the loop uses (``accumulate_usage`` + ``record_token_usage``), so it lands as
-    a normal per-agent row. No-op when no session is active; never raises."""
+    a normal per-agent row. No-op when no session is active; never raises.
+
+    ``step`` tags the recorded row with a distinct agent label ("<agent>:<step>") so the
+    one-shot's cost shows as its own line in per-agent breakdowns. The session_id and the
+    client/user billing identity are unchanged, so the total and the campaign-cost rollup
+    (summed by session) still include it."""
     session = current_session.get()
     if session is None:
         return
-    session.accumulate_usage(usage)
-    await session.record_token_usage(usage, str(uuid.uuid4()), model, provider)
+    try:
+        session.accumulate_usage(usage)
+        agent_type = f"{session.agent_name}:{step}" if step else None
+        await session.record_token_usage(
+            usage, str(uuid.uuid4()), model, provider, agent_type=agent_type
+        )
+    except Exception:  # billing must never break the one-shot call it wraps
+        logger.warning("record_oneshot_usage failed (ignored)", exc_info=True)

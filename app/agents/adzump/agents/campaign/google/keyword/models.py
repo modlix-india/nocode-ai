@@ -15,7 +15,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from app.agents.adzump.adapters.autosuggest import DEFAULT_SOURCE_NAMES
-from app.agents.adzump.agents.keyword.constants import (
+from app.agents.adzump.agents.campaign.google.keyword.constants import (
     COMMERCIAL_VALUE_COMPETITION_LEVELS,
     INFORMATIONAL_SOURCE_NAMES,
     KEYWORD_MAX_LENGTH,
@@ -198,6 +198,9 @@ class OfferingTaxonomy(BaseModel):
     )
     includes_informational_funnel: bool = (
         False  # buyers research via how-to/educational content → adds YouTube autosuggest
+    )
+    complete: bool = (
+        True  # False = transient fail-soft fallback (the caller must not cache it)
     )
 
     @field_validator("core_terms", "sibling_categories")

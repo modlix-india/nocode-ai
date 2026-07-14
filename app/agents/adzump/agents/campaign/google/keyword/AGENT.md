@@ -67,7 +67,7 @@ sequenceDiagram
 | **`prepare_campaign_review` tool** | Spawns the `CampaignAgent`, persists its result for launch | `tools/prepare_campaign_review.py` |
 | **`CampaignAgent`** | Platform-agnostic shell — runs the chosen platform's creation tools (Google Search → `keyword_research`). New platforms/channels slot in here without touching keywords | `agents/campaign/agent.py` |
 | **`keyword_research` tool** | Derives the taxonomy, resolves geo/location, runs brand + generic **in parallel**, emits the craft | `agents/campaign/tools/google/keyword_research.py` |
-| **`KeywordResearchAgent`** | The agentic loop for ONE type (brand or generic) | `agents/keyword/agent.py` |
+| **`KeywordResearchAgent`** | The agentic loop for ONE type (brand or generic) | `agents/campaign/google/keyword/agent.py` |
 
 ### Review & edit — the elicitation model
 
@@ -76,15 +76,16 @@ same primitive the asset-upload step uses. The main-agent loop **pauses** there 
 barrelling to launch; `_pending_elicitation` records that a review is open.
 
 Panel edits (`add` / `edit` / `delete`) post to the chat endpoint, which hands them to a
-**separate fast path** ([`router.py`](../../router.py) → `stream_keyword_widget` in
-[`keyword_update.py`](../campaign/tools/google/keyword_update.py)) that mutates
+**separate fast path** ([`router.py`](../../../../router.py) → `stream_keyword_widget` in
+[`api.py`](../../api.py), which calls `update_keywords` in
+[`keyword_update.py`](../../tools/google/keyword_update.py)) that mutates
 `session_ctx["keyword_research"]` and re-emits the panel — **no LLM turn, nothing written to
 chat history**. The agent isn't called per click.
 
 The agent is called **once**, when the user sends a real message (e.g. "launch"): the elicitation
 closes, `_resume_elicitation_section` steers it to acknowledge the edits and move to launch, and
 `launch_campaign` reads the already-edited `keyword_research` from the session. So edits are honored
-without the agent re-enumerating them. (See [`prepare_campaign_review.py`](../../tools/prepare_campaign_review.py)
+without the agent re-enumerating them. (See [`prepare_campaign_review.py`](../../../../tools/prepare_campaign_review.py)
 and `agent.py._resume_elicitation_section`.)
 
 ### Why keyword edits diverge from location edits (a deliberate choice)
@@ -307,7 +308,7 @@ keyword_research done type=generic positives=9 negatives=14
 ## 7. File map
 
 ```
-agents/keyword/
+agents/campaign/google/keyword/
 ├── agent.py            KeywordResearchAgent — the ReAct loop + per-turn phase injection
 ├── tools.py            the 5 tools + deterministic gates (overlap, membership, dedup)
 ├── taxonomy.py         derive_offering_taxonomy — the business-agnostic context layer
@@ -320,7 +321,7 @@ agents/keyword/
 agents/campaign/                     CampaignAgent shell + keyword_research orchestrator tool
 adapters/autosuggest.py              multi-source autosuggest
 adapters/google/keyword_planner.py   Keyword Planner (generateKeywordIdeas), chunked + breaker
-tools/prepare_campaign_review.py             main-agent entry that spawns the CampaignAgent
+tools/prepare_campaign_review.py     main-agent entry that spawns the CampaignAgent
 ```
 
 ## 8. Tuning knobs (`constants.py`)
