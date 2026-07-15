@@ -25,7 +25,7 @@ from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
 )
-from app.agents.adzump.agents.campaign.google.keyword.funnels import get_funnel
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.models import normalize as _normalize
 
 logger = logging.getLogger(__name__)
@@ -83,27 +83,27 @@ def _is_brandish(token: str, brand_tokens: frozenset[str]) -> bool:
 def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) -> str | None:
     """Return an error if the keyword clearly belongs in a different ad group.
 
-    Brand affinity is the funnel's own declared rule, so a new funnel states its stance
+    Brand affinity is the theme's own declared rule, so a new theme states its stance
     (requires_brand_token) instead of being added to a branch here.
     """
     kw_tokens = _tokens(keyword)
     if not kw_tokens:
         return None
 
-    funnel = get_funnel(keyword_type)
+    theme = get_theme(keyword_type)
     product_name = str((session_ctx.get("product_data") or {}).get("product_name") or "")
-    ad_groups = (session_ctx.get("keyword_research") or {}).get("funnels") or {}
+    themes = (session_ctx.get("keyword_research") or {}).get("themes") or {}
     brand_tokens = _tokens(product_name)
 
     def _positives_where(requires_brand: bool) -> list[dict]:
         return [
             row
-            for fid, kset in ad_groups.items()
-            if fid != keyword_type and get_funnel(fid).requires_brand_token is requires_brand
+            for fid, kset in themes.items()
+            if fid != keyword_type and get_theme(fid).requires_brand_token is requires_brand
             for row in (kset.get("positives") or [])
         ]
 
-    if funnel.requires_brand_token:
+    if theme.requires_brand_token:
         if product_name:
             # Fuzzy match so deliberate brand misspellings (a real brand keyword) still pass.
             if not any(_is_brandish(t, brand_tokens) for t in kw_tokens):
@@ -152,29 +152,29 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
     keyword_type = str(params.get("keyword_type", "")).lower()
     section = str(params.get("section", "")).lower()
 
-    ad_groups: dict[str, dict] = dump.get("funnels") or {}
+    themes: dict[str, dict] = dump.get("themes") or {}
 
     if action not in _VALID_ACTIONS:
         return ToolResult(success=False, error=f"Invalid action '{action}'. Must be: add, delete, or edit.")
-    if keyword_type not in ad_groups:
+    if keyword_type not in themes:
         return ToolResult(
             success=False,
-            error=f"No '{keyword_type}' ad group in this campaign. Built: {', '.join(sorted(ad_groups)) or 'none'}.",
+            error=f"No '{keyword_type}' ad group in this campaign. Built: {', '.join(sorted(themes)) or 'none'}.",
         )
     if section not in _VALID_SECTIONS:
         return ToolResult(success=False, error=f"Invalid section '{section}'. Must be positives or negatives.")
 
-    kset = ad_groups[keyword_type]
+    kset = themes[keyword_type]
 
     rows: list[dict] = list(kset.get(section) or [])
     opposite = "negatives" if section == "positives" else "positives"
     opposite_rows: list[dict] = list(kset.get(opposite) or [])
 
     # Positives-only, across every OTHER ad group: a keyword may legitimately be a positive
-    # in one funnel and a negative in another (standard Google Ads isolation pattern).
+    # in one theme and a negative in another (standard Google Ads isolation pattern).
     cross_type_rows: list[dict] = [
         row
-        for other_key, other_kset in ad_groups.items()
+        for other_key, other_kset in themes.items()
         if other_key != keyword_type
         for row in (other_kset.get("positives") or [])
     ]
@@ -261,8 +261,8 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
 
     # Persist mutations back into session state.
     kset[section] = rows
-    ad_groups[keyword_type] = kset
-    dump["funnels"] = ad_groups
+    themes[keyword_type] = kset
+    dump["themes"] = themes
     session_ctx["keyword_research"] = dump
 
     logger.info(

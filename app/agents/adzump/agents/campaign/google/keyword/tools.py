@@ -28,7 +28,7 @@ from app.agents.adzump.adapters import autosuggest
 from app.agents.adzump.adapters.google import keyword_planner
 
 from app.agents.adzump.agents.campaign.google.keyword import constants
-from app.agents.adzump.agents.campaign.google.keyword.funnels import get_funnel
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     NegativeKeyword,
     OptimizedKeyword,
@@ -224,9 +224,9 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             )
         recovered = [r for r in recovered if r.get("volume", 0) > 0]
 
-    # Demand gate — the funnel's own policy, the same one its select guidance states to
+    # Demand gate — the theme's own policy, the same one its select guidance states to
     # the model (generic: "drop 0-volume terms"; brand: "own these even at zero volume").
-    if not get_funnel(state["kw_type"]).keep_zero_volume:
+    if not get_theme(state["kw_type"]).keep_zero_volume:
         ideas = [i for i in ideas if i.get("volume", 0) > 0]
     scored = [*ideas, *recovered]
     if not scored:
@@ -364,7 +364,7 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
                 keyword=kw,
                 reason=str(item.get("reason", "")).strip(),
                 match_type=item.get("match_type"),
-                funnel=state["kw_type"],
+                theme=state["kw_type"],
             )
         except ValidationError as exc:
             logger.debug("skip negative %r: %s", kw, exc)

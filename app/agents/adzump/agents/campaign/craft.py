@@ -48,9 +48,9 @@ def _spec_blocks(spec: dict) -> list[dict]:
 def keyword_review_block(dump: dict) -> dict:
     """Exported so update handlers can re-emit only this block (keyed upsert, no panel flash)."""
     tabs: list[dict] = []
-    # One tab per generated funnel, in generation order. Each set carries its own label,
-    # so a new funnel needs no change here.
-    for key, kset in (dump.get("funnels") or {}).items():
+    # One tab per generated theme, in generation order. Each set carries its own label,
+    # so a new theme needs no change here.
+    for key, kset in (dump.get("themes") or {}).items():
         if not kset:
             continue
         label = kset.get("label") or key.replace("_", " ").title()

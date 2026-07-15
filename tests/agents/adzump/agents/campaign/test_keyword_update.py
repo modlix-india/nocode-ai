@@ -23,23 +23,23 @@ def _row(keyword: str, match_type: str = "PHRASE", **extra) -> dict:
     return {"keyword": keyword, "volume": 0, "match_type": match_type, **extra}
 
 
-def _funnel(fid: str, label: str, **sections) -> dict:
-    return {"funnel": fid, "label": label, "positives": [], "negatives": [], **sections}
+def _theme(tid: str, label: str, **sections) -> dict:
+    return {"theme": tid, "label": label, "positives": [], "negatives": [], **sections}
 
 
 def _dump(**overrides) -> dict:
-    """A keyword_research dump: one ad group per funnel, overridable per funnel id."""
-    funnels = {
-        "brand": _funnel("brand", "Brand"),
-        "generic": _funnel("generic", "Generic"),
+    """A keyword_research dump: one theme's ad group per id, overridable per theme."""
+    themes = {
+        "brand": _theme("brand", "Brand"),
+        "generic": _theme("generic", "Generic"),
     }
-    for fid, sections in overrides.items():
-        funnels[fid].update(sections)
-    return {"funnels": funnels, "meta": {}}
+    for tid, sections in overrides.items():
+        themes[tid].update(sections)
+    return {"themes": themes, "meta": {}}
 
 
-def _rows(dump: dict, funnel: str, section: str) -> list[dict]:
-    return dump["funnels"][funnel][section]
+def _rows(dump: dict, theme: str, section: str) -> list[dict]:
+    return dump["themes"][theme][section]
 
 
 def _ctx(dump: dict, product_name: str = "") -> dict:
@@ -124,11 +124,11 @@ class AddTests(unittest.TestCase):
         self.assertFalse(res.success)
         self.assertIn("positive in two ad groups", res.error)
 
-    def test_cross_funnel_scan_covers_every_other_ad_group(self):
+    def test_cross_ad_group_scan_covers_every_other_ad_group(self):
         # The collision check used to be a brand<->generic flip. With N ad groups it must
-        # scan them ALL — a third funnel's positive still blocks.
+        # scan them ALL — a third ad group's positive still blocks.
         dump = _dump()
-        dump["funnels"]["generic_location"] = _funnel(
+        dump["themes"]["generic_location"] = _theme(
             "generic_location", "Generic · Location", positives=[_row("shoes bengaluru")]
         )
         ctx = _ctx(dump)

@@ -15,7 +15,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from app.agents.adzump.adapters.autosuggest import DEFAULT_SOURCE_NAMES
-from app.agents.adzump.agents.campaign.google.keyword.funnels import get_funnel
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.constants import (
     COMMERCIAL_VALUE_COMPETITION_LEVELS,
     INFORMATIONAL_SOURCE_NAMES,
@@ -142,7 +142,7 @@ class NegativeKeyword(BaseModel):
     )
     reason: str = ""
     volume: int = Field(default=0, ge=0)  # shown in the panel; via historical metrics
-    funnel: str = ""  # the funnel this excludes for
+    theme: str = ""  # the theme this excludes for
     match_type: CoercedNegativeMatchType = MatchType.PHRASE
 
     @field_validator("keyword")
@@ -165,9 +165,9 @@ class Rejection(BaseModel):
 
 
 class KeywordSet(BaseModel):
-    """One funnel's ad group: what we target, what we exclude, and what we passed over."""
+    """One theme's ad group: what we target, what we exclude, and what we passed over."""
 
-    funnel: str  # FunnelSpec.id
+    theme: str  # KeywordTheme.id
     label: str = ""  # carried so the panel renders without a code-side lookup
     positives: list[OptimizedKeyword] = Field(default_factory=list)
     negatives: list[NegativeKeyword] = Field(default_factory=list)
@@ -175,9 +175,9 @@ class KeywordSet(BaseModel):
 
 
 class KeywordResearchResult(BaseModel):
-    """One ad group per chosen funnel — never merged."""
+    """One ad group per chosen theme — never merged."""
 
-    funnels: dict[str, KeywordSet] = Field(default_factory=dict)  # funnel id -> its set
+    themes: dict[str, KeywordSet] = Field(default_factory=dict)  # theme id -> its set
     meta: dict = Field(default_factory=dict)  # geo, key, failed — stays at the root
 
 
@@ -225,11 +225,11 @@ class BusinessProfile:
     category: str
     includes_informational_funnel: bool = False  # → YouTube informational autosuggest
 
-    def source_names(self, funnel_id: str) -> list[str]:
-        """Autosuggest surfaces for one funnel. The web-search defaults are always the
-        primary set; informational surfaces need BOTH the funnel to allow them and the
-        business to actually have that funnel."""
+    def source_names(self, theme_id: str) -> list[str]:
+        """Autosuggest surfaces for one theme. The web-search defaults are always the
+        primary set; informational surfaces need BOTH the theme to allow them and the
+        business to actually have that theme."""
         names = list(DEFAULT_SOURCE_NAMES)
-        if get_funnel(funnel_id).allows_informational_sources and self.includes_informational_funnel:
+        if get_theme(theme_id).allows_informational_sources and self.includes_informational_funnel:
             names += [n for n in INFORMATIONAL_SOURCE_NAMES if n not in names]
         return names

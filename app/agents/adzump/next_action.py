@@ -347,6 +347,24 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 if cctx.spec.get("ig_page")
                 else "\n  - **Instagram Account**: not linked (Facebook only)"
             )
+        # Google Search builds one keyword ad group per theme, so the plan is shown here and
+        # the user can narrow it. Meta targets audiences in ad sets - nothing to choose.
+        if cctx.is_google:
+            plan_line = "\n  - **Ad groups**: Brand + Generic"
+            proceed_step = (
+                '(2) THEN, separately, use the present_options tool (field "ad_groups") to '
+                'ask "Proceed to build the campaign?" with these options - each build option '
+                'carries its own `answer`: {label "Yes, proceed", answer "brand,generic"}, '
+                '{label "Brand only", answer "brand"}, {label "Generic only", answer '
+                '"generic"}, and a plain "No, make changes". Whatever they pick is what gets '
+                "built - do not talk them out of narrowing it."
+            )
+        else:
+            plan_line = ""
+            proceed_step = (
+                '(2) THEN, separately, use the present_options tool to ask "Proceed to build '
+                'the campaign?" with chips: Yes, proceed / No, make changes.'
+            )
         missing.append(
             "review & publish - TWO separate steps this turn:\n"
             "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
@@ -365,14 +383,13 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             f"{meta_extra}\n"
             "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
-            "if competitive_analysis_declined='true'>\n\n"
+            "if competitive_analysis_declined='true'>"
+            f"{plan_line}\n\n"
             "EVERY bullet must be present - do not omit any.\n"
-            "(2) THEN, separately, use the present_options tool to ask \"Proceed to build "
-            "the campaign?\" with chips: Yes, proceed / No, make changes. When the user "
-            "picks 'Yes, proceed', run the prepare_campaign_review tool (no arguments) - it "
-            "researches the keywords and shows them in the review panel. These are tools "
-            "to CALL - never type tool-call syntax into your reply, only the markdown "
-            "summary above is text."
+            f"{proceed_step} When the user picks a build option, run the "
+            "prepare_campaign_review tool (no arguments) - it researches the keywords and "
+            "shows them in the review panel. These are tools to CALL - never type tool-call "
+            "syntax into your reply, only the markdown summary above is text."
         )
     elif not missing:
         # keyword_research already done - keywords are in the panel; confirm launch.

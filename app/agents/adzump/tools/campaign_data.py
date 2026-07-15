@@ -83,6 +83,7 @@ ALLOWED_FIELDS = {
     "ig_page",
     "competitive_analysis_declined",
     "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
+    "ad_groups",  # Google: ad groups to build; bounded by the tool enum + _resolve_themes
 }
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
@@ -723,6 +724,17 @@ set_campaign_spec = ToolDefinition(
             type="string",
             description="Meta only - Instagram Business account id linked to the fb_page.",
             required=False,
+        ),
+        ToolParameter(
+            name="ad_groups",
+            type="string",
+            description=(
+                "Google only - which targeting ad groups to build, when the user narrows "
+                'the plan in words (e.g. "no, only brand" -> "brand"). Set only what they '
+                "actually said; the review chips capture the rest."
+            ),
+            required=False,
+            enum=["brand", "generic", "brand,generic"],
         ),
     ],
     execute=_set_campaign_spec,

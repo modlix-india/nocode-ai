@@ -1,14 +1,14 @@
 """System prompt + the phase machine for the KeywordResearchAgent.
 
 The base prompt stays small; ``build_turn_reminder`` injects only the current phase's guidance
-via ``phase_prompt(phase, funnel)``. The guidance itself belongs to the funnel — see funnels.py.
+via ``phase_prompt(phase, theme)``. The guidance itself belongs to the theme — see themes.py.
 """
 
 from __future__ import annotations
 
 from enum import Enum
 
-from app.agents.adzump.agents.campaign.google.keyword.funnels import FUNNELS, FunnelSpec
+from app.agents.adzump.agents.campaign.google.keyword.themes import KEYWORD_THEMES, KeywordTheme
 
 
 BASE = """\
@@ -44,17 +44,17 @@ _PHASE_FIELD: dict[Phase, str] = {
     Phase.NEGATIVES: "negative_guidance",
 }
 
-# Fail fast at import — a funnel missing guidance for a phase can never reach a live campaign.
+# Fail fast at import — a theme missing guidance for a phase can never reach a live campaign.
 _missing = [
     (f.id, p.value)
-    for f in FUNNELS.values()
+    for f in KEYWORD_THEMES.values()
     for p in Phase
     if not str(getattr(f, _PHASE_FIELD[p], "") or "").strip()
 ]
 if _missing:
-    raise RuntimeError(f"keyword funnel guidance incomplete: missing {_missing}")
+    raise RuntimeError(f"keyword theme guidance incomplete: missing {_missing}")
 
 
-def phase_prompt(phase: Phase, funnel: FunnelSpec) -> str:
-    """This funnel's guidance for this phase; completeness is validated at import."""
-    return str(getattr(funnel, _PHASE_FIELD[phase]))
+def phase_prompt(phase: Phase, theme: KeywordTheme) -> str:
+    """This theme's guidance for this phase; completeness is validated at import."""
+    return str(getattr(theme, _PHASE_FIELD[phase]))

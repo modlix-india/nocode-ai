@@ -1,8 +1,9 @@
-"""Funnels — one ad group's targeting identity, as data.
+"""Keyword themes — the keyword strategy for one ad group, as data.
 
-The user picks which funnels to build; each becomes one ad group with its own keyword run.
-Brand and Generic today. Adding one is a single ``FunnelSpec`` row — no enum, no prompt
-registry, no per-funnel branch elsewhere.
+A theme owns ONLY the keywords: the user picks ad groups (Brand, Generic), and each ad group
+runs its theme to fill them. The ad group is the container — ads, age and gender attach there,
+not here. Adding a theme is a single ``KeywordTheme`` row: no enum, no prompt registry, no
+per-theme branch elsewhere.
 
 Each flag restates a rule its guidance already gives the model (``keep_zero_volume`` and the
 select guidance's zero-volume rule are one policy — told to the model, enforced in code).
@@ -234,11 +235,11 @@ GUARDRAILS:
 
 
 @dataclass(frozen=True)
-class FunnelSpec:
+class KeywordTheme:
     id: str  # stable slug — dump key, panel tab key, widget round-trips it
     label: str  # panel display
 
-    # This funnel's strategy, injected per turn by context.phase_prompt.
+    # This theme's strategy, injected per turn by context.phase_prompt.
     seed_guidance: str
     select_guidance: str
     negative_guidance: str
@@ -250,7 +251,7 @@ class FunnelSpec:
     allows_informational_sources: bool  # may add YouTube when the business has that funnel
 
 
-GENERIC = FunnelSpec(
+GENERIC = KeywordTheme(
     id="generic",
     label="Generic",
     seed_guidance=_SEED_GENERIC,
@@ -262,7 +263,7 @@ GENERIC = FunnelSpec(
     allows_informational_sources=True,
 )
 
-BRAND = FunnelSpec(
+BRAND = KeywordTheme(
     id="brand",
     label="Brand",
     seed_guidance=_SEED_BRAND,
@@ -275,14 +276,14 @@ BRAND = FunnelSpec(
 )
 
 # What a campaign can choose from.
-FUNNELS: dict[str, FunnelSpec] = {f.id: f for f in (BRAND, GENERIC)}
+KEYWORD_THEMES: dict[str, KeywordTheme] = {f.id: f for f in (BRAND, GENERIC)}
 
-DEFAULT_FUNNEL_IDS: tuple[str, ...] = ("brand", "generic")
+DEFAULT_THEME_IDS: tuple[str, ...] = ("brand", "generic")
 
 
-def get_funnel(funnel_id: str) -> FunnelSpec:
-    """An unknown id is a bug, not user input — validate against FUNNELS before calling."""
+def get_theme(theme_id: str) -> KeywordTheme:
+    """An unknown id is a bug, not user input — validate against KEYWORD_THEMES before calling."""
     try:
-        return FUNNELS[str(funnel_id).strip().lower()]
+        return KEYWORD_THEMES[str(theme_id).strip().lower()]
     except KeyError:
-        raise KeyError(f"unknown funnel {funnel_id!r}; known: {sorted(FUNNELS)}") from None
+        raise KeyError(f"unknown theme {theme_id!r}; known: {sorted(KEYWORD_THEMES)}") from None

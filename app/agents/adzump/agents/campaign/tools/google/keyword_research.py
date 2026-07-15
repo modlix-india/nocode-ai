@@ -1,12 +1,13 @@
-"""keyword_research — build one keyword ad group per funnel the user chose.
+"""keyword_research — build one keyword ad group per theme the user chose.
 
 A campaign-creation step (runs before launch). Reads the assembled campaign_spec +
 product_data from session.context, derives a BusinessProfile, then runs the
-KeywordResearchAgent once per chosen funnel in parallel — each returns its own ad group
+KeywordResearchAgent once per chosen theme in parallel — each returns its own ad group
 of positives/negatives (with volumes), shown as a tab in the review panel.
 
-Which funnels get built is the user's choice (``campaign_spec["funnels"]``, from the
-consent step), never the model's — see ``_resolve_funnels``.
+Which ad groups get built is the user's choice (``campaign_spec["ad_groups"]``, from the
+consent step), never the model's; each one runs the keyword theme of the same id — see
+``_resolve_themes``.
 
 Google Search only for now; other platforms and campaign types become sibling tools.
 """
@@ -25,9 +26,9 @@ from app.agents.adzump.services.business_storage import resolve_url
 
 from app.agents.adzump.agents.campaign.craft import emit_campaign_craft
 from app.agents.adzump.agents.campaign.google.keyword.agent import get_keyword_research_agent
-from app.agents.adzump.agents.campaign.google.keyword.funnels import (
-    DEFAULT_FUNNEL_IDS,
-    FUNNELS,
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    DEFAULT_THEME_IDS,
+    KEYWORD_THEMES,
 )
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     BusinessProfile,
@@ -47,15 +48,16 @@ _RESEARCH_TIMEOUT_SECONDS = 300
 _LOG_TRUNCATE = 200
 
 
-def _resolve_funnels(spec: dict) -> list[str]:
-    """The ad groups to build, from the user's consent step.
+def _resolve_themes(spec: dict) -> list[str]:
+    """The keyword themes to run, from the ad groups the user chose at the consent step.
 
-    The one place that normalises ``spec["funnels"]``, so the rest of the flow never has to
-    care how the answer arrived — a chip click, a typed "no, only brand", or nothing yet all
-    land here. Unknown names are dropped rather than guessed; an empty/absent choice means
-    the full set (the plan we showed them).
+    The seam between the two levels: the user picks ad groups (``spec["ad_groups"]``), each
+    ad group's keywords come from the theme of the same id. It is also the one place that
+    normalises the answer, so the rest of the flow never has to care how it arrived — a chip
+    click, a typed "no, only brand", or nothing yet all land here. Unknown names are dropped
+    rather than guessed; an empty/absent choice means the full set (the plan we showed them).
     """
-    raw = spec.get("funnels")
+    raw = spec.get("ad_groups")
     if isinstance(raw, str):
         raw = raw.replace("&", ",").split(",")
     elif not isinstance(raw, (list, tuple, set)):
@@ -65,9 +67,9 @@ def _resolve_funnels(spec: dict) -> list[str]:
     for item in raw:
         # Accept an id ("brand") or a chip label ("Brand only", "Both Brand & Generic").
         for word in str(item).lower().replace("-", " ").split():
-            if word in FUNNELS and word not in chosen:
+            if word in KEYWORD_THEMES and word not in chosen:
                 chosen.append(word)
-    return chosen or list(DEFAULT_FUNNEL_IDS)
+    return chosen or list(DEFAULT_THEME_IDS)
 
 
 async def _resolve_geo(session_ctx: dict, context: dict) -> dict:
@@ -105,7 +107,7 @@ async def _resolve_geo(session_ctx: dict, context: dict) -> dict:
 
 
 def _research_key(
-    customer_id: str, product: dict, types: list[str], geo_constant: str
+    customer_id: str, product: dict, themes: list[str], geo_constant: str
 ) -> str:
     """Fingerprint of the inputs a run depends on — used to skip a redundant re-run."""
     return "|".join(
@@ -114,7 +116,7 @@ def _research_key(
             str(product.get("product_name", "")),
             str(product.get("business_type", "")),
             geo_constant,
-            ",".join(sorted(types)),
+            ",".join(sorted(themes)),
         ]
     )
 
@@ -155,7 +157,7 @@ def _resolve_location(
 
 def _business_profile(product: dict, taxonomy: dict) -> BusinessProfile:
     # category hint = business_type (the taxonomy refines it). The taxonomy also decides
-    # which autosuggest surfaces fit this business — YouTube for an informational funnel —
+    # which autosuggest surfaces fit this business — YouTube for an informational theme —
     # data-driven per run, no hardcoded verticals.
     return BusinessProfile(
         category=(
@@ -213,7 +215,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error="No auth context for keyword research.")
 
     # The user chose these at the consent step; the model does not get to pick.
-    types = _resolve_funnels(spec)
+    themes = _resolve_themes(spec)
 
     login_customer_id = str(spec.get("parent_account") or "").strip()
 
@@ -223,7 +225,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
 
     # Idempotency: same inputs already researched -> re-show, don't re-run.
     geo_constants = geo.get("geo_target_constants") or [""]
-    research_key = _research_key(customer_id, product, types, geo_constants[0])
+    research_key = _research_key(customer_id, product, themes, geo_constants[0])
     cached = session_ctx.get("keyword_research")
     craft_id = (
         session_ctx.get("craft_id") or f"campaign_{context.get('session_id', '')}"
@@ -285,7 +287,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
                 ),
                 _RESEARCH_TIMEOUT_SECONDS,
             )
-            for t in types
+            for t in themes
         ),
         return_exceptions=True,
     )
@@ -301,14 +303,14 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     )
     counts: list[str] = []
     failed: list[str] = []
-    for t, res in zip(types, results):
+    for t, res in zip(themes, results):
         if isinstance(res, Exception):
             logger.warning(
                 "keyword_research %s failed: %s", t, str(res)[:_LOG_TRUNCATE]
             )
             failed.append(t)
             continue
-        bundle.funnels[t] = res
+        bundle.themes[t] = res
         counts.append(f"{t} {len(res.positives)}+/{len(res.negatives)}-")
     if failed:
         bundle.meta["failed"] = failed
@@ -316,7 +318,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     # Persist ONLY if something was actually built. An empty bundle is still truthy, so
     # storing it would flip keyword_research_done and tell the user their campaign is
     # "ready in the panel" when no craft was ever emitted.
-    if not bundle.funnels:
+    if not bundle.themes:
         return ToolResult(
             success=False,
             error="Keyword research produced no results — check the ad account and retry.",
@@ -343,13 +345,13 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
 keyword_research = ToolDefinition(
     name="keyword_research",
     description=(
-        "Research keywords for a Google Search campaign — one ad group per funnel the "
-        "user chose. Reads the campaign account, business, and chosen funnels from "
+        "Research keywords for a Google Search campaign — one ad group per theme the "
+        "user chose. Reads the campaign account, business, and chosen themes from "
         "session.context, runs them in parallel, and shows positives + negatives (with "
         "volumes) in the review panel."
     ),
     display_name="Keyword Research",
-    # No parameters: which ad groups to build is the USER's choice (campaign_spec.funnels,
+    # No parameters: which ad groups to build is the USER's choice (campaign_spec.themes,
     # set at the consent step), never the model's.
     parameters=[],
     execute=_keyword_research,

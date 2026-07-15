@@ -9,6 +9,7 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import types
 import unittest
 from unittest import mock
@@ -359,6 +360,52 @@ class ReviewPublishPrescriptionTests(unittest.TestCase):
         # but it must still instruct CALLING those tools (intent prose form)
         self.assertIn("present_options tool", review)
         self.assertIn("prepare_campaign_review tool", review)
+
+
+def _full_meta_cctx():
+    """Same completeness as _full_google_cctx, on Meta (needs a meta geo handle + pages)."""
+    g = _full_google_cctx()
+    product = {
+        **g.product,
+        "target_areas": [
+            {
+                "name": "Bengaluru",
+                "google": {"resourceName": "geoTargetConstants/1026181"},
+                "meta": {"key": "1234", "type": "city"},
+            }
+        ],
+    }
+    return dataclasses.replace(
+        g,
+        spec={**g.spec, "platform": "Meta", "fb_page": "1234567890", "ig_page": "4461972633"},
+        product=product,
+    )
+
+
+class AdGroupConsentTests(unittest.TestCase):
+    """The review step shows the ad-group plan and lets the user narrow it — Google only."""
+
+    def _review(self, cctx) -> str:
+        review = next((m for m in _next_action(cctx) if "review & publish" in m), None)
+        self.assertIsNotNone(review, "review & publish should appear")
+        return review
+
+    def test_google_shows_the_plan_and_offers_to_narrow_it(self):
+        review = self._review(_full_google_cctx())
+        self.assertIn("**Ad groups**: Brand + Generic", review)  # the plan we state
+        self.assertIn('field "ad_groups"', review)               # captured into the spec
+        self.assertIn("Brand only", review)
+        self.assertIn("Generic only", review)
+        self.assertNotIn("present_options(", review)             # F20: prose, not syntax
+
+    def test_meta_is_never_asked_about_ad_groups(self):
+        # Meta targets audiences in ad sets and has no keywords — the question is meaningless.
+        review = self._review(_full_meta_cctx())
+        self.assertNotIn("**Ad groups**", review)
+        self.assertNotIn("ad_groups", review)
+        self.assertNotIn("Brand only", review)
+        self.assertIn("Proceed to build", review)   # still confirms
+        self.assertIn("Facebook Page", review)      # still Meta-specific
 
 
 # ── F23/F27 · value-only advance chip for prose asks ────────────────────────

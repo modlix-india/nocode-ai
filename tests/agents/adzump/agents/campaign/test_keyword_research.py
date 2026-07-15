@@ -1,26 +1,26 @@
 """Unit tests for the keyword_research orchestrator
 (app/agents/adzump/agents/campaign/tools/google/keyword_research.py).
 
-Covers _resolve_funnels — the single place that turns the user's consent-step answer into
-the ad groups we build — and _resolve_geo's defensive read of product_data["place"].
+Covers _resolve_themes — the seam that turns the user's chosen ad groups into the
+keyword themes we run — and _resolve_geo's defensive read of product_data["place"].
 """
-# regression: an unknown/absent funnel choice must fall back to the plan we showed the
-# user, never to an arbitrary funnel; a null `place` must not crash the run.
+# regression: an unknown/absent theme choice must fall back to the plan we showed the
+# user, never to an arbitrary theme; a null `place` must not crash the run.
 from __future__ import annotations
 
 import asyncio
 import unittest
 
 from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
-    _resolve_funnels,
+    _resolve_themes,
     _resolve_geo,
 )
 
 _ALL = ["brand", "generic"]
 
 
-class ResolveFunnelsTests(unittest.TestCase):
-    # spec["funnels"] as it may land -> the ad groups to build
+class ResolveThemesTests(unittest.TestCase):
+    # spec["ad_groups"] as it may land -> the themes to run
     CASES = [
         # the user hasn't chosen yet -> build the plan we showed them
         (None, _ALL, "absent"),
@@ -48,10 +48,10 @@ class ResolveFunnelsTests(unittest.TestCase):
     def test_table(self):
         for raw, expected, label in self.CASES:
             with self.subTest(label):
-                self.assertEqual(_resolve_funnels({"funnels": raw}), expected)
+                self.assertEqual(_resolve_themes({"ad_groups": raw}), expected)
 
     def test_missing_key_entirely(self):
-        self.assertEqual(_resolve_funnels({}), _ALL)
+        self.assertEqual(_resolve_themes({}), _ALL)
 
 
 class ResolveGeoTests(unittest.TestCase):

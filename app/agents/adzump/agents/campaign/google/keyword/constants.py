@@ -66,4 +66,4 @@ SAFETY_PATTERNS: tuple[re.Pattern[str], ...] = (
 # (autosuggest.DEFAULT_SOURCE_NAMES). Names index the autosuggest.SOURCES registry.
 SOURCE_YOUTUBE = "youtube"
 
-INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # funnel includes how-to/informational
+INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # buyer's funnel includes how-to/informational

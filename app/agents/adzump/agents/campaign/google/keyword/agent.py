@@ -1,13 +1,13 @@
-"""KeywordResearchAgent — agentic keyword research for one funnel.
+"""KeywordResearchAgent — agentic keyword research for one theme.
 
-A worker sub-agent the Campaign Agent spawns once per chosen funnel, in parallel; each
-run produces that funnel's ad group. It reasons over real data through its tools instead
+A worker sub-agent the Campaign Agent spawns once per chosen theme, in parallel; each
+run produces that theme's ad group. It reasons over real data through its tools instead
 of a fixed pipeline: seeds -> expand_keywords -> keyword_metrics -> pick positives ->
 derive negatives -> submit. Seeing Planner volume/competition as it goes, it catches
 category drift and mines real negatives — what the old blind pipeline could not do.
 
 The base system prompt stays small; ``build_turn_reminder`` injects only the current
-phase's guidance (via ``phase_prompt(phase, funnel)``), so each turn is as focused as a
+phase's guidance (via ``phase_prompt(phase, theme)``), so each turn is as focused as a
 dedicated prompt while the agent still drives and can loop.
 """
 
@@ -35,7 +35,7 @@ from app.agents.adzump.agents.campaign.google.keyword.models import (
     OptimizedKeyword,
 )
 from app.agents.adzump.agents.campaign.google.keyword.context import BASE, Phase, phase_prompt
-from app.agents.adzump.agents.campaign.google.keyword.funnels import get_funnel
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.tools import ALL_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -65,9 +65,9 @@ class _ReviewStream(ChildAgentStream):
 
 
 class KeywordResearchAgent(BaseAgent):
-    """One run = one funnel's ad group.
+    """One run = one theme's ad group.
 
-    Singleton: funnels run in parallel on the same instance. All per-run state is
+    Singleton: themes run in parallel on the same instance. All per-run state is
     isolated in BaseSession; instance attributes are read-only after __init__.
     Do NOT add mutable instance state.
     """
@@ -119,7 +119,7 @@ class KeywordResearchAgent(BaseAgent):
             else (loc or "national / online — not location-specific")
         )
         return (
-            f"CAMPAIGN: {get_funnel(ctx['kw_type']).label} keywords for a Google Search campaign.\n"
+            f"CAMPAIGN: {get_theme(ctx['kw_type']).label} keywords for a Google Search campaign.\n"
             f"OFFERING (what they sell): {category}\n"
             f"CORE TERMS — anchor keywords on these, never the siblings: {core}\n"
             f"SIBLING CATEGORIES (same industry, NOT sold — never a positive; use for negatives): {siblings}\n"
@@ -142,9 +142,9 @@ class KeywordResearchAgent(BaseAgent):
         else:
             return ""  # done — both submitted, nothing to steer
         # research() always seeds kw_type; absent means a broken session — fail rather
-        # than silently generate another funnel's keywords into this ad group.
-        funnel = get_funnel(ctx["kw_type"])
-        return Template(phase_prompt(phase, funnel)).safe_substitute(
+        # than silently generate another theme's keywords into this ad group.
+        theme = get_theme(ctx["kw_type"])
+        return Template(phase_prompt(phase, theme)).safe_substitute(
             max_seeds=constants.MAX_SEEDS,
             target_count=constants.TARGET_POSITIVE_COUNT,
             max_negatives=constants.MAX_NEGATIVE_COUNT,
@@ -176,12 +176,12 @@ class KeywordResearchAgent(BaseAgent):
         service_areas: list[str] | None = None,
         business_url: str = "",
     ) -> KeywordSet:
-        """Run one funnel's keyword research and return its KeywordSet.
+        """Run one theme's keyword research and return its KeywordSet.
 
-        ``keyword_type`` is a FunnelSpec id. ``ad_account`` = {customer_id,
+        ``keyword_type`` is a KeywordTheme id. ``ad_account`` = {customer_id,
         login_customer_id}; ``geo`` = {geo_target_constants, hl, gl, language};
         ``sources`` = autosuggest source names (from
-        ``BusinessProfile.source_names(funnel_id)``; defaults applied if empty).
+        ``BusinessProfile.source_names(theme_id)``; defaults applied if empty).
         The submit tools only record state; the orchestrator emits the panel once.
         """
         session = BaseSession(agent_name="keyword_research")
@@ -251,7 +251,7 @@ class KeywordResearchAgent(BaseAgent):
     def _build_result(keyword_type: str, ctx: dict) -> KeywordSet:
         # The submit tools already stored validated model dumps; rebuild the typed
         # objects, skipping any malformed item rather than sinking the whole set.
-        funnel = get_funnel(keyword_type)
+        theme = get_theme(keyword_type)
         positives: list[OptimizedKeyword] = []
         for p in ctx.get("kw_positives", []):
             try:
@@ -261,7 +261,7 @@ class KeywordResearchAgent(BaseAgent):
         negatives: list[NegativeKeyword] = []
         for n in ctx.get("kw_negatives", []):
             try:
-                negatives.append(NegativeKeyword(**{**n, "funnel": funnel.id}))
+                negatives.append(NegativeKeyword(**{**n, "theme": theme.id}))
             except (ValidationError, TypeError) as exc:
                 logger.debug("skip negative %r: %s", n.get("keyword"), exc)
         rejections: list[Rejection] = []
@@ -271,8 +271,8 @@ class KeywordResearchAgent(BaseAgent):
             except (ValidationError, TypeError) as exc:
                 logger.debug("skip rejection %r: %s", r.get("keyword"), exc)
         return KeywordSet(
-            funnel=funnel.id,
-            label=funnel.label,
+            theme=theme.id,
+            label=theme.label,
             positives=positives,
             negatives=negatives,
             rejections=rejections,
