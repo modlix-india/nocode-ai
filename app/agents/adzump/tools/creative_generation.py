@@ -1,111 +1,56 @@
-"""creative_generation — tools for generating ad copy and image creatives using Gemini."""
-
 from __future__ import annotations
 
 import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.agents.creative_generator.agent import (
-    get_creative_generator_agent,
-)
 
 logger = logging.getLogger(__name__)
 
 
-async def _generate_fresh_creatives(params: dict, context: dict) -> ToolResult:
-    """Generate fresh ad copy and square creatives from scratch."""
-    return await get_creative_generator_agent().generate(params, context)
+async def _manage_creatives(params: dict, context: dict) -> ToolResult:
+    """Route the user's verbatim creative request to the CreativeAgent.
+
+    Pure router — no intent classification here. The CreativeAgent's own
+    LLM interprets the request and dispatches internally.
+    """
+    user_message = (params.get("user_message") or "").strip()
+    logger.info("manage_creatives tool invoked with user_message=%r", user_message)
+    if not user_message:
+        return ToolResult(
+            success=False,
+            error="manage_creatives requires a `user_message` — forward the user's verbatim text.",
+        )
+    from app.agents.adzump.agents.creative.agent import get_creative_agent
+    result = await get_creative_agent().handle(user_message, context)
+    logger.info("manage_creatives tool returning result: success=%s, audience=%s, summary_len=%d",
+                result.success, getattr(result, 'audience', None), len(result.summary or ""))
+    return result
 
 
-async def _modify_existing_creative(params: dict, context: dict) -> ToolResult:
-    """Modify or regenerate aspect ratios of an existing ad creative."""
-    return await get_creative_generator_agent().modify(params, context)
-
-
-generate_fresh_creatives = ToolDefinition(
-    name="generate_fresh_creatives",
+manage_creatives = ToolDefinition(
+    name="manage_creatives",
     description=(
-        "Generate a fresh set of ad copies and square ad creatives from scratch. "
-        "Downloads base background images, selects candidates, and generates a premium square image."
+        "Handle any request related to ad creative generation — creating new "
+        "creatives, editing existing ones, listing creatives, or customizing "
+        "them. Always pass the user's verbatim message via `user_message`; "
+        "do NOT try to interpret the intent yourself. The creative subsystem "
+        "interprets the request internally."
     ),
-    display_name="Generate Fresh Creatives",
+    display_name="Manage Creatives",
     parameters=[
         ToolParameter(
-            name="custom_theme",
+            name="user_message",
             type="string",
-            description="Optional visual theme override (e.g. 'sunset background').",
-            required=False,
-        ),
-        ToolParameter(
-            name="target_personas",
-            type="string",
-            description="Optional comma-separated list of target demographics/personas (e.g. 'elite, families, students').",
-            required=False,
-        ),
-    ],
-    execute=_generate_fresh_creatives,
-)
-
-
-modify_existing_creative = ToolDefinition(
-    name="modify_existing_creative",
-    description=(
-        "Modify, update, or generate alternative aspect ratios (portrait, landscape) "
-        "for a specific previously generated ad creative."
-    ),
-    display_name="Modify Existing Creative",
-    parameters=[
-        ToolParameter(
-            name="target_creative_index",
-            type="integer",
-            description="Required 1-based index of the specific creative to regenerate/update.",
+            description=(
+                "The user's verbatim message about creatives. Examples: "
+                "'generate 3 ad creatives', 'make the second one brighter', "
+                "'add a portrait version', 'what creatives do I have?'. "
+                "The subsystem interprets intent internally."
+            ),
             required=True,
         ),
-        ToolParameter(
-            name="custom_headline",
-            type="string",
-            description="Optional custom override for ad headline.",
-            required=False,
-        ),
-        ToolParameter(
-            name="custom_description",
-            type="string",
-            description="Optional custom override for ad description.",
-            required=False,
-        ),
-        ToolParameter(
-            name="custom_cta",
-            type="string",
-            description="Optional custom override for ad call-to-action.",
-            required=False,
-        ),
-        ToolParameter(
-            name="custom_theme",
-            type="string",
-            description="Optional visual theme override (e.g. 'sunset background').",
-            required=False,
-        ),
-        ToolParameter(
-            name="target_formats",
-            type="string",
-            description="Optional comma-separated list of formats to generate (e.g. 'square,portrait,landscape'). If omitted, defaults to the formats already present.",
-            required=False,
-        ),
-        ToolParameter(
-            name="custom_background_image",
-            type="string",
-            description="Optional CDN URL or file path of a custom background image to use.",
-            required=False,
-        ),
-        ToolParameter(
-            name="edited_creative_url",
-            type="string",
-            description="Optional URL of the generated ad creative being edited for layout reference.",
-            required=False,
-        ),
     ],
-    execute=_modify_existing_creative,
+    execute=_manage_creatives,
 )
 
-
-CREATIVE_GENERATION_TOOLS = [generate_fresh_creatives, modify_existing_creative]
+CREATIVE_GENERATION_TOOLS = [manage_creatives]

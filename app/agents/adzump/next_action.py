@@ -158,12 +158,8 @@ def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
 
     if cctx.spec.get("creative_approved") in ["false", "edit_copy_styling"]:
         missing.append(
-            "creative changes - ask the user what changes they would like to make (such as custom headline, description, cta, theme, or custom_background_image) "
-            "if they haven't specified them yet. Once they provide the feedback, call `modify_existing_creative(target_creative_index=1)` "
-            "with their custom overrides. "
-            "IMPORTANT: `target_creative_index` corresponds to the copy/design variation index (e.g., Creative 1 is index 1), "
-            "NOT the number of image size previews shown. If the user refers to the second image preview (like the Portrait or Landscape image of Creative 1), "
-            "it is still `target_creative_index=1`. If they target a specific size variation, specify that format in the `target_formats` argument (e.g. `target_formats='portrait'`)."
+            "creative changes - ask the user what changes they would like to make. "
+            "Once they provide their feedback, call `manage_creatives(user_message=<the user's full request>)`."
         )
     elif cctx.spec.get("creative_approved") == "generate_new_sizes":
         if not cctx.spec.get("creative_target_sizes"):
@@ -180,13 +176,16 @@ def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
         else:
             target_sizes = cctx.spec.get("creative_target_sizes")
             missing.append(
-                f"generate new sizes - user wants to generate sizes: {target_sizes}. Call `set_campaign_spec(creative_approved=None, creative_target_sizes=None)` "
-                f"to reset the approval and target sizes, and call `modify_existing_creative(target_creative_index=1, target_formats='{target_sizes}')` to generate the aspect ratios."
+                f"generate new sizes - user wants to generate sizes: {target_sizes}. Call "
+                "`set_campaign_spec(creative_approved=None, creative_target_sizes=None)` "
+                "to reset the approval, then call "
+                f"`manage_creatives(user_message='generate {target_sizes} sizes')`."
             )
     elif cctx.spec.get("creative_approved") == "generate_competitor_inspired":
         missing.append(
-            "generate competitor-inspired creative - user wants a competitor-inspired creative. Call `set_campaign_spec(creative_approved=None, creative_config='2')` "
-            "to reset the approval and enable competitor creative generation, then call `generate_fresh_creatives()`."
+            "generate competitor-inspired creative - user wants a competitor-inspired creative. Call "
+            "`set_campaign_spec(creative_approved=None, creative_config='2')` "
+            "to reset the approval, then call `manage_creatives(user_message='generate competitor-inspired creative')`."
         )
     elif cctx.spec.get("creative_approved") == "generate_persona_variations":
         if not cctx.spec.get("creative_target_personas"):
@@ -212,9 +211,10 @@ def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
                 )
             else:
                 missing.append(
-                    f"generate persona variations - user wants to generate variations for personas: {target_personas}. "
-                    f"Call `set_campaign_spec(creative_approved=None, creative_target_personas=None)` "
-                    f"to reset the approval and target personas, and call `generate_fresh_creatives(target_personas='{target_personas}')`."
+                    f"generate persona variations - user wants to generate variations for personas: {target_personas}. Call "
+                    "`set_campaign_spec(creative_approved=None, creative_target_personas=None)` "
+                    "to reset the approval, then call "
+                    f"`manage_creatives(user_message='generate for personas: {target_personas}')`."
                 )
     else:
         creative_previews = ""
@@ -294,8 +294,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform - use the present_options tool (field \"platform\") to ask "
-            "\"Which platform should we run this on?\" with chip choices: Google Ads, "
+            'platform - use the present_options tool (field "platform") to ask '
+            '"Which platform should we run this on?" with chip choices: Google Ads, '
             "Meta. CALL the tool - never type the call into your reply."
         )
 
@@ -310,10 +310,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         loc_arg = cctx.spec.get("location") or ""
         missing.append(
             (
-            'target_areas - call `manage_targeting_locations(user_message="set up geo targeting")`'
-            if not loc_arg
-            else f'target_areas - call `manage_targeting_locations(user_message="set up geo targeting for {loc_arg!r}")`'
-        )
+                'target_areas - call `manage_targeting_locations(user_message="set up geo targeting")`'
+                if not loc_arg
+                else f'target_areas - call `manage_targeting_locations(user_message="set up geo targeting for {loc_arg!r}")`'
+            )
         )
 
     if (
@@ -329,8 +329,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         missing.append(
             "competitive analysis - offer it ONCE as a Yes/No question, then react:\n"
             "  • if you have not offered competitor analysis yet → ask via the "
-            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
-            "analyze competitors before we set things up?\" with chips Yes / No. A No "
+            'present_options tool (field "competitive_analysis_declined"): "Want me to '
+            'analyze competitors before we set things up?" with chips Yes / No. A No '
             "(or a clear typed decline) is recorded for you automatically - do NOT call "
             "set_campaign_spec for it, and never set a field the user hasn't stated "
             "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
@@ -353,8 +353,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         else:
             missing.append(
-                "duration - use the present_options tool (field \"duration\") to ask "
-                "\"How long should the campaign run?\" with chip choices: 30 days, "
+                'duration - use the present_options tool (field "duration") to ask '
+                '"How long should the campaign run?" with chip choices: 30 days, '
                 "60 days, 90 days, Custom. CALL the tool - never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
@@ -370,8 +370,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
-                "budget - use the present_options tool (field \"budget\") to ask "
-                "\"What's your daily budget?\" with platform-tuned chip choices "
+                'budget - use the present_options tool (field "budget") to ask '
+                '"What\'s your daily budget?" with platform-tuned chip choices '
                 f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day) "
                 "plus Custom. CALL the tool - never type the call into your reply."
             )
@@ -444,8 +444,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         elif not cctx.spec.get("ad_copy"):
             missing.append(
-                "ad creative generation - Call `generate_fresh_creatives()` to generate "
-                "a single square ad creative first."
+                "ad creative generation - Call "
+                "`manage_creatives(user_message='generate a square ad creative')`."
             )
         else:
             meta_extra = ""
@@ -487,8 +487,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "if competitor_analysis_attempted is true with empty list, or 'declined' "
                 "if competitive_analysis_declined='true'>\n\n"
                 "EVERY bullet must be present - do not omit any.\n"
-                "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
-                "the campaign?\" with chips: Yes, launch / No, make changes. When the user "
+                '(2) THEN, separately, use the present_options tool to ask "Ready to launch '
+                'the campaign?" with chips: Yes, launch / No, make changes. When the user '
                 "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the one "
                 "tool that persists the campaign. These are tools to CALL - never type "
                 "tool-call syntax into your reply, only the markdown summary above is text."

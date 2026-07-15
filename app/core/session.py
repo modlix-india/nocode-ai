@@ -419,11 +419,19 @@ class BaseSession:
     @staticmethod
     def _serialize_context(context: dict) -> str:
         """JSON-encode session context for persistence. Drops ephemeral runtime
-        keys, and degrades any stray non-JSON value (e.g. a set) to a list/str so
-        one bad value can never again sink the entire context."""
+        keys, and degrades any stray non-JSON value (e.g. a set or custom object)
+        to a list/dict/str so one bad value can never again sink the entire context."""
         persistable = {k: v for k, v in context.items()
                        if k not in BaseSession._EPHEMERAL_CONTEXT_KEYS}
-        return json.dumps(persistable, default=lambda o: list(o) if isinstance(o, set) else str(o))
+        
+        def custom_encoder(o: Any) -> Any:
+            if isinstance(o, set):
+                return list(o)
+            if hasattr(o, "to_dict"):
+                return o.to_dict()
+            return str(o)
+
+        return json.dumps(persistable, default=custom_encoder)
 
     async def _create_new_session(self) -> None:
         """Create a new session in the database."""

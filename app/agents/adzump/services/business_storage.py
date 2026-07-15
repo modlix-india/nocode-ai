@@ -272,6 +272,19 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
     assets = product.get("assets") or {}
     primary_logo = (assets.get("logos") or [{}])[0]
     images = assets.get("images") or []
+    creative_image_urls = [i.get("url") or "" for i in images if i.get("url")]
+    creative_image_displays = [i.get("display") or {} for i in images]
+
+    # Prepend or append newly generated creative URLs from campaign_spec["ad_copy"]
+    # so they are saved to the root level creativeImages array for UI panel visualization
+    ad_copy_list = spec.get("ad_copy") or []
+    if isinstance(ad_copy_list, list):
+        for item in ad_copy_list:
+            urls = item.get("creative_urls", {})
+            for size, url in urls.items():
+                if url and url not in creative_image_urls:
+                    creative_image_urls.append(url)
+                    creative_image_displays.append({"fit": "contain", "background": "neutral"})
 
     return {
         "businessUrl": _normalize_url(url),
@@ -314,8 +327,8 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
         # document size. The stored parallel-array shape (creativeImages +
         # creativeDisplays) is the ds-side contract; session shape is
         # assets.images (one object per image).
-        "creativeImages": [i.get("url") or "" for i in images][:30],
-        "creativeDisplays": [i.get("display") or {} for i in images][:30],
+        "creativeImages": creative_image_urls[:30],
+        "creativeDisplays": creative_image_displays[:30],
         # Persist scrape budget state so resume hydration can dedupe against
         # what we've already scraped instead of resetting to 0.
         "scrapedUrls": list(product.get("pages") or {}),
