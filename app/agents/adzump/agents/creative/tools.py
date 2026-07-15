@@ -46,7 +46,7 @@ async def _create_creative(params: dict, context: dict) -> ToolResult:
     if logo_url:
         await emit_progress(context, "Downloading brand logo...")
         try:
-            logo_bytes, logo_mime = await _download_image(logo_url)
+            logo_bytes, logo_mime = await _download_image(logo_url, as_png=True)
         except Exception as e:
             logger.warning("Failed to download logo from %s: %s", logo_url, e)
 
@@ -117,12 +117,22 @@ async def _create_creative(params: dict, context: dict) -> ToolResult:
         "   - An abstract graphic design with premium gradient backgrounds and geometric design lines."
     )
 
+    copy_lines = []
+    if params.get("headline"):
+        copy_lines.append(f"- Headline: \"{params['headline']}\"")
+    if params.get("cta"):
+        copy_lines.append(f"- CTA Button: \"{params['cta']}\"")
+    if params.get("price") and params["price"].strip().lower() != "price on request":
+        copy_lines.append(f"- \"{params['price']}\" (Render this exact text, do NOT add 'Price:')")
+    if params.get("location"):
+        copy_lines.append(f"- \"{params['location']}\" (Render this exact text, do NOT add 'Location:')")
+    if params.get("rera_no"):
+        copy_lines.append(f"- \"{params['rera_no']}\" (Render as a tiny, low-opacity footnote at the bottom, do NOT add 'RERA ID:')")
+        
+    ad_copy_block = "\n".join(copy_lines)
+
     final_prompt = layout_template.format(
-        headline=params.get("headline") or "",
-        cta=params.get("cta") or "",
-        price=params.get("price") or "",
-        location=params.get("location") or "",
-        rera_no=params.get("rera_no") or "",
+        ad_copy_block=ad_copy_block,
         design_composition=params.get("design_composition")
         or "Clean modern visual composition.",
         color_palette_and_theme=params.get("color_palette_and_theme")
@@ -257,7 +267,7 @@ async def _edit_creative(params: dict, context: dict) -> ToolResult:
         {"role": "model", "image_data": b64_image, "mime_type": mime_type},
         {
             "role": "user",
-            "content": f"Update the image based on this request: {changes}",
+            "content": f"Update this image based on this request: {changes}. Do not change any other elements of the image.",
         },
     ]
 
@@ -303,6 +313,8 @@ async def _edit_creative(params: dict, context: dict) -> ToolResult:
     target.status = "done"
 
     summary = f"Edited {target.format_label} ({creative_id}): {changes}"
+    if target.image_url:
+        summary += f"\nimage_url={target.image_url}"
 
     return ToolResult(
         success=True,
@@ -488,11 +500,28 @@ async def _upload_image(
         return None
 
 
-async def _download_image(url: str) -> tuple[bytes, str]:
+async def _download_image(url: str, as_png: bool = False) -> tuple[bytes, str]:
     import httpx
+    from PIL import Image
+    import io
+    from app.config import settings
+
+    if url.startswith("/"):
+        url = f"{settings.GATEWAY_URL.rstrip('/')}{url}"
 
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         resp = await client.get(url)
         resp.raise_for_status()
         ctype = resp.headers.get("content-type", "image/jpeg")
-        return resp.content, ctype
+        data = resp.content
+
+        if as_png:
+            try:
+                img = Image.open(io.BytesIO(data))
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                return buf.getvalue(), "image/png"
+            except Exception as e:
+                logger.warning(f"Failed to convert image to PNG: {e}")
+
+        return data, ctype

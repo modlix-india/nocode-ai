@@ -139,24 +139,35 @@ class GeminiImagenProvider(LLMProvider):
             },
         }
         url = self._build_url()
-        async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code != 200:
-                raise RuntimeError(
-                    f"Gemini Imagen generate failed: status={resp.status_code} "
-                    f"body={resp.text[:500]}"
-                )
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if not candidates:
-                raise RuntimeError("Gemini Imagen: no candidates in response")
-            res_parts = candidates[0].get("content", {}).get("parts", [])
-            image_part = next((p for p in res_parts if "inlineData" in p), None)
-            if not image_part:
-                raise RuntimeError("Gemini Imagen: no image data in response")
-            raw = base64.b64decode(image_part["inlineData"]["data"])
-            mime = image_part["inlineData"].get("mimeType", "image/jpeg")
-            return GenerationResult(image=raw, mime_type=mime, prompt=prompt)
+        import asyncio
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
+                    resp = await client.post(url, json=payload)
+                    if resp.status_code != 200:
+                        raise RuntimeError(
+                            f"Gemini Imagen generate failed: status={resp.status_code} "
+                            f"body={resp.text[:500]}"
+                        )
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if not candidates:
+                        raise RuntimeError("Gemini Imagen: no candidates in response")
+                    res_parts = candidates[0].get("content", {}).get("parts", [])
+                    image_part = next((p for p in res_parts if "inlineData" in p), None)
+                    if not image_part:
+                        raise RuntimeError("Gemini Imagen: no image data in response")
+                    raw = base64.b64decode(image_part["inlineData"]["data"])
+                    mime = image_part["inlineData"].get("mimeType", "image/jpeg")
+                    return GenerationResult(image=raw, mime_type=mime, prompt=prompt)
+            except httpx.ReadTimeout:
+                logger.warning(f"Gemini Imagen generate timeout on attempt {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise RuntimeError("Gemini Imagen API timed out after 3 attempts.")
+                await asyncio.sleep(2)
+            except Exception as e:
+                raise RuntimeError(f"Gemini Imagen unexpected error: {str(e)}")
 
     async def edit(
         self,
@@ -170,7 +181,7 @@ class GeminiImagenProvider(LLMProvider):
         for msg in messages:
             role = msg.get("role")
             parts = []
-            if role == "model" and "image_data" in msg:
+            if "image_data" in msg:
                 parts.append(
                     {
                         "inlineData": {
@@ -179,44 +190,63 @@ class GeminiImagenProvider(LLMProvider):
                         }
                     }
                 )
-            else:
-                parts.append({"text": msg.get("content", "")})
+            if "content" in msg and msg["content"]:
+                parts.append({"text": msg["content"]})
             contents.append({"role": role, "parts": parts})
 
         payload = {
             "contents": contents,
             "generationConfig": {
-                "responseModalities": ["IMAGE"],
+                "responseModalities": ["TEXT", "IMAGE"],
                 "imageConfig": {"aspectRatio": ar},
             },
         }
         url = self._build_url()
-        async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code != 200:
-                raise RuntimeError(
-                    f"Gemini Imagen edit failed: status={resp.status_code} "
-                    f"body={resp.text[:500]}"
-                )
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if not candidates:
-                raise RuntimeError("Gemini Imagen: no candidates in edit response")
-            res_parts = candidates[0].get("content", {}).get("parts", [])
-            image_part = next((p for p in res_parts if "inlineData" in p), None)
-            if not image_part:
-                raise RuntimeError("Gemini Imagen: no image data in edit response")
-            raw = base64.b64decode(image_part["inlineData"]["data"])
-            mime = image_part["inlineData"].get("mimeType", "image/jpeg")
-            last_prompt = next(
-                (
-                    m.get("content", "")
-                    for m in reversed(messages)
-                    if m.get("role") == "user"
-                ),
-                "",
-            )
-            return GenerationResult(image=raw, mime_type=mime, prompt=last_prompt)
+        import asyncio
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
+                    resp = await client.post(url, json=payload)
+                    if resp.status_code != 200:
+                        raise RuntimeError(
+                            f"Gemini Imagen edit failed: status={resp.status_code} "
+                            f"body={resp.text[:500]}"
+                        )
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if not candidates:
+                        error_msg = f"Gemini Imagen: no candidates in edit response. Body: {resp.text[:500]}"
+                        raise RuntimeError(error_msg)
+                    res_parts = candidates[0].get("content", {}).get("parts", [])
+                    image_part = next((p for p in res_parts if "inlineData" in p), None)
+                    if not image_part:
+                        error_msg = f"Gemini Imagen: no image data in edit response. Text response? {resp.text[:500]}"
+                        raise RuntimeError(error_msg)
+                    
+                    try:
+                        raw = base64.b64decode(image_part["inlineData"]["data"])
+                    except Exception as b64_err:
+                        raise RuntimeError(f"Base64 decode failed: {b64_err}")
+                        
+                    mime = image_part["inlineData"].get("mimeType", "image/jpeg")
+                    last_prompt = next(
+                        (
+                            m.get("content", "")
+                            for m in reversed(messages)
+                            if m.get("role") == "user"
+                        ),
+                        "",
+                    )
+                    return GenerationResult(image=raw, mime_type=mime, prompt=last_prompt)
+            except (httpx.ReadTimeout, httpx.ReadError) as net_err:
+                logger.warning(f"Gemini Imagen edit network error ({type(net_err).__name__}) on attempt {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise RuntimeError(f"Gemini Imagen API edit failed after 3 attempts due to network error: {net_err}")
+                await asyncio.sleep(2)
+            except Exception as e:
+                logger.exception("Gemini Imagen edit unexpected error")
+                raise RuntimeError(f"Gemini Imagen unexpected error: {repr(e)}")
 
 
 _provider: GeminiImagenProvider | None = None
