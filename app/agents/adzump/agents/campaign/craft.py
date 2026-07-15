@@ -48,10 +48,12 @@ def _spec_blocks(spec: dict) -> list[dict]:
 def keyword_review_block(dump: dict) -> dict:
     """Exported so update handlers can re-emit only this block (keyed upsert, no panel flash)."""
     tabs: list[dict] = []
-    for key, label in (("brand", "Brand"), ("generic", "Generic")):
-        kset = dump.get(key)
+    # One tab per generated funnel, in generation order. Each set carries its own label,
+    # so a new funnel needs no change here.
+    for key, kset in (dump.get("funnels") or {}).items():
         if not kset:
             continue
+        label = kset.get("label") or key.replace("_", " ").title()
         pos_rows = [
             {
                 "keyword": p.get("keyword", ""),

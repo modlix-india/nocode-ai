@@ -25,13 +25,13 @@ from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
 )
+from app.agents.adzump.agents.campaign.google.keyword.funnels import get_funnel
 from app.agents.adzump.agents.campaign.google.keyword.models import normalize as _normalize
 
 logger = logging.getLogger(__name__)
 
 
 _VALID_ACTIONS = frozenset({"add", "delete", "edit"})
-_VALID_KEYWORD_TYPES = frozenset({"brand", "generic"})
 _VALID_SECTIONS = frozenset({"positives", "negatives"})
 _POSITIVE_MATCH_TYPES = frozenset({"EXACT", "PHRASE"})  # positives target
 _NEGATIVE_MATCH_TYPES = frozenset({"PHRASE", "BROAD"})  # negatives exclude a concept
@@ -81,49 +81,60 @@ def _is_brandish(token: str, brand_tokens: frozenset[str]) -> bool:
 
 
 def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) -> str | None:
-    """Return an error if the keyword clearly belongs in the other type's positives."""
+    """Return an error if the keyword clearly belongs in a different ad group.
+
+    Brand affinity is the funnel's own declared rule, so a new funnel states its stance
+    (requires_brand_token) instead of being added to a branch here.
+    """
     kw_tokens = _tokens(keyword)
     if not kw_tokens:
         return None
 
+    funnel = get_funnel(keyword_type)
     product_name = str((session_ctx.get("product_data") or {}).get("product_name") or "")
-    dump = session_ctx.get("keyword_research") or {}
+    ad_groups = (session_ctx.get("keyword_research") or {}).get("funnels") or {}
+    brand_tokens = _tokens(product_name)
 
-    if keyword_type == "generic":
-        # Block when ALL brand-name tokens are present — partial overlap is category noise.
-        # Fuzzy (like the brand direction) so a misspelled brand ("dulingo") is caught too.
-        brand_tokens = _tokens(product_name)
-        if product_name and brand_tokens and all(_is_brandish(bt, kw_tokens) for bt in brand_tokens):
-            return (
-                f"'{keyword}' contains the full brand name — "
-                "brand-specific keywords belong in the brand section."
-            )
-        # Same all-tokens rule against existing brand positives.
-        for row in list((dump.get("brand") or {}).get("positives") or []):
-            row_tokens = _tokens(row.get("keyword", ""))
-            if row_tokens and row_tokens.issubset(kw_tokens):
-                return (
-                    f"'{keyword}' contains a brand keyword — "
-                    "brand-specific keywords belong in the brand section."
-                )
+    def _positives_where(requires_brand: bool) -> list[dict]:
+        return [
+            row
+            for fid, kset in ad_groups.items()
+            if fid != keyword_type and get_funnel(fid).requires_brand_token is requires_brand
+            for row in (kset.get("positives") or [])
+        ]
 
-    else:  # brand
+    if funnel.requires_brand_token:
         if product_name:
             # Fuzzy match so deliberate brand misspellings (a real brand keyword) still pass.
-            brand_tokens = _tokens(product_name)
             if not any(_is_brandish(t, brand_tokens) for t in kw_tokens):
                 return (
                     f"'{keyword}' doesn't contain any brand name terms — "
-                    "generic keywords belong in the generic section."
+                    "generic keywords belong in a generic ad group."
                 )
         else:
-            for row in list((dump.get("generic") or {}).get("positives") or []):
+            for row in _positives_where(requires_brand=False):
                 row_tokens = _tokens(row.get("keyword", ""))
                 if row_tokens and row_tokens.issubset(kw_tokens):
                     return (
                         f"'{keyword}' contains a generic keyword — "
-                        "generic keywords belong in the generic section."
+                        "generic keywords belong in a generic ad group."
                     )
+    else:
+        # Block when ALL brand-name tokens are present — partial overlap is category noise.
+        # Fuzzy (like the brand direction) so a misspelled brand ("dulingo") is caught too.
+        if product_name and brand_tokens and all(_is_brandish(bt, kw_tokens) for bt in brand_tokens):
+            return (
+                f"'{keyword}' contains the full brand name — "
+                "brand-specific keywords belong in the brand ad group."
+            )
+        # Same all-tokens rule against the brand ad groups' positives.
+        for row in _positives_where(requires_brand=True):
+            row_tokens = _tokens(row.get("keyword", ""))
+            if row_tokens and row_tokens.issubset(kw_tokens):
+                return (
+                    f"'{keyword}' contains a brand keyword — "
+                    "brand-specific keywords belong in the brand ad group."
+                )
 
     return None
 
@@ -141,26 +152,32 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
     keyword_type = str(params.get("keyword_type", "")).lower()
     section = str(params.get("section", "")).lower()
 
+    ad_groups: dict[str, dict] = dump.get("funnels") or {}
+
     if action not in _VALID_ACTIONS:
         return ToolResult(success=False, error=f"Invalid action '{action}'. Must be: add, delete, or edit.")
-    if keyword_type not in _VALID_KEYWORD_TYPES:
-        return ToolResult(success=False, error=f"Invalid keyword_type '{keyword_type}'. Must be brand or generic.")
+    if keyword_type not in ad_groups:
+        return ToolResult(
+            success=False,
+            error=f"No '{keyword_type}' ad group in this campaign. Built: {', '.join(sorted(ad_groups)) or 'none'}.",
+        )
     if section not in _VALID_SECTIONS:
         return ToolResult(success=False, error=f"Invalid section '{section}'. Must be positives or negatives.")
 
-    kset = dump.get(keyword_type)
-    if kset is None:
-        return ToolResult(success=False, error=f"No {keyword_type} keywords in session.")
+    kset = ad_groups[keyword_type]
 
     rows: list[dict] = list(kset.get(section) or [])
     opposite = "negatives" if section == "positives" else "positives"
     opposite_rows: list[dict] = list(kset.get(opposite) or [])
 
-    other_type = "generic" if keyword_type == "brand" else "brand"
-    other_kset = dump.get(other_type) or {}
-    # Positives-only: a keyword may legitimately be a positive in one type and
-    # a negative in the other (standard Google Ads isolation pattern).
-    cross_type_rows: list[dict] = list(other_kset.get("positives") or [])
+    # Positives-only, across every OTHER ad group: a keyword may legitimately be a positive
+    # in one funnel and a negative in another (standard Google Ads isolation pattern).
+    cross_type_rows: list[dict] = [
+        row
+        for other_key, other_kset in ad_groups.items()
+        if other_key != keyword_type
+        for row in (other_kset.get("positives") or [])
+    ]
 
     if action == "add":
         keyword = _normalize(str(params.get("keyword", "")))
@@ -177,7 +194,7 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
         if any(_row_key(r) == keyword for r in cross_type_rows):
             return ToolResult(
                 success=False,
-                error=f"'{keyword}' already exists in {other_type} positives — a keyword can't be a positive in both brand and generic.",
+                error=f"'{keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups.",
             )
         if section == "positives":
             section_err = _check_section_signal(keyword, keyword_type, session_ctx)
@@ -226,7 +243,7 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
             if any(_row_key(r) == new_keyword for r in cross_type_rows):
                 return ToolResult(
                     success=False,
-                    error=f"'{new_keyword}' already exists in {other_type} positives — a keyword can't be a positive in both brand and generic.",
+                    error=f"'{new_keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups.",
                 )
             if section == "positives":
                 section_err = _check_section_signal(new_keyword, keyword_type, session_ctx)
@@ -244,7 +261,8 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
 
     # Persist mutations back into session state.
     kset[section] = rows
-    dump[keyword_type] = kset
+    ad_groups[keyword_type] = kset
+    dump["funnels"] = ad_groups
     session_ctx["keyword_research"] = dump
 
     logger.info(

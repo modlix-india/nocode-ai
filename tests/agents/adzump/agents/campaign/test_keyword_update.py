@@ -23,15 +23,23 @@ def _row(keyword: str, match_type: str = "PHRASE", **extra) -> dict:
     return {"keyword": keyword, "volume": 0, "match_type": match_type, **extra}
 
 
+def _funnel(fid: str, label: str, **sections) -> dict:
+    return {"funnel": fid, "label": label, "positives": [], "negatives": [], **sections}
+
+
 def _dump(**overrides) -> dict:
-    """A keyword_research dump with empty brand/generic sets, overridable per key."""
-    base = {
-        "brand": {"positives": [], "negatives": []},
-        "generic": {"positives": [], "negatives": []},
+    """A keyword_research dump: one ad group per funnel, overridable per funnel id."""
+    funnels = {
+        "brand": _funnel("brand", "Brand"),
+        "generic": _funnel("generic", "Generic"),
     }
-    for kt, sections in overrides.items():
-        base[kt].update(sections)
-    return base
+    for fid, sections in overrides.items():
+        funnels[fid].update(sections)
+    return {"funnels": funnels, "meta": {}}
+
+
+def _rows(dump: dict, funnel: str, section: str) -> list[dict]:
+    return dump["funnels"][funnel][section]
 
 
 def _ctx(dump: dict, product_name: str = "") -> dict:
@@ -83,7 +91,7 @@ class AddTests(unittest.TestCase):
         res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
                     "keyword": "running shoes", "match_type": "EXACT"}, ctx)
         self.assertTrue(res.success)
-        rows = ctx["session_context"]["keyword_research"]["generic"]["positives"]
+        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "positives")
         self.assertEqual(rows[0]["keyword"], "running shoes")
         self.assertEqual(rows[0]["match_type"], "EXACT")
 
@@ -92,7 +100,7 @@ class AddTests(unittest.TestCase):
         res = _run({"action": "add", "keyword_type": "generic", "section": "negatives",
                     "keyword": "free shoes", "match_type": "EXACT"}, ctx)
         self.assertTrue(res.success)
-        rows = ctx["session_context"]["keyword_research"]["generic"]["negatives"]
+        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "negatives")
         self.assertEqual(rows[0]["match_type"], "PHRASE")  # never EXACT for a negative
 
     def test_add_duplicate_rejected(self):
@@ -109,12 +117,32 @@ class AddTests(unittest.TestCase):
         self.assertFalse(res.success)
         self.assertIn("can't be in both", res.error)
 
-    def test_add_conflicts_with_other_type_positive_rejected(self):
+    def test_add_conflicts_with_other_ad_group_positive_rejected(self):
         ctx = _ctx(_dump(brand={"positives": [_row("nike air")]}))
         res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
                     "keyword": "nike air"}, ctx)
         self.assertFalse(res.success)
-        self.assertIn("both brand and generic", res.error)
+        self.assertIn("positive in two ad groups", res.error)
+
+    def test_cross_funnel_scan_covers_every_other_ad_group(self):
+        # The collision check used to be a brand<->generic flip. With N ad groups it must
+        # scan them ALL — a third funnel's positive still blocks.
+        dump = _dump()
+        dump["funnels"]["generic_location"] = _funnel(
+            "generic_location", "Generic · Location", positives=[_row("shoes bengaluru")]
+        )
+        ctx = _ctx(dump)
+        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
+                    "keyword": "shoes bengaluru"}, ctx)
+        self.assertFalse(res.success)
+        self.assertIn("positive in two ad groups", res.error)
+
+    def test_unknown_ad_group_rejected_with_what_was_built(self):
+        res = _run({"action": "add", "keyword_type": "nonexistent", "section": "positives",
+                    "keyword": "running shoes"}, _ctx(_dump()))
+        self.assertFalse(res.success)
+        self.assertIn("No 'nonexistent' ad group", res.error)
+        self.assertIn("brand, generic", res.error)  # names what IS built
 
     def test_add_too_short_rejected(self):
         ctx = _ctx(_dump())
@@ -133,7 +161,7 @@ class EditTests(unittest.TestCase):
         res = _run({"action": "edit", "keyword_type": "generic", "section": "negatives",
                     "old_keyword": "free trial", "keyword": "free demo"}, ctx)
         self.assertTrue(res.success)
-        rows = ctx["session_context"]["keyword_research"]["generic"]["negatives"]
+        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "negatives")
         self.assertEqual(rows[0]["keyword"], "free demo")
         self.assertEqual(rows[0]["match_type"], "PHRASE")  # coerced, not the stale EXACT
 
@@ -158,7 +186,7 @@ class DeleteTests(unittest.TestCase):
         res = _run({"action": "delete", "keyword_type": "generic", "section": "positives",
                     "keyword": "trail shoes"}, ctx)
         self.assertTrue(res.success)
-        rows = ctx["session_context"]["keyword_research"]["generic"]["positives"]
+        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "positives")
         self.assertEqual([r["keyword"] for r in rows], ["running shoes"])
 
     def test_delete_missing_rejected(self):
@@ -194,7 +222,7 @@ class SectionSignalTests(unittest.TestCase):
         ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
         err = _check_section_signal("duolingo spanish", "generic", ctx)
         self.assertIsNotNone(err)
-        self.assertIn("brand section", err)
+        self.assertIn("brand ad group", err)
 
     def test_generic_without_brand_ok(self):
         ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
@@ -204,7 +232,7 @@ class SectionSignalTests(unittest.TestCase):
         ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
         err = _check_section_signal("language learning app", "brand", ctx)
         self.assertIsNotNone(err)
-        self.assertIn("generic section", err)
+        self.assertIn("generic ad group", err)
 
     def test_brand_with_brand_term_ok(self):
         ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}

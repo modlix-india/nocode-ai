@@ -1,9 +1,12 @@
-"""keyword_research — research brand + generic keywords for a Google Search campaign.
+"""keyword_research — build one keyword ad group per funnel the user chose.
 
 A campaign-creation step (runs before launch). Reads the assembled campaign_spec +
 product_data from session.context, derives a BusinessProfile, then runs the
-KeywordResearchAgent for brand and generic in parallel — both stream their
-positives/negatives (with volumes) into the review panel under one craft_id.
+KeywordResearchAgent once per chosen funnel in parallel — each returns its own ad group
+of positives/negatives (with volumes), shown as a tab in the review panel.
+
+Which funnels get built is the user's choice (``campaign_spec["funnels"]``, from the
+consent step), never the model's — see ``_resolve_funnels``.
 
 Google Search only for now; other platforms and campaign types become sibling tools.
 """
@@ -13,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.core.tools.base import ToolDefinition, ToolResult
 
 from app.agents.adzump._shared import build_ds_headers
 from app.agents.adzump.adapters.google import keyword_planner
@@ -22,6 +25,10 @@ from app.agents.adzump.services.business_storage import resolve_url
 
 from app.agents.adzump.agents.campaign.craft import emit_campaign_craft
 from app.agents.adzump.agents.campaign.google.keyword.agent import get_keyword_research_agent
+from app.agents.adzump.agents.campaign.google.keyword.funnels import (
+    DEFAULT_FUNNEL_IDS,
+    FUNNELS,
+)
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     BusinessProfile,
     KeywordResearchResult,
@@ -36,9 +43,31 @@ from app.agents.adzump.agents.location.targeting_run import (
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_PLATFORM = "google"
-_VALID_TYPES = ("brand", "generic")
 _RESEARCH_TIMEOUT_SECONDS = 300
 _LOG_TRUNCATE = 200
+
+
+def _resolve_funnels(spec: dict) -> list[str]:
+    """The ad groups to build, from the user's consent step.
+
+    The one place that normalises ``spec["funnels"]``, so the rest of the flow never has to
+    care how the answer arrived — a chip click, a typed "no, only brand", or nothing yet all
+    land here. Unknown names are dropped rather than guessed; an empty/absent choice means
+    the full set (the plan we showed them).
+    """
+    raw = spec.get("funnels")
+    if isinstance(raw, str):
+        raw = raw.replace("&", ",").split(",")
+    elif not isinstance(raw, (list, tuple, set)):
+        raw = []
+
+    chosen: list[str] = []
+    for item in raw:
+        # Accept an id ("brand") or a chip label ("Brand only", "Both Brand & Generic").
+        for word in str(item).lower().replace("-", " ").split():
+            if word in FUNNELS and word not in chosen:
+                chosen.append(word)
+    return chosen or list(DEFAULT_FUNNEL_IDS)
 
 
 async def _resolve_geo(session_ctx: dict, context: dict) -> dict:
@@ -183,12 +212,8 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     if context.get("auth") is None:
         return ToolResult(success=False, error="No auth context for keyword research.")
 
-    keyword_type = str(params.get("keyword_type", "both")).lower()
-    types = list(_VALID_TYPES) if keyword_type == "both" else [keyword_type]
-    if any(t not in _VALID_TYPES for t in types):
-        return ToolResult(
-            success=False, error="keyword_type must be brand, generic, or both."
-        )
+    # The user chose these at the consent step; the model does not get to pick.
+    types = _resolve_funnels(spec)
 
     login_customer_id = str(spec.get("parent_account") or "").strip()
 
@@ -239,7 +264,6 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
             "login_customer_id": login_customer_id,
         },
         geo=geo,
-        craft_id=craft_id,
         parent_event_stream=context.get("event_stream"),
         auth=context["auth"],
         category=taxonomy.get("primary_offering") or profile.category,
@@ -284,18 +308,22 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
             )
             failed.append(t)
             continue
-        setattr(bundle, t, res)
+        bundle.funnels[t] = res
         counts.append(f"{t} {len(res.positives)}+/{len(res.negatives)}-")
     if failed:
         bundle.meta["failed"] = failed
-    dump = bundle.model_dump(mode="json")
-    session_ctx["keyword_research"] = dump
 
-    if not counts:
+    # Persist ONLY if something was actually built. An empty bundle is still truthy, so
+    # storing it would flip keyword_research_done and tell the user their campaign is
+    # "ready in the panel" when no craft was ever emitted.
+    if not bundle.funnels:
         return ToolResult(
             success=False,
             error="Keyword research produced no results — check the ad account and retry.",
         )
+
+    dump = bundle.model_dump(mode="json")
+    session_ctx["keyword_research"] = dump
     await emit_campaign_craft(context.get("event_stream"), craft_id, session_ctx)
     note = (
         f" Note: {', '.join(failed)} could not be researched this time."
@@ -315,20 +343,15 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
 keyword_research = ToolDefinition(
     name="keyword_research",
     description=(
-        "Research brand + generic keywords for a Google Search campaign. Reads the "
-        "campaign account and business from session.context, runs both types in "
-        "parallel, and shows positives + negatives (with volumes) in the review panel."
+        "Research keywords for a Google Search campaign — one ad group per funnel the "
+        "user chose. Reads the campaign account, business, and chosen funnels from "
+        "session.context, runs them in parallel, and shows positives + negatives (with "
+        "volumes) in the review panel."
     ),
     display_name="Keyword Research",
-    parameters=[
-        ToolParameter(
-            name="keyword_type",
-            type="string",
-            required=False,
-            description="brand, generic, or both (default both).",
-            enum=["brand", "generic", "both"],
-        ),
-    ],
+    # No parameters: which ad groups to build is the USER's choice (campaign_spec.funnels,
+    # set at the consent step), never the model's.
+    parameters=[],
     execute=_keyword_research,
 )
 

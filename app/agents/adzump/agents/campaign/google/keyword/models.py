@@ -15,6 +15,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from app.agents.adzump.adapters.autosuggest import DEFAULT_SOURCE_NAMES
+from app.agents.adzump.agents.campaign.google.keyword.funnels import get_funnel
 from app.agents.adzump.agents.campaign.google.keyword.constants import (
     COMMERCIAL_VALUE_COMPETITION_LEVELS,
     INFORMATIONAL_SOURCE_NAMES,
@@ -40,11 +41,6 @@ class CompetitionLevel(str, Enum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     UNKNOWN = "UNKNOWN"
-
-
-class KeywordType(str, Enum):
-    BRAND = "brand"
-    GENERIC = "generic"
 
 
 class Intent(str, Enum):
@@ -146,7 +142,7 @@ class NegativeKeyword(BaseModel):
     )
     reason: str = ""
     volume: int = Field(default=0, ge=0)  # shown in the panel; via historical metrics
-    kind: KeywordType = KeywordType.GENERIC  # brand vs generic exclusion
+    funnel: str = ""  # the funnel this excludes for
     match_type: CoercedNegativeMatchType = MatchType.PHRASE
 
     @field_validator("keyword")
@@ -159,20 +155,30 @@ class NegativeKeyword(BaseModel):
         return text
 
 
-class KeywordSet(BaseModel):
-    """Positives + negatives for one keyword type (brand or generic)."""
+class Rejection(BaseModel):
+    """A candidate that did NOT make the set — the record behind "why not this keyword?"."""
 
-    keyword_type: KeywordType
+    keyword: str
+    rule: str  # not_selected | zero_volume | overlaps_positive | unsafe | duplicate | invented
+    volume_at_eval: int = Field(default=0, ge=0)
+    reason: str = ""  # the model's words, when it named one
+
+
+class KeywordSet(BaseModel):
+    """One funnel's ad group: what we target, what we exclude, and what we passed over."""
+
+    funnel: str  # FunnelSpec.id
+    label: str = ""  # carried so the panel renders without a code-side lookup
     positives: list[OptimizedKeyword] = Field(default_factory=list)
     negatives: list[NegativeKeyword] = Field(default_factory=list)
+    rejections: list[Rejection] = Field(default_factory=list)
 
 
 class KeywordResearchResult(BaseModel):
-    """Per-type results — brand and generic are separate campaigns, never merged."""
+    """One ad group per chosen funnel — never merged."""
 
-    brand: KeywordSet | None = None
-    generic: KeywordSet | None = None
-    meta: dict = Field(default_factory=dict)  # sources, geo, timings, low_data
+    funnels: dict[str, KeywordSet] = Field(default_factory=dict)  # funnel id -> its set
+    meta: dict = Field(default_factory=dict)  # geo, key, failed — stays at the root
 
 
 class OfferingTaxonomy(BaseModel):
@@ -219,12 +225,11 @@ class BusinessProfile:
     category: str
     includes_informational_funnel: bool = False  # → YouTube informational autosuggest
 
-    def source_names(self, keyword_type: str = "generic") -> list[str]:
-        """Autosuggest surfaces to query for one keyword type. The default web-search
-        sources are always the primary set; YouTube is appended only when the type is
-        GENERIC and the business has an informational funnel (it is off-intent for brand
-        keywords, so it is never added there)."""
+    def source_names(self, funnel_id: str) -> list[str]:
+        """Autosuggest surfaces for one funnel. The web-search defaults are always the
+        primary set; informational surfaces need BOTH the funnel to allow them and the
+        business to actually have that funnel."""
         names = list(DEFAULT_SOURCE_NAMES)
-        if keyword_type == "generic" and self.includes_informational_funnel:
+        if get_funnel(funnel_id).allows_informational_sources and self.includes_informational_funnel:
             names += [n for n in INFORMATIONAL_SOURCE_NAMES if n not in names]
         return names

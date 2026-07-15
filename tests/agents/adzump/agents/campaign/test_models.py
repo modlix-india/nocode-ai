@@ -28,9 +28,16 @@ class SourceNamesTests(unittest.TestCase):
         self.assertEqual(p.source_names("generic"), _DEFAULTS + ["youtube"])
         self.assertEqual(p.source_names("generic")[-1], "youtube")
 
-    def test_default_arg_is_generic(self):
+    def test_funnel_id_is_required(self):
+        # No default: guessing a funnel would silently query the wrong surfaces.
         p = BusinessProfile(category="saas", includes_informational_funnel=True)
-        self.assertEqual(p.source_names(), p.source_names("generic"))
+        with self.assertRaises(TypeError):
+            p.source_names()
+
+    def test_unknown_funnel_raises(self):
+        p = BusinessProfile(category="saas")
+        with self.assertRaises(KeyError):
+            p.source_names("nonexistent")
 
 
 if __name__ == "__main__":
