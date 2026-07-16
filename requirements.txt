@@ -27,6 +27,8 @@ py-eureka-client==0.11.10
 
 # Image Processing (compression before sending to LLM APIs)
 Pillow>=10.3.0,<11.0.0
+# Perceptual hashing for competitor-creative near-duplicate dedup (creative_intelligence Tier-2)
+ImageHash>=4.3,<5.0
 
 # Web Scraping (Adzump business analysis)
 beautifulsoup4==4.13.5

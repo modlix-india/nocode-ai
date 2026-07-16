@@ -193,15 +193,21 @@ async def upload_and_analyze(
     context: dict,
     hints: dict | None = None,
     name: str = "",
+    perceptual: bool = False,
 ) -> dict | None:
-    """Upload bytes + attach render hints. Returns {url, format, **hints} or
-    None on upload failure. Hints (`background`, `fit`) are passed in by the
-    caller - typically derived from the vision LLM that already inspected the
-    thumbnail to pick the asset. Empty/None hints just produce a {url, format}
+    """Upload bytes + attach render hints. Returns {url, format, contentHash,
+    **hints} or None on upload failure. Hints (`background`, `fit`) are passed in
+    by the caller - typically derived from the vision LLM that already inspected
+    the thumbnail to pick the asset. Empty/None hints just produce a {url, format}
     block; the UI renders that on its neutral default tile.
 
     `name` = semantic name from the LLM that saw the image ('project-logo',
-    'floor-plan-3bhk'); see `_asset_filename` for the scheme."""
+    'floor-plan-3bhk'); see `_asset_filename` for the scheme.
+
+    `perceptual` adds a `perceptualHash` (DCT hash of the decoded image) to the
+    result - only the competitor-creative dedup path needs it, so it's off by
+    default (product/logo uploads skip the decode). md5 stays on the raw bytes;
+    the perceptual hash decodes the image once."""
     ext = _ext_for_content_type(content_type)
     filename = _asset_filename(context, name, kind, image_bytes, content_type)
     url = await upload_image(image_bytes, filename, kind, context, content_type)
@@ -211,16 +217,22 @@ async def upload_and_analyze(
     # Full content hash of the bytes - the dedup + essence-cache key for the
     # creative library (the filename uses the first 6 chars of the same md5).
     content_hash = md5(image_bytes).hexdigest()
+    result = {"url": url, "format": ext, "contentHash": content_hash, **clean_hints}
+    if perceptual:
+        # Lazy import: keeps this generic util off the creative_intelligence
+        # package init (no import cycle), and a missing dep just yields "".
+        from app.agents.adzump.creative_intelligence.phash import compute_phash
+        result["perceptualHash"] = compute_phash(image_bytes)
     logger.info(
-        "upload_and_analyze: kind=%s url=%s format=%s hints=%s bytes=%d",
-        kind, url, ext, clean_hints, len(image_bytes),
+        "upload_and_analyze: kind=%s url=%s format=%s hints=%s bytes=%d perceptual=%s",
+        kind, url, ext, clean_hints, len(image_bytes), perceptual,
     )
-    return {"url": url, "format": ext, "contentHash": content_hash, **clean_hints}
+    return result
 
 
 async def rehost_image(
     source_url: str, kind: str, context: dict, hints: dict | None = None,
-    name: str = "",
+    name: str = "", perceptual: bool = False,
 ) -> dict | None:
     """Download an image and re-host on our service, attaching render hints.
 
@@ -228,6 +240,9 @@ async def rehost_image(
     `hints` (`background`, `fit`) are passed through to the upload record
     so the UI can render with the right tile contrast; the LLM that picked
     the asset is the source of truth for those, not pixel sampling here.
+
+    `perceptual=True` also returns a `perceptualHash` (the competitor-creative
+    dedup path sets this; other callers skip the decode).
 
     Returns {url, format, contentHash, **hints} on success. None on any failure
     (timeout, non-image, oversize, upload failure)."""
@@ -258,4 +273,6 @@ async def rehost_image(
         "rehost_fetched: kind=%s bytes=%d ctype=%s src=%s",
         kind, len(data), ctype, source_url[:200],
     )
-    return await upload_and_analyze(data, ctype, source_url, kind, context, hints, name=name)
+    return await upload_and_analyze(
+        data, ctype, source_url, kind, context, hints, name=name, perceptual=perceptual,
+    )

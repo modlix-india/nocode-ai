@@ -67,6 +67,9 @@ class Creative(BaseModel):
     poster_url: str = Field(default="", alias="posterUrl")
     poster_source_url: str = Field(default="", alias="posterSourceUrl")
     content_hash: str = Field(default="", alias="contentHash")
+    # Perceptual (DCT) hash of the rehosted image - Tier-2 near-duplicate key
+    # (see dedup.py). Empty when the bytes weren't a decodable raster image.
+    perceptual_hash: str = Field(default="", alias="perceptualHash")
 
     headline: str = ""
     primary_text: str = Field(default="", alias="primaryText")
