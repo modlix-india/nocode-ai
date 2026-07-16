@@ -28,25 +28,64 @@ SOURCE = "adlibrary.com"
 MAX_CREATIVES_PER_COMPETITOR = 60
 
 
-class Insights(BaseModel):
-    """The essence of a creative - DERIVED by us (vision over the stored image +
-    the metrics we already fetched), not from the vendor. This is the reasoning
-    the creative agent builds on and the image agent references when generating a
-    new creative. All optional: absent until the essence worker has run.
+# Essence enums - every one carries an escape value (other/none/unknown) so the
+# vision pass is never forced into a wrong bucket; the long-tail free-str fields
+# (angle, hook_text, layout, subject) cover nuance the enums can't.
+HookType = Literal[
+    "social_proof", "urgency", "curiosity", "pain_point", "aspiration",
+    "offer", "demonstration", "question", "bold_claim", "other",
+]
+AwarenessStage = Literal[  # Eugene Schwartz
+    "unaware", "problem_aware", "solution_aware", "product_aware", "most_aware", "unknown",
+]
+CopyFramework = Literal["PAS", "AIDA", "BAB", "FAB", "star_story_solution", "none"]
+EmotionalAngle = Literal[
+    "fear", "greed", "desire", "belonging", "status", "relief", "trust",
+    "excitement", "urgency", "other",
+]
+Offer = Literal["discount", "bundle", "free_trial", "guarantee", "bogo", "free_shipping", "none"]
+Proof = Literal["before_after", "testimonial", "lab_data", "demonstration", "ratings", "ugc", "none"]
+MediaFormat = Literal[
+    "static_image", "video", "carousel", "ugc", "testimonial", "founder_story",
+    "listicle", "skit", "comparison", "product_demo", "other",
+]
+VisualStyle = Literal[
+    "minimalist", "lifestyle", "studio", "ugc_authentic", "text_heavy", "animated", "meme", "other",
+]
+# Deterministic run-time proxy for "how proven is this creative" (NOT a metric,
+# NOT a vision field) - computed on Creative from longevity + activity.
+WinnerSignal = Literal["testing", "promising", "winner", "evergreen"]
 
-    The four load-bearing fields answer what the creative *is*, what it's *about*,
-    how it's *built*, and how it's *doing*. ``ocr_text`` and ``colors`` are the
-    raw extraction outputs ``how_its_made`` summarizes - kept because the image
-    agent wants the literal on-image text and palette."""
+
+class Essence(BaseModel):
+    """What a competitor creative IS, is ABOUT, and is BUILT like - DERIVED by the
+    vision essence worker (one multimodal pass), not from the vendor. This is the
+    reasoning a generation agent slots into a prompt and the image agent uses as a
+    reference. Three layers: strategy (why it works), what-is-it, visual-reference.
+    All defaulted: absent until the worker has run. ``winner_signal`` (how proven)
+    is NOT here - it's a deterministic computed_field on ``Creative``."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    what_it_is: str = Field(default="", alias="whatItIs")      # subject, product shown, offer/claim
-    theme: str = ""                                            # angle, mood, message
-    how_its_made: str = Field(default="", alias="howItsMade")  # format, composition, text-on-image, hook, CTA
-    performance: str = ""                                      # read of the metrics (spend/impressions/active-days)
-    ocr_text: str = Field(default="", alias="ocrText")
-    colors: list[str] = Field(default_factory=list)
+    # ── Strategy: the reasoning a copy/creative generator reproduces ──
+    angle: str = ""                                              # core promise, product-agnostic (free str)
+    hook_type: HookType = Field(default="other", alias="hookType")
+    hook_text: str = Field(default="", alias="hookText")         # literal opening copy fragment
+    awareness_stage: AwarenessStage = Field(default="unknown", alias="awarenessStage")
+    copy_framework: CopyFramework = Field(default="none", alias="copyFramework")
+    emotional_angle: EmotionalAngle = Field(default="other", alias="emotionalAngle")
+    offer: Offer = "none"
+    proof: Proof = "none"
+
+    # ── What is it ──
+    subject: str = ""                                            # product / person / scene shown
+
+    # ── Visual reference: what the image agent reproduces ──
+    media_format: MediaFormat = Field(default="other", alias="mediaFormat")
+    visual_style: VisualStyle = Field(default="other", alias="visualStyle")
+    layout: str = ""                                             # composition (free str)
+    ocr_text: str = Field(default="", alias="ocrText")           # verbatim on-image text
+    colors: list[str] = Field(default_factory=list)              # dominant palette
 
 
 class Creative(BaseModel):
@@ -90,7 +129,25 @@ class Creative(BaseModel):
     # Vendor-variable numeric bag (impressions/likes/spend/…); kept as a dict
     # because which keys a source exposes differs per vendor.
     metrics: dict[str, Any] = Field(default_factory=dict)
-    insights: Insights | None = None
+    essence: Essence | None = None
+
+    @computed_field(alias="winnerSignal")
+    @property
+    def winner_signal(self) -> WinnerSignal:
+        """Deterministic 'how proven is this creative' proxy - NO model call, and
+        not a metric it doesn't have. Longevity is the signal: advertisers kill
+        losers fast, so a long-running ad is a proven one. ``days_running`` is
+        adlibrary's ``days_count`` (confirm it means days-active, not days-since-
+        first-seen, before fully trusting the thresholds). ``is_active`` + the
+        metrics bag are available to refine this later."""
+        days = self.days_running or 0
+        if days >= 90:
+            return "evergreen"
+        if days >= 60:
+            return "winner"
+        if days >= 30:
+            return "promising"
+        return "testing"
 
 
 class Competitor(BaseModel):

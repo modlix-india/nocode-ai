@@ -9,7 +9,7 @@ maintains it, and it owns no LLM loop. Public API:
 from app.agents.adzump.creative_intelligence.models import (
     Creative,
     Competitor,
-    Insights,
+    Essence,
 )
 from app.agents.adzump.creative_intelligence.store import competitor_key, is_stale
 from app.agents.adzump.creative_intelligence.library import (
@@ -21,7 +21,7 @@ from app.agents.adzump.creative_intelligence.library import (
 __all__ = [
     "Creative",
     "Competitor",
-    "Insights",
+    "Essence",
     "competitor_key",
     "is_stale",
     "creatives_for",
