@@ -168,6 +168,18 @@ class EnrichIngestTests(unittest.TestCase):
         self.assertEqual(by_id["a1"].essence.angle, "cached")
         self.assertEqual(by_id["b2"].essence.angle, "fresh")
 
+    def test_no_still_creative_is_stored_with_essence_none(self):
+        # A video with no rehostable poster: no bytes -> no hash -> skipped by
+        # dedup and vision, stored as-is (the documented skip, not a crash).
+        no_still = Creative(creative_id="vid", media_type="video")
+        enrich = FakeEnrich(essences={"a1": Essence(angle="x")})
+        rec = self._run(stored=None, enrich=enrich,
+                        source=FakeSource(creatives=[_ad("a1"), no_still]))
+        self.assertEqual(enrich.calls, [["a1"]])
+        by_id = {c.creative_id: c for c in rec.creatives}
+        self.assertIsNone(by_id["vid"].essence)
+        self.assertEqual(by_id["a1"].essence.angle, "x")
+
     def test_enrich_failure_still_stores_the_record(self):
         rec = self._run(stored=None, enrich=FakeEnrich(fail=True),
                         source=FakeSource(creatives=[_ad("a1")]))
