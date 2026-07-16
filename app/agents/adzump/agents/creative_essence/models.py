@@ -1,25 +1,21 @@
-"""Wire-shape models for the EssenceAnalyst's LLM output + its typed input.
+"""Wire-shape models for the EssenceAnalyst's LLM output.
 
 The output verdict IS the domain ``Essence`` plus the input-order ``idx`` the
 resolver maps back to a ``content_hash``. One schema source of truth: the enums
 live on ``Essence`` (``creative_intelligence/models.py``) and the wire shape
-inherits them, so the domain schema and the vision contract can't drift.
+inherits them, so the domain schema and the vision contract can't drift. The
+input unit (``CreativeImage``) is the domain's enrichment seam - re-exported
+here so the agent's public surface stays one import.
 """
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.agents.adzump.creative_intelligence.models import Creative, Essence
+from app.agents.adzump.creative_intelligence.enrich import CreativeImage
+from app.agents.adzump.creative_intelligence.models import Essence
 
-
-class CreativeImage(BaseModel):
-    """One deduped survivor to analyze: the stored creative + its rehosted
-    image bytes (the same bytes the rehost hashed, so content_hash agrees)."""
-
-    creative: Creative
-    data: bytes
-    content_type: str = "image/jpeg"
+__all__ = ["CreativeImage", "EssenceVerdict", "EssenceBatch"]
 
 
 class EssenceVerdict(Essence):

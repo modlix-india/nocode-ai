@@ -398,26 +398,30 @@ class _SilentEventStream(AgentEventStream):
         return
 
     async def emit_data(self, data_type: str, payload: dict) -> None:
-        await self._parent.emit_data(data_type, payload)
+        if self._parent is not None:  # None parent = headless (eval) run
+            await self._parent.emit_data(data_type, payload)
 
     async def emit_agent_started(self, agent_id, label, parent_id="root",
                                  parent_tool_use_id="",
                                  agent_tool_use_id="") -> None:
-        await self._parent.emit_agent_started(
-            agent_id, label, parent_id, parent_tool_use_id,
-            agent_tool_use_id=agent_tool_use_id,
-        )
+        if self._parent is not None:
+            await self._parent.emit_agent_started(
+                agent_id, label, parent_id, parent_tool_use_id,
+                agent_tool_use_id=agent_tool_use_id,
+            )
 
     async def emit_agent_finished(self, agent_id, status="success",
                                   duration_ms=0, tokens_in=0, tokens_out=0,
                                   step_count=0, summary="") -> None:
-        await self._parent.emit_agent_finished(
-            agent_id, status, duration_ms, tokens_in, tokens_out,
-            step_count, summary,
-        )
+        if self._parent is not None:
+            await self._parent.emit_agent_finished(
+                agent_id, status, duration_ms, tokens_in, tokens_out,
+                step_count, summary,
+            )
 
     async def emit_agent_usage(self, agent_id, tokens_in, tokens_out) -> None:
-        await self._parent.emit_agent_usage(agent_id, tokens_in, tokens_out)
+        if self._parent is not None:
+            await self._parent.emit_agent_usage(agent_id, tokens_in, tokens_out)
 
     async def emit_craft(self, *a, **kw) -> None:
         return  # The launcher owns craft rendering, not the essence pass.

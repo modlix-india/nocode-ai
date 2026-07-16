@@ -241,8 +241,11 @@ async def rehost_image(
     so the UI can render with the right tile contrast; the LLM that picked
     the asset is the source of truth for those, not pixel sampling here.
 
-    `perceptual=True` also returns a `perceptualHash` (the competitor-creative
-    dedup path sets this; other callers skip the decode).
+    `perceptual=True` also returns a `perceptualHash` plus the downloaded
+    `imageBytes`/`contentType` - the competitor-creative ingest hashes AND
+    essence-analyzes the same bytes, and handing them back saves a re-download
+    from the vendor's TTL-flaky URL. Other callers skip the decode and the
+    byte carry.
 
     Returns {url, format, contentHash, **hints} on success. None on any failure
     (timeout, non-image, oversize, upload failure)."""
@@ -273,6 +276,10 @@ async def rehost_image(
         "rehost_fetched: kind=%s bytes=%d ctype=%s src=%s",
         kind, len(data), ctype, source_url[:200],
     )
-    return await upload_and_analyze(
+    result = await upload_and_analyze(
         data, ctype, source_url, kind, context, hints, name=name, perceptual=perceptual,
     )
+    if result is not None and perceptual:
+        result["imageBytes"] = data
+        result["contentType"] = ctype
+    return result

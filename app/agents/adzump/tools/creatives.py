@@ -24,6 +24,34 @@ from app.agents.adzump.tools.craft import render_competitor_creatives
 logger = logging.getLogger(__name__)
 
 
+def _essence_enrich(context: dict):
+    """The injected Tier-3 hook (see ``creative_intelligence/enrich.py``): one
+    Essence Analyst card + one single-shot extract per competitor ingest.
+    Constructed HERE - the tool owns orchestration; the library only awaits the
+    typed Protocol and never imports the agent."""
+    from app.agents.adzump.agents.creative_essence import get_essence_analyst
+    from app.core.streaming import pre_emit_agent_started
+
+    stream = context.get("event_stream")
+    session_ctx = context.get("session_context", {}) or {}
+
+    async def _enrich(images):
+        # The launcher owns the card open; extract() emits agent_finished.
+        await pre_emit_agent_started(
+            stream, agent_id="creative_essence", label="Essence Analyst",
+            parent_tool_use_id=context.get("tool_use_id", ""), context=session_ctx,
+        )
+        return await get_essence_analyst().extract(
+            images, stream, context.get("auth"),
+            parent_session_context={
+                "url": session_ctx.get("primary_url") or session_ctx.get("url", ""),
+                "craft_id": session_ctx.get("craft_id", ""),
+            },
+        )
+
+    return _enrich
+
+
 async def _render_creatives(stream, craft_id: str, title: str, competitor_name: str,
                             creatives: list[dict], total: int, active: int) -> None:
     """Append one competitor's creative section (heading + metric tiles + 2-up
@@ -54,7 +82,8 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
     await emit_progress(context, "Fetching competitor creatives…")
 
     try:
-        results = await ci.creatives_for_all(competitors, context, force=force)
+        results = await ci.creatives_for_all(
+            competitors, context, force=force, enrich=_essence_enrich(context))
     except Exception as e:
         logger.warning("fetch_competitor_creatives failed: %s: %s",
                        type(e).__name__, str(e)[:200])

@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from app.agents.adzump import _uploads
 from app.agents.adzump.creative_intelligence import store
 from app.agents.adzump.creative_intelligence.dedup import dedupe
+from app.agents.adzump.creative_intelligence.enrich import CreativeImage, EnrichCreatives
 from app.agents.adzump.creative_intelligence.models import (
     Competitor,
     MAX_CREATIVES_PER_COMPETITOR,
@@ -57,11 +58,17 @@ def competitor_identity(comp: dict) -> tuple[str, str]:
 async def creatives_for(
     *, key: str, name: str, ctx: dict, force: bool = False,
     source: AdIntelligenceSource | None = None,
+    enrich: EnrichCreatives | None = None,
 ) -> Competitor | None:
     """Return the stored ``Competitor`` for one competitor, fetching + storing from
     the source on a miss or stale hit. On a source failure, serve whatever stale
     record we already had (better than nothing) rather than raising - the caller
-    is batch-oriented."""
+    is batch-oriented.
+
+    ``enrich`` is the injected Tier-3 essence hook (see ``enrich.py``) - it runs
+    only on a real ingest (never on a cache hit, empty fetch, or stale-serve)
+    and only for deduped survivors that still lack essence, before the ONE
+    store write."""
     if not key:
         return None
     src = source or _DEFAULT_SOURCE
@@ -89,10 +96,12 @@ async def creatives_for(
         last_fetched_at=datetime.now(timezone.utc).isoformat(),
         fetch_status="ok" if fetched.creatives else "empty",
     )
-    await _attach_binaries(competitor, ctx)
+    binaries = await _attach_binaries(competitor, ctx)
     # Deterministic dedup cascade: exact (md5) then perceptual (pHash). Vision
     # never culls - it only adds essence (see dedup.py, creative_essence agent).
     competitor.creatives = dedupe(competitor.creatives)
+    _carry_forward_essence(record, competitor)
+    await _enrich_essence(competitor, binaries, enrich)
     await store.upsert_competitor(competitor, ctx)
     return competitor
 
@@ -100,6 +109,7 @@ async def creatives_for(
 async def creatives_for_all(
     competitors: list[dict], ctx: dict, *, force: bool = False,
     source: AdIntelligenceSource | None = None,
+    enrich: EnrichCreatives | None = None,
 ) -> dict[str, Competitor]:
     """Run ``creatives_for`` for each entry. Returns ``{key: Competitor}`` for
     every competitor resolved (cache hit or fresh fetch). Skips entries without a
@@ -113,19 +123,25 @@ async def creatives_for_all(
             continue
         if key in results:  # same domain listed twice - fetch once
             continue
-        record = await creatives_for(key=key, name=name, ctx=ctx, force=force, source=source)
+        record = await creatives_for(key=key, name=name, ctx=ctx, force=force,
+                                     source=source, enrich=enrich)
         if record:
             results[key] = record
     logger.info("creative_intelligence: resolved=%d skipped_no_domain=%d", len(results), skipped)
     return results
 
 
-async def _attach_binaries(competitor: Competitor, ctx: dict) -> None:
+async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple[bytes, str]]:
     """Rehost creative images into our file store so the library doesn't depend on
     the source's (undocumented-TTL) URLs. For image ads the creative itself
     (-> fileUrl); for video ads the poster still (-> posterUrl). Video bytes are
-    not downloaded (large). Best-effort, bounded, concurrent."""
+    not downloaded (large). Best-effort, bounded, concurrent.
+
+    Returns ``{content_hash: (bytes, content_type)}`` - the rehosted bytes, kept
+    so the Tier-3 essence pass analyzes exactly what was hashed, without a
+    re-download."""
     key = competitor.competitor_key
+    binaries: dict[str, tuple[bytes, str]] = {}
     # (creative, source_image_url, sets_poster)
     jobs: list[tuple] = []
     for c in competitor.creatives:
@@ -135,7 +151,7 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> None:
             jobs.append((c, c.poster_source_url, True))
     jobs = jobs[:MAX_BINARIES_PER_COMPETITOR]
     if not jobs:
-        return
+        return binaries
 
     async def _one(c, src: str, is_poster: bool) -> None:
         res = await _uploads.rehost_image(
@@ -150,7 +166,62 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> None:
             # md5 = Tier-1 dedup + essence-cache key; pHash = Tier-2 near-dup key.
             c.content_hash = res.get("contentHash", "") or c.content_hash
             c.perceptual_hash = res.get("perceptualHash", "") or c.perceptual_hash
+            if c.content_hash and res.get("imageBytes"):
+                binaries[c.content_hash] = (
+                    res["imageBytes"], res.get("contentType") or "image/jpeg")
 
     await asyncio.gather(*(_one(c, s, p) for c, s, p in jobs), return_exceptions=True)
     done = sum(1 for c, _, p in jobs if (c.poster_url if p else c.file_url))
     logger.info("creative_intelligence: rehosted %d/%d images key=%s", done, len(jobs), key)
+    return binaries
+
+
+def _carry_forward_essence(prior: Competitor | None, competitor: Competitor) -> None:
+    """The essence cache: a refetch re-lists mostly the same images, and essence
+    is content-addressed - copy it from the prior stored record by content_hash
+    so the vision pass only ever sees genuinely new creatives."""
+    if prior is None:
+        return
+    known = {c.content_hash: c.essence
+             for c in prior.creatives if c.content_hash and c.essence}
+    if not known:
+        return
+    carried = 0
+    for c in competitor.creatives:
+        if c.essence is None and c.content_hash in known:
+            c.essence = known[c.content_hash]
+            carried += 1
+    if carried:
+        logger.info("creative_intelligence: essence carried forward %d/%d key=%s",
+                    carried, len(competitor.creatives), competitor.competitor_key)
+
+
+async def _enrich_essence(
+    competitor: Competitor,
+    binaries: dict[str, tuple[bytes, str]],
+    enrich: EnrichCreatives | None,
+) -> None:
+    """Tier-3: typed essence for the deduped survivors that still lack it.
+    Injected hook - the domain never constructs it. Never culls; a failure
+    leaves essence None and the next real ingest re-attempts."""
+    if enrich is None:
+        return
+    pending = [
+        CreativeImage(creative=c, data=binaries[c.content_hash][0],
+                      content_type=binaries[c.content_hash][1])
+        for c in competitor.creatives
+        if c.essence is None and c.content_hash in binaries
+    ]
+    if not pending:
+        return
+    try:
+        essences = await enrich(pending)
+    except Exception as e:
+        logger.warning("creative_intelligence: enrich failed key=%s: %s",
+                       competitor.competitor_key, str(e)[:200])
+        return
+    for c in competitor.creatives:
+        if c.essence is None and c.content_hash in essences:
+            c.essence = essences[c.content_hash]
+    logger.info("creative_intelligence: essence added %d/%d key=%s",
+                len(essences), len(pending), competitor.competitor_key)

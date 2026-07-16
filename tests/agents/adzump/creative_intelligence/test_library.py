@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 from app.agents.adzump.creative_intelligence import library
-from app.agents.adzump.creative_intelligence.models import Competitor, Creative
+from app.agents.adzump.creative_intelligence.models import Competitor, Creative, Essence
 from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibraryError
 from app.agents.adzump.creative_intelligence.sources.base import SourceFetch
 
@@ -93,6 +93,98 @@ class CreativesForPolicyTests(unittest.TestCase):
     def test_no_key_returns_none(self):
         rec = asyncio.run(library.creatives_for(key="", name="x", ctx={}, source=FakeSource()))
         self.assertIsNone(rec)
+
+
+class FakeEnrich:
+    """Records the content_hashes it was asked about; returns a fixed map."""
+
+    def __init__(self, essences=None, fail=False):
+        self._essences = essences or {}
+        self._fail = fail
+        self.calls: list[list[str]] = []
+
+    async def __call__(self, images):
+        self.calls.append(sorted(ci.creative.content_hash for ci in images))
+        if self._fail:
+            raise RuntimeError("boom")
+        return self._essences
+
+
+def _ad(creative_id: str) -> Creative:
+    return Creative(creative_id=creative_id, media_type="image",
+                    source_asset_url=f"https://vendor/{creative_id}.jpg")
+
+
+def _rehost_hashing_by_creative_id():
+    """Fake rehost: content_hash = the creative_id, bytes returned like the
+    perceptual path does."""
+    async def fake(src, kind, ctx, hints=None, name="", perceptual=False):
+        h = src.rsplit("/", 1)[-1].removesuffix(".jpg")
+        return {"url": f"https://files/{h}.jpg", "contentHash": h,
+                "perceptualHash": "", "imageBytes": b"IMG-" + h.encode(),
+                "contentType": "image/jpeg"}
+    return fake
+
+
+class EnrichIngestTests(unittest.TestCase):
+    """Tier-3 wiring: enrich sees only survivors that lack essence, results and
+    the carried-forward cache land in the ONE upserted record, and no failure
+    mode (hook raise, source failure, cache hit) ever reaches vision."""
+
+    def setUp(self):
+        p = mock.patch.object(library._uploads, "rehost_image",
+                              new=mock.AsyncMock(side_effect=_rehost_hashing_by_creative_id()))
+        p.start(); self.addCleanup(p.stop)
+        u = mock.patch.object(library.store, "upsert_competitor",
+                              new=mock.AsyncMock(return_value="id1"))
+        u.start(); self.addCleanup(u.stop)
+
+    def _run(self, *, stored, source, enrich):
+        with mock.patch.object(library.store, "get_competitor",
+                               new=mock.AsyncMock(return_value=stored)):
+            return asyncio.run(library.creatives_for(
+                key="nike.com", name="Nike", ctx={}, source=source, enrich=enrich))
+
+    def test_enrich_runs_on_survivors_and_attaches_before_the_one_write(self):
+        enrich = FakeEnrich(essences={"a1": Essence(angle="lakeside living")})
+        rec = self._run(stored=None, enrich=enrich,
+                        source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
+        self.assertEqual(enrich.calls, [["a1", "b2"]])
+        by_id = {c.creative_id: c for c in rec.creatives}
+        self.assertEqual(by_id["a1"].essence.angle, "lakeside living")
+        self.assertIsNone(by_id["b2"].essence)  # absent verdict = None, not invented
+        written = library.store.upsert_competitor.await_args.args[0]
+        self.assertEqual(written.creatives[0].essence.angle, "lakeside living")
+
+    def test_cached_essence_carries_forward_and_skips_vision(self):
+        stale = _stale_record()
+        stale.creatives = [Creative(creative_id="old", content_hash="a1",
+                                    essence=Essence(angle="cached"))]
+        enrich = FakeEnrich(essences={"b2": Essence(angle="fresh")})
+        rec = self._run(stored=stale, enrich=enrich,
+                        source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
+        self.assertEqual(enrich.calls, [["b2"]])  # a1 came from the cache
+        by_id = {c.creative_id: c for c in rec.creatives}
+        self.assertEqual(by_id["a1"].essence.angle, "cached")
+        self.assertEqual(by_id["b2"].essence.angle, "fresh")
+
+    def test_enrich_failure_still_stores_the_record(self):
+        rec = self._run(stored=None, enrich=FakeEnrich(fail=True),
+                        source=FakeSource(creatives=[_ad("a1")]))
+        self.assertIsNone(rec.creatives[0].essence)
+        library.store.upsert_competitor.assert_awaited()
+
+    def test_no_vision_on_cache_hit_source_failure_or_empty_fetch(self):
+        cases = [
+            ("fresh hit", _fresh_record(), FakeSource(creatives=[_ad("a1")])),
+            ("source failure", _stale_record(), FakeSource(fail=True)),
+            ("empty fetch", None, FakeSource(creatives=[])),
+        ]
+        for name, stored, source in cases:
+            with self.subTest(case=name):
+                enrich = FakeEnrich()
+                self._run(stored=stored, source=source, enrich=enrich)
+                self.assertEqual(enrich.calls, [])
 
 
 if __name__ == "__main__":
