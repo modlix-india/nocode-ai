@@ -23,7 +23,11 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.models import Image, Logo, check_product
-from app.agents.adzump._shared import build_ds_headers, primary_screenshot_url
+from app.agents.adzump._shared import (
+    build_ds_headers,
+    extract_storage_records as _extract_records,
+    primary_screenshot_url,
+)
 from app.agents.appbuilder.tools._shared import get_saas_client
 
 logger = logging.getLogger(__name__)
@@ -67,29 +71,6 @@ def _storage_headers(ctx: dict) -> dict[str, str]:
 
 
 # ── Reads ─────────────────────────────────────────────────────────────────
-
-
-def _extract_records(raw: Any) -> list[dict]:
-    """Mirror ds's StorageResponse.content unwrap: gateway wraps the storage
-    result in two `result` levels, then either has `content` (paged) or
-    returns records directly. Tolerates both."""
-    if raw is None:
-        return []
-    data = raw
-    if isinstance(data, list) and data:
-        data = data[0]
-    # 2-level unwrap of the known `result.result` envelope
-    for _ in range(2):
-        if isinstance(data, dict) and "result" in data:
-            data = data["result"]
-        else:
-            break
-    if data is None:
-        return []
-    if isinstance(data, dict) and "content" in data:
-        content = data["content"]
-        return content if isinstance(content, list) else [content]
-    return data if isinstance(data, list) else [data]
 
 
 async def get_by_url(url: str, ctx: dict) -> dict | None:

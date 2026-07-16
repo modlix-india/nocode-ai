@@ -65,10 +65,6 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
-    # True once competitor creatives have been fetched + attached to the
-    # competitor entries this session - stops the creative-fetch interjection
-    # from re-firing into a loop. Defaulted for direct test construction.
-    competitor_creatives_fetched: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -102,9 +98,6 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
-            competitor_creatives_fetched=any(
-                c.get("creatives") for c in (competitive.get("competitors") or [])
-            ),
         )
 
     @property
@@ -152,20 +145,6 @@ def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
     return None
 
 
-_CREATIVE_INTENT_PHRASES = (
-    "ad creative", "their ads", "their ad", "competitor ad", "competitors' ad",
-    "creative inspiration", "competitor creative", "competitors' creative",
-    "see their ads", "show me the ads", "ads they run", "ads they're running",
-)
-
-
-def _wants_competitor_creatives(text: str) -> bool:
-    """True when the user's message explicitly asks to see competitors' ad
-    creatives for inspiration - drives the fetch_competitor_creatives interjection."""
-    t = (text or "").lower()
-    return any(p in t for p in _CREATIVE_INTENT_PHRASES)
-
-
 def _next_action(cctx: CampaignContext) -> list[str]:
     """Compute the ordered list of what's still missing, with concrete tool calls.
 
@@ -177,21 +156,6 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.product:
         missing.append("business URL - call `analyze_product(url=<the user's URL>)`")
-        return missing
-
-    # Creative-inspiration interjection (highest priority after product): the
-    # user explicitly asked to see competitors' ads. Fetch them now - regardless
-    # of where campaign setup is - but only once (the tool attaches creatives to
-    # each competitor, flipping competitor_creatives_fetched so this won't loop).
-    if (cctx.competitor_analysis_attempted
-            and not cctx.competitor_creatives_fetched
-            and _wants_competitor_creatives(cctx.last_user)):
-        missing.append(
-            "competitor creatives - the user asked to see competitors' ads for "
-            "inspiration. Call `fetch_competitor_creatives()` (no arguments) - it "
-            "pulls each tracked competitor's live ad creatives from the shared "
-            "library and renders them. Do NOT advance campaign setup this turn."
-        )
         return missing
 
     # Intent routing: if the user's last message is a recognizable answer for

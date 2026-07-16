@@ -1,9 +1,9 @@
-"""Tier-2 live test: per-client creative-library storage round-trip via the gateway.
+"""Tier-2 live test: creative-library storage round-trip via the gateway.
 
-Exercises the real backend: get_competitor (miss) -> fetch from adlibrary +
+Exercises the real backend: get_competitor (miss) -> fetch from the source +
 rehost binaries -> upsert -> get_competitor (hit).
 
-Needs a logged-in session's auth (kept out of the file — pass via env) and the
+Needs a logged-in session's auth (kept out of the file - pass via env) and the
 CompetitorCreativeLibrary storage to exist for the client:
 
     export AI_TEST_JWT='<bearer token, no "Bearer " prefix>'
@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import settings
 from app.services.config_server import initialize_config_from_server
-from app.agents.adzump.services import creative_library as lib
-from app.agents.adzump.services import competitor_creatives as cc
+from app.agents.adzump import creative_intelligence as ci
+from app.agents.adzump.creative_intelligence import store
 
 
 async def main() -> None:
@@ -41,38 +41,37 @@ async def main() -> None:
 
     name = sys.argv[1] if len(sys.argv) > 1 else "Gymshark"
     domain = sys.argv[2] if len(sys.argv) > 2 else "gymshark.com"
-    key = lib.competitor_key(domain)
+    key = ci.competitor_key(domain)
     ctx = {
-        "headers": {"Authorization": f"Bearer {jwt}", "appCode": lib.APP_CODE},
+        "headers": {"Authorization": f"Bearer {jwt}", "appCode": store.APP_CODE},
         "client_code": client_code,
         "session_context": {},
     }
     print(f"gateway={settings.GATEWAY_URL}  clientCode={client_code}  "
           f"shared={settings.CREATIVE_LIBRARY_SHARED}  key={key}")
 
-    before = await lib.get_competitor(key, ctx)
+    before = await store.get_competitor(key, ctx)
     print(f"\n1) get_competitor (before): {'HIT' if before else 'miss'}")
 
     print("2) fetch + rehost + upsert (force) ...")
-    rec = await cc.fetch_for_competitor(key=key, name=name, ctx=ctx, force=True)
+    rec = await ci.creatives_for(key=key, name=name, ctx=ctx, force=True)
     if not rec:
-        print("   fetch_for_competitor returned None — check adlibrary/auth.")
+        print("   creatives_for returned None - check source/auth.")
         return
-    rehosted = sum(1 for c in rec.get("creatives", []) if c.get("fileUrl") or c.get("posterUrl"))
-    print(f"   stored: total={rec.get('totalCreatives')} active={rec.get('activeCreatives')} "
+    rehosted = sum(1 for c in rec.creatives if c.file_url or c.poster_url)
+    print(f"   stored: total={rec.total_creatives} active={rec.active_creatives} "
           f"rehosted_binaries={rehosted}")
-    for c in rec.get("creatives", []):
-        u = c.get("fileUrl") or c.get("posterUrl")
+    for c in rec.creatives:
+        u = c.file_url or c.poster_url
         if u:
             print("   sample rehosted url:", u)
             break
 
-    after = await lib.get_competitor(key, ctx)
-    print(f"\n3) get_competitor (after): {'HIT — round-trip OK' if after else 'MISS — write failed'}")
+    after = await store.get_competitor(key, ctx)
+    print(f"\n3) get_competitor (after): {'HIT - round-trip OK' if after else 'MISS - write failed'}")
     if after:
-        d = after.get("data") or after
-        print(f"   stored competitorKey={d.get('competitorKey')} total={d.get('totalCreatives')} "
-              f"lastFetchedAt={d.get('lastFetchedAt')}")
+        print(f"   stored competitorKey={after.competitor_key} total={after.total_creatives} "
+              f"lastFetchedAt={after.last_fetched_at}")
 
 
 if __name__ == "__main__":

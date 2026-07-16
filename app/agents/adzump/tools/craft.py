@@ -222,19 +222,18 @@ async def emit_craft_panel(
 
     # 7. Competitor creatives — render them HERE, as part of the rebuild, so a
     # later rebuild never wipes the on-demand-appended grid (the disappearing-
-    # creatives bug). Each competitor carries its own `creatives` + `creativeStats`
+    # creatives bug). Each competitor carries its own `creatives` + creative counts
     # once `fetch_competitor_creatives` has run; absent until then.
     for c in (competitive.get("competitors") or []):
         creatives = c.get("creatives") or []
         if not creatives:
             continue
-        stats = c.get("creativeStats") or {}
         render_competitor_creatives(
             blocks,
             c.get("name") or "?",
             creatives,
-            stats.get("total", 0),
-            stats.get("active", 0),
+            c.get("totalCreatives", 0),
+            c.get("activeCreatives", 0),
         )
 
     await stream.emit_craft(

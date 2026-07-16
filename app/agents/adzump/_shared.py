@@ -24,6 +24,29 @@ def build_ds_headers(context: dict) -> dict[str, str]:
     return headers
 
 
+def extract_storage_records(raw: Any) -> list[dict]:
+    """Unwrap CoreServices.Storage's response envelope into a flat record list.
+    The gateway wraps the storage result in two ``result`` levels, then either
+    has ``content`` (paged) or returns records directly. Tolerates both. Shared
+    by every storage-backed module (business_storage, creative_intelligence)."""
+    if raw is None:
+        return []
+    data = raw
+    if isinstance(data, list) and data:
+        data = data[0]
+    for _ in range(2):  # 2-level unwrap of the known result.result envelope
+        if isinstance(data, dict) and "result" in data:
+            data = data["result"]
+        else:
+            break
+    if data is None:
+        return []
+    if isinstance(data, dict) and "content" in data:
+        content = data["content"]
+        return content if isinstance(content, list) else [content]
+    return data if isinstance(data, list) else [data]
+
+
 def short_url(url: str, max_len: int = 55) -> str:
     """Render a URL compactly for live progress strings shown in the UI.
 
