@@ -65,6 +65,16 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    # Image sessions generated via manage_creatives → used to avoid re-generating
+    # on every turn and to inject edit context into the prescription.
+    # Defaulted so existing test fixtures that build CampaignContext directly
+    # need no change.
+    image_sessions: dict = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        # Provide mutable default without triggering dataclass field default issues.
+        if self.image_sessions is None:
+            object.__setattr__(self, "image_sessions", {})
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -98,6 +108,7 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            image_sessions=dict(ctx.get("_image_sessions") or {}),
         )
 
     @property
@@ -239,6 +250,59 @@ def _handle_creative_workflow(cctx: CampaignContext) -> list[str] | None:
         )
 
     return missing
+
+
+def _is_approval_or_ambient(text: str) -> bool:
+    """Check if the user's message is a clear approval or an ambient reply.
+
+    Used by the creative workflow to distinguish between:
+    - Approvals → show previews and ask via present_options (formal approval)
+    - Edit requests → route directly to `manage_creatives` without re-asking.
+
+    The invert-approval approach treats anything that is NOT a clear approval
+    or ambient response as an edit intent. This is intentional: the cost of a
+    false positive (routing an accidental question to manage_creatives) is low
+    — the CreativeAgent LLM handles it gracefully — while a false negative
+    (ignoring the user's edit request) breaks the flow entirely.
+    """
+    if not text:
+        return True
+    t = text.strip().lower().rstrip(".!?,")
+
+    # Clear approvals (chip answer values + common typed variants)
+    if t in {
+        "true",
+        "yes",
+        "yeah",
+        "yep",
+        "yup",
+        "sure",
+        "looks great",
+        "looks good",
+        "great",
+        "good",
+        "perfect",
+        "nice",
+        "awesome",
+        "amazing",
+        "love it",
+        "approved",
+        "approve",
+        "proceed",
+        "looks perfect",
+        "that's great",
+        "that looks great",
+        "that looks good",
+        "yes, looks great",
+        "yes, looks great!",
+    }:
+        return True
+
+    # Ambient responses (the user isn't engaging with the ask)
+    if t in {"ok", "okay", "continue", "next", "go ahead", "sure go ahead"}:
+        return True
+
+    return False
 
 
 def _next_action(cctx: CampaignContext) -> list[str]:
@@ -442,12 +506,24 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "brand logo - brand logo is missing. Ask the user in one short phrase to upload their brand logo. "
                 "Do NOT proceed until a logo is uploaded via `manage_assets`."
             )
-        elif not cctx.spec.get("ad_copy"):
+        elif not cctx.image_sessions:
+            # No images generated yet — tell the agent to ask the user for their
+            # preferred format BEFORE calling manage_creatives, so every campaign
+            # gets the right size instead of always defaulting to 1:1 square.
             missing.append(
-                "ad creative generation - Call "
-                "`manage_creatives(user_message='generate a square ad creative')`."
+                "ad creative generation - Ask the user which format they want "
+                "(Square 1:1, Portrait 9:16, Landscape 16:9, or Story 4:5), then call "
+                "`manage_creatives(user_message=<the user's full creative request "
+                "including format>)`."
             )
-        else:
+        elif any(
+            info.get("status") == "generating" for info in cctx.image_sessions.values()
+        ):
+            # Generation still in flight — do not add any prescription; the
+            # agent loop will re-evaluate once the tool result comes back.
+            pass
+        elif cctx.spec.get("creative_approved") == "true":
+            # User explicitly approved the creatives — proceed to review & publish.
             meta_extra = ""
             if cctx.is_meta:
                 meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
@@ -456,15 +532,26 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     if cctx.spec.get("ig_page")
                     else "\n  - **Instagram Account**: not linked (Facebook only)"
                 )
-            # Include creative info in review block
+            # Build creative preview from image_sessions
             creative_previews = ""
+            for img_id, info in cctx.image_sessions.items():
+                url = info.get("current_image_url")
+                if url and info.get("status") == "done":
+                    creative_previews += (
+                        f'\n<img src="{url}" alt="{img_id}" '
+                        'style="width:250px;height:250px;object-fit:contain;border-radius:8px;margin:4px;" />'
+                    )
+            # Also include any ad_copy-based creatives
             ad_copy_list = cctx.spec.get("ad_copy") or []
             if isinstance(ad_copy_list, list):
                 for idx, item in enumerate(ad_copy_list, 1):
                     urls = item.get("creative_urls", {})
                     for size_name, url in urls.items():
                         if url:
-                            creative_previews += f'\n![{size_name.capitalize()}]({url}){{style="width: 250px; height: 250px; object-fit: contain; border-radius: 8px; margin: 4px;"}}'
+                            creative_previews += (
+                                f'\n<img src="{url}" alt="{size_name.capitalize()}" '
+                                'style="width:250px;height:250px;object-fit:contain;border-radius:8px;margin:4px;" />'
+                            )
 
             missing.append(
                 "review & publish - TWO separate steps this turn:\n"
@@ -492,6 +579,67 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the one "
                 "tool that persists the campaign. These are tools to CALL - never type "
                 "tool-call syntax into your reply, only the markdown summary above is text."
+            )
+        elif cctx.spec.get("creative_approved") == "edit":
+            # User clicked "Edit / make changes" on a previous turn.
+            # Two sub-states based on whether they've provided feedback yet.
+            last = (cctx.last_user or "").strip().lower().rstrip(".!?,")
+            if last in ("edit", "edit / make changes"):
+                # (A) They just clicked the chip — no edit instruction yet.
+                missing.append(
+                    "ad creative edit - The user chose to edit. Ask them in ONE "
+                    "short sentence what they would like to change. Once they "
+                    "provide feedback, call "
+                    "`manage_creatives(user_message=<their full edit instruction>)`, "
+                    "then call "
+                    "`set_campaign_spec(creative_approved=null)` so the updated "
+                    "image can be re-shown for approval."
+                )
+            else:
+                # (B) User typed their edit instruction — route to manage_creatives.
+                missing.append(
+                    "ad creative edit - Call "
+                    "`manage_creatives(user_message=<their verbatim edit instruction>)`. "
+                    "The creative subsystem will identify which image to edit. "
+                    "After the edit completes, call "
+                    "`set_campaign_spec(creative_approved=null)` so the updated "
+                    "image can be re-shown for approval."
+                )
+        else:
+            # ── CATCH-ALL: images exist, done, and not yet approved ──
+            # Covers creative_approved=None (first time — never shown previews)
+            # and any unknown value. Always shows previews; does NOT attempt
+            # invert-approval here because a non-approval message might be
+            # about something else entirely (e.g. "change the website url").
+            # The edit chip path is handled by the explicit "edit" branch above.
+            img_previews = ""
+            for img_id, info in cctx.image_sessions.items():
+                url = info.get("current_image_url")
+                ratio = info.get("aspect_ratio", "1:1")
+                if url and info.get("status") == "done":
+                    img_previews += (
+                        f'\n<img src="{url}" alt="{img_id} ({ratio})" '
+                        'style="max-width:300px;border-radius:8px;margin:4px;" />'
+                    )
+            image_ids_str = ", ".join(
+                f"{k} ({v.get('aspect_ratio', '?')})"
+                for k, v in cctx.image_sessions.items()
+                if v.get("status") == "done"
+            )
+            missing.append(
+                "ad creative review - You MUST output the following markdown image "
+                "previews in your chat response so the user can see the generated creatives:\n"
+                f"{img_previews}\n\n"
+                "After showing the previews, call "
+                '`present_options(question="Do these creatives meet your expectations?", '
+                'options=[{"label":"Yes, looks great!","value":"true","answer":"true"}, '
+                '{"label":"Edit / make changes","value":"edit","answer":"edit"}], '
+                'field="creative_approved")`\n'
+                f"Existing image IDs for editing: {image_ids_str}. "
+                "When the user chooses Edit and provides feedback, call "
+                "`manage_creatives(user_message=<edit instruction>, "
+                "image_id=<the image ID to edit>)` and then reset creative_approved by calling "
+                "`set_campaign_spec(creative_approved=null)` so the updated image can be re-shown."
             )
 
     return missing

@@ -1,50 +1,70 @@
 from __future__ import annotations
 
 """
-Creative Provider abstraction for AI image generation.
-Subclasses LLMProvider to share the same base provider identity,
-while raising NotImplementedError for standard text completion and exposing
-specialized image generate/edit methods.
+Creative Provider for multi-turn image generation via Gemini Imagen.
 
-Supports:
-- Gemini Imagen (via Gemini REST API)
+Converts between the application's internal message format and the
+Gemini API wire format, handling image inline data round-trips.
 
-Usage:
-    from app.services.creative_providers import get_creative_provider
-    provider = get_creative_provider()
-    result = await provider.generate("a cat", 1080, 1080)
+Internal message format (stored in BaseSession.messages):
+    {"role": "user", "content": [
+        {"type": "text", "text": "..."},
+        {"type": "image_source", "url": "https://cdn/..."}     # lightweight URL ref
+    ]}
+    {"role": "assistant", "content": [
+        {"type": "text", "text": "..."},
+        {"type": "image_source", "url": "https://cdn/..."}     # prev generated image
+    ]}
+
+Gemini API request format (snake_case):
+    {"role": "user", "parts": [
+        {"text": "..."},
+        {"inline_data": {"mime_type": "...", "data": "<base64>"}}
+    ]}
+
+Gemini API response format (camelCase):
+    {"candidates": [{"content": {"parts": [
+        {"text": "..."},
+        {"inlineData": {"mimeType": "...", "data": "<base64>"}}
+    ]}}]}
 """
 
+import asyncio
 import base64
 import logging
-from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, AsyncIterator, Dict, List
 
 import httpx
 
 from app.config import settings
-from app.services.llm_provider import LLMProvider
+from app.services.llm_provider import LLMProvider, StreamChunk
 
 logger = logging.getLogger(__name__)
 
 GEMINI_IMAGEN_MODEL = "gemini-3.1-flash-image-preview"
 GEMINI_API_TIMEOUT = 60.0
-
-
-@dataclass
-class GenerationResult:
-    image: bytes
-    mime_type: str
-    prompt: str
+GEMINI_MAX_RETRIES = 3
+GEMINI_RETRY_DELAY_S = 2.0
 
 
 class GeminiImagenProvider(LLMProvider):
+    """Gemini provider for multi-turn image generation.
+
+    Implements ``stream_completion_with_tools`` (yields ``text_delta``
+    and ``image_chunk`` — never ``tool_use``) so the BaseAgent loop can
+    drive a conversational image flow with NO tools.
+    """
+
+    supports_image_in_tool_result = True
+
     def __init__(self, api_key: str | None = None) -> None:
         import os
 
         self._api_key = (
             api_key or os.environ.get("GEMINI_API_KEY") or settings.GOOGLE_API_KEY
         )
+
+    # ── LLMProvider interface ──────────────────────────────────────
 
     @property
     def name(self) -> str:
@@ -54,7 +74,7 @@ class GeminiImagenProvider(LLMProvider):
         return GEMINI_IMAGEN_MODEL
 
     def supports_vision(self) -> bool:
-        return False
+        return True
 
     def supports_prompt_caching(self) -> bool:
         return False
@@ -67,10 +87,9 @@ class GeminiImagenProvider(LLMProvider):
         max_tokens: int = 8192,
         use_cache: bool = True,
     ) -> Dict[str, Any]:
-        """Not supported for Image Provider. Standard text completion is kept idle."""
         raise NotImplementedError(
             "GeminiImagenProvider does not support create_completion. "
-            "Use generate() or edit() instead."
+            "Use stream_completion_with_tools for image chat."
         )
 
     async def create_completion_with_tools(
@@ -81,16 +100,246 @@ class GeminiImagenProvider(LLMProvider):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
     ) -> Dict[str, Any]:
-        """Not supported for Image Provider."""
         raise NotImplementedError(
             "GeminiImagenProvider does not support create_completion_with_tools."
         )
+
+    async def stream_completion_with_tools(
+        self,
+        system_prompt: Any,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]] | None = None,
+        model_tier: str = "balanced",
+        max_tokens: int = 16384,
+        context_management: dict | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream a multi-turn image conversation via Gemini Imagen.
+
+        Yields ``text_delta`` for text parts and ``image_chunk`` for
+        generated image parts. Never yields ``tool_use`` blocks — this
+        provider is for pure conversational image generation.
+        """
+        aspect_ratio = self._resolve_aspect_from_messages(messages, context_management)
+
+        contents = await self._convert_messages(system_prompt, messages)
+
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "responseModalities": ["TEXT", "IMAGE"],
+            },
+        }
+        if aspect_ratio != "1:1":
+            payload["generationConfig"]["imageConfig"] = {"aspectRatio": aspect_ratio}
+
+        import copy
+
+        log_payload = copy.deepcopy(payload)
+        for content in log_payload.get("contents", []):
+            for part in content.get("parts", []):
+                if "inline_data" in part and "data" in part["inline_data"]:
+                    b64_len = len(part["inline_data"]["data"])
+                    part["inline_data"]["data"] = f"<base64 data: {b64_len} chars>"
+        logger.info("Gemini Request Payload: %s", log_payload)
+
+        data = await self._post_gemini(payload)
+
+        logger.info(
+            "Gemini response keys=%s, candidates=%s",
+            list(data.keys()),
+            len(data.get("candidates") or []),
+        )
+        if data.get("candidates"):
+            c0 = data["candidates"][0]
+            finish = c0.get("finishReason", "?")
+            parts = c0.get("content", {}).get("parts", [])
+            part_types = [list(p.keys()) for p in parts]
+            logger.info(
+                "Gemini candidate 0: finish=%s parts=%s text_preview=%s",
+                finish,
+                part_types,
+                (
+                    parts[0].get("text", "")[:200]
+                    if parts and "text" in parts[0]
+                    else "(none)"
+                ),
+            )
+
+        candidate = data.get("candidates", [None])[0]
+        if not candidate:
+            yield StreamChunk(type="text_delta", text="[Gemini returned no response.]")
+            yield StreamChunk(
+                type="done",
+                stop_reason="end_turn",
+                usage={"input_tokens": 0, "output_tokens": 0},
+            )
+            return
+
+        res_parts = candidate.get("content", {}).get("parts", [])
+
+        for part in res_parts:
+            if "text" in part:
+                yield StreamChunk(type="text_delta", text=part["text"])
+            elif "inlineData" in part:
+                raw = base64.b64decode(part["inlineData"]["data"])
+                mime = part["inlineData"].get("mimeType", "image/png")
+                logger.info(
+                    "Gemini returned image: mime=%s size=%d bytes",
+                    mime,
+                    len(raw),
+                )
+                yield StreamChunk(type="image_chunk", image_data=raw, image_mime=mime)
+
+        usage = data.get("usageMetadata", {})
+        yield StreamChunk(
+            type="done",
+            stop_reason="end_turn",
+            usage={
+                "input_tokens": usage.get("promptTokenCount", 0),
+                "output_tokens": usage.get("candidatesTokenCount", 0),
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            },
+        )
+
+    # ── Internal: message conversion ──────────────────────────────
+
+    @staticmethod
+    def _extract_system_text(system_prompt: Any) -> str:
+        """Extract plain text from a system prompt (string or list of blocks)."""
+        if isinstance(system_prompt, list):
+            return " ".join(
+                block.get("text", "")
+                for block in system_prompt
+                if isinstance(block, dict) and block.get("type") == "text"
+            )
+        if isinstance(system_prompt, str):
+            return system_prompt
+        return ""
+
+    async def _convert_messages(
+        self,
+        system_prompt: Any,
+        messages: List[Dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Convert app-format messages to Gemini ``contents`` array.
+
+        - ``image_source`` blocks are downloaded from CDN and inlined
+          as ``inline_data`` (snake_case per Gemini API spec).
+        - Previous model responses with images are fully preserved in
+          the history so Gemini sees the full multi-turn context.
+        - ``assistant`` role is mapped to ``model`` for Gemini API.
+        """
+        contents: list[dict[str, Any]] = []
+
+        sys_text = self._extract_system_text(system_prompt)
+
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content")
+
+            if role == "assistant":
+                role = "model"
+
+            if isinstance(content, str):
+                parts = [{"text": content}]
+                contents.append({"role": role, "parts": parts})
+                continue
+
+            if not isinstance(content, list):
+                continue
+
+            parts = []
+            for block in content:
+                if not isinstance(block, dict):
+                    continue
+                btype = block.get("type")
+                if btype == "text":
+                    parts.append({"text": block["text"]})
+                elif btype == "image_source":
+                    url = block.get("url", "")
+                    if url:
+                        try:
+                            b64, mime = await self._download_and_encode(url)
+                            parts.append(
+                                {
+                                    "inline_data": {
+                                        "mime_type": mime,
+                                        "data": b64,
+                                    }
+                                }
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to download image_source %s: %s", url, e
+                            )
+
+            if parts:
+                contents.append({"role": role, "parts": parts})
+
+        if sys_text:
+            contents.insert(
+                0,
+                {
+                    "role": "user",
+                    "parts": [{"text": f"<system>\n{sys_text}\n</system>"}],
+                },
+            )
+
+        return contents
+
+    # ── Internal: network helpers ──────────────────────────────────
+
+    async def _download_and_encode(self, url: str) -> tuple[str, str]:
+        """Download an image URL and return ``(base64_data, mime_type)``.
+
+        Relative URLs are resolved against ``GATEWAY_URL``.
+        """
+        if url.startswith("/"):
+            gateway = settings.GATEWAY_URL.rstrip("/")
+            url = f"{gateway}{url}"
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = base64.b64encode(resp.content).decode("utf-8")
+            ctype = resp.headers.get("content-type", "image/jpeg")
+            return data, ctype
 
     def _build_url(self) -> str:
         return (
             "https://generativelanguage.googleapis.com/v1beta/models/"
             f"{GEMINI_IMAGEN_MODEL}:generateContent?key={self._api_key}"
         )
+
+    async def _post_gemini(self, payload: dict) -> dict[str, Any]:
+        """POST to Gemini with retry logic."""
+        url = self._build_url()
+        last_exc: Exception | None = None
+        for attempt in range(GEMINI_MAX_RETRIES):
+            try:
+                async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
+                    resp = await client.post(url, json=payload)
+                    if resp.status_code != 200:
+                        raise RuntimeError(
+                            f"Gemini API error: status={resp.status_code} "
+                            f"body={resp.text[:500]}"
+                        )
+                    return resp.json()
+            except httpx.ReadTimeout as e:
+                last_exc = e
+                logger.warning(
+                    "Gemini timeout attempt %d/%d", attempt + 1, GEMINI_MAX_RETRIES
+                )
+                if attempt < GEMINI_MAX_RETRIES - 1:
+                    await asyncio.sleep(GEMINI_RETRY_DELAY_S)
+            except Exception as e:
+                last_exc = e
+                raise RuntimeError(f"Gemini API call failed: {e}") from e
+        raise RuntimeError(
+            f"Gemini API timed out after {GEMINI_MAX_RETRIES} attempts."
+        ) from last_exc
+
+    # ── Internal: aspect ratio ─────────────────────────────────────
 
     def _resolve_aspect(self, width: int, height: int) -> str:
         ratio = width / height
@@ -106,147 +355,18 @@ class GeminiImagenProvider(LLMProvider):
             return "1.91:1"
         return f"{width}:{height}"
 
-    async def generate(
-        self,
-        prompt: str,
-        width: int = 1080,
-        height: int = 1080,
-        aspect_ratio: str | None = None,
-        logo_bytes: bytes | None = None,
-        logo_mime: str | None = None,
-        base_image_bytes: bytes | None = None,
-        base_image_mime: str | None = None,
-    ) -> GenerationResult:
-        ar = aspect_ratio or self._resolve_aspect(width, height)
-        parts: list[dict[str, Any]] = []
-        if logo_bytes and logo_mime:
-            b64_logo = base64.b64encode(logo_bytes).decode("utf-8")
-            parts.append({"text": "Image 1 (Brand Logo):\n"})
-            parts.append({"inlineData": {"mimeType": logo_mime, "data": b64_logo}})
-        if base_image_bytes and base_image_mime:
-            b64_base = base64.b64encode(base_image_bytes).decode("utf-8")
-            parts.append({"text": "\nImage 2 (Base Background Image):\n"})
-            parts.append(
-                {"inlineData": {"mimeType": base_image_mime, "data": b64_base}}
-            )
-        parts.append({"text": f"\nInstructions:\n{prompt}"})
+    def _resolve_aspect_from_messages(
+        self, messages: list, context_management: dict | None = None
+    ) -> str:
+        """Extract aspect ratio from context_management (set by ImageAgent).
 
-        payload = {
-            "contents": [{"role": "user", "parts": parts}],
-            "generationConfig": {
-                "responseModalities": ["IMAGE"],
-                "imageConfig": {"aspectRatio": ar},
-            },
-        }
-        url = self._build_url()
-        import asyncio
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code != 200:
-                        raise RuntimeError(
-                            f"Gemini Imagen generate failed: status={resp.status_code} "
-                            f"body={resp.text[:500]}"
-                        )
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if not candidates:
-                        raise RuntimeError("Gemini Imagen: no candidates in response")
-                    res_parts = candidates[0].get("content", {}).get("parts", [])
-                    image_part = next((p for p in res_parts if "inlineData" in p), None)
-                    if not image_part:
-                        raise RuntimeError("Gemini Imagen: no image data in response")
-                    raw = base64.b64decode(image_part["inlineData"]["data"])
-                    mime = image_part["inlineData"].get("mimeType", "image/jpeg")
-                    return GenerationResult(image=raw, mime_type=mime, prompt=prompt)
-            except httpx.ReadTimeout:
-                logger.warning(f"Gemini Imagen generate timeout on attempt {attempt + 1}/{max_retries}")
-                if attempt == max_retries - 1:
-                    raise RuntimeError("Gemini Imagen API timed out after 3 attempts.")
-                await asyncio.sleep(2)
-            except Exception as e:
-                raise RuntimeError(f"Gemini Imagen unexpected error: {str(e)}")
-
-    async def edit(
-        self,
-        messages: List[Dict[str, Any]],
-        width: int = 1080,
-        height: int = 1080,
-        aspect_ratio: str | None = None,
-    ) -> GenerationResult:
-        ar = aspect_ratio or self._resolve_aspect(width, height)
-        contents = []
-        for msg in messages:
-            role = msg.get("role")
-            parts = []
-            if "image_data" in msg:
-                parts.append(
-                    {
-                        "inlineData": {
-                            "mimeType": msg.get("mime_type", "image/jpeg"),
-                            "data": msg["image_data"],
-                        }
-                    }
-                )
-            if "content" in msg and msg["content"]:
-                parts.append({"text": msg["content"]})
-            contents.append({"role": role, "parts": parts})
-
-        payload = {
-            "contents": contents,
-            "generationConfig": {
-                "responseModalities": ["TEXT", "IMAGE"],
-                "imageConfig": {"aspectRatio": ar},
-            },
-        }
-        url = self._build_url()
-        import asyncio
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                async with httpx.AsyncClient(timeout=GEMINI_API_TIMEOUT) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code != 200:
-                        raise RuntimeError(
-                            f"Gemini Imagen edit failed: status={resp.status_code} "
-                            f"body={resp.text[:500]}"
-                        )
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if not candidates:
-                        error_msg = f"Gemini Imagen: no candidates in edit response. Body: {resp.text[:500]}"
-                        raise RuntimeError(error_msg)
-                    res_parts = candidates[0].get("content", {}).get("parts", [])
-                    image_part = next((p for p in res_parts if "inlineData" in p), None)
-                    if not image_part:
-                        error_msg = f"Gemini Imagen: no image data in edit response. Text response? {resp.text[:500]}"
-                        raise RuntimeError(error_msg)
-                    
-                    try:
-                        raw = base64.b64decode(image_part["inlineData"]["data"])
-                    except Exception as b64_err:
-                        raise RuntimeError(f"Base64 decode failed: {b64_err}")
-                        
-                    mime = image_part["inlineData"].get("mimeType", "image/jpeg")
-                    last_prompt = next(
-                        (
-                            m.get("content", "")
-                            for m in reversed(messages)
-                            if m.get("role") == "user"
-                        ),
-                        "",
-                    )
-                    return GenerationResult(image=raw, mime_type=mime, prompt=last_prompt)
-            except (httpx.ReadTimeout, httpx.ReadError) as net_err:
-                logger.warning(f"Gemini Imagen edit network error ({type(net_err).__name__}) on attempt {attempt + 1}/{max_retries}")
-                if attempt == max_retries - 1:
-                    raise RuntimeError(f"Gemini Imagen API edit failed after 3 attempts due to network error: {net_err}")
-                await asyncio.sleep(2)
-            except Exception as e:
-                logger.exception("Gemini Imagen edit unexpected error")
-                raise RuntimeError(f"Gemini Imagen unexpected error: {repr(e)}")
+        Falls back to the last generated image's dimensions in the message
+        history for multi-turn editing (preserves the original aspect ratio
+        across edit rounds).
+        """
+        if context_management and "aspect_ratio" in context_management:
+            return context_management["aspect_ratio"]
+        return "1:1"
 
 
 _provider: GeminiImagenProvider | None = None

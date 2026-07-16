@@ -61,7 +61,9 @@ class AuthContext:
         NOT the target app being built.
         """
         headers = {
-            "Authorization": f"Bearer {self.token}" if not self.token.startswith("Bearer") else self.token,
+            "Authorization": f"Bearer {self.token}"
+            if not self.token.startswith("Bearer")
+            else self.token,
             "X-Forwarded-Host": self.forwarded_host,
             "X-Forwarded-Port": self.forwarded_port,
             "clientCode": self.client_code,
@@ -122,7 +124,9 @@ class BaseSession:
         """Return the full conversation history in Anthropic format."""
         return self.messages
 
-    def append_user_message(self, text: str, image_blocks: list[dict[str, Any]] | None = None) -> None:
+    def append_user_message(
+        self, text: str, image_blocks: list[dict[str, Any]] | None = None
+    ) -> None:
         """Append a user message to the conversation.
 
         Args:
@@ -165,10 +169,12 @@ class BaseSession:
             tool_results: List of tool_result content blocks, e.g.:
                 [{"type": "tool_result", "tool_use_id": "...", "content": "..."}]
         """
-        self.messages.append({
-            "role": "user",
-            "content": tool_results,
-        })
+        self.messages.append(
+            {
+                "role": "user",
+                "content": tool_results,
+            }
+        )
 
     def accumulate_usage(self, usage: dict[str, Any]) -> None:
         """Add token usage from one LLM call to running totals."""
@@ -188,8 +194,11 @@ class BaseSession:
         # Context used = input + cache_read (what the model "sees")
         context_used = input_t + cache_read
         from app.config import settings
+
         context_limit = settings.CONTEXT_LIMIT_DEFAULT
-        context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
+        context_percent = (
+            round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
+        )
 
         return {
             "input_tokens": input_t,
@@ -238,7 +247,7 @@ class BaseSession:
 
         # If start_turn() was not called (error before the agent loop),
         # increment now so we still get a valid turn_number.
-        if not getattr(self, '_turn_started', False):
+        if not getattr(self, "_turn_started", False):
             self._turn_count += 1
         self._turn_started = False
 
@@ -248,6 +257,7 @@ class BaseSession:
 
         try:
             from app.services.context_manager import get_context_manager
+
             context_manager = get_context_manager()
             request_id = uuid.uuid4().hex[:8]
             # Use upsert (not plain insert) because persist_turn_incremental()
@@ -268,6 +278,7 @@ class BaseSession:
         # the correct turn count on refresh.
         try:
             from app.services.session_manager import get_session_manager
+
             session_manager = get_session_manager()
             await session_manager.increment_turn_count(
                 self.session_id, self.auth.user_id if self.auth else None
@@ -301,22 +312,24 @@ class BaseSession:
             from app.config import settings
 
             tracker = get_token_tracker()
-            await tracker.record_usage(AiTokenUsageCreate(
-                session_id=self.session_id,
-                request_id=request_id,
-                client_code=self.auth.client_code,
-                client_id=self.auth.client_id,
-                user_id=self.auth.user_id,
-                agent_type=self.agent_name,
-                model=model,
-                llm_provider=provider_name or settings.LLM_PROVIDER,
-                input_tokens=usage.get("input_tokens", 0),
-                output_tokens=usage.get("output_tokens", 0),
-                cache_read_tokens=usage.get("cache_read_input_tokens", 0),
-                cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
-                latency_ms=usage.get("latency_ms"),
-                success=True,
-            ))
+            await tracker.record_usage(
+                AiTokenUsageCreate(
+                    session_id=self.session_id,
+                    request_id=request_id,
+                    client_code=self.auth.client_code,
+                    client_id=self.auth.client_id,
+                    user_id=self.auth.user_id,
+                    agent_type=self.agent_name,
+                    model=model,
+                    llm_provider=provider_name or settings.LLM_PROVIDER,
+                    input_tokens=usage.get("input_tokens", 0),
+                    output_tokens=usage.get("output_tokens", 0),
+                    cache_read_tokens=usage.get("cache_read_input_tokens", 0),
+                    cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
+                    latency_ms=usage.get("latency_ms"),
+                    success=True,
+                )
+            )
         except Exception as e:
             logger.warning(f"Failed to record token usage: {e}")
 
@@ -330,6 +343,7 @@ class BaseSession:
 
         try:
             from app.services.session_manager import get_session_manager
+
             await get_session_manager().complete_session(
                 self.session_id, self.auth.user_id if self.auth else None
             )
@@ -348,6 +362,7 @@ class BaseSession:
 
         try:
             from app.services.session_manager import get_session_manager
+
             await get_session_manager().set_session_processing(
                 self.session_id, self.auth.user_id if self.auth else None
             )
@@ -376,6 +391,7 @@ class BaseSession:
 
         try:
             from app.services.context_manager import get_context_manager
+
             context_manager = get_context_manager()
             request_id = uuid.uuid4().hex[:8]
             await context_manager.upsert_turn(
@@ -400,13 +416,17 @@ class BaseSession:
 
         try:
             from app.services.session_manager import get_session_manager
+
             context_json = self._serialize_context(self.context)
             await get_session_manager().update_session_context(
                 self.session_id, context_json, self.auth.user_id if self.auth else None
             )
         except Exception as e:
-            logger.warning("Failed to save session context: %s (keys=%s)",
-                           e, list(self.context.keys()) if self.context else "none")
+            logger.warning(
+                "Failed to save session context: %s (keys=%s)",
+                e,
+                list(self.context.keys()) if self.context else "none",
+            )
 
     # ── Internal helpers ────────────────────────────────────────
 
@@ -421,9 +441,12 @@ class BaseSession:
         """JSON-encode session context for persistence. Drops ephemeral runtime
         keys, and degrades any stray non-JSON value (e.g. a set or custom object)
         to a list/dict/str so one bad value can never again sink the entire context."""
-        persistable = {k: v for k, v in context.items()
-                       if k not in BaseSession._EPHEMERAL_CONTEXT_KEYS}
-        
+        persistable = {
+            k: v
+            for k, v in context.items()
+            if k not in BaseSession._EPHEMERAL_CONTEXT_KEYS
+        }
+
         def custom_encoder(o: Any) -> Any:
             if isinstance(o, set):
                 return list(o)
@@ -437,8 +460,11 @@ class BaseSession:
         """Create a new session in the database."""
         try:
             from app.services.session_manager import get_session_manager
+
             session_manager = get_session_manager()
-            context_json = self._serialize_context(self.context) if self.context else None
+            context_json = (
+                self._serialize_context(self.context) if self.context else None
+            )
             session = await session_manager.create_session(
                 client_code=self.auth.client_code,
                 client_id=self.auth.client_id,
@@ -461,6 +487,7 @@ class BaseSession:
         """Load conversation history from an existing session."""
         try:
             from app.services.session_manager import get_session_manager
+
             session_manager = get_session_manager()
             session = await session_manager.get_session(self.session_id)
             if session:
@@ -474,7 +501,9 @@ class BaseSession:
                         db_context = json.loads(session.context_json)
                         self.context = {**db_context, **self.context}
                     except (json.JSONDecodeError, TypeError):
-                        logger.warning(f"Invalid context_json for session {self.session_id}")
+                        logger.warning(
+                            f"Invalid context_json for session {self.session_id}"
+                        )
 
                 # Restore app_code from context or DB if not provided in current request
                 if self.auth and not self.auth.app_code:
@@ -493,9 +522,16 @@ class BaseSession:
         Each turn in ai_session_history has user_instruction and assistant_summary.
         We reconstruct alternating user/assistant pairs so the LLM sees prior
         context on session resumption.
+
+        Image-generation turns store image URLs as ``[image_source: <url>]``
+        sentinels in assistant_summary (written by the agent loop's persist step).
+        These are parsed back into proper ``image_source`` content blocks so that
+        image-editing models (e.g. Gemini Imagen) receive the previously generated
+        image in full multi-turn context.
         """
         try:
             from app.services.context_manager import get_context_manager
+
             context_manager = get_context_manager()
             history, _ = await context_manager.get_history(self.session_id)
 
@@ -504,22 +540,25 @@ class BaseSession:
 
             for turn in history:
                 user_text = turn.user_instruction or ""
-                assistant_text = (
-                    turn.assistant_summary
-                    or _tool_only_turn_note(turn.tool_calls_json)
+                assistant_text = turn.assistant_summary or _tool_only_turn_note(
+                    turn.tool_calls_json
                 )
 
                 if not user_text:
                     continue
 
-                self.messages.append({
-                    "role": "user",
-                    "content": user_text,
-                })
-                self.messages.append({
-                    "role": "assistant",
-                    "content": [{"type": "text", "text": assistant_text}],
-                })
+                self.messages.append(
+                    {
+                        "role": "user",
+                        "content": user_text,
+                    }
+                )
+                self.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": _restore_assistant_content(assistant_text),
+                    }
+                )
 
             # Sync _turn_count to the actual max turn number persisted in DB,
             # so resumed sessions continue numbering correctly instead of restarting at 1.
@@ -559,3 +598,38 @@ def _tool_only_turn_note(tool_calls_json: str | None) -> str:
     if tool_names:
         return f"Done ({', '.join(tool_names)})."
     return "Done."
+
+
+def _restore_assistant_content(assistant_text: str) -> list[dict]:
+    """Reconstruct assistant content blocks from a persisted summary string.
+
+    Image-generation turns embed generated image URLs as ``[image_source: <url>]``
+    sentinels in the summary (written by the agent loop at persist time).  This
+    function splits such a summary into interleaved text blocks and image_source
+    blocks so multi-turn image models (e.g. Gemini Imagen) receive the previously
+    generated image as visual context when editing.
+
+    Plain text turns (no sentinels) return a single-element list with a text block,
+    matching the previous behaviour.
+    """
+    import re as _re
+
+    _IMAGE_SENTINEL_RE = _re.compile(r"\[image_source:\s*(https?://\S+?)\]")
+
+    parts = _IMAGE_SENTINEL_RE.split(assistant_text)
+    # split() with one capture group → [text, url, text, url, ..., text]
+    blocks: list[dict] = []
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            # Text segment (may be empty between adjacent sentinels)
+            stripped = part.strip()
+            if stripped:
+                blocks.append({"type": "text", "text": stripped})
+        else:
+            # Captured URL from the sentinel
+            if part:
+                blocks.append({"type": "image_source", "url": part})
+
+    if not blocks:
+        blocks = [{"type": "text", "text": assistant_text}]
+    return blocks

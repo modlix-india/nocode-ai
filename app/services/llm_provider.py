@@ -246,7 +246,7 @@ def _summarize_messages(messages: List[Dict[str, Any]]) -> str:
 @dataclass
 class StreamChunk:
     """Unified streaming chunk across all providers."""
-    type: str  # "text_delta" | "reasoning_delta" | "tool_use_start" | "tool_input_delta" | "tool_use_end" | "builtin_tool_use" | "builtin_tool_result" | "message_complete" | "done"
+    type: str  # "text_delta" | "reasoning_delta" | "tool_use_start" | "tool_input_delta" | "tool_use_end" | "builtin_tool_use" | "builtin_tool_result" | "message_complete" | "done" | "image_chunk"
     text: str = ""
     tool_name: str = ""
     tool_id: str = ""
@@ -263,6 +263,12 @@ class StreamChunk:
     # (e.g. Anthropic web_search). Each hit: ``{"title": str, "url": str}``.
     # ``text`` carries an error_code string on failure.
     hits: list = field(default_factory=list)
+    # For image_chunk: generated image data from providers that support
+    # image output (e.g. Gemini Imagen). The consumer uploads the bytes
+    # to CDN and emits a preview markdown in the SSE stream.
+    image_data: bytes = b""
+    image_mime: str = ""
+    image_prompt: str = ""
 
 
 class LLMProvider(ABC):
@@ -1720,6 +1726,10 @@ def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
             raise ValueError("MINIMAX_API_KEY is required when using the minimax provider")
         _providers[name] = MiniMaxProvider()
         logger.info(f"Initialized MiniMax provider at {settings.MINIMAX_BASE_URL} with models: {settings.MINIMAX_MODEL_FAST}, {settings.MINIMAX_MODEL_BALANCED}")
+    elif name == "gemini_imagen":
+        from app.services.creative_providers import GeminiImagenProvider
+        _providers[name] = GeminiImagenProvider()
+        logger.info("Initialized Gemini Imagen provider")
     else:
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError("ANTHROPIC_API_KEY is required when using the anthropic provider")
