@@ -208,11 +208,14 @@ async def upload_and_analyze(
     if not url:
         return None
     clean_hints = {k: v for k, v in (hints or {}).items() if v}
+    # Full content hash of the bytes - the dedup + essence-cache key for the
+    # creative library (the filename uses the first 6 chars of the same md5).
+    content_hash = md5(image_bytes).hexdigest()
     logger.info(
         "upload_and_analyze: kind=%s url=%s format=%s hints=%s bytes=%d",
         kind, url, ext, clean_hints, len(image_bytes),
     )
-    return {"url": url, "format": ext, **clean_hints}
+    return {"url": url, "format": ext, "contentHash": content_hash, **clean_hints}
 
 
 async def rehost_image(
@@ -226,7 +229,7 @@ async def rehost_image(
     so the UI can render with the right tile contrast; the LLM that picked
     the asset is the source of truth for those, not pixel sampling here.
 
-    Returns {url, format, **hints} on success. None on any failure
+    Returns {url, format, contentHash, **hints} on success. None on any failure
     (timeout, non-image, oversize, upload failure)."""
     if not source_url:
         return None

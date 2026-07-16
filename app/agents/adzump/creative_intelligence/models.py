@@ -29,16 +29,22 @@ MAX_CREATIVES_PER_COMPETITOR = 60
 
 
 class Insights(BaseModel):
-    """Analysis DERIVED by us from the stored binary (not from the vendor) - the
-    value layer the creative agent builds from. All optional: absent until the
-    insights worker has run over a creative."""
+    """The essence of a creative - DERIVED by us (vision over the stored image +
+    the metrics we already fetched), not from the vendor. This is the reasoning
+    the creative agent builds on and the image agent references when generating a
+    new creative. All optional: absent until the essence worker has run.
+
+    The four load-bearing fields answer what the creative *is*, what it's *about*,
+    how it's *built*, and how it's *doing*. ``ocr_text`` and ``colors`` are the
+    raw extraction outputs ``how_its_made`` summarizes - kept because the image
+    agent wants the literal on-image text and palette."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    angle: str = ""
-    offer: str = ""
-    hook: str = ""
-    tone: str = ""
+    what_it_is: str = Field(default="", alias="whatItIs")      # subject, product shown, offer/claim
+    theme: str = ""                                            # angle, mood, message
+    how_its_made: str = Field(default="", alias="howItsMade")  # format, composition, text-on-image, hook, CTA
+    performance: str = ""                                      # read of the metrics (spend/impressions/active-days)
     ocr_text: str = Field(default="", alias="ocrText")
     colors: list[str] = Field(default_factory=list)
 

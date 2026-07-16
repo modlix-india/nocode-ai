@@ -88,8 +88,32 @@ async def creatives_for(
         fetch_status="ok" if fetched.creatives else "empty",
     )
     await _attach_binaries(competitor, ctx)
+    competitor.creatives = _dedupe_exact(competitor.creatives)
     await store.upsert_competitor(competitor, ctx)
     return competitor
+
+
+def _signal(c: Creative) -> tuple[int, int]:
+    """Rank a creative for 'which duplicate to keep': active beats paused, then
+    more impressions. Used when collapsing duplicates to one representative."""
+    return (int(c.is_active), int(c.metrics.get("impressions") or 0))
+
+
+def _dedupe_exact(creatives: list[Creative]) -> list[Creative]:
+    """Tier-1 dedup: collapse byte-identical creatives by content hash, keeping
+    the higher-signal copy. Creatives with no hash (rehost failed) are all kept -
+    we can't prove they're duplicates. (Tier-2, semantic dedup, is the vision
+    pass's job and runs later.)"""
+    best: dict[str, Creative] = {}
+    hashless: list[Creative] = []
+    for c in creatives:
+        if not c.content_hash:
+            hashless.append(c)
+            continue
+        cur = best.get(c.content_hash)
+        if cur is None or _signal(c) > _signal(cur):
+            best[c.content_hash] = c
+    return list(best.values()) + hashless
 
 
 async def creatives_for_all(
@@ -141,6 +165,8 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> None:
                 c.poster_url = res["url"]
             else:
                 c.file_url = res["url"]
+            # The md5 of the rehosted bytes - Tier-1 dedup + essence-cache key.
+            c.content_hash = res.get("contentHash", "") or c.content_hash
 
     await asyncio.gather(*(_one(c, s, p) for c, s, p in jobs), return_exceptions=True)
     done = sum(1 for c, _, p in jobs if (c.poster_url if p else c.file_url))
