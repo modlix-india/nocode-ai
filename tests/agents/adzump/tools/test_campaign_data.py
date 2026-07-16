@@ -301,6 +301,34 @@ class ClearDeclineReplyTableTests(unittest.TestCase):
                 self.assertEqual(bool(is_clear_decline_reply(text)), expected)
 
 
+class ClearAffirmativeReplyTableTests(unittest.TestCase):
+    """The shared yes-core behind the launch + competitor-creatives gates."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import is_clear_affirmative_reply
+        cases = [
+            ("yes", True), ("YES", True), ("yes, show me", True),
+            ("go ahead", True), ("sure, do it", True), ("okay", True),
+            ("", False),
+            ("yesterday we discussed eyes", False),   # word boundary
+            ("what budget did we pick?", False),      # question, no go-ahead
+            ("no thanks", False),                     # clear decline wins
+            ("not now, maybe later", False),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(is_clear_affirmative_reply(text), expected)
+
+    def test_creatives_decline_flag_traceability(self):
+        from app.agents.adzump.tools.campaign_data import _field_traceable
+        ctx = {"product_data": dict(RE), "campaign_spec": {}, "_spec_set_at": {}}
+        for user, expected in [("No", True), ("no thanks", True), ("yes please", False)]:
+            with self.subTest(user=user):
+                self.assertEqual(
+                    _field_traceable("competitor_creatives_declined", "true", user, ctx),
+                    expected)
+
+
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────
 class ClearHelperTests(unittest.TestCase):
     def test_pops_flag_and_provenance(self):

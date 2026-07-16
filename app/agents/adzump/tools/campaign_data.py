@@ -83,6 +83,7 @@ ALLOWED_FIELDS = {
     "ig_page",
     "competitive_analysis_declined",
     "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
+    "competitor_creatives_declined",  # Meta-only creative-inspiration offer
 }
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
@@ -101,6 +102,7 @@ _USER_TEXT_FIELDS = {
     "location",
     "competitive_analysis_declined",
     "ig_page_declined",
+    "competitor_creatives_declined",
 }
 
 # v3 · F2 - when a campaign field that OTHERS depend on is *changed*, those
@@ -117,6 +119,7 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
         "ig_page",
         "ig_page_declined",
         "competitive_analysis_declined",
+        "competitor_creatives_declined",
     ),
     "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
     "fb_page": ("ig_page", "ig_page_declined"),
@@ -190,6 +193,26 @@ def is_clear_decline_reply(text: str) -> bool:
     return not any(m in lu for m in _DECLINE_AMBIG_MARKERS)
 
 
+# Word-boundary yes-core shared by the consent GATES on costly/irreversible
+# actions (launch_campaign, fetch_competitor_creatives). A gate, not NLU: the
+# model still interprets language and decides WHEN to call the tool; the
+# harness refuses when the user's most recent message carries no explicit
+# go-ahead. Each gate may OR in its own action verbs (launch/publish, show/see).
+_CLEAR_AFFIRMATIVE_RE = re.compile(
+    r"\b(yes|yeah|yep|sure|ok(?:ay)?|go ahead|do it|proceed|"
+    r"confirm(?:ed)?|approve(?:d)?)\b"
+)
+
+
+def is_clear_affirmative_reply(text: str) -> bool:
+    """True when the user's latest message is an explicit go-ahead (and not a
+    clear decline - "no thanks, yes to the budget change" stays a decline)."""
+    lu = (text or "").strip().lower()
+    if not lu or is_clear_decline_reply(lu):
+        return False
+    return bool(_CLEAR_AFFIRMATIVE_RE.search(lu))
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")
@@ -238,10 +261,10 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flag - accept "true" when the user declines (chip or typed). Uses
+    # Decline flags - accept "true" when the user declines (chip or typed). Uses
     # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
     # silently rejected "no, skip competitor analysis for now" → re-ask loop).
-    if field == "competitive_analysis_declined":
+    if field in ("competitive_analysis_declined", "competitor_creatives_declined"):
         return v in ("true", "yes", "1") and is_decline(lu)
 
     # v3 · F3 - Instagram-skip flag. Accept "true" when the user opts out of
@@ -628,6 +651,18 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         spec.get("fb_page") and (spec.get("ig_page") or spec.get("ig_page_declined"))
     ):
         return ""
+
+    # Meta: the competitor-creatives offer must be resolved once - fetched,
+    # declined, or moot (analysis ran, zero rivals). Mirrors _next_action's
+    # offer conditions exactly, so "complete" here never disagrees with an
+    # offer the prescription is still asking.
+    if is_meta and "competitor_creatives_declined" not in spec:
+        competitive_raw = session_ctx.get("competitor_analysis")
+        competitors = (competitive_raw or {}).get("competitors") or []
+        fetched = any(c.get("creatives") for c in competitors)
+        moot = competitive_raw is not None and not competitors
+        if not (fetched or moot):
+            return ""
 
     meta_extra = ""
     if is_meta:

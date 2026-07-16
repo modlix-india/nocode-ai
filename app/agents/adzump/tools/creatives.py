@@ -15,13 +15,33 @@ don't spend ad-library credits unless creatives are actually wanted.
 from __future__ import annotations
 
 import logging
+import re
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
 from app.agents.adzump import creative_intelligence as ci
+from app.agents.adzump.platform import is_meta
+from app.agents.adzump.tools.campaign_data import (
+    _last_user_text,
+    is_clear_affirmative_reply,
+    is_clear_decline_reply,
+)
 from app.agents.adzump.tools.craft import render_competitor_creatives
 
 logger = logging.getLogger(__name__)
+
+# Creative-specific go-ahead verbs, ORed onto the shared yes-core (the
+# launch_campaign gate shape): "show me their ads" is consent even without a
+# bare "yes".
+_CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)\b")
+
+
+def _user_wants_creatives(last_user: str) -> bool:
+    """True when the user's latest message clearly asks for competitor ads."""
+    lu = (last_user or "").strip().lower()
+    if not lu or is_clear_decline_reply(lu):
+        return False
+    return is_clear_affirmative_reply(lu) or bool(_CREATIVE_VERBS_RE.search(lu))
 
 
 def _essence_enrich(context: dict):
@@ -68,8 +88,36 @@ async def _render_creatives(stream, craft_id: str, title: str, competitor_name: 
 
 
 async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult:
-    """Fetch + cache competitor creatives for the current competitor set."""
+    """Fetch + cache competitor creatives for the current competitor set.
+
+    Two HARD gates before any spend (ad-library credits + vision tokens), same
+    backstop philosophy as launch_campaign - the prompt persuades, the code
+    enforces: (1) Meta flow only; (2) the user's LATEST message must be a clear
+    go-ahead."""
     session_ctx = context.get("session_context", {}) or {}
+    spec = session_ctx.get("campaign_spec") or {}
+    if not is_meta(spec.get("platform")):
+        return ToolResult(
+            success=False,
+            error=(
+                "Competitor creatives are part of the META flow only (they seed "
+                "Meta's creative-bound delivery). This campaign is not on Meta - "
+                "do not offer or fetch them."
+            ),
+        )
+    if not _user_wants_creatives(_last_user_text(context)):
+        return ToolResult(
+            success=False,
+            error=(
+                "Consent gate: fetching competitor creatives costs ad-library "
+                "credits, so it needs an explicit go-ahead in the user's LATEST "
+                "message. Ask first via the present_options tool (field "
+                '"competitor_creatives_declined"): "Want to see the ads your '
+                'competitors are running?" with chips Yes / No - then call this '
+                "tool only after a clear yes."
+            ),
+        )
+
     competitive = session_ctx.get("competitor_analysis") or {}
     competitors = competitive.get("competitors") or []
     if not competitors:
@@ -131,14 +179,15 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
 fetch_competitor_creatives = ToolDefinition(
     name="fetch_competitor_creatives",
     description=(
-        "Fetch competitor ad creatives (image/video thumbnails, ad copy, metrics) "
-        "to use as creative inspiration. Call ONLY when the user explicitly wants "
-        "to see the ads competitors are running, or to gather reference for "
-        "generating similar creatives - NOT as a routine step of competitor "
-        "analysis. Requires competitors to already exist (from analyze_competitors). "
-        "Reuses a shared creative library and only queries the ad library for "
-        "competitors that are missing or stale. Set force=true to ignore the "
-        "cache and refetch."
+        "Fetch competitor ad creatives (image/video thumbnails, ad copy, metrics, "
+        "extracted essence) to use as creative inspiration. META flow only, and "
+        "gated on consent: call ONLY after the user says yes to seeing competitor "
+        "ads in their latest message (offer it via present_options, field "
+        '"competitor_creatives_declined") - NOT as a routine step of competitor '
+        "analysis; the tool refuses otherwise. Requires competitors to already "
+        "exist (from analyze_competitors). Reuses a shared creative library and "
+        "only queries the ad library for competitors that are missing or stale. "
+        "Set force=true to ignore the cache and refetch."
     ),
     display_name="Fetch Competitor Creatives",
     parameters=[

@@ -185,12 +185,12 @@ present_options = ToolDefinition(
             description=(
                 "Set ONLY for data-collection asks that fill a campaign field "
                 "(platform / duration / budget / competitive_analysis_declined / "
-                "account picks). The harness then stores the user's answer "
-                "directly. For each capturable option give an `answer` (the value "
-                "to store on click; usually == value; \"true\" for a competitor "
-                "decline). Omit `answer` on fall-through options (\"Custom\", "
-                "competitor \"Yes\"). Leave `field` unset for control-flow asks "
-                "(launch confirmation)."
+                "competitor_creatives_declined / account picks). The harness then "
+                "stores the user's answer directly. For each capturable option "
+                "give an `answer` (the value to store on click; usually == value; "
+                "\"true\" for a competitor decline). Omit `answer` on fall-through "
+                "options (\"Custom\", competitor \"Yes\"). Leave `field` unset for "
+                "control-flow asks (launch confirmation)."
             ),
             required=False,
         ),

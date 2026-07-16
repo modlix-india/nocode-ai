@@ -39,6 +39,46 @@ def _budget_pe(**extra):
                                   "₹25,000/day": "₹25,000/day"}, **extra)
 
 
+# ── Meta creative inspiration - consent-gated offer ─────────────────────────
+class CompetitorCreativesOfferTests(unittest.TestCase):
+    META = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",
+            "parent_account": "P", "account": "A", "fb_page": "F", "ig_page": "I"}
+
+    def test_meta_with_analysis_offers_the_fetch(self):
+        m = _next_action(make_cctx(dict(self.META), product=SAAS,
+                                   competitor_names=["Rival"], attempted=True))
+        offer = [x for x in m if "competitor creatives" in x]
+        self.assertEqual(len(offer), 1)
+        self.assertIn("fetch_competitor_creatives", offer[0])
+        self.assertIn("competitor_creatives_declined", offer[0])
+
+    def test_meta_without_analysis_prescribes_analysis_then_fetch(self):
+        m = _next_action(make_cctx(dict(self.META), product=SAAS))
+        offer = [x for x in m if "competitor creatives" in x]
+        self.assertEqual(len(offer), 1)
+        self.assertIn("analyze_competitors, THEN", offer[0])
+
+    def test_offer_is_suppressed_when_moot(self):
+        declined = dict(self.META)
+        declined["competitor_creatives_declined"] = "true"
+        cases = [
+            ("declined", make_cctx(declined, product=SAAS,
+                                   competitor_names=["R"], attempted=True)),
+            ("already fetched", make_cctx(dict(self.META), product=SAAS,
+                                          competitor_names=["R"], attempted=True,
+                                          creatives_fetched=True)),
+            ("analysis found zero", make_cctx(dict(self.META), product=SAAS,
+                                              attempted=True)),
+            ("google flow", make_cctx({**self.META, "platform": "Google Ads"},
+                                      product=SAAS, competitor_names=["R"],
+                                      attempted=True)),
+        ]
+        for name, cctx in cases:
+            with self.subTest(case=name):
+                m = _next_action(cctx)
+                self.assertFalse(any("competitor creatives" in x for x in m))
+
+
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
 class InstagramOptionalTests(unittest.TestCase):
     META_FULL = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",
@@ -95,8 +135,10 @@ class InstagramOptionalTests(unittest.TestCase):
         self.assertTrue(any("present_options" in x for x in m))
 
     def test_declined_drops_ig_and_reaches_review(self):
-        # regression: F3 (Instagram optional)
-        spec = {**self.META_FULL, "ig_page_declined": "true"}
+        # regression: F3 (Instagram optional). The Meta creatives offer is
+        # answered too - like IG, it's a once-asked step that precedes review.
+        spec = {**self.META_FULL, "ig_page_declined": "true",
+                "competitor_creatives_declined": "true"}
         m = _next_action(make_cctx(spec, product=SAAS))
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
@@ -107,10 +149,30 @@ class InstagramOptionalTests(unittest.TestCase):
         # fb_page set but IG neither picked nor declined → not complete yet
         self.assertEqual(
             _review_hint_if_complete(dict(self.META_FULL), {"product_data": SAAS}), "")
-        hint = _review_hint_if_complete({**self.META_FULL, "ig_page_declined": "true"},
-                                        {"product_data": SAAS})
+        answered = {**self.META_FULL, "ig_page_declined": "true",
+                    "competitor_creatives_declined": "true"}
+        hint = _review_hint_if_complete(answered, {"product_data": SAAS})
         self.assertNotEqual(hint, "")
         self.assertIn("not linked (Facebook only)", hint)
+
+    def test_review_gate_waits_for_creatives_offer_resolution(self):
+        # Meta review also waits on the competitor-creatives offer: declined,
+        # fetched, or moot (analysis found zero rivals) all unblock it.
+        from app.agents.adzump.tools.campaign_data import _review_hint_if_complete
+        spec = {**self.META_FULL, "ig_page_declined": "true"}
+        cases = [
+            ("unresolved", {}, dict(spec), False),
+            ("declined", {}, {**spec, "competitor_creatives_declined": "true"}, True),
+            ("fetched", {"competitor_analysis": {"competitors": [
+                {"name": "R", "creatives": [{"creativeId": "1"}]}]}}, dict(spec), True),
+            ("moot - zero rivals", {"competitor_analysis": {"competitors": []}},
+             dict(spec), True),
+        ]
+        for name, extra_ctx, case_spec, complete in cases:
+            with self.subTest(case=name):
+                hint = _review_hint_if_complete(
+                    case_spec, {"product_data": SAAS, **extra_ctx})
+                self.assertEqual(bool(hint), complete)
 
 
 # ── PR2 / F17b · tagged-answer capture ──────────────────────────────────────

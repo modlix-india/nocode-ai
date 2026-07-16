@@ -65,6 +65,10 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    # True once competitor creatives are fetched + attached to the competitor
+    # entries this session - stops the Meta creative offer from re-firing.
+    # Defaulted for direct test construction.
+    competitor_creatives_fetched: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -98,6 +102,9 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            competitor_creatives_fetched=any(
+                c.get("creatives") for c in (competitive.get("competitors") or [])
+            ),
         )
 
     @property
@@ -239,6 +246,43 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "decline.\n"
             "(These are instructions to CALL tools - never type tool-call syntax into your reply.)"
         )
+
+    # Meta creative inspiration - Meta campaigns are creative-bound, so the
+    # competitors' running ads are the seed material. Consent-gated (ad-library
+    # credits + vision tokens): offer ONCE, and fetch_competitor_creatives
+    # itself refuses without a clear yes in the user's latest message. Same
+    # F11 agentic shape as the competitive-analysis offer above.
+    if (
+        cctx.is_meta
+        and not cctx.competitor_creatives_fetched
+        and "competitor_creatives_declined" not in cctx.spec
+        and not (cctx.competitor_analysis_attempted and not cctx.competitor_names)
+    ):
+        if cctx.competitor_names:
+            missing.append(
+                "competitor creatives - offer ONCE as a Yes/No question, then react:\n"
+                "  • if you have not offered it yet → ask via the present_options tool "
+                "(field \"competitor_creatives_declined\"): \"Want to see the ads your "
+                "competitors are running right now?\" with chips Yes / No. A No (or a "
+                "clear typed decline) is recorded for you automatically - do NOT call "
+                "set_campaign_spec for it.\n"
+                "  • they want it (yes / show me) → call fetch_competitor_creatives.\n"
+                "  • the reply is unclear or about something ELSE → re-ask the same "
+                "Yes/No present_options; do NOT treat a doubtful reply as a decline.\n"
+                "(These are instructions to CALL tools - never type tool-call syntax "
+                "into your reply.)"
+            )
+        else:
+            missing.append(
+                "competitor creatives - no competitor analysis yet. Offer ONCE via the "
+                "present_options tool (field \"competitor_creatives_declined\"): \"Want "
+                "me to analyze your competitors and show the ads they're running?\" with "
+                "chips Yes / No. On a yes → run analyze_competitors, THEN "
+                "fetch_competitor_creatives in the same turn. A clear decline is "
+                "recorded automatically. Unclear replies → re-ask, never assume a "
+                "decline. (These are instructions to CALL tools - never type tool-call "
+                "syntax into your reply.)"
+            )
 
     if not cctx.spec.get("duration"):
         if cctx.awaiting_custom_field == "duration":
