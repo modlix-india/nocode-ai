@@ -192,3 +192,21 @@ python -m pytest tests/agents/adzump/
 ```
 
 E2E test covers: create → edit → done flow across multiple image sessions.
+
+## Recent Architecture Changes (2026-07-16)
+
+### 1. Orchestrator Loop Fix (`next_action.py`)
+The orchestrator (`next_action.py`) previously expected the text-based `ad_copy` to be generated before moving to the Review phase. For image-first workflows, this caused an infinite loop because `ad_copy` is never generated. The `next_action.py` state machine was updated to track the completion of `image_sessions` directly and correctly trigger the review/publish flow for image campaigns.
+
+### 2. Database Image Injection (Base Images)
+The `CreativeAgent` was updated to fetch available product images (ranked by the `VisionAnalyst` during the web scraping phase) from the database context. 
+- It extracts `creatives_with_role` and injects them into the LLM system prompt as `Available Product Images`.
+- The LLM dynamically matches the user's prompt to the correct image (e.g. mapping "show me the pool" to the image with role "amenity").
+- The selected URL is passed via a new `base_image_url` parameter in `manage_creatives` down to the `ImageAgent` to seed the first generation, preventing Gemini from starting from a blank hallucinated canvas.
+
+### 3. Stateful Image Agent Refactor (Earlier Changes)
+Previously, image generation used stateless, legacy tools (`generate` and `edit` methods in `creative_providers.py`). This was entirely rewritten into an orchestratable `ImageAgent` to handle stateful, multi-turn editing sessions.
+- **`app/core/session.py`**: Updated to support multimodal message histories. `persist_turn` can now store structured content blocks (like `image_source` URLs) instead of just plain strings.
+- **`app/core/agent.py`**: The `BaseAgent.run` loop was updated to accept `image_blocks` and attach them to the current user message, allowing any agent to pass visual context generically.
+- **`app/services/creative_providers.py`**: The `GeminiImagenProvider` was completely rewritten. It now implements `stream_completion_with_tools`, which accepts the entire conversational history. It automatically intercepts `image_source` URLs, downloads them into memory (`_download_and_encode`), converts them to base64 `inline_data`, and posts the full context to Gemini. This is what enables the multi-turn conversational editing capability.
+- **`app/agents/adzump/next_action.py`**: The orchestrator was shifted to route via `CreativeAgent` and track isolated `image_sessions` instead of relying on the legacy stateless tools.

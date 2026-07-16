@@ -80,7 +80,9 @@ class CreativeAgent(BaseAgent):
             logger.info("CreativeAgent.handle run completed successfully.")
         except asyncio.CancelledError:
             status = "cancelled"
-            logger.info("CreativeAgent.handle cancelled — building result from context.")
+            logger.info(
+                "CreativeAgent.handle cancelled — building result from context."
+            )
         except Exception as e:
             status = "failed"
             logger.exception("CreativeAgent run failed: %s", e)
@@ -167,6 +169,20 @@ class CreativeAgent(BaseAgent):
             f"- Product Summary: {product_summary}",
         ]
 
+        # ── Available Product Images ───────────────────────────────────────────
+        available_images = _resolve_available_images(pdata)
+        if available_images:
+            lines.append("")
+            lines.append("## Available Product Images")
+            lines.append(
+                "You may select one of these images as the base for the ad creative if it matches the user's request. Pass the URL as `base_image_url`."
+            )
+            for img in available_images:
+                url = img["url"]
+                role = img["role"]
+                rsn = img["reasoning"]
+                lines.append(f"- URL: {url}\n  Role: {role}\n  Reasoning: {rsn}")
+
         # ── Existing image sessions ────────────────────────────────────────────
         # Injected so the LLM can pass the correct image_id when the user asks
         # to edit an existing image instead of generating a brand new one.
@@ -186,10 +202,11 @@ class CreativeAgent(BaseAgent):
         else:
             lines.append("")
             lines.append("## Existing Generated Images")
-            lines.append("None yet. Ask the user for the desired format before calling manage_creatives.")
+            lines.append(
+                "None yet. Ask the user for the desired format before calling manage_creatives."
+            )
 
         return "\n".join(lines)
-
 
     @staticmethod
     def _build_result(sub_session: BaseSession) -> ToolResult:
@@ -202,9 +219,7 @@ class CreativeAgent(BaseAgent):
             for img_id, info in image_sessions.items():
                 url = info.get("current_image_url")
                 if url:
-                    summary_parts.append(
-                        f'![{img_id}]({url})'
-                    )
+                    summary_parts.append(f"![{img_id}]({url})")
                 else:
                     summary_parts.append(
                         f"  {img_id}: {info.get('status', 'unknown')} "
@@ -213,7 +228,9 @@ class CreativeAgent(BaseAgent):
         else:
             summary_parts.append("Creative session complete.")
 
-        final_text = _extract_last_assistant_text(sub_session) or "Creative session complete."
+        final_text = (
+            _extract_last_assistant_text(sub_session) or "Creative session complete."
+        )
         return ToolResult(
             success=True,
             summary=f"{final_text}\n\n" + "\n".join(summary_parts),
@@ -228,6 +245,38 @@ def _resolve_logo_url(pdata: dict, context: dict) -> str:
         or context.get("logo_url")
         or "no logo provided"
     )
+
+
+def _resolve_available_images(pdata: dict) -> list[dict[str, str]]:
+    """Return a list of available product images with their roles/reasoning."""
+    assets = pdata.get("assets") or {}
+
+    # Preferred: creatives_with_role (from VisionAnalyst)
+    creatives_with_role = assets.get("creatives_with_role") or []
+    if creatives_with_role:
+        return [
+            {
+                "url": c.get("url", ""),
+                "role": c.get("role", "unknown"),
+                "reasoning": c.get("reasoning", ""),
+            }
+            for c in creatives_with_role
+            if isinstance(c, dict) and c.get("url")
+        ]
+
+    # Fallback: creative_image_urls (ranked best first)
+    urls = assets.get("creative_image_urls") or []
+    if urls:
+        return [
+            {
+                "url": u,
+                "role": "hero" if i == 0 else "additional",
+                "reasoning": "Fallback ranked selection",
+            }
+            for i, u in enumerate(urls)
+        ]
+
+    return []
 
 
 def _extract_last_assistant_text(session: BaseSession) -> str | None:

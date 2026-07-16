@@ -47,7 +47,8 @@ class ImageAgent(BaseAgent):
         user_message: str,
         image_session: ImageChatSession,
         brand_logo_url: str | None = None,
-        aspect_ratio: str | None = None,
+        base_image_url: str | None = None,
+        aspect_ratio: str = "1:1",
         event_stream: AgentEventStream | None = None,
     ) -> ToolResult:
         """Generate or edit an image through a single-turn conversation.
@@ -84,13 +85,15 @@ class ImageAgent(BaseAgent):
             image_blocks = []
 
             # If we already generated an image in this session, this is an edit.
-            # We MUST attach the previous image to the current user prompt as a reference
+            # We MUST attach the previous image to the current user prompt as a reference 
             # image, because Gemini Image-to-Image requires the base image in the current turn.
-            prev_image_url = image_session.base_session.context.get(
-                "_current_image_url"
-            )
+            prev_image_url = image_session.base_session.context.get("_current_image_url")
+            
             if prev_image_url:
                 image_blocks.append({"type": "image_source", "url": prev_image_url})
+            elif base_image_url:
+                # First generation: use the provided database product image as the base
+                image_blocks.append({"type": "image_source", "url": base_image_url})
 
             if brand_logo_url:
                 image_blocks.append({"type": "image_source", "url": brand_logo_url})

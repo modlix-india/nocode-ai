@@ -181,3 +181,20 @@ data: {"agent_id": "image_agent", "status": "success"}
 - **URL references in history** — Base64 only exists transiently during API calls. Session storage uses lightweight `image_source` blocks.
 - **Per-image sessions** — Each image gets an isolated `BaseSession` so "make it brighter" maps to the right image.
 - **Aspect ratio is per-session constant** — Set at creation, immutable.
+
+## Recent Architecture Changes (2026-07-16)
+
+### 1. HTTP Upload Timeout Fix
+Large image generations (780KB+) were previously crashing due to a hardcoded 30-second `httpx.ReadTimeout` when uploading the generated images from the `ImageAgent` to the local Gateway CDN. The `timeout=30.0` inside `_upload_image` in `agent.py` was bumped to `timeout=120.0` to ensure heavy local uploads can complete without aborting the generation.
+
+### 2. Multi-turn Image Editing (Image-to-Image Generation)
+Gemini Imagen requires the actual base image to be passed within the *current* user prompt (Image-to-Image) for edits to function properly and preserve layout. Previously, edits failed because the model only saw the previous image in the `model` history context, not as an active input.
+- `ImageAgent.handle()` was updated to automatically pull `_current_image_url` (the previously generated image) and explicitly append it to the current turn's `image_blocks`.
+- It now also accepts a `base_image_url` to perform Image-to-Image generation on the very first turn using existing product photos, falling back to brand-new generation if none are provided.
+
+### 3. Stateful Image Agent Refactor (Earlier Changes)
+Previously, image generation used stateless, legacy tools (`generate` and `edit` methods in `creative_providers.py`). This was entirely rewritten into an orchestratable `ImageAgent` to handle stateful, multi-turn editing sessions.
+- **`app/core/session.py`**: Updated to support multimodal message histories. `persist_turn` can now store structured content blocks (like `image_source` URLs) instead of just plain strings.
+- **`app/core/agent.py`**: The `BaseAgent.run` loop was updated to accept `image_blocks` and attach them to the current user message, allowing any agent to pass visual context generically.
+- **`app/services/creative_providers.py`**: The `GeminiImagenProvider` was completely rewritten. It now implements `stream_completion_with_tools`, which accepts the entire conversational history. It automatically intercepts `image_source` URLs, downloads them into memory (`_download_and_encode`), converts them to base64 `inline_data`, and posts the full context to Gemini. This is what enables the multi-turn conversational editing capability.
+- **`app/agents/adzump/next_action.py`**: The orchestrator was shifted to route via `CreativeAgent` and track isolated `image_sessions` instead of relying on the legacy stateless tools.

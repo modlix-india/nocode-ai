@@ -23,6 +23,7 @@ async def _manage_creatives(params: dict, context: dict) -> ToolResult:
     image_id: str | None = params.get("image_id")
     aspect_ratio: str = params.get("aspect_ratio", "1:1")
     brand_logo_url: str | None = params.get("brand_logo_url")
+    base_image_url: str | None = params.get("base_image_url")
 
     if not user_message:
         return ToolResult(
@@ -92,6 +93,7 @@ async def _manage_creatives(params: dict, context: dict) -> ToolResult:
         user_message=user_message,
         image_session=image_session,
         brand_logo_url=brand_logo_url,
+        base_image_url=base_image_url,
         aspect_ratio=aspect_ratio,
         event_stream=stream,
     )
@@ -150,6 +152,12 @@ manage_creatives = ToolDefinition(
             name="brand_logo_url",
             type="string",
             description="Optional URL of the brand logo to include as reference.",
+            required=False,
+        ),
+        ToolParameter(
+            name="base_image_url",
+            type="string",
+            description="Optional URL of a product image to use as the base for the first generation.",
             required=False,
         ),
     ],
