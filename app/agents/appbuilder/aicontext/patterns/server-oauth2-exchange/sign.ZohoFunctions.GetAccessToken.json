@@ -1,0 +1,203 @@
+{
+  "_id": "665f4fd1111ddb4fbf3bbb22",
+  "definition": {
+    "name": "GetAccessToken",
+    "namespace": "ZohoFunctions",
+    "steps": {
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 522,
+          "top": 125.5
+        },
+        "parameterMap": {
+          "condition": {
+            "5QM0jWuKMriwuE3uwvrW9b": {
+              "key": "5QM0jWuKMriwuE3uwvrW9b",
+              "type": "EXPRESSION",
+              "expression": "Steps.postRequest.output.data.error !=null",
+              "order": 1
+            }
+          }
+        }
+      },
+      "outputEvent": {
+        "statementName": "outputEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 727,
+          "top": 469.5
+        },
+        "parameterMap": {
+          "results": {
+            "3g21MGWTykVzyexnZc4NxL": {
+              "key": "3g21MGWTykVzyexnZc4NxL",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "accessToken",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data.access_token"
+                }
+              }
+            },
+            "3bCn1CKbtWGcXYkfhAmhgh": {
+              "key": "3bCn1CKbtWGcXYkfhAmhgh",
+              "type": "VALUE",
+              "expression": "",
+              "order": 2,
+              "value": {
+                "name": "expiresIn",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data.expires_in"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "errorEvent": {
+        "statementName": "errorEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 940,
+          "top": 303.5
+        },
+        "parameterMap": {
+          "results": {
+            "5IFULEGUQBkp1yNX38rh9w": {
+              "key": "5IFULEGUQBkp1yNX38rh9w",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "error",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data.error"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "71Rnuvn3EwhRypHKSAusFq": {
+              "key": "71Rnuvn3EwhRypHKSAusFq",
+              "type": "VALUE",
+              "expression": "",
+              "value": "errorOutput"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 213,
+          "top": 246
+        },
+        "parameterMap": {
+          "connectionName": {
+            "7nyui9Y3OJGM1SMGcDocqg": {
+              "key": "7nyui9Y3OJGM1SMGcDocqg",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "ZohoRestAuthToken"
+            }
+          },
+          "queryParams": {
+            "6ONNOozv7mWCpvMV52EsnQ": {
+              "key": "6ONNOozv7mWCpvMV52EsnQ",
+              "type": "VALUE",
+              "value": {
+                "client_id": "1000.93VGFOV75S26F0KY5QLIYT42UY15PQ",
+                "client_secret": "<REDACTED>",
+                "grant_type": "client_credentials",
+                "scope": "ZohoSign.documents.ALL,ZohoSign.templates.ALL",
+                "soid": "ZohoSign.<PHONE>"
+              },
+              "expression": "Context.queryParams"
+            }
+          },
+          "url": {
+            "34HmCQSVgnoIHNi0q8zJTv": {
+              "key": "34HmCQSVgnoIHNi0q8zJTv",
+              "type": "VALUE",
+              "order": 1,
+              "value": "/oauth/v2/token"
+            }
+          },
+          "payload": {
+            "6rbG4KGOohb1hmhwGcI6lf": {
+              "key": "6rbG4KGOohb1hmhwGcI6lf",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {}
+            }
+          },
+          "appCode": {
+            "3IHR0eLw23812742aZRfT5": {
+              "key": "3IHR0eLw23812742aZRfT5",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          }
+        },
+        "dependentStatements": {}
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "accessToken": "<REDACTED>",
+          "expiresIn": {
+            "type": [
+              "INTEGER"
+            ],
+            "version": 1,
+            "description": "Zoho provides Expires in Seconds."
+          }
+        }
+      },
+      "errorOutput": {
+        "name": "errorOutput",
+        "parameters": {
+          "error": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "parameters": {}
+  },
+  "name": "ZohoFunctions.GetAccessToken",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 50,
+  "updatedAt": "2026-04-09 04:29:05.838000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:33:05.842000",
+  "createdBy": "<USER>"
+}

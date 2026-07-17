@@ -1,0 +1,544 @@
+- 4PtMZTMPzff724SJNvkv1E (Grid) PageGrid
+  - 4HKvdd0Toj3Zj7HWZjJqUt (Grid) Grid
+    - 64mC8xg6I8HUre4rPbBuE6 (Text) Heading Text
+    - 54wu0k2T6oaD13ZhwMLeHI (Text) Description
+    - 7y5BLqvKLfTHoaQpDFNQeg (Grid) Grid
+      - 4Z8hYOGW6U2dDn8cAgN78U (ArrayRepeater) Repeator
+        - x3NkdPgytUGLZdj4aPfkg (Grid) Grid
+          - 4MiNk2l1aBVltT0neIiQ86 (Grid) Main Grid
+            - 3nLCvL3msvHhy4IfFJ07YO (Grid) Left Grid
+              - 73RhgLIWfFAPW0zHupZQxq (Grid) Status Grid
+                - 4ToAIWvdPr2iPVcLggGjEq (Grid) Status Success Grid
+                  - 1IqWKr6z2vAzVAgexaLbQ5 (Text) Text
+                - 6AQXJVw0iXVqdIrPUV2UnL (Grid) Status Pending Grid
+                  - 1pI2fdQskzhDMZ0rUm2g8Z (Text) Text
+                - 6ernbMSfDQqwdyjqEgozCK (Grid) Status Deactivated Grid
+                  - 1s1cvGgudpPy6u4pFgfO4N (Text) Text
+              - 19PLOQoLJKnGO4QdHfM0tM (Grid) Details Grid
+                - 23W3o9lxFMCVoIm9jHw76M (Grid) Image and Name Grid
+                  - 3xkcO1DePyS5Fo6LKlWDr2 (Image) image
+                  - 258QTjSLJwoUJiYVEeAN33 (Grid) Name and Relation Grid
+                    - 7FwzaJSvcImKOIiWkxNRMd (Text) Name Text
+                    - 5eNxGEcLb9VKYWAu4L2Iwt (Grid) Grid
+                      - 4XPpRh1Bh738ZBKUX0l27c (Text) Relation Text
+                      - 5m2gp1rBbICeSIzjArEDOu (Grid) Type of account Grid
+                        - 7MeBvSD6piSCYVRMT3ILtQ (Grid) Dot Grid
+                        - 5CxjJ7uDXV4ZSXolIFYBpF (Text) Type of account Text
+            - 7Its4hwnXYwH2XZBr7gFF8 (Grid) Right Grid
+              - 2FRKJrpj77CtgacaoIMDcd (Button) button
+              - 4fBkrl80pnEq0Unm7ltXV2 (Grid) Sub Menu Grid
+                - 6DqedjlEWahdmx7gxm0f3j (Grid) Deactivate button
+                  - 7V9Rp7sxDlxNnmyEH1n4u (Text) Text
+                - 6CGbMBlgLr6DuKHTKL9A9F (Grid) Activate button
+                  - 44itTTgbKttdEXtgU45JpR (Text) Text
+                - 7pg4db11ArlQ0bEW8epOuL (Grid) viewDetails button
+                  - 1OeEnFTdIPWH4PMk8pPAFD (Text) Text
+                - ok6mQuU6aPnaoLBw2aUC8 (Grid) modifyDetails button
+                  - upGrbJUsgr8CVFGSjdzfs (Text) Text
+          - 72ji3R9glGlJb4mcjF31Dv (Grid) Joint Grid
+            - 7uHRIRPgsAWiWaxJypf92G (Grid) Left Grid
+              - 1w5tSAUiGlHU80cGilG6jD (Grid) Details Grid
+                - 1UKmRx6xTIUTmv5raPPZRI (Grid) Image and Name Grid
+                  - 2N12ITaAcOgFLckuR4ig8T (Grid) images grid
+                    - 4pE6UZvAzRNUjSVpJswECO (Image) image
+                    - 6jrJwgp9J4ZH8pI41VHYMT (Image) image
+                    - g5zQwgW3dstRLC4y9pVoD (Image) image
+                    - 3YtOTPOc091uoskgSsik9e (Image) image
+                  - 2h2JAfkjOs63jc1DYYvtsy (Grid) Name and Relation Grid
+                    - 4FTw20gvUtuDPTHaLcPN8C (Text) Name Text
+                    - 10QNVrVZm1sF6SFWADIScw (Grid) Grid
+                      - 7uu8zU6zqZWz3V6dP9r7WQ (Text) Relation Text
+                      - 3S6W0uG4e5K4pxccdaSt2i (Grid) Type of account Grid
+                        - 7bIOLTxN7amVHLbZxSq9ZU (Grid) Dot Grid
+                        - 3DMmWZLAIsKvHIix5mxnSs (Text) Type of account Text
+              - 53f6S6dBdDdyZpNVI1cT3J (Grid) Status Grid
+                - 5JvlOP8T4IEpJfizmTW26i (Grid) Status Success Grid
+                  - 5Zt1I738qt4lFeQNWWGVc3 (Text) Text
+                - 32SGyWA6vPidf0jTjRwJpW (Grid) Status Pending Grid
+                  - 6bW2SVc98dp76ZihYMibh7 (Text) Text
+                - 4BFMR5XzGh8qoIOQ51qs3c (Grid) Status Deactivated Grid
+                  - 4JR52na9uzluAM9JooTj1d (Text) Text
+            - 3HuNvOcEmnnooPYiFQ1Gaa (Grid) Right Grid
+              - 7C5Hr5wEoIApW3ndw2voMB (Button) button
+              - 2uHb4tOshhJV4k7RQ9h1Eh (Grid) Sub Menu Grid
+                - 1OKXEiT1LSWStZQNaRzs95 (Grid) Deactivate button
+                  - 2XrpQliiDQz0nIBjrUWVOg (Text) Text
+                - 7zJvKqrE6KuGGcfgJI4Oq8 (Grid) Activate button
+                  - 7dvz0fRMtmSUTFMKuGbDwQ (Text) Text
+                - cDqEliinTl6WBWjLGrztE (Grid) viewDetails button
+                  - 532h1wDLB7CZPqKILCSMM8 (Text) Text
+                - 341KXJvHHjqpiSzCKBNqoB (Grid) modifyDetails button
+                  - l71cvcMv55O5dpZXUQ9A9 (Text) Text
+          - 5i7WijtCOBAfEWJJEKUCLD (Grid) llp Grid
+            - 20Oe9wUfwZrtNzTdtMytAr (Grid) Left Grid
+              - 398iZ6CR9HUbxLv4Q5ii14 (Grid) Details Grid
+                - 4UdF1ad9Vd8zeUeZSq6J9m (Grid) Image and Name Grid
+                  - 3FXcHM9QQ5I9AR0Hc88jFk (Image) image
+                  - 3jZf1QyCDe9CTDX7v0Es2o (Grid) Name and Relation Grid
+                    - 2Z2bCqTVjnTCusyQfwebyj (Text) Name Text
+                    - 6LDbm1ebw0njIhyYrxt1kZ (Grid) Grid
+                      - 7zECnmRa6mdLdX5Y6NDH2o (Grid) Type of account Grid
+                        - 5VObrExGk3ChNfsNRWTKFI (Grid) Dot Grid
+                        - 2jEzqF1dLqDM9b8iKjmBqx (Text) Type of account Text
+                      - 3AOWMLmeCKKr71Lo38XbJI (Text) Relation Text
+              - 5TUVkt1DHTkXzxjE9HfL8m (Grid) Status Grid
+                - 6dOWAs3NySsd0al0ZdHd5k (Grid) Status Success Grid
+                  - 5ODq4UNBbAKd0FrICGQvPg (Text) Text
+                - 31196Ng8CriqK9P8TlDG7p (Grid) Status Pending Grid
+                  - 5dbx1Kc2nKWg3XrQhLgF8I (Text) Text
+                - 4D1wNbqve4oOj7trrD71Ny (Grid) Status Deactivated Grid
+                  - 5qigf84JtfFURUDOx9Ftdy (Text) Text
+            - 1pAN9NKR5ewEICGNKEMIDz (Grid) Right Grid
+              - 38mxq2wj4EIVPofyditvPT (Button) button
+              - 2cINwtRCaMbWgaR8ZW7270 (Grid) Sub Menu Grid
+                - 2zKSrMf5sO106XintQiI5V (Grid) Deactivate button
+                  - 1WaDapNrrgNcuaa9Vm5zwI (Text) Text
+                - 6Uai66AHbyH33ZN07OJxlu (Grid) Activate button
+                  - 4f51QxAxJaDqSzIGOCl3jY (Text) Text
+                - 6h0Tm56u8VTgtBGsRnDz5v (Grid) viewDetails button
+                  - RW1AXk2KZRC6iTICfp4W8 (Text) Text
+                - 2ZCRbZDyzuR4YiE4q1IWnP (Grid) modifyDetails button
+                  - 3UG1XrrvmhlNEJmG6JPLJ1 (Text) Text
+          - 7wzKmuvnYgPA5wT55wYFT5 (Grid) private Grid
+            - 3mO5j3BfP126BuF50uiuOq (Grid) Left Grid
+              - 3klAQDzLQo62NZcvogrPOK (Grid) Details Grid
+                - 3fvzFk9lnkrrOTqayb8z8 (Grid) Image and Name Grid
+                  - 64UAhKG6AiDiCCPckWqfMV (Image) image
+                  - 78ntdXdP0CMV4yT5RXee2O (Grid) Name and Relation Grid
+                    - vChPwsWwVOzzBZyNCLnE0 (Text) Name Text
+                    - 59sua4wFRysjvHcKgvuAX6 (Grid) Grid
+                      - 1fDKQ4fTotzvtComgO2qrd (Text) Relation Text
+                      - 1AG7aeawU3ZbFSnYaVLF5Y (Grid) Type of account Grid
+                        - 2J8cKPTtaYTq4gJLIwK1p (Grid) Dot Grid
+                        - 6enQDCD3ch3gfT3btoi82f (Text) Type of account Text
+              - 7gASZGAQB3MEb4dcAXMyKu (Grid) Status Grid
+                - 30JfC1uIn9RnGg2nWnCFpp (Grid) Status Success Grid
+                  - 5SUwSVxZ9Jv3QUd0iXBHrh (Text) Text
+                - 1Jhuwwe6cCEcJWZ9VbayFH (Grid) Status Pending Grid
+                  - 2Qbbt6fBT4PAPvBGJ7OXYQ (Text) Text
+                - 5MJ8Lpn0heqLt8qTYzEH0z (Grid) Status Deactivated Grid
+                  - 4zy5oUxXacFsojLaoYH5Vo (Text) Text
+            - nfdnPyQMwA1kQ2xDTtQSB (Grid) Right Grid
+              - 7jy2vdxPLU3xxWOeJpiJ4H (Button) button
+              - 6v34AQOXvcmkbQ6sDoEATe (Grid) Sub Menu Grid
+                - 65sRSSBP2xYtMUIPPdQqik (Grid) Deactivate button
+                  - 7p2NIjcW0pYzcTbUUYzzXM (Text) Text
+                - 4C32Py8XRkCAG5eZVtGgJv (Grid) Activate button
+                  - 5lZgBHL6fueXtMCOm4GuBi (Text) Text
+                - 65oLlF8mdhsY2r9R9aQPei (Grid) viewDetails button
+                  - 1uHHKgoXAr5T8uALgxC2jX (Text) Text
+                - 4Ch5WXvfnfFwnmoI0SoG9 (Grid) modifyDetails button
+                  - 3Q3gNpGWaBeb1rmBsai4Lt (Text) Text
+          - jFwi0WB8o1ii9wUTJtawi (Grid) trust Grid
+            - 1Drfvt9JRBhabsxAyG51Nq (Grid) Left Grid
+              - 29MCTnKQOjfDnu72V1c7Ud (Grid) Details Grid
+                - 6fS9g9lCBM7fovWrQNOgW6 (Grid) Image and Name Grid
+                  - 7hSh7yBUm6B959j9SGgZYi (Image) image
+                  - 2nWg6MvjiUDn9P4LRlpARE (Grid) Name and Relation Grid
+                    - AsOwOmdxIxV56UgPcfXtf (Text) Name Text
+                    - 31vZKM4dqgyjxJEvl84LiJ (Grid) Grid
+                      - 53J3QxiJWdtfYOXR7RinN4 (Text) Relation Text
+                      - 4rzTuInzpTWwzrY3li9DMM (Grid) Type of account Grid
+                        - 2AGe5OxXkJSMAkwdI7xIdN (Grid) Dot Grid
+                        - 4qjfXQrY80ElXRBdjKeJp (Text) Type of account Text
+              - 487VafSeXKkrO0foOJiHHK (Grid) Status Grid
+                - 4K2lkRxZ9jy2DuvjRnFfOj (Grid) Status Success Grid
+                  - 2CzJtnY8mop3j4z0imdMeO (Text) Text
+                - 76LaumirbIs5hzbTPmcMR3 (Grid) Status Pending Grid
+                  - 4yfei06wzsryqxdHScXob (Text) Text
+                - 6CqhGZuhLvm8QBwv8m3AEP (Grid) Status Deactivated Grid
+                  - 2Bd9D3LAzY1PjDzTulNphn (Text) Text
+            - 5GDgCEaUCjwlB107VS08QH (Grid) Right Grid
+              - 3AiYtcBODsmInGgYX3LdJM (Button) button
+              - 11YpmXfJszkWF0bUR7jn6Z (Grid) Sub Menu Grid
+                - 2k1yqETwCElvIORyhXHG3l (Grid) Deactivate button
+                  - B3AwNAS7PqX87lnnjhvAT (Text) Text
+                - 1Jv0g8mSkWP2rmR7decSTe (Grid) Activate button
+                  - 2JXKSvNUAD2EF0qcm4kPti (Text) Text
+                - 5t6PX6Gja67uU75Fqt53ZK (Grid) viewDetails button
+                  - 4WHmg4GFG6g3vyalWIqqMA (Text) Text
+                - Au52pPAg9VJ7DsVmVinqI (Grid) modifyDetails button
+                  - 1CqWDhkmZAHSSZp08U7cnY (Text) Text
+          - 1YqIzQFX7UdsEj8cNVxZKo (Grid) partnership Grid
+            - 5pySkNB7pkXsQgQlndPZ2e (Grid) Left Grid
+              - 3xnLUv1xWvQXhpjsNE906 (Grid) Details Grid
+                - 2D4AHIhWQh2hieOcxt1fbN (Grid) Image and Name Grid
+                  - 66OJg1qhnhAmC478IXaaKy (Image) image
+                  - 2SubctO26FoOvVjY5GZ9pw (Grid) Name and Relation Grid
+                    - 4OOG6u8PaKP6QLTMJRNjht (Text) Name Text
+                    - 6FEdQybJDzy8me5B7t30Gj (Grid) Grid
+                      - LnDeLFrSTxAmwIMcmmzXh (Text) Relation Text
+                      - 28kVhMVJMdNTCYSuAAlXhi (Grid) Type of account Grid
+                        - 5DMNHe6Afgm3PXJYjIeKsY (Grid) Dot Grid
+                        - 6erEM0lQIfBeNKxnJh1ckJ (Text) Type of account Text
+              - XymJ5OTU6cByE5AwELcTJ (Grid) Status Grid
+                - 7oWDWZOUHUlGOWSF5mDkK2 (Grid) Status Success Grid
+                  - 4b1vdqTADmbHfTe5Bo1cjg (Text) Text
+                - 6XQ5PixU2hqOkYVE0FkuJ9 (Grid) Status Pending Grid
+                  - 5GYCd1z0DJueysqHsDrJ4h (Text) Text
+                - 7tAPx1lqVtkZvbUZ0xl3zI (Grid) Status Deactivated Grid
+                  - 2kdm7aCapVFQocyfh3kj5v (Text) Text
+            - 3v3JsWXp4pZmpQlhgTrj4s (Grid) Right Grid
+              - 6oMn4TYOhhX6a7ncK4yVYK (Button) button
+              - 46qsv4NQYRKIzmlQfeH7PI (Grid) Sub Menu Grid
+                - 6WOVqffZJmnb28aIG7kee8 (Grid) Deactivate button
+                  - 3JRipH9Z8ljgAEo3VpVQ8Q (Text) Text
+                - 5jJrJZqDppkH8jCZyXlpzv (Grid) Activate button
+                  - 3tq1bVTJ8qlbJokUVnOyAJ (Text) Text
+                - 6TTcnCVEhioGomKMvgQP4E (Grid) viewDetails button
+                  - 1jepW4T9wHfrNULcVEm3H2 (Text) Text
+                - 7Hfx0WYCLELZj3x21KHgTv (Grid) modifyDetails button
+                  - 6X4j1tXAFmPs1Li6DUwmRb (Text) Text
+          - 3vIoIEEsXdaq1eCpZsXdPU (Grid) huf Grid
+            - 7tE3gGEj4mLmjcxTJ8gxVl (Grid) Left Grid
+              - 2hyw219DDXhLPv7cMQ3LHd (Grid) Details Grid
+                - 3YpBSQFhzpOvWiXMZQgfft (Grid) Image and Name Grid
+                  - 3Q5FnPeH19Eoobp2HtC72Y (Image) image
+                  - 2AMaGqyX9fjZVieku2qtHz (Grid) Name and Relation Grid
+                    - 6ebu3ontm5MU3RPFxLIFLm (Text) Name Text
+                    - 2tzdruBAaBOLHm839Vt7LX (Grid) Grid
+                      - 5YS3yItxEDPil5TN18uTC7 (Grid) Type of account Grid
+                        - 2k85h5MTNMTPuNUJzHuViH (Grid) Dot Grid
+                        - 6oMVvtkAltYIK0rv3aRPE4 (Text) Type of account Text
+                      - 1UDxKJCxi86hNinWFu8lbE (Text) Relation Text
+              - RheRmyEoLQE7Bj30pC4xY (Grid) Status Grid
+                - 20aPbUj3rWAYLX8p48sm5p (Grid) Status Success Grid
+                  - 3nCgpKSFFGn8AIxejtD3xO (Text) Text
+                - 4YgEbq3APkTMzLFQ3GpjEG (Grid) Status Pending Grid
+                  - 5LkOpzr7WDNawm6ix94e93 (Text) Text
+                - 3t7kMrlWiUpJlZ5ZnuyHih (Grid) Status Deactivated Grid
+                  - 214vxAMVc8QrBslNzNyZls (Text) Text
+            - 2WY4OOEURAIkdQoahhlnei (Grid) Right Grid
+              - kPcy4dn8v4Rrd86j4YOLH (Button) button
+              - 2PZimBPsiwvcfDqSxN2kwV (Grid) Sub Menu Grid
+                - 71qFMpJmcz0Zs974SvCuum (Grid) Deactivate button
+                  - 360W956kn6K8AivuE0yboe (Text) Text
+                - 333MqAWME8psTLKy3ti9VJ (Grid) Activate button
+                  - 6s5gnlLexUGBXlZpKib6qG (Text) Text
+                - cOWNFIuf04V7Gfo6WQZ4Y (Grid) viewDetails button
+                  - 5bAp99LbxTcz16DU17yueh (Text) Text
+                - 6M2H8GAlxRl2QI0VkXUWda (Grid) modifyDetails button
+                  - 152QTGsBnmSVuma2L1XisC (Text) Text
+          - 2FKBcwbJgTfsRjjeVMKnkt (Grid) Add Account Grid
+            - 7AUV6bdyO9xJ3jtRzo41bF (Button) button
+      - 7kw0SQOVwVFhApq0WRbwvl (Popup) Popup
+        - 68tS6gb9G75sVqGZX4wGpT (Grid) Grid
+          - n1R3mGTDTPTVC1GYcSKbs (Text) Activate Heading
+          - 244p3gonoSUYve9HXTbkSY (Text) Deactivate Heading
+          - 2AeKCDrPAROcvDPZUd7Y6D (Text) Activate Description1
+          - 4fzWPghCcDq7CBWEbOBF6k (Text) Deactivate Description1
+          - 48A8PLCG38P4DEVavBcLow (Grid) Grid
+            - 2Q3MteC8DRVzJtzuCslA27 (Text) Deactivate Description3
+            - 2MK1Tzis7NiBAQtfJJaewu (Text) Deactivate Description2
+          - 7BYbAjsrzKgAdW2U8H0uvs (Grid) Grid
+            - tx7gFGZBq6kveUPr4dntJ (Text) activate Description3
+            - 6E83bcFqzsyZkOtA5dVKLb (Text) activate Description2
+          - edRxS1ms6aFwlHPD4THRU (Grid) Grid
+            - 5a5Y4jsFnELZVWaoEj0l32 (Button) Deactivate button
+            - 5mI8hAz79nat8n1WHcu9vZ (Button) Activate button
+            - 4EO4S3bxTtvTnyIp2222IU (Button) Cancel button
+          - 76oMY5aZj9cXa9QJ9OCIbC (Button) Activate button
+          - 3fOzYrjUQGXi0vzIK38ySk (Button) Deactivate button
+          - 78DvoYFsjzXQBRjw2JxvzP (Button) Cancel button
+      - 1fyPZWZ74WySeepGNJMRkn (Popup) Popup2
+        - zhfycykiqrZRZJfONHDsb (Grid) Grid
+          - 5dq1SxhLNB9RzezwQB09tE (Text) Heading
+          - 5VjpEaMaowX6uVEtMU9ujx (Text) Text
+          - 5bvQq3ajlgKfwCUbz5PfWh (Button) Cancel button
+      - 5r8PbfF1S2kkGmtYdM8pKa (Popup) completeKYC
+        - 1QmzO8jNnr4fosqw8AS03x (Grid) Grid
+          - 4FbqKaIori0tStKJ0Qt7LB (Grid) Grid
+            - 5BIkmkt0Wwpzea88ClNs0 (Button) button
+          - 687lrd3Q9CbCyuoVPklTVB (Grid) deleteGrid
+            - 628BVdje4X0S5Bw0CpoeZg (Text) heading
+    - 6gStzQyiBWkULhQAHLpOjW (Grid) TabSelection
+      - 10nuIgFMwFtGuCMm29oRoX (Tabs) Tabs
+        - 5GINIUjxwY77BbxL83Hfrm (Grid) SelectBank
+          - 2t1KGjL9m2nbAfAbyBCtTS (ArrayRepeater) Repeator
+            - 5jUVkfPdCe3wO0GHTfVAqq (Grid) Grid
+              - 5v6qpAPkWPB6iKKp79sXv5 (Grid) Grid
+                - IZd5wVujYdRHfW42ovNul (Image) Image
+                - 4Eihk1JFAU3ZH72YqN6IQV (Grid) Grid
+                  - 3pxZHTGcLP4iqqosWr49dE (Text) AccountNumber
+                  - 5Tczc5LeBr2RXEK4uSsd4r (Grid) Grid
+                    - 22HktLo4gV093MDuMUnmB5 (Text) UserName
+                    - 6lt4UXXzm1YQc8y6btWu9Z (Grid) Circle
+                    - 1GZYV3aDNHGp9jK91fOKc1 (Text) BankName
+                - 6mX34thdiNMhETOODtMVFr (Grid) Right Grid
+                  - 4LPGJh2P50g1JZCcwo8gWH (Button) button
+                  - 2GY5JeQCyjxdvUlMFgA6oy (Grid) Sub Menu Grid
+                    - lBje2bo3avxY2Ceculn5T (Grid) Edit details
+                      - 5qYi4OJkpeiKVzJ9SI0APy (Text) Text
+                    - 6Or1HbNJyOAnW20LGEIJQM (Grid) Delete
+                      - xRT3kAbuKyIR7qzOomG6B (Text) Text
+              - 2rcdFxIVyz7TBvnU73OOg (Grid) Add Bank Grid
+                - 4ZvcYsd31HokTugnePhzTM (Button) button
+        - 2eVsDkUXmK7VKAPMXqxkCY (Grid) SelectKyc grid
+          - 6hDpmozAatUicDGrUiDOqa (ArrayRepeater) Repeator
+            - 3HmzkIITLUeeXYSPyGwi5L (Grid) Grid
+              - 1Yp1llaZu1gt56jAfTxUt9 (Grid) Main Grid
+                - 775PXEN2shtuXWmqnSLhBB (Grid) Left Grid
+                  - 5a5yRqLWLKkE1g026eZyVv (Grid) Details Grid
+                    - 18WXXS7k7wI168QVOVvFx8 (Grid) Image and Name Grid
+                      - 5gRCD9CcCi17etlxZ1niP7 (Image) image
+                      - 5IHGyzj1PQlbqzrPpqyX2p (Grid) Name and Relation Grid
+                        - 5EIc2GyZczNod7ilAg7yT9 (Text) Name Text
+                        - 3nEnnrE8lJmHWfIVZ3y5ru (Grid) Grid
+                          - 7MOTzpZ5eQP3fTfnePzn10 (Text) Relation Text
+                          - 3BfSvF42AsdKpeJ7F56NVr (Grid) Type of account Grid
+                            - l3p573cUk9FGfJNF4o3Hp (Grid) Dot Grid
+                            - 4FKOJ0HkYjYdaQKSPC2Yli (Text) Type of account Text
+                  - 1NLuySKYjEPJzwdoJieauX (Grid) Status Grid
+                    - 6VZLU047U6Pp3Hl3aO0qJ9 (Grid) Status Success Grid
+                      - 5wXXOUtM6M0oSNB9LRx2aa (Text) Text
+                    - 6WC8ALFkL60ECBgx1K5nzk (Grid) Status Pending Grid
+                      - iU01MyGKuwVf3eBQjZmNm (Text) Text
+                    - 75W1ofL9OoKgWjcIiciosi (Grid) Status Deactivated Grid
+                      - 7qcO8zIeoat7PlK7b70A8J (Text) Text
+                - 2cWW1hEeCtE6gYYHzcp0xB (Grid) Right Grid
+                  - 3SOiLRgQ6sLa2uhUUc1h5A (Button) button
+                  - 1hSN6vBwE4cFK2KyJeFheS (Grid) Sub Menu Grid
+                    - 2qguE9KmLG4PsI1aprEa9d (Grid) Deactivate button
+                      - 5WYL87UeuFp4chHljL6B6S (Text) Text
+                    - 4tlUGrm2uUwiZDWg8maInn (Grid) Activate button
+                      - 6UAIAuDb3to1jyo3Cq5DXi (Text) Text
+                    - uP6DnLSBdG0AQw6rlHUgd (Grid) viewDetails button
+                      - dJNBPVqFaZncB0hOO3flk (Text) Text
+                    - 7e14ZcoDnGLX0WW6zxBSkl (Grid) modifyDetails button
+                      - syQHOtI4vfoOikcRoWur2 (Text) Text
+              - 7DgaqK53xspbTA7t7zvesa (Grid) Joint Grid
+                - 3Unud76BqVsrGi0MwXwNP8 (Grid) Left Grid
+                  - 2JeFUAHkTaCePyJHDPXvMA (Grid) Details Grid
+                    - 3lcM3j1juzo0NgE8qUl10C (Grid) Image and Name Grid
+                      - 5gr4Q1zxoB2P8SLcQV4fn0 (Grid) images grid
+                        - 1uRxrOwq1yhXBONG0bbHXO (Image) image
+                        - 2hBmt2Rd3DCfF6hasdoz3 (Image) image
+                        - 2g8pCGIAXFm3chyBqrsbvZ (Image) image
+                        - 6DdW8NWabfAN508CVuHoG (Image) image
+                      - 2aeG6NNQV0QmjGaYOru4Ud (Grid) Name and Relation Grid
+                        - fs0ABYxbwDX5E1mUTpUsC (Text) Name Text
+                        - 3o6b4HhNYPiIGUaOeO6TZO (Grid) Grid
+                          - 5Vov9up7sv0zBBw308WRMv (Text) Relation Text
+                          - 1nPFbKpWkQ7AxMmwE9tRR6 (Grid) Type of account Grid
+                            - 2gSj1ggK5kTVpGeBejzbc0 (Grid) Dot Grid
+                            - 1tykUTVNZPvRGcknA4nt8z (Text) Type of account Text
+                  - 5Gg17Q1vijTaePpF7tjXMB (Grid) Status Grid
+                    - 9zSy3dYON4nz6MU2Oy2WR (Grid) Status Success Grid
+                      - 6s8Fbltt4D68sE1PZjhQjH (Text) Text
+                    - 7LFX9AV0hfNdTPx78EFVpM (Grid) Status Pending Grid
+                      - TxNufAlSUMH9bG0DTg3RY (Text) Text
+                    - 4L77e7ZBLrP9HiM12STeJ1 (Grid) Status Deactivated Grid
+                      - 5Vp8MfzA7B1mYJhHKuLJWT (Text) Text
+                - 3y1QiChwYalZMOIFv5e8zX (Grid) Right Grid
+                  - 42DjZy3LoJYy40wE9d0CM5 (Button) button
+                  - 3xWhK12xwDUUyveGZgyzbX (Grid) Sub Menu Grid
+                    - 3VvSUovr8fweBomDNv2lEB (Grid) Deactivate button
+                      - 3pAsU7vAieY4ttr86nj8zF (Text) Text
+                    - 6GGg9IvrPXM89eNXuskbdQ (Grid) Activate button
+                      - 4seS7XreTHQGUJUOFnlvdP (Text) Text
+                    - 3mdm0QdNTApTjUidBkcrZo (Grid) viewDetails button
+                      - 7sHmdyQOHPg5BYCYenmM2m (Text) Text
+                    - 1CRD6clRbezFC0KvdJKD5l (Grid) modifyDetails button
+                      - 66slURLj9YBu17s8HcX5p6 (Text) Text
+              - m37j77NgojObH4HnNWAsq (Grid) llp Grid
+                - 47kv1SWYLUmaiXLIOHawhA (Grid) Left Grid
+                  - lvCyCodHY0DC9tJU0AO2U (Grid) Details Grid
+                    - 3YK0ZfSjI1w6Hww62WXFAk (Grid) Image and Name Grid
+                      - 4J4LhhssQBANjACQIUZQMv (Image) image
+                      - 4qaOo0kpDUqT1FjtQZgBNf (Grid) Name and Relation Grid
+                        - 7fFA90f5b7S40TmRDSKi3N (Text) Name Text
+                        - 6EEVa4hh49spdXPChwRY8B (Grid) Grid
+                          - 2VYgz0FCDnRCNyHUhwemn2 (Grid) Type of account Grid
+                            - 1eWGn4v6r1rtPUqrlPSeM7 (Grid) Dot Grid
+                            - 5aeSMwQSIrr594IiBRZpaX (Text) Type of account Text
+                          - 7mR3qfrd6MPd1rUzLqQCQ5 (Text) Relation Text
+                  - 4F2r6R6qecfo9lD8TDFDql (Grid) Status Grid
+                    - 4Vq7S3Co6ct4m6bMM9RUqY (Grid) Status Success Grid
+                      - 4pdweeZvqYhHp4baMv2ZzU (Text) Text
+                    - MoYcR3LewuHELE6ImIPEe (Grid) Status Pending Grid
+                      - jM3uuO0OSjtzDb7UQxmyb (Text) Text
+                    - uKQBBTUibq1XqPhlBrjsi (Grid) Status Deactivated Grid
+                      - 5P28UamrwcMbtlx0GLdxi8 (Text) Text
+                - 4mRpLrugTouQFWJcFXbk5X (Grid) Right Grid
+                  - 3fAmqNFxe89VWqd4Bg827L (Button) button
+                  - 3CcLw4Rw49kS1fHAgwMc4G (Grid) Sub Menu Grid
+                    - 45oPjzDW2fa8oge2c2UVuk (Grid) Deactivate button
+                      - 5ImDJwkm6rrUk8mB2cCuMF (Text) Text
+                    - qxZ46FHufhLggDQkVHcIM (Grid) Activate button
+                      - 6LVzp3RuOflfKVYX5wbhFA (Text) Text
+                    - 4VFKve3R6gOMlhXSMKsdrM (Grid) viewDetails button
+                      - 3RktwwXv1oF9E33WlzmKrK (Text) Text
+                    - 1aTTbKATnzfNgGomz7IIqq (Grid) modifyDetails button
+                      - 4V11RhvDUz00U925CtEC6I (Text) Text
+              - 1rqVJoOztx82eq3yjGIdba (Grid) private Grid
+                - Ce3P9P81U4ygheErMNWNG (Grid) Left Grid
+                  - 5dwBMDa101Bjg6934SLsv1 (Grid) Details Grid
+                    - 4uuyplC7JvZlBavuTcu98l (Grid) Image and Name Grid
+                      - M8vdV7FVCQXTmF1ohuMzO (Image) image
+                      - 2GCewFOFQfmeIOBDaN8UZB (Grid) Name and Relation Grid
+                        - 4p8fqltlwF1tSiJTn9O81j (Text) Name Text
+                        - 2S9GuH6uLDpH2culFuE0N (Grid) Grid
+                          - SLLEu2bPc3h5PLJcEQrbO (Grid) Type of account Grid
+                            - 2JKcfsFmWUjWo3FUTLXi1u (Grid) Dot Grid
+                            - 3CZJTm1e28yzm8HJWl3VbY (Text) Type of account Text
+                          - 6lQuSzmACHv2xa5HMzOLDX (Text) Relation Text
+                  - 5nd7lohpQQXynP1refsXgX (Grid) Status Grid
+                    - 6FSM1EeyGo0UnOrYbY4DH1 (Grid) Status Success Grid
+                      - 2KCMGRBkdtr0MpuVagSxH8 (Text) Text
+                    - 8aIp80Hq6q5QzedgDjBDO (Grid) Status Pending Grid
+                      - 2ZEgK9B7ehCTCjNiDQOYzc (Text) Text
+                    - 2yeo4bSDweHMcgF11GU6AF (Grid) Status Deactivated Grid
+                      - 4eS4wBz6LU09FQfpnVY3mu (Text) Text
+                - 1TXX2B0Q0pL6NWGb7MuVfc (Grid) Right Grid
+                  - 748MpgCK2Jgg917M0UBt9P (Button) button
+                  - 3bqM2fIKfBjcP4Jd6lr31f (Grid) Sub Menu Grid
+                    - 7eAbG9dPa9JmPePVkKRWdI (Grid) Deactivate button
+                      - 4iOyUur1NdWm4E36s56n4y (Text) Text
+                    - 1MrzKZsVLKVcxGGRyWDFb4 (Grid) Activate button
+                      - dHMwyi5FY3mZXkqS6ZVmX (Text) Text
+                    - 3XBbVYMExjPpRmOka31jIu (Grid) viewDetails button
+                      - 1a7i246vM0IUhAgIrPqum2 (Text) Text
+                    - 1A6ldREGiY3jdxsoAAMjEU (Grid) modifyDetails button
+                      - 73Rna2GubTR8TqrLFirzXU (Text) Text
+              - 7xXIummqPt9Gw84ifvvy9a (Grid) trust Grid
+                - 5Ko7gygvpxisd2AgWG3QTu (Grid) Left Grid
+                  - 3hwYYBcon0L4D1FjkcOMlj (Grid) Details Grid
+                    - 1NNBPvW8jGvEvbRiGXquMv (Grid) Image and Name Grid
+                      - 4hoKRUeAyMnrpTGFMSK5GH (Image) image
+                      - 24kYS5vPJAo5y8CxDVNI5S (Grid) Name and Relation Grid
+                        - 1w0gQy7orcVt3IWu7s6bR4 (Text) Name Text
+                        - 1DRv0t791sgiJIGaTWpGEo (Grid) Grid
+                          - 6JF3FsTeWHSVYatjOktpOO (Text) Relation Text
+                          - 4ZJP84C0kDZLjfozU7Qj0X (Grid) Type of account Grid
+                            - 5qtlwKp9RLyFW8p3x5Cx2R (Grid) Dot Grid
+                            - 46w4FdMrT8Vu1egUzzZPcG (Text) Type of account Text
+                  - 2JOdN5ldyEtIuYufNVsAcA (Grid) Status Grid
+                    - 55qYkhuMgRCSsN3J4GeXUC (Grid) Status Success Grid
+                      - 2W2kVJT0AoRtlmnxW23YKv (Text) Text
+                    - 2DdiDBDW9hatIod8Xp45Im (Grid) Status Pending Grid
+                      - 65QrI7zXKzt4EuMqWj1eJn (Text) Text
+                    - 6T2MBdmIPz2I3S65SqIyx8 (Grid) Status Deactivated Grid
+                      - 3HFUyJRtCWy6GCro8yeHA (Text) Text
+                - 1bxCRBXvfoQqoSUUyjlTIV (Grid) Right Grid
+                  - 67oYCyqY4HMmNFprZVx6fh (Button) button
+                  - 6eIlYNzLuSoysCRhSsA9FH (Grid) Sub Menu Grid
+                    - 5MRkCpsRh0BuLlesptycBU (Grid) Deactivate button
+                      - 4jauU7ZUqzQlJ2KiZMEAbG (Text) Text
+                    - 6vxHMYPbYFHlNn48EpmWva (Grid) Activate button
+                      - 3tIgPihfzEXava6rp3Zq1x (Text) Text
+                    - 6aCSnk5P9v91ukVaeEQO4v (Grid) viewDetails button
+                      - 2LzMrIO7FsZROdBkrELpVI (Text) Text
+                    - 65kD9ZqnugZu4npggis2de (Grid) modifyDetails button
+                      - 6blz1Kx3jN6gaLbG0f3WKi (Text) Text
+              - 5LlMV8soADie548bU0CXcM (Grid) partnership Grid
+                - 5XTubiUVv4Yk2DJd3N67mr (Grid) Left Grid
+                  - 2lKseErXKK9Cr84niu2GFE (Grid) Details Grid
+                    - 40USqcg0xrjMVv6AE1uVUM (Grid) Image and Name Grid
+                      - 5q629zD0G2mPhN5MALDgxY (Image) image
+                      - 7Lia70U0OlU6FIx8b7fN7o (Grid) Name and Relation Grid
+                        - 7m65prb1KQ0KiHw529Y7og (Text) Name Text
+                        - dzcV6WrkeNLveraNC0TA0 (Grid) Grid
+                          - 3LIyvMatJhZVQZ95F8qq5v (Grid) Type of account Grid
+                            - 6U2ko9RujhZECHiYRfow8d (Grid) Dot Grid
+                            - 3LdnNOyzaSseQzMXttVtii (Text) Type of account Text
+                          - 1CpoNtoZuQfYLqKtjmtgzn (Text) Relation Text
+                  - 2brJ4xZaZy667VnQ9sr6Ru (Grid) Status Grid
+                    - 6uhFEiwhNgRFBy8Aqljrlm (Grid) Status Success Grid
+                      - 1CHr8K91hBtpGZh8X88BRi (Text) Text
+                    - 7kWp419YdfH5eBzwJJAkSg (Grid) Status Pending Grid
+                      - 4MpggLGpQksgknuEDbG6kU (Text) Text
+                    - 46HrYHQhEy2B8YPr4nUzLW (Grid) Status Deactivated Grid
+                      - 57oV9O2BHmLCvq1AsQ5nsw (Text) Text
+                - 7dfwQ8mj4EhnvM6vCcEtDA (Grid) Right Grid
+                  - 7DHw5Mp6nBz7EJYCWUTqBK (Button) button
+                  - 2Xk3boEW9747gXHHgj3CWH (Grid) Sub Menu Grid
+                    - 5B8cdLNpLVJSUcOafgnFaE (Grid) Deactivate button
+                      - 34tcJmRRKL0uEVY0Jj2CvC (Text) Text
+                    - PhIKhYhSZI31kxuWFAATV (Grid) Activate button
+                      - 21ptH53yO2c9sSEEvTf3fR (Text) Text
+                    - 5nXlyq2SOttwTEExiOZc0n (Grid) viewDetails button
+                      - 5hhOMMyixCXFoFqpZ8SNbg (Text) Text
+                    - 6oviXAAIRoDJmk5AdVHpWt (Grid) modifyDetails button
+                      - 2SEp0bUhYChPEgmoJ7xz4O (Text) Text
+              - 2ucqr814X4ZQojJMqmJkrw (Grid) huf Grid
+                - 51WQIsWkGevpk55JhunVLx (Grid) Left Grid
+                  - 2Hq6rjgiv6fKDcDAvTQ48n (Grid) Details Grid
+                    - 6WU4MKyhdCgsaMKwNQMkav (Grid) Image and Name Grid
+                      - 6nd1vB05GBuBFw5vf7cVy (Image) image
+                      - 43K67L92K8hwCbF39dzs4Y (Grid) Name and Relation Grid
+                        - 3xTBQ26gkAQrI95eX6eHKA (Text) Name Text
+                        - 1jBZ4v2b2KHxTuqMkwmxSX (Grid) Grid
+                          - 3v4OZTvyoa3rsaVKBjpHLh (Grid) Type of account Grid
+                            - 7KLGJp5xdR9nOiayjb71uZ (Grid) Dot Grid
+                            - aUN7GKG894cmXGpm6jBr2 (Text) Type of account Text
+                          - 54Q3OFVoHXOkFcHB7oujj9 (Text) Relation Text
+                  - 3gvncTXC6MmvoyoAKQgaiD (Grid) Status Grid
+                    - 6kjdKldOr9enzFKRUXKqY7 (Grid) Status Success Grid
+                      - 6WH6woyojj0gcKyboRblDa (Text) Text
+                    - 1Rwb3m6DNtSAgN206QibUl (Grid) Status Pending Grid
+                      - 6lF60W2TFcP1qJG5S1TqxW (Text) Text
+                    - 4mZSh2d6MMIOrgtgVs8YHD (Grid) Status Deactivated Grid
+                      - 5kDmXlsa9kuiXxeNRbjOL1 (Text) Text
+                - 2QTeKFio8rkYorihCzNBpy (Grid) Right Grid
+                  - 5sidto0tGpMFy7RrlgL4Sr (Button) button
+                  - 11CpXHaKMRfHsyKdYReCs0 (Grid) Sub Menu Grid
+                    - 6Tmf0jRT4nKs5d7kXiQcx7 (Grid) Deactivate button
+                      - GgDHCJaHZSs1lPkKsQ5iW (Text) Text
+                    - 6GgbC9kdhTPeDbyzon01IU (Grid) Activate button
+                      - 4b4UxrZk8NH6ZdcuvWBE1U (Text) Text
+                    - 6nv4I4o9SpemmKsHWeYvLv (Grid) viewDetails button
+                      - 1llzsASZb8N9a5K31iuRem (Text) Text
+                    - 4uRIsJpNx9qfOPcOyuquXb (Grid) modifyDetails button
+                      - 6w0qK1scSxikcOpowmrYst (Text) Text
+              - 76ebaNjmA2dtrt9sAqf894 (Grid) Add Account Grid
+                - 4hQkHpr2xzaec2fzw6GvhS (Button) button
+          - 16Qm9ZWZhJBeZnWjQcxeYd (Popup) Popup
+            - 76CpQDXjK0priHbYmyIu8I (Grid) Grid
+              - 3WXyNXvXK0XLcVeJvJjTzg (Text) Activate Heading
+              - 3qi6xMBOnqHSVFUGpyj9u9 (Text) Deactivate Heading
+              - 1hGat4vQIiRot8Q9r8r5AT (Text) Activate Description1
+              - 6jOKmTH4bBTcgtXOr7PBtq (Text) Deactivate Description1
+              - 2fM64ddlG5yDaaoMCtqTyc (Grid) Grid
+                - 5WKxyZcyJT44SBHpXvMpyZ (Text) Deactivate Description3
+                - 4chN3ToOqOs8lzLfjr1c9O (Text) Deactivate Description2
+              - 65le3Kx7F34AVyL9sKu14j (Grid) Grid
+                - 4mRnNuQIPVqglv2tdbtgxT (Text) activate Description3
+                - 1kcMFzdlqW8rfx0CDPscPw (Text) activate Description2
+              - 4lDRpvDgA9HKUAjnnLBLSI (Grid) Grid
+                - 1h8WIOJNwhcAglBPSQJkbx (Button) Deactivate button
+                - 7dNNOrkZZmQpbV8UA4ijZv (Button) Activate button
+                - 3W757Va4h1f1sChCMOBTha (Button) Cancel button
+              - 7KroiuAQDernhKf6OYYmWd (Button) Activate button
+              - 7I4eOc0fTGPAYU2sK5tAOR (Button) Deactivate button
+              - vDZ9JPS3a9DvZtaMr28q9 (Button) Cancel button
+          - 5mRWDqe9ZB1r0LWpCgKLjV (Popup) Popup2
+            - 5ThsUMtWtx5uotiKcRULSi (Grid) Grid
+              - 3mM4TmakXRqWaMZ5Xc6vkp (Text) Heading
+              - 32JPGUkfZeAA4U4JPd15OL (Text) Text
+              - 56srgmjuqSXEA6u2ttS3Gi (Button) Cancel button
+          - 4WbiG7gHhs00HUoBmYBmO9 (Popup) completeKYC
+            - 5Mkjc7NZxFTp4ml3Siikkv (Grid) Grid
+              - 4dk6tfJuPKqO25QH4MiHpT (Grid) Grid
+                - 5PjGLuXqZfsAcmWKx4zH1G (Button) button
+              - 7dglEcMptKxrNSTxkPn7yV (Grid) deleteGrid
+                - 21QMnnzF4Zxnv4XRpkOMt5 (Text) heading
+  - 4WQSPwFYLaMXpEpQrVIB5V (Popup) deletePopup for agreementDoc
+    - 1fnDLr9dKPIa9nV8uUrDk8 (Grid) Grid
+      - zS6qnpBqnkMAU9i9daFQ7 (Grid) Grid
+        - Zv3XbAXwcv73o2Bz7HoLU (Button) button
+      - 2lVL6w41rgLXFCY58Ujrmp (Grid) deleteGrid
+        - 4RUu6Yk6ewV8nMio7EyGG2 (Grid) icon and Loader
+          - 1PqWuDXqe9GmSxp1ImTsgn (Icon) Icon
+          - 1kCF13KRqb5OZNlR3IZXFJ (Grid) Grid
+            - 3K15iUpQo5bqHTaiNgnz00 (Grid) Grid
+        - ZqWqS6OpHipq52jFsl29N (Text) heading
+        - 6FErDo0kmiRnfzQSXq618G (Text) text
+        - lSvqjj8KxGK9ySLTFfYgj (Text) Text
+        - 4OUUKoad6rYJO27oCD8M4E (Grid) Grid
+          - 20BmYIbVrvKlwTYP16W7fg (Button) button
+          - 6gD6BKVxUvZpnUIW79hKO9 (Grid) Grid
+            - 5X6XqkkFXBW6Np96P5g2zp (Text) Text
+            - Z54WKWTmvzVFetMlQBtwt (Grid) legalLoader
+              - 69Y40zYa9DtYEI1nfesVmR (Grid) Grid
+                - 5GwYbW9vxkphwYdeWdqqMO (Grid) Grid
+          - 3i7IieQ3b3ckZO0imrUms7 (Button) button

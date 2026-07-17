@@ -1,0 +1,6 @@
+.clone_token
+.clone_session
+clone_transcript.log
+
+# CFA agent run artifacts (transcripts/summaries) — local-only, can contain dumped secrets
+cfa_runs/

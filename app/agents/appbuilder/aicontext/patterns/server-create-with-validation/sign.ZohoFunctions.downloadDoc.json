@@ -1,0 +1,164 @@
+{
+  "_id": "665f4fd1111ddb4fbf3bbb20",
+  "definition": {
+    "name": "downloadDoc",
+    "namespace": "ZohoFunctions",
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "version": 1,
+            "type": [
+              "OBJECT"
+            ]
+          }
+        }
+      },
+      "Error": {
+        "name": "Error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "getR": {
+        "statementName": "getR",
+        "name": "GetRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 239,
+          "top": 80
+        },
+        "parameterMap": {
+          "connectionName": {
+            "1DDYuylP5iZL4ZNfTtJ2Rk": {
+              "key": "1DDYuylP5iZL4ZNfTtJ2Rk",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "ZohoRestSign"
+            }
+          },
+          "appCode": {
+            "7hSjGTrzGl6n23K19vtR4P": {
+              "key": "7hSjGTrzGl6n23K19vtR4P",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "url": {
+            "7CSnnAqn5W4GOn9IqIS7Lq": {
+              "key": "7CSnnAqn5W4GOn9IqIS7Lq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "api/v1/requests/<PHONE>/pdf"
+            }
+          }
+        }
+      },
+      "print": {
+        "statementName": "print",
+        "name": "Print",
+        "namespace": "System",
+        "position": {
+          "left": 580,
+          "top": 192
+        },
+        "parameterMap": {
+          "values": {
+            "5vr5FzTq2FECQ6PQQCJ7Ne": {
+              "key": "5vr5FzTq2FECQ6PQQCJ7Ne",
+              "type": "EXPRESSION",
+              "expression": "Steps.getR.output.data",
+              "order": 1
+            },
+            "Er68WCV5zYuYAkUkJVg63": {
+              "key": "Er68WCV5zYuYAkUkJVg63",
+              "type": "EXPRESSION",
+              "expression": "Steps.getR.error.data",
+              "order": 2
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 877,
+          "top": 42
+        },
+        "parameterMap": {
+          "results": {
+            "3bUqw6x9GHQ9Ieio1HZ7gv": {
+              "key": "3bUqw6x9GHQ9Ieio1HZ7gv",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.getR.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 930,
+          "top": 328
+        },
+        "parameterMap": {
+          "eventName": {
+            "6662bkyOjS2FeDbPqSjVdp": {
+              "key": "6662bkyOjS2FeDbPqSjVdp",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "3yc3eBSSyN4ZZ05DJvimHD": {
+              "key": "3yc3eBSSyN4ZZ05DJvimHD",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.getR.error.data"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "ZohoFunctions.downloadDoc",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 12,
+  "updatedAt": "2026-04-09 04:29:05.877000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:33:05.828000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,100 @@
+{
+  "_id": "686b673c20f172272db5c14a",
+  "definition": {
+    "name": "sendUserInvite",
+    "namespace": "leadzump",
+    "parameters": {
+      "userInviteData": {
+        "parameterName": "userInviteData",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 869.7499961853027,
+          "top": 144.49999237060547
+        },
+        "parameterMap": {
+          "results": {
+            "6I6vYhQYpwyi1mHKHkiPfV": {
+              "key": "6I6vYhQYpwyi1mHKHkiPfV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "mailSent",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.sendEmail.output.sent"
+                }
+              }
+            }
+          }
+        }
+      },
+      "sendEmail": {
+        "statementName": "sendEmail",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 419.24999618530273,
+          "top": 264.5
+        },
+        "parameterMap": {
+          "connectionName": {
+            "44XREi5ThR4eyIir0TdqXs": {
+              "key": "44XREi5ThR4eyIir0TdqXs",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "templateName": {
+            "3qWn8I52ftI2JoUERx1VEk": {
+              "key": "3qWn8I52ftI2JoUERx1VEk",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "userInvite"
+            }
+          },
+          "templateData": {
+            "2lGER0xax8fNsv5Mxp9jDk": {
+              "key": "2lGER0xax8fNsv5Mxp9jDk",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userInviteData",
+              "value": {}
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "mailSent": {}
+        }
+      }
+    }
+  },
+  "name": "leadzump.sendUserInvite",
+  "message": "From transport : 0NLasvcaI96EIUO3Ck7GsQ",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 66,
+  "updatedAt": "2026-05-14 13:47:05.190000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-07-07 06:20:44.240000",
+  "createdBy": "<USER>"
+}

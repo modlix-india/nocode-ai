@@ -1,0 +1,50 @@
+- 4ffzHkGzWrMWxQ20F6Nl3o (Grid) PageGrid
+  - 51zVLmEVBXrlq7OeB9TIjc (Grid) Main Grid
+    - 4QiFaW0w8eYPwA34qnhJoI (Grid) Top Grid
+      - 5NmrY9I6bK3Nv5cjGNoHT8 (Image) image
+    - 5wAJNjBEBktbM92ixZu5vk (Grid) Bottom Grid
+      - 1XtGCQG6yjFz9lg3NNXAek (Grid) Side Grid
+        - 4ARTix0eUvYIQhBTwiWnPV (Image) image
+        - 1KOMIfAUr51FgCDWG3q6Yi (Text) Text1
+        - 1lAj4TFCNcayFM0ECkVROs (Text) Text2
+      - 4gkQQJUP7GBsTK9MZ0MMwc (Grid) right grid
+        - 1J5Cs99cXZOO45mm0tWTsN (Grid) Back1
+          - mvQf5arnE9YlBVFQOlfcg (Icon) Back arrow Icon
+          - 7hNETIOo6aABq9d2Zz3SGe (Text) Back
+        - 7aL2HXsSnEjDGjbXiQxnXS (Grid) Back2
+          - 5UzbyZu1hqc9cmE85VZNne (Icon) Back arrow Icon
+          - 7sSXrVloF7m9BiiprDFkat (Text) Back
+        - 5TCEkopQFdUjON7CLkcs2i (Grid) Back3
+          - 4QPswpJSYJdMrHTXLThqw7 (Icon) Back arrow Icon
+          - 3bmUFFJy1VRhoFpM23r6WE (Text) Back
+        - 13GnBQkUeXofi7IMO7XD3a (Grid) getOTP grid
+          - 6K34FT1xwfPlOtd1330AUr (Grid) Grid
+            - 48An0guksGuYSqlLR9Ooer (Text) Text
+            - 5hl7D1RzMroIWsVFyfuK1b (Text) Text
+            - 5o7yYWJrHyWFm3RpoKovim (PhoneNumber) PhoneNumber
+            - 2jEO6c7OWRfZQsAYRp6nbW (Button) Get OTP Button
+        - 3P351bu9ICOXWcPvoWFwi (Grid) OTP Grid
+          - 3ae1yA83fLvcgXeYeiA4LJ (Grid) Grid
+            - NRKyC5z3MImf9dgFLVEa9 (Grid) Grid
+              - 2eYzP3l8I6LgLqpgTupyuw (Text) Text
+              - 4WmJ1OzMT0PUwjA2KqeUUv (Text) Text
+              - 3fWHNhxv27uAzrCarvZngJ (Grid) Grid
+                - Hp7FGBwQA2ZhzZyEfB2PS (Icon) Icon
+            - 2E1x2RV8OMHYiN4OGGORwo (Otp) Otp1
+            - ilwpK8WddUPNAnvZpP2Id (Grid) Grid
+              - 1XJz8xhHmmNledm751UNLh (CheckBox) CheckBox
+              - 4f42bypCjRettL2wXBurbf (Text) Text
+            - 1LMdbehTfEvQrS5CMICTD9 (Text) Text
+            - 6jkxDWrI3V82VgMJAa8oye (Text) Text
+            - 4yltM49x82atfkbhh5gfMt (Timer) Timer
+            - uKd4oipg2maxzhkN7dvXM (Button) SUBMIT
+            - 3cfvC7ggNxw74scGBcGHDK (Grid) Resend otp Grid
+              - KeVdc7DmiMBvo8xkyCRJb (Grid) Resend otp text Grid
+                - 7xjmfLV1uFYiyjmZdYiL0C (Text) Resend OTP
+              - 6v67Pm6CNsKHW4wzmo55WM (Text) Resend Text seconds count
+        - 5WVeIQIgDXTak2ywm3sBic (Grid) PIN
+          - 7eTE2pRXp4yB6YJvLAYJWi (Grid) Grid
+            - 51A8mbZAQ8DAMr7tt9Dgnc (Text) Text
+            - 2D9Tvoyyqyp3KNUeMkJSq1 (Text) Text
+          - 5Ft0AccNVWeOqRrfd7Py4N (Otp) Otp2
+          - 531NNHjWkbNngRgzBe8mma (Button) Get OTP Button

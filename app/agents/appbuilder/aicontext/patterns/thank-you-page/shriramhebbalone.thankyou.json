@@ -1,0 +1,354 @@
+{
+  "_id": "6554892ae50e495e0a950230",
+  "eventFunctions": {},
+  "rootComponent": "7igChX1DA8v9mVOpoHRfxz",
+  "componentDefinition": {
+    "7igChX1DA8v9mVOpoHRfxz": {
+      "key": "7igChX1DA8v9mVOpoHRfxz",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1fju9fYC9MQUFB9ROvZEUh": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "paddingLeft": {
+                "value": "4px"
+              },
+              "paddingRight": {
+                "value": "4px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "30xLseF0ct9g0CSyv13yPu": true
+      }
+    },
+    "30xLseF0ct9g0CSyv13yPu": {
+      "key": "30xLseF0ct9g0CSyv13yPu",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "2SZih22j3jztyjvOjkKXg6": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5YQrbOzbaKHNENxB7GlsaC": true,
+        "3G2cOM7I3V8gJXWXhxG8AL": true,
+        "7LIlmGeGJNbeX7YU57cnUS": true,
+        "2A0zevMj40rWSsJaszZvHD": true
+      },
+      "displayOrder": 0
+    },
+    "1hgktXFD5hpFgtYAN3qQ3p": {
+      "key": "1hgktXFD5hpFgtYAN3qQ3p",
+      "name": "property Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/shriramhebbal/developerIcon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "eXhCLifHytF59jOgFxXv4": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "120px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7zF80QQ6Z5ANHVzgB0lFcj": {
+      "key": "7zF80QQ6Z5ANHVzgB0lFcj",
+      "name": "developer Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/shriramhebbal/propertyIcon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4pCD0RgvY4VdWsv74T5qY2": {
+          "resolutions": {
+            "ALL": {
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "borderLeftColor": {
+                "value": "#00000033"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "width": {
+                "value": "120px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5YQrbOzbaKHNENxB7GlsaC": {
+      "key": "5YQrbOzbaKHNENxB7GlsaC",
+      "name": "Image Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "5cbjTI9kYfurlRGCv0Lybw": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1hgktXFD5hpFgtYAN3qQ3p": true,
+        "7zF80QQ6Z5ANHVzgB0lFcj": true
+      },
+      "displayOrder": 2
+    },
+    "3G2cOM7I3V8gJXWXhxG8AL": {
+      "key": "3G2cOM7I3V8gJXWXhxG8AL",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "yNcVOtX27utQ2kSdI3JS1": {
+          "resolutions": {
+            "ALL": {},
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "justifyContent": {
+                "value": "center"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3zcC6wa7M6wkdZ2rzl8bUQ": true,
+        "4InVI6mtBAfKA5vdcVmZFD": true
+      },
+      "displayOrder": 3
+    },
+    "3zcC6wa7M6wkdZ2rzl8bUQ": {
+      "key": "3zcC6wa7M6wkdZ2rzl8bUQ",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa fa-solid fa-circle-check _size4"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "1dyFUJosqTgW4pKacROF2m": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#04A55E"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4InVI6mtBAfKA5vdcVmZFD": {
+      "key": "4InVI6mtBAfKA5vdcVmZFD",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Thanks for your Submission."
+        }
+      },
+      "styleProperties": {
+        "6qrcH6Gz22kvZmssaQJEsy": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "28px"
+              },
+              "lineHeight": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "textAlign": {
+                "value": "left"
+              },
+              "fontSize": {
+                "value": "5vw"
+              },
+              "lineHeight": {
+                "value": "5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7LIlmGeGJNbeX7YU57cnUS": {
+      "key": "7LIlmGeGJNbeX7YU57cnUS",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "We will contact you soon."
+        }
+      },
+      "styleProperties": {
+        "1vCQAdS5ADbeCmFPCpMQge": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "lineHeight": {
+                "value": "22px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.33vw"
+              },
+              "lineHeight": {
+                "value": "3.33vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "2A0zevMj40rWSsJaszZvHD": {
+      "key": "2A0zevMj40rWSsJaszZvHD",
+      "name": "Logo",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/FIN/shriramHebbalOne/new+hebbal+logo.png"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5olx2rqcgy7BmFiNDNRIde": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "350px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "60vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    }
+  },
+  "name": "thankyou",
+  "message": "UI fixes ",
+  "clientCode": "FIN",
+  "appCode": "shriramhebbalone",
+  "version": 7,
+  "updatedAt": "2024-11-08 06:58:09.518000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-11-15 09:02:34.001000",
+  "createdBy": "<USER>"
+}

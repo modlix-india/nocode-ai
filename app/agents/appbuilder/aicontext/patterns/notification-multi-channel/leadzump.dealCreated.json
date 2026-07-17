@@ -1,0 +1,24 @@
+{
+  "_id": "696a5bcd5c6dc118d3efe175",
+  "notificationType": "INFO",
+  "defaultLanguage": "en",
+  "channelTemplates": {
+    "inapp": {
+      "templateParts": {
+        "en": {
+          "description": "from source **${source}** and subsource **${subSource}** from product **${productName}** \n##### ${code}",
+          "title": "New Deal Received",
+          "image": "api/files/static/file/SYSTEM/leadzump/notifications/newDealCreated1.svg"
+        }
+      }
+    }
+  },
+  "name": "dealCreated",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 6,
+  "updatedAt": "2026-01-17 07:02:41.906000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-16 15:39:57.620000",
+  "createdBy": "<USER>"
+}

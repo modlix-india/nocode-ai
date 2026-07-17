@@ -1,0 +1,727 @@
+{
+  "_id": "6776916b69373e0c0bec5a5c",
+  "definition": {
+    "namespace": "MarketingAI",
+    "name": "MetaLeadFormsFetch",
+    "parameters": {
+      "pageId": {
+        "parameterName": "pageId",
+        "schema": {}
+      },
+      "page": {
+        "parameterName": "page",
+        "schema": {}
+      },
+      "pageSize": {
+        "parameterName": "pageSize",
+        "schema": {}
+      }
+    },
+    "steps": {
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 82.22221883138025,
+          "top": 134.00000339084198
+        },
+        "parameterMap": {
+          "schema": {
+            "6BTazA2sJrXi36NglYYdWw": {
+              "key": "6BTazA2sJrXi36NglYYdWw",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          },
+          "name": {
+            "3x8GBmHntMM25cw0njgogd": {
+              "key": "3x8GBmHntMM25cw0njgogd",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "fetchedPages"
+            }
+          }
+        },
+        "dependentStatements": {}
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1328.400024414062,
+          "top": 530.3999938964841
+        },
+        "parameterMap": {
+          "results": {
+            "5Tn2bF2FstegB12IyulDbs": {
+              "key": "5Tn2bF2FstegB12IyulDbs",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.fetchedPages.error"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "2n3bvkOx4xgbzN32HOhrSw": {
+              "key": "2n3bvkOx4xgbzN32HOhrSw",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set2__d-o-t__output": false,
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 873.000005086263,
+          "top": 471.6666564941405
+        },
+        "parameterMap": {
+          "name": {
+            "7AZ3KXE8CVoBzhJKJQSh16": {
+              "key": "7AZ3KXE8CVoBzhJKJQSh16",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.fetchedPages.error"
+            }
+          },
+          "value": {
+            "6N0aYmLdyRzNAkjUGEnKPf": {
+              "key": "6N0aYmLdyRzNAkjUGEnKPf",
+              "type": "EXPRESSION",
+              "expression": "Steps.getRequest.error.data",
+              "order": 1
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1210.3999938964841,
+          "top": 160.39999389648435
+        },
+        "parameterMap": {
+          "condition": {
+            "2KSLmKmc3MmwMnLxX0s4OV": {
+              "key": "2KSLmKmc3MmwMnLxX0s4OV",
+              "type": "EXPRESSION",
+              "expression": "Context.fetchedPages.error",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 817.0000050862627,
+          "top": 142.33332316080728
+        },
+        "parameterMap": {
+          "name": {
+            "5hSZyhREYVuFtaW4vA7azM": {
+              "key": "5hSZyhREYVuFtaW4vA7azM",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.fetchedPages.pages"
+            }
+          },
+          "value": {
+            "5yCLdOGZ7EK3EIkwiYlYwM": {
+              "key": "5yCLdOGZ7EK3EIkwiYlYwM",
+              "type": "EXPRESSION",
+              "expression": "Steps.getRequest.output.data",
+              "order": 1
+            }
+          }
+        }
+      },
+      "checkingPageId": {
+        "statementName": "checkingPageId",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 3844.800003051758,
+          "top": 127.20001220703125
+        },
+        "parameterMap": {
+          "condition": {
+            "5hCAetANerHpblB09X0JMe": {
+              "key": "5hCAetANerHpblB09X0JMe",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.id = Context.businessPage.pageId",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set5": {
+        "statementName": "set5",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 5278.2000732421875,
+          "top": 186.199981689453
+        },
+        "parameterMap": {
+          "value": {
+            "2r5PJ2tQhr2Bghw1h2Mcl1": {
+              "key": "2r5PJ2tQhr2Bghw1h2Mcl1",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.id",
+              "order": 1
+            }
+          },
+          "name": {
+            "1l5UpnVUsT7yLEMVZv4VHU": {
+              "key": "1l5UpnVUsT7yLEMVZv4VHU",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.PageDetails.id"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set4__d-o-t__output": true
+        }
+      },
+      "set6": {
+        "statementName": "set6",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 5669.400009155273,
+          "top": 174.59997558593727
+        },
+        "parameterMap": {
+          "name": {
+            "5XMj7hxhCslzGxapWD53wn": {
+              "key": "5XMj7hxhCslzGxapWD53wn",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.PageDetails.picture"
+            }
+          },
+          "value": {
+            "462dOLGD3FGe9p8cLyNplY": {
+              "key": "462dOLGD3FGe9p8cLyNplY",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.picture",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set5__d-o-t__output": true
+        }
+      },
+      "break": {
+        "statementName": "break",
+        "name": "Break",
+        "namespace": "System.Loop",
+        "position": {
+          "left": 5983.200012207031,
+          "top": 215.39999389648415
+        },
+        "parameterMap": {
+          "stepName": {
+            "3NNxNH8LCQrFkhKE5qj47n": {
+              "key": "3NNxNH8LCQrFkhKE5qj47n",
+              "type": "EXPRESSION",
+              "expression": "'forEachLoop'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set6__d-o-t__output": true
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 4362.4000244140625,
+          "top": 540.4000015258787
+        },
+        "parameterMap": {
+          "condition": {
+            "6yLIyVuvk1ZValboXzNKPE": {
+              "key": "6yLIyVuvk1ZValboXzNKPE",
+              "type": "EXPRESSION",
+              "expression": "Context.businessPage.error",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set8__d-o-t__output": true
+        }
+      },
+      "set8": {
+        "statementName": "set8",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 3940,
+          "top": 471.79999542236305
+        },
+        "parameterMap": {
+          "name": {
+            "5iEGLT5TuzPq7ooDy68xcR": {
+              "key": "5iEGLT5TuzPq7ooDy68xcR",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.businessPage.leadForms"
+            }
+          },
+          "value": {
+            "5bIqXygx698TrhKcKlw4tn": {
+              "key": "5bIqXygx698TrhKcKlw4tn",
+              "type": "EXPRESSION",
+              "expression": "Steps.getRequest1.output.data",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 4907.399993896484,
+          "top": 504
+        },
+        "parameterMap": {
+          "results": {
+            "4i3fA9zwhz0yWGfK8Iu5k8": {
+              "key": "4i3fA9zwhz0yWGfK8Iu5k8",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "leadforms",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.businessPage.leadForms"
+                }
+              }
+            },
+            "3pVWHBHKtGjZRpxkrJLNYt": {
+              "key": "3pVWHBHKtGjZRpxkrJLNYt",
+              "type": "VALUE",
+              "expression": "",
+              "order": 2,
+              "value": {
+                "name": "pageDetails",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.PageDetails"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": false,
+          "Steps__d-o-t__if__d-o-t__false": false,
+          "Steps__d-o-t__if1__d-o-t__false": true
+        }
+      },
+      "set7": {
+        "statementName": "set7",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 4025.3999938964844,
+          "top": 856.8000030517576
+        },
+        "parameterMap": {
+          "name": {
+            "6YCKnG52UgiRJfL7u2vPjr": {
+              "key": "6YCKnG52UgiRJfL7u2vPjr",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.businessPage.error"
+            }
+          },
+          "value": {
+            "2e8qhGisAsnLrydtVmsJ0D": {
+              "key": "2e8qhGisAsnLrydtVmsJ0D",
+              "type": "EXPRESSION",
+              "expression": "Steps.getRequest1.error.data",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 4733.600036621094,
+          "top": 853.9999999999998
+        },
+        "parameterMap": {
+          "eventName": {
+            "5CzJ0bQTcbeb0ih42Npyt2": {
+              "key": "5CzJ0bQTcbeb0ih42Npyt2",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "4vKJosOh1ChrNXAc4hLNIR": {
+              "key": "4vKJosOh1ChrNXAc4hLNIR",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.businessPage.error"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": true
+        }
+      },
+      "set4": {
+        "statementName": "set4",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 4808.2000732421875,
+          "top": 161.20001220703125
+        },
+        "parameterMap": {
+          "name": {
+            "3ACj0PVl4zvYJ9Q3qJxFJt": {
+              "key": "3ACj0PVl4zvYJ9Q3qJxFJt",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.PageDetails.name"
+            }
+          },
+          "value": {
+            "5Gmk7TAcBWM5jCEofXz2FX": {
+              "key": "5Gmk7TAcBWM5jCEofXz2FX",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.name",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set3__d-o-t__output": true
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 4356.4000244140625,
+          "top": 137.20001220703125
+        },
+        "parameterMap": {
+          "name": {
+            "4JlqR3tjoI9oVRpOjKocY9": {
+              "key": "4JlqR3tjoI9oVRpOjKocY9",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.businessPage.access_token"
+            }
+          },
+          "value": {
+            "1xLCdxE0TxSbkXIt6KzFGr": {
+              "key": "1xLCdxE0TxSbkXIt6KzFGr",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.access_token",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__checkingPageId__d-o-t__true": true
+        }
+      },
+      "getRequest": {
+        "statementName": "getRequest",
+        "name": "GetRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 441.9999999999999,
+          "top": 140.99999999999997
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        },
+        "parameterMap": {
+          "url": {
+            "5FehL7Wrc41FtLtD2ojrkW": {
+              "key": "5FehL7Wrc41FtLtD2ojrkW",
+              "type": "EXPRESSION",
+              "expression": "'/me/accounts?fields=name,id,access_token,picture'",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "1DxoL0MjyJBECutBempIbw": {
+              "key": "1DxoL0MjyJBECutBempIbw",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "META_API"
+            }
+          },
+          "appCode": {
+            "2YhmZyz1Uk6zPrWBiZL4iG": {
+              "key": "2YhmZyz1Uk6zPrWBiZL4iG",
+              "type": "VALUE",
+              "expression": "",
+              "value": "marketingai"
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1908.3999938964841,
+          "top": 109.79998779296864
+        },
+        "parameterMap": {
+          "name": {
+            "aW8uYHcSHC3nROkfZqYL5": {
+              "key": "aW8uYHcSHC3nROkfZqYL5",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.businessPage.pageId"
+            }
+          },
+          "value": {
+            "1iYFgye2LuawLu51ArS57c": {
+              "key": "1iYFgye2LuawLu51ArS57c",
+              "type": "EXPRESSION",
+              "expression": "Arguments.pageId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1572.3999938964841,
+          "top": 118.79998779296864
+        },
+        "parameterMap": {
+          "name": {
+            "1vWwqr6yH0S8QYxEx10XZT": {
+              "key": "1vWwqr6yH0S8QYxEx10XZT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "businessPage"
+            }
+          },
+          "schema": {
+            "793SuPMYIDIy47lKTFVOuQ": {
+              "key": "793SuPMYIDIy47lKTFVOuQ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "forEachLoop": {
+        "statementName": "forEachLoop",
+        "name": "ForEachLoop",
+        "namespace": "System.Loop",
+        "position": {
+          "left": 2820.399993896484,
+          "top": 108.99999999999989
+        },
+        "parameterMap": {
+          "source": {
+            "1DhTUM4NkxjrZV7u3ZMoBq": {
+              "key": "1DhTUM4NkxjrZV7u3ZMoBq",
+              "type": "EXPRESSION",
+              "expression": "Context.fetchedPages.pages.data",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": false,
+          "Steps__d-o-t__create2__d-o-t__output": true
+        }
+      },
+      "create2": {
+        "statementName": "create2",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2299.8000030517574,
+          "top": 92.20001220703125
+        },
+        "parameterMap": {
+          "name": {
+            "3s6IITDE2DoZiPx0BA6v87": {
+              "key": "3s6IITDE2DoZiPx0BA6v87",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "PageDetails"
+            }
+          },
+          "schema": {
+            "1val2udBxzkIqkFDWSKHyN": {
+              "key": "1val2udBxzkIqkFDWSKHyN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "getRequest1": {
+        "statementName": "getRequest1",
+        "name": "GetRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 3199.800003051758,
+          "top": 499.1999816894531
+        },
+        "parameterMap": {
+          "url": {
+            "6tTIWD0CEk7m06Ssy2hUf9": {
+              "key": "6tTIWD0CEk7m06Ssy2hUf9",
+              "type": "EXPRESSION",
+              "expression": "\"{{Context.businessPage.pageId}}/leadgen_forms?fields=name,id,status,created_time,leads_count,is_optimized_for_quality,question_page_custom_headline,questions,thank_you_page,legal_content,context_card&limit={{Arguments.pageSize}}&access_token={{Context.businessPage.access_token}}&{{Arguments.page}}\"",
+              "order": 1
+            }
+          },
+          "appCode": {
+            "4RhSvojCUKM0ZhoGaq72m6": {
+              "key": "4RhSvojCUKM0ZhoGaq72m6",
+              "type": "VALUE",
+              "expression": "",
+              "value": "marketingai"
+            }
+          },
+          "connectionName": {
+            "j0RX6QgScxB99Pf33dg2W": {
+              "key": "j0RX6QgScxB99Pf33dg2W",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "META_API"
+            }
+          },
+          "queryParams": {
+            "6vw8mIW5JQdWWuqdweZ1dn": {
+              "key": "6vw8mIW5JQdWWuqdweZ1dn",
+              "type": "VALUE",
+              "value": {}
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__forEachLoop__d-o-t__output": true,
+          "Steps__d-o-t__set11__d-o-t__output": false
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "leadforms": {},
+          "pageDetails": {}
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {}
+        }
+      }
+    }
+  },
+  "name": "MarketingAI.MetaLeadFormsFetch",
+  "message": "From transport : 0NIbUPgdjW9iDkjwrrvZFI",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 47,
+  "updatedAt": "2026-05-12 10:28:22.830000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-01-02 13:15:23.952000",
+  "createdBy": "<USER>"
+}

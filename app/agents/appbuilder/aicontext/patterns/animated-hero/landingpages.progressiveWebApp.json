@@ -1,0 +1,4605 @@
+{
+  "_id": "653bc0638fc99a6064372345",
+  "properties": {
+    "title": {},
+    "wrapShell": true,
+    "onLoadEvent": "6K2Va2jt5ekgdeONurjS9c",
+    "loadStrategy": "reload",
+    "classes": {}
+  },
+  "eventFunctions": {
+    "3YBQqDmAmDIEEvjFbRio4N": {
+      "name": "uploadIcon",
+      "steps": {
+        "uploadEvent": {
+          "statementName": "uploadEvent",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 122,
+            "top": 116
+          },
+          "parameterMap": {
+            "url": {
+              "3P11lmCUEC3UD4N08XnCMk": {
+                "key": "3P11lmCUEC3UD4N08XnCMk",
+                "type": "EXPRESSION",
+                "expression": "'api/files/static/'",
+                "order": 1,
+                "value": "'api/files/static/'+'{{Page.tempBCPath}}'+'?size=200'"
+              }
+            },
+            "method": {
+              "rzKhqRRUPBNZHPnQg4Rp6": {
+                "key": "rzKhqRRUPBNZHPnQg4Rp6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "headers": {
+              "2ZAWm44PID44leL8CrCDx2": {
+                "key": "2ZAWm44PID44leL8CrCDx2",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "Authorization": {
+                    "location": {
+                      "expression": "LocalStore.AuthToken",
+                      "type": "EXPRESSION"
+                    }
+                  },
+                  "clientCode": {
+                    "location": {
+                      "expression": "Store.auth.loggedInClientCode",
+                      "type": "EXPRESSION"
+                    }
+                  },
+                  "content-type": {
+                    "value": "multipart/form-data"
+                  }
+                }
+              }
+            },
+            "payload": {
+              "4RxbVUv97th2cDD80Cal7I": {
+                "key": "4RxbVUv97th2cDD80Cal7I",
+                "type": "EXPRESSION",
+                "expression": "Page.selectedFilesForUpload",
+                "order": 1
+              }
+            },
+            "queryParams": {
+              "3ItGQWFVmKYZrA9fp7HYiw": {
+                "key": "3ItGQWFVmKYZrA9fp7HYiw",
+                "type": "VALUE",
+                "value": {}
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__uploadEvent__d-o-t__output": false
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 435,
+            "top": 179
+          },
+          "parameterMap": {
+            "path": {
+              "2BqzJPctBlE5SV8XIBGKFY": {
+                "key": "2BqzJPctBlE5SV8XIBGKFY",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.preview"
+              }
+            },
+            "value": {
+              "1uzonz9OmxqJGtwnxNAIAF": {
+                "key": "1uzonz9OmxqJGtwnxNAIAF",
+                "type": "EXPRESSION",
+                "expression": "Steps.uploadEvent.output.data.url",
+                "order": 1
+              }
+            }
+          }
+        },
+        "Icons": {
+          "statementName": "Icons",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 718.6015625,
+            "top": 276.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "4USStZp2PlujCMwcpF2gqr": {
+                "key": "4USStZp2PlujCMwcpF2gqr",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.icons[{{Steps.forEachLoop.iteration.index}}].src'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4kkTRaBa0AZlB6dF5cZqM3": {
+                "key": "4kkTRaBa0AZlB6dF5cZqM3",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "\"/{{Steps.uploadEvent.output.data.url}}?height={{Steps.forEachLoop.iteration.each.size}}&width={{Steps.forEachLoop.iteration.each.size}}&keepAspectRatio=false\""
+              }
+            }
+          }
+        },
+        "Icons_2": {
+          "statementName": "Icons_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 964.6015625,
+            "top": 235.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "4USStZp2PlujCMwcpF2gqr": {
+                "key": "4USStZp2PlujCMwcpF2gqr",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.icons[{{Steps.forEachLoop.iteration.index}}].type'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4kkTRaBa0AZlB6dF5cZqM3": {
+                "key": "4kkTRaBa0AZlB6dF5cZqM3",
+                "type": "EXPRESSION",
+                "order": 1,
+                "value": "",
+                "expression": "Steps.uploadEvent.output.data.type"
+              }
+            }
+          }
+        },
+        "Icons_1": {
+          "statementName": "Icons_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 768.6015625,
+            "top": 35.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "4USStZp2PlujCMwcpF2gqr": {
+                "key": "4USStZp2PlujCMwcpF2gqr",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.icons[{{Steps.forEachLoop.iteration.index}}].size'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4kkTRaBa0AZlB6dF5cZqM3": {
+                "key": "4kkTRaBa0AZlB6dF5cZqM3",
+                "type": "EXPRESSION",
+                "order": 1,
+                "value": "",
+                "expression": "'{{Steps.forEachLoop.iteration.each.size}}x{{Steps.forEachLoop.iteration.each.size}}'"
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 433.6015625,
+            "top": 49.1015625
+          },
+          "parameterMap": {
+            "source": {
+              "1jbTPvV4RsYaT75RoNwqDG": {
+                "key": "1jbTPvV4RsYaT75RoNwqDG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "size": "48"
+                  },
+                  {
+                    "size": "72"
+                  },
+                  {
+                    "size": "96"
+                  },
+                  {
+                    "size": "144"
+                  },
+                  {
+                    "size": "168"
+                  },
+                  {
+                    "size": "192"
+                  },
+                  {
+                    "size": "256"
+                  },
+                  {
+                    "size": "512"
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__uploadEvent__d-o-t__output": true
+          }
+        },
+        "save_Function": {
+          "statementName": "save_Function",
+          "name": "save_Function",
+          "namespace": "_",
+          "position": {
+            "left": 1233.1015625,
+            "top": 442.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 439.8828125,
+            "top": 415.2578125
+          },
+          "parameterMap": {
+            "msg": {
+              "1i03l519TQCqXrbzU6rGKB": {
+                "key": "1i03l519TQCqXrbzU6rGKB",
+                "type": "EXPRESSION",
+                "expression": "Steps.uploadEvent.error.data",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "gogzbrQJb2vckwwUCpL7j": {
+      "name": "save_Function",
+      "steps": {
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 520.8828125,
+            "top": 170.2578125
+          },
+          "parameterMap": {
+            "url": {
+              "5Kx4Vu381z70CGgQwwQrfm": {
+                "key": "5Kx4Vu381z70CGgQwwQrfm",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications/{{Page.appdef.id}}'",
+                "order": 1
+              }
+            },
+            "method": {
+              "5yCvMPucARum3YQ7PjPK8O": {
+                "key": "5yCvMPucARum3YQ7PjPK8O",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PUT"
+              }
+            },
+            "payload": {
+              "3mDT8ffoUH2GHD2gl0V0HY": {
+                "key": "3mDT8ffoUH2GHD2gl0V0HY",
+                "type": "EXPRESSION",
+                "expression": "Page.appdef",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 943.8828125,
+            "top": 379.2578125
+          },
+          "parameterMap": {
+            "msg": {
+              "1i03l519TQCqXrbzU6rGKB": {
+                "key": "1i03l519TQCqXrbzU6rGKB",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message_Copy_1": {
+          "statementName": "message_Copy_1",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 931.3333333333335,
+            "top": 118.890625
+          },
+          "parameterMap": {
+            "msg": {
+              "6kY4mVD3vhBUt0NdPH0nhW": {
+                "key": "6kY4mVD3vhBUt0NdPH0nhW",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Changes auto saved"
+              }
+            },
+            "type": {
+              "1bHmftXqUC6bzkzujf0Dpv": {
+                "key": "1bHmftXqUC6bzkzujf0Dpv",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SUCCESS"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output__d-o-t__data": true
+          }
+        },
+        "onload": {
+          "statementName": "onload",
+          "name": "onload",
+          "namespace": "_",
+          "position": {
+            "left": 1258.6015625,
+            "top": 184.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__message_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 178.6015625,
+            "top": 323.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "48ss7cTnrn4Vvd4oqHcZLT": {
+                "key": "48ss7cTnrn4Vvd4oqHcZLT",
+                "type": "EXPRESSION",
+                "expression": "'Page.appdef.properties.manifest'",
+                "order": 1,
+                "value": "Page.appdef.properties.manifest.{{Steps.shortUniqueId.output.id}}"
+              }
+            },
+            "value": {
+              "6XxsK0IdsSMuFn71Mbkj69": {
+                "key": "6XxsK0IdsSMuFn71Mbkj69",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6CDxjG4SsmtpSUOrEx5eTL": {
+      "name": "openModal",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 542,
+            "top": 198
+          },
+          "parameterMap": {
+            "path": {
+              "6cRQkFTPud3PhMRBbTUMeu": {
+                "key": "6cRQkFTPud3PhMRBbTUMeu",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.isOpenModal"
+              }
+            },
+            "value": {
+              "453QSquxLNCXYrAUDaEdCV": {
+                "key": "453QSquxLNCXYrAUDaEdCV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5iZLHtuK815O36i51HOw2V": {
+      "name": "closeModal",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 493,
+            "top": 236
+          },
+          "parameterMap": {
+            "path": {
+              "6sL0bNuqEq56RAqqEfG54I": {
+                "key": "6sL0bNuqEq56RAqqEfG54I",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.isOpenModal"
+              }
+            },
+            "value": {
+              "2fxJLqR3XAp80YXpTsQVyJ": {
+                "key": "2fxJLqR3XAp80YXpTsQVyJ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2BlzMtslCSx7oVfL286kke": {
+      "name": "upload_screenshot",
+      "steps": {
+        "uploadEvent": {
+          "statementName": "uploadEvent",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 37,
+            "top": 162
+          },
+          "parameterMap": {
+            "url": {
+              "3P11lmCUEC3UD4N08XnCMk": {
+                "key": "3P11lmCUEC3UD4N08XnCMk",
+                "type": "EXPRESSION",
+                "expression": "'api/files/static/'",
+                "order": 1,
+                "value": "'api/files/static/'+'{{Page.tempBCPath}}'+'?size=200'"
+              }
+            },
+            "method": {
+              "rzKhqRRUPBNZHPnQg4Rp6": {
+                "key": "rzKhqRRUPBNZHPnQg4Rp6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "headers": {
+              "2ZAWm44PID44leL8CrCDx2": {
+                "key": "2ZAWm44PID44leL8CrCDx2",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "Authorization": {
+                    "location": {
+                      "expression": "LocalStore.AuthToken",
+                      "type": "EXPRESSION"
+                    }
+                  },
+                  "clientCode": {
+                    "location": {
+                      "expression": "Store.auth.loggedInClientCode",
+                      "type": "EXPRESSION"
+                    }
+                  },
+                  "content-type": {
+                    "value": "multipart/form-data"
+                  }
+                }
+              }
+            },
+            "payload": {
+              "4RxbVUv97th2cDD80Cal7I": {
+                "key": "4RxbVUv97th2cDD80Cal7I",
+                "type": "EXPRESSION",
+                "expression": "Page.filepath",
+                "order": 1
+              }
+            },
+            "queryParams": {
+              "3ItGQWFVmKYZrA9fp7HYiw": {
+                "key": "3ItGQWFVmKYZrA9fp7HYiw",
+                "type": "VALUE",
+                "value": {}
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__uploadEvent__d-o-t__output": false
+          }
+        },
+        "setSize": {
+          "statementName": "setSize",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 523,
+            "top": 200
+          },
+          "parameterMap": {
+            "path": {
+              "43rcXQPMqvQF60RKr8hWk9": {
+                "key": "43rcXQPMqvQF60RKr8hWk9",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].size'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4nHSsRDQLLT6rMupkXCP3E": {
+                "key": "4nHSsRDQLLT6rMupkXCP3E",
+                "type": "EXPRESSION",
+                "expression": "Steps.uploadEvent.output.data.size",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setType": {
+          "statementName": "setType",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 513,
+            "top": 345
+          },
+          "parameterMap": {
+            "path": {
+              "m8DniDvpaQzilhSNs2xc8": {
+                "key": "m8DniDvpaQzilhSNs2xc8",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].type'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4G7Nm15eGrID6Y65TiaalK": {
+                "key": "4G7Nm15eGrID6Y65TiaalK",
+                "type": "EXPRESSION",
+                "expression": "Steps.uploadEvent.output.data.type",
+                "order": 1
+              }
+            }
+          }
+        },
+        "save_Function": {
+          "statementName": "save_Function",
+          "name": "save_Function",
+          "namespace": "_",
+          "position": {
+            "left": 1216.1015625,
+            "top": 212.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setSrc__d-o-t__output": true,
+            "Steps__d-o-t__setSize__d-o-t__output": true,
+            "Steps__d-o-t__setType__d-o-t__output": true,
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "closeModal": {
+          "statementName": "closeModal",
+          "name": "closeModal",
+          "namespace": "_",
+          "position": {
+            "left": 1266.6015625,
+            "top": 374.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__save_Function__d-o-t__output": true
+          }
+        },
+        "shortUniqueId": {
+          "statementName": "shortUniqueId",
+          "name": "ShortUniqueId",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 355,
+            "top": 411
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__uploadEvent__d-o-t__output__d-o-t__data": true
+          }
+        },
+        "setSrc": {
+          "statementName": "setSrc",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 502,
+            "top": 60
+          },
+          "parameterMap": {
+            "path": {
+              "4ivcSOrB6seXdhz544smjK": {
+                "key": "4ivcSOrB6seXdhz544smjK",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].src'",
+                "order": 1
+              }
+            },
+            "value": {
+              "9G8qvIraserP2f9hdxJRC": {
+                "key": "9G8qvIraserP2f9hdxJRC",
+                "type": "EXPRESSION",
+                "expression": "Steps.uploadEvent.output.data.url",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 795.6015625,
+            "top": 529.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "4BeXq46WuhU2FEXVspa4GA": {
+                "key": "4BeXq46WuhU2FEXVspa4GA",
+                "type": "EXPRESSION",
+                "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].uuid'",
+                "order": 1
+              }
+            },
+            "value": {
+              "54INe5TOjTaYT1Cc2zH7ia": {
+                "key": "54INe5TOjTaYT1Cc2zH7ia",
+                "type": "EXPRESSION",
+                "expression": "Steps.shortUniqueId.output.id",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 346.8828125,
+            "top": 576.2578125
+          },
+          "parameterMap": {
+            "msg": {
+              "1i03l519TQCqXrbzU6rGKB": {
+                "key": "1i03l519TQCqXrbzU6rGKB",
+                "type": "EXPRESSION",
+                "expression": "Steps.uploadEvent.error.data",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6K2Va2jt5ekgdeONurjS9c": {
+      "name": "onload",
+      "steps": {
+        "messageFetchStep": {
+          "statementName": "messageFetchStep",
+          "namespace": "UIEngine",
+          "name": "Message",
+          "parameterMap": {
+            "msg": {
+              "value1": {
+                "key": "value1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData1.error.data"
+              }
+            }
+          },
+          "position": {
+            "left": 565,
+            "top": 345
+          }
+        },
+        "messageFetchStep_Copy_1": {
+          "statementName": "messageFetchStep_Copy_1",
+          "namespace": "UIEngine",
+          "name": "Message",
+          "parameterMap": {
+            "msg": {
+              "value1": {
+                "key": "value1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.error.data"
+              }
+            }
+          },
+          "position": {
+            "left": 360,
+            "top": 406
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 83.6015625,
+            "top": 331.0390625
+          },
+          "parameterMap": {
+            "url": {
+              "41GuDGT0Yj7aJ5vqDAOqju": {
+                "key": "41GuDGT0Yj7aJ5vqDAOqju",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications?appCode={{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchData1": {
+          "statementName": "fetchData1",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 314.6015625,
+            "top": 30.0390625
+          },
+          "parameterMap": {
+            "url": {
+              "C7EErt6H28ct8FkDJHDdY": {
+                "key": "C7EErt6H28ct8FkDJHDdY",
+                "type": "EXPRESSION",
+                "expression": "'api/ui/applications/{{Steps.fetchData.output.data.content[0].id}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 581,
+            "top": 70
+          },
+          "parameterMap": {
+            "path": {
+              "5lgdAwErHjpROO2fLvHdbC": {
+                "key": "5lgdAwErHjpROO2fLvHdbC",
+                "type": "VALUE",
+                "expression": "Page.appdef",
+                "order": 1,
+                "value": "Page.appdef"
+              }
+            },
+            "value": {
+              "HjFFFTAlH90tAYqTPKbkP": {
+                "key": "HjFFFTAlH90tAYqTPKbkP",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData1.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1586.6015625,
+            "top": 183.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "Q2VDgjpfsjKG1x3v25uIz": {
+                "key": "Q2VDgjpfsjKG1x3v25uIz",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.preview"
+              }
+            },
+            "value": {
+              "4errnAFuxUbf2bPPHtEAh7": {
+                "key": "4errnAFuxUbf2bPPHtEAh7",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.icons[{{Page.manifest.icons.length - 1}}].src",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 833.1015625,
+            "top": 86.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "6YOwXyAgTioGBhKcec1uKw": {
+                "key": "6YOwXyAgTioGBhKcec1uKw",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.manifest"
+              }
+            },
+            "value": {
+              "nOtUOTNurRz830vJYZ1HY": {
+                "key": "nOtUOTNurRz830vJYZ1HY",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData1.output.data.properties.manifest",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1026.6015625,
+            "top": 277.1015625
+          },
+          "parameterMap": {
+            "condition": {
+              "5D8ZdAujcfhEY1GCoZWzeH": {
+                "key": "5D8ZdAujcfhEY1GCoZWzeH",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.icons != null",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1499.6015625,
+            "top": 499.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "54vEHId2TqW3r7mBwX5S21": {
+                "key": "54vEHId2TqW3r7mBwX5S21",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.arrayIndex"
+              }
+            },
+            "value": {
+              "5p6biDU3NY4jAsMekqqO7a": {
+                "key": "5p6biDU3NY4jAsMekqqO7a",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.screenshots.length",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if___d-o-t__true": true
+          }
+        },
+        "if_": {
+          "statementName": "if_",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1121.6015625,
+            "top": 485.1015625
+          },
+          "parameterMap": {
+            "condition": {
+              "4aqyJpflhKo5Zet3JsY8H3": {
+                "key": "4aqyJpflhKo5Zet3JsY8H3",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.screenshots != null",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6rKGz42yOYpAnpSsge57l1": {
+      "name": "deleteIconHover",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 251.6015625,
+            "top": 196.1015625
+          },
+          "parameterMap": {
+            "condition": {
+              "7v0abqJsHN8zGWeTnULlDI": {
+                "key": "7v0abqJsHN8zGWeTnULlDI",
+                "type": "EXPRESSION",
+                "expression": "Page.preview != null",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 587.6015625,
+            "top": 210.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "5xF0wkMsU8lAWSHzZigja4": {
+                "key": "5xF0wkMsU8lAWSHzZigja4",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.isDeleteIconHover"
+              }
+            },
+            "value": {
+              "50MVxsxr9yhlV43xo0LCTT": {
+                "key": "50MVxsxr9yhlV43xo0LCTT",
+                "type": "EXPRESSION",
+                "expression": "Page.isDeleteIconHover ? false : true",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2f4dmwUINId43EeWO29jyM": {
+      "name": "DeleteIcon",
+      "steps": {
+        "objectDeleteKey": {
+          "statementName": "objectDeleteKey",
+          "name": "ObjectDeleteKey",
+          "namespace": "System.Object",
+          "position": {
+            "left": 333.5078125,
+            "top": 249.87109375
+          },
+          "parameterMap": {
+            "source": {
+              "7cAF298q6gNPItolP3AJV4": {
+                "key": "7cAF298q6gNPItolP3AJV4",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest",
+                "order": 1
+              }
+            },
+            "key": {
+              "1a7CV9weV4DBKHyCIA0qXA": {
+                "key": "1a7CV9weV4DBKHyCIA0qXA",
+                "type": "VALUE",
+                "order": 1,
+                "value": "icons"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 647.6015625,
+            "top": 270.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "1QtsY4FIM6Y4uBuxvBLD5h": {
+                "key": "1QtsY4FIM6Y4uBuxvBLD5h",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.manifest"
+              }
+            },
+            "value": {
+              "6GUiq0r1eHJynVKIjvX07k": {
+                "key": "6GUiq0r1eHJynVKIjvX07k",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectDeleteKey.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "save_Function": {
+          "statementName": "save_Function",
+          "name": "save_Function",
+          "namespace": "_",
+          "position": {
+            "left": 1304.1015625,
+            "top": 208.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1025.6015625,
+            "top": 140.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "58D91PXmf9zdRdm7uIagZt": {
+                "key": "58D91PXmf9zdRdm7uIagZt",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.preview"
+              }
+            },
+            "value": {
+              "40ZU0RpAL10byoqr1MKfXD": {
+                "key": "40ZU0RpAL10byoqr1MKfXD",
+                "type": "VALUE",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1053.6015625,
+            "top": 424.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "5HX2cfyTo2ZUOtJBmfcxli": {
+                "key": "5HX2cfyTo2ZUOtJBmfcxli",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.isDeleteIconHover"
+              }
+            },
+            "value": {
+              "5GcvO3pkz5YSefH5TT5ClG": {
+                "key": "5GcvO3pkz5YSefH5TT5ClG",
+                "type": "VALUE",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5k2ZCCxZb1p70QO39NFUmY": {
+      "name": "showDelete",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 523.6015625,
+            "top": 125.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "6a9a9W0JrvARccyVrgjUNS": {
+                "key": "6a9a9W0JrvARccyVrgjUNS",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.showOnHover"
+              }
+            },
+            "value": {
+              "4ebcwamnYsrf3DyOpJXEBl": {
+                "key": "4ebcwamnYsrf3DyOpJXEBl",
+                "type": "EXPRESSION",
+                "order": 1,
+                "value": true,
+                "expression": "Parent.label"
+              }
+            }
+          },
+          "dependentStatements": {}
+        }
+      },
+      "namespace": ""
+    },
+    "3QHruUChGRc5QDDQaKogI": {
+      "name": "HideDelete",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 523.6015625,
+            "top": 125.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "6a9a9W0JrvARccyVrgjUNS": {
+                "key": "6a9a9W0JrvARccyVrgjUNS",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.showOnHover"
+              }
+            },
+            "value": {
+              "4ebcwamnYsrf3DyOpJXEBl": {
+                "key": "4ebcwamnYsrf3DyOpJXEBl",
+                "type": "VALUE",
+                "order": 1,
+                "value": null
+              }
+            },
+            "deleteKey": {
+              "2J3bAQyUmL2BwHP0KOxydQ": {
+                "key": "2J3bAQyUmL2BwHP0KOxydQ",
+                "type": "VALUE",
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__shortUniqueId__d-o-t__output__d-o-t__id": false
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5v4cEuLdJZQGqbIAGROmeU": {
+      "name": "delete_screenshot",
+      "steps": {
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 124.6015625,
+            "top": 222.1015625
+          },
+          "parameterMap": {
+            "source": {
+              "yY9CTE9acScgkI10l4g5O": {
+                "key": "yY9CTE9acScgkI10l4g5O",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.screenshots",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 475.6015625,
+            "top": 21.1015625
+          },
+          "parameterMap": {
+            "condition": {
+              "6VCL2nQoeHB0m3d8RnKTvC": {
+                "key": "6VCL2nQoeHB0m3d8RnKTvC",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.label = Page.showOnHover",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__iteration__d-o-t__index": false
+          }
+        },
+        "deleteFrom": {
+          "statementName": "deleteFrom",
+          "name": "DeleteFrom",
+          "namespace": "System.Array",
+          "position": {
+            "left": 766,
+            "top": 89
+          },
+          "parameterMap": {
+            "srcFrom": {
+              "1cm4MGqyQnBulCXXatsLzN": {
+                "key": "1cm4MGqyQnBulCXXatsLzN",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.index",
+                "value": 0
+              }
+            },
+            "source": {
+              "2noXdQfCczX5ZANrwbxLX7": {
+                "key": "2noXdQfCczX5ZANrwbxLX7",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.screenshots",
+                "order": 1
+              }
+            },
+            "length": {
+              "77iAKQ2t27GicOQWbm6dPk": {
+                "key": "77iAKQ2t27GicOQWbm6dPk",
+                "type": "VALUE",
+                "expression": "",
+                "value": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "save_Function": {
+          "statementName": "save_Function",
+          "name": "save_Function",
+          "namespace": "_",
+          "position": {
+            "left": 2278,
+            "top": 223
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__objectDeleteKey__d-o-t__output__d-o-t__value": false,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "if_": {
+          "statementName": "if_",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1534.6015625,
+            "top": 57.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "condition": {
+              "6uaMU4MwovcD7JozZC5kr": {
+                "key": "6uaMU4MwovcD7JozZC5kr",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest.screenshots.length = 0",
+                "order": 1
+              }
+            }
+          }
+        },
+        "objectDeleteKey": {
+          "statementName": "objectDeleteKey",
+          "name": "ObjectDeleteKey",
+          "namespace": "System.Object",
+          "position": {
+            "left": 1702.6015625,
+            "top": 262.1015625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if___d-o-t__true": true
+          },
+          "parameterMap": {
+            "source": {
+              "5OYgOlkvfaMibKgzSrZMCF": {
+                "key": "5OYgOlkvfaMibKgzSrZMCF",
+                "type": "EXPRESSION",
+                "expression": "Page.manifest",
+                "order": 1
+              }
+            },
+            "key": {
+              "6gP475n7PqdFIv30hD8RHq": {
+                "key": "6gP475n7PqdFIv30hD8RHq",
+                "type": "VALUE",
+                "order": 1,
+                "value": "screenshots"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1219,
+            "top": 136
+          },
+          "parameterMap": {
+            "path": {
+              "1hFgdcy2aolNmV9adtG5N6": {
+                "key": "1hFgdcy2aolNmV9adtG5N6",
+                "type": "VALUE",
+                "expression": "P",
+                "order": 1,
+                "value": "Page.manifest.screenshots"
+              }
+            },
+            "value": {
+              "6sYXyfxPecBOXeR2kWoiVH": {
+                "key": "6sYXyfxPecBOXeR2kWoiVH",
+                "type": "EXPRESSION",
+                "expression": "Steps.deleteFrom.output.result",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "aKd4Ur6g9Ru55TK2cn5zO": {
+                "key": "aKd4Ur6g9Ru55TK2cn5zO",
+                "type": "VALUE",
+                "expression": "Page.manifest.screenshots.length == 0 ? Page.manifest.screenshots.length : \"\"",
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1984.6015625,
+            "top": 354.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "2ORX0syMzjlK2U72mHrxW1": {
+                "key": "2ORX0syMzjlK2U72mHrxW1",
+                "type": "VALUE",
+                "expression": "Page.manifest",
+                "order": 1,
+                "value": "Page.manifest"
+              }
+            },
+            "value": {
+              "4d07mfFrULyQGB2DMaS8Sf": {
+                "key": "4d07mfFrULyQGB2DMaS8Sf",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectDeleteKey.output.value",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "1BrlIepndFsNUTjT0Kgktt",
+  "componentDefinition": {
+    "1BrlIepndFsNUTjT0Kgktt": {
+      "key": "1BrlIepndFsNUTjT0Kgktt",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2ILY9Y5eZdWqeTjqFLoiAu": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "62px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "Fg5AjHSO1VdFz1O04eMYc": true,
+        "N283QbIP921rbWKqMDQYt": true
+      }
+    },
+    "Fg5AjHSO1VdFz1O04eMYc": {
+      "key": "Fg5AjHSO1VdFz1O04eMYc",
+      "name": "Main",
+      "type": "Grid",
+      "styleProperties": {
+        "5oi2po1e2zCym3jk36L8TP": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#fff"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "36px"
+              },
+              "gap": {
+                "value": "50px"
+              },
+              "borderTopLeftRadius": {
+                "value": "4px"
+              },
+              "borderTopRightRadius": {
+                "value": "4px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "4px"
+              },
+              "borderBottomRightRadius": {
+                "value": "4px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "marginTop": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5heLd3Oi2Gz4vjamQhN7fd": true,
+        "2KHSYqlrbFo8SiP5HyChoD": true,
+        "6qRYO9Y36noDnSUNtqXlJ": true,
+        "3A1HTM11sNs29jZLnMrfVg": true,
+        "2krq7K5GGXhJREoTCrePrv": true,
+        "BZfvpNRiSqt0HzqJCbe5u": true,
+        "4N0WKU3El1zIizx2q4p4o": true,
+        "6QoW1QbNEIqi9guqgCYvTU": true,
+        "4hMoSnaIVGKkmT4wU3Qjis": true,
+        "7qm3hQzMj7u2Ov83cKEFzl": true,
+        "74cJQm24plQNTTD2he3s7c": true,
+        "2SpW3RE9PBNK7vFvms1TNK": true,
+        "68uXsJYhKk7W0FavXh2o9y": true,
+        "44zdq6mPBeg3o5sBqEjoRr": true,
+        "2a3hOqSsKtKwObXFnVyW9W": true,
+        "5cQLxDJ4W952371VhNLWYu": true
+      },
+      "displayOrder": 2
+    },
+    "N283QbIP921rbWKqMDQYt": {
+      "key": "N283QbIP921rbWKqMDQYt",
+      "name": "Heading Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1TS0wCuANYhVw5QN9R6u25": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2i28n0uBoRFQj1fLpONusU": true
+      },
+      "displayOrder": 1
+    },
+    "2i8ObX9sVKxpJsNA9wivEo": {
+      "key": "2i8ObX9sVKxpJsNA9wivEo",
+      "name": "Name TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Name"
+        },
+        "onChange": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onEnter": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "validation": {
+          "1cRaJdOm73f9pGeNDGf5nk": {
+            "key": "1cRaJdOm73f9pGeNDGf5nk",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Name is required"
+                }
+              }
+            }
+          },
+          "4u3h21GN8Fu6aof7oUAvLf": {
+            "key": "4u3h21GN8Fu6aof7oUAvLf",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "STRING_LENGTH",
+                "minLength": {
+                  "value": 3
+                },
+                "message": {
+                  "value": "Name should be at least 3 letters long"
+                }
+              }
+            }
+          }
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.name"
+      }
+    },
+    "5heLd3Oi2Gz4vjamQhN7fd": {
+      "key": "5heLd3Oi2Gz4vjamQhN7fd",
+      "name": "Image Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6AuP9l2JSl6s82IrgrlMlS": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "8px"
+              },
+              "marginTop": {
+                "value": "-16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5ZeJLAyfhSXVQ0ifMrOpgw": true,
+        "27P3PP4NIiZhSlmyBN2vGt": true,
+        "47XinHHepF3lAidwEsbTlV": true
+      },
+      "displayOrder": 11
+    },
+    "2KHSYqlrbFo8SiP5HyChoD": {
+      "key": "2KHSYqlrbFo8SiP5HyChoD",
+      "name": "Icon Upload Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "18UVepLxmtpiTMIncJ872v": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "200px"
+              },
+              "marginTop": {
+                "value": "-20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4RUL1649MWtbdPVcVfQF5B": true
+      },
+      "displayOrder": 12
+    },
+    "2i28n0uBoRFQj1fLpONusU": {
+      "key": "2i28n0uBoRFQj1fLpONusU",
+      "name": "Header Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Progressive Web App"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5ZeJLAyfhSXVQ0ifMrOpgw": {
+      "key": "5ZeJLAyfhSXVQ0ifMrOpgw",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Icons"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "27P3PP4NIiZhSlmyBN2vGt": {
+      "key": "27P3PP4NIiZhSlmyBN2vGt",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onMouseEnter": {
+          "value": "6rKGz42yOYpAnpSsge57l1"
+        },
+        "onMouseLeave": {
+          "value": "6rKGz42yOYpAnpSsge57l1"
+        }
+      },
+      "styleProperties": {
+        "4VmtfEEG2glyEiL9wo5tSV": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "200px"
+              },
+              "height": {
+                "value": "95px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "15px"
+              },
+              "position": {
+                "value": "relative"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6f6Ba0DVNAq12RuswlyvM9": true,
+        "7I6ct2IBzhH8i3jDh1Pahn": true
+      },
+      "displayOrder": 2
+    },
+    "47XinHHepF3lAidwEsbTlV": {
+      "key": "47XinHHepF3lAidwEsbTlV",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Please upload a 512x512 or larger image for the icon and we'll generate the remaining sizes"
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4RUL1649MWtbdPVcVfQF5B": {
+      "key": "4RUL1649MWtbdPVcVfQF5B",
+      "name": "FileUpload",
+      "type": "FileUpload",
+      "properties": {
+        "uploadIcon": {
+          "value": " fa fa-solid fa-cloud-arrow-up"
+        },
+        "buttonText": {
+          "value": "Upload"
+        },
+        "onSelectEvent": {
+          "value": "3YBQqDmAmDIEEvjFbRio4N"
+        },
+        "uploadViewType": {
+          "value": "_inline_design3"
+        }
+      },
+      "styleProperties": {
+        "7uKErAK82DTewREJW1g933": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.selectedFilesForUpload.file"
+      }
+    },
+    "6f6Ba0DVNAq12RuswlyvM9": {
+      "key": "6f6Ba0DVNAq12RuswlyvM9",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Icon"
+        },
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.preview"
+          }
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.preview"
+          }
+        }
+      },
+      "styleProperties": {
+        "TsUTk1UFghjfIMBane66j": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "80%"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "24Xa5lkmUJoVvQfJxKTD4v": {
+      "key": "24Xa5lkmUJoVvQfJxKTD4v",
+      "name": "Start Url TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Start Url"
+        },
+        "onChange": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onEnter": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "validation": {
+          "1cRaJdOm73f9pGeNDGf5nk": {
+            "key": "1cRaJdOm73f9pGeNDGf5nk",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Url is required"
+                }
+              }
+            }
+          },
+          "4u3h21GN8Fu6aof7oUAvLf": {
+            "key": "4u3h21GN8Fu6aof7oUAvLf",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "STRING_LENGTH",
+                "minLength": {
+                  "value": 3
+                },
+                "message": {
+                  "value": "Url should be at least 3 letters long"
+                }
+              }
+            }
+          }
+        },
+        "emptyValue": {
+          "value": "ENMPTYSTRING"
+        },
+        "defaultValue": {
+          "value": "/"
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "00px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.start_url"
+      }
+    },
+    "1mk1JrsjwoZJZGq5OKwY4Z": {
+      "key": "1mk1JrsjwoZJZGq5OKwY4Z",
+      "name": "Short Name TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Short Name"
+        },
+        "onChange": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onEnter": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "validation": {
+          "1cRaJdOm73f9pGeNDGf5nk": {
+            "key": "1cRaJdOm73f9pGeNDGf5nk",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Short Name is required"
+                }
+              }
+            }
+          },
+          "4u3h21GN8Fu6aof7oUAvLf": {
+            "key": "4u3h21GN8Fu6aof7oUAvLf",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "STRING_LENGTH",
+                "minLength": {
+                  "value": 3
+                },
+                "message": {
+                  "value": "Short Name should be at least 3 letters long"
+                }
+              }
+            }
+          }
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "00px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.short_name"
+      }
+    },
+    "1MkiJvga05wN9RNUua7iqx": {
+      "key": "1MkiJvga05wN9RNUua7iqx",
+      "name": "Description TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Enter description"
+        },
+        "onChange": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onClear": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "emptyValue": {
+          "value": "ENMPTYSTRING"
+        }
+      },
+      "styleProperties": {
+        "6LD7E2VcburoRQUH96e2hr": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "inputBox-height": {
+                "value": "120px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.description"
+      }
+    },
+    "7o166dPW1Oj8DvkOt27re2": {
+      "key": "7o166dPW1Oj8DvkOt27re2",
+      "name": "Application Scope TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Application Scope"
+        },
+        "onChange": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onEnter": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onClear": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "emptyValue": {
+          "value": "ENMPTYSTRING"
+        },
+        "defaultValue": {
+          "value": "/"
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "00px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.scope"
+      }
+    },
+    "7jxt35ajIH412oYcjnPKki": {
+      "key": "7jxt35ajIH412oYcjnPKki",
+      "name": "Category Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "books",
+            "business",
+            "education",
+            "entertainment",
+            "finance",
+            "fitness",
+            "food",
+            "games",
+            "government",
+            "health",
+            "kids",
+            "lifestyle",
+            "magazines",
+            "medical",
+            "music",
+            "navigation",
+            "news",
+            "personalization",
+            "photo",
+            "politics",
+            "productivity",
+            "security",
+            "shopping",
+            "social",
+            "sports",
+            "travel",
+            "utilities",
+            "weather"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.category"
+      }
+    },
+    "55drkuQynZhW8UyJp2r9tF": {
+      "key": "55drkuQynZhW8UyJp2r9tF",
+      "name": "Display Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "browser",
+            "standalone",
+            "minimal-ui",
+            "fullscreen"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.display"
+      }
+    },
+    "775KJG9wMagVUZaPoEqr6X": {
+      "key": "775KJG9wMagVUZaPoEqr6X",
+      "name": "Display Override Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "browser",
+            "standalone",
+            "minimal-ui",
+            "fullscreen",
+            "window-controls-overlay"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.display_override"
+      }
+    },
+    "3LEKoPwjtqB6SpIeCWKRst": {
+      "key": "3LEKoPwjtqB6SpIeCWKRst",
+      "name": "Id TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Id"
+        },
+        "onChange": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "onEnter": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "emptyValue": {
+          "value": "ENMPTYSTRING"
+        },
+        "defaultValue": {
+          "value": "/"
+        }
+      },
+      "styleProperties": {
+        "3iNjngCYgSMhEWxQ7Mqv6c": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.Id"
+      }
+    },
+    "6qva3Odslwv631sMxv1Znw": {
+      "key": "6qva3Odslwv631sMxv1Znw",
+      "name": "Launch Handler Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "auto",
+            "focus-existing",
+            "navigate-existing",
+            "navigate-new"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.launch_handler.client_mode"
+      }
+    },
+    "3iI0QSF4U44jCBpsV17iDP": {
+      "key": "3iI0QSF4U44jCBpsV17iDP",
+      "name": "Orientation Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "any",
+            "natural",
+            "landscape",
+            "landscape-primary",
+            "landscape-secondary",
+            "portrait",
+            "portrait-primary",
+            "portrait-secondary"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": "gogzbrQJb2vckwwUCpL7j"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.orientation"
+      }
+    },
+    "6qRYO9Y36noDnSUNtqXlJ": {
+      "key": "6qRYO9Y36noDnSUNtqXlJ",
+      "name": "Screenshot Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6AuP9l2JSl6s82IrgrlMlS": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "8px"
+              },
+              "marginTop": {
+                "value": "-16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1DYhjFANUkYC0VAIwAzU0j": true,
+        "5liQnOcB3LoVdIGGlLY0pc": true,
+        "68Tn2BVWUIyg6ZekTELefM": true
+      },
+      "displayOrder": 15
+    },
+    "1DYhjFANUkYC0VAIwAzU0j": {
+      "key": "1DYhjFANUkYC0VAIwAzU0j",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Screenshots"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5liQnOcB3LoVdIGGlLY0pc": {
+      "key": "5liQnOcB3LoVdIGGlLY0pc",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onMouseLeave": {
+          "value": "3QHruUChGRc5QDDQaKogI"
+        },
+        "onMouseEnter": {
+          "value": "5k2ZCCxZb1p70QO39NFUmY"
+        }
+      },
+      "styleProperties": {
+        "4VmtfEEG2glyEiL9wo5tSV": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "110px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "15px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5eD4Ai1aEQZk4BllocXx9Q": true,
+        "39cdqhXZroR7FRAfqweqtC": true
+      },
+      "displayOrder": 2
+    },
+    "68Tn2BVWUIyg6ZekTELefM": {
+      "key": "68Tn2BVWUIyg6ZekTELefM",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Upload Screenshots"
+        },
+        "onClick": {
+          "value": "6CDxjG4SsmtpSUOrEx5eTL"
+        }
+      },
+      "styleProperties": {
+        "2ELRg0lFxEC4DErjYSSMnW": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "200px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5eD4Ai1aEQZk4BllocXx9Q": {
+      "key": "5eD4Ai1aEQZk4BllocXx9Q",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "79sG2xGFA9GQoX5TxdUvce": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "10px"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4KIk0LqQBhOIrmZojRimpW": true
+      },
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.manifest.screenshots"
+      }
+    },
+    "3dhxdi6KE4rGQ65dqK9s23": {
+      "key": "3dhxdi6KE4rGQ65dqK9s23",
+      "name": "Screenshot image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Icon"
+        },
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.src"
+          }
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.src"
+          }
+        }
+      },
+      "styleProperties": {
+        "1rcKtYEyyaPXwwbRwownAf": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "80%"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3A1HTM11sNs29jZLnMrfVg": {
+      "key": "3A1HTM11sNs29jZLnMrfVg",
+      "name": "Upload Screenshot Popup",
+      "type": "Popup",
+      "properties": {
+        "modelTitle": {
+          "value": "Upload Screenshot"
+        },
+        "eventOnClose": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "47ZDGIZQlkZOhGxXqg48be": {
+          "resolutions": {
+            "ALL": {
+              "titleGrid-height": {
+                "value": "60px"
+              },
+              "titleGrid-width": {
+                "value": "567px"
+              },
+              "titleGrid-alignItems": {
+                "value": "center"
+              },
+              "titleGrid-outlineColor": {
+                "value": "##0085F2"
+              },
+              "titleGrid-backgroundColor": {
+                "value": "#0085F2"
+              },
+              "closeButton-color": {
+                "value": "#fff"
+              },
+              "modalTitle-color": {
+                "value": "#fff"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "modalTitle-paddingLeft": {
+                "value": "30px"
+              },
+              "modalTitle-paddingTop": {
+                "value": "20px"
+              },
+              "modalTitle-paddingBottom": {
+                "value": "20px"
+              },
+              "closeButton-paddingRight": {
+                "value": "30px"
+              },
+              "modal-paddingBottom": {
+                "value": "40px"
+              },
+              "modal-paddingLeft": {
+                "value": "0"
+              },
+              "modal-paddingRight": {
+                "value": "0"
+              },
+              "modal-paddingTop": {
+                "value": "0"
+              },
+              "modalTitle-fontSize": {
+                "value": "20px"
+              },
+              "modalTitle-fontFamily": {
+                "value": "inter"
+              },
+              "closeButtonContainer-cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "14RmKGmAXrZZoBWLEEvUeX": true,
+        "1E0GLofioipUssAiHEFILV": true
+      },
+      "displayOrder": 16,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.isOpenModal"
+      }
+    },
+    "1wvODafc0xeXi6yA0Kzvt3": {
+      "key": "1wvODafc0xeXi6yA0Kzvt3",
+      "name": "Modal Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "27IBvgaQVJOf2yicu0kTjc": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "kPQTRGNfSUNh6XD5wDpvi": true,
+        "39qGcMnkN94vavuIveaoJM": true,
+        "3VeDXt4usdRpwI1g5pA8RR": true
+      },
+      "displayOrder": 1
+    },
+    "kPQTRGNfSUNh6XD5wDpvi": {
+      "key": "kPQTRGNfSUNh6XD5wDpvi",
+      "name": "Label TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Label"
+        },
+        "onEnter": {
+          "value": ""
+        },
+        "onChange": {
+          "value": ""
+        },
+        "onClear": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "XmBzfFTrWnJChXLrieLZo": {
+          "resolutions": {
+            "ALL": {
+              "borderTopRightRadius": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "label-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-backgroundColor": {
+                "value": "#F8FAFB"
+              },
+              "backgroundColor": {
+                "value": "#F8FAFB"
+              },
+              "label-color": {
+                "value": "#000"
+              },
+              "label-fontFamily": {
+                "value": "Inter"
+              },
+              "label-lineHeight": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "height": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "EXPRESSION",
+        "value": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].label'",
+        "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].label'"
+      }
+    },
+    "39qGcMnkN94vavuIveaoJM": {
+      "key": "39qGcMnkN94vavuIveaoJM",
+      "name": "Form Factor Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "narrow",
+            "wide"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": ""
+        },
+        "placeholder": {
+          "value": "Select Form Factor"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              },
+              "backgroundColor": {
+                "value": "#F8FAFB"
+              },
+              "height": {
+                "value": "40px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "EXPRESSION",
+        "value": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].form_factor'",
+        "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].form_factor'"
+      }
+    },
+    "3VeDXt4usdRpwI1g5pA8RR": {
+      "key": "3VeDXt4usdRpwI1g5pA8RR",
+      "name": "Platform Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "data": {
+          "value": [
+            "android",
+            "chromeos",
+            "ipados",
+            "ios",
+            "kaios",
+            "macos",
+            "windows",
+            "xbox",
+            "chrome_web_store",
+            "itunes",
+            "microsoft-inbox",
+            "microsoft-store",
+            "play"
+          ],
+          "backupExpression": "Page.listOfPages"
+        },
+        "selectionKey": {
+          "value": "name"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "onClick": {
+          "value": ""
+        },
+        "placeholder": {
+          "value": "Select Platform"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "7yFE2xRhVyoHcNfnW9Y643": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "dropDownContainer-zIndex": {
+                "value": "2"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              },
+              "backgroundColor": {
+                "value": "#F8FAFB"
+              },
+              "height": {
+                "value": "40px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "EXPRESSION",
+        "value": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].platform'",
+        "expression": "'Page.manifest.screenshots[{{Page.arrayIndex ?? 0}}].platform'"
+      }
+    },
+    "14RmKGmAXrZZoBWLEEvUeX": {
+      "key": "14RmKGmAXrZZoBWLEEvUeX",
+      "name": "Outer Modal Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4JVb3zfaKRHlWFUXzTJInk": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "40px"
+              },
+              "paddingLeft": {
+                "value": "40px"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "40px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1wvODafc0xeXi6yA0Kzvt3": true,
+        "4ETzogpFh2Pza9evvmD8Ps": true
+      },
+      "displayOrder": 1
+    },
+    "4ETzogpFh2Pza9evvmD8Ps": {
+      "key": "4ETzogpFh2Pza9evvmD8Ps",
+      "name": "FileUpload",
+      "type": "FileUpload",
+      "properties": {
+        "uploadViewType": {
+          "value": "_droparea_design1"
+        },
+        "uploadIcon": {
+          "value": " mi material-icons-round mio-cloud_upload"
+        },
+        "buttonText": {
+          "value": "Upload"
+        }
+      },
+      "styleProperties": {
+        "2RnSqWZzblFWEaO8aCBx86": {
+          "resolutions": {
+            "ALL": {
+              "icon-color": {
+                "value": "#0084f0"
+              },
+              "backgroundColor": {
+                "value": "#F8FAFB"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.filepath.file"
+      }
+    },
+    "1E0GLofioipUssAiHEFILV": {
+      "key": "1E0GLofioipUssAiHEFILV",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Upload Screenshot"
+        },
+        "onClick": {
+          "value": "2BlzMtslCSx7oVfL286kke"
+        }
+      },
+      "styleProperties": {
+        "3QmI2qiwac12O0nwdyyyhc": {
+          "resolutions": {
+            "ALL": {
+              "borderBottomLeftRadius": {
+                "value": "0px"
+              },
+              "borderTopLeftRadius": {
+                "value": "0px"
+              },
+              "color": {
+                "value": "#0084f0"
+              },
+              "backgroundColor": {
+                "value": "rgba(0, 133, 242, 0.20)"
+              },
+              "height": {
+                "value": "40px"
+              },
+              "width": {
+                "value": "200px"
+              },
+              "marginTop": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "auto"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4KIk0LqQBhOIrmZojRimpW": {
+      "key": "4KIk0LqQBhOIrmZojRimpW",
+      "name": "Image Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": "5k2ZCCxZb1p70QO39NFUmY"
+        },
+        "onMouseLeave": {
+          "value": "3QHruUChGRc5QDDQaKogI"
+        }
+      },
+      "styleProperties": {
+        "x1hWC1bQJRca8hh26hdjn": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "200px"
+              },
+              "height": {
+                "value": "110px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3dhxdi6KE4rGQ65dqK9s23": true,
+        "gYgy1cXtOCegv7CBeh0sD": true,
+        "7vv3RuA1XfbIzM1cK97uCr": true
+      },
+      "displayOrder": 0
+    },
+    "39cdqhXZroR7FRAfqweqtC": {
+      "key": "39cdqhXZroR7FRAfqweqtC",
+      "name": "Image Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.manifest.screenshots = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "x1hWC1bQJRca8hh26hdjn": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "200px"
+              },
+              "height": {
+                "value": "95px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "15px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "gYgy1cXtOCegv7CBeh0sD": {
+      "key": "gYgy1cXtOCegv7CBeh0sD",
+      "name": "Screenshot label Text",
+      "type": "Text",
+      "properties": {
+        "textContainer": {
+          "value": "H5"
+        },
+        "textColor": {
+          "value": "_subText"
+        },
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.label"
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "59HrsExLYv5JjuIfGFtdru": {
+      "key": "59HrsExLYv5JjuIfGFtdru",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa fa-solid fa-trash "
+        },
+        "designType": {
+          "value": "_rounded"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.isDeleteIconHover"
+          }
+        }
+      },
+      "styleProperties": {
+        "4q3ZG6blaeDrfIDB1mWa4D": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "right": {
+                "value": "0px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorFour"
+                }
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": ".5s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "7I6ct2IBzhH8i3jDh1Pahn": {
+      "key": "7I6ct2IBzhH8i3jDh1Pahn",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "2f4dmwUINId43EeWO29jyM"
+        }
+      },
+      "styleProperties": {
+        "7xGiMxg4npQpXXIO9cjGQm": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "right": {
+                "value": "0px"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": ".5s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "59HrsExLYv5JjuIfGFtdru": true
+      },
+      "displayOrder": 2
+    },
+    "7vv3RuA1XfbIzM1cK97uCr": {
+      "key": "7vv3RuA1XfbIzM1cK97uCr",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page. showOnHover = Parent.label"
+          }
+        },
+        "onClick": {
+          "value": "5v4cEuLdJZQGqbIAGROmeU"
+        }
+      },
+      "styleProperties": {
+        "3o916XvBnM8vpxiaXh1IEO": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "right": {
+                "value": "0px"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": ".5s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6rWWzfLX18i5hQdBIuP9jh": true
+      },
+      "displayOrder": 5
+    },
+    "6rWWzfLX18i5hQdBIuP9jh": {
+      "key": "6rWWzfLX18i5hQdBIuP9jh",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa fa-solid fa-trash "
+        },
+        "designType": {
+          "value": "_rounded"
+        }
+      },
+      "styleProperties": {
+        "4q3ZG6blaeDrfIDB1mWa4D": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "right": {
+                "value": "0px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorFour"
+                }
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": ".5s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2krq7K5GGXhJREoTCrePrv": {
+      "key": "2krq7K5GGXhJREoTCrePrv",
+      "name": "Name Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3wvFJnlkc9Dijg0JYWlDWH": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2i8ObX9sVKxpJsNA9wivEo": true,
+        "240yacvZxUyHwhUSLXhNIr": true
+      },
+      "displayOrder": 1
+    },
+    "BZfvpNRiSqt0HzqJCbe5u": {
+      "key": "BZfvpNRiSqt0HzqJCbe5u",
+      "name": "Short Name Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "b4OubjMnpNEIq57IoyrcC": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1mk1JrsjwoZJZGq5OKwY4Z": true,
+        "3oBeh5tRYJWZSVrNtPzFqY": true
+      },
+      "displayOrder": 2
+    },
+    "4N0WKU3El1zIizx2q4p4o": {
+      "key": "4N0WKU3El1zIizx2q4p4o",
+      "name": "Id Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5un2DkR9YLocCtaCbQR3rM": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3LEKoPwjtqB6SpIeCWKRst": true,
+        "3pPwPNlBmht3mkGc0WLUOE": true
+      },
+      "displayOrder": 4
+    },
+    "6QoW1QbNEIqi9guqgCYvTU": {
+      "key": "6QoW1QbNEIqi9guqgCYvTU",
+      "name": "Category Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7efFgpZyk9tposrcHutMjR": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7jxt35ajIH412oYcjnPKki": true,
+        "6XuQm9T6JybiLjvQhdP0MA": true
+      },
+      "displayOrder": 5
+    },
+    "4hMoSnaIVGKkmT4wU3Qjis": {
+      "key": "4hMoSnaIVGKkmT4wU3Qjis",
+      "name": "Display Override Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2cDa1AQIjhX3IsTcf7ikKB": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "775KJG9wMagVUZaPoEqr6X": true,
+        "26vKoCC11dXwpcBgfiO7bm": true
+      },
+      "displayOrder": 6
+    },
+    "7qm3hQzMj7u2Ov83cKEFzl": {
+      "key": "7qm3hQzMj7u2Ov83cKEFzl",
+      "name": "Display Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3IjtmT3Sb1T58fJFhhh0eJ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "55drkuQynZhW8UyJp2r9tF": true,
+        "1Fan6qZpaGaO6WKJNkj6Fh": true
+      },
+      "displayOrder": 7
+    },
+    "74cJQm24plQNTTD2he3s7c": {
+      "key": "74cJQm24plQNTTD2he3s7c",
+      "name": "Launch Handler Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4phyiOOv8EZTK6Y6y8zXkQ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6qva3Odslwv631sMxv1Znw": true,
+        "70DCSrE7Swg0kSbav2E37S": true
+      },
+      "displayOrder": 8
+    },
+    "2SpW3RE9PBNK7vFvms1TNK": {
+      "key": "2SpW3RE9PBNK7vFvms1TNK",
+      "name": "Orientation Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2DmTumRsdG9srJDNQ4e96F": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3iI0QSF4U44jCBpsV17iDP": true,
+        "1JPNdCjI22AQa7UVn84ERs": true
+      },
+      "displayOrder": 9
+    },
+    "68uXsJYhKk7W0FavXh2o9y": {
+      "key": "68uXsJYhKk7W0FavXh2o9y",
+      "name": "Start Url Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6X2D3h0GJHDUCU7D7nlGBO": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "24Xa5lkmUJoVvQfJxKTD4v": true,
+        "4261xxFczdnAHqW3OBWaLL": true
+      },
+      "displayOrder": 10
+    },
+    "44zdq6mPBeg3o5sBqEjoRr": {
+      "key": "44zdq6mPBeg3o5sBqEjoRr",
+      "name": "Application Scope Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5ngR5jDTui5irFdpFT87lX": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7o166dPW1Oj8DvkOt27re2": true,
+        "4QraLmxoSP6gqjXJKkX1dT": true
+      },
+      "displayOrder": 13
+    },
+    "240yacvZxUyHwhUSLXhNIr": {
+      "key": "240yacvZxUyHwhUSLXhNIr",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "position": {
+          "value": "right"
+        },
+        "showOnHover": {
+          "value": true
+        },
+        "closeOnLeave": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "63imM6lu5jopMdxuCZLmr1": true,
+        "6Sf5BmNvrAlT3n1eeirM58": true
+      },
+      "displayOrder": 3
+    },
+    "ejjOw3xK7W19GvZsBlsXB": {
+      "key": "ejjOw3xK7W19GvZsBlsXB",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "The name of your app as displayed to the user"
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "4TMm3K1iw0Kqo4AiIElSbM": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "63imM6lu5jopMdxuCZLmr1": {
+      "key": "63imM6lu5jopMdxuCZLmr1",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": ""
+        },
+        "onMouseLeave": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2RAH9gBuF3F7udRwIzxByT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2aSUTNxDrCHjCXWPEgojD3": true
+      },
+      "displayOrder": 1
+    },
+    "2aSUTNxDrCHjCXWPEgojD3": {
+      "key": "2aSUTNxDrCHjCXWPEgojD3",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " mi material-icons mio-info"
+        },
+        "colorScheme": {
+          "value": "_lightIcon"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6Sf5BmNvrAlT3n1eeirM58": {
+      "key": "6Sf5BmNvrAlT3n1eeirM58",
+      "name": "Text Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "58tmrZ0Pl95abi4D0VmiKN": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "width": {
+                "value": "150px"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "12px"
+              },
+              "paddingRight": {
+                "value": "12px"
+              },
+              "borderTopLeftRadius": {
+                "value": "6px"
+              },
+              "borderTopRightRadius": {
+                "value": "6px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "6px"
+              },
+              "borderBottomRightRadius": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ejjOw3xK7W19GvZsBlsXB": true
+      },
+      "displayOrder": 2
+    },
+    "3oBeh5tRYJWZSVrNtPzFqY": {
+      "key": "3oBeh5tRYJWZSVrNtPzFqY",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "position": {
+          "value": "right"
+        },
+        "closeOnLeave": {
+          "value": true
+        },
+        "showOnHover": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4oYTwhuWKkfWFiwE4WPS78": true,
+        "6TyAXDH6V1h2o0IbyFJPrL": true
+      },
+      "displayOrder": 2
+    },
+    "4oYTwhuWKkfWFiwE4WPS78": {
+      "key": "4oYTwhuWKkfWFiwE4WPS78",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": ""
+        },
+        "onMouseLeave": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2RAH9gBuF3F7udRwIzxByT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7I493pbSWF49mYsv2LE6hx": true
+      },
+      "displayOrder": 1
+    },
+    "6TyAXDH6V1h2o0IbyFJPrL": {
+      "key": "6TyAXDH6V1h2o0IbyFJPrL",
+      "name": "Text Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "oEvBqTGNQcbUywx5Etk9D": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "width": {
+                "value": "150px"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "12px"
+              },
+              "paddingRight": {
+                "value": "12px"
+              },
+              "borderTopLeftRadius": {
+                "value": "6px"
+              },
+              "borderTopRightRadius": {
+                "value": "6px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "6px"
+              },
+              "borderBottomRightRadius": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "18J8FMP1mGJu2aeWzwZ1mK": true
+      },
+      "displayOrder": 2
+    },
+    "7I493pbSWF49mYsv2LE6hx": {
+      "key": "7I493pbSWF49mYsv2LE6hx",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " mi material-icons mio-info"
+        },
+        "colorScheme": {
+          "value": "_lightIcon"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "18J8FMP1mGJu2aeWzwZ1mK": {
+      "key": "18J8FMP1mGJu2aeWzwZ1mK",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Used in app launchers, recommended to be 12 characters or less in length. "
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "4TMm3K1iw0Kqo4AiIElSbM": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3pPwPNlBmht3mkGc0WLUOE": {
+      "key": "3pPwPNlBmht3mkGc0WLUOE",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "position": {
+          "value": "right"
+        },
+        "closeOnLeave": {
+          "value": true
+        },
+        "showOnHover": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1m1gORJpQRyTSjPlq8C3Md": true,
+        "3F5b9jTVDoOj01UXdmuygY": true
+      },
+      "displayOrder": 2
+    },
+    "1m1gORJpQRyTSjPlq8C3Md": {
+      "key": "1m1gORJpQRyTSjPlq8C3Md",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": ""
+        },
+        "onMouseLeave": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2RAH9gBuF3F7udRwIzxByT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7fQqzpQEkP13H9CPILRqLg": true
+      },
+      "displayOrder": 1
+    },
+    "3F5b9jTVDoOj01UXdmuygY": {
+      "key": "3F5b9jTVDoOj01UXdmuygY",
+      "name": "Text Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "58tmrZ0Pl95abi4D0VmiKN": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "width": {
+                "value": "150px"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "12px"
+              },
+              "paddingRight": {
+                "value": "12px"
+              },
+              "borderTopLeftRadius": {
+                "value": "6px"
+              },
+              "borderTopRightRadius": {
+                "value": "6px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "6px"
+              },
+              "borderBottomRightRadius": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7t6QLAVdeOGOxUtKkdqQ7h": true
+      },
+      "displayOrder": 2
+    },
+    "7fQqzpQEkP13H9CPILRqLg": {
+      "key": "7fQqzpQEkP13H9CPILRqLg",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " mi material-icons mio-info"
+        },
+        "colorScheme": {
+          "value": "_lightIcon"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7t6QLAVdeOGOxUtKkdqQ7h": {
+      "key": "7t6QLAVdeOGOxUtKkdqQ7h",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Unique identifier for your PWA that is seperate from fields that could change over time (like name or short name)"
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "4TMm3K1iw0Kqo4AiIElSbM": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6XuQm9T6JybiLjvQhdP0MA": {
+      "key": "6XuQm9T6JybiLjvQhdP0MA",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "position": {
+          "value": "right"
+        },
+        "closeOnLeave": {
+          "value": true
+        },
+        "showOnHover": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7cydJkvqm5hZ8994VDFIJ": true,
+        "9WobG9eYfm3xgcpcIB9LW": true
+      },
+      "displayOrder": 2
+    },
+    "7cydJkvqm5hZ8994VDFIJ": {
+      "key": "7cydJkvqm5hZ8994VDFIJ",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": ""
+        },
+        "onMouseLeave": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2RAH9gBuF3F7udRwIzxByT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6tZE89Abs9uQBP4y2bxFBY": true
+      },
+      "displayOrder": 1
+    },
+    "9WobG9eYfm3xgcpcIB9LW": {
+      "key": "9WobG9eYfm3xgcpcIB9LW",
+      "name": "Text Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "58tmrZ0Pl95abi4D0VmiKN": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "width": {
+                "value": "150px"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "12px"
+              },
+              "paddingRight": {
+                "value": "12px"
+              },
+              "borderTopLeftRadius": {
+                "value": "6px"
+              },
+              "borderTopRightRadius": {
+                "value": "6px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "6px"
+              },
+              "borderBottomRightRadius": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6TnSWlxbCoNOGJznoC0kMu": true
+      },
+      "displayOrder": 2
+    },
+    "6tZE89Abs9uQBP4y2bxFBY": {
+      "key": "6tZE89Abs9uQBP4y2bxFBY",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " mi material-icons mio-info"
+        },
+        "colorScheme": {
+          "value": "_lightIcon"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6TnSWlxbCoNOGJznoC0kMu": {
+      "key": "6TnSWlxbCoNOGJznoC0kMu",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Array of categories that the application belongs to."
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "4TMm3K1iw0Kqo4AiIElSbM": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "26vKoCC11dXwpcBgfiO7bm": {
+      "key": "26vKoCC11dXwpcBgfiO7bm",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "position": {
+          "value": "right"
+        },
+        "closeOnLeave": {
+          "value": true
+        },
+        "showOnHover": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2d3HMqR8tddmgEsFSZ2p3b": true,
+        "3o2HdkAvVSybsYl3BAczbk": true
+      },
+      "displayOrder": 2
+    },
+    "2d3HMqR8tddmgEsFSZ2p3b": {
+      "key": "2d3HMqR8tddmgEsFSZ2p3b",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": ""
+        },
+        "onMouseLeave": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2RAH9gBuF3F7udRwIzxByT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2NI9Z50Dkq5lDz38v2ISN7": true
+      },
+      "displayOrder": 1
+    },
+    "3o2HdkAvVSybsYl3BAczbk": {
+      "key": "3o2HdkAvVSybsYl3BAczbk",
+      "name": "Text Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "58tmrZ0Pl95abi4D0VmiKN": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 1px 4px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "width": {
+                "value": "150px"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "12px"
+              },
+              "paddingRight": {
+                "value": "12px"
+              },
+              "borderTopLeftRadius": {
+                "value": "6px"
+              },
+              "borderTopRightRadius": {
+                "value": "6px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "6px"
+              },
+              "borderBottomRightRadius": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4ZEzoIeh3FSXW8M5bFYSr3": true
+      },
+      "displayOrder": 2
+    },
+    "2NI9Z50Dkq5lDz38v2ISN7": {
+      "key": "2NI9Z50Dkq5lDz38v2ISN7",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " mi material-icons mio-info"
+        },
+        "colorScheme": {
+          "value": "_lightIcon"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4ZEzoIeh3FSXW8M5bFYSr3": {
+      "key": "4ZEzoIeh3FSXW8M5bFYSr3",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Display override is similar to the display member, but allows you to select a fallback order for different display modes."
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "4TMm3K1iw0Kqo4AiIElSbM": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1Fan6qZpaGaO6WKJNkj6Fh": {
+      "key": "1Fan6qZpaGaO6WKJNkj6Fh",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "position": {
+          "value": "right"
+        },
+        "closeOnLeave": {
+          "value": true
+        },
+        "showOnHover": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "54oFfADCUjdtta4ugksq6r": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Ofh2KZDNQNYt7sRxiyQa9": true,
+        "1JxvaXmPliQaidQA8EcT2l": true
+      },
+      "displayOrder": 2
+    },
+    "2Ofh2KZDNQNYt7sRxiyQa9": {
+      "key": "2Ofh2KZDNQNYt7sRxiyQa9",
+      "name": "Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onMouseEnter": {
+          "value": ""
+        },
+        "onMouseLeave": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2RAH9gBuF3F7udRwIzxByT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5wo7kXEFzNVWxVWRvXqfTk": true
+      },
+      "displayOrder": 1
+    },
+    "__truncated__": "... 56 more components omitted for corpus"
+  },
+  "name": "progressiveWebApp",
+  "message": "From transport : 3y8kUB0mADxyNoL5c2ujsv",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN",
+  "appCode": "landingpages",
+  "version": 17,
+  "updatedAt": "2024-06-10 17:53:59.537000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-27 13:51:31.436000",
+  "createdBy": "<USER>"
+}

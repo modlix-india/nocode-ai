@@ -1,0 +1,216 @@
+{
+  "_id": "67ebefca3bac9071fbc842b4",
+  "definition": {
+    "name": "incomingMessageWebhook",
+    "namespace": "crmai",
+    "parameters": {
+      "event_details": {
+        "parameterName": "event_details",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "call_details": {
+        "parameterName": "call_details",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 134.66666158040363,
+          "top": 160.33332824707026
+        },
+        "parameterMap": {
+          "name": {
+            "4hUPzyrrXl1hn2NH05m3Xc": {
+              "key": "4hUPzyrrXl1hn2NH05m3Xc",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "message"
+            }
+          },
+          "schema": {
+            "SpFFgwnA5ZNK6KbpwQQC4": {
+              "key": "SpFFgwnA5ZNK6KbpwQQC4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {}
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1459.6666564941406,
+          "top": 484.9999999999998
+        },
+        "parameterMap": {
+          "results": {
+            "2q4XKX965OkE8erL6Nmtdj": {
+              "key": "2q4XKX965OkE8erL6Nmtdj",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": false,
+                  "value": "200 OK HTTPS"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create2__d-o-t__output": true
+        }
+      },
+      "create2": {
+        "statementName": "create2",
+        "name": "Create",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1099.3333282470703,
+          "top": 311.9999898274739
+        },
+        "parameterMap": {
+          "storageName": {
+            "6SFLuOPzmyFz03fp4nz6YK": {
+              "key": "6SFLuOPzmyFz03fp4nz6YK",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "testWeb"
+            }
+          },
+          "dataObject": {
+            "15xXE2rZUfoT9mtp7MDqc4": {
+              "key": "15xXE2rZUfoT9mtp7MDqc4",
+              "type": "EXPRESSION",
+              "expression": "Context.message",
+              "order": 1,
+              "value": {
+                "test": "Hai"
+              }
+            }
+          },
+          "appCode": {
+            "6gzNxqppNSRU60VcesEles": {
+              "key": "6gzNxqppNSRU60VcesEles",
+              "type": "VALUE",
+              "expression": "",
+              "value": "crmai"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 310.3333282470702,
+          "top": 398.3333282470703
+        },
+        "parameterMap": {
+          "name": {
+            "5gfJeyTpxhfdMjp6ySpzPV": {
+              "key": "5gfJeyTpxhfdMjp6ySpzPV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.message.event_details"
+            }
+          },
+          "value": {
+            "58knNtktmDG9cb5HOg084H": {
+              "key": "58knNtktmDG9cb5HOg084H",
+              "type": "EXPRESSION",
+              "expression": "Arguments.event_details",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 727.3333282470702,
+          "top": 322.99999491373694
+        },
+        "parameterMap": {
+          "name": {
+            "6ZRkNjCTnj9D6KKc5CBLZu": {
+              "key": "6ZRkNjCTnj9D6KKc5CBLZu",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.message.call_details"
+            }
+          },
+          "value": {
+            "3L9VpB3gpitFtiJQgfvSfn": {
+              "key": "3L9VpB3gpitFtiJQgfvSfn",
+              "type": "EXPRESSION",
+              "expression": "Arguments.call_details",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "name": "crmai.incomingMessageWebhook",
+  "message": "From transport : 0bbcTLjPprd7Iaah3oYroY",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:19:09.084000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:53:14.151000",
+  "createdBy": "<USER>"
+}

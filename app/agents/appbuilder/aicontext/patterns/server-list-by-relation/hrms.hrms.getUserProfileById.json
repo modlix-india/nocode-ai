@@ -1,0 +1,292 @@
+{
+  "_id": "66bf317123fed5558c79fc83",
+  "definition": {
+    "namespace": "hrms",
+    "name": "getUserProfileById",
+    "parameters": {
+      "userId": {
+        "parameterName": "userId",
+        "schema": {
+          "type": [
+            "LONG"
+          ],
+          "version": 1
+        }
+      },
+      "userCode": {
+        "parameterName": "userCode",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "defaultValue": ""
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 50.5555470784505,
+          "top": 77.66666666666666
+        },
+        "parameterMap": {
+          "name": {
+            "3oKz5dRgOSiLk4iUzZ83ja": {
+              "key": "3oKz5dRgOSiLk4iUzZ83ja",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "filter"
+            }
+          },
+          "schema": {
+            "1w6nUalirUl7N0eNQCr9u7": {
+              "key": "1w6nUalirUl7N0eNQCr9u7",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1164.8888804117837,
+          "top": 194.9999999999999
+        },
+        "parameterMap": {
+          "condition": {
+            "3vjKeFgBX3OrZjZ4R2aYtZ": {
+              "key": "3vjKeFgBX3OrZjZ4R2aYtZ",
+              "type": "EXPRESSION",
+              "expression": "Steps.readPage.output.result.content.length > 0",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__readPage__d-o-t__output": false
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1645.4444274902341,
+          "top": 843.2222201029459
+        },
+        "parameterMap": {
+          "results": {
+            "3JlDo9eG5ShuXUR9Zpn0sr": {
+              "key": "3JlDo9eG5ShuXUR9Zpn0sr",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "userProfile",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.output.result"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1640.5555470784504,
+          "top": 238.9999999999999
+        },
+        "parameterMap": {
+          "results": {
+            "1BnzdtbAleZtom3zSby9wV": {
+              "key": "1BnzdtbAleZtom3zSby9wV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "userProfile",
+                "value": {
+                  "isExpression": false,
+                  "value": {}
+                }
+              }
+            },
+            "1VtRMrtK5Bx6D9fyUNq1VZ": {
+              "key": "1VtRMrtK5Bx6D9fyUNq1VZ",
+              "type": "EXPRESSION",
+              "order": 2
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 307.88888041178376,
+          "top": 81.33333333333331
+        },
+        "parameterMap": {
+          "name": {
+            "4JGlP3mJTBTEo0QMJLNF7R": {
+              "key": "4JGlP3mJTBTEo0QMJLNF7R",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter"
+            }
+          },
+          "value": {
+            "2i9wagfoyZgnoLpQtFSh0s": {
+              "key": "2i9wagfoyZgnoLpQtFSh0s",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "field": "userId"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 588.7499961853027,
+          "top": 85.4999771118164
+        },
+        "parameterMap": {
+          "name": {
+            "7FOkHnXe78WJTh6AHsqR98": {
+              "key": "7FOkHnXe78WJTh6AHsqR98",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter.value"
+            }
+          },
+          "value": {
+            "2uu129n0sixZC40FSzAKzr": {
+              "key": "2uu129n0sixZC40FSzAKzr",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 897.5555470784504,
+          "top": 60.444427490234375
+        },
+        "parameterMap": {
+          "storageName": {
+            "1V8vwz4JlTQzm13RTclVI5": {
+              "key": "1V8vwz4JlTQzm13RTclVI5",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "UserProfile"
+            }
+          },
+          "appCode": {
+            "5KYKeTfbkG8XzauXii3uFz": {
+              "key": "5KYKeTfbkG8XzauXii3uFz",
+              "type": "VALUE",
+              "expression": "",
+              "value": "hrms"
+            }
+          },
+          "filter": {
+            "4lKvIsZgl6d9dOK2DJNJFY": {
+              "key": "4lKvIsZgl6d9dOK2DJNJFY",
+              "type": "EXPRESSION",
+              "expression": "Context.filter",
+              "value": {}
+            }
+          },
+          "clientCode": {
+            "7ED0sWQ66euFRzvBX5HFlH": {
+              "key": "7ED0sWQ66euFRzvBX5HFlH",
+              "type": "EXPRESSION",
+              "value": "",
+              "expression": "Arguments.userCode"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "userProfile": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1,
+            "ref": "hrms.userProfile"
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "hrms.getUserProfileById",
+  "message": "From transport : 0FfQUnuG1R6hc1WsU1FuxV",
+  "clientCode": "SYSTEM",
+  "appCode": "hrms",
+  "version": 46,
+  "updatedAt": "2026-04-09 04:28:36.563000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-08-16 11:01:05.248000",
+  "createdBy": "<USER>"
+}

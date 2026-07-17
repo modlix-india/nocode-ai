@@ -1,0 +1,2878 @@
+{
+  "_id": "65fc43437284ef62dfa51927",
+  "properties": {
+    "wrapShell": false,
+    "onLoadEvent": "X91pGu6b8YWVJEUw7kBhU"
+  },
+  "eventFunctions": {
+    "7mmLkj20x20Lh41dpwJv9P": {
+      "name": "CACtoggle",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 211,
+            "top": 136.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "6xxXf6ECewcSgaHzRq6HyF": {
+                "key": "6xxXf6ECewcSgaHzRq6HyF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.cac"
+              }
+            },
+            "value": {
+              "3DCqbchsEZ4W3jWDq5D7Eo": {
+                "key": "3DCqbchsEZ4W3jWDq5D7Eo",
+                "type": "EXPRESSION",
+                "expression": "not Page.cac",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "X91pGu6b8YWVJEUw7kBhU": {
+      "name": "Onload",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 305,
+            "top": 120.1015625
+          },
+          "parameterMap": {
+            "path": {
+              "tZjc311v8WGrzq8Ju2RuX": {
+                "key": "tZjc311v8WGrzq8Ju2RuX",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.cac"
+              }
+            },
+            "value": {
+              "3dtR3k20GPgRRF8IwQV5ax": {
+                "key": "3dtR3k20GPgRRF8IwQV5ax",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "5qfPDZfAChRKhtvzUhyL2E",
+  "componentDefinition": {
+    "5qfPDZfAChRKhtvzUhyL2E": {
+      "key": "5qfPDZfAChRKhtvzUhyL2E",
+      "name": "Page Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3qBAwObdtWVMAxv7UvNPpN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "overflowX": {
+                "value": "hidden"
+              },
+              "overflowY": {
+                "value": "scroll"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "backgroundColor": {
+                "value": "white"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1ZYhPUoopCSoSfdOyulYly": true,
+        "6rntqsVGS0VGtpY4vUXfQz": true,
+        "5a3oCD1wQPYBymhMsAZeVX": true,
+        "2wWUOsiQ0U6AKHn0DGqkN3": true,
+        "1H5MgGzEUJhFfV4cBmCjgq": true,
+        "3Nuv3eAvw8OnS7Zmwk1Qcu": true,
+        "6idtR7VPvVkxkZs9HDXMCZ": true,
+        "7BYMjF4jZGh0C56nw0hqXm": true,
+        "39ijubSOsSoC5RT5LLD4U5": true,
+        "66jcikVibAgkQiwi5rmEiQ": true
+      }
+    },
+    "1ZYhPUoopCSoSfdOyulYly": {
+      "key": "1ZYhPUoopCSoSfdOyulYly",
+      "name": "Top grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5C85QZ0dGVVC6uFsJIJB3k": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "120px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "background": {
+                "value": "linear-gradient(180deg, rgba(0, 123, 184, 0.2) 0%, rgba(0, 123, 184, 0) 100%)"
+              },
+              "paddingTop": {
+                "value": "30px"
+              },
+              "paddingBottom": {
+                "value": "30px"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "height": {
+                "value": "120px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "tBXUWQZmmUsdEpn5ZL4J1": true
+      },
+      "displayOrder": 1
+    },
+    "6rntqsVGS0VGtpY4vUXfQz": {
+      "key": "6rntqsVGS0VGtpY4vUXfQz",
+      "name": "details grid",
+      "type": "Grid",
+      "styleProperties": {
+        "fryBopCx67fFbGcY7OimB": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "marginTop": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "auto"
+              },
+              "width": {
+                "value": "85%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3FInd2R2xZKC6zbT8p5yNb": true,
+        "5Gfw20wnki0atukt7n6N5C": true
+      },
+      "displayOrder": 2
+    },
+    "5a3oCD1wQPYBymhMsAZeVX": {
+      "key": "5a3oCD1wQPYBymhMsAZeVX",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "SBuFtDpTqbusDbANMT0dN": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "85%"
+              },
+              "marginTop": {
+                "value": "30px"
+              },
+              "marginBottom": {
+                "value": "30px"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3uJK2Q2Sxa7NGKrovI9CVR": true,
+        "6q1T66UzFiFR4knKOQoM1M": true,
+        "5tsKHEnQ3xRWCFzh8Gts7p": true,
+        "5Siil5JzRA35j3Wfb6jKxj": true
+      },
+      "displayOrder": 3
+    },
+    "2wWUOsiQ0U6AKHn0DGqkN3": {
+      "key": "2wWUOsiQ0U6AKHn0DGqkN3",
+      "name": "Market growth",
+      "type": "Grid",
+      "styleProperties": {
+        "6mt1GE7Ox0nip3nYZ6c3jt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "85%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1vEoef0cQNMO9duYci6MVx": true,
+        "TBcB2uUMHyPeLQn1mW5pD": true,
+        "2Flp4pRE93GcmCowPnXRG3": true,
+        "5eQLttx0sLxfeI2LaTqQLP": true
+      },
+      "displayOrder": 4
+    },
+    "1H5MgGzEUJhFfV4cBmCjgq": {
+      "key": "1H5MgGzEUJhFfV4cBmCjgq",
+      "name": "Sample tenants",
+      "type": "Grid",
+      "styleProperties": {
+        "6mt1GE7Ox0nip3nYZ6c3jt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "85%"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6Ov6OpSCr17MIHN73TZ51M": true,
+        "38L7QD3BpiB8H0pZdscGlY": true
+      },
+      "displayOrder": 5
+    },
+    "3Nuv3eAvw8OnS7Zmwk1Qcu": {
+      "key": "3Nuv3eAvw8OnS7Zmwk1Qcu",
+      "name": "Rental trends -Micro Market",
+      "type": "Grid",
+      "styleProperties": {
+        "6mt1GE7Ox0nip3nYZ6c3jt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "85%"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "31tlQA5EJTfB8k7J4ELhC0": true,
+        "2cqgvGcAq9WGDxq5JwC261": true
+      },
+      "displayOrder": 6
+    },
+    "6idtR7VPvVkxkZs9HDXMCZ": {
+      "key": "6idtR7VPvVkxkZs9HDXMCZ",
+      "name": "Map",
+      "type": "Grid",
+      "styleProperties": {
+        "6mt1GE7Ox0nip3nYZ6c3jt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "85%"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1SmQPVCACf3foLfIouCnkz": true,
+        "3Gm3h4AahdjmOecmmT0IVU": true
+      },
+      "displayOrder": 7
+    },
+    "7BYMjF4jZGh0C56nw0hqXm": {
+      "key": "7BYMjF4jZGh0C56nw0hqXm",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "r69J0l7idu3K82hdzXCAp": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "85%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "41ofGooQWYTe6PDOwEUwnX": true,
+        "v5ElFgqV13vXTt5xlznyO": true
+      },
+      "displayOrder": 8
+    },
+    "39ijubSOsSoC5RT5LLD4U5": {
+      "key": "39ijubSOsSoC5RT5LLD4U5",
+      "name": "propsgrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1LB0gNxEblXhwxqXXtJkQv": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "85%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "100px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5rmEC2b3OxvjTmAYhuujkZ": true,
+        "6PAAPImnb9MJ5cUeuSHAOE": true,
+        "5qD971YdR8bM7bR9fHpA6T": true,
+        "6Nx2IQTq8dw0RHxbZsQrY5": true,
+        "4ZKxJDmAoXckS1QyxfrE4J": true,
+        "5LEvl0jlSSfBVhhgQboQOs": true,
+        "v8eIDJOUPdNnVdh4Gbohp": true
+      },
+      "displayOrder": 9
+    },
+    "66jcikVibAgkQiwi5rmEiQ": {
+      "key": "66jcikVibAgkQiwi5rmEiQ",
+      "name": "fixedgrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_QUINARYBG"
+        }
+      },
+      "styleProperties": {
+        "4Z2fe3ciMZvlgRuP3JcHfV": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "76px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "height": {
+                "value": "80px"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "bottom": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Whd5DTYMxkQnfv6DmJQnl": true,
+        "1DIMbYiye21pATh7XogPyq": true
+      },
+      "displayOrder": 10
+    },
+    "tBXUWQZmmUsdEpn5ZL4J1": {
+      "key": "tBXUWQZmmUsdEpn5ZL4J1",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6DpziB6cWRekkRui040YGh": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "85%"
+              },
+              "marginTop": {
+                "value": "22px"
+              },
+              "marginBottom": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3f4ROJqLwI8EEOAMIUhLru": true,
+        "1X5Eq2jfZ0f8euBSKTYP08": true
+      },
+      "displayOrder": 0
+    },
+    "3FInd2R2xZKC6zbT8p5yNb": {
+      "key": "3FInd2R2xZKC6zbT8p5yNb",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "QWHp7VqF11gfWijFBmF7y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "90%"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6e9QkCIQHr3eUyd3PyvEZt": true
+      },
+      "displayOrder": 1
+    },
+    "5Gfw20wnki0atukt7n6N5C": {
+      "key": "5Gfw20wnki0atukt7n6N5C",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5IX8sj8A6oVbEcxRlVzqsV": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "boxShadow": {
+                "value": "0px 0px 4px 0px #B8B8B833"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5FDLmSag0qWwfHzft3sDTO": true,
+        "2kANELVrNVW5BAHBBtktRT": true
+      },
+      "displayOrder": 2
+    },
+    "3uJK2Q2Sxa7NGKrovI9CVR": {
+      "key": "3uJK2Q2Sxa7NGKrovI9CVR",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "GpDDQZAxVXbqE8S9Hle0u": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "48%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "78Mtvw0gifn1L7ikD1loqc": true,
+        "7FYWmm3ipK7BzqIet5iNN6": true
+      },
+      "displayOrder": 1
+    },
+    "6q1T66UzFiFR4knKOQoM1M": {
+      "key": "6q1T66UzFiFR4knKOQoM1M",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4s5rAS1JMyYfuhrVupUfY5": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "48%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1sdLKRbnhF7OwxbjuJjnQT": true,
+        "4JHiVjZhFw2Dlk0wHslJDZ": true
+      },
+      "displayOrder": 3
+    },
+    "5tsKHEnQ3xRWCFzh8Gts7p": {
+      "key": "5tsKHEnQ3xRWCFzh8Gts7p",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6RhgEBpbhAgxq2yP9hqSju": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "48%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1oJu4Y2LWkEjcyGlOdGYI1": true,
+        "6Nbajvg32jEt0r3tYVRUHK": true
+      },
+      "displayOrder": 2
+    },
+    "5Siil5JzRA35j3Wfb6jKxj": {
+      "key": "5Siil5JzRA35j3Wfb6jKxj",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5o6NOewpKqEVm4Y7tEsov5": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginRight": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "48%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6IR6dtxOmghBeoNrvlk5CS": true,
+        "7qz52sPmtvjy453sCWj0M7": true
+      },
+      "displayOrder": 3
+    },
+    "1vEoef0cQNMO9duYci6MVx": {
+      "key": "1vEoef0cQNMO9duYci6MVx",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Market Growth"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "u56qaQUPJjNt5RZq2FoYB": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "TBcB2uUMHyPeLQn1mW5pD": {
+      "key": "TBcB2uUMHyPeLQn1mW5pD",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6GfbLQht3qE90w96Gv27V0": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "borderLeftStyle": {
+                "value": "dashed"
+              },
+              "borderTopStyle": {
+                "value": "dashed"
+              },
+              "borderRightStyle": {
+                "value": "dashed"
+              },
+              "borderBottomStyle": {
+                "value": "dashed"
+              },
+              "borderTopWidth": {
+                "value": "0.5px"
+              },
+              "borderRightWidth": {
+                "value": "0.5px"
+              },
+              "borderBottomWidth": {
+                "value": "0.5px"
+              },
+              "borderLeftWidth": {
+                "value": "0.5px"
+              },
+              "background": {
+                "value": "#FFFFFF0D"
+              },
+              "borderTopColor": {
+                "value": "#00000033"
+              },
+              "borderRightColor": {
+                "value": "#00000033"
+              },
+              "borderBottomColor": {
+                "value": "#00000033"
+              },
+              "borderLeftColor": {
+                "value": "#00000033"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "204hqUoAA87rhgRH744X3": true,
+        "4J4rTBUyO8cnA1hR6wdrkZ": true
+      },
+      "displayOrder": 3
+    },
+    "2Flp4pRE93GcmCowPnXRG3": {
+      "key": "2Flp4pRE93GcmCowPnXRG3",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6GfbLQht3qE90w96Gv27V0": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "borderLeftStyle": {
+                "value": "dashed"
+              },
+              "borderTopStyle": {
+                "value": "dashed"
+              },
+              "borderRightStyle": {
+                "value": "dashed"
+              },
+              "borderBottomStyle": {
+                "value": "dashed"
+              },
+              "borderTopWidth": {
+                "value": "0.5px"
+              },
+              "borderRightWidth": {
+                "value": "0.5px"
+              },
+              "borderBottomWidth": {
+                "value": "0.5px"
+              },
+              "borderLeftWidth": {
+                "value": "0.5px"
+              },
+              "background": {
+                "value": "#FFFFFF0D"
+              },
+              "borderTopColor": {
+                "value": "#00000033"
+              },
+              "borderRightColor": {
+                "value": "#00000033"
+              },
+              "borderBottomColor": {
+                "value": "#00000033"
+              },
+              "borderLeftColor": {
+                "value": "#00000033"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7Iqeh0NZeSmAgWM9P8zZxO": true,
+        "hxc8uEY0veUHtt9kd4i4B": true
+      },
+      "displayOrder": 2
+    },
+    "5eQLttx0sLxfeI2LaTqQLP": {
+      "key": "5eQLttx0sLxfeI2LaTqQLP",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6GfbLQht3qE90w96Gv27V0": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "borderLeftStyle": {
+                "value": "dashed"
+              },
+              "borderTopStyle": {
+                "value": "dashed"
+              },
+              "borderRightStyle": {
+                "value": "dashed"
+              },
+              "borderBottomStyle": {
+                "value": "dashed"
+              },
+              "borderTopWidth": {
+                "value": "0.5px"
+              },
+              "borderRightWidth": {
+                "value": "0.5px"
+              },
+              "borderBottomWidth": {
+                "value": "0.5px"
+              },
+              "borderLeftWidth": {
+                "value": "0.5px"
+              },
+              "background": {
+                "value": "#FFFFFF0D"
+              },
+              "borderTopColor": {
+                "value": "#00000033"
+              },
+              "borderRightColor": {
+                "value": "#00000033"
+              },
+              "borderBottomColor": {
+                "value": "#00000033"
+              },
+              "borderLeftColor": {
+                "value": "#00000033"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "35nNCrhw9xIXgGtoBuC3TR": true,
+        "4BGwyT6ZM2uaz3HPvGFCH5": true
+      },
+      "displayOrder": 3
+    },
+    "6Ov6OpSCr17MIHN73TZ51M": {
+      "key": "6Ov6OpSCr17MIHN73TZ51M",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Sample Tenants"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "16Wl7rE2kIjYAmKj9ZOzJc": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "38L7QD3BpiB8H0pZdscGlY": {
+      "key": "38L7QD3BpiB8H0pZdscGlY",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2DMmiVXEfshwNMKIDyyyfG": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "height": {
+                "value": "320px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Sf0b1ZHWc7zY2tW46hOAu": true,
+        "6hMBOctX0qqNAPKWXQII5b": true,
+        "6hIJklkdNuYicT5lPCo6P2": true,
+        "1LBLVCSlZ0Vau9OUxJuSBo": true
+      },
+      "displayOrder": 2
+    },
+    "31tlQA5EJTfB8k7J4ELhC0": {
+      "key": "31tlQA5EJTfB8k7J4ELhC0",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Rental trends - Micro market"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "88b8XUhr7uMhN8sm1UwMM": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2cqgvGcAq9WGDxq5JwC261": {
+      "key": "2cqgvGcAq9WGDxq5JwC261",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1abnPml4q8wCaqGTPkOllM": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2OxXdD0J2FVljqafc6tipI": true
+      },
+      "displayOrder": 2
+    },
+    "1SmQPVCACf3foLfIouCnkz": {
+      "key": "1SmQPVCACf3foLfIouCnkz",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Prime location - Main road property"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "ZP7bHbPVcPWsYJ6RtCqBJ": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3Gm3h4AahdjmOecmmT0IVU": {
+      "key": "3Gm3h4AahdjmOecmmT0IVU",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1abnPml4q8wCaqGTPkOllM": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5JJADNmJ4oMaiO1l8g5CF1": true
+      },
+      "displayOrder": 2
+    },
+    "41ofGooQWYTe6PDOwEUwnX": {
+      "key": "41ofGooQWYTe6PDOwEUwnX",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6GfbLQht3qE90w96Gv27V0": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "borderLeftStyle": {
+                "value": "dashed"
+              },
+              "borderTopStyle": {
+                "value": "dashed"
+              },
+              "borderRightStyle": {
+                "value": "dashed"
+              },
+              "borderBottomStyle": {
+                "value": "dashed"
+              },
+              "borderTopWidth": {
+                "value": "0.5px"
+              },
+              "borderRightWidth": {
+                "value": "0.5px"
+              },
+              "borderBottomWidth": {
+                "value": "0.5px"
+              },
+              "borderLeftWidth": {
+                "value": "0.5px"
+              },
+              "background": {
+                "value": "#FFFFFF0D"
+              },
+              "borderTopColor": {
+                "value": "#00000033"
+              },
+              "borderRightColor": {
+                "value": "#00000033"
+              },
+              "borderBottomColor": {
+                "value": "#00000033"
+              },
+              "borderLeftColor": {
+                "value": "#00000033"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2E7f90svzdV4bMNas2A9CY": true,
+        "3DcQndTpZhH4sEsElQbDHB": true
+      },
+      "displayOrder": 2
+    },
+    "v5ElFgqV13vXTt5xlznyO": {
+      "key": "v5ElFgqV13vXTt5xlznyO",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6GfbLQht3qE90w96Gv27V0": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "borderLeftStyle": {
+                "value": "dashed"
+              },
+              "borderTopStyle": {
+                "value": "dashed"
+              },
+              "borderRightStyle": {
+                "value": "dashed"
+              },
+              "borderBottomStyle": {
+                "value": "dashed"
+              },
+              "borderTopWidth": {
+                "value": "0.5px"
+              },
+              "borderRightWidth": {
+                "value": "0.5px"
+              },
+              "borderBottomWidth": {
+                "value": "0.5px"
+              },
+              "borderLeftWidth": {
+                "value": "0.5px"
+              },
+              "background": {
+                "value": "#FFFFFF0D"
+              },
+              "borderTopColor": {
+                "value": "#00000033"
+              },
+              "borderRightColor": {
+                "value": "#00000033"
+              },
+              "borderBottomColor": {
+                "value": "#00000033"
+              },
+              "borderLeftColor": {
+                "value": "#00000033"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1LrtyufSbcpTSMfrwdhTJ3": true,
+        "6yhZM5ct8IRI1uxEJ3bPf9": true
+      },
+      "displayOrder": 1
+    },
+    "5rmEC2b3OxvjTmAYhuujkZ": {
+      "key": "5rmEC2b3OxvjTmAYhuujkZ",
+      "name": "heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Prime location - Main road property"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "5c4UivwmIjjRBr2PeBn1ju": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6PAAPImnb9MJ5cUeuSHAOE": {
+      "key": "6PAAPImnb9MJ5cUeuSHAOE",
+      "name": "SDA",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Structural Design & Ambience"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        }
+      },
+      "styleProperties": {
+        "4IswFTV5aID8XyxZWh37qo": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5qD971YdR8bM7bR9fHpA6T": {
+      "key": "5qD971YdR8bM7bR9fHpA6T",
+      "name": "Telecom",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Telecom Connectivity"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        }
+      },
+      "styleProperties": {
+        "1rVQ9FcpZdc7pxlf1oQVDc": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6Nx2IQTq8dw0RHxbZsQrY5": {
+      "key": "6Nx2IQTq8dw0RHxbZsQrY5",
+      "name": "CAC toggle grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.cac=true"
+          }
+        }
+      },
+      "styleProperties": {
+        "3IAjW8SLUm9VjC7YP0sZAt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2B2ooUOisbAZ4Pk2LvgZV4": true,
+        "71rOg1vU9nGrmoStway7y6": true,
+        "l5LHL6kWicDyfWD7yZiva": true
+      },
+      "displayOrder": 5
+    },
+    "4ZKxJDmAoXckS1QyxfrE4J": {
+      "key": "4ZKxJDmAoXckS1QyxfrE4J",
+      "name": "lobby",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Lobby Finishes"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        }
+      },
+      "styleProperties": {
+        "39HBle0HVRdYuVHO32j6oD": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "5LEvl0jlSSfBVhhgQboQOs": {
+      "key": "5LEvl0jlSSfBVhhgQboQOs",
+      "name": "water",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Water & Sewage Treatment Plant"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        }
+      },
+      "styleProperties": {
+        "5193YLe80rddED1xHpTusM": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "v8eIDJOUPdNnVdh4Gbohp": {
+      "key": "v8eIDJOUPdNnVdh4Gbohp",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "7mmLkj20x20Lh41dpwJv9P"
+        }
+      },
+      "styleProperties": {
+        "gKgwjIeEUbegN87QBkqfg": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7Fwr53ExZrTczXTT9HDbqU": true
+      },
+      "displayOrder": 4
+    },
+    "2Whd5DTYMxkQnfv6DmJQnl": {
+      "key": "2Whd5DTYMxkQnfv6DmJQnl",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Book Now"
+        },
+        "linkPath": {
+          "value": "/Bookingflowone"
+        }
+      },
+      "styleProperties": {
+        "cava6AowzkbK08eVTpxQN": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "40%"
+              },
+              "fontFamily": {
+                "value": "Source Sans 3"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "20px"
+              },
+              "letterSpacing": {
+                "value": "0em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "height": {
+                "value": "50px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1DIMbYiye21pATh7XogPyq": {
+      "key": "1DIMbYiye21pATh7XogPyq",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "designType": {
+          "value": "_outlined"
+        },
+        "label": {
+          "value": "Enquiry"
+        }
+      },
+      "styleProperties": {
+        "6wcP98Q7vUi2mvob9oqVAA": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "40%"
+              },
+              "height": {
+                "value": "50px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3f4ROJqLwI8EEOAMIUhLru": {
+      "key": "3f4ROJqLwI8EEOAMIUhLru",
+      "name": "LeftGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2i5NcAyhq7VBY7fGLClzPL": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            },
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5GrRI7Rew8HrBMDxiIIv9W": true,
+        "3QPGw7QvXj8e3wH3YtsMw": true
+      },
+      "displayOrder": 1
+    },
+    "1X5Eq2jfZ0f8euBSKTYP08": {
+      "key": "1X5Eq2jfZ0f8euBSKTYP08",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Notification%20icon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "5Jrdw1hhdzsv17MPPO5l85": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginRight": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6e9QkCIQHr3eUyd3PyvEZt": {
+      "key": "6e9QkCIQHr3eUyd3PyvEZt",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "XWRyfWmrII3lQ7vse0O4r": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6UkLUKaXr5lajYljyW3Hpl": true,
+        "5EZiimtNFLLGyoRmqCBduL": true
+      },
+      "displayOrder": 1
+    },
+    "5FDLmSag0qWwfHzft3sDTO": {
+      "key": "5FDLmSag0qWwfHzft3sDTO",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Image%20banner.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "1rbYBdo86egyCc2Kbg6Br7": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "image-width": {
+                "value": "100%"
+              }
+            },
+            "ALL": {
+              "image-height": {
+                "value": "144px"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2kANELVrNVW5BAHBBtktRT": {
+      "key": "2kANELVrNVW5BAHBBtktRT",
+      "name": "location",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6vmUqiCDtm2qM8Z10tVKQU": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginLeft": {
+                "value": "15px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "47x2hMuE10NH3Fku6RGlxC": true,
+        "5MMiSh91tn5Y0taFNdebHh": true
+      },
+      "displayOrder": 2
+    },
+    "78Mtvw0gifn1L7ikD1loqc": {
+      "key": "78Mtvw0gifn1L7ikD1loqc",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group%2047656.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4tqFHSjJltDE9YqjBkk0": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginRight": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "7FYWmm3ipK7BzqIet5iNN6": {
+      "key": "7FYWmm3ipK7BzqIet5iNN6",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "74biHT8kIEQ8jVQiSgXXWc": true,
+        "5gd3vvGsqtlNnp4SeOI71W": true
+      }
+    },
+    "1sdLKRbnhF7OwxbjuJjnQT": {
+      "key": "1sdLKRbnhF7OwxbjuJjnQT",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group%2047659.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4tqFHSjJltDE9YqjBkk0": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginRight": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "4JHiVjZhFw2Dlk0wHslJDZ": {
+      "key": "4JHiVjZhFw2Dlk0wHslJDZ",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "67ulw8WhcoC4vqIvYa9Bzt": true,
+        "4eqCQ1coOiLg8bxEh2gccr": true
+      }
+    },
+    "1oJu4Y2LWkEjcyGlOdGYI1": {
+      "key": "1oJu4Y2LWkEjcyGlOdGYI1",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group%2047657.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4tqFHSjJltDE9YqjBkk0": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginRight": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6Nbajvg32jEt0r3tYVRUHK": {
+      "key": "6Nbajvg32jEt0r3tYVRUHK",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "5R1zDDI5uGp8gfSg0NHsZa": true,
+        "3rlDw5nUkKEddy4J15K75s": true
+      }
+    },
+    "6IR6dtxOmghBeoNrvlk5CS": {
+      "key": "6IR6dtxOmghBeoNrvlk5CS",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group%2047415.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4tqFHSjJltDE9YqjBkk0": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginRight": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "7qz52sPmtvjy453sCWj0M7": {
+      "key": "7qz52sPmtvjy453sCWj0M7",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1OTglV4RlVGvy06dIQ9Oa3": true,
+        "3jWHYhfyZLYM7vQ5axWJF3": true
+      }
+    },
+    "204hqUoAA87rhgRH744X3": {
+      "key": "204hqUoAA87rhgRH744X3",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_TERTIARYBG"
+        }
+      },
+      "styleProperties": {
+        "5880e4vTOE2uAfRqvl207g": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "52px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3CyhkvIMgdrI5n8YWqxNzS": true,
+        "3qsGxraj3zYLJSUkhEsBUI": true
+      },
+      "displayOrder": 1
+    },
+    "4J4rTBUyO8cnA1hR6wdrkZ": {
+      "key": "4J4rTBUyO8cnA1hR6wdrkZ",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1aqGEZBjrPqM7jbXRqbSSK": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4zodwyz16AlZjqpQ3e9TTa": true,
+        "6wAgXvWYwJAOaT2j6AWh3H": true
+      },
+      "displayOrder": 2
+    },
+    "7Iqeh0NZeSmAgWM9P8zZxO": {
+      "key": "7Iqeh0NZeSmAgWM9P8zZxO",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_TERTIARYBG"
+        }
+      },
+      "styleProperties": {
+        "5880e4vTOE2uAfRqvl207g": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "52px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7AQygRlKJtj2cmtEFiR9MX": true,
+        "4pzN7MJVggAa3M2crgbyxS": true
+      },
+      "displayOrder": 1
+    },
+    "hxc8uEY0veUHtt9kd4i4B": {
+      "key": "hxc8uEY0veUHtt9kd4i4B",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1aqGEZBjrPqM7jbXRqbSSK": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "20abv3Otv82gppfrzvTGKY": true,
+        "6maqCc5AQB02xkree3kMGM": true
+      },
+      "displayOrder": 2
+    },
+    "35nNCrhw9xIXgGtoBuC3TR": {
+      "key": "35nNCrhw9xIXgGtoBuC3TR",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_TERTIARYBG"
+        }
+      },
+      "styleProperties": {
+        "5880e4vTOE2uAfRqvl207g": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "52px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5iEXpIg6eJgzZXKdwbpSdP": true,
+        "FZ5RkLfwWWcozLzCl24t7": true
+      },
+      "displayOrder": 1
+    },
+    "4BGwyT6ZM2uaz3HPvGFCH5": {
+      "key": "4BGwyT6ZM2uaz3HPvGFCH5",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1aqGEZBjrPqM7jbXRqbSSK": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4xSHNChbAgDUagKvQ4yo7G": true,
+        "2hKFokKt4t6CHiaOCoKtQx": true
+      },
+      "displayOrder": 2
+    },
+    "1Sf0b1ZHWc7zY2tW46hOAu": {
+      "key": "1Sf0b1ZHWc7zY2tW46hOAu",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/mindtre.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6hMBOctX0qqNAPKWXQII5b": {
+      "key": "6hMBOctX0qqNAPKWXQII5b",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/smartwork.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6hIJklkdNuYicT5lPCo6P2": {
+      "key": "6hIJklkdNuYicT5lPCo6P2",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/tablespace.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1LBLVCSlZ0Vau9OUxJuSBo": {
+      "key": "1LBLVCSlZ0Vau9OUxJuSBo",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/nokia.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2OxXdD0J2FVljqafc6tipI": {
+      "key": "2OxXdD0J2FVljqafc6tipI",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group%2047673.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "5EDMFMG1DjNR1aZDkF5vHr": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5JJADNmJ4oMaiO1l8g5CF1": {
+      "key": "5JJADNmJ4oMaiO1l8g5CF1",
+      "name": "Iframe",
+      "type": "Iframe",
+      "properties": {
+        "src": {
+          "value": "https://www.google.com/maps/embed/v1/place?key=AIzaSyAAeNcYzDnjhNjoKgKyDpVeL-_jL07J90A&q=Near Jakkur Lake Road, Nehru Nagar, Yelahanka, Agrahara, Bengaluru, Karnataka 560064"
+        }
+      },
+      "styleProperties": {
+        "2YdFJtILTUBEs1BB2ZBwT2": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2E7f90svzdV4bMNas2A9CY": {
+      "key": "2E7f90svzdV4bMNas2A9CY",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_TERTIARYBG"
+        }
+      },
+      "styleProperties": {
+        "5880e4vTOE2uAfRqvl207g": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "52px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6lwqb7BWTirMswAhPBNvg4": true,
+        "itUaptuArgZnds1ef3YUV": true
+      },
+      "displayOrder": 1
+    },
+    "3DcQndTpZhH4sEsElQbDHB": {
+      "key": "3DcQndTpZhH4sEsElQbDHB",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1aqGEZBjrPqM7jbXRqbSSK": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1GRz41HzyMm4fbZwxFnBHD": true,
+        "402AuwHJ9bINqlR75nipXD": true,
+        "4O34awoHCP48IsI9tDdkXO": true,
+        "3bq8WpkF7bqaeJiT555rEj": true,
+        "72QGd4bGU4WGgPzRey6Zl5": true
+      },
+      "displayOrder": 2
+    },
+    "1LrtyufSbcpTSMfrwdhTJ3": {
+      "key": "1LrtyufSbcpTSMfrwdhTJ3",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_TERTIARYBG"
+        }
+      },
+      "styleProperties": {
+        "5880e4vTOE2uAfRqvl207g": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "52px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2CEU1ps6VrXWpNoCfObybE": true,
+        "2mzuuTWhoBsOlzT4R4a8WM": true
+      },
+      "displayOrder": 1
+    },
+    "6yhZM5ct8IRI1uxEJ3bPf9": {
+      "key": "6yhZM5ct8IRI1uxEJ3bPf9",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1aqGEZBjrPqM7jbXRqbSSK": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "http": {
+                "value": "//localhost:1234/cxapp/SYSTEM/page/propertydetails"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6guKvOcG6xCjb7u4j5AwC8": true,
+        "2JUfjtnyaygctaF1aM2WuW": true,
+        "2bknwqW8hHzJo3zdBcWFR7": true,
+        "6y2C2hBuW6m5VXhOsqLYH2": true
+      },
+      "displayOrder": 2
+    },
+    "2B2ooUOisbAZ4Pk2LvgZV4": {
+      "key": "2B2ooUOisbAZ4Pk2LvgZV4",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "6OPJnKJyPjE71TpWIIByks": true,
+        "3JA3H2j3mclLqx3sndXfnM": true
+      },
+      "displayOrder": 1
+    },
+    "71rOg1vU9nGrmoStway7y6": {
+      "key": "71rOg1vU9nGrmoStway7y6",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "DLrldHusgkuPiRIxN3RbM": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "\\"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1HTqnfer2Jat5jtRooyH0B": true,
+        "8PWFhYRDcOzGtlYQmekHZ": true
+      },
+      "displayOrder": 2
+    },
+    "l5LHL6kWicDyfWD7yZiva": {
+      "key": "l5LHL6kWicDyfWD7yZiva",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "DLrldHusgkuPiRIxN3RbM": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "\\"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4SMt7li4TmsFLJzautWe3x": true,
+        "3l9Hnob394TgBHXPgGAA4Y": true
+      },
+      "displayOrder": 3
+    },
+    "7Fwr53ExZrTczXTT9HDbqU": {
+      "key": "7Fwr53ExZrTczXTT9HDbqU",
+      "name": "CAC",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Centralised Air Conditioning"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        }
+      },
+      "styleProperties": {
+        "4blm9eifM1QfWuJBZAPlQh": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "fontSize": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5GrRI7Rew8HrBMDxiIIv9W": {
+      "key": "5GrRI7Rew8HrBMDxiIIv9W",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/back%20arrow.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "270JZzV6B3YbB82E24hVYv": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3QPGw7QvXj8e3wH3YtsMw": {
+      "key": "3QPGw7QvXj8e3wH3YtsMw",
+      "name": "text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Shriram Hebbal 1"
+        }
+      },
+      "styleProperties": {
+        "CO3Zfc7URqaenyyw1WV3H": {
+          "resolutions": {
+            "ALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontFamily": {
+                "value": "Source Sans 3"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "23px"
+              },
+              "letterSpacing": {
+                "value": "0em"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6UkLUKaXr5lajYljyW3Hpl": {
+      "key": "6UkLUKaXr5lajYljyW3Hpl",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group%2047379.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5EZiimtNFLLGyoRmqCBduL": {
+      "key": "5EZiimtNFLLGyoRmqCBduL",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "By Shriram Properties"
+        },
+        "textColor": {
+          "value": "_coloredText2"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "styleProperties": {
+        "7krMwW0Cy3YhwbYbejz3kB": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "opacity": {
+                "value": "0.4"
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "47x2hMuE10NH3Fku6RGlxC": {
+      "key": "47x2hMuE10NH3Fku6RGlxC",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%281%29.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5MMiSh91tn5Y0taFNdebHh": {
+      "key": "5MMiSh91tn5Y0taFNdebHh",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Hebbal Kempapura, Bangalore"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "styleProperties": {
+        "FlAl69IUf9Db5qJebD13q": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "opacity": {
+                "value": "0.6"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "74biHT8kIEQ8jVQiSgXXWc": {
+      "key": "74biHT8kIEQ8jVQiSgXXWc",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "10.00%"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "ikdg2c8anpwlt8VJQjYhn": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5gd3vvGsqtlNnp4SeOI71W": {
+      "key": "5gd3vvGsqtlNnp4SeOI71W",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "High Rental Yield"
+        }
+      },
+      "styleProperties": {
+        "23ZrFkMV8NovgObpD1oM9g": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "opacity": {
+                "value": "0.4"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "__truncated__": "... 82 more components omitted for corpus"
+  },
+  "name": "propertydetails",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 21,
+  "updatedAt": "2026-04-09 04:27:54.822000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-03-21 14:25:07.639000",
+  "createdBy": "<USER>"
+}

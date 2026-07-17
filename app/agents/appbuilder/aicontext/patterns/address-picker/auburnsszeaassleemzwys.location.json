@@ -1,0 +1,1883 @@
+{
+  "_id": "694923f4b1276d3c28423207",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "location"
+      }
+    }
+  },
+  "rootComponent": "5tDC4cILe6TQuavZzhfVgf",
+  "componentDefinition": {
+    "5tDC4cILe6TQuavZzhfVgf": {
+      "key": "5tDC4cILe6TQuavZzhfVgf",
+      "name": "Page Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "6QKZM518O3p50a3fXj2tBd": true
+      }
+    },
+    "6QKZM518O3p50a3fXj2tBd": {
+      "key": "6QKZM518O3p50a3fXj2tBd",
+      "name": "LOCATION",
+      "type": "Grid",
+      "styleProperties": {
+        "3bLLfouy211D0cVz1pWrQm": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6mBKxQLJZTZSOhY7TjZAgA": true,
+        "3czN5XCoiBxH2RVZ6nru0e": true,
+        "4NBPVsCvV9p2KFFKFZ6jcj": true
+      },
+      "displayOrder": 1
+    },
+    "6mBKxQLJZTZSOhY7TjZAgA": {
+      "key": "6mBKxQLJZTZSOhY7TjZAgA",
+      "name": "BANNER",
+      "type": "Grid",
+      "styleProperties": {
+        "4Na1h4Sg5OlxUeYYPhLoNi": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url('api/files/static/file/SRUJA1/AUBURN/dining-table')"
+              },
+              "alignItems": {
+                "value": "CENTER"
+              },
+              "justifyContent": {
+                "value": "CENTER"
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "backgroundPosition": {
+                "value": "center"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "paddingTop": {
+                "value": "8.33vw"
+              },
+              "paddingBottom": {
+                "value": "8.33vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "480PX"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2BQhXMfP02caEAsaxSD5W5": true,
+        "3EftsHGQgH0AP51GT9Wuiu": true
+      },
+      "displayOrder": 1
+    },
+    "3czN5XCoiBxH2RVZ6nru0e": {
+      "key": "3czN5XCoiBxH2RVZ6nru0e",
+      "name": "content",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3xmGMdWUEtYhuDjNk12W7x": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "6.94vw"
+              },
+              "paddingBottom": {
+                "value": "6.94vw"
+              },
+              "paddingLeft": {
+                "value": "10.42vw"
+              },
+              "paddingRight": {
+                "value": "10.42vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "2.56vw"
+              },
+              "paddingRight": {
+                "value": "2.56vw"
+              },
+              "gap": {
+                "value": "5.13vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5PVITIUugzC0IwYpFiOqMt": true,
+        "6OikEjBOtxiK0KXMP9rN3P": true,
+        "5R7vTJfD2je2eRjSUNdDQH": true
+      },
+      "displayOrder": 2
+    },
+    "4NBPVsCvV9p2KFFKFZ6jcj": {
+      "key": "4NBPVsCvV9p2KFFKFZ6jcj",
+      "name": "contact us",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1zU5aCbFj7mDluo6zz3UMA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "6.94vw"
+              },
+              "paddingBottom": {
+                "value": "6.94vw"
+              },
+              "paddingLeft": {
+                "value": "6.94vw"
+              },
+              "paddingRight": {
+                "value": "6.94vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7CptsQ1mLjNfwBG3Mj0w8N": true,
+        "7eQvjLQ1xDb7atHzMaptAr": true
+      },
+      "displayOrder": 2
+    },
+    "2BQhXMfP02caEAsaxSD5W5": {
+      "key": "2BQhXMfP02caEAsaxSD5W5",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "LOCATIONS\n"
+        }
+      },
+      "styleProperties": {
+        "4ud7a4A8BJOnoYQKmYwNvj": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSeven"
+                }
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontSize": {
+                "value": "4.65vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "4.333vw"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "zIndex": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.18vw"
+              },
+              "lineHeight": {
+                "value": "8.256vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3EftsHGQgH0AP51GT9Wuiu": {
+      "key": "3EftsHGQgH0AP51GT9Wuiu",
+      "name": "overlay",
+      "type": "Grid",
+      "styleProperties": {
+        "16S4DVJJJqFGfEmeJPP61P": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "left": {
+                "value": "0px"
+              },
+              "right": {
+                "value": "0px"
+              },
+              "bottom": {
+                "value": "0px"
+              },
+              "backgroundColor": {
+                "value": "rgba(0, 0, 0, 0.2)"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5PVITIUugzC0IwYpFiOqMt": {
+      "key": "5PVITIUugzC0IwYpFiOqMt",
+      "name": "brooklyn",
+      "type": "Grid",
+      "styleProperties": {
+        "2CQw1ZMWEBP9TBA74doQk7": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "70HJWbdpYDz80rZlAJfORu": true,
+        "7Hx6GAuMdLOm4oxDwMFQaA": true,
+        "3KxjrGlZAmOlRySX2MXllF": true,
+        "6gSjngAj8bjShrLoV45hBA": true
+      },
+      "displayOrder": 1
+    },
+    "6OikEjBOtxiK0KXMP9rN3P": {
+      "key": "6OikEjBOtxiK0KXMP9rN3P",
+      "name": "food truck",
+      "type": "Grid",
+      "styleProperties": {
+        "3rKCutEVGYgNkikVNHtxG3": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2D4IgD3P4Ja163hI9iaYZx": true,
+        "1DmepM1rLPV26FvEq6C0cO": true,
+        "rkFur3KK34SrYEenilQVp": true,
+        "6yiVUvt8rNBEuZevMB0ZU0": true
+      },
+      "displayOrder": 2
+    },
+    "5R7vTJfD2je2eRjSUNdDQH": {
+      "key": "5R7vTJfD2je2eRjSUNdDQH",
+      "name": "queens",
+      "type": "Grid",
+      "styleProperties": {
+        "1oPOx2iauhvwWEHfzRUzeu": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6MXTInoAATScrlJi49fyhZ": true,
+        "25aYnMmhiAWkWbpOjlPiUY": true,
+        "5o63wTGzh7TF0QNbrO8wOP": true,
+        "ojzEB4XplACOyUyda8I4n": true
+      },
+      "displayOrder": 2
+    },
+    "7CptsQ1mLjNfwBG3Mj0w8N": {
+      "key": "7CptsQ1mLjNfwBG3Mj0w8N",
+      "name": "GETIN TOCH",
+      "type": "Grid",
+      "styleProperties": {
+        "3yjeJGQlHB0kWpEJ1DvbNL": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2.08vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "3.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "60paTnfujrRvA179gOPJce": true,
+        "2M74najvWFOzViHyBTQSwJ": true
+      },
+      "displayOrder": 1
+    },
+    "7eQvjLQ1xDb7atHzMaptAr": {
+      "key": "7eQvjLQ1xDb7atHzMaptAr",
+      "name": "user intake",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4VcmrEn3qIjex8z3c3qncP": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage:hover": {
+                "value": "linear-gradient(BLAC)"
+              },
+              "gap": {
+                "value": "2.43vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "gap": {
+                "value": "5.13vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1BSBd8MAdjRZxMeqK53vk0": true,
+        "2Lhd1Og5Cto3dSvVhjcUMW": true,
+        "3Imi5LPZQvjfPzjkoL9A1q": true,
+        "1QD1BezEW1dcymLYl6ADLP": true,
+        "7wWrfuFxtry5O9fnZhwPPX": true
+      },
+      "displayOrder": 1
+    },
+    "70HJWbdpYDz80rZlAJfORu": {
+      "key": "70HJWbdpYDz80rZlAJfORu",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "(555) 555-5555\n<EMAIL>"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1IC0WVM2iA2Ry7ffDc2qd7": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7Hx6GAuMdLOm4oxDwMFQaA": {
+      "key": "7Hx6GAuMdLOm4oxDwMFQaA",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "123 Demo Street \nNew York, NY12345\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1FDzczbCbWH2aPlmWliUYh": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3KxjrGlZAmOlRySX2MXllF": {
+      "key": "3KxjrGlZAmOlRySX2MXllF",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "BROOKLYN\n"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "3DC2THUh2halfis0jWG6iB": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontSize": {
+                "value": "1.42vw"
+              },
+              "lineHeight": {
+                "value": "2.222vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.36vw"
+              },
+              "lineHeight": {
+                "value": "4.87vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6gSjngAj8bjShrLoV45hBA": {
+      "key": "6gSjngAj8bjShrLoV45hBA",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Monday - Sunday \n10am \u2013 10pm\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "7ql5K734LRzbLfSCgQisqb": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "2D4IgD3P4Ja163hI9iaYZx": {
+      "key": "2D4IgD3P4Ja163hI9iaYZx",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "(555) 555-5555\n<EMAIL>\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "43KFPvGarLZ9hw1eeOtFiG": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1DmepM1rLPV26FvEq6C0cO": {
+      "key": "1DmepM1rLPV26FvEq6C0cO",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "123 Demo Street \nNew York, NY12345\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4Ef38rXvE9PpgFOOOhhybM": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "rkFur3KK34SrYEenilQVp": {
+      "key": "rkFur3KK34SrYEenilQVp",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "FOOD TRUCK\n\n"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "3v31lVQg96vvl9akfUoiOY": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontSize": {
+                "value": "1.42vw"
+              },
+              "lineHeight": {
+                "value": "2.222vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.36vw"
+              },
+              "lineHeight": {
+                "value": "4.87vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6yiVUvt8rNBEuZevMB0ZU0": {
+      "key": "6yiVUvt8rNBEuZevMB0ZU0",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Monday - Sunday \n10am \u2013 10pm\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "Ptu6UTix9f7uXh7kP7As8": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "6MXTInoAATScrlJi49fyhZ": {
+      "key": "6MXTInoAATScrlJi49fyhZ",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "(555) 555-5555\n<EMAIL>"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "2JuHtIeBtI5TTfFrWq7WDR": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "25aYnMmhiAWkWbpOjlPiUY": {
+      "key": "25aYnMmhiAWkWbpOjlPiUY",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "123 Demo Street \nNew York, NY12345\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "47DrPYeFpkKU5YcIIBvdbi": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5o63wTGzh7TF0QNbrO8wOP": {
+      "key": "5o63wTGzh7TF0QNbrO8wOP",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "QUEENS\n"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "6yOR2trVnbybAKX8EbwYVU": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontSize": {
+                "value": "1.42vw"
+              },
+              "lineHeight": {
+                "value": "2.222vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.36vw"
+              },
+              "lineHeight": {
+                "value": "4.87vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "ojzEB4XplACOyUyda8I4n": {
+      "key": "ojzEB4XplACOyUyda8I4n",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Monday - Sunday \n10am \u2013 10pm\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6FbMEiX8LQI9LhM5Wwbwng": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "60paTnfujrRvA179gOPJce": {
+      "key": "60paTnfujrRvA179gOPJce",
+      "name": "media inquries",
+      "type": "Grid",
+      "styleProperties": {
+        "7nlDZcshIjRsdLo9MeAHke": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "17AwlkSsjcxflIj1YPjWcS": true,
+        "2UJfFumkEc11jaoM7N7g0l": true
+      },
+      "displayOrder": 1
+    },
+    "2M74najvWFOzViHyBTQSwJ": {
+      "key": "2M74najvWFOzViHyBTQSwJ",
+      "name": "public reactions",
+      "type": "Grid",
+      "styleProperties": {
+        "1T8HwoZam6ZV81N0DdtR4X": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4oXoCPKw6LWpMCmEu5hWgj": true,
+        "5v1269QHaTdKqyndSRw7dn": true
+      },
+      "displayOrder": 3
+    },
+    "1BSBd8MAdjRZxMeqK53vk0": {
+      "key": "1BSBd8MAdjRZxMeqK53vk0",
+      "name": "name grid",
+      "type": "Grid",
+      "styleProperties": {
+        "51Hk1Pqs5DiE5sitkqdvuf": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "66O5pndttn8bgLpfQMsJIQ": true,
+        "6ZzMSsBVH8zHbpYX5UWuLS": true
+      },
+      "displayOrder": 1
+    },
+    "2Lhd1Og5Cto3dSvVhjcUMW": {
+      "key": "2Lhd1Og5Cto3dSvVhjcUMW",
+      "name": "F &L NAME",
+      "type": "Grid",
+      "styleProperties": {
+        "3219O95BIunGApkiAdbD5w": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "FLEX"
+              },
+              "flexDirection": {
+                "value": "ROW"
+              },
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2jJind1TldFN9VwfWFVmRR": true,
+        "2ii51BR8pBF4hypLQECdgG": true
+      },
+      "displayOrder": 2
+    },
+    "3Imi5LPZQvjfPzjkoL9A1q": {
+      "key": "3Imi5LPZQvjfPzjkoL9A1q",
+      "name": "MASSAGE",
+      "type": "Grid",
+      "styleProperties": {
+        "73gAhEkeesE4FrRnz8AfXH": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3NXvT5vOyNki9XUTCwvmjv": true
+      },
+      "displayOrder": 4
+    },
+    "1QD1BezEW1dcymLYl6ADLP": {
+      "key": "1QD1BezEW1dcymLYl6ADLP",
+      "name": "E MAIL",
+      "type": "Grid",
+      "styleProperties": {
+        "3efiarBqsx9AeLGCfNvTwn": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4E7sqmrigex2U8B3nZNuH6": true
+      },
+      "displayOrder": 3
+    },
+    "7wWrfuFxtry5O9fnZhwPPX": {
+      "key": "7wWrfuFxtry5O9fnZhwPPX",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Send"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "2Oxk128xE84FYQGuM8ANWz": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "102px"
+              },
+              "height": {
+                "value": "58px"
+              },
+              "fontFamily": {
+                "value": "Noto Sans"
+              },
+              "fontSize": {
+                "value": "1.1rem"
+              },
+              "borderTopLeftRadius": {
+                "value": "40px"
+              },
+              "borderTopRightRadius": {
+                "value": "40px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "40px"
+              },
+              "borderBottomRightRadius": {
+                "value": "40px"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "30px"
+              },
+              "paddingTop": {
+                "value": "25px"
+              },
+              "paddingBottom": {
+                "value": "25px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              },
+              "backgroundImage": {
+                "value": "linear-gradient(WHITE)"
+              },
+              "borderTopWidth": {
+                "value": "2px"
+              },
+              "borderRightWidth": {
+                "value": "2px"
+              },
+              "borderBottomWidth": {
+                "value": "2px"
+              },
+              "borderLeftWidth": {
+                "value": "2px"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              },
+              "borderRightColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              },
+              "borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              },
+              "color:hover": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSeven"
+                }
+              },
+              "backgroundImage:hover": {
+                "value": "linear-gradient(BLACK)"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "6.41vw"
+              },
+              "paddingBottom": {
+                "value": "6.41vw"
+              },
+              "paddingLeft": {
+                "value": "7.69vw"
+              },
+              "paddingRight": {
+                "value": "7.69vw"
+              },
+              "fontFamily": {
+                "value": "Noto Sans"
+              },
+              "fontSize": {
+                "value": "4.1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "17AwlkSsjcxflIj1YPjWcS": {
+      "key": "17AwlkSsjcxflIj1YPjWcS",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "(555) 555-5555\n<EMAIL>"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6SBPs1BWSQcTiMcBSmWZyC": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2UJfFumkEc11jaoM7N7g0l": {
+      "key": "2UJfFumkEc11jaoM7N7g0l",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "MEDIA INQUIRIES \n"
+        }
+      },
+      "styleProperties": {
+        "46CaTk7Kotzf24pgWJAZcf": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontSize": {
+                "value": "1.42vw"
+              },
+              "lineHeight": {
+                "value": "2.222vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.36vw"
+              },
+              "lineHeight": {
+                "value": "4.87vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4oXoCPKw6LWpMCmEu5hWgj": {
+      "key": "4oXoCPKw6LWpMCmEu5hWgj",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "PUBLIC REACTIONS\n"
+        }
+      },
+      "styleProperties": {
+        "e6bYHglFyBPfOSIRaDRT6": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontSize": {
+                "value": "1.42vw"
+              },
+              "lineHeight": {
+                "value": "2.222vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.36vw"
+              },
+              "lineHeight": {
+                "value": "4.87vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5v1269QHaTdKqyndSRw7dn": {
+      "key": "5v1269QHaTdKqyndSRw7dn",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "(555) 555-5555\n<EMAIL>"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6oAXdTQt790oJjkQwpfrya": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSix"
+                },
+                "value": "rgb(17, 16, 16)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.1vw"
+              },
+              "lineHeight": {
+                "value": "4.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "66O5pndttn8bgLpfQMsJIQ": {
+      "key": "66O5pndttn8bgLpfQMsJIQ",
+      "name": "name",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Name"
+        }
+      },
+      "styleProperties": {
+        "5MLUblk4FmlahSbJzCdDJc": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "19px"
+              },
+              "lineHeight": {
+                "value": "1.5rem"
+              },
+              "color": {
+                "value": "rgb(11, 10, 10)"
+              },
+              "fontFamily": {
+                "value": "Arial"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.87vw"
+              },
+              "lineHeight": {
+                "value": "5.38vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6ZzMSsBVH8zHbpYX5UWuLS": {
+      "key": "6ZzMSsBVH8zHbpYX5UWuLS",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "(required)\n"
+        }
+      },
+      "styleProperties": {
+        "4P8Yny47yGExt2swF1VxAY": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2rem"
+              },
+              "lineHeight": {
+                "value": "1.5rem"
+              },
+              "fontFamily": {
+                "value": "Noto Sans,Arial"
+              },
+              "color": {
+                "value": "rgb(152, 140, 140)"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.5vw"
+              },
+              "lineHeight": {
+                "value": "5.1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2jJind1TldFN9VwfWFVmRR": {
+      "key": "2jJind1TldFN9VwfWFVmRR",
+      "name": "F NAME",
+      "type": "Grid",
+      "styleProperties": {
+        "5fibaNyx9Ht2jFi4XnBf0z": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "50%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3kdGrTmY24uDh85SFMMeig": true
+      },
+      "displayOrder": 1
+    },
+    "2ii51BR8pBF4hypLQECdgG": {
+      "key": "2ii51BR8pBF4hypLQECdgG",
+      "name": "L NAME",
+      "type": "Grid",
+      "styleProperties": {
+        "2E81aSAWPP8RGEU6vcfu3": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "50%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5dF7I3djunxp0xUoLZjLrU": true
+      },
+      "displayOrder": 2
+    },
+    "3NXvT5vOyNki9XUTCwvmjv": {
+      "key": "3NXvT5vOyNki9XUTCwvmjv",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Message"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        },
+        "noFloat": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1G6v1tzGlkDMDtTVA7Fm31": {
+          "resolutions": {
+            "ALL": {
+              "label-fontFamily": {
+                "value": "Arial"
+              },
+              "label-fontSize": {
+                "value": "1.2vw"
+              },
+              "label-fontWeight": {
+                "value": "400"
+              },
+              "label-color": {
+                "value": "black"
+              },
+              "borderTopLeftRadius": {
+                "value": "0px"
+              },
+              "borderTopRightRadius": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius": {
+                "value": "0px"
+              },
+              "inputBox-height": {
+                "value": "6.94vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "label-fontSize": {
+                "value": "4.1vw"
+              },
+              "inputBox-height": {
+                "value": "25.64vw"
+              },
+              "height": {
+                "value": "3.47vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4E7sqmrigex2U8B3nZNuH6": {
+      "key": "4E7sqmrigex2U8B3nZNuH6",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "noFloat": {
+          "value": true
+        },
+        "label": {
+          "value": "Email"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "7uGudVgeGIRiUjnnEladNy": {
+          "resolutions": {
+            "ALL": {
+              "label-fontFamily": {
+                "value": "Arial"
+              },
+              "label-fontSize": {
+                "value": "1.2vw"
+              },
+              "label-fontWeight": {
+                "value": "400"
+              },
+              "label-color": {
+                "value": "black"
+              },
+              "height": {
+                "value": "3.47vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0px"
+              },
+              "borderTopRightRadius": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "label-fontSize": {
+                "value": "4.1vw"
+              },
+              "height": {
+                "value": "12.82vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3kdGrTmY24uDh85SFMMeig": {
+      "key": "3kdGrTmY24uDh85SFMMeig",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "noFloat": {
+          "value": true
+        },
+        "label": {
+          "value": "First Name"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "42b09VfVCzrqHdL2ubS11y": {
+          "resolutions": {
+            "ALL": {
+              "label-fontFamily": {
+                "value": "Arial"
+              },
+              "label-fontSize": {
+                "value": "1.2vw"
+              },
+              "label-fontWeight": {
+                "value": "400"
+              },
+              "label-color": {
+                "value": "black"
+              },
+              "height": {
+                "value": "3.47vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0px"
+              },
+              "borderTopRightRadius": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "label-fontSize": {
+                "value": "4.1vw"
+              },
+              "height": {
+                "value": "12.82vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5dF7I3djunxp0xUoLZjLrU": {
+      "key": "5dF7I3djunxp0xUoLZjLrU",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "noFloat": {
+          "value": true
+        },
+        "label": {
+          "value": "Last Name"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "7ynIrRXGlWoG8m6yfU0OON": {
+          "resolutions": {
+            "ALL": {
+              "label-fontFamily": {
+                "value": "Arial"
+              },
+              "label-fontSize": {
+                "value": "1.2vw"
+              },
+              "label-fontWeight": {
+                "value": "400"
+              },
+              "label-color": {
+                "value": "black"
+              },
+              "height": {
+                "value": "3.47vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0px"
+              },
+              "borderTopRightRadius": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "label-fontSize": {
+                "value": "4.1vw"
+              },
+              "height": {
+                "value": "12.82vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    }
+  },
+  "name": "location",
+  "clientCode": "SRUJA1",
+  "appCode": "auburnsszeaassleemzwys",
+  "title": "location",
+  "version": 4,
+  "updatedAt": "2025-12-23 13:35:53.652000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-12-22 10:56:52.979000",
+  "createdBy": "<USER>"
+}

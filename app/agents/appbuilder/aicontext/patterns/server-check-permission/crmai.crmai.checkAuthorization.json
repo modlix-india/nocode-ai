@@ -1,0 +1,231 @@
+{
+  "_id": "67ebefca3bac9071fbc842b7",
+  "definition": {
+    "name": "checkAuthorization",
+    "namespace": "crmai",
+    "parameters": {
+      "crmRole": {
+        "parameterName": "crmRole",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "action": {
+        "parameterName": "action",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "subAction": {
+        "parameterName": "subAction",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "actualBinding": {
+        "statementName": "actualBinding",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 29.66666158040357,
+          "top": 389.33331807454425
+        },
+        "parameterMap": {
+          "name": {
+            "777IEyTsbPR5IwNQ1A13ht": {
+              "key": "777IEyTsbPR5IwNQ1A13ht",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "actualBinding"
+            }
+          },
+          "schema": {
+            "4APtlof7ZzRvNEAIZXIAb": {
+              "key": "4APtlof7ZzRvNEAIZXIAb",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "STRING"
+              }
+            }
+          }
+        },
+        "comment": "Set schema type for actualBinding"
+      },
+      "fullBinding": {
+        "statementName": "fullBinding",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 489.66666158040357,
+          "top": 387.333329518636
+        },
+        "parameterMap": {
+          "name": {
+            "46KrYndUKKZEiNpgtsobUD": {
+              "key": "46KrYndUKKZEiNpgtsobUD",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "fullBinding"
+            }
+          },
+          "schema": {
+            "6veEAsIoBbE0El4075HCWa": {
+              "key": "6veEAsIoBbE0El4075HCWa",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "STRING"
+              }
+            }
+          }
+        },
+        "comment": "Set schema type for fullBinding",
+        "dependentStatements": {
+          "Steps__d-o-t__set_actualBinding_value__d-o-t__output": true
+        }
+      },
+      "set_actualBinding_value": {
+        "statementName": "set_actualBinding_value",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 251.99999491373688,
+          "top": 122.66666666666663
+        },
+        "parameterMap": {
+          "name": {
+            "1MGSd2nBkk6RCkEJRGdxP4": {
+              "key": "1MGSd2nBkk6RCkEJRGdxP4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.actualBinding"
+            }
+          },
+          "value": {
+            "4FfzxmcxziNUA6F9ac20i0": {
+              "key": "4FfzxmcxziNUA6F9ac20i0",
+              "type": "EXPRESSION",
+              "expression": "Arguments.crmRole + \".\" + Arguments.action + \".\" + Arguments.subAction",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__actualBinding__d-o-t__output": true
+        },
+        "comment": "setting actualBinding_value from arguments -> taking three arguments and setting it to single"
+      },
+      "set_fullBinding_value": {
+        "statementName": "set_fullBinding_value",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 595.9999949137368,
+          "top": 702.9999961853026
+        },
+        "parameterMap": {
+          "name": {
+            "5Ev56F8fYV01URNGqHcgsW": {
+              "key": "5Ev56F8fYV01URNGqHcgsW",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.fullBinding"
+            }
+          },
+          "value": {
+            "IBsDrWuXVzLpcLAPy6pHQ": {
+              "key": "IBsDrWuXVzLpcLAPy6pHQ",
+              "type": "EXPRESSION",
+              "expression": "Steps.getUserRoles.output.userRoles.{{Context.actualBinding}}",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__fullBinding__d-o-t__output": true
+        },
+        "comment": "setting value for fullBinding to get actual or checking elegibilityf"
+      },
+      "getUserRoles": {
+        "statementName": "getUserRoles",
+        "name": "getUserRoles",
+        "namespace": "crmai",
+        "position": {
+          "left": 94.66666158040363,
+          "top": 801.6666564941406
+        },
+        "comment": "getting user roles from other server function"
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1129.33332824707,
+          "top": 376.66665140787745
+        },
+        "parameterMap": {
+          "results": {
+            "6km2bkP9NPphQWu35OKmfV": {
+              "key": "6km2bkP9NPphQWu35OKmfV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "isAuthorized",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.fullBinding"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set_fullBinding_value__d-o-t__output": true
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "isAuthorized": {
+            "type": [
+              "STRING",
+              "BOOLEAN"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "crmai.checkAuthorization",
+  "message": "From transport : 0bbcTLjPprd7Iaah3oYroY",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:19:09.070000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:53:14.153000",
+  "createdBy": "<USER>"
+}

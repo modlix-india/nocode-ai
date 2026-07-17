@@ -1,0 +1,28 @@
+{
+  "_id": "65bb3cc85f10fd7837e7c0dc",
+  "schema": {
+    "name": "Section",
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1
+  },
+  "uniqueName": "landingpages_system_trwvculy0orp",
+  "isAudited": false,
+  "isVersioned": true,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "createAuth": "Authorities.Logged_IN",
+  "readAuth": "Authorities.Logged_IN",
+  "updateAuth": "Authorities.Logged_IN",
+  "deleteAuth": "Authorities.Logged_IN",
+  "name": "Section",
+  "message": "From transport : 24jcLIvMHfuDAcrpoFVk0b",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 4,
+  "updatedAt": "2024-06-10 17:54:06.118000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-02-01 06:40:08.507000",
+  "createdBy": "<USER>"
+}

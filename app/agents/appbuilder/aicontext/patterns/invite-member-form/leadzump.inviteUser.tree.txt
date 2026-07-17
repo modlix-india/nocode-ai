@@ -1,0 +1,65 @@
+- 72ZDLYUb3t5XvKbyvD3HAN (Grid) PageGrid
+  - 4fgZ2mXrlbIrdVxg2RQs7v (Grid) Main Grid
+    - 7qbPgOdOIowRSDWCepIWui (Grid) Quote grid
+      - 2M6o8YzU0MrIVTEtoRq9wl (Image) Open
+      - 5UppzRRaJm9h5x41f5y7CX (Image) quote
+      - 45lrwgi5FdueYbc1iYpeYS (Image) Close
+    - 42X0WLcw07M3IF4a9HQwxY (Grid) Signin/Signup panel
+      - 10bQWjCRQWV26LGqEb1xuX (Image) Image
+      - 1PrMTT701giPsQeWks85lT (Grid) verify the otp
+        - 5ugkdqyFtgl8M1eDwbIi4f (Grid) Message header
+          - 7FPHOEluTJrzSknJN0h3fF (Text) Heading
+          - XeNt9pH1burZP7sKLsYxl (Text) Message
+          - 2MCUinCw1hO0dZ4YhQlXME (Text) user email
+        - 1fTVrLR3l1C5VD7AyF76yV (Otp) Otp
+        - 38WiO1WAFyhlgR4UXZbZGH (Grid) verify button
+          - Vr0dG4HeTVLgAf7Fspn2H (Button) Verify OTP
+          - 7gAvv1WY2QioNOYQxVeing (Grid) Verify message
+            - 5S1XdSAjPLbr3fCEneI6Uf (Text) Text
+            - 4GaFKIEiRTkE2V8gGSrRh8 (Button) button
+            - 1YLzm18GZGvtKzrKCPnw13 (Text) Text
+      - 5NL4px63uiistxw8nY8FMA (Grid) Signup post otp
+        - 6hfV4gOH2XGPrkNScofues (Grid) Details
+          - 2cHP0vFEFZephmGqgP2rDe (TextBox) First Name
+          - 6FqlmY0jHCiuSXUZVzwMyf (TextBox) Last Name
+          - 66rDpAPYlVGWZeyr3FvP06 (PhoneNumber) PhoneNumber
+          - 24Y2BGWxxruj52QeFn4BD6 (Grid) Password
+            - 7IJxY2hU8Tbtbfmlh7CZxW (TextBox) Password
+            - 4XNtoiJOVagLTRIbDlr91R (Text) validation
+            - 20Oc32HKvg5YRW9j7Ehvro (Grid) PasswordIndicator
+              - 1ioBVSJQmpzNXuNWkyRrcy (Grid) Indicators
+                - 2j73WEZCWhgTUE8HSNPBO0 (Grid) LineOne
+                - 6UbyjOIVjC6mVhehAUvKgc (Grid) LineTwo
+                - 3nTNM0MTN79L8ZZj00mzr8 (Grid) LineThree
+              - 4RpbDUkeBsgrwE3V8eOXu8 (Button) button
+              - 5TfrmmYk5rudh6LhKVAy7a (Grid) InfoContainerTs
+                - 4Py8lsBrSuyYc471AWFfzu (Image) Image
+                - 4rxDigpHEXHX4theOgKrPa (Grid) Grid
+                  - 5UkXoagbqCSSklIsHyTf9V (Text) Header
+                  - 45610AOm2vpHWQhZczPVgY (ArrayRepeater) Repeator
+                    - zngNS1hIMRCr97nZTULPg (Grid) Grid
+                      - 38Bv5Dx2wi2siRgAFODw71 (Image) Image
+                      - 4SUz5BZmCmQePnk9FXUpc7 (Text) Text
+                  - 3K5alFd2OPYWOky2L7QCjt (Grid) InfoContainer
+                    - 2c28gT91jo3KChFQQUPxKl (Grid) Upper Condition Grid
+                      - hiujslYF2vnAqYPc8AJVa (Icon) Icon
+                      - 6qDVvIAYwGD6eA9olQwKgK (Text) Text
+                    - 1G4zmAVI3aW5DlWnJ4VPh8 (Grid) Lower Condition Grid
+                      - 5LDmyJIcGBXnmjEgOKYMzf (Icon) Icon
+                      - 2MTJi5XSM8hDWBkMhIJfxg (Text) Text
+                    - sBv2f1pw1pIYjuqM07mBw (Grid) char Condition Grid
+                      - 1OvvZgxd6UH6CvnK7311Ps (Icon) Icon
+                      - 2PbwgHdv9P7QZO0G27IkoG (Text) Text
+                    - 1dqhio8ZK7dPDdWIb0k7vr (Grid) min length Condition Grid
+                      - kYbp1Zfh9lQPSGIE9uu22 (Icon) Icon
+                      - 2xZkHKbm2rHFdQOWwGEheA (Text) Text
+                    - 2mBI2NDlMVzTErmGGrHNmt (Grid) one digit Condition Grid
+                      - 70ro0a85XL07caYYjRCrK5 (Icon) Icon
+                      - 2SjejsDpKTeDDZfxpepiQy (Text) Text
+                    - 1e9GUlTepJt8sPN4a7FUFL (Grid) max length Condition Grid
+                      - 6qLtVGJFVSbg42rza7t1rD (Icon) Icon
+                      - 7zsuibAzn1nNgLvit6EEnX (Text) Text
+        - 4HEFn8BDCKlLlTd5McqP42 (Button) Accept invite
+  - 1ViBIIhVQK6miHzJQvGUTD (Grid) signInStatusGrid
+    - 2ZT2nomG337rMvIUpLKTuw (Image) Image
+    - 2UxaZu2REXyCbgEfCzBZig (Text) signInText

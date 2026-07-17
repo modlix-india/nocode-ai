@@ -1,0 +1,19 @@
+{
+  "_id": "6489594cce5f9b3a0e3553ef",
+  "schema": {
+    "ref": "LandingPages.lead"
+  },
+  "uniqueName": "landingpages_system_tnzkevvp1xko",
+  "isAudited": true,
+  "isVersioned": true,
+  "isAppLevel": false,
+  "name": "LeadStorage",
+  "message": "From transport : 0g9vwVnDiHsWwKvFGHNgyk",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 3,
+  "updatedAt": "2024-02-01 06:40:08.569000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-06-14 06:08:12.414000",
+  "createdBy": "<USER>"
+}

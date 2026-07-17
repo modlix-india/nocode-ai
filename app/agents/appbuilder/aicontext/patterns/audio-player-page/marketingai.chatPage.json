@@ -1,0 +1,1546 @@
+{
+  "_id": "69525ed3ae87785ee66ee83a",
+  "properties": {
+    "onLoadEvent": "2qwNtI6rR1Iy778gZoVZzr",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "2qwNtI6rR1Iy778gZoVZzr": {
+      "name": "onLoad",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 270.6825408935547,
+            "top": 203.52777535574776
+          },
+          "parameterMap": {
+            "path": {
+              "20VpzcYZI3qPlUwAyowxq4": {
+                "key": "20VpzcYZI3qPlUwAyowxq4",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userData"
+              }
+            },
+            "value": {
+              "7v8Ycs2Zdg6w4qsEAFyjPc": {
+                "key": "7v8Ycs2Zdg6w4qsEAFyjPc",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1059.5386913844516,
+            "top": 217.6875
+          },
+          "parameterMap": {
+            "value": {
+              "6dFiwIymNjTFrDNQGpP4Xm": {
+                "key": "6dFiwIymNjTFrDNQGpP4Xm",
+                "type": "EXPRESSION",
+                "expression": "Steps.postRequest.output.data",
+                "order": 1
+              }
+            },
+            "path": {
+              "3Gn0g8WTw9PalV9dZmvatd": {
+                "key": "3Gn0g8WTw9PalV9dZmvatd",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.message"
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2217.1315104166665,
+            "top": 240.48697916666652
+          },
+          "parameterMap": {
+            "path": {
+              "3L9AK0LvUMbX1u9P8ai1J0": {
+                "key": "3L9AK0LvUMbX1u9P8ai1J0",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.scrapingStatus"
+              }
+            },
+            "value": {
+              "6VOD9XQuoppcyOVKST135B": {
+                "key": "6VOD9XQuoppcyOVKST135B",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "comment": "setting_scraping_status_to_true\n",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2528.798177083333,
+            "top": 238.82031249999994
+          },
+          "parameterMap": {
+            "path": {
+              "2DPmw0mOPTr5kYZtWaAYrP": {
+                "key": "2DPmw0mOPTr5kYZtWaAYrP",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.generatingSummeryStatus"
+              }
+            },
+            "value": {
+              "3VlxWflubqJi9dAMLxG8MA": {
+                "key": "3VlxWflubqJi9dAMLxG8MA",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "fetchingCustomersAccountsMCC": {
+          "statementName": "fetchingCustomersAccountsMCC",
+          "name": "fetchingCustomersAccountsMCC",
+          "namespace": "_",
+          "position": {
+            "left": 2888.9999999999995,
+            "top": 342.79687499999994
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore4__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1445.6815403529574,
+            "top": 225.08779784611292
+          },
+          "parameterMap": {
+            "value": {
+              "56iQmyeg9m8ePQpiLqyC0q": {
+                "key": "56iQmyeg9m8ePQpiLqyC0q",
+                "type": "EXPRESSION",
+                "expression": "Page.message.session_id",
+                "order": 1
+              }
+            },
+            "path": {
+              "7tRQsPTLRZ5PwIIESdXwBW": {
+                "key": "7tRQsPTLRZ5PwIIESdXwBW",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.sessionId"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1812.3815104166663,
+            "top": 229.67187499999994
+          },
+          "parameterMap": {
+            "path": {
+              "FO5TnXkdvn7GAcZPTFsdT": {
+                "key": "FO5TnXkdvn7GAcZPTFsdT",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.collectedFields"
+              }
+            },
+            "value": {
+              "5OEHm09KM2OUptnHvMSMRp": {
+                "key": "5OEHm09KM2OUptnHvMSMRp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "text": "Business Name",
+                    "status": false,
+                    "field": "businessName",
+                    "icon": "fa fa-solid fa-message"
+                  },
+                  {
+                    "text": "Website URL",
+                    "status": false,
+                    "field": "websiteURL",
+                    "icon": "fa fa-solid fa-link"
+                  },
+                  {
+                    "text": "Budget Amount",
+                    "status": false,
+                    "field": "budget",
+                    "icon": "fa fa-solid fa-coins"
+                  },
+                  {
+                    "text": "Campaign Duration",
+                    "status": false,
+                    "field": "durationDays",
+                    "icon": "fa fa-regular fa-clock"
+                  },
+                  {
+                    "text": "Select account",
+                    "status": false,
+                    "field": "loginCustomerId",
+                    "icon": "fa fa-solid fa-user"
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "setStore2_Copy_1": {
+          "statementName": "setStore2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 37.80000305175781,
+            "top": 211.54999542236317
+          },
+          "parameterMap": {
+            "value": {
+              "3rIEcfOvw4AobVGA1v8KKU": {
+                "key": "3rIEcfOvw4AobVGA1v8KKU",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            },
+            "path": {
+              "5gXzPx6b00Pw52p70RAJjj": {
+                "key": "5gXzPx6b00Pw52p70RAJjj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.responseData"
+              }
+            }
+          }
+        },
+        "postRequest": {
+          "statementName": "postRequest",
+          "name": "PostRequest",
+          "namespace": "CoreServices.REST",
+          "position": {
+            "left": 632.5386913844517,
+            "top": 80.83035714285714
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "url": {
+              "iGhxFszADJTFhX9zSKerf": {
+                "key": "iGhxFszADJTFhX9zSKerf",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/api/ds/chat/start-session"
+              }
+            },
+            "appCode": {
+              "2rTfpkGPLOsn0uiSmIkdEs": {
+                "key": "2rTfpkGPLOsn0uiSmIkdEs",
+                "type": "VALUE",
+                "expression": "",
+                "value": "marketingai"
+              }
+            },
+            "connectionName": {
+              "2WDuttA1TzsBs5fmENUTkm": {
+                "key": "2WDuttA1TzsBs5fmENUTkm",
+                "type": "VALUE",
+                "order": 1,
+                "value": "TESTCHATAI"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "67rbwYlJt2J1comHBxXkvu": {
+      "name": "fetchingCustomersAccountsMCC",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 807.4872741699218,
+            "top": 254.40450541178382
+          },
+          "parameterMap": {
+            "path": {
+              "s7TVbfDK8XAFeKIC7CEnk": {
+                "key": "s7TVbfDK8XAFeKIC7CEnk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.googleAccounts"
+              }
+            },
+            "value": {
+              "5ZaNm52lEvsnhkyZX20hNL": {
+                "key": "5ZaNm52lEvsnhkyZX20hNL",
+                "type": "EXPRESSION",
+                "expression": "Steps.getRequest.output.data.resourceNames",
+                "order": 1
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 1198.3761561711628,
+            "top": 240.73783874511713
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "source": {
+              "3XzrqkRA3awDqwMEZdnYuU": {
+                "key": "3XzrqkRA3awDqwMEZdnYuU",
+                "type": "EXPRESSION",
+                "expression": "Page.googleAccounts",
+                "order": 1
+              }
+            }
+          }
+        },
+        "split": {
+          "statementName": "split",
+          "name": "Split",
+          "namespace": "System.String",
+          "position": {
+            "left": 1504.7095006306963,
+            "top": 271.4045054117838
+          },
+          "parameterMap": {
+            "string": {
+              "6EbsC0Qv7I9tAR9KcSxXKK": {
+                "key": "6EbsC0Qv7I9tAR9KcSxXKK",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "6ZwUDM91vlNQnd06GFVSAk": {
+                "key": "6ZwUDM91vlNQnd06GFVSAk",
+                "type": "EXPRESSION",
+                "expression": "\"/\"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2557.339131673177,
+            "top": 352.07117207845045
+          },
+          "parameterMap": {
+            "path": {
+              "3bd9taleioLgPsh9Zxn3Y6": {
+                "key": "3bd9taleioLgPsh9Zxn3Y6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.customer.id"
+              }
+            },
+            "value": {
+              "vcfctR5bENA54UxW8gybh": {
+                "key": "vcfctR5bENA54UxW8gybh",
+                "type": "EXPRESSION",
+                "expression": "Steps.split.output.result[1]",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 3572.635416666666,
+            "top": 336.07117207845045
+          },
+          "parameterMap": {
+            "source": {
+              "WPCtrhWayReG6fYWwmdGu": {
+                "key": "WPCtrhWayReG6fYWwmdGu",
+                "type": "EXPRESSION",
+                "expression": "Page.customerAccounts",
+                "order": 1
+              }
+            },
+            "element": {
+              "3URvUYpP0xBq7OSv2pzDuI": {
+                "key": "3URvUYpP0xBq7OSv2pzDuI",
+                "type": "EXPRESSION",
+                "expression": "Page.customer",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": false,
+            "Steps__d-o-t__setStore1_Copy_1__d-o-t__output": true
+          }
+        },
+        "getRequest": {
+          "statementName": "getRequest",
+          "name": "GetRequest",
+          "namespace": "CoreServices.REST",
+          "position": {
+            "left": 439.05541992187455,
+            "top": 128.98351542154944
+          },
+          "parameterMap": {
+            "headers": {
+              "2BMWlqN1aJFNUxTqpUljHh": {
+                "key": "2BMWlqN1aJFNUxTqpUljHh",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "content-type": "application/json"
+                }
+              }
+            },
+            "url": {
+              "TUz9ndSKZ3QsCyQwaTjy4": {
+                "key": "TUz9ndSKZ3QsCyQwaTjy4",
+                "type": "VALUE",
+                "order": 1,
+                "value": "customers:listAccessibleCustomers"
+              }
+            },
+            "connectionName": {
+              "7tufVaqrMzJlTRZt21CBB9": {
+                "key": "7tufVaqrMzJlTRZt21CBB9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "GOOGLE_API"
+              }
+            },
+            "appCode": {
+              "2xfDIP3q1t2WjqtK0OTyNS": {
+                "key": "2xfDIP3q1t2WjqtK0OTyNS",
+                "type": "VALUE",
+                "expression": "",
+                "value": "marketingai"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore13__d-o-t__output": true
+          }
+        },
+        "fetchingDetails": {
+          "statementName": "fetchingDetails",
+          "name": "FetchingDetails",
+          "namespace": "Google",
+          "position": {
+            "left": 1844.6724650065098,
+            "top": 96.73783874511713
+          },
+          "parameterMap": {
+            "FetchQuery": {
+              "6OLyrWNcjsFk2nyfpLZzTE": {
+                "key": "6OLyrWNcjsFk2nyfpLZzTE",
+                "type": "EXPRESSION",
+                "expression": "\"SELECT customer.id, customer.descriptive_name,customer.manager FROM customer\"",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "6dGL00lDL4bj41PqVkh2LX": {
+                "key": "6dGL00lDL4bj41PqVkh2LX",
+                "type": "EXPRESSION",
+                "expression": "Steps.split.output.result[1]",
+                "order": 1
+              }
+            },
+            "CustomerID": {
+              "48SBkhK3gZxcNsZODbxHVE": {
+                "key": "48SBkhK3gZxcNsZODbxHVE",
+                "type": "EXPRESSION",
+                "expression": "Steps.split.output.result[1]",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 2219.709489504496,
+            "top": 107.73783874511713
+          },
+          "parameterMap": {
+            "condition": {
+              "58PUFdQNteIJCTkBORqSIh": {
+                "key": "58PUFdQNteIJCTkBORqSIh",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchingDetails.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2905.228088378906,
+            "top": 357.73783874511713
+          },
+          "parameterMap": {
+            "path": {
+              "1KFW47IpdWdZnHMFEmc5j8": {
+                "key": "1KFW47IpdWdZnHMFEmc5j8",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.customer.name"
+              }
+            },
+            "value": {
+              "2UYornY1OngpffZhOue043": {
+                "key": "2UYornY1OngpffZhOue043",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchingDetails.output.data.results[0].customer.descriptiveName",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "setStore13": {
+          "statementName": "setStore13",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 107.41666158040363,
+            "top": 173.06248474121088
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore12__d-o-t__output": false
+          },
+          "parameterMap": {
+            "path": {
+              "4jvulevYo2l7xj9f9k9b1X": {
+                "key": "4jvulevYo2l7xj9f9k9b1X",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.customerAccounts"
+              }
+            },
+            "value": {
+              "6vTPfJmAqamS7Z4QEwnlAp": {
+                "key": "6vTPfJmAqamS7Z4QEwnlAp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 3239.083333333333,
+            "top": 348.45833329359687
+          },
+          "parameterMap": {
+            "path": {
+              "1KFW47IpdWdZnHMFEmc5j8": {
+                "key": "1KFW47IpdWdZnHMFEmc5j8",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.customer.manager"
+              }
+            },
+            "value": {
+              "2UYornY1OngpffZhOue043": {
+                "key": "2UYornY1OngpffZhOue043",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchingDetails.output.data.results[0].customer.manager",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": false,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 2559.7500406901036,
+            "top": 102.7916590372721
+          },
+          "parameterMap": {
+            "condition": {
+              "62FPyCqo15qT5ZWuIFVOMp": {
+                "key": "62FPyCqo15qT5ZWuIFVOMp",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchingDetails.output.data.results[0].customer.manager = true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 3833.96875,
+            "top": 330.07117207845045
+          },
+          "parameterMap": {
+            "path": {
+              "fm0qR0tWcQcrmzTy6f94e": {
+                "key": "fm0qR0tWcQcrmzTy6f94e",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.customerAccounts"
+              }
+            },
+            "value": {
+              "43KWcJvlwYyepV0uXio3QU": {
+                "key": "43KWcJvlwYyepV0uXio3QU",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 4165.006978352864,
+            "top": 324.1736068725586
+          },
+          "parameterMap": {
+            "path": {
+              "1qWFrK1KrNtcbzvZqCGUwH": {
+                "key": "1qWFrK1KrNtcbzvZqCGUwH",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.loginCustomerId"
+              }
+            },
+            "value": {
+              "72VWJAtLq9LF0tLmHaHG8i": {
+                "key": "72VWJAtLq9LF0tLmHaHG8i",
+                "type": "EXPRESSION",
+                "expression": "Page.customerAccounts[0].id",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "qZ9DcSeip9CqWzeHFXSVR": {
+      "name": "aitext",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 905.8000030517576,
+            "top": 285.1499938964843
+          },
+          "parameterMap": {
+            "path": {
+              "3JM5ud5wGzai8Wi7fMehm8": {
+                "key": "3JM5ud5wGzai8Wi7fMehm8",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.draft"
+              }
+            },
+            "value": {
+              "6TTZDGjjkKRZD3IMmbS59k": {
+                "key": "6TTZDGjjkKRZD3IMmbS59k",
+                "type": "EXPRESSION",
+                "expression": "Steps.postRequest.output.data.text",
+                "order": 1
+              }
+            }
+          }
+        },
+        "postRequest": {
+          "statementName": "postRequest",
+          "name": "PostRequest",
+          "namespace": "CoreServices.REST",
+          "position": {
+            "left": 595.8000030517577,
+            "top": 183.14999389648435
+          },
+          "parameterMap": {
+            "connectionName": {
+              "4FLd9QKqCmvy4Fgqw5ave3": {
+                "key": "4FLd9QKqCmvy4Fgqw5ave3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "TESTCHATAI"
+              }
+            },
+            "payload": {
+              "EIcX7c7zeE3VBbsEu1CJ0": {
+                "key": "EIcX7c7zeE3VBbsEu1CJ0",
+                "type": "EXPRESSION",
+                "expression": "Page.speech",
+                "order": 1
+              }
+            },
+            "url": {
+              "37IAnm2oEbpPptcrcP1tGu": {
+                "key": "37IAnm2oEbpPptcrcP1tGu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/api/ds/audio/transcribe"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1z2sDiAp5go0IKpzuK1Og0": {
+      "name": "userPrompt",
+      "steps": {
+        "setStore12": {
+          "statementName": "setStore12",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 679.9999999999995,
+            "top": 391.4062499999999
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore6__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "1qsTOl45ExTfBzV5eDz213": {
+                "key": "1qsTOl45ExTfBzV5eDz213",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.queryObj.clientCode"
+              }
+            },
+            "value": {
+              "7uAftffI6HUs1E9xEPQlEn": {
+                "key": "7uAftffI6HUs1E9xEPQlEn",
+                "type": "EXPRESSION",
+                "order": 1,
+                "expression": "Store.auth.client.code"
+              }
+            }
+          }
+        },
+        "setStore6": {
+          "statementName": "setStore6",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 400.99999999999955,
+            "top": 391.4062499999999
+          },
+          "dependentStatements": {},
+          "parameterMap": {
+            "path": {
+              "1qZyUeHN9yzsbe639PCcyy": {
+                "key": "1qZyUeHN9yzsbe639PCcyy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.queryObj.message"
+              }
+            },
+            "value": {
+              "7C1gEFY4OWh5bYMnSkxZEt": {
+                "key": "7C1gEFY4OWh5bYMnSkxZEt",
+                "type": "EXPRESSION",
+                "expression": "Page.draft",
+                "order": 1
+              }
+            }
+          }
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 1397.6000061035152,
+            "top": 437.5499877929687
+          },
+          "parameterMap": {
+            "source": {
+              "4Qyx7OngnaA5Ebqoibhfai": {
+                "key": "4Qyx7OngnaA5Ebqoibhfai",
+                "type": "EXPRESSION",
+                "expression": "Page.responseData",
+                "order": 1
+              }
+            },
+            "element": {
+              "3reCEKPHyPIPYkxXUd1Wxo": {
+                "key": "3reCEKPHyPIPYkxXUd1Wxo",
+                "type": "EXPRESSION",
+                "expression": "Steps.postRequest.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1710.2539803641184,
+            "top": 437.9682551792689
+          },
+          "parameterMap": {
+            "value": {
+              "3rIEcfOvw4AobVGA1v8KKU": {
+                "key": "3rIEcfOvw4AobVGA1v8KKU",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            },
+            "path": {
+              "5gXzPx6b00Pw52p70RAJjj": {
+                "key": "5gXzPx6b00Pw52p70RAJjj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.responseData"
+              }
+            }
+          }
+        },
+        "postRequest": {
+          "statementName": "postRequest",
+          "name": "PostRequest",
+          "namespace": "CoreServices.REST",
+          "position": {
+            "left": 1043.2539694649831,
+            "top": 143.24206379481723
+          },
+          "parameterMap": {
+            "url": {
+              "4CmknXFZb2GrEZ3NjdEk8W": {
+                "key": "4CmknXFZb2GrEZ3NjdEk8W",
+                "type": "EXPRESSION",
+                "expression": "'/api/ds/chat/{{Page.sessionId}}'",
+                "order": 1,
+                "value": ""
+              }
+            },
+            "connectionName": {
+              "5QgtJFThjWA0t738rukYJ9": {
+                "key": "5QgtJFThjWA0t738rukYJ9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "TESTCHATAI"
+              }
+            },
+            "appCode": {
+              "1OYJuuuAOQL8tMS60ejY7z": {
+                "key": "1OYJuuuAOQL8tMS60ejY7z",
+                "type": "VALUE",
+                "expression": "",
+                "value": "marketingai"
+              }
+            },
+            "payload": {
+              "2daEartBYAkuJT1qFQ8lVD": {
+                "key": "2daEartBYAkuJT1qFQ8lVD",
+                "type": "VALUE",
+                "order": 1
+              }
+            },
+            "queryParams": {
+              "3cbmHaHMJHM0KNzDWIDH4c": {
+                "key": "3cbmHaHMJHM0KNzDWIDH4c",
+                "type": "EXPRESSION",
+                "expression": "Page.queryObj",
+                "value": {}
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore12__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5Y0DLdQG2EgRLsu0uiAwhC": {
+      "name": "textToSpeechConvert",
+      "steps": {
+        "postRequest": {
+          "statementName": "postRequest",
+          "name": "PostRequest",
+          "namespace": "CoreServices.REST",
+          "position": {
+            "left": 793.8000030517577,
+            "top": 181.14999389648435
+          },
+          "parameterMap": {
+            "connectionName": {
+              "4FLd9QKqCmvy4Fgqw5ave3": {
+                "key": "4FLd9QKqCmvy4Fgqw5ave3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "TESTCHATAI"
+              }
+            },
+            "payload": {
+              "EIcX7c7zeE3VBbsEu1CJ0": {
+                "key": "EIcX7c7zeE3VBbsEu1CJ0",
+                "type": "EXPRESSION",
+                "expression": "Page.speech",
+                "order": 1
+              }
+            },
+            "url": {
+              "37IAnm2oEbpPptcrcP1tGu": {
+                "key": "37IAnm2oEbpPptcrcP1tGu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/api/ds/audio/generate/voice"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1146.8000030517576,
+            "top": 243.14999389648432
+          },
+          "parameterMap": {
+            "path": {
+              "3JM5ud5wGzai8Wi7fMehm8": {
+                "key": "3JM5ud5wGzai8Wi7fMehm8",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.voiceOutput"
+              }
+            },
+            "value": {
+              "6TTZDGjjkKRZD3IMmbS59k": {
+                "key": "6TTZDGjjkKRZD3IMmbS59k",
+                "type": "EXPRESSION",
+                "expression": "Steps.postRequest.output.data.audio",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 520.8000030517578,
+            "top": 188.6749877929687
+          },
+          "parameterMap": {
+            "path": {
+              "6m0aRlVOlQwl2EVCy6Jzst": {
+                "key": "6m0aRlVOlQwl2EVCy6Jzst",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.speech.text"
+              }
+            },
+            "value": {
+              "274Oche8d16uzkgs6fmzs0": {
+                "key": "274Oche8d16uzkgs6fmzs0",
+                "type": "EXPRESSION",
+                "expression": "Page.voiceInputText",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "43A8kN9zwB5OVtxrLOy3ie": {
+      "name": "textToSpeechFunction",
+      "steps": {
+        "textToSpeech": {
+          "statementName": "textToSpeech",
+          "name": "TextToSpeech",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 408.8000030517577,
+            "top": 338.32498168945307
+          },
+          "parameterMap": {
+            "text": {
+              "55CGkKwbp2kDHuuyxMuLP1": {
+                "key": "55CGkKwbp2kDHuuyxMuLP1",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Hello how are you"
+              }
+            }
+          }
+        },
+        "setStore5": {
+          "statementName": "setStore5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 689.8000030517577,
+            "top": 343.32498168945307
+          },
+          "parameterMap": {
+            "path": {
+              "bW1n0v0Xcwihg4fc4z60k": {
+                "key": "bW1n0v0Xcwihg4fc4z60k",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.output"
+              }
+            },
+            "value": {
+              "xjvxVEET3TzWoVhi28cLc": {
+                "key": "xjvxVEET3TzWoVhi28cLc",
+                "type": "EXPRESSION",
+                "expression": "Steps.textToSpeech.output.status",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5PtRN8KarOcmMqvpiH3d1d": {
+      "name": "speechTotextFunction_Start",
+      "steps": {
+        "speechToText": {
+          "statementName": "speechToText",
+          "name": "SpeechToText",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 422.8000030517576,
+            "top": 298.27499389648426
+          },
+          "parameterMap": {
+            "language": {
+              "4modaYeqU8aLop7FzTAS31": {
+                "key": "4modaYeqU8aLop7FzTAS31",
+                "type": "VALUE",
+                "expression": "",
+                "value": "en-IN"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 797.8000030517576,
+            "top": 298.2749938964843
+          },
+          "parameterMap": {
+            "path": {
+              "lMQKeqO41NspqLmU1VhiN": {
+                "key": "lMQKeqO41NspqLmU1VhiN",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.draft"
+              }
+            },
+            "value": {
+              "XFNPqFVQYY64wMpuPZ7Zx": {
+                "key": "XFNPqFVQYY64wMpuPZ7Zx",
+                "type": "EXPRESSION",
+                "expression": "Steps.speechToText.output.text",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5scKUpXXBIAipbpsTkoAjT": {
+      "name": "speechTotextFunction_Stop",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 797.8000030517576,
+            "top": 298.2749938964843
+          },
+          "parameterMap": {
+            "path": {
+              "lMQKeqO41NspqLmU1VhiN": {
+                "key": "lMQKeqO41NspqLmU1VhiN",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.draft"
+              }
+            },
+            "value": {
+              "XFNPqFVQYY64wMpuPZ7Zx": {
+                "key": "XFNPqFVQYY64wMpuPZ7Zx",
+                "type": "EXPRESSION",
+                "expression": "Steps.speechToText.output.text",
+                "order": 1
+              }
+            }
+          }
+        },
+        "speechToText": {
+          "statementName": "speechToText",
+          "name": "SpeechToText",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 422.8000030517576,
+            "top": 298.27499389648426
+          },
+          "parameterMap": {
+            "language": {
+              "4modaYeqU8aLop7FzTAS31": {
+                "key": "4modaYeqU8aLop7FzTAS31",
+                "type": "VALUE",
+                "expression": "",
+                "value": "en-IN"
+              }
+            },
+            "type": {
+              "4a4cgrSJYDFMgtHDJQnRHj": {
+                "key": "4a4cgrSJYDFMgtHDJQnRHj",
+                "type": "VALUE",
+                "expression": "",
+                "value": "Stop"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "7CoteS9DzzG6t17cxYMvUx",
+  "componentDefinition": {
+    "7CoteS9DzzG6t17cxYMvUx": {
+      "key": "7CoteS9DzzG6t17cxYMvUx",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2CyicO7whWsrAyrNBm44L2": {
+          "resolutions": {
+            "ALL": {
+              "minHeight": {
+                "value": "100vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3apqFclsCbUnFeCsU2eRRo": true,
+        "4mQ6xHLuqMyy2lghn0FhsX": true,
+        "lOarWfGpUmJHh379YLimA": true,
+        "3QXOPwQtGID3hVVY8xa9OU": true,
+        "3usC6eJZbznT2Og0azgDqa": true,
+        "4JKeyvXoFbtV55VHG9FPpT": true
+      }
+    },
+    "3apqFclsCbUnFeCsU2eRRo": {
+      "key": "3apqFclsCbUnFeCsU2eRRo",
+      "name": "Chat",
+      "type": "Chat",
+      "properties": {
+        "voiceLanguage": {
+          "value": "en-IN"
+        },
+        "onVoiceRecordComplete": {
+          "value": "qZ9DcSeip9CqWzeHFXSVR"
+        },
+        "onSend": {
+          "value": "1z2sDiAp5go0IKpzuK1Og0"
+        },
+        "messageTextProperty": {
+          "value": "reply"
+        },
+        "typingIndicatorType": "<REDACTED>",
+        "placeholder": {
+          "value": "Hi, I am Advertising Campaign Assitant, How Can I help you?"
+        },
+        "typingIndicatorText": "<REDACTED>",
+        "typingIndicatorImage": "<REDACTED>",
+        "__truncated__": "... 9 more props"
+      },
+      "styleProperties": {
+        "54h1b2JIslSzO90AAV2IjY": {
+          "resolutions": {
+            "ALL": {
+              "inputContainer-marginLeft": {
+                "value": "150px"
+              },
+              "inputContainer-marginRight": {
+                "value": "150px"
+              },
+              "inputContainer-borderTopLeftRadius": {
+                "value": "40px"
+              },
+              "inputContainer-borderTopRightRadius": {
+                "value": "40px"
+              },
+              "inputContainer-borderBottomLeftRadius": {
+                "value": "40px"
+              },
+              "inputContainer-borderBottomRightRadius": {
+                "value": "40px"
+              },
+              "inputContainer-borderTopWidth": {
+                "value": "1px"
+              },
+              "inputContainer-borderRightWidth": {
+                "value": "1px"
+              },
+              "inputContainer-borderBottomWidth": {
+                "value": "1px"
+              },
+              "inputContainer-borderLeftWidth": {
+                "value": "1px"
+              },
+              "inputContainer-borderTopStyle": {
+                "value": "solid"
+              },
+              "inputContainer-borderRightStyle": {
+                "value": "solid"
+              },
+              "inputContainer-borderBottomStyle": {
+                "value": "solid"
+              },
+              "inputContainer-borderLeftStyle": {
+                "value": "solid"
+              },
+              "inputContainer-borderTopColor": {
+                "value": "#2C2E321A"
+              },
+              "inputContainer-borderRightColor": {
+                "value": "#2C2E321A"
+              },
+              "inputContainer-borderBottomColor": {
+                "value": "#2C2E321A"
+              },
+              "inputContainer-borderLeftColor": {
+                "value": "#2C2E321A"
+              },
+              "inputContainer-backgroundColor": {
+                "value": "#fff"
+              },
+              "chatInput-borderTopStyle": {
+                "value": "none"
+              },
+              "chatInput-borderRightStyle": {
+                "value": "none"
+              },
+              "chatInput-borderBottomStyle": {
+                "value": "none"
+              },
+              "chatInput-borderLeftStyle": {
+                "value": "none"
+              },
+              "width": {
+                "value": "80%"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "typingIndicator-backgroundColor": "<REDACTED>",
+              "paddingTop": {
+                "value": "50px"
+              },
+              "paddingBottom": {
+                "value": "50px"
+              },
+              "aiMessageBubble-width": {
+                "value": "50%"
+              },
+              "alignSelf": {
+                "value": "center"
+              },
+              "userMessageBubble-borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "userMessageBubble-borderTopRightRadius": {
+                "value": "0px"
+              },
+              "userMessageBubble-borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "userMessageBubble-borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.userPrompt"
+      },
+      "bindingPath2": {
+        "type": "VALUE",
+        "value": "Page.responseData"
+      },
+      "bindingPath3": {
+        "type": "VALUE",
+        "value": "Page.draft"
+      },
+      "bindingPath4": {
+        "type": "VALUE",
+        "value": "Page.speech.file"
+      },
+      "bindingPath5": {
+        "type": "VALUE",
+        "value": "Page.voiceOutput"
+      },
+      "bindingPath6": {
+        "type": "VALUE",
+        "value": "Page.voiceInputText"
+      }
+    },
+    "4mQ6xHLuqMyy2lghn0FhsX": {
+      "key": "4mQ6xHLuqMyy2lghn0FhsX",
+      "name": "Text to speech",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Text to speech"
+        },
+        "onClick": {
+          "value": "43A8kN9zwB5OVtxrLOy3ie"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "lOarWfGpUmJHh379YLimA": {
+      "key": "lOarWfGpUmJHh379YLimA",
+      "name": "AudioRecorder",
+      "type": "AudioRecorder",
+      "properties": {
+        "maxDuration": {
+          "value": 3000
+        },
+        "outputFormat": {
+          "value": "BINARY_TO_BASE_64"
+        },
+        "onRecordingComplete": {
+          "value": "qZ9DcSeip9CqWzeHFXSVR"
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.speech.file"
+      }
+    },
+    "3QXOPwQtGID3hVVY8xa9OU": {
+      "key": "3QXOPwQtGID3hVVY8xa9OU",
+      "name": "Audio",
+      "type": "Audio",
+      "override": false,
+      "displayOrder": 3
+    },
+    "3usC6eJZbznT2Og0azgDqa": {
+      "key": "3usC6eJZbznT2Og0azgDqa",
+      "name": "speech to text start",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "speech to text start"
+        },
+        "onClick": {
+          "value": "5PtRN8KarOcmMqvpiH3d1d"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "4JKeyvXoFbtV55VHG9FPpT": {
+      "key": "4JKeyvXoFbtV55VHG9FPpT",
+      "name": "speech to text stop",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "speech to text stop"
+        },
+        "onClick": {
+          "value": "5scKUpXXBIAipbpsTkoAjT"
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    }
+  },
+  "componentVersions": {
+    "3usC6eJZbznT2Og0azgDqa": 3,
+    "3QXOPwQtGID3hVVY8xa9OU": 3,
+    "7CoteS9DzzG6t17cxYMvUx": 3,
+    "4mQ6xHLuqMyy2lghn0FhsX": 3,
+    "4JKeyvXoFbtV55VHG9FPpT": 3,
+    "3apqFclsCbUnFeCsU2eRRo": 3,
+    "lOarWfGpUmJHh379YLimA": 3
+  },
+  "eventFunctionVersions": {
+    "1z2sDiAp5go0IKpzuK1Og0": 3,
+    "qZ9DcSeip9CqWzeHFXSVR": 3,
+    "43A8kN9zwB5OVtxrLOy3ie": 3,
+    "5PtRN8KarOcmMqvpiH3d1d": 3,
+    "2qwNtI6rR1Iy778gZoVZzr": 3,
+    "67rbwYlJt2J1comHBxXkvu": 3,
+    "5Y0DLdQG2EgRLsu0uiAwhC": 3,
+    "5scKUpXXBIAipbpsTkoAjT": 3
+  },
+  "name": "chatPage",
+  "message": "From transport : Z4VvG62iO5LYnnKwzHbT8g",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 11,
+  "updatedAt": "2026-05-12 10:27:57.970000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-12-29 10:58:27.828000",
+  "createdBy": "<USER>"
+}

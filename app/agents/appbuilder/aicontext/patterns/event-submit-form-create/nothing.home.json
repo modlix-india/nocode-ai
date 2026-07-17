@@ -1,0 +1,139 @@
+{
+  "_id": "63bee0aa4d18a31536e81fa9",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "Danger, Will Robinson"
+      },
+      "append": {
+        "value": false
+      }
+    },
+    "wrapShell": false
+  },
+  "rootComponent": "0710873b-933e-47f9-90f5-407e67e92d83",
+  "componentDefinition": {
+    "0710873b-933e-47f9-90f5-407e67e92d83": {
+      "key": "0710873b-933e-47f9-90f5-407e67e92d83",
+      "name": "mainGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "3INq4d0XPB2v7BL7Nb1sXO": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "WKcdRaOkRwO88RTZ3QPQV": true
+      }
+    },
+    "WKcdRaOkRwO88RTZ3QPQV": {
+      "key": "WKcdRaOkRwO88RTZ3QPQV",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3SJsxbzl2hn1JuJJy85j4": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "71Tm5Nigkh1nIFgxGA7r8I": true,
+        "4g2TF2fQLW468ILe9AYmb7": true
+      },
+      "displayOrder": 2
+    },
+    "71Tm5Nigkh1nIFgxGA7r8I": {
+      "key": "71Tm5Nigkh1nIFgxGA7r8I",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-explosion fa-4x"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4g2TF2fQLW468ILe9AYmb7": {
+      "key": "4g2TF2fQLW468ILe9AYmb7",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "You are not supposed to be on this page. If you are seeing this page, please contact your system administrator or the engineering team who is hosting this app."
+        }
+      },
+      "styleProperties": {
+        "3zHxLip0NfbU71SALwnHVh": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "center"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "maxWidth": {
+                "value": "600px"
+              },
+              "marginTop": {
+                "value": "30px"
+              },
+              "fontFamily": {
+                "value": "Verdana,Arial"
+              },
+              "lineHeight": {
+                "value": "20px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorFour"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "name": "home",
+  "message": "From transport : 1r61Cab0dIX9soxtv6Rhfd",
+  "clientCode": "SYSTEM",
+  "appCode": "nothing",
+  "version": 3,
+  "updatedAt": "2023-10-20 14:05:25.271000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-01-11 16:15:38.157000",
+  "createdBy": "<USER>"
+}

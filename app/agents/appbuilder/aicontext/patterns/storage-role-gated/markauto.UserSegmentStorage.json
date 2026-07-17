@@ -1,0 +1,19 @@
+{
+  "_id": "63fd963dbfbf7811d14c281b",
+  "schema": {
+    "ref": "Model.UserSegment"
+  },
+  "uniqueName": "markauto_system_user_1ib0elxjd26oz",
+  "isAudited": false,
+  "isVersioned": true,
+  "isAppLevel": false,
+  "readAuth": "Authorities.User_READ",
+  "name": "UserSegmentStorage",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 2,
+  "updatedAt": "2023-06-14 04:16:22.866000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-02-28 05:50:53.167000",
+  "createdBy": "<USER>"
+}
