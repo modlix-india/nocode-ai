@@ -1,6 +1,8 @@
-# Campaign sub-agent — RESERVED (not implemented)
+# Campaign Sub-Agents
 
-This directory is a **placeholder** for a future Campaign sub-agent. It contains no working code today.
+This directory is the home for campaign-creation and campaign-planning agents. 
+
+Specifically, the `meta/` subdirectory is the home of Meta-only campaign agents (such as the Detailed Targeting Subsystem).
 
 ## What it WILL do
 
