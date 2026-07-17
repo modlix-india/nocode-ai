@@ -1,0 +1,37 @@
+{
+  "_id": "67c82b3ab7ebf6221d1c2135",
+  "schema": {
+    "name": "dummy",
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1,
+    "namespace": "marketingai",
+    "properties": {
+      "entry": {
+        "type": [
+          "ARRAY"
+        ]
+      },
+      "object": {
+        "type": [
+          "STRING"
+        ]
+      }
+    }
+  },
+  "uniqueName": "marketingai_system_d_vbshtqnuf3he",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "name": "dummy",
+  "message": "From transport : 2wlEf5HkcsNxYGNZzRxPb5",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 21,
+  "updatedAt": "2026-03-05 10:56:19.114000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-03-05 10:45:14.108000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,595 @@
+{
+  "_id": "666a734d7141c655f00c1adc",
+  "definition": {
+    "namespace": "sign",
+    "name": "uploadDocument",
+    "parameters": {
+      "payload": {
+        "parameterName": "payload",
+        "schema": {
+          "version": 1,
+          "ref": "sign.Payload",
+          "name": "payload",
+          "namespace": "ZohoParams"
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "version": 1,
+            "type": [
+              "STRING"
+            ]
+          }
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "dataObject": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1846.5,
+          "top": 885
+        },
+        "parameterMap": {
+          "eventName": {
+            "31DaoyJA5q6YRsnIOTUJs6": {
+              "key": "31DaoyJA5q6YRsnIOTUJs6",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "2XYUdoVx5W9nfdg2Rs6pS8": {
+              "key": "2XYUdoVx5W9nfdg2Rs6pS8",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.pr.error.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 416,
+          "top": 133.5
+        },
+        "parameterMap": {
+          "name": {
+            "34btQoMX8BV8XcCgpZrzfp": {
+              "key": "34btQoMX8BV8XcCgpZrzfp",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "dobj"
+            }
+          },
+          "schema": {
+            "3SqcskcsPdODh2FGYPAjin": {
+              "key": "3SqcskcsPdODh2FGYPAjin",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__pr__d-o-t__output__d-o-t__data": false,
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "user": {
+        "statementName": "user",
+        "name": "GetUser",
+        "namespace": "CoreServices.SecurityContext",
+        "position": {
+          "left": 455,
+          "top": 385.5
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2420,
+          "top": 866.5
+        },
+        "parameterMap": {
+          "eventName": {
+            "1zIsxU1T8ErH1E32tVjPNj": {
+              "key": "1zIsxU1T8ErH1E32tVjPNj",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "eDR7ebExD8xAfj2X6BJna": {
+              "key": "eDR7ebExD8xAfj2X6BJna",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.create.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 750,
+          "top": 303
+        },
+        "parameterMap": {
+          "name": {
+            "cY8luE3jTmk89I3aeRtGM": {
+              "key": "cY8luE3jTmk89I3aeRtGM",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.dobj.userId"
+            }
+          },
+          "value": {
+            "7cnWDffXsvh7rxXWurlfJI": {
+              "key": "7cnWDffXsvh7rxXWurlfJI",
+              "type": "EXPRESSION",
+              "expression": "Steps.user.output.user.id",
+              "order": 1,
+              "value": 100
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2409.3333333333335,
+          "top": 508.7777777777777
+        },
+        "parameterMap": {
+          "results": {
+            "3U6qegVe0BIK9Xr55wLb1Q": {
+              "key": "3U6qegVe0BIK9Xr55wLb1Q",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "dataObject",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.create.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "getAuthentication": {
+        "statementName": "getAuthentication",
+        "name": "GetAuthentication",
+        "namespace": "CoreServices.SecurityContext",
+        "position": {
+          "left": 9.75,
+          "top": 107.875
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 44,
+          "top": 463.625
+        },
+        "parameterMap": {
+          "condition": {
+            "4exW3z1TAIAvgUSRgWWdR7": {
+              "key": "4exW3z1TAIAvgUSRgWWdR7",
+              "type": "EXPRESSION",
+              "expression": "Steps.getAuthentication.output.auth.loggedInFromClientId = Steps.getAuthentication.output.auth.user.clientId",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 440.75,
+          "top": 579.875
+        },
+        "parameterMap": {
+          "eventName": {
+            "4uAhHsnKeDvcHZYmm1gTvN": {
+              "key": "4uAhHsnKeDvcHZYmm1gTvN",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "7l0MZpHMMDCqTgBTZxkbZv": {
+              "key": "7l0MZpHMMDCqTgBTZxkbZv",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": false,
+                  "value": "You don't have access to upload"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "pr": {
+        "statementName": "pr",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 1356,
+          "top": 481.5
+        },
+        "parameterMap": {
+          "headers": {
+            "2dEe8Ye7ywDwW8Hk0QvAWS": {
+              "key": "2dEe8Ye7ywDwW8Hk0QvAWS",
+              "type": "VALUE",
+              "expression": "",
+              "value": {
+                "Content-Type": "multipart/form-data"
+              }
+            }
+          },
+          "payload": {
+            "2P2xX71ydxWaTfJfr4aEa4": {
+              "key": "2P2xX71ydxWaTfJfr4aEa4",
+              "type": "EXPRESSION",
+              "expression": "Arguments.payload",
+              "order": 1
+            }
+          },
+          "appCode": {
+            "7K46p0ZSzRTu6X2KSpVrH2": {
+              "key": "7K46p0ZSzRTu6X2KSpVrH2",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "connectionName": {
+            "3ztTdNiCNRPG2yGfLbN7nL": {
+              "key": "3ztTdNiCNRPG2yGfLbN7nL",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "ZohoRestSign"
+            }
+          },
+          "url": {
+            "5OukY82LxmVU0SBnxi4q9U": {
+              "key": "5OukY82LxmVU0SBnxi4q9U",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "/api/v1/requests"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": false,
+          "Steps__d-o-t__if1__d-o-t__false": true
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1041.75,
+          "top": 147.875
+        },
+        "parameterMap": {
+          "condition": {
+            "2mulVhzi57j2YBkVSHOdr3": {
+              "key": "2mulVhzi57j2YBkVSHOdr3",
+              "type": "EXPRESSION",
+              "expression": "Arguments.payload.isInternal",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": false,
+          "Steps__d-o-t__setInternal__d-o-t__output": true
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 2151,
+          "top": 656.5
+        },
+        "parameterMap": {
+          "appCode": {
+            "3riuLhZFlXZ6jHwxna2qIA": {
+              "key": "3riuLhZFlXZ6jHwxna2qIA",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "storageName": {
+            "6JMW5naty2WTS31o3CEaks": {
+              "key": "6JMW5naty2WTS31o3CEaks",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "UploadedDocuments"
+            }
+          },
+          "dataObject": {
+            "2IVSoVs8PAmPRq5Ya52cbd": {
+              "key": "2IVSoVs8PAmPRq5Ya52cbd",
+              "type": "EXPRESSION",
+              "expression": "Context.dobj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set6__d-o-t__output": true
+        }
+      },
+      "create2": {
+        "statementName": "create2",
+        "name": "Create",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1656.625,
+          "top": 86.625
+        },
+        "parameterMap": {
+          "appCode": {
+            "699UySBbEhgfYjdImq68WP": {
+              "key": "699UySBbEhgfYjdImq68WP",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "storageName": {
+            "2VcFia9RGS2PTTeTVHeSm8": {
+              "key": "2VcFia9RGS2PTTeTVHeSm8",
+              "type": "VALUE",
+              "order": 1,
+              "value": "UploadedDocuments"
+            }
+          },
+          "dataObject": {
+            "7naH9QEViR4SnInfg6CIgh": {
+              "key": "7naH9QEViR4SnInfg6CIgh",
+              "type": "EXPRESSION",
+              "expression": "Context.dobj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": false,
+          "Steps__d-o-t__setLoc__d-o-t__output": true
+        }
+      },
+      "generateEvent4": {
+        "statementName": "generateEvent4",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2040.125,
+          "top": 53.375
+        },
+        "parameterMap": {
+          "results": {
+            "7aY52BqHyCILO5wVNrIDtn": {
+              "key": "7aY52BqHyCILO5wVNrIDtn",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "dataObject",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.create2.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent5": {
+        "statementName": "generateEvent5",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2068.875,
+          "top": 352.625
+        },
+        "parameterMap": {
+          "eventName": {
+            "39QBmbrqs0U8JuDVGYzlnn": {
+              "key": "39QBmbrqs0U8JuDVGYzlnn",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "1YrKckZyCOpOmp7UIN70gC": {
+              "key": "1YrKckZyCOpOmp7UIN70gC",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.create2.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "set6": {
+        "statementName": "set6",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1850,
+          "top": 606.5
+        },
+        "parameterMap": {
+          "name": {
+            "4ecvD9cRyVm2juxIaTn6f4": {
+              "key": "4ecvD9cRyVm2juxIaTn6f4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.dobj.responseObj"
+            }
+          },
+          "value": {
+            "7s5KrMtuFeK0kgObYXWvWc": {
+              "key": "7s5KrMtuFeK0kgObYXWvWc",
+              "type": "EXPRESSION",
+              "expression": "Steps.pr.output.data",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {}
+      },
+      "setLoc": {
+        "statementName": "setLoc",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1341.625,
+          "top": 64.625
+        },
+        "parameterMap": {
+          "name": {
+            "1bAIprn78pDbQXLLpY8dcy": {
+              "key": "1bAIprn78pDbQXLLpY8dcy",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dobj.documentLocation"
+            }
+          },
+          "value": {
+            "2uxTdEiwyHzpRuvtnpH3a9": {
+              "key": "2uxTdEiwyHzpRuvtnpH3a9",
+              "type": "EXPRESSION",
+              "expression": "Arguments.payload.documentLocation",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": true
+        }
+      },
+      "setInternal": {
+        "statementName": "setInternal",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 973.625,
+          "top": 540.125
+        },
+        "parameterMap": {
+          "name": {
+            "tr59rN7q1NrQaeOiXLBcG": {
+              "key": "tr59rN7q1NrQaeOiXLBcG",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dobj.isInternal"
+            }
+          },
+          "value": {
+            "6FRSxq0N1uIMeevIZIhbpw": {
+              "key": "6FRSxq0N1uIMeevIZIhbpw",
+              "type": "EXPRESSION",
+              "expression": "Arguments.payload.isInternal",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "name": "sign.uploadDocument",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 48,
+  "updatedAt": "2026-04-09 04:29:05.865000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-13 04:19:25.674000",
+  "createdBy": "<USER>"
+}

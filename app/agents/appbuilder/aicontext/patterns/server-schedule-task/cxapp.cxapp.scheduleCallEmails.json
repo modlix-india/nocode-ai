@@ -1,0 +1,409 @@
+{
+  "_id": "66cc912923fed5558c7a03a7",
+  "definition": {
+    "namespace": "cxapp",
+    "name": "scheduleCallEmails",
+    "parameters": {
+      "scheduledCallDetails": {
+        "parameterName": "scheduledCallDetails",
+        "schema": {
+          "ref": "hrms.ScheduleCallDetails",
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "user": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1,
+            "ref": "hrms.ScheduleCallDetails"
+          },
+          "contactManger": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2132.888885498047,
+          "top": 419.77777650621204
+        },
+        "parameterMap": {
+          "results": {
+            "54YRNeGxskWJ1hBleuTclT": {
+              "key": "54YRNeGxskWJ1hBleuTclT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "user",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.details.user"
+                }
+              }
+            },
+            "45JCFbQ1MhA9lqGHPhWrt5": {
+              "key": "45JCFbQ1MhA9lqGHPhWrt5",
+              "type": "VALUE",
+              "expression": "",
+              "order": 2,
+              "value": {
+                "name": "contactManager",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.details.contactManager"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__sendEmail__d-o-t__output": true,
+          "Steps__d-o-t__sendEmail1__d-o-t__output": true,
+          "Steps__d-o-t__sendEmail2__d-o-t__output": true
+        }
+      },
+      "sendEmail2": {
+        "statementName": "sendEmail2",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 1163.3333371480303,
+          "top": 951.3333307902017
+        },
+        "parameterMap": {
+          "templateData": {
+            "2Smi1k7Wj2vsVVnQh3i4W4": {
+              "key": "2Smi1k7Wj2vsVVnQh3i4W4",
+              "type": "EXPRESSION",
+              "expression": "Context.details",
+              "value": {}
+            }
+          },
+          "connectionName": {
+            "oOkY8tjsAmX0Clv95lAAN": {
+              "key": "oOkY8tjsAmX0Clv95lAAN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "address": {
+            "30p7xL2xS5TIvMUoXl91Jf": {
+              "key": "30p7xL2xS5TIvMUoXl91Jf",
+              "type": "EXPRESSION",
+              "expression": "Context.details.user.emailId",
+              "order": 1
+            }
+          },
+          "appCode": {
+            "5VJlJotzIph5sXMChNPbN3": {
+              "key": "5VJlJotzIph5sXMChNPbN3",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "templateName": {
+            "3XN7smTYwzh0yCBSPRp2zk": {
+              "key": "3XN7smTYwzh0yCBSPRp2zk",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "bookingConfirmedEmailTemplate"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true,
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "saveCallDetails1": {
+        "statementName": "saveCallDetails1",
+        "name": "saveCallDetails",
+        "namespace": "hrms",
+        "position": {
+          "left": 46.99999660915796,
+          "top": 81.22222222222223
+        },
+        "parameterMap": {
+          "scheduleCallDetails": {
+            "47a2xJdxtWvUWbZTC4He8m": {
+              "key": "47a2xJdxtWvUWbZTC4He8m",
+              "type": "EXPRESSION",
+              "expression": "Arguments.scheduledCallDetails",
+              "order": 1
+            }
+          }
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 49.1111077202691,
+          "top": 307.5555589463976
+        },
+        "parameterMap": {
+          "name": {
+            "2KrSP7O8FSmfT9bJChzt6b": {
+              "key": "2KrSP7O8FSmfT9bJChzt6b",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "details"
+            }
+          },
+          "schema": {
+            "42IN6UVAcqtCLFfQIRZXIV": {
+              "key": "42IN6UVAcqtCLFfQIRZXIV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 525.3333299424913,
+          "top": 476.3333265516493
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.details.user"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "expression": "Steps.saveCallDetails1.output.scheduleCallDetails",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "read": {
+        "statementName": "read",
+        "name": "Read",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 513.4444376627604,
+          "top": 60.44444444444446
+        },
+        "parameterMap": {
+          "storageName": {
+            "5GA25JiIsu6q5Onwbcaklw": {
+              "key": "5GA25JiIsu6q5Onwbcaklw",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Project"
+            }
+          },
+          "appCode": {
+            "7tntwSTFisdsdMWVgWtWL": {
+              "key": "7tntwSTFisdsdMWVgWtWL",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObjectId": {
+            "6hdlPg93pxLaYgCd3k7vWN": {
+              "key": "6hdlPg93pxLaYgCd3k7vWN",
+              "type": "EXPRESSION",
+              "expression": "Arguments.scheduledCallDetails.projectId",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 920.2222188313801,
+          "top": 169.11110432942706
+        },
+        "parameterMap": {
+          "name": {
+            "Tiqo7353pVvaDyafVwgpN": {
+              "key": "Tiqo7353pVvaDyafVwgpN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.contactManager"
+            }
+          },
+          "value": {
+            "F17eqRCb6zINU83wmLmqt": {
+              "key": "F17eqRCb6zINU83wmLmqt",
+              "type": "EXPRESSION",
+              "expression": "Steps.read.output.result.contactManager",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "sendEmail": {
+        "statementName": "sendEmail",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 1759.2222188313801,
+          "top": 83.99999978807239
+        },
+        "parameterMap": {
+          "templateData": {
+            "5I9Qt7DAMAItpwREMLc4e1": {
+              "key": "5I9Qt7DAMAItpwREMLc4e1",
+              "type": "EXPRESSION",
+              "expression": "Context.details",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "6Q0v54kXuPL7NimrbwIany": {
+              "key": "6Q0v54kXuPL7NimrbwIany",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "appCode": {
+            "2n4JuVnItjEfTqLad4QleL": {
+              "key": "2n4JuVnItjEfTqLad4QleL",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "address": {
+            "7HPtJND8kUsX7Byejx6Clo": {
+              "key": "7HPtJND8kUsX7Byejx6Clo",
+              "type": "EXPRESSION",
+              "expression": "Context.details.user.emailId",
+              "order": 1
+            }
+          },
+          "templateName": {
+            "5zIuoEZFIyO1WbokeMv4eM": {
+              "key": "5zIuoEZFIyO1WbokeMv4eM",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "meetingScheduledCustomer"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true,
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "sendEmail1": {
+        "statementName": "sendEmail1",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 1479.6666683620876,
+          "top": 463.66667683919275
+        },
+        "parameterMap": {
+          "templateData": {
+            "3jy56bIOLjwL3r9aNw2d76": {
+              "key": "3jy56bIOLjwL3r9aNw2d76",
+              "type": "EXPRESSION",
+              "expression": "Context.details",
+              "value": {}
+            }
+          },
+          "appCode": {
+            "4DR0awP9yWoGD1lbgpCxET": {
+              "key": "4DR0awP9yWoGD1lbgpCxET",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "connectionName": {
+            "Yvizw4ryjJAFKZ3NXHEG0": {
+              "key": "Yvizw4ryjJAFKZ3NXHEG0",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "address": {
+            "pDhXCyeXBxUAzrSLNaQrA": {
+              "key": "pDhXCyeXBxUAzrSLNaQrA",
+              "type": "EXPRESSION",
+              "expression": "Context.details.contactManager.emailId",
+              "order": 1
+            }
+          },
+          "templateName": {
+            "4Bz3ktEnCRZPi1V8lsa4TT": {
+              "key": "4Bz3ktEnCRZPi1V8lsa4TT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "meetingScheduledContactManager"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true,
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "name": "cxapp.scheduleCallEmails",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 97,
+  "updatedAt": "2026-04-09 04:28:28.911000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-08-26 14:28:57.531000",
+  "createdBy": "<USER>"
+}

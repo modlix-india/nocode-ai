@@ -1,0 +1,24 @@
+{
+  "_id": "67af3b274130290ec6aacf2b",
+  "pathString": "/transactions/webhook/cashfree/link",
+  "pathDefinitions": {
+    "POST": {
+      "uriType": "KIRUN_FUNCTION",
+      "kiRunFxDefinition": {
+        "name": "paymentLinkDetails",
+        "namespace": "cxapp",
+        "outputEventName": "output",
+        "outputEventParamName": "result"
+      }
+    }
+  },
+  "name": "/transactions/webhook/cashfree/link",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 39,
+  "updatedAt": "2026-04-09 04:27:57.933000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-02-14 12:46:31.050000",
+  "createdBy": "<USER>"
+}

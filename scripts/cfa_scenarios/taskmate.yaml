@@ -1,0 +1,130 @@
+name: taskmate
+description: |
+  Task-tracker app build. Exercises end-to-end CRUD app creation:
+  app + theme bind, 3 storages with role-gated auth, 3 profiles,
+  2 server-side Kirun functions, 4 pages, per-app KB writes.
+
+client_code: SYSTEM
+app_code: taskmate
+app_user:
+  username: sysadmin@modlix.com
+  password: Pass@1234
+
+setup_actions:
+  - type: delete_app
+    app_code: taskmate
+  - type: mongo_purge_ui
+    app_code: taskmate
+  - type: mysql_purge_archived
+    app_code: taskmate
+  - type: evict_app_cache
+    app_code: taskmate
+    client_code: SYSTEM
+
+turns:
+  - |-
+    I want to build a task-tracker app called "taskmate" in the SYSTEM client.
+    Start clean:
+    1. Create the app (appCode=taskmate, name="Taskmate", appType=APP, accessType=OWN).
+    2. Pick or create a blue/neutral theme appropriate for a productivity tool, and bind it to the app.
+    3. Confirm both with whoami + get_app once everything is in place.
+    Don't add any pages, storages, or functions yet. End the turn when app+theme are bound.
+  - |-
+    Now create three storages on taskmate, all with role-gated CRUD auth:
+    - Project: { id, name (required), description, ownerId (USER), createdAt (DATE) }
+    - Task: { id, projectId (relates-to Project), title (required), description, assigneeId (USER),
+             status (enum: BACKLOG|IN_PROGRESS|REVIEW|DONE), dueDate, createdAt }
+    - Comment: { id, taskId (relates-to Task), authorId (USER), body (required), createdAt }
+    Use sensible defaults for the auth gates (admin: all; everyone else: read; owners can write their own).
+    Confirm each was created (list_storages at the end is fine).
+  - |-
+    Now define three ROLES for taskmate (per persona — scenarios saying "profiles" usually mean roles in
+    day-to-day sense): taskmateAdmin, taskmateOwner, taskmateMember. Use `create_role` for each.
+    Do NOT pass app_id. Confirm with list_roles.
+  - |-
+    Now turn taskmate into a real customer-facing app so end-users can self-register and login:
+    1. `create_profile(name="TaskmateMember", app_id=<taskmate security id>)` — the profile every new
+       customer gets on registration. Find the id via list_security_apps or list_apps.
+    2. `configure_app_for_customer_signup(app_code="taskmate", app_id=<id>, profile_id=<from step 1>)`
+       in one call. Confirm with list_app_properties(app_code="taskmate").
+  - |-
+    Author two server-side Kirun functions on taskmate:
+    1. assignTaskWithNotification(taskId, assigneeId): update the Task's assigneeId, then write a Comment
+       on that task with body "Assigned to <assigneeId>". Return the updated Task.
+    2. completeTaskAndArchive(taskId): set the Task's status to "DONE", write a Comment "Task completed at <now>".
+       Return the updated Task.
+    Use the kirun DSL flow (create_server_function → add_step OR save_server_function_from_text — your choice).
+    Validate each with execute_function on a fake input to make sure the compile + step wiring is good.
+  - |-
+    Build the LOGIN page on taskmate. Compose per the persona's login recipe:
+    create_page + add_component for card / emailInput / passwordInput / signInBtn,
+    patch_component_styles for the centered-card look, set_bindings for the input
+    bindings (bare strings — the tool wraps), and save_page_event_function_from_text
+    for handleLogin (UIEngine.Login with userName, identifierType=EMAIL_ID, rememberMe=true,
+    NO Navigate). Then update_app with loginPage/defaultPage properties.
+    Use theme variables where possible; no hard-coded colors except neutral fallbacks.
+    - create_page(name="login")
+    - Add a centered card with: app title "Taskmate", email input (TextBox), password input (TextBox with masking), Sign In button.
+    - Add a page-event handler on Sign In that calls UIEngine.Login with the typed email + password and routes to "home" on success.
+    Stop after login page renders cleanly. ≤15 tool calls.
+  - |-
+    Build the HOME page on taskmate.
+    - create_page(name="home")
+    - Header with "Taskmate" title and a Logout button (calls UIEngine.Logout).
+    - Main section: "Your Projects" heading, then an ArrayRepeater bound to a FetchData of the `project` storage. Each repeated card shows projectName and projectDesc, clickable to route to projectDetail with the project id.
+    Stop. ≤15 tool calls.
+  - |-
+    Build the projectDetail page on taskmate.
+    - create_page(name="projectDetail")
+    - Header with back button (route to home) and project title.
+    - 4-column kanban Grid: BACKLOG / IN_PROGRESS / REVIEW / DONE. Each column has an ArrayRepeater over tasks matching that status. Each task card shows title + assignee.
+    - Click a task card → route to taskDetail with task id.
+    Stop. ≤15 tool calls.
+  - |-
+    Build the taskDetail page on taskmate.
+    - create_page(name="taskDetail")
+    - Header with back button to projectDetail.
+    - Left panel: task title, status badge, description, due date, assignee.
+    - Right panel: comments list (ArrayRepeater over comment storage).
+    - Action bar: "Mark Done" button calling completeTaskAndArchive, "Assign" button calling assignTaskWithNotification.
+    - After this page is in place, update_app to set properties.defaultPage="home" and properties.loginPage="login".
+    Stop. ≤15 tool calls.
+  - |-
+    Write the per-app KB:
+    1. propose_kb_update(section="overview") with a one-paragraph description of taskmate, then commit.
+    2. propose_kb_update(section="decisions_log") with an entry explaining the theme choice you made and ONE
+       interesting design decision from the storages/functions/pages work, then commit.
+  - |-
+    Give me a final summary: confirm the app + theme are bound, 3 storages exist (names only),
+    3 profiles + their role authorities exist, 2 server functions exist (names only), 4 pages exist,
+    defaultPage + loginPage are set, and the KB has overview + at least one decisions_log entry.
+    One paragraph. No tool calls beyond what you need to verify.
+
+kb_expectations:
+  overview: 1
+  decisions_log: 1
+
+verify:
+  - description: App + theme bound + defaultPage routes correctly
+    drive_actions:
+      - { type: goto, page_name: home, app_code: taskmate }
+      - { type: screenshot, label: home-default }
+  - description: Login → home flow as sysadmin
+    drive_actions:
+      - { type: goto, page_name: login, app_code: taskmate }
+      - { type: type, selector: "input[type=email]", text: "sysadmin@modlix.com" }
+      - { type: type, selector: "input[type=password]", text: "Pass@1234" }
+      - { type: click, selector: "button[type=submit]" }
+      - { type: wait_for_url, pattern: "/page/home" }
+      - { type: screenshot, label: post-login-home }
+  - description: Project list renders + clickable card routes to project-detail
+    drive_actions:
+      - { type: click, selector: ".project-card:first-child, [data-testid=project-card]:first-child" }
+      - { type: screenshot, label: project-detail }
+  - description: Task detail + Mark-done invokes server fn (status flips to DONE)
+    drive_actions:
+      - { type: click, selector: "[data-testid=task-card]:first-child, .task-card:first-child" }
+      - { type: screenshot, label: task-detail-before }
+      - { type: click, selector: "[data-testid=mark-done], button:has-text('Mark done')" }
+      - { type: wait_for_response, url_pattern: "/api/function/" }
+      - { type: screenshot, label: task-detail-after-done }

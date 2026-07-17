@@ -1,0 +1,1728 @@
+{
+  "_id": "66cc9c9323fed5558c7a03c3",
+  "definition": {
+    "namespace": "rim",
+    "name": "updateDocumentsInternal",
+    "parameters": {
+      "bookingId": {
+        "parameterName": "bookingId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "minLength": 3
+        }
+      },
+      "documentObject": {
+        "parameterName": "documentObject",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "isEoi": {
+        "parameterName": "isEoi",
+        "schema": {
+          "type": [
+            "BOOLEAN"
+          ],
+          "version": 1,
+          "defaultValue": false
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "data": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "createCon": {
+        "statementName": "createCon",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 13.428571428571416,
+          "top": 358.1428571428571
+        },
+        "parameterMap": {
+          "schema": {
+            "4dfSooLs82uOEoj4RvCYTL": {
+              "key": "4dfSooLs82uOEoj4RvCYTL",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          },
+          "name": {
+            "6ZapyaYvWGF9Vp9TOmRsBp": {
+              "key": "6ZapyaYvWGF9Vp9TOmRsBp",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "dataObj"
+            }
+          }
+        }
+      },
+      "read": {
+        "statementName": "read",
+        "name": "Read",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 600.5714285714286,
+          "top": 86.71428571428567
+        },
+        "parameterMap": {
+          "storageName": {
+            "RNNJzfyms6YSwgJzfRYRJ": {
+              "key": "RNNJzfyms6YSwgJzfRYRJ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "appCode": {
+            "QJU2LeFla75CzYpX6qWBa": {
+              "key": "QJU2LeFla75CzYpX6qWBa",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObjectId": {
+            "4Bk5005GamxySC9t34apeT": {
+              "key": "4Bk5005GamxySC9t34apeT",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setStatus__d-o-t__output": false,
+          "Steps__d-o-t__setDocStatus__d-o-t__output": true
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 846.8571428571427,
+          "top": 60.571428571428555
+        },
+        "parameterMap": {
+          "schema": {
+            "6c3joRoRmpdiQntcAfsYud": {
+              "key": "6c3joRoRmpdiQntcAfsYud",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          },
+          "name": {
+            "6KG6QiNywHz0ILtrrlXvIH": {
+              "key": "6KG6QiNywHz0ILtrrlXvIH",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "updateObj"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__read__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 926.4285714285713,
+          "top": 254.4285714285714
+        },
+        "parameterMap": {
+          "name": {
+            "3E4ieXSYxr1vdP2LW8ikj9": {
+              "key": "3E4ieXSYxr1vdP2LW8ikj9",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.updateObj"
+            }
+          },
+          "value": {
+            "vB47DWlqhXi8Z6PPIbKLE": {
+              "key": "vB47DWlqhXi8Z6PPIbKLE",
+              "type": "EXPRESSION",
+              "expression": "Steps.read.output.result",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1173.2857142857142,
+          "top": 481.8571428571429
+        },
+        "parameterMap": {
+          "eventName": {
+            "6jHNV6GZFtWBRLJ0tvGhdb": {
+              "key": "6jHNV6GZFtWBRLJ0tvGhdb",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "49Stgubyo5zZfB3fkskbuF": {
+              "key": "49Stgubyo5zZfB3fkskbuF",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.read.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ifEoiDoc": {
+        "statementName": "ifEoiDoc",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1162.5714285714284,
+          "top": 68.99999999999997
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        },
+        "parameterMap": {
+          "condition": {
+            "Wls0HUlQIemhQogZqSl0": {
+              "key": "Wls0HUlQIemhQogZqSl0",
+              "type": "EXPRESSION",
+              "expression": "Arguments.isEoi",
+              "order": 1
+            }
+          }
+        }
+      },
+      "setIntDocName": {
+        "statementName": "setIntDocName",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1143.75,
+          "top": 1028.625
+        },
+        "parameterMap": {
+          "name": {
+            "5KgPAFi5cI8i5yjs4Rx3T": {
+              "key": "5KgPAFi5cI8i5yjs4Rx3T",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dataObj.documentName"
+            }
+          },
+          "value": {
+            "7usYHAbheLpoxrGyvPjs3R": {
+              "key": "7usYHAbheLpoxrGyvPjs3R",
+              "type": "EXPRESSION",
+              "expression": "Steps.substring.output.result",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setIntDocLocation__d-o-t__output": false
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2305.75,
+          "top": 1320.75
+        },
+        "parameterMap": {
+          "eventName": {
+            "4XxKtib88mABM5Qpi1EsWv": {
+              "key": "4XxKtib88mABM5Qpi1EsWv",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "2qgxvurRRMbpmqneWnjChf": {
+              "key": "2qgxvurRRMbpmqneWnjChf",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2299.75,
+          "top": 1132
+        },
+        "parameterMap": {
+          "results": {
+            "3OrDijttQlGMmqHeZ9c8xz": {
+              "key": "3OrDijttQlGMmqHeZ9c8xz",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "setNewEoiObj": {
+        "statementName": "setNewEoiObj",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1688.75,
+          "top": 829.125
+        },
+        "parameterMap": {
+          "name": {
+            "5HGVrbRJcynM1GDqBSOXDc": {
+              "key": "5HGVrbRJcynM1GDqBSOXDc",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.updateObj.documents.eoi"
+            }
+          },
+          "value": {
+            "WvaxWOp6OFTXCsL8bNz0i": {
+              "key": "WvaxWOp6OFTXCsL8bNz0i",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForEoi__d-o-t__false": true
+        }
+      },
+      "update": {
+        "statementName": "update",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1980.5,
+          "top": 975.25
+        },
+        "parameterMap": {
+          "appCode": {
+            "1nT7QtXa8GCs0PYv1GJZ4a": {
+              "key": "1nT7QtXa8GCs0PYv1GJZ4a",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObject": {
+            "72RmjjRVkgWEbKm34hsHK4": {
+              "key": "72RmjjRVkgWEbKm34hsHK4",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "VUEh8k914bOpDFfBCKXmx": {
+              "key": "VUEh8k914bOpDFfBCKXmx",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "dataObjectId": {
+            "4CgFrxS0QaQurxEk6QFUq8": {
+              "key": "4CgFrxS0QaQurxEk6QFUq8",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setNewEoiObj__d-o-t__output": true
+        }
+      },
+      "generateEvent4": {
+        "statementName": "generateEvent4",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2688,
+          "top": 1095.625
+        },
+        "parameterMap": {
+          "eventName": {
+            "sAi0ACL3KVCUjqxaMgWJm": {
+              "key": "sAi0ACL3KVCUjqxaMgWJm",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "5mOC1mSNwRZ6UupCVlHDPU": {
+              "key": "5mOC1mSNwRZ6UupCVlHDPU",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForEoi.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent5": {
+        "statementName": "generateEvent5",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2715.5,
+          "top": 760.125
+        },
+        "parameterMap": {
+          "results": {
+            "7iHZFRHiJAWQzVX2hdNskK": {
+              "key": "7iHZFRHiJAWQzVX2hdNskK",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForEoi.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ifIsInternalForFalse": {
+        "statementName": "ifIsInternalForFalse",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 114.25,
+          "top": 1396.625
+        },
+        "parameterMap": {
+          "condition": {
+            "4wq52Bn348ZrPWJPlweSKi": {
+              "key": "4wq52Bn348ZrPWJPlweSKi",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.isInternal",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifEoiDoc__d-o-t__false": true
+        }
+      },
+      "ifIsInternalForTrue": {
+        "statementName": "ifIsInternalForTrue",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1476.5,
+          "top": 79.875
+        },
+        "parameterMap": {
+          "condition": {
+            "6N2yG5kcjZXFX7ml5bwunI": {
+              "key": "6N2yG5kcjZXFX7ml5bwunI",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.isInternal",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifEoiDoc__d-o-t__true": true
+        }
+      },
+      "ifForEoi": {
+        "statementName": "ifForEoi",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1465.25,
+          "top": 368.625
+        },
+        "parameterMap": {
+          "condition": {
+            "2MlJga6NCQjRbpsTm04sJe": {
+              "key": "2MlJga6NCQjRbpsTm04sJe",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj.documents.eoi != null",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifIsInternalForTrue__d-o-t__false": true
+        }
+      },
+      "ifEoiSigned": {
+        "statementName": "ifEoiSigned",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1842.75,
+          "top": 583.25
+        },
+        "parameterMap": {
+          "condition": {
+            "UuzplIGFBUXRbeCOmQzPS": {
+              "key": "UuzplIGFBUXRbeCOmQzPS",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj.documents.eoi.requestStatus = 'SIGNED'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForEoi__d-o-t__true": true
+        }
+      },
+      "ifForEoiInternal": {
+        "statementName": "ifForEoiInternal",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1803.5,
+          "top": 38.125
+        },
+        "parameterMap": {
+          "condition": {
+            "5z0Zp0mRSx6c0EJfzO2ikv": {
+              "key": "5z0Zp0mRSx6c0EJfzO2ikv",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj.documents.eoiInternal != null",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifIsInternalForTrue__d-o-t__true": true
+        }
+      },
+      "ifInternalEoiSigned": {
+        "statementName": "ifInternalEoiSigned",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 2144.5,
+          "top": 16.875
+        },
+        "parameterMap": {
+          "condition": {
+            "wfkwoCPz09FI9Ex5ssaaL": {
+              "key": "wfkwoCPz09FI9Ex5ssaaL",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj.documents.eoiInternal.requestStatus = 'SIGNED'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForEoiInternal__d-o-t__true": true
+        }
+      },
+      "generateEvent6": {
+        "statementName": "generateEvent6",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2563,
+          "top": 18.625
+        },
+        "parameterMap": {
+          "eventName": {
+            "2Yeqpf08fB5iP4hBnYZbwO": {
+              "key": "2Yeqpf08fB5iP4hBnYZbwO",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "6sj8NITBklzwVkcLvTYUeW": {
+              "key": "6sj8NITBklzwVkcLvTYUeW",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": false,
+                  "value": "Document for eoi was already signed and uploaded for selected booking"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifInternalEoiSigned__d-o-t__true": true
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2230.75,
+          "top": 531.125
+        },
+        "parameterMap": {
+          "eventName": {
+            "1x6r1iEwO7GDTM24RP1hnK": {
+              "key": "1x6r1iEwO7GDTM24RP1hnK",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "MQQDROhWKNGqX2mztjb1s": {
+              "key": "MQQDROhWKNGqX2mztjb1s",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": false,
+                  "value": "Document for eoi was already signed and uploaded for selected booking"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifEoiSigned__d-o-t__true": true
+        }
+      },
+      "setUpdateEoiObj": {
+        "statementName": "setUpdateEoiObj",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2058,
+          "top": 766.625
+        },
+        "parameterMap": {
+          "value": {
+            "33iDOf6ThDBQ90Kma3ApIu": {
+              "key": "33iDOf6ThDBQ90Kma3ApIu",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          },
+          "name": {
+            "asRdWYRxSVWs6SBS3rVof": {
+              "key": "asRdWYRxSVWs6SBS3rVof",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.updateObj.documents.eoi"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifEoiSigned__d-o-t__false": true
+        }
+      },
+      "updateForEoi": {
+        "statementName": "updateForEoi",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 2443.25,
+          "top": 750.375
+        },
+        "parameterMap": {
+          "appCode": {
+            "2gUMXu7ZxeMo6muYEfSJOL": {
+              "key": "2gUMXu7ZxeMo6muYEfSJOL",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObject": {
+            "3WXjjevp9s9EMCSOYQMmft": {
+              "key": "3WXjjevp9s9EMCSOYQMmft",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "4hXQsMDuW8oJRrBmtYY36T": {
+              "key": "4hXQsMDuW8oJRrBmtYY36T",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "dataObjectId": {
+            "2YZBtRRJx1rDI3qWmdTyrt": {
+              "key": "2YZBtRRJx1rDI3qWmdTyrt",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setUpdateEoiObj__d-o-t__output": true
+        }
+      },
+      "generateEvent7": {
+        "statementName": "generateEvent7",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2807.75,
+          "top": 88.125
+        },
+        "parameterMap": {
+          "results": {
+            "49ngqLFQWorfxPOVo4bEws": {
+              "key": "49ngqLFQWorfxPOVo4bEws",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForInternalEoi.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2326.5,
+          "top": 172.125
+        },
+        "parameterMap": {
+          "name": {
+            "1BgvIiSjwvnPNtto4sONlP": {
+              "key": "1BgvIiSjwvnPNtto4sONlP",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.updateObj.documents.eoiInternal"
+            }
+          },
+          "value": {
+            "490WgR16O2q4NHnRnglYvM": {
+              "key": "490WgR16O2q4NHnRnglYvM",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifInternalEoiSigned__d-o-t__false": true
+        }
+      },
+      "setInternalEoi": {
+        "statementName": "setInternalEoi",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1764.75,
+          "top": 229.875
+        },
+        "parameterMap": {
+          "name": {
+            "6MakAAXrSk5hjk0frHtt78": {
+              "key": "6MakAAXrSk5hjk0frHtt78",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.updateObj.documents.eoiInternal"
+            }
+          },
+          "value": {
+            "pTqCuVc5KSnR5ZLXivTgS": {
+              "key": "pTqCuVc5KSnR5ZLXivTgS",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForEoiInternal__d-o-t__false": true
+        }
+      },
+      "updateForInternalEoi": {
+        "statementName": "updateForInternalEoi",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 2558.5,
+          "top": 245.875
+        },
+        "parameterMap": {
+          "appCode": {
+            "5BsUPFkuzvHRxeX89CeL9C": {
+              "key": "5BsUPFkuzvHRxeX89CeL9C",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObject": {
+            "3rBLpuzTmzNDntLLtK8pGz": {
+              "key": "3rBLpuzTmzNDntLLtK8pGz",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "D43QXAcrdunRoHurI69Bm": {
+              "key": "D43QXAcrdunRoHurI69Bm",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "dataObjectId": {
+            "5usL6Jbcp89R9qiH2pACn4": {
+              "key": "5usL6Jbcp89R9qiH2pACn4",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "updateInternalEoi": {
+        "statementName": "updateInternalEoi",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 2063.75,
+          "top": 212.125
+        },
+        "parameterMap": {
+          "appCode": {
+            "G0iJbQVz2eT4t80MJQ3kA": {
+              "key": "G0iJbQVz2eT4t80MJQ3kA",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObject": {
+            "12wVBj78BvkfXsCjVJ6NkB": {
+              "key": "12wVBj78BvkfXsCjVJ6NkB",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "BkNGcEheSCmIkeLJu76G8": {
+              "key": "BkNGcEheSCmIkeLJu76G8",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "dataObjectId": {
+            "72RB38Gbfnuas45wzKI2uW": {
+              "key": "72RB38Gbfnuas45wzKI2uW",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setInternalEoi__d-o-t__output": true
+        }
+      },
+      "generateEvent9": {
+        "statementName": "generateEvent9",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2347,
+          "top": 392.875
+        },
+        "parameterMap": {
+          "eventName": {
+            "7C5JwtEhkIxjrHUxcBYYy": {
+              "key": "7C5JwtEhkIxjrHUxcBYYy",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "3VRVErRpREr5tCg1pIdw6p": {
+              "key": "3VRVErRpREr5tCg1pIdw6p",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateInternalEoi.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent10": {
+        "statementName": "generateEvent10",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2329.25,
+          "top": 222.625
+        },
+        "parameterMap": {
+          "results": {
+            "5bNIs29mQd0Sdxq56LumsB": {
+              "key": "5bNIs29mQd0Sdxq56LumsB",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateInternalEoi.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "lastIndexOf": {
+        "statementName": "lastIndexOf",
+        "name": "LastIndexOf",
+        "namespace": "System.String",
+        "position": {
+          "left": 413.5,
+          "top": 1044.125
+        },
+        "parameterMap": {
+          "string": {
+            "46zZMrGtLb6U9xu98PI0IO": {
+              "key": "46zZMrGtLb6U9xu98PI0IO",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.documentLocation",
+              "order": 1
+            }
+          },
+          "searchString": {
+            "4P4tj6h5RL9SFrgHIUAU3M": {
+              "key": "4P4tj6h5RL9SFrgHIUAU3M",
+              "type": "VALUE",
+              "order": 1,
+              "value": "/"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setDocLocation__d-o-t__output": false,
+          "Steps__d-o-t__setIntDocLocation__d-o-t__output": true
+        }
+      },
+      "setIntDocLocation": {
+        "statementName": "setIntDocLocation",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 270.75,
+          "top": 824.625
+        },
+        "parameterMap": {
+          "name": {
+            "6woalRazUyB9nx8h65ctVO": {
+              "key": "6woalRazUyB9nx8h65ctVO",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dataObj.documentLocation"
+            }
+          },
+          "value": {
+            "g3K4RAFxSCvGE3B73mape": {
+              "key": "g3K4RAFxSCvGE3B73mape",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.documentLocation",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifInternal__d-o-t__true": true
+        },
+        "comment": ""
+      },
+      "substring": {
+        "statementName": "substring",
+        "name": "SubString",
+        "namespace": "System.String",
+        "position": {
+          "left": 728.25,
+          "top": 1025.875
+        },
+        "parameterMap": {
+          "index": {
+            "TpZYHaeiH7ZyrAmSBiMV9": {
+              "key": "TpZYHaeiH7ZyrAmSBiMV9",
+              "type": "EXPRESSION",
+              "expression": "{{ Steps.lastIndexOf.output.result + 1}}",
+              "order": 1
+            }
+          },
+          "string": {
+            "5bizbSH0dBR6kgB4yFVRn": {
+              "key": "5bizbSH0dBR6kgB4yFVRn",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.documentLocation",
+              "order": 1
+            }
+          },
+          "secondIndex": {
+            "4T1yGKoCeoVfWMdz5yVtEc": {
+              "key": "4T1yGKoCeoVfWMdz5yVtEc",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.documentLocation.length",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent11": {
+        "statementName": "generateEvent11",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1548.75,
+          "top": 1731.875
+        },
+        "parameterMap": {
+          "results": {
+            "6babe0Dzf9aIGMzN7F7HxR": {
+              "key": "6babe0Dzf9aIGMzN7F7HxR",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForOthersExt.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent12": {
+        "statementName": "generateEvent12",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1476.25,
+          "top": 2036.625
+        },
+        "parameterMap": {
+          "eventName": {
+            "1rZhUDaQaCi2Bu6Rd16fbc": {
+              "key": "1rZhUDaQaCi2Bu6Rd16fbc",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "42F678vaPI00LR8C1Tcc6Z": {
+              "key": "42F678vaPI00LR8C1Tcc6Z",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForOthersExt.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ifForOthersExternal": {
+        "statementName": "ifForOthersExternal",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 303.5,
+          "top": 1803.625
+        },
+        "parameterMap": {
+          "condition": {
+            "Uf6FQpkE8jZ8HgiSvFIzw": {
+              "key": "Uf6FQpkE8jZ8HgiSvFIzw",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj.documents.others != null",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifIsInternalForFalse__d-o-t__false": true
+        }
+      },
+      "ifForOthersInternal": {
+        "statementName": "ifForOthersInternal",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 593,
+          "top": 1395.625
+        },
+        "parameterMap": {
+          "condition": {
+            "5kb3VgTMMZxSsMVyh6kes": {
+              "key": "5kb3VgTMMZxSsMVyh6kes",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj.documents.othersInternal != null",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifIsInternalForFalse__d-o-t__true": true
+        }
+      },
+      "setFirstOthersDocExt": {
+        "statementName": "setFirstOthersDocExt",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 546,
+          "top": 1974.875
+        },
+        "parameterMap": {
+          "name": {
+            "6u6Su19dW9G6H246KLG73a": {
+              "key": "6u6Su19dW9G6H246KLG73a",
+              "type": "EXPRESSION",
+              "expression": "'Context.updateObj.documents.others[0]'",
+              "order": 1
+            }
+          },
+          "value": {
+            "4mG7Buw0hYzx7UYCdRTXV3": {
+              "key": "4mG7Buw0hYzx7UYCdRTXV3",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForOthersExternal__d-o-t__false": true
+        }
+      },
+      "setLastOthersDocExt": {
+        "statementName": "setLastOthersDocExt",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 855.5,
+          "top": 2002.375
+        },
+        "parameterMap": {
+          "name": {
+            "6wwpXWKYLslFx3HC8uasr8": {
+              "key": "6wwpXWKYLslFx3HC8uasr8",
+              "type": "EXPRESSION",
+              "expression": "'Context.updateObj.documents.others[{{Context.updateObj.documents.others.length}}]'",
+              "order": 1
+            }
+          },
+          "value": {
+            "3ZkXUQJaPVihVkmxUIv27d": {
+              "key": "3ZkXUQJaPVihVkmxUIv27d",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForOthersExternal__d-o-t__true": true
+        }
+      },
+      "setFirstOthersDocInt": {
+        "statementName": "setFirstOthersDocInt",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 884.25,
+          "top": 1600.375
+        },
+        "parameterMap": {
+          "value": {
+            "1adoZsbwJ90nIrZszPukn4": {
+              "key": "1adoZsbwJ90nIrZszPukn4",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          },
+          "name": {
+            "d4s7dR0FkU5KjAF60ctGs": {
+              "key": "d4s7dR0FkU5KjAF60ctGs",
+              "type": "EXPRESSION",
+              "expression": "'Context.updateObj.documents.othersInternal[0]'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForOthersInternal__d-o-t__false": true
+        }
+      },
+      "updateForOthersExt": {
+        "statementName": "updateForOthersExt",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1154.25,
+          "top": 1889.625
+        },
+        "parameterMap": {
+          "appCode": {
+            "7bKpIFOYuKmaa8ZLH9D8Hg": {
+              "key": "7bKpIFOYuKmaa8ZLH9D8Hg",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObject": {
+            "4BDnQ3Mvvozv6Fig9GUmVy": {
+              "key": "4BDnQ3Mvvozv6Fig9GUmVy",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "RV8D8jboTGANUzjf43lQ3": {
+              "key": "RV8D8jboTGANUzjf43lQ3",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "dataObjectId": {
+            "7dgOFctf1bLlFJJbNLpWAR": {
+              "key": "7dgOFctf1bLlFJJbNLpWAR",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForOthersExternal__d-o-t__output": true
+        }
+      },
+      "updateForOthersInt": {
+        "statementName": "updateForOthersInt",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1571,
+          "top": 1316.375
+        },
+        "parameterMap": {
+          "appCode": {
+            "1BDb5znNBbXcpWE1EMgPSb": {
+              "key": "1BDb5znNBbXcpWE1EMgPSb",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "dataObject": {
+            "s7BDyPtSJ5pevE55e9vmV": {
+              "key": "s7BDyPtSJ5pevE55e9vmV",
+              "type": "EXPRESSION",
+              "expression": "Context.updateObj",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "65Sv9101T0AkP4jr3uV8p9": {
+              "key": "65Sv9101T0AkP4jr3uV8p9",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "dataObjectId": {
+            "1dKpH8JGWksPCcJFguBVA": {
+              "key": "1dKpH8JGWksPCcJFguBVA",
+              "type": "EXPRESSION",
+              "expression": "Arguments.bookingId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForOthersInternal__d-o-t__output": true
+        }
+      },
+      "generateEvent14": {
+        "statementName": "generateEvent14",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1930,
+          "top": 1423.125
+        },
+        "parameterMap": {
+          "results": {
+            "2pIJ5WmdkCoCss9c3eOsgZ": {
+              "key": "2pIJ5WmdkCoCss9c3eOsgZ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForOthersInt.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent13": {
+        "statementName": "generateEvent13",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1962,
+          "top": 1686.875
+        },
+        "parameterMap": {
+          "eventName": {
+            "12RbnNXX5HlZCXP9mwTSp4": {
+              "key": "12RbnNXX5HlZCXP9mwTSp4",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "31F5hWLGgq7KcCwAkGUb1h": {
+              "key": "31F5hWLGgq7KcCwAkGUb1h",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForOthersInt.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "setDocName": {
+        "statementName": "setDocName",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 656,
+          "top": 735.25
+        },
+        "parameterMap": {
+          "value": {
+            "7BhK0lKjYExAJPOLAjc4qP": {
+              "key": "7BhK0lKjYExAJPOLAjc4qP",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.responseObj.requests.document_ids[0].document_name",
+              "order": 1
+            }
+          },
+          "name": {
+            "3wHlWTpKSXSpMHwROYsf0S": {
+              "key": "3wHlWTpKSXSpMHwROYsf0S",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.dataObj.documentName"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifInternal__d-o-t__false": true
+        }
+      },
+      "ifInternal": {
+        "statementName": "ifInternal",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 18,
+          "top": 628.375
+        },
+        "parameterMap": {
+          "condition": {
+            "6EOhlDdezJHYpZiTOZdfUx": {
+              "key": "6EOhlDdezJHYpZiTOZdfUx",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.isInternal",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__createCon__d-o-t__output": true
+        }
+      },
+      "generateEvent8": {
+        "statementName": "generateEvent8",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2685.5,
+          "top": 464.625
+        },
+        "parameterMap": {
+          "eventName": {
+            "1XE2FGEh2g16kUzi0lT6Kd": {
+              "key": "1XE2FGEh2g16kUzi0lT6Kd",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "Kfxn6HFHGCl2s1ITtELRq": {
+              "key": "Kfxn6HFHGCl2s1ITtELRq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.updateForInternalEoi.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "setLastOthersDocInt": {
+        "statementName": "setLastOthersDocInt",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1204.75,
+          "top": 1523.125
+        },
+        "parameterMap": {
+          "name": {
+            "4wjulNfHzKuC0VrLmBZDem": {
+              "key": "4wjulNfHzKuC0VrLmBZDem",
+              "type": "EXPRESSION",
+              "expression": "'Context.updateObj.documents.othersInternal[{{Context.updateObj.documents.othersInternal.length}}]'",
+              "order": 1
+            }
+          },
+          "value": {
+            "4jbAVBwlse06cCdPdCv26r": {
+              "key": "4jbAVBwlse06cCdPdCv26r",
+              "type": "EXPRESSION",
+              "expression": "Context.dataObj",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifForOthersInternal__d-o-t__true": true
+        }
+      },
+      "setStatus": {
+        "statementName": "setStatus",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 13.14285714285711,
+          "top": 112.71428571428572
+        },
+        "parameterMap": {
+          "value": {
+            "4ARzmBlGlj391KDTIatfl4": {
+              "key": "4ARzmBlGlj391KDTIatfl4",
+              "type": "VALUE",
+              "order": 1,
+              "value": "NOT_SIGNED"
+            }
+          },
+          "name": {
+            "1eFHp112m0nDUqS8hvXTdl": {
+              "key": "1eFHp112m0nDUqS8hvXTdl",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dataObj.requestStatus"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setId__d-o-t__output": false,
+          "Steps__d-o-t__setFileType__d-o-t__output": true
+        }
+      },
+      "setDocStatus": {
+        "statementName": "setDocStatus",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 272.2857142857143,
+          "top": 113.28571428571428
+        },
+        "parameterMap": {
+          "name": {
+            "1VcV8ZodaZ9IbkSFpAkDW9": {
+              "key": "1VcV8ZodaZ9IbkSFpAkDW9",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.dataObj.documentStatus"
+            }
+          },
+          "value": {
+            "3uiisH8JvjHZ92Qy02f4ys": {
+              "key": "3uiisH8JvjHZ92Qy02f4ys",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.documentStatus",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setStatus__d-o-t__output": true
+        }
+      },
+      "setId": {
+        "statementName": "setId",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 335.2857142857143,
+          "top": 480
+        },
+        "parameterMap": {
+          "value": {
+            "578dcvo6eEpehdH1qet2FZ": {
+              "key": "578dcvo6eEpehdH1qet2FZ",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject._id",
+              "order": 1
+            }
+          },
+          "name": {
+            "6lURJ0nxdxnYH0ge0ZEGLp": {
+              "key": "6lURJ0nxdxnYH0ge0ZEGLp",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dataObj.documentId"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__createCon__d-o-t__output": false,
+          "Steps__d-o-t__ifInternal__d-o-t__output": true
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 684.7142857142856,
+          "top": 495.42857142857133
+        },
+        "parameterMap": {
+          "name": {
+            "IWEKMSWAX32Svz7OfcsQc": {
+              "key": "IWEKMSWAX32Svz7OfcsQc",
+              "type": "EXPRESSION",
+              "expression": "'Context.dataObj.isInternal'",
+              "order": 1
+            }
+          },
+          "value": {
+            "NpVHzgT13aR2JirxXIxfX": {
+              "key": "NpVHzgT13aR2JirxXIxfX",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.isInternal",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__setId__d-o-t__output": true
+        }
+      },
+      "setFileType": {
+        "statementName": "setFileType",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1011.2857142857142,
+          "top": 774.1428571428571
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set2__d-o-t__output": true
+        },
+        "parameterMap": {
+          "name": {
+            "6xz8cbMX6ChWYVk7X9Iits": {
+              "key": "6xz8cbMX6ChWYVk7X9Iits",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.dataObj.fileType"
+            }
+          },
+          "value": {
+            "4z3Y1SOrX1Lp5QEiDcr3l6": {
+              "key": "4z3Y1SOrX1Lp5QEiDcr3l6",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentObject.fileType",
+              "order": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "rim.updateDocumentsInternal",
+  "message": "From transport : ZbPnmMOCllRp4eX7GL7jYN",
+  "clientCode": "SYSTEM",
+  "appCode": "rim",
+  "version": 54,
+  "updatedAt": "2026-04-09 04:28:58.481000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-08-26 15:17:39.057000",
+  "createdBy": "<USER>"
+}

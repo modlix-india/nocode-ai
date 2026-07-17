@@ -1,0 +1,16 @@
+- 1N9sak29mWF4jaIP70OXuW (Grid) PageGrid
+  - 7qBI4D5JRb4U8N9SVB9D8H (Grid) Header Grid
+    - 2STSXISYPshwzQHT8EbSuG (Image) image
+  - 3je2FMNusesWwWelnCW4T4 (Grid) main section Grid
+    - 5XcSK36C9oF9bxR4xk7Eic (Grid) Images Grid
+      - 2x6ZatMzPYtw5epHUPxIOA (Image) outer ellipse
+      - 2yrCaZMMWrlL30yijzXef3 (Image) inner ellipse
+      - 77pFagCZb8R4ILrctfpWSC (Image) page image
+      - 6ot10sLVibRRvsPTxXLkS8 (Image) microscope image
+      - 4JT6Bh8LrWLoPktrjFQcEY (Image) bottom disc
+    - 5xJd92BS6PsAW4pHUiW4rh (Grid) Access denied text Grid
+      - 3nTP792dPTrgkDrDv9DKGN (Text) heading Text
+      - 4Tp1lwe5LTUlArlVWBhzcB (Text) desktop Text1
+      - 6XiliwxPwzBcJRqhVvOpRU (Text) desktop Text2
+      - dvYH15LkCqil6fJf9JYdK (Text) mobile Text
+    - 738m6f3isUTiuKbWyT4v1v (Button) button

@@ -1,0 +1,1330 @@
+{
+  "_id": "69789294a7e83926bb337f97",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "order"
+      }
+    }
+  },
+  "rootComponent": "5tDC4cILe6TQuavZzhfVgf",
+  "componentDefinition": {
+    "5tDC4cILe6TQuavZzhfVgf": {
+      "key": "5tDC4cILe6TQuavZzhfVgf",
+      "name": "Page Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "2WkewXZXzOH26L2EIHAHIV": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Jjiuoq4wfPes5xCDT6hNV": true,
+        "1DDmqSMxXhcAtFDVhyUtFu": true,
+        "3dPSRL7LOMa1hNS1XOOupu": true
+      }
+    },
+    "2Jjiuoq4wfPes5xCDT6hNV": {
+      "key": "2Jjiuoq4wfPes5xCDT6hNV",
+      "name": "head-line",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7GqPMI6HI05eLe5XSm83rp": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url('api/files/static/file/ASHAK1/japanese-restaurant/mv3.avif')"
+              },
+              "paddingTop": {
+                "value": "11vw"
+              },
+              "paddingBottom": {
+                "value": "4vw"
+              },
+              "gap": {
+                "value": "1.5vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1TdYs0wfaRFsxgZW8DBiCP": true,
+        "1pl34dU0wXuwHpmho5pJQv": true
+      },
+      "displayOrder": 2
+    },
+    "1TdYs0wfaRFsxgZW8DBiCP": {
+      "key": "1TdYs0wfaRFsxgZW8DBiCP",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "ONLINE ORDERS"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "4TATXvLQc6DBOObXjdhLlf": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "3.47vw"
+              },
+              "fontFamily": {
+                "value": "Syne"
+              },
+              "fontWeight": {
+                "value": "700"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1pl34dU0wXuwHpmho5pJQv": {
+      "key": "1pl34dU0wXuwHpmho5pJQv",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/ASHAK1/japanese-restaurant/arrow-block.png"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5LgV9G5c761BDhsfFwthUH": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1DDmqSMxXhcAtFDVhyUtFu": {
+      "key": "1DDmqSMxXhcAtFDVhyUtFu",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/ASHAK1/japanese-restaurant/chikati.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5xkQc8Sh0yVmODmVRG9vof": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100vw"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "zIndex": {
+                "value": "-1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3dPSRL7LOMa1hNS1XOOupu": {
+      "key": "3dPSRL7LOMa1hNS1XOOupu",
+      "name": "Accepting-orders",
+      "type": "Grid",
+      "styleProperties": {
+        "2qCaCy2OlBQRXHfsIiChHc": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "5.56vw"
+              },
+              "paddingBottom": {
+                "value": "5.56vw"
+              },
+              "paddingLeft": {
+                "value": "10vw"
+              },
+              "paddingRight": {
+                "value": "10vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2yDg4TYUZWIyTOs5xVs0fb": true,
+        "18uuPOxFNbfRZ1iHgIhknx": true,
+        "57YsXp60JalJVMVofV7TzB": true,
+        "6PJ8AVrTHZr2GFM0UkBWne": true
+      },
+      "displayOrder": 2
+    },
+    "2yDg4TYUZWIyTOs5xVs0fb": {
+      "key": "2yDg4TYUZWIyTOs5xVs0fb",
+      "name": "orders",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Accepting Orders"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-circle"
+        }
+      },
+      "styleProperties": {
+        "6TkwQCaHkOCUujvkzvvhg6": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "0.97vw"
+              },
+              "borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "backgroundColor": {
+                "value": "#000000"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopLeftRadius": {
+                "value": "16.81vw"
+              },
+              "borderTopRightRadius": {
+                "value": "16.81vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "16.81vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "16.81vw"
+              },
+              "leftIcon-fontSize": {
+                "value": "0.69vw"
+              },
+              "leftIcon-color": {
+                "value": "#43b72a"
+              },
+              "leftIcon-borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "leftIcon-borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "leftIcon-borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "leftIcon-borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "leftIcon-borderTopStyle": {
+                "value": "solid"
+              },
+              "leftIcon-borderRightStyle": {
+                "value": "solid"
+              },
+              "leftIcon-borderBottomStyle": {
+                "value": "solid"
+              },
+              "leftIcon-borderLeftStyle": {
+                "value": "solid"
+              },
+              "leftIcon-borderTopColor": {
+                "value": "#ffffff"
+              },
+              "leftIcon-borderRightColor": {
+                "value": "#ffffff"
+              },
+              "leftIcon-borderBottomColor": {
+                "value": "#ffffff"
+              },
+              "leftIcon-borderLeftColor": {
+                "value": "#ffffff"
+              },
+              "leftIcon-borderTopLeftRadius": {
+                "value": "50%"
+              },
+              "leftIcon-borderTopRightRadius": {
+                "value": "50%"
+              },
+              "leftIcon-borderBottomLeftRadius": {
+                "value": "50%"
+              },
+              "leftIcon-borderBottomRightRadius": {
+                "value": "50%"
+              },
+              "color": {
+                "value": "#fff3ee"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "18uuPOxFNbfRZ1iHgIhknx": {
+      "key": "18uuPOxFNbfRZ1iHgIhknx",
+      "name": "h3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "DAY TO NIGHT"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "styleProperties": {
+        "7dYES99jYXpxp2DZqISIu9": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "2.22vw"
+              },
+              "fontFamily": {
+                "value": "Syne"
+              },
+              "color": {
+                "value": "#e8623d"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "57YsXp60JalJVMVofV7TzB": {
+      "key": "57YsXp60JalJVMVofV7TzB",
+      "name": "h6",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "SERVED DAILY 12PM - 1OPM"
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "6RgZimHZMfnhZ1vzJXWb2D": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "color": {
+                "value": "#fff3ee"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6PJ8AVrTHZr2GFM0UkBWne": {
+      "key": "6PJ8AVrTHZr2GFM0UkBWne",
+      "name": "items",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "title": "Appetizers",
+              "desc": "Start your meal with our delicious appetizers.",
+              "cards": [
+                {
+                  "image1": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder.avif",
+                  "title1": "Steamed Buns",
+                  "desc1": "Soft buns filled with flavorful ingredients.",
+                  "rate1": "$8.00"
+                },
+                {
+                  "image2": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(1).avif",
+                  "title2": "Shrimp Spring Rolls",
+                  "desc2": "Crispy rolls stuffed with shrimp and vegetables.",
+                  "rate2": "$9.00"
+                },
+                {
+                  "image3": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(2).avif",
+                  "title3": "Gyoza",
+                  "desc3": "Pan-fried dumplings served with dipping sauce.",
+                  "rate3": "$7.50"
+                }
+              ]
+            },
+            {
+              "title": "Special Sushi Rolls",
+              "desc": "Our chef\u2019s special sushi roll selections.",
+              "cards": [
+                {
+                  "image1": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(3).avif",
+                  "title1": "Hawaii Roll",
+                  "desc1": "Fresh fish with tropical flavors.",
+                  "rate1": "$12.00"
+                },
+                {
+                  "image2": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(4).avif",
+                  "title2": "Rainbow Roll",
+                  "desc2": "Colorful roll topped with assorted fish.",
+                  "rate2": "$14.00"
+                },
+                {
+                  "image3": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(5).avif",
+                  "title3": "Green Dragon Roll",
+                  "desc3": "Eel and cucumber topped with avocado.",
+                  "rate3": "$13.50"
+                }
+              ]
+            },
+            {
+              "title": "Nigiri",
+              "desc": "Classic nigiri made with fresh fish.",
+              "cards": [
+                {
+                  "image1": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(6).avif",
+                  "title1": "Tuna Nigiri",
+                  "desc1": "Fresh tuna over seasoned rice.",
+                  "rate1": "$6.00"
+                },
+                {
+                  "image2": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(7).avif",
+                  "title2": "Salmon Nigiri",
+                  "desc2": "Rich salmon served on sushi rice.",
+                  "rate2": "$6.50"
+                },
+                {
+                  "image3": "api/files/static/file/ASHAK1/japanese-restaurant/Placeholder+(8).avif",
+                  "title3": "Yellowtail Nigiri",
+                  "desc3": "Delicate yellowtail with a clean finish.",
+                  "rate3": "$7.00"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "styleProperties": {
+        "2sEf11ocENJaegekYQIaY": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3.5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1BVSatoIPgQ0dhTg8GH8LD": true
+      },
+      "displayOrder": 4
+    },
+    "1BVSatoIPgQ0dhTg8GH8LD": {
+      "key": "1BVSatoIPgQ0dhTg8GH8LD",
+      "name": "container",
+      "type": "Grid",
+      "styleProperties": {
+        "pW2niz731RSj2AvHsxDkV": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "z9izHyzHf4MObkI2xGyFF": true,
+        "2hCo1pADlAfoOznHkceqnI": true,
+        "7jBVD2aFBbgUaeotjhagrL": true
+      },
+      "displayOrder": 0
+    },
+    "z9izHyzHf4MObkI2xGyFF": {
+      "key": "z9izHyzHf4MObkI2xGyFF",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.desc"
+          }
+        },
+        "textContainer": {
+          "value": "P"
+        }
+      },
+      "styleProperties": {
+        "4AYh2QkwRZr6mwucecnksE": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "1.11w"
+              },
+              "color": {
+                "value": "#fff3ee"
+              },
+              "marginTop": {
+                "value": "1vw"
+              },
+              "marginBottom": {
+                "value": "1vw"
+              },
+              "marginLeft": {
+                "value": "1vw"
+              },
+              "marginRight": {
+                "value": "1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2hCo1pADlAfoOznHkceqnI": {
+      "key": "2hCo1pADlAfoOznHkceqnI",
+      "name": "h3",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "styleProperties": {
+        "106LjMWib8aIWFfU1IA4LO": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Syne"
+              },
+              "fontSize": {
+                "value": "1.94vw"
+              },
+              "color": {
+                "value": "#fff3ee"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7jBVD2aFBbgUaeotjhagrL": {
+      "key": "7jBVD2aFBbgUaeotjhagrL",
+      "name": "cards",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "15qRL71pFacKZyAGHO864E": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.67vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1g7EHB96kp29er4qibvHla": true,
+        "5XCjryDImxvurjiCobUDku": true,
+        "6dYEZrXYO5tPtcaucGsRGX": true
+      },
+      "displayOrder": 3
+    },
+    "1g7EHB96kp29er4qibvHla": {
+      "key": "1g7EHB96kp29er4qibvHla",
+      "name": "card1",
+      "type": "Grid",
+      "styleProperties": {
+        "2NV8gBx5Z8pEnbCGsypwfv": {
+          "resolutions": {
+            "ALL": {
+              "borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#e8623d"
+              },
+              "borderRightColor": {
+                "value": "#e8623d"
+              },
+              "borderBottomColor": {
+                "value": "#e8623d"
+              },
+              "borderLeftColor": {
+                "value": "#e8623d"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2vK8vUZGSa09rIwkGGap9H": true,
+        "6QAd50tUUVd1SKfdfyU8zV": true
+      },
+      "displayOrder": 1
+    },
+    "2vK8vUZGSa09rIwkGGap9H": {
+      "key": "2vK8vUZGSa09rIwkGGap9H",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[0].image1"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "1x1OPhWmdraeva9Wu82i4I": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5XCjryDImxvurjiCobUDku": {
+      "key": "5XCjryDImxvurjiCobUDku",
+      "name": "card2",
+      "type": "Grid",
+      "styleProperties": {
+        "6hOxdvcngOlsqNn26i2iFJ": {
+          "resolutions": {
+            "ALL": {
+              "borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#e8623d"
+              },
+              "borderRightColor": {
+                "value": "#e8623d"
+              },
+              "borderBottomColor": {
+                "value": "#e8623d"
+              },
+              "borderLeftColor": {
+                "value": "#e8623d"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3jEBVBOeX9tiE25z4ZGQyr": true,
+        "79zijJGidvLGnoV3K8Td0I": true
+      },
+      "displayOrder": 2
+    },
+    "3jEBVBOeX9tiE25z4ZGQyr": {
+      "key": "3jEBVBOeX9tiE25z4ZGQyr",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[1].image2"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5OIIsz7D4uEAfaUbmEiDZl": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6dYEZrXYO5tPtcaucGsRGX": {
+      "key": "6dYEZrXYO5tPtcaucGsRGX",
+      "name": "card3",
+      "type": "Grid",
+      "styleProperties": {
+        "BXRtR9bnVnJaLoMGG9H3v": {
+          "resolutions": {
+            "ALL": {
+              "borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#e8623d"
+              },
+              "borderRightColor": {
+                "value": "#e8623d"
+              },
+              "borderBottomColor": {
+                "value": "#e8623d"
+              },
+              "borderLeftColor": {
+                "value": "#e8623d"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6ji8nJV6UYqY5gUPeqFNhn": true,
+        "18RFWdNaiHnAwCJQYub1rL": true
+      },
+      "displayOrder": 3
+    },
+    "6ji8nJV6UYqY5gUPeqFNhn": {
+      "key": "6ji8nJV6UYqY5gUPeqFNhn",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[2].image3"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "2uA1Ugp6QdpfIU5E3hZ4Mr": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7jxIfkk4rvo9sKQryQjTx8": {
+      "key": "7jxIfkk4rvo9sKQryQjTx8",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[0].title1"
+          }
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "5bm40eRajBVCOiP25O1PLi": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Syne"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6QAd50tUUVd1SKfdfyU8zV": {
+      "key": "6QAd50tUUVd1SKfdfyU8zV",
+      "name": "botom",
+      "type": "Grid",
+      "styleProperties": {
+        "1eML680tMul7btwokpr1n0": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.3vw"
+              },
+              "paddingBottom": {
+                "value": "1.3vw"
+              },
+              "paddingLeft": {
+                "value": "1.3vw"
+              },
+              "paddingRight": {
+                "value": "1.3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7jxIfkk4rvo9sKQryQjTx8": true,
+        "5d4tFORE7QLWhK4Iav7mPP": true,
+        "72QzWl3xzwgGoijXisTNci": true
+      },
+      "displayOrder": 1
+    },
+    "5d4tFORE7QLWhK4Iav7mPP": {
+      "key": "5d4tFORE7QLWhK4Iav7mPP",
+      "name": "desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[0].desc1"
+          }
+        },
+        "textContainer": {
+          "value": "P"
+        }
+      },
+      "styleProperties": {
+        "41ka1ZdNF8lColaCmLQLWe": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "72QzWl3xzwgGoijXisTNci": {
+      "key": "72QzWl3xzwgGoijXisTNci",
+      "name": "cost",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[0].rate1"
+          }
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "4cp8JbDDBYO1TcFhspSBQk": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "79zijJGidvLGnoV3K8Td0I": {
+      "key": "79zijJGidvLGnoV3K8Td0I",
+      "name": "botom",
+      "type": "Grid",
+      "styleProperties": {
+        "1eML680tMul7btwokpr1n0": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.3vw"
+              },
+              "paddingBottom": {
+                "value": "1.3vw"
+              },
+              "paddingLeft": {
+                "value": "1.3vw"
+              },
+              "paddingRight": {
+                "value": "1.3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2LyaFbI0ehwUW188gjaOiF": true,
+        "6BsmrcSeam4ZCZbJOTns3q": true,
+        "6Ku8YhnTOdkJXsF7GmMsfr": true
+      },
+      "displayOrder": 1
+    },
+    "2LyaFbI0ehwUW188gjaOiF": {
+      "key": "2LyaFbI0ehwUW188gjaOiF",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[1].title2"
+          }
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "5bm40eRajBVCOiP25O1PLi": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Syne"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6BsmrcSeam4ZCZbJOTns3q": {
+      "key": "6BsmrcSeam4ZCZbJOTns3q",
+      "name": "desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[1].desc2"
+          }
+        },
+        "textContainer": {
+          "value": "P"
+        }
+      },
+      "styleProperties": {
+        "41ka1ZdNF8lColaCmLQLWe": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6Ku8YhnTOdkJXsF7GmMsfr": {
+      "key": "6Ku8YhnTOdkJXsF7GmMsfr",
+      "name": "cost",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[1].rate2"
+          }
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "4cp8JbDDBYO1TcFhspSBQk": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "18RFWdNaiHnAwCJQYub1rL": {
+      "key": "18RFWdNaiHnAwCJQYub1rL",
+      "name": "botom",
+      "type": "Grid",
+      "styleProperties": {
+        "1eML680tMul7btwokpr1n0": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.3vw"
+              },
+              "paddingBottom": {
+                "value": "1.3vw"
+              },
+              "paddingLeft": {
+                "value": "1.3vw"
+              },
+              "paddingRight": {
+                "value": "1.3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7Buj0b5C4TxsbGPFTSOnlv": true,
+        "2qfRnl54oXUK8vyFEKx6Qt": true,
+        "3t1hCTwII5QXTT32wQiWd1": true
+      },
+      "displayOrder": 2
+    },
+    "7Buj0b5C4TxsbGPFTSOnlv": {
+      "key": "7Buj0b5C4TxsbGPFTSOnlv",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[2].title3"
+          }
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "5bm40eRajBVCOiP25O1PLi": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Syne"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2qfRnl54oXUK8vyFEKx6Qt": {
+      "key": "2qfRnl54oXUK8vyFEKx6Qt",
+      "name": "desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[2].desc3"
+          }
+        },
+        "textContainer": {
+          "value": "P"
+        }
+      },
+      "styleProperties": {
+        "41ka1ZdNF8lColaCmLQLWe": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3t1hCTwII5QXTT32wQiWd1": {
+      "key": "3t1hCTwII5QXTT32wQiWd1",
+      "name": "cost",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.cards[2].rate3"
+          }
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "4cp8JbDDBYO1TcFhspSBQk": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#fff3ee"
+              },
+              "fontFamily": {
+                "value": "Space Grotesk"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    }
+  },
+  "name": "order",
+  "clientCode": "ASHAK1",
+  "appCode": "japaneserestauranthlei",
+  "title": "order",
+  "version": 9,
+  "updatedAt": "2026-01-28 10:07:32.054000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-27 10:25:24.842000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,25 @@
+{
+  "_id": "6773f1e16eeeb910ce33c9ab",
+  "pathString": "/webhook",
+  "pathDefinitions": {
+    "GET": {
+      "uriType": "KIRUN_FUNCTION",
+      "kiRunFxDefinition": {
+        "name": "wbt",
+        "namespace": "cxapp",
+        "queryParamMapping": "<REDACTED>",
+        "outputEventName": "output",
+        "outputEventParamName": "challenge"
+      }
+    }
+  },
+  "name": "/webhook",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 72,
+  "updatedAt": "2026-04-09 04:27:57.935000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-12-31 13:30:09.296000",
+  "createdBy": "<USER>"
+}

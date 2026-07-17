@@ -212,3 +212,8 @@ comparison.html
 scripts/tag_comparison.html
 
 comparison_screenshots/
+
+scripts/bench_results
+
+# page analyzer run artifacts (screenshots/analysis.json) - local only
+runs/

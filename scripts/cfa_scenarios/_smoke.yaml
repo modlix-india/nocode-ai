@@ -1,0 +1,8 @@
+name: _smoke
+description: One-turn smoke test for the cfa_drive harness. Verifies auth, SSE parsing, JSONL output.
+
+client_code: SYSTEM
+app_code: appbuilder
+
+turns:
+  - Just call whoami and tell me who I am. No other tools.

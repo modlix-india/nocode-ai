@@ -1,0 +1,100 @@
+{
+  "_id": "688cdc605889680f7d59a4c6",
+  "definition": {
+    "namespace": "sitezump",
+    "name": "userInviteEmail",
+    "parameters": {
+      "user": {
+        "parameterName": "user",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "sent": {}
+        }
+      }
+    },
+    "steps": {
+      "sendEmail": {
+        "statementName": "sendEmail",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 925.3999938964841,
+          "top": 276.99999999999994
+        },
+        "parameterMap": {
+          "templateData": {
+            "1Z4Iq0MjWXFLak6t3jFXUx": {
+              "key": "1Z4Iq0MjWXFLak6t3jFXUx",
+              "type": "EXPRESSION",
+              "expression": "Arguments.user",
+              "value": {}
+            }
+          },
+          "connectionName": {
+            "3xOqPzz65WvbYuKPW2WHDy": {
+              "key": "3xOqPzz65WvbYuKPW2WHDy",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "templateName": {
+            "8iDMUD4ASZd17ooZr4JJU": {
+              "key": "8iDMUD4ASZd17ooZr4JJU",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "userInvite"
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1349.3999938964841,
+          "top": 342.3999633789062
+        },
+        "parameterMap": {
+          "results": {
+            "249SVnl9OQCDnJnaHPx8Ot": {
+              "key": "249SVnl9OQCDnJnaHPx8Ot",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "sent",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.sendEmail.output.sent"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "sitezump.userInviteEmail",
+  "message": "From transport : XrA24Z6C1dY8giEpPGiiEe",
+  "clientCode": "SYSTEM",
+  "appCode": "sitezump",
+  "version": 25,
+  "updatedAt": "2025-12-29 05:07:42.262000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-08-01 15:25:20.700000",
+  "createdBy": "<USER>"
+}

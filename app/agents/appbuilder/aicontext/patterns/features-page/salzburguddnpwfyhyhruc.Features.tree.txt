@@ -1,0 +1,68 @@
+- 5tDC4cILe6TQuavZzhfVgf (Grid) Page Grid
+  - 5TOj0pvJ4DTwKirSjk6QDq (Grid) sales with pos
+    - 3jZ69mRXbtViEyn7B4ui3y (Grid) seperator
+      - 1fsmpj4KhlO491ePOewUsn (Grid) innovative soln
+        - 7eIFOlA2B4EFMZygBQKMaq (Grid) title card
+          - yuTeqTIlp2fy9IpmiTz3k (Text) title
+          - znZyzDWFnPFXRF44L7KQT (Text) p
+        - 1E3KHUyIVSOWerzuaDlUhB (Image) Image
+      - 2nScQ6fylmE1u5kaG8nZq1 (Image) Image
+      - 5jKV6nqrcn4mI1bMSz9vcb (Image) Image
+      - 17hMuLLREa15pTjF2ITlze (Grid) fast & efficient
+        - 1GQL5cmsXt88TXViEZJdHu (Image) Image
+        - 5Q1UNblUHjzV3gGQbTL7d7 (Grid) text div
+          - 1znrget93tavXe22GmasJP (Text) title
+      - 3oIshpEuDzmZ1XuNSTBdB3 (Image) Image
+      - 5Ds2MOjVstTihuxTaXAeSg (Image) Image
+      - 1BbiaAsllaXQErD0gIej3Q (Grid) smart payments
+        - HQAy8tevFAKU9XDTEc7av (Grid) title card
+          - 6Reogqcul4uCrAl6NTFpTL (Text) title
+          - w7BhjuIgaTWQllUcgGANy (Text) p
+        - F8vAAouZkxBVTMqwzwOrN (Image) Image
+    - 688ry4MtBlYIKWjfjVvoHB (Grid) title card
+      - pbkSVyDsdybg9q450d1Kp (Text) p
+      - 69fv0SG3Wed3AYZq9KhOd4 (Text) h1
+  - 4kSySKXlhVt7fON2WdGkmZ (Grid) about
+    - 44ovhV42eGYoGkEMcUYGg1 (Grid) unlock your sales
+      - 23PYA3k4sCwkQmZSTZHwGi (Text) h1
+      - 7D9R7pecQIp6kW86n6hYGT (Text) p
+      - 2GWmbHOFQQAwnijDF8WJkt (Text) h1
+    - 2R3gkLteIdtwvM15YoUNTG (ArrayRepeater) Repeator
+      - 2MeEFv7l8dBoZ6VTPSmHpp (Grid) desc
+        - 1nQct0r9JtBXMnNkmVjpdY (Text) title
+        - vfaKMGQEYGmtog8BiU2oi (Text) p
+        - 1kLeKajfJYQBOtPAsToM0a (Text) prices
+  - 57CgOu8qzL3MjBunZyCbPe (Grid) powerful soln
+    - ZRQ44oXRuGxkPrwjukk6q (Grid) title card
+      - 2Pa2A6LG7usLtB6N2bwxGS (Text) h1
+      - 5eQXQ2yK133jsHHkjLDPHn (Text) p
+    - 3sH9roU6BLLdVEbmshI5Dl (Grid) seperator
+      - 710ewVNwIlnJxMnhpYOYdj (Small Carousel) Small Carousel
+        - 4yw8bMK6thEemrlc6uZRD5 (Grid) bg-img
+          - 2IPU5taY93c24T12al33Hh (Text) p
+          - 1HLFnZRCwVzwLcuFcah4Q5 (Text) h1
+        - 2IgPEjRO5tXre4eZUIWwr1 (Grid) bg-img
+          - sYz0d2CdiWvZZLcVmROE2 (Text) p
+          - 5xLrldoYIyW3K6MjG46DBX (Text) h1
+        - 5ASoyKhr9GftkFIEgfqQNy (Grid) bg-img
+          - 5yj5rJAXC6Smx4GYPmKCY3 (Text) p
+          - 4ByODV4GMYD0pFCcmuTffI (Text) h1
+        - 5P1wAyZBRG1dMqjuLkCUut (Grid) bg-img
+          - 7wy3KM3EsZSqNHNnaFKh6C (Text) p
+          - 1d2UKkWl7axJtaOJa4mnfP (Text) h1
+  - 5P4LSMIjpg4AtcvkZZL5XT (Grid) tittle card & img div
+    - 38EdLYkIXcvsnL0rSZ0UvD (Grid) payment soln
+      - 3GFgiErI976UyuN9ncHPGV (Text) h1
+      - F3xuEQPw5pHb5X9WUynkA (Text) p
+      - 2dqA9Pb9nbCk5iGQwlgZ2D (Text) h1
+    - 6B7oliKVPWwtMXK0rELCQn (Image) Image
+  - 4MZ2mY6rcSQuEY4fyQwmQM (Grid) tittle card & img div
+    - 24sqBcQMNTJELuYZYEepoF (Grid) payment soln
+      - 3btpjrbm1xkl1bqooqyD1i (Text) h1
+      - 5VSySgN3UtjNI4RDNcWLpm (Text) p
+      - 2R1j8l0crR6BNrb3dBQVWy (Text) h1
+    - 13EM82CghvJYmj56DC4FjO (Image) Image
+  - k6baMKB2Kxbr89oHgwEpc (Grid) seamless soln
+    - 19jUkZuSCZz40GmxQCJJnt (Text) Title
+    - 6BRZRlhw1pDvc7R1FaKFyk (Text) p
+    - 5X3FKpvTVzavaKbWj7vOQT (Text) description
