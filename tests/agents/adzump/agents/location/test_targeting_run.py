@@ -7,11 +7,14 @@ run/session interplay); the pure rendering contracts are locked here.
 """
 from __future__ import annotations
 
+import asyncio
 import unittest
+from unittest import mock
 
 from app.agents.adzump.agents.location.targeting_run import (
     build_run_prompt,
     format_current_areas,
+    resolve_country_geo_constant,
 )
 
 
@@ -52,6 +55,58 @@ class RunPromptTests(unittest.TestCase):
         prompt = build_run_prompt(
             {"summary": "x" * 1000}, "", "IN", "set targeting")
         self.assertNotIn("x" * 700, prompt)
+
+
+class CountryGeoConstantTests(unittest.TestCase):
+    _SUGGEST = {"geoTargetConstantSuggestions": [
+        {"geoTargetConstant": {"resourceName": "geoTargetConstants/2840",
+                               "targetType": "City", "name": "Columbus"}},
+        {"geoTargetConstant": {"resourceName": "geoTargetConstants/2841",
+                               "targetType": "Country", "name": "United States"}},
+    ]}
+
+    def _resolve(self, place, country_name="United States", suggest=None):
+        client = mock.AsyncMock(return_value=suggest if suggest is not None else self._SUGGEST)
+        with mock.patch(
+            "app.agents.adzump.adapters.google.client.google_ads_client.suggest_geo_targets",
+            client,
+        ):
+            asyncio.run(resolve_country_geo_constant(place, country_name, "CL1", {}))
+        return client
+
+    def test_stamps_country_typed_constant(self):
+        place = {"country_code": "US"}
+        self._resolve(place)
+        self.assertEqual(place["country_geo_constant"], "geoTargetConstants/2841")
+
+    def test_skips_when_already_resolved_or_inputs_missing(self):
+        cases = [
+            ({"country_code": "US", "country_geo_constant": "geoTargetConstants/1"}, "United States"),
+            ({"country_code": "US"}, ""),      # no country name
+            ({}, "United States"),              # no country_code
+        ]
+        for place, name in cases:
+            with self.subTest(place=place, name=name):
+                client = self._resolve(dict(place), country_name=name)
+                if place.get("country_geo_constant") or not (name and place.get("country_code")):
+                    client.assert_not_awaited()
+
+    def test_lookup_failure_never_raises(self):
+        place = {"country_code": "US"}
+        client = mock.AsyncMock(side_effect=RuntimeError("api down"))
+        with mock.patch(
+            "app.agents.adzump.adapters.google.client.google_ads_client.suggest_geo_targets",
+            client,
+        ):
+            asyncio.run(resolve_country_geo_constant(place, "United States", "CL1", {}))
+        self.assertNotIn("country_geo_constant", place)
+
+    def test_no_country_suggestion_leaves_unset(self):
+        place = {"country_code": "US"}
+        self._resolve(place, suggest={"geoTargetConstantSuggestions": [
+            {"geoTargetConstant": {"resourceName": "geoTargetConstants/9", "targetType": "City"}},
+        ]})
+        self.assertNotIn("country_geo_constant", place)
 
 
 if __name__ == "__main__":

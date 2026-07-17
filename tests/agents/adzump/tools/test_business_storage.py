@@ -37,21 +37,22 @@ class NormalizeUrlLock(unittest.TestCase):
 
 class BuildLocationObjectLock(unittest.TestCase):
 
-    def test_map_confirmed_wins_with_coords(self):
-        loc_meta = {"address": "Sarjapur Road, Bengaluru", "lat": 12.9, "lng": 77.7}
-        out = _build_location_object(loc_meta, {"location": "Bengaluru"}, {})
+    def test_confirmed_place_wins_with_coords(self):
+        # product.place is the single confirmed location - it wins, carries coords.
+        product = {"place": {"address": "Sarjapur Road, Bengaluru", "lat": 12.9, "lng": 77.7}}
+        out = _build_location_object({"location": "Bengaluru"}, product)
         self.assertEqual(out["product_location"], "Sarjapur Road, Bengaluru")
         self.assertEqual(out["product_coordinates"], {"lng": 77.7, "lat": 12.9})
         self.assertEqual(out["area_location"], "")
 
-    def test_spec_then_scraped_fallback_no_coords(self):
-        # No map address → user-typed spec.location wins; no lat/lng → coords None.
-        out = _build_location_object(
-            {}, {"location": "Whitefield"}, {"place": {"address": "from-site"}})
+    def test_spec_fallback_when_place_addressless_no_coords(self):
+        # place has coords-less/empty address → user-typed spec.location fills in.
+        out = _build_location_object({"location": "Whitefield"}, {"place": {}})
         self.assertEqual(out["product_location"], "Whitefield")
         self.assertIsNone(out["product_coordinates"])
-        # spec empty too → scraped product.place.address.
-        out2 = _build_location_object({}, {}, {"place": {"address": "Hosur Road"}})
+        # place.address present → it wins over spec.
+        out2 = _build_location_object(
+            {"location": "Whitefield"}, {"place": {"address": "Hosur Road"}})
         self.assertEqual(out2["product_location"], "Hosur Road")
 
 

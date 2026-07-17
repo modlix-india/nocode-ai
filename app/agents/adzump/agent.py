@@ -71,9 +71,8 @@ _REAL_ESTATE_KEYWORDS = (
 
 
 def _hydrate_location_from_product_data(ctx: dict) -> None:
-    """Restore location + mapped targets into campaign_spec/_location_meta from
-    product_data on returning sessions, so the agent doesn't re-ask for a location
-    that was already confirmed.
+    """Restore campaign_spec.location from product_data.place on returning
+    sessions, so the agent doesn't re-ask for a location already confirmed.
 
     Only runs when spec.location is unset but product_data.location exists. For
     local businesses, requires that geo-targets were already resolved (otherwise
@@ -95,11 +94,6 @@ def _hydrate_location_from_product_data(ctx: dict) -> None:
         a.get("google") or a.get("meta") for a in product.get("target_areas") or []
     )
     spec["location"] = place["address"]
-    loc_meta = ctx.setdefault("_location_meta", {})
-    loc_meta["address"] = place["address"]
-    if place.get("lat") is not None:
-        loc_meta["lat"] = place["lat"]
-        loc_meta["lng"] = place.get("lng")
     logger.info(
         "hydrated_location_from_product_data: location=%s", place["address"]
     )
@@ -485,7 +479,7 @@ class AdzumpAgent(BaseAgent):
         if not (platform and target_areas) or is_mapped_for(target_areas, platform):
             return
         from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
-        country_code = ctx.setdefault("_location_meta", {}).get("country_code") or "IN"
+        country_code = (product.get("place") or {}).get("country_code") or "IN"
         try:
             mapped = await PlatformGeoMapper(self.build_tool_context(session)).map_target_areas(
                 target_areas, platform, country_code
@@ -534,13 +528,13 @@ class AdzumpAgent(BaseAgent):
         try:
             mapped = product.get("target_areas") or []
             if mapped:
-                loc_meta = ctx.get("_location_meta") or {}
+                place = product.get("place") or {}
                 await stream.emit_data(
                     "suggested_locations",
                     {
                         "locations": [loc["name"] for loc in mapped if loc.get("name")],
                         "targeting_type": product.get("business_scale", "local"),
-                        "location": loc_meta.get("address") or "",
+                        "location": place.get("address") or "",
                         "from_storage": True,
                     },
                 )
