@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import cast
 
 from pydantic import ValidationError
 
@@ -30,6 +31,8 @@ from app.agents.adzump.adapters.google import keyword_planner
 from app.agents.adzump.agents.campaign.google.keyword import constants
 from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.models import (
+    MatchType,
+    Intent,
     NegativeKeyword,
     OptimizedKeyword,
     normalize,
@@ -127,10 +130,18 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
         logger.warning("expand_keywords failed: %s", str(exc)[: constants.LOG_TRUNCATE])
         suggestions = []
 
+    # Where each suggestion came from — recorded now because it cannot be recovered later,
+    # and it's how the agent answers "why is this keyword here?" from the record.
+    provenance: dict[str, dict[str, str]] = state.setdefault("kw_provenance", {})
+    for s in suggestions:
+        provenance.setdefault(
+            normalize(s.keyword), {"source": s.source, "seed": s.seed}
+        )
+
     # Seeds + suggestions form the candidate pool. The top slice is expanded by the Planner
     # (generateKeywordIdeas); the overflow is real autosuggest queries we'd otherwise discard —
     # keyword_metrics scores it cheaply via historical metrics instead of throwing it away.
-    unique = list(dict.fromkeys(seeds + suggestions))
+    unique = list(dict.fromkeys(seeds + [s.keyword for s in suggestions]))
     pool = unique[: constants.MAX_EXPANSION_CANDIDATES]
     state["kw_pool"] = pool
     state["kw_overflow"] = unique[constants.MAX_EXPANSION_CANDIDATES :]
@@ -226,8 +237,24 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
 
     # Demand gate — the theme's own policy, the same one its select guidance states to
     # the model (generic: "drop 0-volume terms"; brand: "own these even at zero volume").
-    if not get_theme(state["kw_type"]).keep_zero_volume:
+    # Research only: a manage run scores for ANY ad group (the target isn't knowable
+    # here), so all candidates stay and the per-ad-group bars decide.
+    if state.get("kw_mode") != "manage" and not get_theme(state["kw_type"]).keep_zero_volume:
+        dropped = [i for i in ideas if i.get("volume", 0) <= 0]
         ideas = [i for i in ideas if i.get("volume", 0) > 0]
+        # Recorded, not just filtered: "no search volume" is the answer to "why isn't X here?"
+        _append_rejections(
+            state,
+            [
+                {
+                    "keyword": normalize(i.get("keyword", "")),
+                    "rule": "zero_volume",
+                    "volume_at_eval": 0,
+                    "reason": "",
+                }
+                for i in dropped[: constants.MAX_REJECTIONS_RECORDED]
+            ],
+        )
     scored = [*ideas, *recovered]
     if not scored:
         return ToolResult(
@@ -285,6 +312,7 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
         cand = by_kw.get(kw)
         if not kw or kw in seen or cand is None:
             continue  # must be a real scored candidate — no invented keywords
+        prov = (state.get("kw_provenance") or {}).get(kw) or {}
         try:
             # Model coerces match_type/intent and forces cross-business -> phrase.
             positive = OptimizedKeyword(
@@ -294,11 +322,16 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
                 competition_index=cand.get("competition_index", 0.0),
                 cpc_low=cand.get("cpc_low", 0.0),
                 cpc_high=cand.get("cpc_high", 0.0),
-                source="planner",
-                match_type=item.get("match_type"),
-                intent=item.get("intent"),
+                # Provenance is recorded, never asked of the model: it can't know which
+                # source surfaced a term, and volume drifts after the pick.
+                source=prov.get("source") or "planner",
+                source_seed=prov.get("seed", ""),
+                volume_at_pick=cand.get("volume", 0),
+                match_type=cast(MatchType, item.get("match_type")),
+                intent=cast(Intent, item.get("intent")),
                 is_cross_business=bool(item.get("is_cross_business")),
                 rationale=str(item.get("rationale", "")).strip(),
+                admitted_by=str(item.get("admitted_by", "")).strip(),
             )
         except ValidationError as exc:
             logger.debug("skip positive %r: %s", kw, exc)
@@ -313,6 +346,7 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
         )
 
     state["kw_positives"] = kept
+    _record_passed_over(state, selected=seen, stated=params.get("rejected"))
     dropped = len(items) - len(kept)
     logger.info(
         "kw_submit_positive type=%s submitted=%d kept=%d dropped=%d",
@@ -325,6 +359,49 @@ async def _submit_positive_keywords(params: dict, context: dict) -> ToolResult:
     return ToolResult(
         success=True, summary=f"Recorded {len(kept)} positive keywords{note}."
     )
+
+
+def _record_passed_over(
+    state: dict, *, selected: set[str], stated: object = None
+) -> None:
+    """Record the top scored candidates we did NOT pick — the "why isn't X here?" answer.
+
+    kw_candidates is already volume-sorted, so the top unselected are exactly the terms a
+    user asks about. Capped; the agent's own reasons are merged in where it named one.
+    """
+    reasons = {
+        normalize(r.get("keyword", "")): str(r.get("reason", "")).strip()
+        for r in (stated if isinstance(stated, list) else [])
+        if isinstance(r, dict)
+    }
+    ledger: list[dict] = []
+    for cand in state.get("kw_candidates", []):
+        kw = normalize(cand.get("keyword", ""))
+        if not kw or kw in selected:
+            continue
+        ledger.append(
+            {
+                "keyword": kw,
+                "rule": "not_selected",
+                "volume_at_eval": cand.get("volume", 0),
+                "reason": reasons.get(kw, ""),
+            }
+        )
+        if len(ledger) >= constants.MAX_REJECTIONS_RECORDED:
+            break
+    _append_rejections(state, ledger)
+
+
+def _append_rejections(state: dict, rows: list[dict]) -> None:
+    """Add to the 'why not' ledger, first-seen wins per keyword. keyword_metrics can run
+    more than once, so a keyword's rejection must not be recorded twice."""
+    ledger: list[dict] = state.setdefault("kw_rejections", [])
+    seen = {r.get("keyword") for r in ledger}
+    for r in rows:
+        kw = r.get("keyword")
+        if kw and kw not in seen:
+            seen.add(kw)
+            ledger.append(r)
 
 
 async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
@@ -363,7 +440,7 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
             negative = NegativeKeyword(
                 keyword=kw,
                 reason=str(item.get("reason", "")).strip(),
-                match_type=item.get("match_type"),
+                match_type=cast(MatchType, item.get("match_type")),
                 theme=state["kw_type"],
             )
         except ValidationError as exc:
@@ -395,7 +472,9 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
     # Build an honest summary so the model knows exactly what happened.
     parts: list[str] = []
     if rejected:
-        parts.append(f"{rejected} dropped: overlap with positives, unsafe, or duplicate")
+        parts.append(
+            f"{rejected} dropped: overlap with positives, unsafe, or duplicate"
+        )
     if not_reviewed > 0:
         parts.append(
             f"{not_reviewed} not reviewed (cap of {constants.MAX_NEGATIVE_COUNT} reached)"
@@ -498,9 +577,33 @@ SUBMIT_POSITIVE_KEYWORDS = ToolDefinition(
                     },
                     "is_cross_business": {"type": "boolean"},
                     "rationale": {"type": "string"},
+                    "admitted_by": {
+                        "type": "string",
+                        "description": (
+                            "Which rule from your PRIORITISE list let this in "
+                            '(e.g. "core term in served area", "brand name — mandatory").'
+                        ),
+                    },
                 },
             },
-        )
+        ),
+        ToolParameter(
+            name="rejected",
+            type="array",
+            required=False,
+            description=(
+                "OPTIONAL — the few notable candidates you deliberately passed over, with "
+                "why (e.g. a high-volume term that is off-offering). Answers the user's "
+                '"why isn\'t X in here?" later. Do not list everything; only the near-misses.'
+            ),
+            items={
+                "type": "object",
+                "properties": {
+                    "keyword": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+            },
+        ),
     ],
     execute=_submit_positive_keywords,
 )

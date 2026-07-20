@@ -28,8 +28,9 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
     auth = context.get("auth")
     if auth is None:
         return ToolResult(success=False, error="No auth context for campaign creation.")
-
     stream = context.get("event_stream")
+    if stream is None:
+        return ToolResult(success=False, error="No event stream for campaign creation.")
     # Always a separate card from the product craft (adzump_{session_id}).
     craft_id = f"campaign_{context.get('session_id') or ''}"
     session_ctx["campaign_craft_id"] = craft_id
@@ -55,11 +56,10 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
     session_ctx["keyword_research"] = result
 
     # The elicitation owns its ask (the deferred break skips the follow-up turn).
-    if stream:
-        await stream.emit_text(
-            "\n\nYour campaign setup is ready in the panel — review it, make any changes, "
-            "then tell me to launch when you're happy.\n"
-        )
+    await stream.emit_text(
+        "\n\nYour campaign setup is ready in the panel — review it, make any changes, "
+        "then tell me to launch when you're ready after reviewing.\n"
+    )
 
     return ToolResult(
         success=True,

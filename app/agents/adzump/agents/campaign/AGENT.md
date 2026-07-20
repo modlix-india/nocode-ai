@@ -9,7 +9,8 @@ It is a thin orchestration layer *by design* — the domain reasoning lives in t
 sub-agents it calls — but a **necessary** one: it's where the multi-step, multi-platform
 build is sequenced and kept isolated from the main conversation agent (see [§2](#2-why-a-dedicated-agent-not-a-function-or-main-agent-tools)).
 
-Today: **Google Search → keyword research** (brand + generic). Meta, Performance Max, and
+Today: **Google Search → keyword research** — one ad group per **keyword theme** the user
+chose at the review step (Brand and/or Generic; more themes next). Meta, Performance Max, and
 the create/launch steps slot in as more tools without changing this shell.
 
 ---
@@ -26,17 +27,18 @@ sequenceDiagram
     participant KA as KeywordResearchAgent
     participant Panel as Review Panel (craft)
 
-    User->>Main: confirms summary → "Yes, proceed"
+    User->>Main: confirms summary + picks ad groups → spec["ad_groups"]
     Main->>CC: prepare_campaign_review()
     CC->>CA: create(campaign_spec, product_data, craft_id = campaign_<sid>)
-    CA->>KR: keyword_research(keyword_type="both")
-    KR->>KA: brand + generic (parallel) — see google/keyword/AGENT.md
-    KA-->>KR: positives + negatives
-    KR->>Panel: emit_campaign_craft(craft_id)
+    CA->>KR: keyword_research()  (reads spec["ad_groups"])
+    KR->>KA: one theme per chosen ad group (parallel) — see google/keyword/AGENT.md
+    KA-->>KR: positives + negatives + rejections
+    KR->>Panel: emit_campaign_craft(craft_id)  (one tab per ad group)
     KR-->>CA: result bundle
-    CA-->>CC: keyword_research result (persisted on the session)
+    CA-->>CC: keyword_research result (persisted on the MAIN session)
     CC-->>Main: "shown in panel — ask user to review"
-    User->>Panel: add / edit / delete keywords → update_keywords (api.py, no LLM)
+    User->>Panel: mechanical click → update_keywords (api.py, no LLM)
+    User->>Main: words ("why X?", "add …") → manage_keywords → keyword agent
     User->>Main: confirm → launch (future tool)
 ```
 
@@ -104,22 +106,27 @@ knows what it's building; the static persona lives in `context.py`.
 ### `tools/google/keyword_research.py` — the orchestrator's first tool (implemented)
 What the agent calls today. It:
 1. Gates to Google **Search** (PMax/others are skipped honestly).
-2. Derives the **offering taxonomy** from `product_data` (cached, fail-soft).
-3. Resolves **geo** + **location/service areas**.
-4. Runs **brand + generic in parallel** through the `KeywordResearchAgent` (one failing
-   or timing out still returns the other).
-5. **Idempotent** — same inputs re-show the saved set instead of re-running.
-6. Emits the campaign craft via `emit_campaign_craft`.
+2. Resolves **which ad groups the user chose** at the review step (`_resolve_themes`
+   reads `spec["ad_groups"]`; no `keyword_type` param — the model doesn't pick).
+3. Derives the **offering taxonomy** from `product_data` (cached, fail-soft).
+4. Resolves **geo** + **location/service areas**.
+5. Runs **one theme per chosen ad group in parallel** through the `KeywordResearchAgent`
+   (one failing or timing out still returns the other; nothing is persisted if all fail).
+6. **Idempotent** — same inputs re-show the saved set instead of re-running.
+7. Emits the campaign craft via `emit_campaign_craft` — one tab per ad group.
 
 Keyword internals (seed → expand → score → select → negatives, the prompts, the gates)
 are documented in [`google/keyword/AGENT.md`](google/keyword/AGENT.md) — not duplicated here.
 
-### `tools/google/keyword_update.py` — review-panel edits (implemented)
-Not an LLM tool — just the mutation logic. The keyword review panel posts structured
-widget actions (`add` / `delete` / `edit`) as JSON; the HTTP transport lives in `api.py`
-(`parse_keyword_widget_message()` + `stream_keyword_widget()`), which **bypasses the LLM**
-and calls `update_keywords()` to mutate `session_ctx["keyword_research"]` and re-emit
-**only** the `keyword_review` block (keyed upsert — no panel flash).
+### `tools/google/keyword_update.py` — the shared mutation engine (implemented)
+`_apply_edit()` is the single add/delete/edit path, with **two callers**: the review panel's
+mechanical clicks (`update_keywords`, 0 LLM — HTTP transport in `api.py`:
+`parse_keyword_widget_message` + `stream_keyword_widget`) **and** the keyword agent's
+`edit_keywords` tool for spoken edits. Both mutate `session_ctx["keyword_research"]` through
+the same invariants and re-emit **only** the `keyword_review` block (keyed upsert, no flash),
+so an edit made in words can't break a rule a click couldn't. The *words* path is routed by
+the main agent's `manage_keywords` tool → `KeywordResearchAgent.handle()` — see
+[`google/keyword/AGENT.md` §5](google/keyword/AGENT.md#5-the-manage-flow--answer--edit-after-generation).
 
 ### `tools/meta/` — reserved
 Placeholder namespace for Meta campaign tools (mirrors `tools/google/`).
@@ -165,4 +172,4 @@ next tool).
 
 The campaign craft (`campaign_<session>`) and the product/setup craft (`adzump_<session>`)
 are separate panels. A focus-stealing issue between them — and its fix — is documented in
-[`google/keyword/AGENT.md` §10](google/keyword/AGENT.md#10-craft-panel-focus-the-two-craft-rule).
+[`google/keyword/AGENT.md` §12](google/keyword/AGENT.md#12-craft-panel-focus-the-two-craft-rule).

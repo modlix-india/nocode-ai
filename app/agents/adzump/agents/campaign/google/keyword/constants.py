@@ -35,6 +35,7 @@ MAX_STORED_CANDIDATES = (
 )
 TARGET_POSITIVE_COUNT = 30  # positives selected per type
 MAX_NEGATIVE_COUNT = 40  # negatives kept per type
+MAX_REJECTIONS_RECORDED = 50  # 'why not this keyword' ledger, per rule — rides the session
 
 # Display / logging bounds.
 MAX_CANDIDATES_SHOWN = 120  # expansion-pool phrases echoed back from expand_keywords

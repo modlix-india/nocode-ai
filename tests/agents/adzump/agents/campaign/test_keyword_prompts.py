@@ -20,18 +20,24 @@ from pathlib import Path
 from string import Template
 
 from app.agents.adzump.agents.campaign.google.keyword import constants
-from app.agents.adzump.agents.campaign.google.keyword.context import Phase, phase_prompt
+from app.agents.adzump.agents.campaign.google.keyword.context import (
+    BUILD_PHASES,
+    Phase,
+    phase_prompt,
+)
 from app.agents.adzump.agents.campaign.google.keyword.themes import KEYWORD_THEMES
 
 _GOLDEN = Path(__file__).parent / "fixtures" / "golden_keyword_prompts.json"
 
 
-def _render(phase: Phase, theme) -> str:
-    """Render exactly as agent.build_turn_reminder does (agent.py:143-148)."""
+def _render(phase: Phase, theme, user_message: str = "") -> str:
+    """Render exactly as agent.build_turn_reminder does."""
     return Template(phase_prompt(phase, theme)).safe_substitute(
         max_seeds=constants.MAX_SEEDS,
         target_count=constants.TARGET_POSITIVE_COUNT,
         max_negatives=constants.MAX_NEGATIVE_COUNT,
+        select_guidance=theme.select_guidance,
+        user_message=user_message,
     )
 
 
@@ -46,20 +52,31 @@ class GoldenPromptTests(unittest.TestCase):
                 actual = _render(Phase(phase_value), KEYWORD_THEMES[theme_id])
                 self.assertEqual(actual, expected)
 
-    def test_golden_covers_every_theme_and_phase(self):
+    def test_golden_covers_every_theme_and_build_phase(self):
         # Guards the guard: a theme added without a fixture would otherwise pass silently.
-        expected_keys = {f"{p.value}|{fid}" for p in Phase for fid in KEYWORD_THEMES}
+        # Only the BUILD phases are pinned — MANAGE is shared and post-dates the fixture.
+        expected_keys = {f"{p.value}|{fid}" for p in BUILD_PHASES for fid in KEYWORD_THEMES}
         self.assertEqual(set(self.golden), expected_keys)
 
 
 class ThemeGuidanceTests(unittest.TestCase):
-    def test_every_theme_has_guidance_for_every_phase(self):
+    def test_every_theme_has_guidance_for_every_build_phase(self):
         # Mirrors the import-time guard in context.py — the data-level replacement for the
         # old (phase x type) registry completeness check.
         for theme in KEYWORD_THEMES.values():
-            for phase in Phase:
+            for phase in BUILD_PHASES:
                 with self.subTest(theme=theme.id, phase=phase.value):
                     self.assertTrue(phase_prompt(phase, theme).strip())
+
+    def test_manage_is_shared_and_carries_the_theme_selection_bar(self):
+        # An edit must clear the same bar the build used, so MANAGE renders the theme's own
+        # select_guidance — that's what stops an added keyword drifting below the standard.
+        for theme in KEYWORD_THEMES.values():
+            with self.subTest(theme=theme.id):
+                rendered = _render(Phase.MANAGE, theme)
+                self.assertIn("lookup_keyword", rendered)      # answer from the record
+                self.assertIn("edit_keywords", rendered)       # never re-submit a set
+                self.assertIn(theme.select_guidance, rendered)  # the build's own bar
 
     def test_registry_is_keyed_by_theme_id(self):
         for fid, theme in KEYWORD_THEMES.items():

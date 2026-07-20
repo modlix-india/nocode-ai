@@ -23,7 +23,7 @@ from __future__ import annotations
 import abc
 import asyncio
 import logging
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import httpx
 
@@ -161,6 +161,18 @@ DEFAULT_SOURCES: list[SuggestionSource] = [GOOGLE, BING, DUCKDUCKGO]
 DEFAULT_SOURCE_NAMES: tuple[str, ...] = tuple(s.name for s in DEFAULT_SOURCES)
 
 
+class Suggestion(NamedTuple):
+    """A real query someone typed, and where it came from.
+
+    ``source``/``seed`` are the provenance the keyword agent records so it can answer
+    "why is this keyword here?" from what actually happened, rather than re-deriving it.
+    """
+
+    keyword: str
+    source: str  # SuggestionSource.name
+    seed: str  # the seed that surfaced it
+
+
 async def fetch_suggestions(
     seeds: list[str],
     sources: Optional[list[SuggestionSource]] = None,
@@ -170,9 +182,12 @@ async def fetch_suggestions(
     max_per_seed: int = _DEFAULT_MAX_PER_SEED,
     concurrency: int = _DEFAULT_CONCURRENCY,
     client: Optional[httpx.AsyncClient] = None,
-) -> list[str]:
+) -> list[Suggestion]:
     """Fan out ``seeds * sources`` concurrently and return de-duplicated suggestions
-    with original order preserved.
+    with original order preserved, each carrying the source + seed that produced it.
+
+    De-dup keeps the FIRST sighting, so a suggestion's provenance is the first source/seed
+    that surfaced it.
 
     Never raises: a source/seed that fails is logged and skipped (fail-soft), so the
     pipeline degrades to whatever did return rather than erroring. ``concurrency``
@@ -186,13 +201,13 @@ async def fetch_suggestions(
     client = client or httpx.AsyncClient()
     sem = asyncio.Semaphore(concurrency)
 
-    async def _one(src: SuggestionSource, seed: str) -> tuple[str, list[str]]:
+    async def _one(src: SuggestionSource, seed: str) -> tuple[str, str, list[str]]:
         async with sem:
             try:
                 hits = (await src.fetch(seed, hl=hl, gl=gl, client=client))[
                     :max_per_seed
                 ]
-                return src.name, hits
+                return src.name, seed, hits
             except Exception as e:  # fail-soft: one source/seed never breaks the run
                 logger.info(
                     "autosuggest: source=%s seed=%r skipped: %s",
@@ -200,7 +215,7 @@ async def fetch_suggestions(
                     seed,
                     str(e)[:_LOG_ERROR_MAXLEN],
                 )
-                return src.name, []
+                return src.name, seed, []
 
     try:
         results = await asyncio.gather(
@@ -212,14 +227,14 @@ async def fetch_suggestions(
 
     per_source: dict[str, int] = {}
     seen: set[str] = set()
-    merged: list[str] = []
-    for name, group in results:
+    merged: list[Suggestion] = []
+    for name, seed, group in results:
         per_source[name] = per_source.get(name, 0) + len(group)
         for kw in group:
             norm = kw.strip().lower()
             if norm and norm not in seen:
                 seen.add(norm)
-                merged.append(kw.strip())
+                merged.append(Suggestion(kw.strip(), name, seed))
     logger.info(
         "autosuggest: %d seeds x %d sources -> per-source raw %s -> %d unique",
         len(seeds),

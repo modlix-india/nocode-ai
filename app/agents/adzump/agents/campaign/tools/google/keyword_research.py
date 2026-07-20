@@ -26,6 +26,10 @@ from app.agents.adzump.services.business_storage import resolve_url
 
 from app.agents.adzump.agents.campaign.craft import emit_campaign_craft
 from app.agents.adzump.agents.campaign.google.keyword.agent import get_keyword_research_agent
+from app.agents.adzump.agents.campaign.google.keyword.brief import (
+    business_text as _business_text,
+    resolve_location as _resolve_location,
+)
 from app.agents.adzump.agents.campaign.google.keyword.themes import (
     DEFAULT_THEME_IDS,
     KEYWORD_THEMES,
@@ -49,13 +53,10 @@ _LOG_TRUNCATE = 200
 
 
 def _resolve_themes(spec: dict) -> list[str]:
-    """The keyword themes to run, from the ad groups the user chose at the consent step.
+    """The themes to run, from the ad groups the user chose (each runs the theme of its id).
 
-    The seam between the two levels: the user picks ad groups (``spec["ad_groups"]``), each
-    ad group's keywords come from the theme of the same id. It is also the one place that
-    normalises the answer, so the rest of the flow never has to care how it arrived — a chip
-    click, a typed "no, only brand", or nothing yet all land here. Unknown names are dropped
-    rather than guessed; an empty/absent choice means the full set (the plan we showed them).
+    Normalises whatever the consent step lands — chip, typed, or nothing. Unknown names are
+    dropped rather than guessed; no choice means the full plan we showed them.
     """
     raw = spec.get("ad_groups")
     if isinstance(raw, str):
@@ -126,38 +127,9 @@ def _taxonomy_key(product: dict) -> str:
     return f"{product.get('product_name', '')}|{product.get('business_type', '')}"
 
 
-def _location_text(product: dict) -> str:
-    loc = product.get("location")
-    if isinstance(loc, str):
-        return loc.strip()
-    if isinstance(loc, dict):
-        return (
-            loc.get("area_location")
-            or loc.get("product_location")
-            or loc.get("location")
-            or ""
-        ).strip()
-    return ""
-
-
-def _resolve_location(
-    product: dict, is_location_specific: bool
-) -> tuple[str, list[str]]:
-    """City primary + service areas from target_areas (the location field is often empty).
-    Local-vs-national comes from the taxonomy, not string-matched business_scale."""
-    if not is_location_specific:
-        return "", []
-    areas = [a for a in (product.get("target_areas") or []) if isinstance(a, dict)]
-    names = [str(a.get("name")).strip() for a in areas if a.get("name")]
-    city = next((str(a.get("city")).strip() for a in areas if a.get("city")), "")
-    primary = _location_text(product) or city or (names[0] if names else "")
-    service_areas = [n for n in names if n and n.lower() != primary.lower()][:8]
-    return primary, service_areas
-
-
 def _business_profile(product: dict, taxonomy: dict) -> BusinessProfile:
     # category hint = business_type (the taxonomy refines it). The taxonomy also decides
-    # which autosuggest surfaces fit this business — YouTube for an informational theme —
+    # which autosuggest surfaces fit this business — YouTube for an informational funnel —
     # data-driven per run, no hardcoded verticals.
     return BusinessProfile(
         category=(
@@ -167,20 +139,6 @@ def _business_profile(product: dict, taxonomy: dict) -> BusinessProfile:
             taxonomy.get("includes_informational_funnel", False)
         ),
     )
-
-
-def _business_text(product: dict) -> str:
-    parts = [
-        f"Business: {product.get('product_name', '')}",
-        f"Type: {product.get('business_type', '')}",
-    ]
-    if features := product.get("unique_features"):
-        parts.append("Offerings / USPs: " + "; ".join(str(f) for f in features))
-    if services := product.get("products_services"):
-        parts.append("Products / services: " + "; ".join(str(s) for s in services))
-    if summary := product.get("summary"):
-        parts.append("Summary: " + str(summary))
-    return "\n".join(p for p in parts if p.strip())
 
 
 async def _keyword_research(params: dict, context: dict) -> ToolResult:
@@ -304,7 +262,8 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     counts: list[str] = []
     failed: list[str] = []
     for t, res in zip(themes, results):
-        if isinstance(res, Exception):
+        # BaseException, not Exception: CancelledError doesn't subclass Exception (3.8+).
+        if isinstance(res, BaseException):
             logger.warning(
                 "keyword_research %s failed: %s", t, str(res)[:_LOG_TRUNCATE]
             )

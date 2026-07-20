@@ -25,18 +25,35 @@ from app.core.agent import BaseAgent
 from app.core.context import BaseContext
 from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream, current_agent_id
+from app.core.tools.base import ToolResult
 
 from app.agents.adzump.agents._child_stream import ChildAgentStream
+from app.agents.adzump.services.business_storage import resolve_url
 from app.agents.adzump.agents.campaign.google.keyword import constants
+from app.agents.adzump.agents.campaign.google.keyword.brief import (
+    conversation_text,
+    resolve_location,
+)
 from app.agents.adzump.agents.campaign.google.keyword.models import (
+    BusinessProfile,
     KeywordSet,
     Rejection,
     NegativeKeyword,
     OptimizedKeyword,
 )
-from app.agents.adzump.agents.campaign.google.keyword.context import BASE, Phase, phase_prompt
-from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
-from app.agents.adzump.agents.campaign.google.keyword.tools import ALL_TOOLS
+from app.agents.adzump.agents.campaign.google.keyword.context import (
+    BASE,
+    BASE_MANAGE,
+    Phase,
+    phase_prompt,
+)
+from app.agents.adzump.agents.campaign.google.keyword.themes import KEYWORD_THEMES, get_theme
+from app.agents.adzump.agents.campaign.google.keyword.manage_tools import MANAGE_TOOLS
+from app.agents.adzump.agents.campaign.google.keyword.tools import (
+    ALL_TOOLS,
+    EXPAND_KEYWORDS,
+    KEYWORD_METRICS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +63,17 @@ MODEL_TIER = (
 )
 MAX_TURNS = 10  # seed -> expand -> metrics -> select -> negatives, with room to loop
 MAX_TOKENS = 4000
+
+
+def _fill_guidance(text: str) -> str:
+    """Fill a guidance bar's numeric placeholders ($target_count etc.) with the real
+    numbers. Needed when the bar is nested inside another prompt (manage), where the
+    outer single-pass substitution never reaches them."""
+    return Template(text).safe_substitute(
+        max_seeds=constants.MAX_SEEDS,
+        target_count=constants.TARGET_POSITIVE_COUNT,
+        max_negatives=constants.MAX_NEGATIVE_COUNT,
+    )
 
 
 class _ReviewStream(ChildAgentStream):
@@ -64,23 +92,35 @@ class _ReviewStream(ChildAgentStream):
         return
 
 
-class KeywordResearchAgent(BaseAgent):
-    """One run = one theme's ad group.
+class _ManageStream(ChildAgentStream):
+    """Generation swallows the agent's prose; here the prose is the answer, so forward it."""
 
-    Singleton: themes run in parallel on the same instance. All per-run state is
-    isolated in BaseSession; instance attributes are read-only after __init__.
-    Do NOT add mutable instance state.
+    label = "keyword_research"  # same agent as generation — one debug-log family
+
+    async def emit_text(self, text: str) -> None:
+        await self._parent.emit_text(text)
+
+
+class KeywordResearchAgent(BaseAgent):
+    """One class, two configured singletons: the research instance (generation prompt +
+    the five build tools) and the manage instance (its own prompt + expand/metrics/
+    lookup/edit) — so neither mode sees the other's instructions or tools.
+
+    Themes run in parallel on the same instance. All per-run state is isolated in
+    BaseSession; instance attributes are read-only after __init__. Do NOT add mutable
+    instance state.
     """
 
     display_name = "Keyword Research"
     _instance: "KeywordResearchAgent | None" = None
+    _manage_instance: "KeywordResearchAgent | None" = None
 
-    def __init__(self) -> None:
-        context = BaseContext(static_prefix=BASE)
+    def __init__(self, *, manage: bool = False) -> None:
+        context = BaseContext(static_prefix=BASE_MANAGE if manage else BASE)
         context.use_static_prefix_only()  # no async docs to load
         super().__init__(
             name="keyword_research",
-            tools=ALL_TOOLS,
+            tools=[EXPAND_KEYWORDS, KEYWORD_METRICS, *MANAGE_TOOLS] if manage else ALL_TOOLS,
             context_builder=context,
             model_tier=MODEL_TIER,
             max_turns=MAX_TURNS,
@@ -93,6 +133,12 @@ class KeywordResearchAgent(BaseAgent):
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
+
+    @classmethod
+    def get_manage_instance(cls) -> "KeywordResearchAgent":
+        if cls._manage_instance is None:
+            cls._manage_instance = cls(manage=True)
+        return cls._manage_instance
 
     # context hooks
 
@@ -118,8 +164,18 @@ class KeywordResearchAgent(BaseAgent):
             if loc and areas
             else (loc or "national / online — not location-specific")
         )
+        if ctx.get("kw_mode") == "manage":
+            # Manage spans EVERY ad group (lookup reads all, edit targets any), so frame it
+            # across all of them — not one guessed theme, which would misdirect the model.
+            built = (ctx.get("keyword_research") or {}).get("themes") or {}
+            names = ", ".join((k.get("label") or tid) for tid, k in built.items())
+            campaign_line = f"AD GROUPS (you work across all of these): {names or '(none)'}"
+        else:
+            campaign_line = (
+                f"CAMPAIGN: {get_theme(ctx['kw_type']).label} keywords for a Google Search campaign."
+            )
         return (
-            f"CAMPAIGN: {get_theme(ctx['kw_type']).label} keywords for a Google Search campaign.\n"
+            f"{campaign_line}\n"
             f"OFFERING (what they sell): {category}\n"
             f"CORE TERMS — anchor keywords on these, never the siblings: {core}\n"
             f"SIBLING CATEGORIES (same industry, NOT sold — never a positive; use for negatives): {siblings}\n"
@@ -133,6 +189,25 @@ class KeywordResearchAgent(BaseAgent):
     async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
         """Inject only the current phase's focused instructions."""
         ctx = session.context
+        # research()/handle() always seed kw_type; absent means a broken session — fail
+        # rather than silently work on another theme's keywords.
+        theme = get_theme(ctx["kw_type"])
+        if ctx.get("kw_mode") == "manage":
+            # A manage run starts pre-seeded with the saved set (the build phases below would
+            # read it as finished) and spans every ad group — so render EACH built ad group's
+            # own bar, so an addition to any of them still has to clear the standard it was
+            # built with.
+            built = (ctx.get("keyword_research") or {}).get("themes") or {}
+            standards = "\n\n".join(
+                f"**{get_theme(t).label} ad group** — additions here must clear this bar:\n"
+                f"{_fill_guidance(get_theme(t).select_guidance)}"
+                for t in built
+                if t in KEYWORD_THEMES
+            ) or _fill_guidance(theme.select_guidance)
+            return Template(phase_prompt(Phase.MANAGE, theme)).safe_substitute(
+                user_message=ctx.get("kw_user_message", ""),
+                select_guidance=standards,
+            )
         if not ctx.get("kw_candidates"):
             phase = Phase.SEED
         elif "kw_positives" not in ctx:
@@ -141,13 +216,12 @@ class KeywordResearchAgent(BaseAgent):
             phase = Phase.NEGATIVES
         else:
             return ""  # done — both submitted, nothing to steer
-        # research() always seeds kw_type; absent means a broken session — fail rather
-        # than silently generate another theme's keywords into this ad group.
-        theme = get_theme(ctx["kw_type"])
         return Template(phase_prompt(phase, theme)).safe_substitute(
             max_seeds=constants.MAX_SEEDS,
             target_count=constants.TARGET_POSITIVE_COUNT,
             max_negatives=constants.MAX_NEGATIVE_COUNT,
+            select_guidance=theme.select_guidance,
+            user_message=ctx.get("kw_user_message", ""),
         )
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
@@ -222,14 +296,20 @@ class KeywordResearchAgent(BaseAgent):
             # Orchestrator wait_for timeout cancels us with CancelledError (a
             # BaseException the handler below misses) — close the card, then re-raise.
             await stream._emit_finished(
-                agent_id=agent_id, run_start=run_start, session=session,
-                status="error", summary="cancelled",
+                agent_id=agent_id,
+                run_start=run_start,
+                session=session,
+                status="error",
+                summary="cancelled",
             )
             raise
         except Exception as exc:
             await stream._emit_finished(
-                agent_id=agent_id, run_start=run_start, session=session,
-                status="error", summary=type(exc).__name__,
+                agent_id=agent_id,
+                run_start=run_start,
+                session=session,
+                status="error",
+                summary=type(exc).__name__,
             )
             raise
 
@@ -241,11 +321,132 @@ class KeywordResearchAgent(BaseAgent):
             len(result.negatives),
         )
         await stream._emit_finished(
-            agent_id=agent_id, run_start=run_start, session=session,
+            agent_id=agent_id,
+            run_start=run_start,
+            session=session,
             status="success",
             summary=f"{len(result.positives)} positive / {len(result.negatives)} negative",
         )
         return result
+
+    # entry point (called by the orchestrator's manage_keywords tool)
+
+    async def handle(self, user_message: str, context: dict) -> ToolResult:
+        """Answer or edit an existing set, from the user's verbatim words.
+
+        Throwaway session, as in generation — but seeded with SHARED refs to the parent's
+        keyword_research, so edits write through to the saved set instead of dying with the
+        run. What the agent needs to reason is seeded up front; nothing is reconnected.
+        """
+        parent_ctx = context.get("session_context")
+        if parent_ctx is None:
+            return ToolResult(success=False, error="No session context available.")
+        auth = context.get("auth")
+        if auth is None:
+            return ToolResult(success=False, error="No auth context for the keyword agent.")
+        dump = parent_ctx.get("keyword_research")
+        themes = (dump or {}).get("themes") or {}
+        if not themes:
+            return ToolResult(
+                success=False,
+                error="No keywords have been researched yet — build the campaign first.",
+            )
+
+        # kw_type anchors the session; the run itself spans every built ad group.
+        theme_id = next((t for t in themes if t in KEYWORD_THEMES), None)
+        if theme_id is None:
+            return ToolResult(
+                success=False,
+                error="Saved ad groups don't match any known keyword theme — rebuild the campaign.",
+            )
+
+        product = parent_ctx.get("product_data") or {}
+        spec = parent_ctx.get("campaign_spec") or {}
+        taxonomy = (parent_ctx.get("_offering_taxonomy") or {}).get("data") or {}
+        geo = (dump.get("meta") or {}).get("geo") or {}
+        location, service_areas = resolve_location(
+            product, bool(taxonomy.get("is_location_specific", True))
+        )
+        # Sources for expand_keywords in manage mode: the union across the built ad groups,
+        # so adding to (say) a generic ad group can still reach YouTube — matching what a
+        # fresh research run for that theme would have queried.
+        profile = BusinessProfile(
+            category=taxonomy.get("primary_offering") or product.get("business_type", ""),
+            includes_informational_funnel=bool(
+                taxonomy.get("includes_informational_funnel", False)
+            ),
+        )
+        sources = sorted({s for t in themes for s in profile.source_names(t)})
+
+        session = BaseSession(agent_name="keyword_research")
+        await session.get_or_create(None, auth)
+        session.context = {
+            "kw_mode": "manage",
+            "kw_user_message": user_message,
+            "kw_type": theme_id,
+            # Shared refs — edit_keywords writes through to the saved set, exactly as the
+            # location agent's sub-session writes through to product_data.
+            "keyword_research": dump,
+            "product_data": product,
+            # The business picture, not a keyword-shaped slice: a question can be about the
+            # competition or the budget as easily as about a keyword.
+            "kw_business_text": conversation_text(parent_ctx),
+            "kw_category": taxonomy.get("primary_offering")
+            or product.get("business_type", ""),
+            "kw_core_terms": list(taxonomy.get("core_terms") or []),
+            "kw_siblings": list(taxonomy.get("sibling_categories") or []),
+            "kw_sources": sources,
+            "kw_location": location,
+            "kw_service_areas": service_areas,
+            "kw_business_url": resolve_url(parent_ctx) or "",
+            "kw_customer_id": str(spec.get("account") or ""),
+            "kw_login_customer_id": str(spec.get("parent_account") or ""),
+            "kw_geo": geo.get("geo_target_constants") or [],
+            "kw_hl": geo.get("hl", "en"),
+            "kw_gl": geo.get("gl", "US"),
+            "kw_language": geo.get("language") or "",
+            "campaign_craft_id": parent_ctx.get("campaign_craft_id") or "",
+        }
+
+        parent_stream = context.get("event_stream")
+        agent_id = "keyword_research_manage"  # same machine family as keyword_research_{theme}
+        run_start = time.monotonic()
+        if parent_stream is not None:
+            await parent_stream.emit_agent_started(
+                agent_id=agent_id,
+                label="Keyword Research · manage",  # one brand with generation, mode as suffix
+                parent_id=current_agent_id.get(),
+            )
+        # Unlike generation, the answer is the prose — forward it instead of swallowing it.
+        stream = _ManageStream(parent_stream) if parent_stream else AgentEventStream()
+
+        status, summary = "success", "done"
+        try:
+            await self.run(
+                user_message=user_message, session=session, event_stream=stream
+            )
+        except Exception as exc:
+            status, summary = "error", type(exc).__name__
+            logger.exception("keyword handle failed: %s", exc)
+            return ToolResult(
+                success=False,
+                error="The keyword agent couldn't complete that — try rephrasing.",
+            )
+        finally:
+            if isinstance(stream, ChildAgentStream):
+                await stream._emit_finished(
+                    agent_id=agent_id,
+                    run_start=run_start,
+                    session=session,
+                    status=status,
+                    summary=summary,
+                )
+
+        # The agent already spoke and already wrote through; the orchestrator adds nothing.
+        return ToolResult(
+            success=True,
+            summary="Handled the keyword request; the reply is already on screen.",
+        )
 
     @staticmethod
     def _build_result(keyword_type: str, ctx: dict) -> KeywordSet:
@@ -281,3 +482,7 @@ class KeywordResearchAgent(BaseAgent):
 
 def get_keyword_research_agent() -> KeywordResearchAgent:
     return KeywordResearchAgent.get_instance()
+
+
+def get_keyword_manage_agent() -> KeywordResearchAgent:
+    return KeywordResearchAgent.get_manage_instance()

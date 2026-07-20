@@ -11,7 +11,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from app.agents.adzump.agents.campaign.google.keyword import tools
+from app.agents.adzump.agents.campaign.google.keyword import constants, tools
 
 
 class CollapseRepeatsTests(unittest.TestCase):
@@ -100,6 +100,92 @@ class SubmitNegativeTests(unittest.TestCase):
         res = _submit([], ctx)
         self.assertTrue(res.success)
         self.assertEqual(ctx["session_context"]["kw_negatives"], [])
+
+
+def _submit_positives(state: dict, keywords: list[dict], rejected=None):
+    params = {"keywords": keywords}
+    if rejected is not None:
+        params["rejected"] = rejected
+    return asyncio.run(tools._submit_positive_keywords(params, {"session_context": state}))
+
+
+def _state_with(candidates: list[dict], **extra) -> dict:
+    return {"kw_type": "generic", "kw_candidates": candidates, **extra}
+
+
+class WhyThisKeywordTests(unittest.TestCase):
+    """A pick records what it cannot re-derive later."""
+
+    def test_pick_carries_source_seed_volume_at_pick_and_admitted_by(self):
+        state = _state_with(
+            [{"keyword": "blue running shoes", "volume": 5400, "competition": "HIGH"}],
+            kw_provenance={"blue running shoes": {"source": "bing", "seed": "running shoes"}},
+        )
+        _submit_positives(state, [{
+            "keyword": "blue running shoes", "match_type": "phrase", "intent": "commercial",
+            "rationale": "core term + colour", "admitted_by": "core term in served area",
+        }])
+        p = state["kw_positives"][0]
+        self.assertEqual(p["source"], "bing")            # which surface found it
+        self.assertEqual(p["source_seed"], "running shoes")
+        self.assertEqual(p["volume_at_pick"], 5400)      # volume drifts; the decision's value
+        self.assertEqual(p["admitted_by"], "core term in served area")
+        self.assertEqual(p["rationale"], "core term + colour")
+
+    def test_planner_originated_keyword_records_what_is_known(self):
+        # No autosuggest provenance -> planner, empty seed. Record what we know, invent nothing.
+        state = _state_with([{"keyword": "running shoes sale", "volume": 700}])
+        _submit_positives(state, [{"keyword": "running shoes sale", "match_type": "phrase"}])
+        p = state["kw_positives"][0]
+        self.assertEqual(p["source"], "planner")
+        self.assertEqual(p["source_seed"], "")
+
+
+class WhyNotThisKeywordTests(unittest.TestCase):
+    """The negative space is recorded, not just filtered."""
+
+    def test_top_unselected_candidates_are_recorded_by_volume(self):
+        state = _state_with([
+            {"keyword": "picked", "volume": 9000},
+            {"keyword": "cheap running shoes", "volume": 4400},
+            {"keyword": "running shoes repair", "volume": 880},
+        ])
+        _submit_positives(state, [{"keyword": "picked", "match_type": "phrase"}])
+        ledger = {r["keyword"]: r for r in state["kw_rejections"]}
+        self.assertNotIn("picked", ledger)                       # selected -> not a rejection
+        self.assertEqual(ledger["cheap running shoes"]["rule"], "not_selected")
+        self.assertEqual(ledger["cheap running shoes"]["volume_at_eval"], 4400)
+
+    def test_the_agents_own_reason_is_merged_in_where_it_named_one(self):
+        state = _state_with([
+            {"keyword": "picked", "volume": 9000},
+            {"keyword": "cheap running shoes", "volume": 4400},
+        ])
+        _submit_positives(
+            state,
+            [{"keyword": "picked", "match_type": "phrase"}],
+            rejected=[{"keyword": "cheap running shoes", "reason": "price-shopper — we sell premium"}],
+        )
+        ledger = {r["keyword"]: r for r in state["kw_rejections"]}
+        self.assertEqual(ledger["cheap running shoes"]["reason"], "price-shopper — we sell premium")
+
+    def test_ledger_is_capped(self):
+        state = _state_with(
+            [{"keyword": "picked", "volume": 9000}]
+            + [{"keyword": f"kw {i}", "volume": 100 - i} for i in range(80)]
+        )
+        _submit_positives(state, [{"keyword": "picked", "match_type": "phrase"}])
+        self.assertEqual(len(state["kw_rejections"]), constants.MAX_REJECTIONS_RECORDED)
+
+    def test_unselected_with_no_stated_reason_still_carries_the_rule(self):
+        state = _state_with([
+            {"keyword": "picked", "volume": 9000},
+            {"keyword": "running shoes repair", "volume": 880},
+        ])
+        _submit_positives(state, [{"keyword": "picked", "match_type": "phrase"}])
+        r = next(r for r in state["kw_rejections"] if r["keyword"] == "running shoes repair")
+        self.assertEqual(r["rule"], "not_selected")
+        self.assertEqual(r["reason"], "")  # honest: the rule + the volume, no invented reason
 
 
 if __name__ == "__main__":

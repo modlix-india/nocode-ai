@@ -4,7 +4,7 @@
 Covers _resolve_themes — the seam that turns the user's chosen ad groups into the
 keyword themes we run — and _resolve_geo's defensive read of product_data["place"].
 """
-# regression: an unknown/absent theme choice must fall back to the plan we showed the
+# regression: an unknown/absent ad-group choice must fall back to the plan we showed the
 # user, never to an arbitrary theme; a null `place` must not crash the run.
 from __future__ import annotations
 

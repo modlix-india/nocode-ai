@@ -15,6 +15,7 @@ from app.agents.adzump.tools.accounts import ACCOUNT_TOOLS
 from app.agents.adzump.tools.campaign_data import CAMPAIGN_SPEC_TOOLS
 from app.agents.adzump.tools.suggestions import SUGGESTION_TOOLS
 from app.agents.adzump.tools.research import RESEARCH_TOOLS
+from app.agents.adzump.tools.keyword_management import KEYWORD_TOOLS
 from app.agents.adzump.tools.location import LOCATION_TOOLS
 from app.agents.adzump.tools.prepare_campaign_review import PREPARE_CAMPAIGN_REVIEW_TOOLS
 from app.agents.adzump.tools.launch import LAUNCH_TOOLS
@@ -28,6 +29,7 @@ ALL_TOOLS = [
     *SUGGESTION_TOOLS,
     *RESEARCH_TOOLS,
     *LOCATION_TOOLS,
+    *KEYWORD_TOOLS,
     *PREPARE_CAMPAIGN_REVIEW_TOOLS,
     *LAUNCH_TOOLS,
     *MANAGE_ASSETS_TOOLS,

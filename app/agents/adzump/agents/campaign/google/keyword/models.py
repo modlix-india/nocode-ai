@@ -123,10 +123,17 @@ class KeywordSuggestion(BaseModel):
 
 
 class OptimizedKeyword(KeywordSuggestion):
-    """A selected positive with its match type + rationale."""
+    """A selected positive, with the record of why it was picked.
+
+    ``volume`` drifts (it's a trailing-12-month average, recomputed monthly), so the value
+    the decision was made on is kept separately.
+    """
 
     match_type: CoercedPositiveMatchType = MatchType.PHRASE
-    rationale: str = ""
+    rationale: str = ""  # the agent's one-line why
+    admitted_by: str = ""  # the select rule that let it in
+    source_seed: str = ""  # the seed that surfaced it ("" when the Planner generated it)
+    volume_at_pick: int = Field(default=0, ge=0)
     is_cross_business: bool = False
 
     @model_validator(mode="after")

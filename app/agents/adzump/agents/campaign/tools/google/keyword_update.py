@@ -139,14 +139,15 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
     return None
 
 
-async def update_keywords(params: dict, context: dict) -> ToolResult:
-    session_ctx = context.get("session_context")
-    if session_ctx is None:
-        return ToolResult(success=False, error="No session context available.")
+def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
+    """Apply ONE add/delete/edit to the saved set. Returns (ok, message).
 
+    The single mutation path: panel clicks (0 LLM) and the keyword agent both come through
+    here, so an edit made in words can't break an invariant a click couldn't.
+    """
     dump = session_ctx.get("keyword_research")
     if not dump:
-        return ToolResult(success=False, error="No keyword research in session — run keyword research first.")
+        return False, "No keyword research in session — run keyword research first."
 
     action = str(params.get("action", "")).lower()
     keyword_type = str(params.get("keyword_type", "")).lower()
@@ -155,14 +156,14 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
     themes: dict[str, dict] = dump.get("themes") or {}
 
     if action not in _VALID_ACTIONS:
-        return ToolResult(success=False, error=f"Invalid action '{action}'. Must be: add, delete, or edit.")
+        return False, f"Invalid action '{action}'. Must be: add, delete, or edit."
     if keyword_type not in themes:
-        return ToolResult(
-            success=False,
-            error=f"No '{keyword_type}' ad group in this campaign. Built: {', '.join(sorted(themes)) or 'none'}.",
+        return (
+            False,
+            f"No '{keyword_type}' ad group in this campaign. Built: {', '.join(sorted(themes)) or 'none'}.",
         )
     if section not in _VALID_SECTIONS:
-        return ToolResult(success=False, error=f"Invalid section '{section}'. Must be positives or negatives.")
+        return False, f"Invalid section '{section}'. Must be positives or negatives."
 
     kset = themes[keyword_type]
 
@@ -183,23 +184,17 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
         keyword = _normalize(str(params.get("keyword", "")))
         err = _validate_keyword(keyword)
         if err:
-            return ToolResult(success=False, error=err)
+            return False, err
         if any(_row_key(r) == keyword for r in rows):
-            return ToolResult(success=False, error=f"'{keyword}' already exists in {keyword_type} {section}.")
+            return False, f"'{keyword}' already exists in {keyword_type} {section}."
         if any(_row_key(r) == keyword for r in opposite_rows):
-            return ToolResult(
-                success=False,
-                error=f"'{keyword}' is already in {keyword_type} {opposite} — a keyword can't be in both lists.",
-            )
+            return False, f"'{keyword}' is already in {keyword_type} {opposite} — a keyword can't be in both lists."
         if any(_row_key(r) == keyword for r in cross_type_rows):
-            return ToolResult(
-                success=False,
-                error=f"'{keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups.",
-            )
+            return False, f"'{keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups."
         if section == "positives":
             section_err = _check_section_signal(keyword, keyword_type, session_ctx)
             if section_err:
-                return ToolResult(success=False, error=section_err)
+                return False, section_err
         match_type = _coerce_match_type(params.get("match_type"), section)
         new_row: dict = {
             "keyword": keyword,
@@ -217,7 +212,7 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
         keyword = _normalize(str(params.get("keyword", "")))
         updated = [r for r in rows if _row_key(r) != keyword]
         if len(updated) == len(rows):
-            return ToolResult(success=False, error=f"'{keyword}' not found in {keyword_type} {section}.")
+            return False, f"'{keyword}' not found in {keyword_type} {section}."
         rows = updated
         summary = f"Removed '{keyword}' from {keyword_type} {section}."
 
@@ -226,29 +221,23 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
         new_keyword = _normalize(str(params.get("keyword", old_keyword)))
         err = _validate_keyword(new_keyword)
         if err:
-            return ToolResult(success=False, error=err)
+            return False, err
 
         target = next((r for r in rows if _row_key(r) == old_keyword), None)
         if target is None:
-            return ToolResult(success=False, error=f"'{old_keyword}' not found in {keyword_type} {section}.")
+            return False, f"'{old_keyword}' not found in {keyword_type} {section}."
 
         if new_keyword != old_keyword:
             if any(_row_key(r) == new_keyword for r in rows if r is not target):
-                return ToolResult(success=False, error=f"'{new_keyword}' already exists in {keyword_type} {section}.")
+                return False, f"'{new_keyword}' already exists in {keyword_type} {section}."
             if any(_row_key(r) == new_keyword for r in opposite_rows):
-                return ToolResult(
-                    success=False,
-                    error=f"'{new_keyword}' is in {keyword_type} {opposite} — a keyword can't be in both lists.",
-                )
+                return False, f"'{new_keyword}' is in {keyword_type} {opposite} — a keyword can't be in both lists."
             if any(_row_key(r) == new_keyword for r in cross_type_rows):
-                return ToolResult(
-                    success=False,
-                    error=f"'{new_keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups.",
-                )
+                return False, f"'{new_keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups."
             if section == "positives":
                 section_err = _check_section_signal(new_keyword, keyword_type, session_ctx)
                 if section_err:
-                    return ToolResult(success=False, error=section_err)
+                    return False, section_err
 
         target["keyword"] = new_keyword
         target["match_type"] = _coerce_match_type(params.get("match_type"), section, target.get("match_type", "PHRASE"))
@@ -272,11 +261,33 @@ async def update_keywords(params: dict, context: dict) -> ToolResult:
         len(rows),
     )
 
+    return True, summary
+
+
+async def _emit_panel(context: dict, session_ctx: dict) -> None:
+    """Re-emit only the keyword block (keyed upsert, no panel flash)."""
     craft_id = session_ctx.get("campaign_craft_id") or f"campaign_{context.get('session_id', '')}"
+    dump = session_ctx.get("keyword_research") or {}
     await emit_section_update(context.get("event_stream"), craft_id, keyword_review_block(dump))
 
+
+async def update_keywords(params: dict, context: dict) -> ToolResult:
+    """Panel-click entry: one mechanical edit, zero LLM."""
+    session_ctx = context.get("session_context")
+    if session_ctx is None:
+        return ToolResult(success=False, error="No session context available.")
+
+    ok, message = _apply_edit(params, session_ctx)
+    if not ok:
+        return ToolResult(success=False, error=message)
+
+    await _emit_panel(context, session_ctx)
     return ToolResult(
         success=True,
-        summary=summary,
-        data={"action": action, "keyword_type": keyword_type, "section": section},
+        summary=message,
+        data={
+            "action": str(params.get("action", "")).lower(),
+            "keyword_type": str(params.get("keyword_type", "")).lower(),
+            "section": str(params.get("section", "")).lower(),
+        },
     )

@@ -3,7 +3,7 @@
 BusinessProfile.source_names per-keyword-type autosuggest selection.
 """
 # regression: YouTube (informational intent) must join only the generic run, never
-# the brand (bottom-theme) run; the web-search defaults are always the primary set.
+# the brand (bottom-funnel) run; the web-search defaults are always the primary set.
 from __future__ import annotations
 
 import unittest
@@ -14,17 +14,17 @@ _DEFAULTS = ["google", "bing", "duckduckgo"]
 
 
 class SourceNamesTests(unittest.TestCase):
-    def test_defaults_only_without_informational_theme(self):
-        p = BusinessProfile(category="saas")  # informational theme off
+    def test_defaults_only_without_informational_funnel(self):
+        p = BusinessProfile(category="saas")  # informational funnel off
         self.assertEqual(p.source_names("brand"), _DEFAULTS)
         self.assertEqual(p.source_names("generic"), _DEFAULTS)
 
     def test_youtube_added_only_for_generic_when_informational(self):
         p = BusinessProfile(category="saas", includes_informational_funnel=True)
-        # brand is bottom-theme — YouTube is off-intent there
+        # brand is bottom-funnel — YouTube is off-intent there
         self.assertEqual(p.source_names("brand"), _DEFAULTS)
         self.assertNotIn("youtube", p.source_names("brand"))
-        # generic + informational theme — YouTube appended after the defaults
+        # generic + informational funnel — YouTube appended after the defaults
         self.assertEqual(p.source_names("generic"), _DEFAULTS + ["youtube"])
         self.assertEqual(p.source_names("generic")[-1], "youtube")
 

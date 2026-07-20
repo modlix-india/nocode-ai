@@ -115,9 +115,11 @@ def _breaker_trip(reason: str) -> None:
 
 
 def _micros_to_currency(value: object) -> float:
+    if not isinstance(value, (int, float, str)):
+        return 0.0  # absent / unexpected JSON shape
     try:
         return round(int(value) / _MICROS_PER_UNIT, _CURRENCY_DECIMALS)
-    except (TypeError, ValueError):
+    except ValueError:  # non-numeric string
         return 0.0
 
 
@@ -205,6 +207,7 @@ async def _post_with_retry(
                 _breaker_record(ok=False)
                 raise
         await asyncio.sleep(_RETRY_BACKOFF_BASE_SECONDS * (2**attempt))
+    raise RuntimeError("unreachable: the final attempt returns or raises")
 
 
 async def fetch_keyword_ideas(
