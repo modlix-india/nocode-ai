@@ -1,0 +1,119 @@
+{
+  "_id": "66d7e30e3d6bcd580e223c9e",
+  "schema": {
+    "type": "OBJECT",
+    "additionalProperties": false,
+    "properties": {
+      "textBox": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "name": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 0,
+        "maxLength": 24
+      },
+      "email": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 0,
+        "maxLength": 50
+      }
+    },
+    "required": []
+  },
+  "uniqueName": "testingrhbytpvfhvb_1hrrk2nng4vn5",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "readAuth": "Authorities.Logged_IN",
+  "updateAuth": "Authorities.Logged_IN",
+  "deleteAuth": "Authorities.Logged_IN",
+  "fieldDefinitionMap": {
+    "textBox": {
+      "key": "textBox",
+      "uuid": "4gtQNVAGPcAXf1HsML6t3y",
+      "order": 0,
+      "label": "Text box",
+      "placeholder": "Type something",
+      "inputType": "text",
+      "numberType": "",
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "2HkCy5wsM3xXD1rt0B5poo",
+          "order": 0,
+          "type": "STRING_LENGTH"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "editorType": "TextBoxEditor"
+    },
+    "name": {
+      "key": "name",
+      "uuid": "18UgbtSd1rBAEiHFjVXAGO",
+      "order": 1,
+      "label": "Name",
+      "placeholder": "Enter your name",
+      "maxChars": 24,
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "6TCkWFE2tLVlOJlW3oBPnP",
+          "order": 0,
+          "type": "STRING_LENGTH",
+          "minLength": 0,
+          "maxLength": 24,
+          "message": "Not valid length"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 0,
+        "maxLength": 24
+      },
+      "editorType": "NameEditor"
+    },
+    "email": {
+      "key": "email",
+      "uuid": "7dBxuRcYi0lj3dZQvu8fxC",
+      "order": 2,
+      "label": "Email",
+      "placeholder": "Enter your email address",
+      "maxChars": 50,
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "4AN2RqUUH3rbDtOUKmVYur",
+          "order": 0,
+          "type": "STRING_LENGTH",
+          "minLength": 0,
+          "maxLength": 50,
+          "message": "not valid length"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 0,
+        "maxLength": 50
+      },
+      "editorType": "EmailEditor"
+    }
+  },
+  "name": "formStorage",
+  "clientCode": "FIN2",
+  "appCode": "testingrhbytpvfhvbkhrf",
+  "version": 1,
+  "createdAt": "2024-09-04 04:33:18.045000",
+  "createdBy": "<USER>"
+}

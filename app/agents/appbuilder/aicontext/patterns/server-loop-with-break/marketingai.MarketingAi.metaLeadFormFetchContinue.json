@@ -1,0 +1,228 @@
+{
+  "_id": "6776916b69373e0c0bec5a5b",
+  "definition": {
+    "name": "metaLeadFormFetchContinue",
+    "namespace": "MarketingAi",
+    "parameters": {
+      "pageId": {
+        "parameterName": "pageId",
+        "schema": {}
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {}
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "leadforms": {}
+        }
+      }
+    },
+    "steps": {
+      "forEachLoop": {
+        "statementName": "forEachLoop",
+        "name": "ForEachLoop",
+        "namespace": "System.Loop",
+        "position": {
+          "left": 603.6666615804036,
+          "top": 399.6666463216145
+        },
+        "parameterMap": {
+          "source": {
+            "6FtkMi4A07dikaHNNuwGzj": {
+              "key": "6FtkMi4A07dikaHNNuwGzj",
+              "type": "EXPRESSION",
+              "expression": "Context.fetchedPages.pages",
+              "order": 1
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1085.33332824707,
+          "top": 379.6666463216145
+        },
+        "parameterMap": {
+          "condition": {
+            "EBm7syrkyJrvpakQ6raqr": {
+              "key": "EBm7syrkyJrvpakQ6raqr",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.id = Context.businessPage.pageId",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1492.33332824707,
+          "top": 560.6666615804036
+        },
+        "parameterMap": {
+          "name": {
+            "7qLr9D5HMJiJjjlkzlN4i7": {
+              "key": "7qLr9D5HMJiJjjlkzlN4i7",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.businessPage.access_token"
+            }
+          },
+          "value": {
+            "42wEX7t4ZuakbIJfJNZ2Mm": {
+              "key": "42wEX7t4ZuakbIJfJNZ2Mm",
+              "type": "EXPRESSION",
+              "expression": "Steps.forEachLoop.iteration.each.access_token",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "break": {
+        "statementName": "break",
+        "name": "Break",
+        "namespace": "System.Loop",
+        "position": {
+          "left": 2016.9999949137366,
+          "top": 612.3333358764647
+        },
+        "parameterMap": {
+          "stepName": {
+            "6J1h6DTAWMhTEYim1hHZe1": {
+              "key": "6J1h6DTAWMhTEYim1hHZe1",
+              "type": "EXPRESSION",
+              "expression": "'forEachLoop'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1426.9999949137368,
+          "top": 943.3333333333331
+        },
+        "parameterMap": {
+          "results": {
+            "3LKBf4bEjf4cIHzYvMdJeb": {
+              "key": "3LKBf4bEjf4cIHzYvMdJeb",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "leadforms",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.getRequest.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1385.33332824707,
+          "top": 1302.3333231608071
+        },
+        "parameterMap": {
+          "results": {
+            "6Pl7IMjUIoWVERSN4Z6AYC": {
+              "key": "6Pl7IMjUIoWVERSN4Z6AYC",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.getRequest.error.data"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "3EDShQ44MMSNNbmKDh49RD": {
+              "key": "3EDShQ44MMSNNbmKDh49RD",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        }
+      },
+      "getRequest": {
+        "statementName": "getRequest",
+        "name": "GetRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 887.9999923706054,
+          "top": 735.6666692097981
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__forEachLoop__d-o-t__output": true
+        },
+        "parameterMap": {
+          "appCode": {
+            "6mg3fncMpZoFslGzPBRE69": {
+              "key": "6mg3fncMpZoFslGzPBRE69",
+              "type": "VALUE",
+              "expression": "",
+              "value": "marketingai"
+            }
+          },
+          "url": {
+            "5mrD0newDkKIDaXO4kiTa7": {
+              "key": "5mrD0newDkKIDaXO4kiTa7",
+              "type": "EXPRESSION",
+              "expression": "'/{{Context.businessPage.pageId}}/leadgen_forms?fields=id,name,created_time,leads_count,status&access_token={{Context.businessPage.access_token}}'",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "28ClC6W0rdxVKeBPhxE7R5": {
+              "key": "28ClC6W0rdxVKeBPhxE7R5",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "META_API"
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "MarketingAi.metaLeadFormFetchContinue",
+  "message": "From transport : 2wlEf5HkcsNxYGNZzRxPb5",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 18,
+  "updatedAt": "2026-03-05 10:56:19.063000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-01-02 13:15:23.952000",
+  "createdBy": "<USER>"
+}

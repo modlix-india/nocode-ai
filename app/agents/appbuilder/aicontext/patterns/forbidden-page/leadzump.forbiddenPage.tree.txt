@@ -1,0 +1,8 @@
+- 5ZSjQH7oOYBSDntmYAXiJo (Grid) PageGrid
+  - xdyAIPwCNfdKLLheytZG5 (Image) Company logo
+  - 4mWZDIiXLP9RVR66TSZHHm (Grid) bodyGrid
+    - 328JvRUsFYMyjZCTfIieRH (Image) forbidden image
+    - 2e8sTusUT0aT7PcjYUN1vz (Grid) text grid
+      - 2IrOJytn3uS9NdZDC1ZHzl (Text) heading
+      - 6MhPLT5fAP2batQ9PFzF04 (Text) content
+    - WNUJdHBYMjB3PYcAyMzpM (Button) redirecting homepage button

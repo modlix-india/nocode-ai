@@ -1,4 +1,4 @@
-"""Slice 2 — the review-each capability of VisionAnalyst, below the model.
+"""Slice 2 - the review-each capability of VisionAnalyst, below the model.
 
 We never call the LLM: we hand-build the reviewer's JSON output (what the model
 WOULD return) and assert the parse, and we assert the message builder turns N

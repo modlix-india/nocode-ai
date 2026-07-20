@@ -1,0 +1,249 @@
+{
+  "_id": "690e116b99d8ca781bac35a5",
+  "definition": {
+    "name": "sendEmail",
+    "namespace": "leadzump",
+    "parameters": {
+      "payload": {
+        "parameterName": "payload",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "connectionName": {
+        "parameterName": "connectionName",
+        "schema": {
+          "version": 1,
+          "type": [
+            "STRING"
+          ]
+        }
+      },
+      "url": {
+        "parameterName": "url",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1720.4999923706048,
+          "top": 332.4999771118163
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__postRequest__d-o-t__output": true
+        },
+        "parameterMap": {
+          "results": {
+            "5DUhSaNF0ufbGXTZ5rBHvT": {
+              "key": "5DUhSaNF0ufbGXTZ5rBHvT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 255.49999237060536,
+          "top": 337.9999771118163
+        },
+        "parameterMap": {
+          "name": {
+            "5ejK3NsTulOWZKwlGO7E2V": {
+              "key": "5ejK3NsTulOWZKwlGO7E2V",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "object"
+            }
+          },
+          "schema": {
+            "5UQGHxw26NFnSkLpR46UIN": {
+              "key": "5UQGHxw26NFnSkLpR46UIN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 844.9999923706051,
+          "top": 542.4999771118163
+        },
+        "parameterMap": {
+          "name": {
+            "2ACtJhazuunD9txAV5L3mk": {
+              "key": "2ACtJhazuunD9txAV5L3mk",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.object.details"
+            }
+          },
+          "value": {
+            "5sfp1Z8eU1baViGnsclPnX": {
+              "key": "5sfp1Z8eU1baViGnsclPnX",
+              "type": "EXPRESSION",
+              "expression": "Arguments.payload",
+              "order": 1,
+              "value": {}
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 1339.999992370605,
+          "top": 108.000015258789
+        },
+        "parameterMap": {
+          "url": {
+            "JxYQUDyTti2uXoYO7yDij": {
+              "key": "JxYQUDyTti2uXoYO7yDij",
+              "type": "EXPRESSION",
+              "expression": "Arguments.url",
+              "order": 1,
+              "value": ""
+            }
+          },
+          "payload": {
+            "7A5klIUuccLHoM5gXPH2kU": {
+              "key": "7A5klIUuccLHoM5gXPH2kU",
+              "type": "EXPRESSION",
+              "expression": "Context.object",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "5MEoWCJwY29U9ZdLikYFQp": {
+              "key": "5MEoWCJwY29U9ZdLikYFQp",
+              "type": "EXPRESSION",
+              "expression": "Arguments.connectionName",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": false,
+          "Steps__d-o-t__if__d-o-t__false": false,
+          "Steps__d-o-t__if__d-o-t__output": true,
+          "Steps__d-o-t__set1__d-o-t__output": false
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 512.6666564941405,
+          "top": 362.33333587646473
+        },
+        "parameterMap": {
+          "condition": {
+            "5HKFjJnwDO69h1aatzmfmM": {
+              "key": "5HKFjJnwDO69h1aatzmfmM",
+              "type": "EXPRESSION",
+              "expression": "Arguments.url = 'api/generatePdfFromTemplate/webhook/data'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 898.333312988281,
+          "top": 234.66665649414057
+        },
+        "parameterMap": {
+          "name": {
+            "2ACtJhazuunD9txAV5L3mk": {
+              "key": "2ACtJhazuunD9txAV5L3mk",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.object"
+            }
+          },
+          "value": {
+            "5sfp1Z8eU1baViGnsclPnX": {
+              "key": "5sfp1Z8eU1baViGnsclPnX",
+              "type": "EXPRESSION",
+              "expression": "Arguments.payload",
+              "order": 1,
+              "value": {}
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__output": false,
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      }
+    }
+  },
+  "name": "leadzump.sendEmail",
+  "message": "From transport : 0NLasvcaI96EIUO3Ck7GsQ",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 42,
+  "updatedAt": "2026-05-14 13:47:05.189000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-11-07 15:34:03.286000",
+  "createdBy": "<USER>"
+}

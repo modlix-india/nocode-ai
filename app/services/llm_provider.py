@@ -267,7 +267,13 @@ class StreamChunk:
 
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
-    
+
+    # Whether this provider accepts image content blocks inside `tool_result`
+    # content arrays. Anthropic does (Claude 3+). OpenAI Responses-API does NOT
+    # — its function_call_output is a plain string. DeepSeek/Gemini default
+    # False unless they later add equivalent support. Overridden in subclasses.
+    supports_image_in_tool_result: bool = False
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -409,6 +415,8 @@ class LLMProvider(ABC):
 
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude provider"""
+
+    supports_image_in_tool_result = True
 
     def __init__(self):
         import anthropic
@@ -1195,6 +1203,94 @@ class OpenAIProvider(LLMProvider):
         }
 
 
+class _StreamError:
+    """Queue-passable wrapper for exceptions raised inside the streaming
+    worker thread of `DeepSeekProvider.stream_completion_with_tools` (and
+    MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
+    leaves the consumer's `await queue.get()` hung forever.
+    """
+
+    __slots__ = ("exc",)
+
+    def __init__(self, exc: BaseException):
+        self.exc = exc
+
+
+def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
+    """Split an Anthropic-shaped tool_result `content` into (text, image_parts).
+
+    tool_result content is either a plain string or a list of blocks — text
+    blocks plus (when the provider accepts vision) Anthropic image blocks
+    `{"type":"image","source":{"type":"base64","media_type":..,"data":..}}`.
+
+    OpenAI-compatible `tool` messages are TEXT-ONLY, so images cannot ride in
+    the tool message. We return the text for the tool message and the images
+    as OpenAI `image_url` parts, which the caller re-emits in a following
+    `user` message so the model actually sees the screenshot.
+    """
+    if isinstance(content, str):
+        return content, []
+    if not isinstance(content, list):
+        return ("" if content is None else str(content)), []
+    text_chunks: list[str] = []
+    image_parts: list[dict] = []
+    for block in content:
+        if not isinstance(block, dict):
+            continue
+        btype = block.get("type")
+        if btype == "text":
+            text_chunks.append(block.get("text", ""))
+        elif btype == "image":
+            src = block.get("source") or {}
+            if src.get("type") == "base64" and src.get("data"):
+                media = src.get("media_type", "image/png")
+                image_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{media};base64,{src['data']}"},
+                })
+            elif src.get("type") == "url" and src.get("url"):
+                image_parts.append({"type": "image_url", "image_url": {"url": src["url"]}})
+        elif btype == "image_url":  # already OpenAI-shaped
+            iu = block.get("image_url")
+            url = iu.get("url") if isinstance(iu, dict) else iu
+            if url:
+                image_parts.append({"type": "image_url", "image_url": {"url": url}})
+    return "\n".join(t for t in text_chunks if t), image_parts
+
+
+def _append_user_list_content(full_messages: list, content: list) -> None:
+    """Convert an Anthropic user-role content list into OpenAI chat messages.
+
+    Emits all `tool` messages first (each keyed to its tool_call_id), then a
+    single `user` message carrying any screenshot image parts harvested from
+    those tool results — interleaving a user message between tool messages
+    would violate the OpenAI tool-call message ordering. Plain text blocks
+    become standalone user messages.
+    """
+    pending_image_parts: list[dict] = []
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "tool_result":
+            tool_text, image_parts = _split_tool_result_content(item.get("content", ""))
+            full_messages.append({
+                "role": "tool",
+                "tool_call_id": item.get("tool_use_id", ""),
+                "content": tool_text or "(screenshot attached in the following message)",
+            })
+            pending_image_parts.extend(image_parts)
+        elif item.get("type") == "text":
+            full_messages.append({"role": "user", "content": item["text"]})
+    if pending_image_parts:
+        full_messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Screenshot(s) from the tool result(s) above:"},
+                *pending_image_parts,
+            ],
+        })
+
+
 class DeepSeekProvider(LLMProvider):
     """DeepSeek provider — OpenAI-compatible Chat Completions API.
 
@@ -1330,15 +1426,7 @@ class DeepSeekProvider(LLMProvider):
                 full_messages.append(oai_msg)
 
             elif role == "user" and isinstance(content, list):
-                for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
-                            "role": "tool",
-                            "tool_call_id": item.get("tool_use_id", ""),
-                            "content": item.get("content", ""),
-                        })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                _append_user_list_content(full_messages, content)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -1448,17 +1536,15 @@ class DeepSeekProvider(LLMProvider):
                     oai_msg["content"] = "\n".join(text_parts)
                 if tool_calls:
                     oai_msg["tool_calls"] = tool_calls
+                # Round-trip reasoning_content for thinking-mode models — the
+                # DeepSeek API rejects multi-turn conversations that drop it,
+                # and MiniMax M3 wants its interleaved reasoning passed back.
+                reasoning = msg.get("_reasoning_content")
+                if reasoning:
+                    oai_msg["reasoning_content"] = reasoning
                 full_messages.append(oai_msg)
             elif role == "user" and isinstance(content, list):
-                for item in content:
-                    if item.get("type") == "tool_result":
-                        full_messages.append({
-                            "role": "tool",
-                            "tool_call_id": item.get("tool_use_id", ""),
-                            "content": item.get("content", ""),
-                        })
-                    elif item.get("type") == "text":
-                        full_messages.append({"role": "user", "content": item["text"]})
+                _append_user_list_content(full_messages, content)
             else:
                 full_messages.append({"role": role, "content": str(content) if content else ""})
 
@@ -1472,15 +1558,23 @@ class DeepSeekProvider(LLMProvider):
         _sentinel = object()
 
         def _run_sync_stream():
-            stream = self.client.chat.completions.create(
-                model=model, max_tokens=max_tokens,
-                messages=full_messages,
-                tools=openai_tools if openai_tools else None,
-                stream=True,
-                stream_options={"include_usage": True},
-            )
-            for c in stream:
-                queue.put_nowait(c)
+            try:
+                stream = self.client.chat.completions.create(
+                    model=model, max_tokens=max_tokens,
+                    messages=full_messages,
+                    tools=openai_tools if openai_tools else None,
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+                for c in stream:
+                    queue.put_nowait(c)
+            except Exception as e:  # noqa: BLE001
+                # Without this, a TLS drop or 5xx mid-stream leaves the
+                # consumer's `await queue.get()` hung forever ("Future
+                # exception was never retrieved"). Box the error so the
+                # consumer can re-raise it on its own thread.
+                queue.put_nowait(_StreamError(e))
+                return
             queue.put_nowait(_sentinel)
 
         asyncio.get_event_loop().run_in_executor(None, _run_sync_stream)
@@ -1488,11 +1582,24 @@ class DeepSeekProvider(LLMProvider):
         tool_call_buffer: Dict[int, Dict[str, str]] = {}
         final_stop_reason = "end_turn"
         final_usage: Dict[str, Any] = {}
+        # Thinking-mode models emit chain-of-thought via
+        # `delta.reasoning_content` (DeepSeek thinking mode, MiniMax M3
+        # interleaved reasoning). DeepSeek REQUIRES this text to be passed
+        # back on every follow-up turn or returns HTTP 400 with
+        # "reasoning_content in the thinking mode must be passed back".
+        # Accumulate across deltas and surface on the `done` chunk via usage
+        # so the agent loop can persist it on the assistant message.
+        reasoning_text_parts: list[str] = []
 
         while True:
             chunk = await queue.get()
             if chunk is _sentinel:
                 break
+            if isinstance(chunk, _StreamError):
+                # Re-raise on the consumer side so the agent's turn loop
+                # gets the actual error (APIConnectionError, RateLimit,
+                # …) instead of hanging on an empty queue.
+                raise chunk.exc
             if hasattr(chunk, 'usage') and chunk.usage:
                 final_usage = {
                     "input_tokens": chunk.usage.prompt_tokens or 0,
@@ -1504,6 +1611,11 @@ class DeepSeekProvider(LLMProvider):
             finish_reason = chunk.choices[0].finish_reason
             if delta and delta.content:
                 yield StreamChunk(type="text_delta", text=delta.content)
+            # Reasoning stream — buffer for round-trip, also yield for live UI.
+            reasoning_delta = getattr(delta, "reasoning_content", None) if delta else None
+            if reasoning_delta:
+                reasoning_text_parts.append(reasoning_delta)
+                yield StreamChunk(type="reasoning_delta", text=reasoning_delta)
             if delta and delta.tool_calls:
                 for tc in delta.tool_calls:
                     idx = tc.index
@@ -1523,7 +1635,410 @@ class DeepSeekProvider(LLMProvider):
                             tool_id=tc_data["id"], tool_input_json=tc_data["arguments"])
                     yield StreamChunk(type="tool_use_end", tool_id=tc_data["id"])
 
+        if reasoning_text_parts:
+            final_usage["reasoning_content"] = "".join(reasoning_text_parts)
         yield StreamChunk(type="done", stop_reason=final_stop_reason, usage=final_usage)
+
+
+class MiniMaxProvider(DeepSeekProvider):
+    """MiniMax provider — OpenAI-compatible Chat Completions API.
+
+    Reuses DeepSeekProvider's machinery (streaming, tool use, message
+    shape conversion) since MiniMax exposes the same Chat Completions
+    surface via its OpenAI-compatible endpoint. The only differences:
+    different API key, base URL, model defaults, and no `thinking`
+    extra_body (MiniMax doesn't support DeepSeek's thinking flag).
+
+    Unlike DeepSeek (text-only), MiniMax M3 accepts image input, so we opt
+    into the multimodal tool_result path: screenshots the agent captures are
+    forwarded to the model as image_url parts (see _append_user_list_content
+    / _split_tool_result_content). The base DeepSeek converter leaves this
+    flag False, so its text-only behaviour is unchanged.
+    """
+
+    supports_image_in_tool_result = True
+
+    def __init__(self):
+        from openai import OpenAI
+        from app.config import settings
+
+        self.client = OpenAI(
+            api_key=settings.MINIMAX_API_KEY,
+            base_url=settings.MINIMAX_BASE_URL,
+        )
+        self.settings = settings
+        self._models = {
+            "fast": settings.MINIMAX_MODEL_FAST,
+            "balanced": settings.MINIMAX_MODEL_BALANCED,
+        }
+
+    @property
+    def name(self) -> str:
+        return "MiniMax"
+
+    def _is_thinking_tier(self, model_tier: str) -> bool:
+        # MiniMax doesn't expose DeepSeek's `thinking` extra_body flag —
+        # always return False so the OpenAI client doesn't send it.
+        return False
+
+
+# Whitelist of JSON-Schema keys Gemini's protobuf `Schema` actually accepts.
+# Source: google-generativeai's content_types.FunctionDeclaration → Schema
+# protobuf. Anything outside this set raises
+# `ValueError: Unknown field for Schema: <key>` at tool-registration time.
+# Notable exclusions: `default` (the original bug), `examples`, `$ref`,
+# `oneOf`, `anyOf`, `allOf`, `not`, `additionalProperties`, `patternProperties`.
+_GEMINI_SCHEMA_ALLOWED_KEYS: frozenset[str] = frozenset({
+    "type", "description", "properties", "items", "required",
+    "enum", "format", "nullable",
+})
+
+
+def _strip_gemini_unsupported_schema_keys(schema: Any) -> Any:
+    """Recursively drop JSON-Schema keys Gemini's protobuf `Schema` rejects.
+
+    Returns a fresh structure — does NOT mutate the input — so the same
+    ToolDefinition can be safely advertised to Anthropic + Gemini in the
+    same process. Per-key transform logic lives in
+    `_transform_gemini_schema_value` (extracted to keep this function's
+    cognitive complexity below the project's lint ceiling).
+    """
+    if isinstance(schema, list):
+        return [_strip_gemini_unsupported_schema_keys(x) for x in schema]
+    if not isinstance(schema, dict):
+        return schema
+    return {
+        k: _transform_gemini_schema_value(k, v)
+        for k, v in schema.items()
+        if k in _GEMINI_SCHEMA_ALLOWED_KEYS
+    }
+
+
+def _transform_gemini_schema_value(key: str, value: Any) -> Any:
+    """Transform a single whitelisted schema-key's value for Gemini.
+
+    Important: only filter at SCHEMA-shaped dict levels. The values of
+    `properties` are themselves a {property_name: schema} map where
+    property names are arbitrary (size, app_code, ...) — they must NOT
+    be filtered against the schema-keyword whitelist. Similarly the
+    values of `required` / `enum` are plain string/value lists, not
+    nested schemas.
+    """
+    if key == "properties" and isinstance(value, dict):
+        # Property NAMES are user-defined; keep them, strip their VALUES.
+        return {
+            prop_name: _strip_gemini_unsupported_schema_keys(prop_schema)
+            for prop_name, prop_schema in value.items()
+        }
+    if key in ("required", "enum"):
+        # Plain lists of strings/values; don't recurse-strip them.
+        return list(value) if isinstance(value, list) else value
+    # items / type / description / format / nullable: recurse normally.
+    return _strip_gemini_unsupported_schema_keys(value)
+
+
+class GeminiProvider(LLMProvider):
+    """Google Gemini provider (Gemini 2.5 Flash / Flash-Lite / Pro).
+
+    Chosen as the CFA default after the Phase 8 bench: roughly 13× cheaper
+    on input vs Claude Haiku and 33× cheaper than GPT-4o, with native vision
+    and a 1M-token context window — well-suited to the agent's generate →
+    screenshot → critique → fix iteration loop.
+
+    Uses the `google-generativeai` SDK. Tool use maps Anthropic's
+    `input_schema` shape onto Gemini's FunctionDeclaration directly (both
+    are JSON Schema dialects). Vision via inline_data parts. Prompt caching
+    is implicit on Gemini's side — no explicit cache markers in the request.
+
+    Streaming uses the base class's fallback (synthesize chunks from a
+    non-streaming response) — adequate for v1; native server-sent streaming
+    can land in a follow-up if turn latency becomes a concern.
+    """
+
+    def __init__(self):
+        import google.generativeai as genai  # type: ignore[import-not-found]
+        from app.config import settings
+
+        api_key = getattr(settings, "GOOGLE_API_KEY", "") or ""
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY is required when using the gemini provider")
+        genai.configure(api_key=api_key)
+        self._genai = genai
+        self.settings = settings
+        self._models = {
+            "fast": getattr(settings, "GEMINI_MODEL_FAST", "gemini-2.5-flash-lite"),
+            "balanced": getattr(settings, "GEMINI_MODEL_BALANCED", "gemini-2.5-flash"),
+        }
+
+    @property
+    def name(self) -> str:
+        return "Gemini"
+
+    def get_model(self, tier: str) -> str:
+        return self._models.get(tier, tier)
+
+    def supports_vision(self) -> bool:
+        return True
+
+    def supports_prompt_caching(self) -> bool:
+        # Gemini has implicit caching; we don't manage cache markers.
+        return False
+
+    def _extract_instructions(self, system_prompt: Any) -> str:
+        if isinstance(system_prompt, list):
+            return " ".join(
+                b.get("text", "") for b in system_prompt if b.get("type") == "text"
+            )
+        return system_prompt or ""
+
+    def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Anthropic input_schema → Gemini FunctionDeclaration dict.
+
+        Skips provider-specific builtin tools (web_search etc.) — those are
+        not portable across providers and the CFA doesn't surface them
+        through the modlix tool catalog.
+
+        Gemini's protobuf `Schema` accepts only the OpenAPI subset it knows;
+        keys like `default`, `examples`, `$ref`, `oneOf`, etc. raise
+        `ValueError: Unknown field for Schema: <key>` at model construction
+        time. We pre-strip them recursively. Without this, every tool that
+        has a `default=` on any ToolParameter (e.g. `size=100`,
+        `max_results=8`, `lines=200`) crashes the entire Gemini bench at
+        tool-registration time.
+        """
+        out: list[dict[str, Any]] = []
+        for t in tools:
+            if t.get("__builtin__"):
+                # Drop provider-specific builtins that aren't Gemini's.
+                if t.get("provider") and t["provider"] != "gemini":
+                    continue
+                spec = t.get("spec") or {}
+                if spec:
+                    out.append(spec)
+                continue
+            schema = t.get("input_schema") or {"type": "object", "properties": {}}
+            out.append({
+                "name": t["name"],
+                "description": t.get("description", ""),
+                "parameters": _strip_gemini_unsupported_schema_keys(schema),
+            })
+        if not out:
+            return []
+        # Gemini wants a list of Tool objects, each holding function_declarations.
+        return [{"function_declarations": out}]
+
+    @staticmethod
+    def _anthropic_block_to_gemini_part(item: Dict[str, Any]) -> Dict[str, Any] | None:
+        """Map one Anthropic content block to its Gemini part equivalent.
+
+        Returns None for unrecognized block types so the caller skips them.
+        """
+        itype = item.get("type")
+        if itype == "text":
+            return {"text": item.get("text", "")}
+        if itype == "tool_use":
+            return {"function_call": {"name": item["name"], "args": item.get("input") or {}}}
+        if itype == "tool_result":
+            # Gemini correlates response→call by name. Fall back to id then
+            # "result" when the caller didn't carry the tool name through.
+            return {
+                "function_response": {
+                    "name": item.get("name") or item.get("tool_use_id") or "result",
+                    "response": {"content": item.get("content", "")},
+                }
+            }
+        if itype == "image":
+            src = item.get("source") or {}
+            if src.get("type") != "base64":
+                return None
+            return {
+                "inline_data": {
+                    "mime_type": src.get("media_type", "image/png"),
+                    "data": src.get("data", ""),
+                }
+            }
+        return None
+
+    def _convert_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Anthropic messages → Gemini contents.
+
+        Gemini roles: 'user' and 'model' (assistant).
+        """
+        contents: list[dict[str, Any]] = []
+        for msg in messages:
+            gem_role = "model" if msg.get("role") == "assistant" else "user"
+            content = msg.get("content")
+            if isinstance(content, str):
+                parts: list[dict[str, Any]] = [{"text": content}]
+            elif isinstance(content, list):
+                parts = [
+                    p for p in (self._anthropic_block_to_gemini_part(it) for it in content)
+                    if p is not None
+                ]
+            else:
+                parts = []
+            if parts:
+                contents.append({"role": gem_role, "parts": parts})
+        return contents
+
+    @staticmethod
+    def _proto_to_plain(value: Any) -> Any:
+        """Recursively convert Gemini's proto-plus types to plain Python.
+
+        Gemini wraps response payloads in `MapComposite` (dict-like) and
+        `RepeatedComposite` (list-like) proto types. The top-level conversion
+        `dict(fc.args)` only flattens one layer — nested objects stay as proto
+        types, which `json.dumps` chokes on with
+        "Object of type MapComposite is not JSON serializable".
+
+        Walks the structure once at response-shaping time so every downstream
+        consumer (stream chunks, session persistence, tool dispatch) sees
+        plain dicts/lists.
+        """
+        # Plain primitives pass through.
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        # dict-like: MapComposite, plain dict, and any subclass.
+        if isinstance(value, dict):
+            return {k: GeminiProvider._proto_to_plain(v) for k, v in value.items()}
+        # list/tuple-like: RepeatedComposite, plain list/tuple.
+        if isinstance(value, (list, tuple)):
+            return [GeminiProvider._proto_to_plain(v) for v in value]
+        # Last-resort: anything iterable that maps (MapComposite isn't
+        # always a dict subclass depending on proto-plus version) gets the
+        # items() treatment; anything iterable that's sequence-like gets
+        # listified. Fall back to str() so the agent never crashes on an
+        # unexpected proto shape.
+        if hasattr(value, "items"):
+            try:
+                return {k: GeminiProvider._proto_to_plain(v) for k, v in value.items()}
+            except (TypeError, AttributeError):
+                pass
+        if hasattr(value, "__iter__"):
+            try:
+                return [GeminiProvider._proto_to_plain(v) for v in value]
+            except (TypeError, AttributeError):
+                pass
+        return str(value)
+
+    @staticmethod
+    def _gemini_part_to_anthropic_block(part: Any) -> Dict[str, Any] | None:
+        """Map one Gemini response part to its Anthropic content-block equivalent.
+
+        Returns None for parts we don't surface to the agent (e.g. unrecognized
+        proto types). text and function_call are the two cases that matter.
+        """
+        text = getattr(part, "text", None)
+        if text:
+            return {"type": "text", "text": text}
+        fc = getattr(part, "function_call", None)
+        if fc and getattr(fc, "name", None):
+            args = GeminiProvider._proto_to_plain(fc.args) if fc.args else {}
+            if not isinstance(args, dict):
+                args = {}
+            return {
+                "type": "tool_use",
+                "id": fc.name,  # Gemini correlates by name; reuse as id
+                "name": fc.name,
+                "input": args,
+            }
+        return None
+
+    def _convert_response(self, response: Any, model_name: str) -> Dict[str, Any]:
+        """Gemini response → Anthropic content blocks + usage."""
+        try:
+            candidates = response.candidates or []
+        except (AttributeError, TypeError):
+            candidates = []
+
+        content_blocks: list[dict[str, Any]] = []
+        for cand in candidates:
+            cnt = getattr(cand, "content", None)
+            for part in getattr(cnt, "parts", []) or []:
+                block = self._gemini_part_to_anthropic_block(part)
+                if block is not None:
+                    content_blocks.append(block)
+
+        has_tool_call = any(b.get("type") == "tool_use" for b in content_blocks)
+        usage_meta = getattr(response, "usage_metadata", None)
+        return {
+            "content": content_blocks,
+            "usage": {
+                "input_tokens": getattr(usage_meta, "prompt_token_count", 0) or 0,
+                "output_tokens": getattr(usage_meta, "candidates_token_count", 0) or 0,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            },
+            "model": model_name,
+            "stop_reason": "tool_use" if has_tool_call else "end_turn",
+        }
+
+    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+        # Anthropic-shaped block; _convert_messages translates to inline_data.
+        return {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": base64_image},
+        }
+
+    async def create_completion(
+        self, system_prompt: str, messages: List[Dict[str, Any]],
+        model_tier: str = "balanced", max_tokens: int = 8192, use_cache: bool = True,
+    ) -> Dict[str, Any]:
+        model_name = self.get_model(model_tier)
+        instructions = self._extract_instructions(system_prompt)
+        contents = self._convert_messages(messages)
+
+        model = self._genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=instructions or None,
+        )
+        response = await model.generate_content_async(
+            contents=contents,
+            generation_config={"max_output_tokens": max_tokens},
+        )
+        text = ""
+        try:
+            text = response.text or ""
+        except (AttributeError, ValueError):
+            # No simple text accessor — gather from parts.
+            text = " ".join(
+                getattr(p, "text", "") or ""
+                for c in (response.candidates or [])
+                for p in (getattr(getattr(c, "content", None), "parts", []) or [])
+            )
+        usage_meta = getattr(response, "usage_metadata", None)
+        return {
+            "content": text,
+            "usage": {
+                "input_tokens": getattr(usage_meta, "prompt_token_count", 0) or 0,
+                "output_tokens": getattr(usage_meta, "candidates_token_count", 0) or 0,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            },
+            "model": model_name,
+            "stop_reason": "end_turn",
+        }
+
+    async def create_completion_with_tools(
+        self, system_prompt: Any, messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]], model_tier: str = "balanced",
+        max_tokens: int = 16384,
+    ) -> Dict[str, Any]:
+        model_name = self.get_model(model_tier)
+        instructions = self._extract_instructions(system_prompt)
+        contents = self._convert_messages(messages)
+        gemini_tools = self._convert_tools(tools)
+
+        model = self._genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=instructions or None,
+            tools=gemini_tools or None,
+        )
+        response = await model.generate_content_async(
+            contents=contents,
+            generation_config={"max_output_tokens": max_tokens},
+        )
+        return self._convert_response(response, model_name)
 
 
 # Per-provider cache: multiple providers can coexist (e.g. Anthropic for AppBuilder,
@@ -1554,11 +2069,23 @@ def get_llm_provider(provider_name: str | None = None) -> LLMProvider:
             raise ValueError("DEEPSEEK_API_KEY is required when using the deepseek provider")
         _providers[name] = DeepSeekProvider()
         logger.info(f"Initialized DeepSeek provider with models: {settings.DEEPSEEK_MODEL_FAST}, {settings.DEEPSEEK_MODEL_BALANCED}")
+    elif name == "gemini":
+        if not getattr(settings, "GOOGLE_API_KEY", ""):
+            raise ValueError("GOOGLE_API_KEY is required when using the gemini provider")
+        _providers[name] = GeminiProvider()
+        gemini_fast = getattr(settings, "GEMINI_MODEL_FAST", "gemini-2.5-flash-lite")
+        gemini_balanced = getattr(settings, "GEMINI_MODEL_BALANCED", "gemini-2.5-flash")
+        logger.info(f"Initialized Gemini provider with models: {gemini_fast}, {gemini_balanced}")
     elif name == "openai":
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is required when using the openai provider")
         _providers[name] = OpenAIProvider()
         logger.info(f"Initialized OpenAI provider with models: {settings.OPENAI_MODEL_FAST}, {settings.OPENAI_MODEL_BALANCED}")
+    elif name == "minimax":
+        if not getattr(settings, "MINIMAX_API_KEY", ""):
+            raise ValueError("MINIMAX_API_KEY is required when using the minimax provider")
+        _providers[name] = MiniMaxProvider()
+        logger.info(f"Initialized MiniMax provider at {settings.MINIMAX_BASE_URL} with models: {settings.MINIMAX_MODEL_FAST}, {settings.MINIMAX_MODEL_BALANCED}")
     else:
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError("ANTHROPIC_API_KEY is required when using the anthropic provider")
@@ -1588,12 +2115,15 @@ def get_available_models() -> list[dict[str, str]]:
         ("deepseek", "DeepSeek", "fast", settings.DEEPSEEK_MODEL_FAST, ""),
         ("deepseek", "DeepSeek", "balanced", settings.DEEPSEEK_MODEL_BALANCED,
          " (thinking)" if settings.DEEPSEEK_THINKING_ENABLED else ""),
+        ("minimax", "MiniMax", "fast", settings.MINIMAX_MODEL_FAST, ""),
+        ("minimax", "MiniMax", "balanced", settings.MINIMAX_MODEL_BALANCED, ""),
     ]
 
     api_keys = {
         "anthropic": settings.ANTHROPIC_API_KEY,
         "openai": settings.OPENAI_API_KEY,
         "deepseek": settings.DEEPSEEK_API_KEY,
+        "minimax": settings.MINIMAX_API_KEY,
     }
 
     models: list[dict[str, str]] = []

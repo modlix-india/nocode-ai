@@ -49,7 +49,7 @@ class QuestionDedupTests(unittest.TestCase):
 
     def test_dedup_is_whitespace_and_punctuation_insensitive(self):
         stream = _FakeStream()
-        # Different spacing + no trailing '?' in the prose — should still match.
+        # Different spacing + no trailing '?' in the prose - should still match.
         _run(self.Q, "ok... how long   should the campaign run", stream)
         self.assertEqual(stream.texts, [])
 

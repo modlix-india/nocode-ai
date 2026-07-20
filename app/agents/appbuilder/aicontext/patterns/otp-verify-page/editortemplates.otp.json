@@ -1,0 +1,382 @@
+{
+  "_id": "665f4bc675cb641470f17715",
+  "rootComponent": "5XUkZsdsyqu2VUdf7GNwqC",
+  "componentDefinition": {
+    "5XUkZsdsyqu2VUdf7GNwqC": {
+      "key": "5XUkZsdsyqu2VUdf7GNwqC",
+      "name": "PageGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4dGKEE29slBzcOdJf88H2l": true,
+        "5uc8fMm27VYIZORPgHIc3p": true,
+        "5FFaas0QzPRsjnMTeg3VqV": true,
+        "W2UZnWAdrWd8C1MiEC7H5": true,
+        "2n2WQWGMEqkaAh5OEEpuqV": true,
+        "6JBglwRSmvf60Pv21KXUQA": true,
+        "v7M3ywuF9eodlE8YUpgBU": true,
+        "1U2wwqK5Cv1oVRNdPvo6bS": true,
+        "4RmOTNn94X39pUN5XKJeOH": true,
+        "87tHleVD4ZYPlxHcFsTmx": true
+      }
+    },
+    "4dGKEE29slBzcOdJf88H2l": {
+      "key": "4dGKEE29slBzcOdJf88H2l",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"4QGORG59veHYc2c5BCCq8T\",\"objects\":{\"4QGORG59veHYc2c5BCCq8T\":{\"name\":\"Otp\",\"type\":\"Otp\",\"key\":\"4QGORG59veHYc2c5BCCq8T\",\"displayOrder\":0,\"bindingPath\":{\"type\":\"VALUE\",\"value\":\"Page.otp1\"}}}}"
+        }
+      },
+      "styleProperties": {
+        "9cWvzBK4cuZBAc6oU8PxI": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4QGORG59veHYc2c5BCCq8T": true
+      },
+      "displayOrder": 2
+    },
+    "4QGORG59veHYc2c5BCCq8T": {
+      "key": "4QGORG59veHYc2c5BCCq8T",
+      "name": "Otp",
+      "type": "Otp",
+      "styleProperties": {
+        "4JVv1o4ZPHLTSUtPon3csM": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.otp1"
+      }
+    },
+    "5uc8fMm27VYIZORPgHIc3p": {
+      "key": "5uc8fMm27VYIZORPgHIc3p",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"23EeqDqqf07mttPkdsN1vd\",\"objects\":{\"23EeqDqqf07mttPkdsN1vd\":{\"key\":\"23EeqDqqf07mttPkdsN1vd\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"colorScheme\":{\"value\":\"_secondary\"},\"designType\":{\"value\":\"_dashed\"}},\"override\":false,\"displayOrder\":0}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "23EeqDqqf07mttPkdsN1vd": true
+      },
+      "displayOrder": 3
+    },
+    "23EeqDqqf07mttPkdsN1vd": {
+      "key": "23EeqDqqf07mttPkdsN1vd",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "designType": {
+          "value": "_dashed"
+        }
+      },
+      "styleProperties": {
+        "7kI6I5q3hwu1VCF1xhOUln": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5FFaas0QzPRsjnMTeg3VqV": {
+      "key": "5FFaas0QzPRsjnMTeg3VqV",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "OTPs"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "W2UZnWAdrWd8C1MiEC7H5": {
+      "key": "W2UZnWAdrWd8C1MiEC7H5",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"6sQjCPQss0hqJutk9mSOoa\",\"objects\":{\"6sQjCPQss0hqJutk9mSOoa\":{\"key\":\"6sQjCPQss0hqJutk9mSOoa\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"designType\":{\"value\":\"_round\"}},\"override\":false,\"displayOrder\":1}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "6sQjCPQss0hqJutk9mSOoa": true
+      },
+      "displayOrder": 4
+    },
+    "6sQjCPQss0hqJutk9mSOoa": {
+      "key": "6sQjCPQss0hqJutk9mSOoa",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "designType": {
+          "value": "_round"
+        }
+      },
+      "styleProperties": {
+        "2qAfYUd04F7yBaSEGRZDjz": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2n2WQWGMEqkaAh5OEEpuqV": {
+      "key": "2n2WQWGMEqkaAh5OEEpuqV",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"5fJj3WEnR5RjNMsBIRamEJ\",\"objects\":{\"5fJj3WEnR5RjNMsBIRamEJ\":{\"key\":\"5fJj3WEnR5RjNMsBIRamEJ\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"designType\":{\"value\":\"_filled\"}},\"override\":false,\"displayOrder\":1}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "5fJj3WEnR5RjNMsBIRamEJ": true
+      },
+      "displayOrder": 6
+    },
+    "5fJj3WEnR5RjNMsBIRamEJ": {
+      "key": "5fJj3WEnR5RjNMsBIRamEJ",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "designType": {
+          "value": "_filled"
+        }
+      },
+      "styleProperties": {
+        "7FIDR7ZuDHc0rSJuUzvil9": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6JBglwRSmvf60Pv21KXUQA": {
+      "key": "6JBglwRSmvf60Pv21KXUQA",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Filled OTPs"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "v7M3ywuF9eodlE8YUpgBU": {
+      "key": "v7M3ywuF9eodlE8YUpgBU",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"62d9jgK4jv4PlzF4b4HlQz\",\"objects\":{\"62d9jgK4jv4PlzF4b4HlQz\":{\"key\":\"62d9jgK4jv4PlzF4b4HlQz\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"colorScheme\":{\"value\":\"_secondary\"},\"designType\":{\"value\":\"_filled\"}},\"override\":false,\"displayOrder\":0}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "62d9jgK4jv4PlzF4b4HlQz": true
+      },
+      "displayOrder": 7
+    },
+    "1U2wwqK5Cv1oVRNdPvo6bS": {
+      "key": "1U2wwqK5Cv1oVRNdPvo6bS",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"75o7umlUlAXzqWAGy5YqJz\",\"objects\":{\"75o7umlUlAXzqWAGy5YqJz\":{\"key\":\"75o7umlUlAXzqWAGy5YqJz\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"designType\":{\"value\":\"_filled\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"override\":false,\"displayOrder\":0}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "75o7umlUlAXzqWAGy5YqJz": true
+      },
+      "displayOrder": 8
+    },
+    "62d9jgK4jv4PlzF4b4HlQz": {
+      "key": "62d9jgK4jv4PlzF4b4HlQz",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "designType": {
+          "value": "_filled"
+        }
+      },
+      "styleProperties": {
+        "1iBY4XUB8rsCc73QojJyqo": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "75o7umlUlAXzqWAGy5YqJz": {
+      "key": "75o7umlUlAXzqWAGy5YqJz",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "designType": {
+          "value": "_filled"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "79ZQIOiFgdD3l3GWdgrpJL": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "4RmOTNn94X39pUN5XKJeOH": {
+      "key": "4RmOTNn94X39pUN5XKJeOH",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"7flSCpdwyHdCbc4ubkD3MA\",\"objects\":{\"7flSCpdwyHdCbc4ubkD3MA\":{\"key\":\"7flSCpdwyHdCbc4ubkD3MA\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"colorScheme\":{\"value\":\"_quaternary\"},\"designType\":{\"value\":\"_filled\"}},\"override\":false,\"displayOrder\":0}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "7flSCpdwyHdCbc4ubkD3MA": true
+      },
+      "displayOrder": 9
+    },
+    "87tHleVD4ZYPlxHcFsTmx": {
+      "key": "87tHleVD4ZYPlxHcFsTmx",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"3ML3avXvw4pkDarRSmQKWx\",\"objects\":{\"3ML3avXvw4pkDarRSmQKWx\":{\"key\":\"3ML3avXvw4pkDarRSmQKWx\",\"name\":\"Otp\",\"type\":\"Otp\",\"properties\":{\"colorScheme\":{\"value\":\"_quinary\"},\"designType\":{\"value\":\"_filled\"}},\"override\":false,\"displayOrder\":0}}}"
+        }
+      },
+      "override": false,
+      "children": {
+        "3ML3avXvw4pkDarRSmQKWx": true
+      },
+      "displayOrder": 10
+    },
+    "7flSCpdwyHdCbc4ubkD3MA": {
+      "key": "7flSCpdwyHdCbc4ubkD3MA",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "colorScheme": {
+          "value": "_quaternary"
+        },
+        "designType": {
+          "value": "_filled"
+        }
+      },
+      "styleProperties": {
+        "3NrYjLy4jrNscBeggn8pFz": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3ML3avXvw4pkDarRSmQKWx": {
+      "key": "3ML3avXvw4pkDarRSmQKWx",
+      "name": "Otp",
+      "type": "Otp",
+      "properties": {
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "designType": {
+          "value": "_filled"
+        }
+      },
+      "styleProperties": {
+        "4a33fZ7KqelF0kWU3ocj8": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    }
+  },
+  "name": "otp",
+  "message": "From transport : 0ibPq0ornImrihW4UUuzVq",
+  "clientCode": "SYSTEM",
+  "appCode": "editortemplates",
+  "version": 1,
+  "updatedAt": "2024-02-14 10:29:53",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:15:50.480000",
+  "createdBy": "<USER>"
+}

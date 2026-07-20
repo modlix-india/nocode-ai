@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.adzump.agents.product.models import AssetGaps, ProductAssets
+from app.agents.adzump.agents.product.models import AssetRequirements, ProductAssets
 from app.agents.adzump.agents.product.product_assets import select_product_assets
+from app.agents.adzump.models.product import Image, Logo
 from .receipts import _emit_asset_receipts
 from app.agents.adzump.agents.product.scrape_stages import ScrapeStage, stage_emit
 from app.agents.adzump._uploads import rehost_image, upload_and_analyze
@@ -56,10 +57,11 @@ async def _select_and_persist_primary_assets(
         stream=stream, craft_id=craft_id, primary_url=url,
     )
     # The asset-upload chat-prompt is emitted at the AdPilot orchestrator layer
-    # (tools/product.py · _analyze_product), not here — _PassthroughEventStream
+    # (tools/product.py · _analyze_product), not here - _PassthroughEventStream
     # drops emit_text from the sub-agent's stream. _persist_product_assets
-    # stashed the gaps for the return; the parent reads AnalysisOutput.asset_gaps
-    # and emits to the user-visible chat. See plans/asset-gaps-refactor.html.
+    # stashed the requirements for the return; the parent reads
+    # AnalysisOutput.asset_requirements and emits to the user-visible chat.
+    # See plans/asset-gaps-refactor.html.
 
 
 async def _update_assets_from_extra_page(
@@ -69,7 +71,7 @@ async def _update_assets_from_extra_page(
     url: str,
 ) -> None:
     """Same-host non-primary scrape: silently refine assets using the stored
-    summary. No craft re-emit — panel is already populated from the primary."""
+    summary. No craft re-emit - panel is already populated from the primary."""
     session_ctx = context.get("session_context") or {}
     existing_summary = (session_ctx.get("product_profile") or {}).get("summary") or ""
     try:
@@ -99,7 +101,7 @@ async def _persist_product_assets(
 
     Logos: higher-confidence later turn replaces the prior set wholesale.
     Creatives: accumulate, deduped by URL. Reuses the selector's prefetched
-    bytes when available (skips refetch) — see `_upload_picked_image`.
+    bytes when available (skips refetch) - see `_upload_picked_image`.
     """
     logo_outcome = await _persist_logos(
         assets, prefetched, product_data, context, stream, craft_id, primary_url,
@@ -108,19 +110,19 @@ async def _persist_product_assets(
         assets, prefetched, product_data, context, stream, craft_id, primary_url,
     )
     logger.info(
-        "assets_stage:persisted logo=%s creatives_added=%d skipped_dup=%d skipped_fail=%d total_creatives=%d rehosted=[%s]",
+        "assets_stage:persisted logo=%s creatives_added=%d skipped_dup=%d skipped_fail=%d total_images=%d rehosted=[%s]",
         logo_outcome, added, skipped_dup, skipped_fail,
-        len(product_data.get("creative_images") or []),
+        len((product_data.get("assets") or {}).get("images") or []),
         ",".join(rehosted_filenames),
     )
-    # Stash the asset gaps for the sub-agent's own return path: _parse_result
-    # (agent.py) lifts this onto AnalysisOutput.asset_gaps and pops it. The
-    # parent tool (tools/product.py) then reads the TYPED return — not this key
-    # — and emits the upload prompt on the PARENT stream (the picker can't:
-    # _PassthroughEventStream drops emit_text). Stored as a dict, not a live
-    # AssetGaps, because save_context json.dumps the context before _parse_result.
+    # Popped by _parse_result onto AnalysisOutput.asset_requirements. Stored as
+    # a dict: save_context json.dumps the context before _parse_result runs.
+    # Direct indexing on purpose (build_tool_context always sets the key): a
+    # defensive `or {}` would swallow the write into a throwaway dict and the
+    # user would never be asked for the missing logo - KeyError is a bug we
+    # WANT to see.
     cc = getattr(assets, "creative_completeness", None)
-    product_data["_asset_gaps"] = AssetGaps(
+    context["session_context"]["_asset_requirements"] = AssetRequirements(
         logo_missing=not assets.logos,
         missing_categories=list(getattr(cc, "missing_categories", []) or []),
         verdict=getattr(cc, "verdict", ""),
@@ -136,20 +138,20 @@ async def _persist_logos(
     craft_id: str,
     primary_url: str,
 ) -> str:
-    """Upload picked logos and write the logo_* fields. Returns log outcome."""
+    """Upload picked logos and write assets.logos. Returns log outcome."""
     if not assets.logos:
         return "skip_no_pick"
-    existing_conf = float(product_data.get("logo_confidence") or 0.0)
+    assets_state = product_data.setdefault("assets", {})
+    existing = assets_state.get("logos") or []
+    existing_conf = float(existing[0].get("confidence") or 0.0) if existing else 0.0
     if assets.confidence < existing_conf:
         return f"skip_lower_conf(new={assets.confidence:.2f}<existing={existing_conf:.2f})"
 
-    new_urls: list[str] = []
-    new_displays: list[dict] = []
-    new_meta: list[dict] = []
+    new_logos: list[dict] = []
     for pick in assets.logos:
         await stage_emit(context, ScrapeStage.SAVE_LOGO)
         # Hints sourced from the vision LLM that picked this logo (background
-        # only); fit is constant per-kind — logos are almost always wider than
+        # only); fit is constant per-kind - logos are almost always wider than
         # tall and read best contained inside the tile, not cropped.
         hints = {"fit": "contain"}
         if pick.background in ("light", "dark"):
@@ -160,18 +162,20 @@ async def _persist_logos(
         rehosted = await _upload_picked_image(pick.url, "logo", prefetched, context, hints=hints, name=name)
         if not rehosted:
             continue
-        new_urls.append(rehosted["url"])
-        new_displays.append({k: v for k, v in rehosted.items() if k != "url"})
         # `format` from the upload's actual content-type beats LogoPick.format's
         # URL-extension guess. Fall back to the pick when the upload omits it.
         upload_format = rehosted.get("format") or pick.format or ""
-        new_meta.append({
-            "source_url": pick.url,
-            "source": pick.source,
-            "role": pick.role,
-            "reasoning": pick.reasoning,
-            "format": upload_format,
-        })
+        new_logos.append(Logo(
+            url=rehosted["url"],
+            display={k: v for k, v in rehosted.items() if k != "url"},
+            source=pick.source,
+            source_url=pick.url,
+            role=pick.role,
+            reasoning=pick.reasoning,
+            format=upload_format,
+            # Batch-level: one vision call picked all of this run's logos.
+            confidence=assets.confidence,
+        ).model_dump())
         logger.info(
             "stage=scrape.select scrape_id=%s logo_role=%s logo_format=%s logo_url=%s reasoning=%r",
             context.get("scrape_id", ""),
@@ -180,25 +184,16 @@ async def _persist_logos(
             rehosted["url"],
             pick.reasoning[:120],
         )
-        await _emit_asset_receipts(stream, craft_id, primary_url, product_data | {
-            "logo_urls": new_urls,
-            "logo_displays": new_displays,
-        })
+        await _emit_asset_receipts(
+            stream, craft_id, primary_url,
+            product_data | {"assets": assets_state | {"logos": new_logos}},
+        )
 
-    if not new_urls:
+    if not new_logos:
         return "rehost_failed"
 
-    product_data["logo_urls"] = new_urls
-    product_data["logo_displays"] = new_displays
-    product_data["logo_meta"] = new_meta
-    # Back-compat scalars — primary = first pick.
-    product_data["logo_url"] = new_urls[0]
-    product_data["logo_display"] = new_displays[0]
-    product_data["logo_source_url"] = new_meta[0]["source_url"]
-    product_data["logo_source"] = new_meta[0]["source"]
-    product_data["logo_reasoning"] = new_meta[0]["reasoning"]
-    product_data["logo_confidence"] = assets.confidence
-    return f"persisted({len(new_urls)})"
+    assets_state["logos"] = new_logos
+    return f"persisted({len(new_logos)})"
 
 
 async def _persist_creatives(
@@ -218,11 +213,10 @@ async def _persist_creatives(
     if not assets.creative_image_urls:
         return added, skipped_dup, skipped_fail, filenames
 
-    creative_urls: list[str] = product_data.setdefault("creative_images", [])
-    creative_displays: list[dict] = product_data.setdefault("creative_displays", [])
-    seen = set(creative_urls)
+    images: list[dict] = product_data.setdefault("assets", {}).setdefault("images", [])
+    seen = {img.get("url") for img in images}
     total = len(assets.creative_image_urls)
-    # Creatives are full-color product photos — no background-tile contrast
+    # Creatives are full-color product photos - no background-tile contrast
     # issue. `cover` fills the tile cleanly without letterboxing.
     creative_hints = {"fit": "cover"}
     # name from the vision role map: image-<role>-<nth of its role>, e.g.
@@ -245,8 +239,12 @@ async def _persist_creatives(
         if url in seen:
             skipped_dup += 1
             continue
-        creative_urls.append(url)
-        creative_displays.append({k: v for k, v in rehosted.items() if k != "url"})
+        images.append(Image(
+            url=url,
+            display={k: v for k, v in rehosted.items() if k != "url"},
+            role=role,
+            source="site_pick",
+        ).model_dump())
         seen.add(url)
         added += 1
         filenames.append(url.rsplit("/", 1)[-1][:50])
@@ -261,9 +259,9 @@ async def _upload_picked_image(
     """Upload a LLM-picked candidate. Reuses bytes the selector already
     fetched when available, falls back to a fresh network fetch otherwise.
 
-    `hints` (`background`, `fit`) come from the caller — the vision LLM that
+    `hints` (`background`, `fit`) come from the caller - the vision LLM that
     picked this asset is the source of truth, not pixel sampling here. They
-    flow through to the upload's `logo_displays` / `creative_displays` record.
+    flow through to the stored asset's `display` dict.
     `name` (e.g. "project-logo", "image-hero-1") is the semantic filename the
     caller derived from the pick's role; threaded to both branches so cache
     hit / miss name identically.
@@ -300,7 +298,7 @@ async def _upload_picked_image(
 # When it does, the receipts panel shows what we DID pick, and this helper
 # posts a non-blocking chat message asking the user to upload what we missed.
 # Two-stage ask: Stage 2 (the creative agent's hard gate) lives in a future
-# cycle — see plans/agent-tracing/asset-picker-fixes-v2.html · "Shift 3 design".
+# cycle - see plans/agent-tracing/asset-picker-fixes-v2.html · "Shift 3 design".
 
 _CREATIVE_KIND_LABEL = {
     "hero": "a hero shot",
@@ -310,14 +308,14 @@ _CREATIVE_KIND_LABEL = {
 
 
 def _compose_asset_request_text(missing_logo: bool, missing_creatives: list[str]) -> str:
-    """Build the chat prompt body. One combined message — never two prompts
+    """Build the chat prompt body. One combined message - never two prompts
     for one decline. Per memory feedback_adzump_receipts_pattern.md: receipts
     are display-only, corrections via chat prompt. This is the prompt half."""
     parts: list[str] = []
     if missing_logo:
         parts.append(
             "I couldn't auto-detect your **brand logo** from the website. "
-            "Share an image of your logo if you have one handy — it'll go "
+            "Share an image of your logo if you have one handy - it'll go "
             "straight to your ad creatives."
         )
     if missing_creatives:
@@ -330,7 +328,7 @@ def _compose_asset_request_text(missing_logo: bool, missing_creatives: list[str]
             cats = ", ".join(readable[:-1]) + f", and {readable[-1]}"
         verb = "I'm also missing" if missing_logo else "I picked some ad images, but I'm missing"
         parts.append(
-            f"{verb} {cats}. Upload one if you'd like — the ad agent will "
+            f"{verb} {cats}. Upload one if you'd like - the ad agent will "
             "ask again if it needs one I don't have."
         )
     return "\n\n".join(parts)
@@ -341,6 +339,6 @@ def _compose_asset_request_text(missing_logo: bool, missing_creatives: list[str]
 # chat-text never reached the user-visible chat. The emit now lives at the
 # AdPilot orchestrator layer in tools/product.py · _analyze_product, which
 # has access to the parent stream. _compose_asset_request_text above is
-# reused from there. _persist_product_assets stashes the gaps for the
-# sub-agent's return (AnalysisOutput.asset_gaps), which the parent reads —
-# no re-walking the ProductAssets object.
+# reused from there. _persist_product_assets stashes the requirements for the
+# sub-agent's return (AnalysisOutput.asset_requirements), which the parent
+# reads - no re-walking the ProductAssets object.

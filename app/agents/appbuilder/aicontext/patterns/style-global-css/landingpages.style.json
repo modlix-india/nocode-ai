@@ -1,0 +1,13 @@
+{
+  "_id": "648940d0498f891bf634cfab",
+  "styleString": " * { transition: width 0.5s, height 0.5s, padding-left 0.5s, padding-right 0.5s, padding-top 0.5s, padding-bottom 0.5s, background-size 0.5s;}",
+  "name": "style",
+  "message": "From transport : X9xXTTGBAjKEpNlkB9mn0k",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 24,
+  "updatedAt": "2024-08-30 11:18:18.729000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-06-14 04:23:44.086000",
+  "createdBy": "<USER>"
+}

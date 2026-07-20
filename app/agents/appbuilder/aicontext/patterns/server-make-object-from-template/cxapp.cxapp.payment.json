@@ -1,0 +1,976 @@
+{
+  "_id": "670a569196975c5ab86d2342",
+  "definition": {
+    "namespace": "cxapp",
+    "name": "payment",
+    "parameters": {
+      "customerEmail": {
+        "parameterName": "customerEmail",
+        "schema": {}
+      },
+      "customerName": {
+        "parameterName": "customerName",
+        "schema": {}
+      },
+      "linkId": {
+        "parameterName": "linkId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "maxLength": 49
+        }
+      },
+      "amount": {
+        "parameterName": "amount",
+        "schema": {
+          "type": [
+            "DOUBLE"
+          ],
+          "version": 1
+        }
+      },
+      "purpose": {
+        "parameterName": "purpose",
+        "schema": {
+          "defaultValue": "Payment",
+          "version": 1,
+          "type": [
+            "STRING"
+          ],
+          "maxLength": 499
+        }
+      },
+      "returnUrl": {
+        "parameterName": "returnUrl",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "UpiIntent": {
+        "parameterName": "UpiIntent",
+        "schema": {
+          "type": [
+            "BOOLEAN"
+          ],
+          "version": 1
+        }
+      },
+      "paymentMethods": {
+        "parameterName": "paymentMethods",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "enums": [
+            "cc",
+            "dc",
+            "ccc",
+            "ppc",
+            "nb",
+            "upi",
+            "paypal",
+            "app"
+          ],
+          "defaultValue": "upi"
+        }
+      },
+      "customerPhoneNumber": {
+        "parameterName": "customerPhoneNumber",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "sendEmail": {
+        "parameterName": "sendEmail",
+        "schema": {
+          "type": [
+            "BOOLEAN"
+          ],
+          "version": 1
+        }
+      },
+      "sendSms": {
+        "parameterName": "sendSms",
+        "schema": {
+          "type": [
+            "BOOLEAN"
+          ],
+          "version": 1
+        }
+      },
+      "requestId": {
+        "parameterName": "requestId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "idempotency": {
+        "parameterName": "idempotency",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "notify_url": {
+        "parameterName": "notify_url",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "id": {
+        "parameterName": "id",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "code": {
+        "parameterName": "code",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "expiryTime": {
+        "parameterName": "expiryTime",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 50,
+          "top": 50
+        },
+        "parameterMap": {
+          "schema": {
+            "4jdoMga8MacX1tBcY1DC7N": {
+              "key": "4jdoMga8MacX1tBcY1DC7N",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          },
+          "name": {
+            "zEMsK9Ad1nht7WY1UZiOo": {
+              "key": "zEMsK9Ad1nht7WY1UZiOo",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "details"
+            }
+          }
+        }
+      },
+      "smsNotify": {
+        "statementName": "smsNotify",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 426,
+          "top": 3813
+        },
+        "parameterMap": {
+          "value": {
+            "61WgbSIO5CSd60g0WqFEbV": {
+              "key": "61WgbSIO5CSd60g0WqFEbV",
+              "type": "EXPRESSION",
+              "expression": "Arguments.sendSms",
+              "order": 1
+            }
+          },
+          "name": {
+            "5o6VZLzAIB4NAyI9M6Q0n3": {
+              "key": "5o6VZLzAIB4NAyI9M6Q0n3",
+              "type": "VALUE",
+              "expression": "Context.details.link_notify.send_sms",
+              "order": 1,
+              "value": "Context.details.link_notify.send_sms"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "currenyType": {
+        "statementName": "currenyType",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 50
+        },
+        "parameterMap": {
+          "name": {
+            "4FKdeD8yyohPJW8IT5t2vN": {
+              "key": "4FKdeD8yyohPJW8IT5t2vN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.link_currency"
+            }
+          },
+          "value": {
+            "2C4aTRpu3kBbxQzCtADfmU": {
+              "key": "2C4aTRpu3kBbxQzCtADfmU",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "INR"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2098,
+          "top": 2484.5
+        },
+        "parameterMap": {
+          "results": {
+            "Lm1nsnOefXMPcBMOahu96": {
+              "key": "Lm1nsnOefXMPcBMOahu96",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "data",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.output.result"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__postRequest__d-o-t__output__d-o-t__data": false
+        }
+      },
+      "update": {
+        "statementName": "update",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1784,
+          "top": 2486.5
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__objectConvert__d-o-t__output": false
+        },
+        "parameterMap": {
+          "storageName": {
+            "hHRkm8k0PVvXKsERgXTwj": {
+              "key": "hHRkm8k0PVvXKsERgXTwj",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "cashFreePaymentDetails"
+            }
+          },
+          "appCode": {
+            "1LIy1a2tqqzHtbu5RDlZvn": {
+              "key": "1LIy1a2tqqzHtbu5RDlZvn",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "dataObject": {
+            "6Awn7TBBzIFTlxKfjtCkEU": {
+              "key": "6Awn7TBBzIFTlxKfjtCkEU",
+              "type": "EXPRESSION",
+              "expression": "Steps.objectConvert.output.value",
+              "order": 1
+            }
+          },
+          "dataObjectId": {
+            "64Wl33Kg3QxHPkk26Xvm87": {
+              "key": "64Wl33Kg3QxHPkk26Xvm87",
+              "type": "EXPRESSION",
+              "expression": "Arguments.linkId",
+              "order": 1
+            }
+          },
+          "isPartial": {
+            "6adNhtIyf9a9YGwKFKIydz": {
+              "key": "6adNhtIyf9a9YGwKFKIydz",
+              "type": "VALUE",
+              "expression": "",
+              "value": true
+            }
+          }
+        }
+      },
+      "objectConvert": {
+        "statementName": "objectConvert",
+        "name": "ObjectConvert",
+        "namespace": "System.Object",
+        "position": {
+          "left": 1476,
+          "top": 2489.5
+        },
+        "parameterMap": {
+          "source": {
+            "6mhuIBLqTppIyGssKrghTx": {
+              "key": "6mhuIBLqTppIyGssKrghTx",
+              "type": "EXPRESSION",
+              "expression": "Steps.postRequest.output.data",
+              "order": 1
+            }
+          },
+          "schema": {
+            "dRflzPsvv5PU58Z5QJZSI": {
+              "key": "dRflzPsvv5PU58Z5QJZSI",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "ref": "cxapp.cashFree.PaymentDetails"
+              }
+            }
+          },
+          "conversionMode": {
+            "6TYP7nUW6FEQ12Nuo64fQA": {
+              "key": "6TYP7nUW6FEQ12Nuo64fQA",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "USE_DEFAULT"
+            }
+          }
+        },
+        "dependentStatements": {}
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 50,
+          "top": 425
+        },
+        "parameterMap": {
+          "name": {
+            "56Jt3UNy6T56iueo8oWIG4": {
+              "key": "56Jt3UNy6T56iueo8oWIG4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "headers"
+            }
+          },
+          "schema": {
+            "3QcbqtEDTlpRrm3cM64PDe": {
+              "key": "3QcbqtEDTlpRrm3cM64PDe",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "set5": {
+        "statementName": "set5",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 740,
+          "top": 4072
+        },
+        "parameterMap": {
+          "name": {
+            "7nIhmEcCRylVJ1DI8LBgzs": {
+              "key": "7nIhmEcCRylVJ1DI8LBgzs",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.headers"
+            }
+          },
+          "value": {
+            "6Ge19OdZ7LTfm6n02NvJod": {
+              "key": "6Ge19OdZ7LTfm6n02NvJod",
+              "type": "EXPRESSION",
+              "expression": "Steps.make.output.value",
+              "order": 1
+            }
+          }
+        }
+      },
+      "EmailNotify": {
+        "statementName": "EmailNotify",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 1550
+        },
+        "parameterMap": {
+          "name": {
+            "4uersLIms8JYxsb9TpzygT": {
+              "key": "4uersLIms8JYxsb9TpzygT",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.details.link_notify.send_email"
+            }
+          },
+          "value": {
+            "DGqd1dlULbDPW01WwSSMx": {
+              "key": "DGqd1dlULbDPW01WwSSMx",
+              "type": "EXPRESSION",
+              "expression": "Arguments.sendEmail",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "customerEmail": {
+        "statementName": "customerEmail",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 425
+        },
+        "parameterMap": {
+          "value": {
+            "3XhRBJquVYE2Z2btVAwqXv": {
+              "key": "3XhRBJquVYE2Z2btVAwqXv",
+              "type": "EXPRESSION",
+              "expression": "Arguments.customerEmail",
+              "order": 1
+            }
+          },
+          "name": {
+            "24CRRrOsil53xqV0G2qdkr": {
+              "key": "24CRRrOsil53xqV0G2qdkr",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.details.customer_details.customer_email"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "customerName": {
+        "statementName": "customerName",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 800
+        },
+        "parameterMap": {
+          "name": {
+            "79WdsC1MUVS3LoZXFeJ5Bx": {
+              "key": "79WdsC1MUVS3LoZXFeJ5Bx",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.details.customer_details.customer_name"
+            }
+          },
+          "value": {
+            "3iaUbV6fvQdNxmVxX39FeY": {
+              "key": "3iaUbV6fvQdNxmVxX39FeY",
+              "type": "EXPRESSION",
+              "expression": "Arguments.customerName",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "customerPhoneNumber": {
+        "statementName": "customerPhoneNumber",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 1175
+        },
+        "parameterMap": {
+          "value": {
+            "6ldo3KMlAdOddlI5sdTKQb": {
+              "key": "6ldo3KMlAdOddlI5sdTKQb",
+              "type": "EXPRESSION",
+              "expression": "Arguments.customerPhoneNumber",
+              "order": 1
+            }
+          },
+          "name": {
+            "Q9bD3ql4lUEcnCAV3HEf1": {
+              "key": "Q9bD3ql4lUEcnCAV3HEf1",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.details.customer_details.customer_phone"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 428,
+          "top": 3248
+        },
+        "parameterMap": {
+          "name": {
+            "7dZbIsfClDb2yWKB5SlO1S": {
+              "key": "7dZbIsfClDb2yWKB5SlO1S",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.link_amount"
+            }
+          },
+          "value": {
+            "1GUcUMFUwi8AMe5ZcJSMUi": {
+              "key": "1GUcUMFUwi8AMe5ZcJSMUi",
+              "type": "EXPRESSION",
+              "expression": "Arguments.amount",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "linkId": {
+        "statementName": "linkId",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 1925
+        },
+        "parameterMap": {
+          "name": {
+            "579FuZYOPTjmRWt0PIJ9UT": {
+              "key": "579FuZYOPTjmRWt0PIJ9UT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.link_id"
+            }
+          },
+          "value": {
+            "sYLuah6tSwj7OxmNAw1NB": {
+              "key": "sYLuah6tSwj7OxmNAw1NB",
+              "type": "EXPRESSION",
+              "expression": "Arguments.linkId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set4": {
+        "statementName": "set4",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 427,
+          "top": 3530
+        },
+        "parameterMap": {
+          "name": {
+            "52m64QXyvhSOmKLTrsFTzn": {
+              "key": "52m64QXyvhSOmKLTrsFTzn",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.notify_url"
+            }
+          },
+          "value": {
+            "6OTk9E8EICQ6tlM3FhIox5": {
+              "key": "6OTk9E8EICQ6tlM3FhIox5",
+              "type": "EXPRESSION",
+              "expression": "Arguments.notify_url",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "returnUrl": {
+        "statementName": "returnUrl",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 2300
+        },
+        "parameterMap": {
+          "name": {
+            "3PlozgyLm1DHuYBkxHQ4M1": {
+              "key": "3PlozgyLm1DHuYBkxHQ4M1",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.link_meta.return_url"
+            }
+          },
+          "value": {
+            "5MqVn4vfS9Q1N4YQQXHrUq": {
+              "key": "5MqVn4vfS9Q1N4YQQXHrUq",
+              "type": "EXPRESSION",
+              "expression": "Arguments.returnUrl",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 2675
+        },
+        "parameterMap": {
+          "name": {
+            "3enAIPF4wBtnrTB7JOINLD": {
+              "key": "3enAIPF4wBtnrTB7JOINLD",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.link_meta.upi_intent"
+            }
+          },
+          "value": {
+            "7X3TixhT0AksGl26BJzTs": {
+              "key": "7X3TixhT0AksGl26BJzTs",
+              "type": "EXPRESSION",
+              "expression": "Arguments.UpiIntent",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 428,
+          "top": 2963
+        },
+        "parameterMap": {
+          "name": {
+            "4lY54jkpWsuKlI6eSkBozs": {
+              "key": "4lY54jkpWsuKlI6eSkBozs",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.link_purpose"
+            }
+          },
+          "value": {
+            "1b9uLOyQ8Th7plNlg7u7Jv": {
+              "key": "1b9uLOyQ8Th7plNlg7u7Jv",
+              "type": "EXPRESSION",
+              "expression": "Arguments.purpose",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "make": {
+        "statementName": "make",
+        "name": "Make",
+        "namespace": "System",
+        "position": {
+          "left": 427,
+          "top": 4099
+        },
+        "parameterMap": {
+          "resultShape": {
+            "3rmw1JBdfkrfl2synhiCA": {
+              "key": "3rmw1JBdfkrfl2synhiCA",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "content-type": "application/json",
+                "x-api-version": "<PHONE>",
+                "x-client-id": "{{Arguments.id}}",
+                "x-client-secret": "<REDACTED>"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 1190,
+          "top": 2487.5
+        },
+        "parameterMap": {
+          "url": {
+            "20AdBljc6X44700JhLZZr7": {
+              "key": "20AdBljc6X44700JhLZZr7",
+              "type": "VALUE",
+              "order": 1,
+              "value": "/pg/links"
+            }
+          },
+          "headers": {
+            "7v0vca8S86KgLAsph4Z7zc": {
+              "key": "7v0vca8S86KgLAsph4Z7zc",
+              "type": "EXPRESSION",
+              "expression": "Context.headers",
+              "value": {
+                "accept": "application/json",
+                "content-type": "application/json",
+                "x-api-version": "<PHONE>",
+                "x-client-id": "TEST10323387e4db1d08ea50dbc13be378332301",
+                "x-client-secret": "<REDACTED>"
+              }
+            }
+          },
+          "connectionName": {
+            "6zi7idlV5TglNEatywEs29": {
+              "key": "6zi7idlV5TglNEatywEs29",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "CashFreePayments"
+            }
+          },
+          "payload": {
+            "60adv4OaIixsTtJfXmut6g": {
+              "key": "60adv4OaIixsTtJfXmut6g",
+              "type": "EXPRESSION",
+              "expression": "Context.payLoad",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__customerEmail__d-o-t__output": true,
+          "Steps__d-o-t__customerName__d-o-t__output": true,
+          "Steps__d-o-t__customerPhoneNumber__d-o-t__output": true,
+          "Steps__d-o-t__smsNotify__d-o-t__output": true,
+          "Steps__d-o-t__EmailNotify__d-o-t__output": true,
+          "Steps__d-o-t__returnUrl__d-o-t__output": true,
+          "Steps__d-o-t__set__d-o-t__output": true,
+          "Steps__d-o-t__currenyType__d-o-t__output": true,
+          "Steps__d-o-t__linkId__d-o-t__output": true,
+          "Steps__d-o-t__set1__d-o-t__output": true,
+          "Steps__d-o-t__set3__d-o-t__output": true,
+          "Steps__d-o-t__set4__d-o-t__output": true,
+          "Steps__d-o-t__set5__d-o-t__output": true,
+          "Steps__d-o-t__set6__d-o-t__output": true
+        }
+      },
+      "make1": {
+        "statementName": "make1",
+        "name": "Make",
+        "namespace": "System",
+        "position": {
+          "left": 1783.9999999999998,
+          "top": 3301.9999847412087
+        },
+        "parameterMap": {
+          "resultShape": {
+            "2B5f5BmEu9U2S7izDq1Mtw": {
+              "key": "2B5f5BmEu9U2S7izDq1Mtw",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "customer_details": {
+                  "customer_email": "{{Arguments.customerEmail}}",
+                  "customer_name": "{{Arguments.customerName}}",
+                  "customer_phone": "{{Arguments.customerPhoneNumber}}"
+                },
+                "link_amount": "{{Arguments.amount}}",
+                "link_auto_reminders": "true",
+                "link_currency": "INR",
+                "link_expiry_time": "{{Arguments.expiryTime}}",
+                "link_id": "{{Arguments.linkId}}",
+                "link_meta": {
+                  "notify_url": "{{Arguments.notify_url}}",
+                  "return_url": "{{Arguments.returnUrl}}",
+                  "upi_intent": "{{Arguments.UpiIntent}}"
+                },
+                "link_purpose": "{{Arguments.purpose}}"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1_Copy_1__d-o-t__output": true
+        }
+      },
+      "create1_Copy_1": {
+        "statementName": "create1_Copy_1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1504.9999999999989,
+          "top": 3270.9999847412087
+        },
+        "parameterMap": {
+          "name": {
+            "56Jt3UNy6T56iueo8oWIG4": {
+              "key": "56Jt3UNy6T56iueo8oWIG4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "payLoad"
+            }
+          },
+          "schema": {
+            "3QcbqtEDTlpRrm3cM64PDe": {
+              "key": "3QcbqtEDTlpRrm3cM64PDe",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "set6": {
+        "statementName": "set6",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2115.999999999998,
+          "top": 3280.9998931884743
+        },
+        "parameterMap": {
+          "name": {
+            "689kXNE7RuYlsMs6GdMSs0": {
+              "key": "689kXNE7RuYlsMs6GdMSs0",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.payLoad"
+            }
+          },
+          "value": {
+            "2myLBGqhjXKcC8u49FgQ2S": {
+              "key": "2myLBGqhjXKcC8u49FgQ2S",
+              "type": "EXPRESSION",
+              "expression": "Steps.make1.output.value",
+              "order": 1
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "data": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "cxapp.payment",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 135,
+  "updatedAt": "2026-04-09 04:28:28.927000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-10-12 10:59:29.161000",
+  "createdBy": "<USER>"
+}

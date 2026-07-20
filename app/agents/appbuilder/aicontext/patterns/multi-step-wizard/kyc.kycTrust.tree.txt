@@ -1,0 +1,231 @@
+- 38jntlEttUQBefo3GDCtk1 (Grid) PageGrid
+  - 2BV4HwxIHqwdaRwDpCqVAc (Grid) Top Nav Grid
+    - 1HXxyZSXfiy9upZzqAaYRa (Image) image
+  - 3yIiw7ZgRz8FmNTE3uh6Gh (Grid) Grid
+    - 3KSf3koGTmKVbw1waytmDo (Button) Back button
+    - 4kSc7Qb3kZVyJoGNJb9Mr9 (Grid) Mobile Menu Grid
+      - 5Q2glOm38G8fs0azYHitUT (Stepper) Stepper
+    - 4WvRao13WIhbtklLbTWaNq (Grid) Form Grid
+      - 5fYwsSTYbIWxH3ajd2CTmy (Grid) Side Nav Grid
+        - 3hitT3kf5KxVS8MlZFemVk (Stepper) Stepper
+      - 1hBGJX8HD4jQn2Qp1qEEHX (Grid) Main Grid
+        - 4J0EWfqcZklTCbQr3kd65I (Grid) Authorize person Grid
+          - 3jHOt91hf0UPQrTn7wAlOb (Grid) Basic Details mandatory
+            - 5gE61y0AEkx8e82arwH5na (Grid) Personal Info Grid
+              - 6iECC0O7OSCT1bBJBmM3V3 (Text) Personal Information
+              - 13paHH59tIWl0BTBB2NJcx (Grid) Image upload Grid
+                - 6EwokJ7USEJ0oNtU8Dkgxa (FileSelector) File Selector
+              - 1BGhW21zwYpd5LdfDx5QJw (Text) editPhoto
+              - 7KXTEul7GhEeBd3DcrBZZN (Grid) Name Grid
+                - 7AGpMhDlSip5hA2d65K6h5 (TextBox) First Name
+                - 6bEjKaj7b9lzkAicbDQUVX (TextBox) Last Name
+              - 55BfYMdqiB0eNnmEeHoAFi (Grid) Email and Ph Number Grid
+                - 6ghRJbekLsIf9YmCSfOd4K (Grid) phone number grid
+                  - 48B43c1q0AoDRwmyKkurBa (PhoneNumber) PhoneNumber
+                  - 5RyzSrkEWLMubt9ZFdiqss (Button) button
+                  - 5o7yYWJrHyWFm3RpoKovim (PhoneNumber) PhoneNumber
+                - 4LInna9wPPen733e9XZ1w8 (Grid) Grid
+                  - 2UtWRWhjhFo43OGKo1thcc (TextBox) Mobile
+                  - 44tpNpOLxMBk5skR3e2LVp (Button) verify
+                  - 2lDDXErkfNCMhGa0GnxARy (PhoneNumber) PhoneNumber
+                - 2sKOvsV3ALij6zo2gbqFUT (Grid) email grid
+                  - 5i9mTThKXzFn8UVNyUN9el (TextBox) email
+                  - 3hXZKF08jschPL2NqnBBVe (Button) button
+              - 538kJDD33CwSzcIE7Y93Us (Grid) DOB and Fathers Name Grid
+                - 1vJj6KLHzO1W0jXEgjcJE4 (Calendar) Calendar
+                - 7Ok58xjQJhPElxlYcggex (TextBox) Date of Birth
+                - 1IeRd6LetxMiu5iadchhYo (Dropdown) Gender
+            - 6eKByBvitwRpLQ9dKEb1qP (Grid) Personal Info Grid
+              - 384RlJFk563qdhP43MDUO0 (Text) Personal Information
+              - 24QFqcn2u6upbsYx70rrDR (Grid) Image upload Grid
+                - 2yh2lesTbUMvkkHMVFp7lA (FileSelector) File Selector
+              - WFyAT5Jr0w17s7PC8Hope (Text) editPhoto
+              - 7EO4FMiNGzERLakIEDZBSF (Grid) Name Grid
+                - 1g2LV07V0yDR3nqyXIBf4Z (TextBox) First Name
+                - 3bdulm5bhjnfkID5ZKgN9i (TextBox) Last Name
+                - 26SNzvxxpy6KvXe6BhK7bP (PhoneNumber) PhoneNumber
+                - 4lvXwf9PDpyhHuwBe9ZhDI (TextBox) email
+                - 5OOtKMGuNoRPhTwWfkgvQG (Calendar) Calendar
+                - 1zvXPGeOwjDD0FKo530ida (Dropdown) Gender
+        - 3uuTZUBgtikrzwSmwWRIr6 (Grid) Authorize person Address Details Grid
+          - 6DbZVYvUZR826tHU0MIrFW (Grid) Communication address Grid
+            - 3Eqdjl4VZPw98BXrhRJFvj (Text) Communication address
+            - 3v8tDo2Rvdn5bSs6eCl3qI (Grid) Full Address
+              - 6cjvDNTcPYLFvvv5fq2Txj (TextBox) Full Address
+            - 45ABt7NserZfabxP4QPPvk (Grid) Country and pincode
+              - 7kKRikkxCkK7qeMgyLW6L2 (Dropdown) Dropdown
+              - 2In6Ilq6H2UZczAQKFI19y (TextBox) Pincode
+              - 4To7Kvn2jcIrPPUw0D3o8a (TextBox) City
+              - 4FjlU93wNTlqYa98mnZ592 (TextBox) State
+          - UwNJzChxaaG0uKEgEegVS (Grid) Permanent address Grid
+            - 6Gs417GDKZWPKeSRS9FjCo (Text) Permanent Address
+            - 38boMrBTyAL2s5safPwxhZ (Grid) checkbox Grid
+              - 4ixDHQjT6Fns69ACTihBQj (CheckBox) CheckBox
+            - 3wW26AuLfcac2mio9lxtFH (Grid) Permanent address Grid
+              - 2Qp6glaFeihgOsW1vWr53V (TextBox) Full Address
+              - 7AhqCvvTrWcXnNgvOYytNB (Grid) Country and pincode
+                - 4tOIxHDa6HISuZ3iucBLFs (Dropdown) Dropdown
+                - lLsVByegFpoEIYeEoLxbj (TextBox) Pincode
+                - 5HkKODfYSuqcMC15qu4kGx (TextBox) City
+                - 4B3A1jIILYTQbfUq1t0oA1 (TextBox) State
+                - 5fmKsxgykxpzZcYSJEW0xX (Dropdown) Document type
+                - 30FAu9ufPNPug1vXM7M7EF (TextBox) Document number
+                - 2ElXE6KI35Wfuq2LJFqUvJ (Grid) upload grid
+                  - 5EjITTcojNMXct9LDkfYR5 (Text) Text
+                  - 7KX7VKbSiGnIfJOvvLGCku (Grid) address proof upload
+                    - 5KLMbosqReEMFrHFMmJh1D (Image) image
+                    - 2JB9Jhz9vET9VZRxZ4eJuU (FileUpload) FileUpload
+                    - 4Fn5Bh3ArxtdKpDL37gw14 (Text) Text
+                    - 3K0ac8O8agHRO9CDpKORrR (Text) Text
+                  - 70d1oG25YC5AvjSi2RX6Ng (Grid) passportFilemobile
+                    - 3nu40Oml2NaCcTRaEEQBEU (Image) image
+                    - 3g8bzMo2iIWrOnekzW2HFI (Grid) Grid
+                      - 1FLtSvzb5hHsC3S2Wph5Xw (Grid) text
+                        - 6CFCDnNToEi6foeWI9xXyf (FileUpload) FileUpload
+                        - 6IwCFrqYKg6ksxVwhNnmDS (Text) Text
+                      - 6StVHaMvtu0jn221T5NUbp (Text) Text
+        - 2yGcx7mkIBJ0bSPem59Emk (Grid) PAN & Bank details Main Grid
+          - 1OhGKXw5KLxTT6QkNQ57Tb (Grid) PAN & Bank details Grid
+            - 1rLQgup07xD6rILn9p6B1J (Text) Pan & Bank Details Text
+            - g3pf7nZtdvzENWtEE2Tzg (Grid) Pan and name Grid
+              - eCSbaYNM09ZKWL3Buwzxj (TextBox) PAN number
+              - 5xcb69TKKM3NFyv5IBd8qF (TextBox) PAN number
+              - SUBEzol4cC5RUJO9d8bJF (Grid) pan upload grid
+                - 2qFMTPtOURaSkSeS9017jo (Text) Text
+                - 1H7m1gVXgXYjJu63A9Whuj (FileUpload) FileUpload
+                - 3lFNHubcMOCys95w130R7w (Grid) Grid
+                  - 5yV1smq8yXeZpxaj5srcbb (Image) image
+                  - 4JpFlkFNnezmokkqCToMvS (FileUpload) FileUpload
+                  - AoY4w7ayvCGk3CXXBiRiy (Text) Text
+                  - 5s8squ49rdXDdtOliXsbRZ (Text) Text
+                - 3scHpRlfQDvwAJVZHMONM2 (Grid) passportFilemobile
+                  - 1c1oPx2SWCWh7mmBM4QAJo (Image) image
+                  - 6OSz8W1MrfWU5X8xuptxUd (Grid) Grid
+                    - 4vKA1KcoTUg7h53ONKj3KI (Grid) text
+                      - 5KJpduBcPdc0xTCZepZYLA (FileUpload) FileUpload
+                      - 1xvZtw5yLk82OP7mdgYQxg (Text) Text
+                    - ArRudM4n44nIwcHUoBcUF (Text) Text
+              - 3TdgoZvqZEn56ARzzeXF3P (Calendar) Calendar
+              - 5xI2F0kLmJh9Gr0avS13oU (Grid) resolution upload grid
+                - 1H8CWI2B2P06btWQ9SR6af (Text) Text
+                - 4RLJRtcleuGIgbTMr4TGSY (Grid) Grid
+                  - 3g1c9dJjQgl1bmC8UdsYp7 (Image) image
+                  - 1WGwokK5jbYxq2QGz7dnRd (FileUpload) FileUpload
+                  - 4fibskdJ7WhnfOTLbmBIDy (Text) Text
+                  - 3ZOKVifX34Nm2POW94eb3c (Text) Text
+                - 2pjSx8DWxSmi0KgAnH9wrm (FileUpload) FileUpload
+                - 292Z53Rt3TmOdnXVUHtQfz (Grid) BoardFilemobile
+                  - 36ZSaZT9lZMpt3FMxJdLRF (Image) image
+                  - 2O0ii62o6qo2OddvwY7xNx (Grid) Grid
+                    - 4S71I3EdYZRuYXZ6Mb3VQg (Grid) text
+                      - 12VCpTPnkWnfwE3VhnU6zK (FileUpload) FileUpload
+                      - 7LdEvJpiJbOZ7lPsfZqie5 (Text) Text
+                    - 3IenWBxcqVpTru0r3k5rHR (Text) Text
+            - 1jr0Hl4Ib6Rw4wLQwLc9s7 (Text) Pan & Bank Details Text
+            - 78vetyHdFvvILTVX2R0cOv (Grid) A/c type and number
+              - 6DnCQDquf9YR0ZUn3zMJDJ (Dropdown) A/c type
+              - 6FIvDSsHrSv5aMVfwMHD27 (TextBox) ifsc Number
+              - 6tdsqGXwJV8X0WVA0sj8I1 (TextBox) A/c Number
+              - 4d2qbFXce1GppJb8Yi6CR7 (Grid) pan upload grid
+                - 1DkOWMrhWuS6wyz4A2NAiV (Text) Text
+                - 4XqrWQipBhOyQJzruitEXA (Grid) Grid
+                  - 5uKdS0ba0HuDHKv9OcHSfA (Image) image
+                  - 6PJnVojrBtbmxUAV5G0u6h (FileUpload) FileUpload
+                  - 7d848Wk4pbCJFjcn74SwvF (Text) Text
+                  - 1a7PTff88uKHMrK2hnoHG5 (Text) Text
+                - 5v6t0WYMGDOAfX5Gsng4xN (FileUpload) FileUpload
+                - 28Hn62wsSQFvmZDtRDVn1Z (Grid) BoardFilemobile
+                  - vLFpTzoM4VpnE5us9u3Xf (Image) image
+                  - 3dduNUcWTqx1wNrVzk7iQb (Grid) Grid
+                    - 5vrp5yICxxEmXkRAlY1TA7 (Grid) text
+                      - 4dEwi3lTBJN0a8e9wwPbl1 (FileUpload) FileUpload
+                      - 1m8uog5kWo4MWNEc4a2IaL (Text) Text
+                    - 4WEgkQW2IhxLAkZXgXKyfJ (Text) Text
+              - 4ircXGZjCRbZgqmnwUYxwh (TextBox) Bank
+        - 1NW30cAAR3sE4FYfPpJTPp (Grid) llp address grid
+          - 3G4jEMeV8jQM73JFxPyCy2 (Grid) Communication address Grid
+            - 6QrjUxUuTrVkGuTGh02NyF (Text) Communication address
+            - 1uagGE4SvMIC2w3vp4Nl9C (Grid) Full Address
+              - 6FvWjhfSnUytEM6oLIY6Ct (TextBox) Full Address
+            - 6OoUrTTZrAU4NyrpqrDDey (Grid) Country and pincode
+              - 27GeLgGQTCIYpjV4gWgbtt (Dropdown) Dropdown
+              - 7z9tISWp5L6231WLt5k8bk (TextBox) Pincode
+              - ZgLWVUWzFNY68sH4qPA7C (TextBox) State
+              - 3CKHBFzt2TFm96AYn7VdPc (TextBox) City
+              - 11ufFK3oheBSoFhJaEylcN (TextBox) State
+              - sPYbuw4imSpqKJWvTNxXa (Grid) incorporation document upload grid
+                - 7rX65nNtFbnN5peFz39Ztz (Text) Text
+                - 1TPKOedVO4gm1pbbAUvN4P (Grid) Grid
+                  - 6ANpmf5CTkt9wIJNDE2HKC (Image) image
+                  - 5qQ9vi76XtsqsPpkJwq8C1 (FileUpload) FileUpload
+                  - 2LwlErZM56Xui7gV3Xyw0Q (Text) Text
+                  - 6dvbSKdq7Dmi1ggbHYhuQ0 (Text) Text
+                - mekiio8vqD6B5QonCBsvf (FileUpload) FileUpload
+                - 3jV5F223BBJxQLnWpgDmFC (Grid) aadharFilemobile
+                  - 5SBiVM5boomNZfS5Jwh2Mf (Image) image
+                  - 3jCLLE0ntCult40XEUUL9U (Grid) Grid
+                    - 2c5LYCe02MBQWaPMWw739x (Grid) text
+                      - CqzPMyn5ShaMoY7d6Bo2Y (FileUpload) FileUpload
+                      - 6kHHg4hnZEriHIFpHiLvaA (Text) Text
+                    - 4zclI6lkCVeeMMRSxhiTx (Text) Text
+              - 1yG25QQMDjs7JMIDviU3T8 (Grid) incorporation document upload grid 1
+                - 5HAjDI6hZtwklnWVTEuONf (Text) Text
+                - 56svIf7kWLEzFA3MMxCowR (Grid) Grid
+                  - 5G6habkqx4lL7QQzPJHz6a (Image) image
+                  - 4OtqO9foJ8cDvziNN2Usf0 (FileUpload) FileUpload
+                  - 1HUvymFCTxIUaxwkndOtmb (Text) Text
+                  - 6ZXxHdXZQT3rtc4T5EZac6 (Text) Text
+                - DRXPvBVM8NnLycguybHZN (FileUpload) FileUpload
+                - 2Wt0mL095FJDRhBT3SwLIV (Grid) aadharFilemobile
+                  - 1YMHKpQUQtvwxNKdJxWjEp (Image) image
+                  - 78NUPtIYvSWDMwYlXZKlGh (Grid) Grid
+                    - 78Fsyt8VbTZcxeFa4Fnn0V (Grid) text
+                      - 4KGzNG6fI7OeGqVM1DL3z4 (FileUpload) FileUpload
+                      - 5pTiINXH5TvmEIPUGE6x7z (Text) Text
+                    - 5ct80XyMlruqVmdN9al2J (Text) Text
+          - MHbTdPUz7ZwOdDFoeRRoe (Grid) Permanent address Grid
+            - 4RDQtrp39jOaa4d5f1uz4c (Text) Permanent Address
+            - 5rrFlFTMwI5Z0BHJ4bPJrt (Grid) checkbox Grid
+              - 2e8UOVRZh0u9nnDjZLaVUk (CheckBox) CheckBox
+            - aHNDpDdLhoYf6CthRFvxN (Grid) Permanent address Grid
+              - 4D4kof2UJ3KsIvQyRidCxD (TextBox) Full Address
+              - tdb8Jf9cnjzfQOhfYqi8k (Grid) Country and pincode
+                - 2AT3CizAwDOzpV3Z5DOIwo (Dropdown) Dropdown
+                - 4VcW2LdSPS2FGTcr1bhRdK (TextBox) Pincode
+                - 3mHl3HuF5AkIXLx1hz162T (TextBox) landmark
+                - 5DaRipkb1mK49uoPtx5ZfY (TextBox) City
+                - dqMrOu7XK1qEJhyXuVPDk (TextBox) state
+            - 1oSHu4Ofe3RTSb0ylQgnWj (Grid) Address and Document
+              - 3IHKw9r7ENpCA3KT6r9khn (Dropdown) Document type
+              - 1grPL0YVfn2odv406a9RpX (TextBox) Document number
+            - 1SrLJksOYE8LJwO1gnQOT4 (Grid) Address proof copy
+              - 76QRXFkvUWj6XY7dfMLeqx (Grid) Grid
+                - 6QcQy0Nw20EXQUm14mYY9G (Text) label Text
+                - 5UEGbGCwQXO8PCzLU6KzCh (FileUpload) Address Upload
+                - 3GZYf0LLRNSZHjfjMsvwju (Grid) Grid
+                  - 59l2kCTzi9y7aM1N1kVbDy (FileSelector) File Selector
+                  - 2Ofm5hiRDkBUvk8yFc6pjO (Grid) Grid
+                    - 2SNaDGA6fPxqpS76ZWyiUo (Text) Text
+                - 5XrqwQeoMY532mQ5I3f1QB (Grid) Upload Outer Grid
+                  - 5tg2DRb8GSwJcaqCtwr8Y3 (Grid) Upload Grid
+                    - 3cvdHsZuRV0Ds8MbWz9aq3 (FileSelector) File Selector
+                    - 6VUPb2z5cVG09yIIE4tQ54 (FileUpload) FileUpload
+                    - 6cXCwTlvH3CJy4QiZowLdq (TextBox) TextBox
+                    - 7cb2xP6OLs3d9u0xzyfIEY (Grid) deleteGrid
+                      - 3fNO64VI3juceMVwDsqFeq (Icon) Icon
+                  - 2xpgXLF4bzySrYhovbAgy4 (Grid) Text Grid
+                    - 19EQfDPFhYkl6dST9B49iU (Text) Text
+              - 1iSIyyI6NWDgvNbCltBsmt (Grid) Grid
+                - 6np1iMe6tE9OBbdrdWWTAn (Image) image
+                - yeCQc30qikDNfGlpxYCDZ (FileUpload) FileUpload
+                - 3ex3e83eWYoUZThYM7PAd7 (Text) Text
+                - tEniltYDZQrItkH8SqpiH (Text) Text
+      - 5lWSTDtETmrobx5iUmvAAv (Popup) Popup
+        - 6Dpr9TxDvX0zQnaivaxg5B (Grid) Grid
+          - 3o2vO7qK9noZPStkzUYqT5 (Text) Text
+          - 1jHPt6T2GWy5ZGVBETSPnE (Text) Text
+    - 28Tc1VtSvR6PLM4XTifbHx (Grid) Save Buttons Grid
+      - 6r8E2Q5e2v17pEkDBb9TBt (Button) Savebutton1
+      - 6wSCmbkTftCPFVFTmZZc6b (Button) Savebutton2
+      - 3FSSoaoJa4Bw2KpPlfzV5d (Button) Savebutton3
+      - 4860L2gSz0uG3wQ2e4zHGW (Button) Finish KYC

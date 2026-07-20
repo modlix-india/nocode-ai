@@ -1,10 +1,10 @@
-"""MetaAccountsAdapter.list_fb_pages — only offer pages the user can POST FROM.
+"""MetaAccountsAdapter.list_fb_pages - only offer pages the user can POST FROM.
 
 Regression for the live Gremlin finding (gremlin-meta-fbonly-loop, 2026-06-24):
 fetch_meta_fb_pages listed the business's CLIENT pages (no Page Access Token for
 the connected user) → fetch_meta_ig_accounts 400 → loop. The page list must come
 from /me/accounts (token-backed pages), scoped to the business, never the
-untokenable client pages. Below the model — meta_client.get is mocked."""
+untokenable client pages. Below the model - meta_client.get is mocked."""
 import asyncio
 import unittest
 from unittest.mock import patch
@@ -50,7 +50,7 @@ class ListFbPagesTests(unittest.TestCase):
         self.assertEqual(pages, [])
 
     def test_falls_back_to_all_tokenable_when_no_business_overlap(self):
-        # A token-backed page that isn't under this business is still usable —
+        # A token-backed page that isn't under this business is still usable -
         # don't over-filter to empty.
         pages = self._run({
             "/me/accounts": [{"id": "999", "name": "Other"}],

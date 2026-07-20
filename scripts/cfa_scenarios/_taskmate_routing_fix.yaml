@@ -1,0 +1,27 @@
+name: _taskmate_routing_fix
+description: Set taskmate UI doc routing properties + per-page permissions so the React shell routes correctly.
+
+client_code: SYSTEM
+app_code: taskmate
+
+turns:
+  - |-
+    Taskmate's UI override doc currently has only `defaultTheme` in properties. For the React shell to route
+    correctly (and not return raw 404 to anonymous visitors), we need to:
+
+    1. `update_app(app_code="taskmate", properties={"defaultPage":"home","loginPage":"login","forbiddenPage":"forbidden","notFoundPage":"notFound"})`
+       — using `update_app(app_code=...)`, NOT app_id. Inspect taskmate first via `get_app(app_code="taskmate")` to know
+       the current properties shape; merge, don't overwrite the existing `defaultTheme`.
+
+    2. For each existing page in taskmate, set its `permission` field via `update_page`:
+       - `login` → permission MUST be empty/null (public — anonymous users sign in here)
+       - `home` → `Authorities.Logged_IN`
+       - `projectDetail` → `Authorities.Logged_IN`
+       - `taskDetail` → `Authorities.Logged_IN`
+
+    3. Verify:
+       - `get_app(app_code="taskmate")` shows properties with all four routing pages set.
+       - `get_page(page_name="login", app_code="taskmate")` shows permission unset.
+       - `get_page(page_name="home", app_code="taskmate")` shows `permission: "Authorities.Logged_IN"`.
+
+    Stop after verification. No new pages, no styling, no Kirun.

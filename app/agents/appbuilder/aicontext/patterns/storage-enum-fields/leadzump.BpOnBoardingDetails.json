@@ -1,0 +1,240 @@
+{
+  "_id": "68be65bd3b52b204a0ee0960",
+  "schema": {
+    "properties": {
+      "firstName": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "lastName": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "emailId": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "phoneNumber": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "addressDetails": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "STRING"
+            ],
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "pincode": "<REDACTED>",
+          "state": {
+            "type": [
+              "STRING"
+            ],
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "city": {
+            "type": [
+              "STRING"
+            ],
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "country": {
+            "type": [
+              "STRING"
+            ],
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "verified": {
+            "type": [
+              "BOOLEAN"
+            ]
+          },
+          "status": {
+            "type": [
+              "STRING"
+            ],
+            "enums": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED"
+            ]
+          },
+          "place_id": {
+            "type": [
+              "STRING"
+            ]
+          },
+          "landmark": {
+            "type": [
+              "STRING"
+            ]
+          }
+        }
+      },
+      "documents": {
+        "type": [
+          "ARRAY"
+        ],
+        "items": {
+          "type": [
+            "OBJECT"
+          ],
+          "properties": {
+            "documentName": {
+              "type": [
+                "STRING"
+              ],
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "name": {
+              "type": [
+                "STRING"
+              ],
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "verified": {
+              "type": [
+                "BOOLEAN"
+              ]
+            },
+            "number": {
+              "type": [
+                "STRING"
+              ],
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "file": {
+              "type": [
+                "OBJECT"
+              ],
+              "properties": {
+                "url": {
+                  "type": [
+                    "STRING"
+                  ]
+                },
+                "directory": {
+                  "type": [
+                    "BOOLEAN"
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "STRING"
+                  ],
+                  "minLength": 1,
+                  "maxLength": 512
+                }
+              }
+            },
+            "status": {
+              "type": [
+                "STRING"
+              ],
+              "enums": [
+                "REJECTED",
+                "ACCEPTED",
+                "PENDING"
+              ]
+            }
+          }
+        }
+      },
+      "clientCode": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "userId": {
+        "type": [
+          "LONG"
+        ]
+      },
+      "bpClientCode": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "bio": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "termsAndConditions": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "accepted": {
+            "type": [
+              "BOOLEAN"
+            ]
+          },
+          "acceptedAt": {
+            "type": [
+              "LONG"
+            ]
+          }
+        }
+      },
+      "badge": {
+        "type": [
+          "STRING"
+        ],
+        "enums": [
+          "diamond",
+          "gold",
+          "platinum",
+          "other"
+        ]
+      }
+    },
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1,
+    "name": "bpOnBoardingDetails",
+    "additionalProperties": false
+  },
+  "uniqueName": "leadzump_system_bpon_sl3eduq5dano",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": true,
+  "createAuth": "Authorities.Logged_IN",
+  "readAuth": "Authorities.Logged_IN",
+  "updateAuth": "Authorities.Logged_IN",
+  "deleteAuth": "Authorities.Logged_IN",
+  "name": "BpOnBoardingDetails",
+  "message": "From transport : 0NLasvcaI96EIUO3Ck7GsQ",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 61,
+  "updatedAt": "2026-05-14 13:47:05.213000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-09-08 05:12:29.619000",
+  "createdBy": "<USER>"
+}

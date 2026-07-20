@@ -1,0 +1,2079 @@
+{
+  "_id": "63e9eb0a11288d1e7fb121ec",
+  "properties": {
+    "wrapShell": true,
+    "title": {
+      "name": {
+        "value": "User Profile"
+      },
+      "append": {
+        "value": true
+      }
+    },
+    "onLoadEvent": "getUserDetail",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "getUserDetail": {
+      "name": "getUserDetail",
+      "namespace": "UIEngine",
+      "parameters": {},
+      "events": {
+        "output": {
+          "name": "output",
+          "parameters": {
+            "userDetailData": {
+              "name": "userDetailData",
+              "type": "Object"
+            }
+          }
+        }
+      },
+      "steps": {
+        "getData": {
+          "statementName": "getData",
+          "namespace": "UIEngine",
+          "name": "FetchData",
+          "parameterMap": {
+            "url": {
+              "getuserdetailsurl": {
+                "key": "getuserdetailsurl",
+                "type": "VALUE",
+                "value": "api/core/data/UserStorage/useid"
+              }
+            },
+            "pathParams": {
+              "getUserdetailpathparams": {
+                "key": "getUserdetailpathparams",
+                "type": "VALUE",
+                "value": {
+                  "useid": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Store.urlDetails.pathParts[1]??''"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "setUserDetailsData": {
+          "statementName": "setUserDetailsData",
+          "namespace": "UIEngine",
+          "name": "SetStore",
+          "parameterMap": {
+            "path": {
+              "setUserDetailsDataPath": {
+                "key": "setUserDetailsDataPath",
+                "type": "VALUE",
+                "value": "Page.user"
+              }
+            },
+            "value": {
+              "setUserDetailsDataValue": {
+                "key": "setUserDetailsDataValue",
+                "type": "EXPRESSION",
+                "expression": "Steps.getData.output.data"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__getData__d-o-t__output": true
+          }
+        },
+        "genOutput": {
+          "statementName": "genOutput",
+          "namespace": "System",
+          "name": "GenerateEvent",
+          "parameterMap": {
+            "eventName": {
+              "genOutputEventName": {
+                "key": "genOutputEventName",
+                "type": "VALUE",
+                "value": "output"
+              }
+            },
+            "results": {
+              "genOutputResults": {
+                "key": "genOutputResults",
+                "type": "VALUE",
+                "value": {
+                  "name": "userData",
+                  "value": {
+                    "isExpression": true,
+                    "value": "Steps.setUserDetailsData.output.data"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "rootComponent": "rootGrid",
+  "componentDefinition": {
+    "rootGrid": {
+      "key": "rootGrid",
+      "name": "rootGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "0014a509-3c92-423d-a44d-c679f10a374b": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#F3F1F6"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "minHeight": {
+                "value": "100vh"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "profileDetailsContainer": true,
+        "activityHistory": false
+      },
+      "displayOrder": 1
+    },
+    "column": {
+      "key": "column",
+      "name": "column",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": ":"
+        }
+      },
+      "styleProperties": {
+        "2be9acf3-3fed-402d-b403-109f89d90f07": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "profileDetailsContainer": {
+      "key": "profileDetailsContainer",
+      "name": "profileDetailsContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "10add0c9-4801-4526-9e81-050bc45b42fa": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "white"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "userProfileContainer": true
+      },
+      "displayOrder": 1
+    },
+    "userProfileContainer": {
+      "key": "userProfileContainer",
+      "name": "userProfileContainer",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "topContainer": true,
+        "tabs": true
+      },
+      "displayOrder": 1
+    },
+    "topContainer": {
+      "key": "topContainer",
+      "name": "topContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "00900945-ccbe-40ca-b34c-81f66d4e746e": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "paddingTop": {
+                "value": "17px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "section1": true,
+        "userIdContainer": true,
+        "phoneNumberContainer": true,
+        "emailIdContainer": true,
+        "section2": true
+      },
+      "displayOrder": 1
+    },
+    "section1": {
+      "key": "section1",
+      "name": "section1",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "48624b98-008d-49e6-851b-0bf57d78bf75": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "userName": true,
+        "editProfileLink": true
+      },
+      "displayOrder": 1
+    },
+    "userName": {
+      "key": "userName",
+      "name": "userName",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "(Page.user.basicDetails.first_name??'')+ (' ') + (Page.user.basicDetails.last_name??'')"
+          }
+        }
+      },
+      "styleProperties": {
+        "61f05c42-8607-4338-b481-6cb9479f84b8": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "editProfileLink": {
+      "key": "editProfileLink",
+      "name": "editProfileLink",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Edit Profile"
+        }
+      },
+      "styleProperties": {
+        "1dad89eb-e355-42b1-8754-ba83f971e01a": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "userIdContainer": {
+      "key": "userIdContainer",
+      "name": "userIdContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7e98c1f0-6563-485a-8005-01accf3c9f26": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "6px"
+              },
+              "marginTop": {
+                "value": "3px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "userIdLabel": true,
+        "userId": true
+      },
+      "displayOrder": 2
+    },
+    "userIdLabel": {
+      "key": "userIdLabel",
+      "name": "userIdLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "User ID :"
+        }
+      },
+      "styleProperties": {
+        "f9193d5e-36b3-4efa-a473-a6cf8fa55d3b": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              },
+              "marginRight": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "userId": {
+      "key": "userId",
+      "name": "userId",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user._id??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "1be44937-133f-4306-99c1-53483b5cb8cd": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "phoneNumberContainer": {
+      "key": "phoneNumberContainer",
+      "name": "phoneNumberContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7045882d-4d00-4e95-85f6-d972a1efd01e": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "phoneIcon": true,
+        "phoneNumber": true
+      },
+      "displayOrder": 3
+    },
+    "phoneIcon": {
+      "key": "phoneIcon",
+      "name": "phoneIcon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa fa-phone"
+        }
+      },
+      "styleProperties": {
+        "e5731f4e-83b9-49a9-9d9b-608f8de5e05c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "phoneNumber": {
+      "key": "phoneNumber",
+      "name": "phoneNumber",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.basicDetails.phone??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "aaa439f2-266a-424d-a081-3f8c9076900f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "emailIdContainer": {
+      "key": "emailIdContainer",
+      "name": "emailIdContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "acb408fd-f77b-4862-9ddc-752cacd4fba2": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "emailIcon": true,
+        "emailId": true
+      },
+      "displayOrder": 4
+    },
+    "emailIcon": {
+      "key": "emailIcon",
+      "name": "emailIcon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-regular fa-envelope"
+        }
+      },
+      "styleProperties": {
+        "1606982b-0aa2-4b36-93b2-56d733db7598": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "13px"
+              },
+              "color": {
+                "value": "#D72B27"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "emailId": {
+      "key": "emailId",
+      "name": "emailId",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.basicDetails.email ?? 'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "7c964c97-1d6e-4beb-b46c-786c68ef55e1": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "section2": {
+      "key": "section2",
+      "name": "section2",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2bfeceb7-8cf3-4555-855d-27474432aa07": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              },
+              "gap": {
+                "value": "15px 40px"
+              },
+              "backgroundColor": {
+                "value": "#E7E3DD"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "creationDateContainer": true,
+        "identifyDateContainer": true,
+        "sourceContainer": true
+      },
+      "displayOrder": 5
+    },
+    "creationDateContainer": {
+      "key": "creationDateContainer",
+      "name": "creationDateContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "creationDateLabel": true,
+        "creationDate": true
+      },
+      "displayOrder": 1
+    },
+    "creationDateLabel": {
+      "key": "creationDateLabel",
+      "name": "creationDateLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Created on :"
+        }
+      },
+      "styleProperties": {
+        "15fa3bc3-6737-47b3-84aa-ccbe7323bef5": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "creationDate": {
+      "key": "creationDate",
+      "name": "creationDate",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "17th Oct 2022"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "identifyDateContainer": {
+      "key": "identifyDateContainer",
+      "name": "identifyDateContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "identificationDateLabel": true,
+        "identificationDate": true
+      },
+      "displayOrder": 2
+    },
+    "identificationDateLabel": {
+      "key": "identificationDateLabel",
+      "name": "identificationDateLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Identified on :"
+        }
+      },
+      "styleProperties": {
+        "7bbea624-cc0d-4d2b-9d5f-f3999b095731": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "identificationDate": {
+      "key": "identificationDate",
+      "name": "identificationDate",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "17th Oct 2022"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "sourceContainer": {
+      "key": "sourceContainer",
+      "name": "sourceContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "sourceLabel": true,
+        "source": true
+      },
+      "displayOrder": 3
+    },
+    "sourceLabel": {
+      "key": "sourceLabel",
+      "name": "sourceLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Source :"
+        }
+      },
+      "styleProperties": {
+        "1aa7f943-79db-4bf2-af90-839f3f9bddee": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#6C7586"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "source": {
+      "key": "source",
+      "name": "source",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Social Media"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "tabs": {
+      "key": "tabs",
+      "name": "tabs",
+      "type": "Tabs",
+      "properties": {
+        "tabs": {
+          "value": "User Details, Channel Reachability,Device Details,Behaviour Details"
+        },
+        "defaultActive": {
+          "value": "User Details"
+        }
+      },
+      "styleProperties": {
+        "e9047367-0599-4e78-a5ac-f0c1e9bd080a": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "white"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "userDetailsContainer": true,
+        "channelReachabilityContainer": true,
+        "deviceDetailsContainer": true,
+        "behaviourDetailsContainer": true
+      },
+      "displayOrder": 6,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.abc"
+      }
+    },
+    "userDetailsContainer": {
+      "key": "userDetailsContainer",
+      "name": "userDetailsContainer",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "personalDetailsContainer": true,
+        "contactDetailsContainer": true,
+        "spouseDetailsContainer": true,
+        "professionalDetailsContainer": true
+      },
+      "displayOrder": 1
+    },
+    "personalDetailsContainer": {
+      "key": "personalDetailsContainer",
+      "name": "personalDetailsContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "323031de-5527-4074-af86-f612c1bb8ec8": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "17px"
+              },
+              "paddingBottom": {
+                "value": "17px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "personalDetailsHeading": true,
+        "personalDetails": true
+      },
+      "displayOrder": 1
+    },
+    "personalDetailsHeading": {
+      "key": "personalDetailsHeading",
+      "name": "personalDetailsHeading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Personal Details"
+        }
+      },
+      "styleProperties": {
+        "0014a509-3c92-423d-a44d-c679f10a374b": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "21px"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "personalDetails": {
+      "key": "personalDetails",
+      "name": "personalDetails",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "personalDetailsLabelContainer": true,
+        "personalDetailsValueContainer": true
+      },
+      "displayOrder": 2
+    },
+    "personalDetailsLabelContainer": {
+      "key": "personalDetailsLabelContainer",
+      "name": "personalDetailsLabelContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "96d862f3-62f4-4ff2-9d3c-49b8b00227ae": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1.2"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "dobLabel": true,
+        "ageLabel": true,
+        "genderLabel": true,
+        "maritalLabel": true,
+        "employmentLabel": true
+      },
+      "displayOrder": 1
+    },
+    "dobLabel": {
+      "key": "dobLabel",
+      "name": "dobLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "DOB"
+        }
+      },
+      "styleProperties": {
+        "1608dce1-e294-4aa7-879d-bd13c9a2787c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "ageLabel": {
+      "key": "ageLabel",
+      "name": "ageLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Age"
+        }
+      },
+      "styleProperties": {
+        "38d427a6-2c30-4563-83b8-a3c2d7705e39": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "genderLabel": {
+      "key": "genderLabel",
+      "name": "genderLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Gender"
+        }
+      },
+      "styleProperties": {
+        "b4bf8312-3ecc-4c5b-9b6a-97735178881c": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "maritalLabel": {
+      "key": "maritalLabel",
+      "name": "maritalLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marital Status"
+        }
+      },
+      "styleProperties": {
+        "285a060f-1762-45a7-bad4-bce6559c31c9": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "employmentLabel": {
+      "key": "employmentLabel",
+      "name": "employmentLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Employment Status"
+        }
+      },
+      "styleProperties": {
+        "6b0a6e8a-71b3-4f58-a4ad-dc67bbebb50a": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "personalDetailsValueContainer": {
+      "key": "personalDetailsValueContainer",
+      "name": "personalDetailsValueContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "ab209d61-4229-4073-9f86-dbd100dd07ca": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "2.8"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "dobDetailsContainer": true,
+        "ageDetailsContainer": true,
+        "genderDetailsContainer": true,
+        "maritalDetailsContainer": true,
+        "employmentDetailsContainer": true
+      },
+      "displayOrder": 2
+    },
+    "dobDetailsContainer": {
+      "key": "dobDetailsContainer",
+      "name": "dobDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "dobDetails": true
+      },
+      "displayOrder": 1
+    },
+    "dobDetails": {
+      "key": "dobDetails",
+      "name": "dobDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.personalDetails.DOB ?? 'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "0014a509-3c92-423d-a44d-c679f10a374b": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "ageDetailsContainer": {
+      "key": "ageDetailsContainer",
+      "name": "ageDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "ageDetails": true
+      },
+      "displayOrder": 2
+    },
+    "ageDetails": {
+      "key": "ageDetails",
+      "name": "ageDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Not Available"
+        }
+      },
+      "styleProperties": {
+        "98d5b6eb-897d-4de2-be53-8b457ceb4625": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "genderDetailsContainer": {
+      "key": "genderDetailsContainer",
+      "name": "genderDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "genderDetails": true
+      },
+      "displayOrder": 3
+    },
+    "genderDetails": {
+      "key": "genderDetails",
+      "name": "genderDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.personalDetails.gender??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "bd1977ca-2b76-4aa6-b5ea-ed93c2f5604b": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "maritalDetailsContainer": {
+      "key": "maritalDetailsContainer",
+      "name": "maritalDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "maritalDetails": true
+      },
+      "displayOrder": 4
+    },
+    "maritalDetails": {
+      "key": "maritalDetails",
+      "name": "maritalDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.personalDetails.martial_status??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "1f57f57f-caa5-4d16-9224-c81d7ca23cc2": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "employmentDetailsContainer": {
+      "key": "employmentDetailsContainer",
+      "name": "employmentDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "employmentDetails": true
+      },
+      "displayOrder": 5
+    },
+    "employmentDetails": {
+      "key": "employmentDetails",
+      "name": "employmentDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.personalDetails.employment_status??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "2e3baca9-be58-492e-9f9a-2973e9ffbd6b": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "contactDetailsContainer": {
+      "key": "contactDetailsContainer",
+      "name": "contactDetailsContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "8fe74736-36d7-4e2f-95c9-faf96b0f4761": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "17px"
+              },
+              "paddingBottom": {
+                "value": "17px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "backgroundColor": {
+                "value": "white"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "contactDetailsHeading": true,
+        "contactDetails": true
+      },
+      "displayOrder": 2
+    },
+    "contactDetailsHeading": {
+      "key": "contactDetailsHeading",
+      "name": "contactDetailsHeading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Contact Details"
+        }
+      },
+      "styleProperties": {
+        "ab03f03b-d0ef-4e46-8758-f8839797882f": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "21px"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "contactDetails": {
+      "key": "contactDetails",
+      "name": "contactDetails",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "contactDetailsLabelContainer": true,
+        "contactDetailsValueContainer": true
+      },
+      "displayOrder": 2
+    },
+    "contactDetailsLabelContainer": {
+      "key": "contactDetailsLabelContainer",
+      "name": "contactDetailsLabelContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "e3ab091b-2e2f-49c9-8309-6648f519595a": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1.2"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "personalPhoneNoLabel": true,
+        "personalEmailLabel": true,
+        "personalAlternatePhoneNoLabel": true,
+        "whatsappNoLabel": true,
+        "addressLabel1": true
+      },
+      "displayOrder": 1
+    },
+    "personalPhoneNoLabel": {
+      "key": "personalPhoneNoLabel",
+      "name": "personalPhoneNoLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Mobile No."
+        }
+      },
+      "styleProperties": {
+        "5ced5a84-a4fa-4723-ace2-e0efd13fca9d": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "personalEmailLabel": {
+      "key": "personalEmailLabel",
+      "name": "personalEmailLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Email"
+        }
+      },
+      "styleProperties": {
+        "fab86f48-5691-4d74-a386-2397a64fb80b": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "personalAlternatePhoneNoLabel": {
+      "key": "personalAlternatePhoneNoLabel",
+      "name": "personalAlternatePhoneNoLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Mobile No"
+        }
+      },
+      "styleProperties": {
+        "ba9b2e89-d3d5-46e2-ad77-5b1dc1f0678d": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "whatsappNoLabel": {
+      "key": "whatsappNoLabel",
+      "name": "whatsappNoLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Whatsapp No."
+        }
+      },
+      "styleProperties": {
+        "78209b14-c905-47a5-afd2-c43d61df9962": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "addressLabel1": {
+      "key": "addressLabel1",
+      "name": "addressLabel1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Address"
+        }
+      },
+      "styleProperties": {
+        "f6445396-87cb-4cf1-be70-99dfa7a22d0e": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "contactDetailsValueContainer": {
+      "key": "contactDetailsValueContainer",
+      "name": "contactDetailsValueContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "b917b420-85fc-48be-bad8-03b6c29365d6": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "2.8"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "personalPhoneNoDetailsContainer": true,
+        "personalEmailDetailsContainer": true,
+        "alternatePhoneNoDetailsContainer": true,
+        "whatsappNoDetailsContainer": true,
+        "address1DetailsContainer": true
+      },
+      "displayOrder": 2
+    },
+    "personalPhoneNoDetailsContainer": {
+      "key": "personalPhoneNoDetailsContainer",
+      "name": "personalPhoneNoDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "personalPhoneNoDetails": true
+      },
+      "displayOrder": 1
+    },
+    "personalPhoneNoDetails": {
+      "key": "personalPhoneNoDetails",
+      "name": "personalPhoneNoDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.contactDetails.phone??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "4ada9a8f-4330-4c45-bcf9-dbc6bf6abd7b": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "personalEmailDetailsContainer": {
+      "key": "personalEmailDetailsContainer",
+      "name": "personalEmailDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "personalEmailDetails": true
+      },
+      "displayOrder": 2
+    },
+    "personalEmailDetails": {
+      "key": "personalEmailDetails",
+      "name": "personalEmailDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.contactDetails.email??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "e7fa97b2-2e1d-4987-b219-591dfcba7908": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "alternatePhoneNoDetailsContainer": {
+      "key": "alternatePhoneNoDetailsContainer",
+      "name": "alternatePhoneNoDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "alternatePhoneNoDetails": true
+      },
+      "displayOrder": 3
+    },
+    "alternatePhoneNoDetails": {
+      "key": "alternatePhoneNoDetails",
+      "name": "alternatePhoneNoDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.contactDetails.alternate_phone??'Not Available'"
+          }
+        }
+      },
+      "styleProperties": {
+        "dccaaa06-7b82-4bdd-9949-7a087c50d99a": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "whatsappNoDetailsContainer": {
+      "key": "whatsappNoDetailsContainer",
+      "name": "whatsappNoDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "whatsappIcon": true,
+        "whatsappNoDetails": true
+      },
+      "displayOrder": 4
+    },
+    "whatsappIcon": {
+      "key": "whatsappIcon",
+      "name": "whatsappIcon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-brands fa-whatsapp"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.user.contactDetails.whatsapp_number"
+          }
+        }
+      },
+      "styleProperties": {
+        "97709797-fa83-4d80-af92-0b5eca972f98": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#40C351"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "whatsappNoDetails": {
+      "key": "whatsappNoDetails",
+      "name": "whatsappNoDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "9917238b-2076-4cf5-b4e2-a7fbe1dab77c": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "address1DetailsContainer": {
+      "key": "address1DetailsContainer",
+      "name": "address1DetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "address1Details": true
+      },
+      "displayOrder": 5
+    },
+    "address1Details": {
+      "key": "address1Details",
+      "name": "address1Details",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "(Page.user.contactDetails.address.building_name??'')+(' ')+(Page.user.contactDetails.address.street_name??'')+(' ')+(Page.user.contactDetails.address.city??'')+(' ')+(Page.user.contactDetails.address.state??'')+(' ')+(Page.user.contactDetails.address.pincode??'')"
+          }
+        }
+      },
+      "styleProperties": {
+        "c53dc817-322c-4ffa-ac39-e033399e0348": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "spouseDetailsContainer": {
+      "key": "spouseDetailsContainer",
+      "name": "spouseDetailsContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "0e75f7b1-d700-4e18-b847-39300100cd69": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "17px"
+              },
+              "paddingBottom": {
+                "value": "23px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "spouseDetailsHeading": true,
+        "spouseDetails": true
+      },
+      "displayOrder": 3
+    },
+    "spouseDetailsHeading": {
+      "key": "spouseDetailsHeading",
+      "name": "spouseDetailsHeading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Spouse Details"
+        }
+      },
+      "styleProperties": {
+        "1c84552f-fbdd-4149-9e3b-369169685050": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "21px"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "spouseDetails": {
+      "key": "spouseDetails",
+      "name": "spouseDetails",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "spouseDetailsLabelContainer": true,
+        "spouseDetailsValueContainer": true
+      },
+      "displayOrder": 2
+    },
+    "spouseDetailsLabelContainer": {
+      "key": "spouseDetailsLabelContainer",
+      "name": "spouseDetailsLabelContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "40d0e734-1835-4921-b979-8a2939a28d78": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1.2"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "spouseNameLabel": true,
+        "spouseEmailLabel": true,
+        "spousePhoneNoLabel": true,
+        "spouseEmploymentLabel": true
+      },
+      "displayOrder": 1
+    },
+    "spouseNameLabel": {
+      "key": "spouseNameLabel",
+      "name": "spouseNameLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Name"
+        }
+      },
+      "styleProperties": {
+        "868294ae-17ed-4f39-a564-52c87ffacec6": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "spouseEmailLabel": {
+      "key": "spouseEmailLabel",
+      "name": "spouseEmailLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Email"
+        }
+      },
+      "styleProperties": {
+        "da998b0b-a582-4ed3-a369-179a36f7c9ee": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "spousePhoneNoLabel": {
+      "key": "spousePhoneNoLabel",
+      "name": "spousePhoneNoLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Phone No."
+        }
+      },
+      "styleProperties": {
+        "091e524a-de34-4777-a192-71c763d1c8c0": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "spouseEmploymentLabel": {
+      "key": "spouseEmploymentLabel",
+      "name": "spouseEmploymentLabel",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Employment Status"
+        }
+      },
+      "styleProperties": {
+        "ee8d2aef-79d9-4b4e-b218-cb5dab142e76": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "spouseDetailsValueContainer": {
+      "key": "spouseDetailsValueContainer",
+      "name": "spouseDetailsValueContainer",
+      "type": "Grid",
+      "styleProperties": {
+        "c364caeb-bc87-4f48-a996-2cd9459a3842": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "2.8"
+              },
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "spouseNameDetailsContainer": true,
+        "spouseEmailDetailsContainer": true,
+        "spousePhoneNoDetailsContainer": true,
+        "spouseEmploymentDetailsContainer": true
+      },
+      "displayOrder": 2
+    },
+    "spouseNameDetailsContainer": {
+      "key": "spouseNameDetailsContainer",
+      "name": "spouseNameDetailsContainer",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "column": true,
+        "spouseNameDetails": true
+      },
+      "displayOrder": 1
+    },
+    "__truncated__": "... 154 more components omitted for corpus"
+  },
+  "name": "user_profile",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 245,
+  "updatedAt": "2023-06-14 04:23:50.466000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-02-13 07:47:22.754000",
+  "createdBy": "<USER>"
+}

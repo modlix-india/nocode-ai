@@ -1,0 +1,99 @@
+- 4NURh8oJ8z1wqBx6jCg74K (Grid) PageGrid
+  - 4SABPbu9oe6uDOdhgMcSRF (Grid) Header Grid
+    - 3oSal3itkZLVkf3r8DAY8L (Grid) Grid
+      - 4AhJWLw2cFoz6DYtERufK5 (Image) image
+  - 5Dj0TqovCHckZlwwcKCOLJ (Grid) Main grid
+    - 5w6wIAJyEWFfoO6DDPdK9G (Grid) Side bar Grid
+      - 3VxHhmeohY6KKgWfwLGYPP (Grid) Setup grid
+        - 7z3NdVge4nrsqFIXHSm0jA (Text) Text
+        - 3HwGp5tPiqQj73GtyPhi3t (Icon) Icon
+      - 6FdTgr7dRZV0h5AHxUmSTN (Grid) Option Grid
+        - 25qubpHNhE3VCU60I0Cibl (Text) Text
+    - 7jyl0teR0rlgIW5GjXB4aB (Grid) Back to configure Grid
+      - 4pJCaSJnMixaoRezerDhaM (Button) button
+    - 6YPiIssFXWtGc8AhXKV7Hl (Grid) Info Grid
+      - 5MWoEleBGeFxTgocckd4nU (Grid) Tool tip info
+        - 4iJYE8In0J3HL1IgrgpsdR (Image) image
+        - 5IvPM3atjtQP67I3MSOp2j (Text) Text
+      - 2781VQxvEr4wUKCxCTIYbX (Grid) Receipt header Grid
+        - 2KPxrK00Mbe9Yd7PuDOw5L (Grid) Receipt All Header Grid
+          - 6RrnL0CnyE2TmHJQIQ6scY (Text) Text
+          - 5hxNNH9jXlNa07h7pMK4lW (Grid) Tick and text
+            - 6a6v29w4XI1kDV1yn8JyTP (Text) Text
+            - 4ePrgBcfgYxFGrxf5HoHUT (CheckBox) CheckBox
+        - 1pPOLatInJIOj0VYFIZwiv (Grid) fileds Grid
+          - 4r61bzHu2aXTmp1v2dau7s (Grid) Grid
+            - 3D9SUwZuJgmkbKPwN2duRA (Text) Text
+            - 76gIpXcef7RmCAxH5VqvJT (CheckBox) CheckBox
+        - 7Tc382aqRhfoxCA7QutAW (ArrayRepeater) Repeator
+          - 22Ar7kN7GBZqxTdf3nyJV (Grid) Grid
+            - 61gLhNLWZh9uWVf1mqBOvn (Grid) fileds Grid
+              - 5vMz4DnP5AX3nVQ4sconhn (Grid) Name Grid
+                - 52P8Ek1bvQN13k9KHLBMzN (Text) Text
+                - 4C7ALYZVQe9B9qRiX6ciyn (CheckBox) CheckBox
+            - 2m0QSchPOP6C9HUuxNUXwr (Grid) Add block Grid
+              - 5W6rUyHKJjUa0IoQEFuCND (Grid) Name Grid
+                - 3tvmV3XUA3MHZSbrfYqJN6 (Text) Text
+                - 6p0K4xr5H2wEM6eWfNRhD7 (Image) image
+      - 607DS258jcz1ehR1BJ7IsC (Grid) E-Receipt header Grid
+        - 6jZ44yaLLOmv2x1n6tnUKM (Grid) Receipt All Header Grid
+          - 5NFeFFh6LYrJsfR5c1ZU5b (Text) Text
+          - 36GPh8pRd7P0zao8xj1VtD (Grid) Tick and text
+            - 683Bh3A9uTa1jIw74UNPtU (Text) Text
+            - 62BIIPlZASzRp97CoCaMSp (CheckBox) CheckBox
+        - 6ip0mbMiGDkUPzq6QhzKc1 (Grid) fileds Grid
+          - YKHZ2mRxsZhd0Ip5LBz9E (Grid) Grid
+            - 7jaUjhs01w2I7dHYeVOFC9 (Text) Text
+            - jLJenZdwXpNDr9fS56ZvX (CheckBox) CheckBox
+        - M8k8Hu9ZThno9wmuIiO5c (ArrayRepeater) Repeator
+          - 7hmRtsRfT4t8Xvv11QuftN (Grid) Grid
+            - 1UhzX6ODJfoyvhaQvkgXBv (Grid) fileds Grid
+              - 33Pu3kYAWD54Z8UPgxEJTz (Grid) Grid
+                - 5vbfEuUmU0rNwpDCPOenzm (Text) Text
+                - 2HoGwaHwll08e5t7gC5Xrq (CheckBox) CheckBox
+            - bMBpRJ5hgOhFqbH7NkUZo (Grid) Add block Grid
+              - 3MBvpP1geSAhlpmtEpKbTt (Grid) Name Grid
+                - 7mSpZT49HjRRnkDeklfRUE (Text) Text
+                - 6C09XS1ob1bFruYds72v0d (Image) image
+      - 1Uq6exRiJDOXGpfa7IzdDo (Grid) Receipt header Grid
+        - 4dGiRgDZc63S85PkfMbEnd (Grid) Receipt All Header Grid
+          - 3xuZvmv2JAvV0bQgw6m8It (Text) Text
+          - 1xgCQqYh3tzNMLjsUmhCwZ (Grid) Tick and text
+            - 4El208c5JaSslRAjbfRiVF (Text) Text
+            - 78U5RwKyElPj0TYAaC2u65 (CheckBox) CheckBox
+        - 3XHcYFJ7Co82y8Vmg2p67N (Grid) fileds Grid
+          - 3FYQm4mqtlBl3gQi8Iosl3 (Grid) Grid
+            - 2IIBIuoTQQ87cMTJWgz9sf (Text) Text
+            - 1NqCT4UVEzDMOOqHw1QPGN (CheckBox) CheckBox
+        - 2VKrDGdI7WH2yXcQWHuahp (ArrayRepeater) Repeator
+          - 377WvoBXjsrm7iSt6lUBZa (Grid) Grid
+            - 4KnupLkXPqrl3fMG2K37BE (Grid) fileds Grid
+              - 41GONBC9bZG8R0jiEOTG2v (Grid) Grid
+                - 2ZLpkIRTZ2X6dPmdfIj7c8 (Text) Text
+                - 1aAjedXK0WRWT1n7lVsjqc (CheckBox) CheckBox
+            - 6xD51on9ABS9OUI2MmhEei (Grid) Add block Grid
+              - 4XiJUnPi8FHevLo4GYNdCw (Grid) Name Grid
+                - 5gyDEvTBrCwZodkQflNPIb (Text) Text
+                - XkxTE2RZfeGq0N74O7TG1 (Image) image
+      - 3hnZa5FZsVwja0kl0XT0m3 (Grid) Receipt footer Grid
+        - 465tcWK7g5PRS0LtqxZnBC (Grid) Receipt All Footer Grid
+          - 7eniABGnP0bCXUhXe7VSr5 (Text) Text
+          - 3qNCVwJCsqzSDqgy5zjpTW (Grid) Tick and text
+            - 2xtfbQT2NFyTyiETa1UqQm (Text) Text
+            - 5kRt5ZoSaSHhEMOCs4cpfB (CheckBox) CheckBox
+        - 5w7M5nTrE7sflyJK5cE84h (Grid) fileds Grid
+          - 5iGtZ3RJWVaxVV333B835Y (Grid) Grid
+            - 3MSWTq9B1Z1XzuJSvMRM5m (Text) Text
+            - 41VImO0PMfFOFvrbII4f9X (CheckBox) CheckBox
+        - 37Gy5x2W7vkNiVtOPEihTT (ArrayRepeater) Repeator
+          - 2X3xyZlxOnJg1ujTBW73tF (Grid) Grid
+            - 4Q3A9hqp7fBjgltcJXF5XD (Grid) fileds Grid
+              - 2kZDNMpXHsrHSLBxQHJ6Zu (Grid) Grid
+                - 5MNrUjU53ljst5iwa4JuKU (Text) Text
+                - 2Qv34J39gFq8gRZJXa4o40 (CheckBox) CheckBox
+            - 7auf9p4OhK1qO7ucBYiyZs (Grid) Add block Grid
+              - 7bN3jGWuxIfog7M7GuhAC1 (Grid) Name Grid
+                - 4XA3ESmPUNWiqH5Y0DftZq (Text) Text
+                - 667DXPPFRXNy02ybtajkC5 (Image) image
+  - 4yRRFlDtJwITxCSqhWVNx8 (Grid) Save and continue grid
+    - 50pExoX7YU7P2vuVKhSJZs (Button) Save and continue button

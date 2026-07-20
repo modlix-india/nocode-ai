@@ -1,0 +1,15 @@
+{
+  "_id": "652ea82ff59684426b1492f2",
+  "schema": {
+    "type": "SchemaType.STRING"
+  },
+  "name": "NEW_EVENT_DEF",
+  "message": "From transport : 24jcLIvMHfuDAcrpoFVk0b",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 6,
+  "updatedAt": "2024-06-10 17:54:05.970000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-17 15:28:47.901000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,18 @@
+{
+  "_id": "63cbe6ec75d0ca292df3896a",
+  "variables": {
+    "ALL": {
+      "mainFontColor": "#555",
+      "bodyBackground": "#FFF"
+    }
+  },
+  "name": "nothingtheme",
+  "message": "From transport : 1r61Cab0dIX9soxtv6Rhfd",
+  "clientCode": "SYSTEM",
+  "appCode": "nothing",
+  "version": 2,
+  "updatedAt": "2023-10-20 14:05:25.259000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-01-21 13:21:48.614000",
+  "createdBy": "<USER>"
+}

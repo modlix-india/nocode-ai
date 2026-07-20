@@ -1,0 +1,36 @@
+- 5U3cazzB9GvT5yDvREcaaO (Grid) PageGrid
+  - 6DQvcefLS6OepOYsRQtZar (Grid) Details upload grid
+    - 6rGyclKSn2ODYVeXiCsBvd (Grid) mobile back btn Grid
+      - 7pUzikqebw9MXngxvpMUD1 (Button) button
+    - 1C7zVtBKazruJyFJv6Sukt (Grid) Desktop buttons Grid
+      - 3cQeXtvjNYvL71tq7HcYbM (Button) button
+    - hVXNuXa0CQDReL7GG3DYG (Grid) Details textboxes Grid 
+      - 7gqDQh2jrVQ4iIvEyaJDKG (Text) Text
+      - 2Nm3qlk4bkA8MVhneGxOyf (Grid) Grid
+        - 6aYJkowupGPvtIQ9HkTO6f (Grid) builder logo
+          - 2GsPiixajRUMfTg5cU5ChR (FileSelector) File Selector
+          - 4LYXRDDAcHrZf1n2rQAmib (Grid) Grid
+            - 692l342WptUhhCTCpMtJ5A (Text) Text
+            - 3wf9FY43bcFBVSg9YhI0M9 (Grid) Grid
+              - wtvHSDC2kdMJcTRxhpts9 (Text) Text
+              - 7KLcxc99tKiKGDLUz0X1q6 (Text) Text
+        - 8yx2Mjj8sliXIF8itpuTo (Grid) applicationlogo
+          - 1tL3duRkt8Pzd3kFzSwXsU (FileSelector) File Selector
+          - 3nXpWSAViqJ0rjI5QFwyPK (Grid) Grid
+            - 4n2y1jQ1RlHvk29NL45obN (Text) Text
+            - 3ovlsevBwpKSIN3u5mClns (Grid) Grid
+              - hrC2kE9X66JvXF9lnWgUu (Text) Text
+              - 5S5rxyl0KRx6nJtpl2qYEJ (Text) Text
+        - 6uPztM47ZBlRkgxxHaMTQd (Grid) Grid
+          - 2xXI6D7MignSsq1jh4TGud (FileSelector) File Selector
+          - 3qLmJxQaezJRLZIjdkyGbv (Grid) Grid
+            - 5JayeImMuwQUHoJdfKqa46 (Text) Text
+            - 4NLhdAWtXS41ErE7Azpkx9 (Grid) Grid
+              - 6b5qWDd26fkbAE34jA904c (Text) Text
+              - 1WwjQtWdkpJCDaC7ln5zn9 (Text) Text
+      - 6Ok7Tzhjy17fuB3Ug56xDY (Grid) Grid
+        - 7ub0GrUNVJ6f5buKCcFcdC (TextBox) TextBox
+      - oKZRmFWM8WEn8XU40QVB6 (Grid) Grid
+        - 4wmFrZGLNmyOIw6soasZAW (TextArea) TextArea
+  - 6MGWfMBEagj5OSswrVEvQ2 (Grid) Save and Continue btns Grid
+    - 7Ml4fNMUET3lYsHmRkKtwT (Button) Save and continue button1

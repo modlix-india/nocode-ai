@@ -1,0 +1,256 @@
+- 3BlRN0IgWnKCX9WJ7kIOSj (Grid) PageGrid
+  - B18xX43XH1n3OgqKyiv5E (Grid) top bar
+    - 21Gkl4ceeVTA86d6QgYqKi (Grid) Grid
+      - Kl34Ylp07OCGndeMHMqet (Image) image
+  - 1FKZ6QivliByp5Cqm6tCar (Grid) main grid
+    - XAuuKULUNcsvl0vxw1CEv (Grid) Side grid
+      - 6mV3ixti8f4srRNxUoA4hM (Grid) Grid
+        - 3euwVUyVI5SD1k5iXLegnd (Grid) inventory details
+          - 5NjD42YGWvxWGe37DZJGz8 (Button) button
+          - 3crqzjwCvuZts0GPvdxUir (Grid) Grid
+            - 1tuSLX9bFicjTByzAtmO6N (Image) Image
+            - 1x1Jn7PmPk5b03tikoqr0P (Text) Text
+        - 5l2FaFotHPE4saL830uKMU (Grid) Phases Grid
+          - 7hxdt5GhSdh6bbNlthqLEq (ArrayRepeater) Repeator
+            - 1mRlzlZlRSfSW8w7pE3oTb (Grid) Grid
+              - 5uC45pHLLHUlhIVTYb2SD (Grid) vertical
+              - 61E8MuNZJJ8t4HUXomLEXS (Grid) horizantal
+              - 67xBhoRlaj0bUY57keVvc0 (Grid) Phase details
+                - 3p0libNGLzSdfkouiN3qMU (Button) button
+                - 58eeVJTMoPKCsCLVzxvAaO (Grid) Grid
+                  - 5Ho6UICAsLSCoBLjJKaVhb (Image) Image
+                  - 5UPN5VGl6tp1IJNlBsSSTV (Text) Text
+              - 135P6ZHrsxmkWoek4AqIXV (ArrayRepeater) Repeator
+                - 4qYOnU8VtZdJcUH846PSWy (Grid) Grid
+                  - fOu7QhREHDtRSWUcrJKTd (Grid) tower details
+                    - 3EZGUzMHXk6abxT1l1bHN9 (Image) Image
+                    - 3aQz0GhwAHIhQkmoGU1yDy (Text) Text
+              - 6Q7zOR8tS4y5E2v8ufMtNO (ArrayRepeater) Repeator
+                - 1S3WzZzMt01TAgQwsIXbVq (Grid) Grid
+                  - 4f9oEqPshAk2LlE6vSKUCE (Grid) block details
+                    - 5Jox6Bnef0udW1pU11Ut5o (Image) Image
+                    - 6703kUT2IQHl92F63UX74L (Text) Text
+    - 6IQhLSLaolAKb4urKbY6Q7 (Grid) data grid
+      - 4JyXrPY8rw46cfstXUQzZu (Grid) listOfUpdates
+        - 2mDLV9M0kBc5WLSykKEvdY (Grid) top grid
+          - IHqYcnyqpWShNCQ6ErauQ (Text) Text
+          - 1W8uwRzfvha0YCwlOSdn0x (Button) Back button
+          - 15eNUASo1LQYivSzsOiDdx (Grid) Grid
+            - 5jbmlNqFhnf0Ys2HZOEVSf (Button) button
+            - J0gRdK478TPavWOs3Qto7 (Popover) Popover
+              - 1T3zVYvziq6EerljF1tAO3 (Grid) ButtonGrid
+                - 5EGIi81GV3oFxCFBlTnqEU (Grid) Grid
+                  - lwT2zm0lx7wuwT0e1TNXA (Button) Add Bulk Units
+                  - 7p6VqxMCHGqB5sREypAksX (Button) Add Single Unit
+                - 31OjEsxRfzW4Tq3xtZfEC (Grid) Grid
+                  - 1QOkStkSKNNPxb9mY4Cnrp (Button) button
+            - 6cYTpJ6rpAPIdaLCfkkYmg (Button) button
+        - 717PlnI67zEiBhHzGh0G72 (Grid) updates table
+          - 7tfQUttJrH0hAKMtcgLt8d (Table) Table
+            - 7nEE0TYnqu7CIUpiDoY14Y (TableColumns) TableColumns
+              - 1im8wqPP4iaNQkENyu90Al (TableColumn) s.no
+                - 19c3c4UrA8LkGQEfUYWUZw (Grid) Grid
+                  - 6ni2V78JdAIu1FyqPnnoUe (Text) Text
+              - 5R3b179MqPepRSgXNwPKkH (TableColumn) title
+                - 2tljXffmV6fLvPSQQQaHTG (Grid) Grid
+                  - 2bRne7SH819jbgmuveylHg (Text) Text
+              - 5PdrML4XQYs0dqwr1Dy9Lg (TableColumn) phase
+                - 436O4ENLj3YFtCBzRJpb1U (Text) Text
+              - 7pm3bFOR6ctUWr0BrnlU6H (TableColumn) tower
+                - 4spNq9ic9948QcYzSpvZPz (Text) Text
+              - 3ILERDzBQAfV7a2C94M4Tc (TableColumn) block
+                - 5cmKFqmUotliZ6gy2lZwjO (Text) Text
+              - 6w25DBDFy1ooHmYiubWN44 (TableColumn) date
+                - 33gkIHvLpnHulyjnLcyzJs (Grid) Grid
+                  - 1Dk3UgqHh9FDQLokzj04Hv (Text) Text
+              - 5Xvi8YJqUiKYfhPQUp8tWg (TableColumn) status
+                - 1iDAXIUnnb055EFpvwkb16 (Grid) Grid
+                  - 1fIqBW5jsPUbqBpdHp4bKA (Text) Text
+              - 7mSDjb5fVEEPkHVPCXV9AZ (TableColumn) actions
+                - 1szC8pQM5H00zFzuBVo8FF (Grid) Grid
+                  - 2RW62FHGXI5g9NBZaE2GNS (Image) PREVIEW
+                  - 1z6ff3olYLFZTiLP6qg7SG (Image) EDIT
+                  - jp6Dv05oD18YYvN1cXdQx (Image) DELETE
+      - 10STWy8eALRQKz1cESRj0C (Grid) empty screen
+        - 3CsT2AReEZjKffy4sPXr5x (Button) Back button
+        - 6tUHfNd21NP72sgG3DGvA (Text) Text
+        - 1HJhripnDv6swKMGkSJPEe (Grid) Grid
+          - 46D988Lju4xt87ohf9nazW (Image) Image
+          - 4vy6is8Nf8zZ6FncihLB0t (Text) Text
+          - 5L3ujzZWhxjH1h5qW8e9fl (Button) button
+      - 4YuqTDupVsle3rIi8v6URR (Grid) Add new update
+        - 4Q44nipD7gctmqmbAsDX9o (Button) Back button
+        - 3Ef6ANGTkO7fW9VKqVR2X9 (Grid) content
+          - 29pOcuu49eifjVVaNjaBXJ (Text) Text
+          - 29z5TYA04zqOh7zID9epsL (Grid) input fields
+            - 35Psi9aLqKxDtckvCfQjVe (Grid) dropdowns
+              - sk99rUreXnNKzyCimBxPP (Dropdown) Dropdown
+              - 7JnsjD8X970hoTXfrA4mpJ (Dropdown) Dropdown
+            - 2N9IBtES1Igp0gW5Poo7xO (TextBox) TextBox
+            - dYMM6TBFwWnj4Ge2em2yx (TextArea) TextArea
+            - 4KmOIIbGRCYXr5VwocfhqB (Grid) project highlights
+              - cAveCK8RNRnd6QvUCEdtR (Text) Text
+              - JKVYEahFERt6LFoiWvlIC (ArrayRepeater) Repeator old
+                - 6JDZmKMWRkQDd6FsVa6XHR (TextBox) TextBox
+              - 7f48gH9e3fAe1RISmDaiEp (ArrayRepeater) Repeator
+                - QcrWSHyCP9beIoaPsyBAd (TextBox) TextBox
+              - 13zHc2rTfwfWhvEA9rdSig (Grid) Grid
+                - DUG7AmOlwNaS2oJcdx0L8 (Icon) Icon
+                - 7319whjyAjAkNCC0EDdubO (Text) Text
+          - 7w9xNautOaT0Kl1huosBTG (Grid) images upload
+            - OqcktUdCD5t8m59MAApiZ (Text) Text
+            - 1SdINQBiU0TzOl0AEdSv1p (Grid) Grid
+              - 4QBQBnND5WBU6kkTBnYhfz (ArrayRepeater) Repeator
+                - 27ANUTVPO5jzAu1PhsQhQb (Grid) Grid
+                  - 7GkLaYL6HSsHLz1Wiq5q6n (Image) Image
+                  - 3LLAqajZWS2wCai8K8KHv3 (Grid) Grid
+                    - 11Dqqt9tyfBbds3d7akKG7 (Image) Image
+              - Ahjk0175OcSFRdpxCYM8o (FileSelector) File Selector
+          - 6jL2yYhl3cwbKa9yCXe6l9 (Grid) videos upload
+            - 46gHdUTPf4Jzv36qDD3oAF (Text) Text
+            - 1UElbqWuoa0Kl7igwlprPO (Grid) Grid
+              - 5iqC4MyJtev0oqqLDhFPqB (ArrayRepeater) Repeator
+                - 30vJh3oB3am4OuMtycr7C5 (Grid) Grid
+                  - 3n6XszIlgT8DTAO0TTeP8J (Image) Image
+                  - 3GnS722ZF0eluH7m1zFyo3 (Video) Video
+                  - 1xdLlTBKDDzCW6D0H3Dr7W (Grid) Grid
+                    - 2jmrzyEDE7G4ThCzj7k1s0 (Image) Image
+              - 6NSVrBb847twc9RTk2sTNN (FileSelector) File Selector
+          - 2AEN9d1TDOff3O6DjF5BFs (Grid) Upload Videos
+            - 31bwVmuxZ9882mRi1j9Fhn (Grid) Add Vedio grid
+              - 4iyJ479OtVL92AiNWKVn6m (Text) Upload Videos
+              - 6h7kjea79gpahtQ8vnks57 (Button) Add video
+            - 5QG07h9qc9FtBXo7Sw2v49 (Grid) Videos grid
+              - 2vulC6guVbwEL6k4NCXJAr (ArrayRepeater) Repeator
+                - 7lMQvqJtz9Wz1NN3NXZpyz (Grid) Grid
+                  - 6zOmP765eXYkUnBjhS4xSt (Grid) videoNumbers
+                    - VomCHgllpUVXhzCVkaPvN (Text) Video
+                    - 2kPwB3HvL3o0IzDetRPZqQ (Image) Image
+                  - T4RzDjq0pUdGQfU4NEECp (Grid) Thumbnail Image and vedios
+                    - EwnoqZYDgU5lCMquesYGr (FileSelector) File Selector video
+                    - 2fOQ0OKDg7Ho9C4zAhFFBY (FileSelector) File Selector Image
+        - 6u5ET6BDEsSecTOSRaEcBw (Grid) bottom bar
+          - 6Oivv8CsCTLbS4R08C3xZi (Button) button
+          - 6MgvUqgG5cSMacagaF8Vjz (Grid) Save as draft
+            - 2YQpcsPZVPlwhbs9LkVAcU (Button) Save as draft
+            - 5sfusHOE79oGGjzcg3Db7A (Grid) Animation Loder
+      - 75tcTGkOQOM2uvWUZu74Fw (Grid) edit
+        - 6pd1xPky3kmkJYyIkcj1m0 (Button) Back button
+        - 3aeb78Igg99JfD6k5uONwr (Grid) content
+          - 74mZZia6mnZCs6O5mHSIM0 (Text) Text
+          - hkM7Ejc4wHrjC7lockZtp (Grid) Grid
+            - 6thRLCGkQX6F7ztlwXRZfv (Grid) dropdowns
+              - 4diSr858ZREtlZOotvlcUD (Dropdown) Dropdown
+              - 2hzhPR8b03hfoXTbOTTqMb (Dropdown) Dropdown
+            - 1WQBluxntfbA5yOM8FpNJb (TextBox) TextBox
+            - 67O0iQ6ptLUg2pRS3LkMEj (TextArea) TextArea
+            - 2ejy2SGOlSU70ZLstOTp74 (Grid) project highlights
+              - 2IjSaWo4XhNGWWICWorpAn (Text) Text
+              - 4cezpEm1rUUMQG0UuK6Q0c (ArrayRepeater) Repeator
+                - 4JfY0r6XZLr3Hva312sPG2 (TextBox) TextBox
+              - 53cF6EEiI8FfaSOYWhB6 (Grid) Grid
+                - 1p3WNWTms2uRkVtNuH1zP (Icon) Icon
+                - 4NXmOj5yWfCggtSYgvH2Fp (Text) Text
+          - xZGcA53cZqXCu764Os3Op (Grid) images upload
+            - W8c1OBh5Y3gGfHSB2R7kb (Text) Text
+            - 1mVr0eL85nNY9RFcgRhXwF (Grid) edit inputs
+              - 5aqxJYi3mzamnpDdAxh82q (ArrayRepeater) Repeator
+                - 7E8X0NA5yBgAI6o7PGHQZ1 (Grid) Grid
+                  - OuF5wYM2palKnGFrzfUpL (Image) Image
+                  - 6u1mkWDZesbZ9xMGI9Xq0Q (Grid) Grid
+                    - FBWFy31MJiHKYLdRgvZgx (Image) Image
+              - 5chIyOcDyUjUC9NYNToahH (FileSelector) File Selector
+          - 15PEDds1F701aTbpteAeTZ (Grid) videos upload
+            - 6KGKLP26Nv4PRKlsd2nL2X (Text) Text
+            - 7HAKkPqp4gBFSbM1FvYDoB (Grid) Grid
+              - 6pnjRNj2STyQQRV2xmzkYy (ArrayRepeater) Repeator
+                - 3Td3Hw029CdY54UuBBfXVs (Grid) Grid
+                  - 7ukkZsDq3qHSlnWWnHd3eG (Image) Image
+                  - 175VHslNgDpqjnW2QXrAlT (Video) Video
+                  - VVhQJ0Vj5jZkfhekaMhXI (Grid) Grid
+                    - 2ZEVIGeFcuYIC2Khvs0Mj4 (Image) Image
+              - 27WTCCd68B3AHQ8uyNxIdt (FileSelector) File Selector
+          - wZ7is863o33aNITdNdjTv (Grid) Upload Videos
+            - 3NOExTrVttqlj6I0dyFZ5K (Grid) Add Vedio grid
+              - 5pQdVuZ4YdsJlkBLGKyyW1 (Text) Upload Videos
+              - 6DXhGBoLZQtNWWPamtRONF (Button) Add video
+            - 9zvaLXgaIpJfb24IY2oU2 (Grid) Videos grid
+              - 1kzP68SyPPjCWJV9I4HkFm (ArrayRepeater) Repeator
+                - 5bwcttATxUFjjTV9KWd3JU (Grid) Grid
+                  - 3hCMsGLAcP2MD3T667K316 (Grid) videoNumbers
+                    - 7mETAMSesvskdTTUsYYUmY (Text) Video
+                    - 7J2rjxQPHaPlRjLpvC7O7H (Image) Image
+                  - 4USP2tHw8uGCDG56ipSLtt (Grid) Thumbnail Image and vedios
+                    - AFYtKezf0dWOkwCIpfejW (FileSelector) File Selector Image
+                    - 5jL9tgoullOiPu36o2Ii8F (FileSelector) File Selector video
+        - 5w8ROObc7Wp5ebeull6UsM (Grid) bottom bar
+          - 3iakDgjegFcAcqJnfvKBov (Button) button
+          - 20TKu9hvbuHsztOTL4JRUO (Button) button
+      - 5o4ZuucBUTJALU11cWqvzL (Grid) preview
+        - 48DIjZrTM20Ius1A018m26 (Button) Back button
+        - 6KSCD1s5pSqEaUfvOXfakg (Grid) preview
+          - jVbSmWyyKOnLfHlK8LGDH (Grid) Grid
+            - LCcJdB654ANGLS7md2QdU (Grid) Grid
+              - 1RBuOC74xgK9bdk1vSyMqF (Text) Text
+              - 1yS4aNqfyNuIuH6oANkq6b (Grid) Grid
+                - 51pwAiiqlNFmVtBJFALXkU (Text) Text
+            - 6FJ1YWXn6SMG5VSNFZFS5E (Grid) date
+              - 3EfXQ8RqLFsrlHijerCxpX (Grid) Grid
+              - 53sa9YoVArQEVD0lfa5Ctb (Text) Text
+              - 3aHSSG63VOOkuKhNQS519y (Text) Text
+          - 4SEPXCzDUHx9nHzS0Vz4LT (Grid) Grid
+            - ceA755newvVC6PM3S3JGH (Grid) description
+              - 2QIU8ZPpiAagS9Fzme7JxO (Text) Text
+              - 3SvjeF050HH1wK3ef9Xn96 (Text) Text
+            - 2yIZ2UV6j0fOSe2YVhah0r (Grid) highlights
+              - 5gvSxfMnriUZx8umKogPf5 (Text) Text
+              - 6kxf4zjNyBYeoWNlrOiMs2 (TextList) TextList
+            - 4SQu0aYggrwKw4fn5B8YbC (Grid) gallery
+              - TL6bQXB1jQaOf7feoR9Uj (ArrayRepeater) Repeator
+                - 5tmXqgOGR0gspToy5LbEFK (Grid) Grid
+                  - 3wDVQhSkjZxT6MARlaOarH (Image) Image
+              - 2k7GpcZPcIKaPIF8H4kHNd (Gallery) Gallery
+            - 2BUHvZemprFOo2wKnJ0WRu (Grid) videos
+              - 53za0aeIOsDgVV8KqWTPFA (ArrayRepeater) Repeator
+                - 5QqWPR0Ouw8aGe9Z3LICpY (Grid) Grid
+                  - 1jnLBw7vuE1J9YrZbzYmHe (Grid) Grid
+                    - 4nbSxcIvAJxwcUOF3Yz6HA (Image) Image
+                  - lb09yAptonSEUkKROjYde (Image) Image
+              - 4T36UlS7YlQ7BrTVB0nUZX (Popup) Popup
+                - 5ESNZNk1ocg8Zprbolg1ii (Grid) Grid
+                  - 5BFo3ykUSxbasln7l4sJGk (Button) button
+                  - 2tuTCZOIyRfYwwrhRjIFoc (Iframe) Iframe
+                  - 7rJv8i3T5M0Fu5cmLPfefV (Video) old video
+                  - 5Zg3r3DJao2mQlWnJO7yGj (Video) Video
+        - 1IXOJ4fz7C3ZmZdX5tTK4I (Grid) bottom grid
+          - 3mz6q5iz8aOAiAyqJQbFAQ (Button) button
+  - 1gAJ7PLVwrgq2kBy4j6C5d (Popup) deletePopup for transactions
+    - tb5kOmqSmtgOvOC4JtrON (Grid) Grid
+      - 6bgUI7DIgBFXQ9Nyxigtvi (Grid) deleteGrid
+        - 5NwPath2XQ38Wj8QNkXEZa (Grid) Grid
+          - 1iaYL1FKWaSib5f99LASOe (Icon) Icon
+          - cPmCwBf4F6X2HjFUUoi0I (Grid) Grid
+            - 40PJ2hKlECkfMyGxKF1blG (Grid) Grid
+        - 2Zn8C4ZOuO5JisbqXqys9M (Text) heading
+        - 4xAKpwV4VlwS0oh5aRvUvA (Text) text
+        - 55BPQ8xWuMb7iAugehyRMg (Text) Text
+        - 4Wg1dND3mdHXT1VlEEvbN1 (Grid) Grid
+          - 3LXroCrx6uR01QSgT8fySg (Button) button
+          - 6TTWJDgPcdvGok4hkg4c62 (Button) button
+  - 5nKI5xhsBbkCdFGUlqpwl4 (Popup) popup for publish
+    - hyNik9VRS7trxFwlJBPh1 (Grid) Grid
+      - 3GQijPkLXhFF9jDzWjkCWI (Grid) Grid
+        - 6jQ28hNUr0daxJ9lVCX3tK (Button) button
+      - FjTzx5PleOKPQ07VM9X03 (Grid) deleteGrid
+        - 461KbVbdIrJsqQtsrRGNc7 (Grid) icon and Loader
+          - 3XhjRHqT1wGAb7Pi4iuqoC (Grid) Grid
+            - 4A1VlG7L4cdBTwb1sqeZzK (Grid) Grid
+          - 1NweXgHSm5lbIC4rVSiCwd (Icon) Icon
+          - 5VjNDp3PNGgQRfNuqa4XSF (Image) Image
+        - 2h54XikrHC3DT1po8s8a4r (Text) heading
+        - 1jTFrn5AZMtkofGoL2JsAF (Text) text
+        - EymRF4DZuQ5Vr3WKKQM4F (Grid) Grid
+          - 7vyiYDH0PYHHlepgpwr615 (Button) button
+          - 29WrLVSpPEORULhMV79Zgx (Grid) Grid
+            - 4beKDKtDs8I5P9KiYHlLNb (Button) button
+            - 5kS76E1WUDEM75QYuGR3vc (Grid) Grid

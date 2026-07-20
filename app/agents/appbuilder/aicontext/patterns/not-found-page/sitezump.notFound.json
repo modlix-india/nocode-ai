@@ -1,0 +1,321 @@
+{
+  "_id": "6797b40e8d5610589ee20488",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "Page Not Found"
+      }
+    }
+  },
+  "eventFunctions": {
+    "60cGyp3Bb84MCoQN5eczbM": {
+      "name": "NavigateToSlash",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 538.5267766316731,
+            "top": 258.00593058268225
+          },
+          "parameterMap": {
+            "path": {
+              "4tNdvSozPnwgdlh3DXMKOo": {
+                "key": "4tNdvSozPnwgdlh3DXMKOo",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Store.currentApp"
+              }
+            },
+            "value": {
+              "WYh898uLppYa0I1XTBGqv": {
+                "key": "WYh898uLppYa0I1XTBGqv",
+                "type": "EXPRESSION",
+                "expression": "undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 808.5267766316731,
+            "top": 496.33926391601557
+          },
+          "parameterMap": {
+            "linkPath": {
+              "vvLqu2n87QnCMQo8QYTS": {
+                "key": "vvLqu2n87QnCMQo8QYTS",
+                "type": "VALUE",
+                "order": 1,
+                "value": "/"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2TPKz9cTdHt6Zk6GNx3Yjz": {
+      "name": "NavigateToAccountHome",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 538.5267766316731,
+            "top": 258.00593058268225
+          },
+          "parameterMap": {
+            "path": {
+              "4tNdvSozPnwgdlh3DXMKOo": {
+                "key": "4tNdvSozPnwgdlh3DXMKOo",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Store.currentApp"
+              }
+            },
+            "value": {
+              "WYh898uLppYa0I1XTBGqv": {
+                "key": "WYh898uLppYa0I1XTBGqv",
+                "type": "EXPRESSION",
+                "expression": "undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 808.5267766316731,
+            "top": 496.33926391601557
+          },
+          "parameterMap": {
+            "linkPath": {
+              "vvLqu2n87QnCMQo8QYTS": {
+                "key": "vvLqu2n87QnCMQo8QYTS",
+                "type": "VALUE",
+                "order": 1,
+                "value": "/accountHome"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "65ijEtVf1tCBbAJDbaATQd",
+  "componentDefinition": {
+    "65ijEtVf1tCBbAJDbaATQd": {
+      "key": "65ijEtVf1tCBbAJDbaATQd",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1H9OAld9prtXfrt32KdlV": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "flex": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5oLtqzg5lADNHDgbcyUlzB": true
+      }
+    },
+    "5oLtqzg5lADNHDgbcyUlzB": {
+      "key": "5oLtqzg5lADNHDgbcyUlzB",
+      "name": "Message Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "W9uDDZHuNt9MYMc25YO9K": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "20vh"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "10vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2TvnDhOtYxF3R9j1X3Axp6": true,
+        "jgJx9IPqFedb4IO0xIVWA": true,
+        "2cy4fvLWWkhP29FGXfVk5G": true
+      },
+      "displayOrder": 0
+    },
+    "2TvnDhOtYxF3R9j1X3Axp6": {
+      "key": "2TvnDhOtYxF3R9j1X3Axp6",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Sorry, the page you requested is not to be found anywhere. Please try one of the following options to find what you are looking for. "
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "71elY62gXSiDTINARgXr6V": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "10vw"
+              },
+              "marginRight": {
+                "value": "10vw"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "431fDr6RglhILiPArG3giW": {
+      "key": "431fDr6RglhILiPArG3giW",
+      "name": "Go to Home",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to Home"
+        },
+        "onClick": {
+          "value": "60cGyp3Bb84MCoQN5eczbM"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "jgJx9IPqFedb4IO0xIVWA": {
+      "key": "jgJx9IPqFedb4IO0xIVWA",
+      "name": "Buttons Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3IzSoN9pG0MAFsBYR1YbYt": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2vh"
+              },
+              "width": {
+                "value": "25vw"
+              },
+              "minWidth": {
+                "value": "200px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "431fDr6RglhILiPArG3giW": true,
+        "6i1aniMCdvNy6kNzgVkDIT": true
+      },
+      "displayOrder": 2
+    },
+    "6i1aniMCdvNy6kNzgVkDIT": {
+      "key": "6i1aniMCdvNy6kNzgVkDIT",
+      "name": "Go to Account Home",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to Account Home"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        },
+        "onClick": {
+          "value": "2TPKz9cTdHt6Zk6GNx3Yjz"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2cy4fvLWWkhP29FGXfVk5G": {
+      "key": "2cy4fvLWWkhP29FGXfVk5G",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "This should not have happened. Did you try to open a link that is shared with you? or Please check for any spelling mistakes in the url you typed. If you think it is the right url and still not able to resolve, please reach out to us."
+        },
+        "textColor": {
+          "value": "_lightSubText"
+        }
+      },
+      "styleProperties": {
+        "3xV6JJwJaC8KsQdmLveWJJ": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "5vh"
+              },
+              "marginLeft": {
+                "value": "20vw"
+              },
+              "marginRight": {
+                "value": "20vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "name": "notFound",
+  "message": "From transport : YtrkrQrhj2DyduHQz3s5pl",
+  "clientCode": "SYSTEM",
+  "appCode": "sitezump",
+  "version": 38,
+  "updatedAt": "2025-12-29 05:07:32.344000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-01-27 16:27:58.157000",
+  "createdBy": "<USER>"
+}

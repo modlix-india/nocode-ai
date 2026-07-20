@@ -1,0 +1,137 @@
+{
+  "_id": "688b85b7883bb1559e50d481",
+  "definition": {
+    "name": "rejectingBookingCancellation",
+    "namespace": "cxapp",
+    "steps": {
+      "sendEmail": {
+        "statementName": "sendEmail",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 267.6666615804036,
+          "top": 161.99996948242188
+        },
+        "parameterMap": {
+          "templateData": {
+            "CPv0Bfq42DOkq2YJzqwLt": {
+              "key": "CPv0Bfq42DOkq2YJzqwLt",
+              "type": "EXPRESSION",
+              "expression": "Arguments.details",
+              "value": {}
+            }
+          },
+          "address": {
+            "7ag4NriB0SZTk090ubwtmu": {
+              "key": "7ag4NriB0SZTk090ubwtmu",
+              "type": "EXPRESSION",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "2s0H9PH1dLpZ8ALnaSUcp9": {
+              "key": "2s0H9PH1dLpZ8ALnaSUcp9",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "templateName": {
+            "7D5ut6AzLJOsR6DPCxtmFj": {
+              "key": "7D5ut6AzLJOsR6DPCxtmFj",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "cancellationRejectionEmail"
+            }
+          },
+          "appCode": {
+            "5EcXydflmtuGLCc1YZgRZv": {
+              "key": "5EcXydflmtuGLCc1YZgRZv",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 613.6666615804036,
+          "top": 177.99996948242188
+        },
+        "parameterMap": {
+          "results": {
+            "3PDX3CZQKI4dWeOsKIineW": {
+              "key": "3PDX3CZQKI4dWeOsKIineW",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.sendEmail.output.sent"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {}
+      }
+    },
+    "parameters": {
+      "details": {
+        "parameterName": "details",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "sent": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          },
+          "result": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "cxapp.rejectingBookingCancellation",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 25,
+  "updatedAt": "2026-04-09 04:28:28.918000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-07-31 15:03:19.346000",
+  "createdBy": "<USER>"
+}

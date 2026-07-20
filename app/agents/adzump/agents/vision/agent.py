@@ -1,19 +1,20 @@
-"""VisionAnalyst — single-shot vision BaseAgent for logo + creative picks.
+"""VisionAnalyst - single-shot vision BaseAgent for logo + creative picks.
 
 Replaces the direct ``client.beta.chat.completions.parse(...)`` call in
 ``agents/product/product_assets.py:494-507`` with a properly-named agent
 so vision picks show up in trace/cost/observability surfaces alongside
 ProductAgent.
 
-Why an agent and not a direct call: same reason as SummaryAgent — Adzump's
+Why an agent and not a direct call: same reason as SummaryAgent - Adzump's
 convention is "every LLM work unit is a BaseAgent subclass". See
 ``feedback_traced_llm_not_agent.md`` in workspace memory.
 
-The vision LLM is the sole authority on logo picks. Earlier versions had a
-deterministic safety net (``_filename_logo_picks``) in the caller that
-filled the slot when the LLM declined; v9 (2026-05-22) deleted it. When the
-LLM declines, the pipeline returns ``logos=[]`` and the user uploads via
-the AD Pilot UI.
+The vision LLM is the sole authority on logo picks - v9 (2026-05-22)
+deleted the deterministic logo-FILLING fallback; when the LLM declines,
+the pipeline returns ``logos=[]`` and the user uploads via the AD Pilot UI.
+One deterministic guard remains, on the CREATIVE bucket:
+``_filename_suggests_logo`` drops a logo-named URL the vision pass let
+through as a creative (e.g. ``clublogo.png`` - seen in the wild).
 
 Cost: ~same as today (sticking with gpt-4o-mini · see D5b in notes).
 """
@@ -65,7 +66,7 @@ VISION_PROVIDER = "openai"
 VISION_MODEL_TIER = "fast"
 VISION_MODEL_OVERRIDE = "openai:gpt-4o-mini"
 
-# Old direct call used max_tokens=600. Keeping the same ceiling — the
+# Old direct call used max_tokens=600. Keeping the same ceiling - the
 # output is just a small JSON object.
 VISION_MAX_TOKENS = 600
 
@@ -139,20 +140,31 @@ def _parse_review(final_text: str) -> ReviewResult:
         return ReviewResult()
 
 
+_LOGO_FILENAME_TOKENS = ("logo", "wordmark", "brandmark", "monogram")
+
+
+def _filename_suggests_logo(url: str) -> bool:
+    """True if the URL's filename strongly indicates a logo. Used only as a
+    post-pick safety net for the 'creative' bucket - content-based selection
+    remains primary; this catches the narrow case where the vision pass let
+    a sub-brand wordmark through (e.g. ``clublogo.png``)."""
+    filename = url.rsplit("/", 1)[-1].lower()
+    name_part = filename.rsplit(".", 1)[0]
+    return any(tok in name_part for tok in _LOGO_FILENAME_TOKENS)
+
+
 def _resolve_picks(
     selection: AssetSelection,
     candidates: list[SiteImage],
 ) -> ProductAssets:
     """Map LLM indices + roles onto ``ProductAssets`` (URLs + metadata).
 
-    Mirrors the legacy ``_resolve`` in ``product_assets.py:566`` but
-    inlined here so the agent owns the full input→output transform.
-    Caller still owns: byte fetching, the filename-safety-net, and
-    final persistence.
+    Owns the full input→output transform including the creative-bucket
+    filename guard. Caller still owns: byte fetching and final persistence.
     """
     n = len(candidates)
 
-    # Logos — dedup by URL, cap at 3 (schema also bounds this).
+    # Logos - dedup by URL, cap at 3 (schema also bounds this).
     logo_picks: list[LogoPick] = []
     logo_urls_seen: set[str] = set()
     for pick in (selection.logos or [])[:3]:
@@ -178,7 +190,7 @@ def _resolve_picks(
             background=bg,
         ))
 
-    # Creatives — preserve LLM ranking, dedup, drop OOB indices.
+    # Creatives - preserve LLM ranking, dedup, drop OOB indices.
     # Shift 2 (2026-05-21): prefer the new per-candidate `creatives` field
     # (role-tagged). Fall back to the legacy `creative_idxs` shape so old
     # logs and replays still resolve.
@@ -201,6 +213,9 @@ def _resolve_picks(
         url = candidates[idx].src
         if not url or url in seen_urls or url in logo_urls_seen:
             continue
+        if _filename_suggests_logo(url):
+            logger.info("vision_safety_filter: dropped logo-named creative %s", url)
+            continue
         if role and role not in {"hero", "amenity", "floor_plan", "unused"}:
             role = ""
         if role != "unused":
@@ -212,7 +227,7 @@ def _resolve_picks(
         ))
         seen_urls.add(url)
 
-    # Derive creative_completeness — code computes the launch-readiness
+    # Derive creative_completeness - code computes the launch-readiness
     # verdict, model only labels (Kiran's Q3 pick).
     hero_found = any(c.role == "hero" for c in creatives_with_role)
     amenities_count = sum(1 for c in creatives_with_role if c.role == "amenity")
@@ -223,13 +238,15 @@ def _resolve_picks(
         verdict = "partial"
     else:
         verdict = "needs_upload"
+    # missing_categories must agree with the 'complete' bar (hero AND >=1
+    # amenity). floor_plan is tracked but NOT required for launch-readiness -
+    # listing it would make a 'complete' campaign still surface a "missing
+    # floor plan" ask (v9 I-8; floor plans rarely live on marketing sites).
     missing: list[str] = []
     if not hero_found:
         missing.append("hero")
     if amenities_count < 1:
         missing.append("amenity")
-    if not floor_plan_found:
-        missing.append("floor_plan")
     completeness = CreativeCompleteness(
         hero_found=hero_found,
         amenities_count=amenities_count,
@@ -262,11 +279,11 @@ def _build_user_message_and_images(
     interleaved into the text in index order; images follow in the same
     order so the model correlates by position.
 
-    SVG candidates appear as text-only entries (no thumbnail) — the LLM
+    SVG candidates appear as text-only entries (no thumbnail) - the LLM
     reviews them by metadata + filename.
 
     Emits image blocks in **Anthropic format** per the
-    ``session.append_user_message`` docstring contract — the OpenAI provider
+    ``session.append_user_message`` docstring contract - the OpenAI provider
     translates Anthropic ``image`` blocks → Responses-API ``input_image`` in
     ``OpenAIProvider._convert_messages``.
     """
@@ -277,7 +294,7 @@ def _build_user_message_and_images(
     # vs partner footer vs hero band) when deciding which candidate is the
     # developer logo, project logo, hero photo, etc. Candidate thumbnails
     # still ship in their original index order (image blocks #1..N).
-    # When the screenshot is missing (defensive — should only happen on
+    # When the screenshot is missing (defensive - should only happen on
     # adapter failure), the agent falls back to the v7 candidate-only shape.
     screenshot_present = bool(full_page_screenshot_b64)
 
@@ -290,7 +307,7 @@ def _build_user_message_and_images(
         intro_lines.extend([
             "Image block #0 below is the FULL-PAGE SCREENSHOT of the live website "
             "(scaled, downsampled JPEG). Use it to locate each candidate "
-            "spatially before deciding what it is — header strip = logos, "
+            "spatially before deciding what it is - header strip = logos, "
             "partner footer strip = partner brands (NOT logos), hero band = "
             "hero creative, etc.",
             "",
@@ -299,7 +316,7 @@ def _build_user_message_and_images(
         ])
     else:
         intro_lines.append(
-            f"Candidates ({len(candidates)} total, in index order — images attached below in the same order):"
+            f"Candidates ({len(candidates)} total, in index order - images attached below in the same order):"
         )
     intro_lines.extend([meta_json, "", "Inline candidate descriptions follow in index order:"])
 
@@ -331,10 +348,10 @@ def _build_user_message_and_images(
                 },
             })
         else:
-            # SVG / no thumbnail — text-only entry, no image block.
+            # SVG / no thumbnail - text-only entry, no image block.
             intro_lines.append(
                 f"  · [Candidate {idx}] source={cand.source} format=SVG "
-                f"file={filename} — no thumbnail; review by metadata + filename"
+                f"file={filename} - no thumbnail; review by metadata + filename"
             )
 
     return "\n".join(intro_lines), image_blocks
@@ -349,13 +366,13 @@ def _build_review_message(
     the provider already translates.
 
     Bytes-first by design: the upload caller has bytes. A URL input would be
-    fetched to bytes by the caller first (as scrape does) — URL-source blocks
+    fetched to bytes by the caller first (as scrape does) - URL-source blocks
     are deferred until a caller needs them (see impl-notes)."""
     import base64 as _b64
 
     intro = [
         (summary or "").strip()[:1000],
-        f"Review each of the {len(images)} image(s) below, in order — one verdict per image.",
+        f"Review each of the {len(images)} image(s) below, in order - one verdict per image.",
     ]
     blocks: list[dict[str, Any]] = []
     for img in images:
@@ -374,7 +391,7 @@ def _build_review_message(
 class _SilentEventStream(AgentEventStream):
     """Drops every event except agent lifecycle + data.
 
-    The VisionAnalyst call doesn't surface text or thinking to the user —
+    The VisionAnalyst call doesn't surface text or thinking to the user -
     output is just the parsed JSON, consumed by the caller. We still
     forward ``emit_agent_started/finished`` so the agent card lifecycle
     works.
@@ -485,7 +502,7 @@ class VisionAnalyst(BaseAgent):
 
     @classmethod
     def get_instance(cls) -> "VisionAnalyst":
-        # The select-subset (scrape) singleton — unchanged behavior.
+        # The select-subset (scrape) singleton - unchanged behavior.
         if cls._instance is None:
             cls._instance = cls()
             logger.info("VisionAnalyst created (select-subset / scrape, single-shot)")
@@ -552,7 +569,7 @@ class VisionAnalyst(BaseAgent):
             await self._emit_finished(parent_event_stream, run_start, sub_session, status="error", summary=type(e).__name__)
             return ProductAssets()
 
-        # Find the last assistant message — that's the JSON output.
+        # Find the last assistant message - that's the JSON output.
         final_text = ""
         for m in reversed(sub_session.get_messages()):
             if m.get("role") != "assistant":
@@ -588,7 +605,7 @@ class VisionAnalyst(BaseAgent):
         ``ReviewResult`` if the LLM call fails or the JSON is unparseable.
 
         Each ``images`` entry is ``{"data": bytes, "content_type": str}``. Use
-        the review-each instance (``get_reviewer()``) — it carries the
+        the review-each instance (``get_reviewer()``) - it carries the
         review-each system prompt.
         """
         if not images:
@@ -656,7 +673,7 @@ class VisionAnalyst(BaseAgent):
     ) -> None:
         """Emit agent_finished with token usage from sub_session.total_usage.
 
-        Adds the observability hook the VisionAnalyst call previously lacked —
+        Adds the observability hook the VisionAnalyst call previously lacked -
         production tool wrappers and the eval CapturingEventStream both
         consume this. Defensive: the VisionAnalyst has historically run in
         contexts where parent_event_stream is None (eval before the
@@ -678,18 +695,15 @@ class VisionAnalyst(BaseAgent):
                 summary=summary,
             )
         except Exception:
-            # Observability hook — never fail the pick on emit error.
+            # Observability hook - never fail the pick on emit error.
             pass
 
-
-# Back-compat alias — existing importers and telemetry still say "VisionAnalyst".
-VisionAnalyst = VisionAnalyst
 
 _REVIEW_INSTANCE: "VisionAnalyst | None" = None
 
 
 def get_selector() -> VisionAnalyst:
-    """Accessor for the shared select-subset (scrape) singleton — unchanged."""
+    """Accessor for the shared select-subset (scrape) singleton - unchanged."""
     return VisionAnalyst.get_instance()
 
 

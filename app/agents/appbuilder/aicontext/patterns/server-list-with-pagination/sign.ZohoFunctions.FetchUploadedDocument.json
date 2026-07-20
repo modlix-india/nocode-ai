@@ -1,0 +1,419 @@
+{
+  "_id": "665f4fd1111ddb4fbf3bbb1c",
+  "definition": {
+    "namespace": "ZohoFunctions",
+    "name": "FetchUploadedDocument",
+    "parameters": {
+      "projectId": {
+        "parameterName": "projectId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "kycId": {
+        "parameterName": "kycId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "emailId": {
+        "parameterName": "emailId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "format": "EMAIL"
+        }
+      },
+      "documentId": {
+        "parameterName": "documentId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 5,
+          "top": 53.5
+        },
+        "parameterMap": {
+          "name": {
+            "4Ebb5A2zMxQZlGQMTjdf3p": {
+              "key": "4Ebb5A2zMxQZlGQMTjdf3p",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "filter"
+            }
+          },
+          "schema": {
+            "1oXO1BRT2mWkr6vbWIJLOZ": {
+              "key": "1oXO1BRT2mWkr6vbWIJLOZ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1226,
+          "top": 402.5
+        },
+        "parameterMap": {
+          "storageName": {
+            "CFfrDJKyyIigVAUFbJE0x": {
+              "key": "CFfrDJKyyIigVAUFbJE0x",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "uploadedDocuments"
+            }
+          },
+          "filter": {
+            "78O5Yb7UYjLMgkaiYrJPeP": {
+              "key": "78O5Yb7UYjLMgkaiYrJPeP",
+              "type": "EXPRESSION",
+              "expression": "Context.filter",
+              "value": {}
+            }
+          },
+          "appCode": {
+            "32bOfVBLJPtMFvn1cHujKC": {
+              "key": "32bOfVBLJPtMFvn1cHujKC",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": false,
+          "Steps__d-o-t__set1__d-o-t__output": false,
+          "Steps__d-o-t__set2__d-o-t__output": false,
+          "Steps__d-o-t__set3__d-o-t__output": false,
+          "Steps__d-o-t__set4__d-o-t__output": false,
+          "Steps__d-o-t__set5__d-o-t__output": true
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1620.5,
+          "top": 567
+        },
+        "parameterMap": {
+          "results": {
+            "3NS92zUXOsgKLPsVYuHBNy": {
+              "key": "3NS92zUXOsgKLPsVYuHBNy",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "getUser": {
+        "statementName": "getUser",
+        "name": "GetUser",
+        "namespace": "CoreServices.SecurityContext",
+        "position": {
+          "left": 202,
+          "top": 697.5
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1635,
+          "top": 245
+        },
+        "parameterMap": {
+          "results": {
+            "aRpWI7fFKjy0dIMW20jsA": {
+              "key": "aRpWI7fFKjy0dIMW20jsA",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.output.result.content"
+                }
+              }
+            }
+          }
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 604,
+          "top": 97.5
+        },
+        "parameterMap": {
+          "name": {
+            "7pY7iQV3VCWlSGRtlbgRSu": {
+              "key": "7pY7iQV3VCWlSGRtlbgRSu",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter.conditions[1].value"
+            }
+          },
+          "value": {
+            "kdWCCk9pm83xChdPosAJC": {
+              "key": "kdWCCk9pm83xChdPosAJC",
+              "type": "EXPRESSION",
+              "expression": "Arguments.projectId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 299,
+          "top": 437.5
+        },
+        "parameterMap": {
+          "name": {
+            "4F3MHFSe4L4D1QUTGhXwoc": {
+              "key": "4F3MHFSe4L4D1QUTGhXwoc",
+              "type": "EXPRESSION",
+              "expression": "'Context.filter.conditions[0].value'",
+              "order": 1
+            }
+          },
+          "value": {
+            "7EhFkgqsYlFvCwUiFToxoZ": {
+              "key": "7EhFkgqsYlFvCwUiFToxoZ",
+              "type": "EXPRESSION",
+              "expression": "Arguments.emailId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 929,
+          "top": 26.5
+        },
+        "parameterMap": {
+          "name": {
+            "6rB3nbzVz7R6cFjWRy8Z4m": {
+              "key": "6rB3nbzVz7R6cFjWRy8Z4m",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.filter.conditions[2].value"
+            }
+          },
+          "value": {
+            "7aBSIFcS7GvIvjPvMx61g2": {
+              "key": "7aBSIFcS7GvIvjPvMx61g2",
+              "type": "EXPRESSION",
+              "expression": "Arguments.kycId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set2__d-o-t__output": true
+        }
+      },
+      "set5": {
+        "statementName": "set5",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 657.9999999999999,
+          "top": 541.9999999999999
+        },
+        "parameterMap": {
+          "name": {
+            "3Sdo4pRoZ7Gi1vH0ko05CV": {
+              "key": "3Sdo4pRoZ7Gi1vH0ko05CV",
+              "type": "EXPRESSION",
+              "expression": "'Context.filter.conditions[4].value'",
+              "order": 1
+            }
+          },
+          "value": {
+            "Qih1OvDKbQbFMbpWf7de5": {
+              "key": "Qih1OvDKbQbFMbpWf7de5",
+              "type": "EXPRESSION",
+              "expression": "Arguments.documentId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set4__d-o-t__output": true
+        }
+      },
+      "set4": {
+        "statementName": "set4",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 855,
+          "top": 284
+        },
+        "parameterMap": {
+          "name": {
+            "3p4zk41r6m4Ulizkd4FT7R": {
+              "key": "3p4zk41r6m4Ulizkd4FT7R",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter.conditions[3].value"
+            }
+          },
+          "value": {
+            "7vG6oDM6l7DpCHzWSkwEux": {
+              "key": "7vG6oDM6l7DpCHzWSkwEux",
+              "type": "EXPRESSION",
+              "expression": "Steps.getUser.output.user.id",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set3__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 281,
+          "top": 167.5
+        },
+        "parameterMap": {
+          "name": {
+            "5kPxFWNmMlqIwlqxrZYGPP": {
+              "key": "5kPxFWNmMlqIwlqxrZYGPP",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter"
+            }
+          },
+          "value": {
+            "2d1wF3mjEns7R3Mlx0MPFh": {
+              "key": "2d1wF3mjEns7R3Mlx0MPFh",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "operator": "AND",
+                "conditions": [
+                  {
+                    "field": "recipient_emailId"
+                  },
+                  {
+                    "field": "projectId"
+                  },
+                  {
+                    "field": "kycId"
+                  },
+                  {
+                    "field": "userId"
+                  },
+                  {
+                    "field": "documentId"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "ZohoFunctions.FetchUploadedDocument",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 12,
+  "updatedAt": "2026-04-09 04:29:05.840000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:33:05.803000",
+  "createdBy": "<USER>"
+}

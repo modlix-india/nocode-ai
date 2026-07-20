@@ -1,0 +1,16 @@
+{
+  "_id": "69d72aec639dc536a111f0b1",
+  "definition": {
+    "name": "getSandboxAccessToken",
+    "namespace": "cxapp"
+  },
+  "name": "cxapp.getSandboxAccessToken",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 1,
+  "updatedAt": "2026-03-25 09:36:37",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-04-09 04:28:28.846000",
+  "createdBy": "<USER>"
+}

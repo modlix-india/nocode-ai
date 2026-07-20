@@ -1,0 +1,209 @@
+{
+  "_id": "665f4f8e111ddb4fbf3bbaef",
+  "definition": {
+    "name": "getKycsById",
+    "namespace": "kyc",
+    "parameters": {
+      "userId": {
+        "parameterName": "userId",
+        "schema": {
+          "type": [
+            "INTEGER"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "kycDetails": {
+            "type": [
+              "ARRAY"
+            ],
+            "version": 1,
+            "items": {
+              "ref": "kyc.Account"
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 39.33332824707031,
+          "top": 56.666656494140625
+        },
+        "parameterMap": {
+          "schema": {
+            "6JdNEYPLIDkV41yG5lffgs": {
+              "key": "6JdNEYPLIDkV41yG5lffgs",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          },
+          "name": {
+            "1aYjfq1O3vFcWckV1QjKps": {
+              "key": "1aYjfq1O3vFcWckV1QjKps",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "filter"
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 322.1666603088379,
+          "top": 154.08332061767578
+        },
+        "parameterMap": {
+          "value": {
+            "4KkpK8QccfsjuxrNhqEWCu": {
+              "key": "4KkpK8QccfsjuxrNhqEWCu",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "field": "userId"
+              }
+            }
+          },
+          "name": {
+            "3DRQ0TMDcic2oqcxMjWYFf": {
+              "key": "3DRQ0TMDcic2oqcxMjWYFf",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.filter"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 596.9166603088379,
+          "top": 87.83332061767578
+        },
+        "parameterMap": {
+          "value": {
+            "3mFYwibm3qYLWlFhQNHOQo": {
+              "key": "3mFYwibm3qYLWlFhQNHOQo",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userId",
+              "order": 1
+            }
+          },
+          "name": {
+            "7LE822FdSpEFpo9n54jw3I": {
+              "key": "7LE822FdSpEFpo9n54jw3I",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.filter.value"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1282.916669845581,
+          "top": 146.58333015441895
+        },
+        "parameterMap": {
+          "results": {
+            "Nw9J1JtT2RMB676CyVd4l": {
+              "key": "Nw9J1JtT2RMB676CyVd4l",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "kycDetails",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.output.result.content"
+                }
+              }
+            },
+            "28z7KW0ojinAb0mHVSqxeC": {
+              "key": "28z7KW0ojinAb0mHVSqxeC",
+              "type": "EXPRESSION",
+              "order": 2
+            }
+          }
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 890.9166603088379,
+          "top": 142.1666603088379
+        },
+        "parameterMap": {
+          "filter": {
+            "62H6ySziJ2sfG0slLg8heG": {
+              "key": "62H6ySziJ2sfG0slLg8heG",
+              "type": "EXPRESSION",
+              "expression": "Context.filter",
+              "value": {}
+            }
+          },
+          "appCode": {
+            "3Tfn3sBzEMq46YnVTbTULt": {
+              "key": "3Tfn3sBzEMq46YnVTbTULt",
+              "type": "VALUE",
+              "expression": "",
+              "value": "kyc"
+            }
+          },
+          "storageName": {
+            "6YTnzRWn14Y1mIUOho3fiA": {
+              "key": "6YTnzRWn14Y1mIUOho3fiA",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Account"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "name": "kyc.getKycsById",
+  "message": "From transport : 07wfTy9J9xNSJSU3kuuU2v",
+  "clientCode": "SYSTEM",
+  "appCode": "kyc",
+  "version": 55,
+  "updatedAt": "2026-04-09 04:28:50.883000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:31:58.704000",
+  "createdBy": "<USER>"
+}

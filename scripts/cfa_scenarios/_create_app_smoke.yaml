@@ -1,0 +1,21 @@
+name: _create_app_smoke
+description: Single-turn create_app smoke after the alphabet+name fix.
+
+client_code: SYSTEM
+app_code: taskmate
+
+setup_actions:
+  - type: delete_app
+    app_code: taskmate
+  - type: mysql_purge_archived
+    app_code: taskmate
+  - type: evict_app_cache
+    app_code: taskmate
+    client_code: SYSTEM
+
+turns:
+  - |-
+    Just call create_app(app_code="taskmate", default_page="home").
+    Then list_apps(app_code="taskmate") to confirm.
+    Then get_app(app_code="taskmate") to show me the UI override doc landed.
+    Three tool calls total. Stop after that. No theme, no pages, no Kirun.

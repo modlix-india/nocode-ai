@@ -1,0 +1,33 @@
+name: _taskmate_login_fn_fix
+description: Fix taskmate's handleLogin event function — UIEngine.Login expects userName not email.
+
+client_code: SYSTEM
+app_code: taskmate
+
+turns:
+  - |-
+    The existing `handleLogin` event function on taskmate's `login` page passes the wrong arg name to
+    UIEngine.Login. The correct signature is:
+
+      UIEngine.Login(userName = ..., password = ..., identifierType = "EMAIL_ID")
+
+    Right now it passes `email = Page.email` — but the primitive's required param is `userName`, not
+    `email`. The call silently no-ops when the required arg is missing, which is why clicking Sign In
+    does nothing in the browser.
+
+    Fix the function:
+    1. `decompile_page_event_function(page_name="login", event="handleLogin", app_code="taskmate")` to see the current shape.
+    2. Rewrite via `save_page_event_function_from_text` with this DSL:
+
+       FUNCTION handleLogin
+           LOGIC
+               login: UIEngine.Login(userName = Page.email, password = Page.password, identifierType = "EMAIL_ID")
+                   output
+                       navigate: UIEngine.Navigate(target = "_self", linkPath = "/taskmate/SYSTEM/page/home") AFTER Steps.login.output
+
+       Also wire an `error` branch so the user sees failure feedback — append an emit-to-toast step
+       under the login.error event using the System.Toast primitive (look it up via
+       list_kirun_primitives if needed).
+    3. Verify by decompiling again and confirming `userName =` is in the DSL.
+
+    Stop after the verify.
