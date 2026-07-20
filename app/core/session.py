@@ -718,9 +718,10 @@ current_session: ContextVar[Optional["BaseSession"]] = ContextVar(
 async def record_oneshot_usage(
     usage: dict[str, int], model: str, provider: str = "openai", step: str | None = None
 ) -> None:
-    """Bill a standalone one-shot LLM call to the active agent's session — the SAME
-    path the loop uses (``accumulate_usage`` + ``record_token_usage``), so it lands as
-    a normal per-agent row. No-op when no session is active; never raises.
+    """Bill a standalone one-shot LLM call to the active agent's session — the SAME path the
+    loop uses (``accumulate_usage`` + ``record_token_usage`` + an immediate ``charge_llm_call``),
+    so a one-shot OUTSIDE the loop is tracked AND charged, not tracked-but-uncharged. No-op
+    when no session is active; never raises.
 
     ``step`` tags the recorded row with a distinct agent label ("<agent>:<step>") so the
     one-shot's cost shows as its own line in per-agent breakdowns. The session_id and the
@@ -729,11 +730,20 @@ async def record_oneshot_usage(
     session = current_session.get()
     if session is None:
         return
+    request_id = str(uuid.uuid4())
     try:
         session.accumulate_usage(usage)
         agent_type = f"{session.agent_name}:{step}" if step else None
         await session.record_token_usage(
-            usage, str(uuid.uuid4()), model, provider, agent_type=agent_type
+            usage, request_id, model, provider, agent_type=agent_type
         )
+        # Charge it the same way the loop charges each LLM call — same requestId (idempotent),
+        # best-effort. Function-level import: billing imports AuthContext from this module.
+        if session.auth is not None:
+            from app.services import billing
+
+            await billing.charge_llm_call(
+                session.auth, usage, model, request_id, session.session_id
+            )
     except Exception:  # billing must never break the one-shot call it wraps
         logger.warning("record_oneshot_usage failed (ignored)", exc_info=True)

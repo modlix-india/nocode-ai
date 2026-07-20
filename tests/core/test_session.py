@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import unittest
+from unittest import mock
 
 from app.core.session import (
     _tool_only_turn_note,
@@ -61,6 +62,8 @@ class ToolOnlyTurnNoteTests(unittest.TestCase):
 class _CaptureSession:
     """Minimal stand-in for BaseSession: captures the record_token_usage call."""
     agent_name = "campaign"
+    auth = None  # real BaseSession always exposes .auth (may be None); the charge is gated on it
+    session_id = "test-session"
 
     def __init__(self):
         self.accumulated: dict | None = None
@@ -72,7 +75,8 @@ class _CaptureSession:
     async def record_token_usage(self, usage, request_id, model,
                                  provider_name=None, agent_type=None) -> None:
         self.recorded = {"agent_type": agent_type, "model": model,
-                         "provider": provider_name, "usage": usage}
+                         "provider": provider_name, "usage": usage,
+                         "request_id": request_id}
 
 
 class RecordOneshotUsageTests(unittest.TestCase):
@@ -105,6 +109,28 @@ class RecordOneshotUsageTests(unittest.TestCase):
         # current_session default is None -> no row recorded, no exception
         asyncio.run(record_oneshot_usage({"input_tokens": 1, "output_tokens": 1},
                                          "gpt-4o", step="x"))
+
+    def test_it_charges_the_call_under_the_same_request_id(self):
+        # A one-shot OUTSIDE the loop must be CHARGED (billing.charge_llm_call), not just
+        # tracked — under the SAME request_id the record used, so the charge is idempotent.
+        sess = _CaptureSession()
+        sess.auth = mock.MagicMock()
+        with mock.patch("app.services.billing.charge_llm_call",
+                        new=mock.AsyncMock()) as charge:
+            self._bill(sess, step="offering_taxonomy")
+        self.assertTrue(charge.called)
+        _auth, _usage, _model, req_id, sid = charge.call_args.args
+        self.assertEqual(req_id, sess.recorded["request_id"])  # same id → idempotent
+        self.assertEqual(sid, sess.session_id)
+
+    def test_no_auth_means_no_charge(self):
+        # auth is None (no wallet identity) -> skip the charge, but still track the usage.
+        sess = _CaptureSession()  # auth = None
+        with mock.patch("app.services.billing.charge_llm_call",
+                        new=mock.AsyncMock()) as charge:
+            self._bill(sess, step="x")
+        self.assertFalse(charge.called)
+        self.assertIsNotNone(sess.recorded)  # tracking still happened
 
 
 if __name__ == "__main__":

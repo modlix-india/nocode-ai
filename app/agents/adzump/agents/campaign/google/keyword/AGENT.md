@@ -528,12 +528,14 @@ tool/function calling.
 call in JSON mode (the sanctioned pattern for a self-contained inference), so it is
 **OpenAI-only** and independent of `PROVIDER`.
 
-**Billing for the one-shot.** A one-shot bypasses the loop, so it isn't auto-tracked. It's
-still billed **per-agent** via `record_oneshot_usage` (core `session.py`), which records to the
-currently-running agent's session with `record_token_usage` — the **same DB path the loop
-uses**. `BaseAgent.run` publishes that session through the `current_session` contextvar, so no
-session is threaded through tool contexts. The taxonomy call is thus attributed to the agent
-that invoked it (`campaign`), not dropped or lumped onto the main agent.
+**Billing for the one-shot.** A one-shot bypasses the loop, so nothing bills it automatically.
+`record_oneshot_usage` (core `session.py`) does both halves the loop does per LLM call: it
+**tracks** the usage (`record_token_usage`, on its own `campaign:offering_taxonomy` line) **and
+charges** it (`billing.charge_llm_call`, under the same `request_id` → idempotent) — so a call
+outside the loop is **charged, not tracked-but-uncharged**. `BaseAgent.run` publishes the
+session through the `current_session` contextvar, so no session is threaded through tool
+contexts. The taxonomy call is thus attributed to the agent that invoked it (`campaign`), not
+dropped or lumped onto the main agent.
 
 ---
 
