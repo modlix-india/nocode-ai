@@ -1,0 +1,553 @@
+{
+  "_id": "695e6dfb5311834e6b7a4f45",
+  "definition": {
+    "name": "createTicketAndsendNotification",
+    "namespace": "leadzump",
+    "steps": {
+      "comment": {
+        "statementName": "comment",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 213.0740797254773,
+          "top": 415.6666480170355
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.leadPayload.comment"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": {
+                "comment": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Argument.comment"
+                  }
+                },
+                "appCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.appCode"
+                  }
+                },
+                "clientCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.clientCode"
+                  }
+                }
+              },
+              "expression": "Arguments.comment"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "appCode": {
+        "statementName": "appCode",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 182.8518575032552,
+          "top": 704.0740712483723
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.leadPayload.appCode"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": {
+                "comment": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Argument.comment"
+                  }
+                },
+                "appCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.appCode"
+                  }
+                },
+                "clientCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.clientCode"
+                  }
+                }
+              },
+              "expression": "Arguments.appCode"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": false,
+          "Steps__d-o-t__comment__d-o-t__output": true
+        }
+      },
+      "clientCode": {
+        "statementName": "clientCode",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 172.51852416992185,
+          "top": 1053.5925954182942
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.leadPayload.clientCode"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": {
+                "comment": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Argument.comment"
+                  }
+                },
+                "appCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.appCode"
+                  }
+                },
+                "clientCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.clientCode"
+                  }
+                }
+              },
+              "expression": "Arguments.clientCode"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": false,
+          "Steps__d-o-t__appCode__d-o-t__output": true
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 48.85185750325513,
+          "top": 135.88888041178382
+        },
+        "parameterMap": {
+          "name": {
+            "2KrSP7O8FSmfT9bJChzt6b": {
+              "key": "2KrSP7O8FSmfT9bJChzt6b",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "leadPayload"
+            }
+          },
+          "schema": {
+            "42IN6UVAcqtCLFfQIRZXIV": {
+              "key": "42IN6UVAcqtCLFfQIRZXIV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "leadDetails": {
+        "statementName": "leadDetails",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 506.1851908365884,
+          "top": 916.9999999999999
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.leadPayload.leadDetails"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": {
+                "comment": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Argument.comment"
+                  }
+                },
+                "appCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.appCode"
+                  }
+                },
+                "clientCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.clientCode"
+                  }
+                }
+              },
+              "expression": "Arguments.leadDetails"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": false,
+          "Steps__d-o-t__clientCode__d-o-t__output": true
+        }
+      },
+      "campDetails": {
+        "statementName": "campDetails",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 543.5185241699218,
+          "top": 633.3703562418618
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.leadPayload.campaignDetails"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": {
+                "comment": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Argument.comment"
+                  }
+                },
+                "appCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.appCode"
+                  }
+                },
+                "clientCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.clientCode"
+                  }
+                }
+              },
+              "expression": "Arguments.campaignDetails"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": false,
+          "Steps__d-o-t__leadDetails__d-o-t__output": true
+        }
+      },
+      "make": {
+        "statementName": "make",
+        "name": "Make",
+        "namespace": "System",
+        "position": {
+          "left": 878.5185241699216,
+          "top": 453.0740712483722
+        },
+        "parameterMap": {
+          "resultShape": {
+            "1uIAF4Gpoh8xeWq9MclWA9": {
+              "key": "1uIAF4Gpoh8xeWq9MclWA9",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "clientCode": "{{Context.leadPayload.clientCode}}",
+                "appCode": "{{Context.leadPayload.appCode}}",
+                "leadDetails": {
+                  "email": {
+                    "address": "{{Context.leadPayload.leadDetails.email}}"
+                  },
+                  "fullName": "{{Context.leadPayload.leadDetails.fullName}}",
+                  "phone": {
+                    "number": "{{Context.leadPayload.leadDetails.phone}}"
+                  },
+                  "workEmail": {
+                    "address": "{{Context.leadPayload.leadDetails.workEmail}}"
+                  },
+                  "workPhoneNumber": {
+                    "number": "{{Context.leadPayload.leadDetails.workPhoneNumber}}"
+                  },
+                  "whatsappNumber": {
+                    "number": "{{Context.leadPayload.leadDetails.whatsappNumber}}"
+                  },
+                  "platform": "{{Context.leadPayload.leadDetails.platform}}",
+                  "subSource": "{{Context.leadPayload.leadDetails.subSource}}",
+                  "source": "{{Context.leadPayload.leadDetails.source}}",
+                  "customFields": "{{Context.leadPayload.leadDetails.customFields}}"
+                },
+                "campaignDetails": "{{Context.leadPayload.campaignDetails}}"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__campDetails__d-o-t__output": true
+        }
+      },
+      "createForCampaign": {
+        "statementName": "createForCampaign",
+        "name": "CreateForCampaign",
+        "namespace": "EntityProcessor.Ticket",
+        "position": {
+          "left": 1236.851857503255,
+          "top": 575.6666666666666
+        },
+        "parameterMap": {
+          "campaignTicketRequest": {
+            "1ygVibLZzY8Yeo767GMvO0": {
+              "key": "1ygVibLZzY8Yeo767GMvO0",
+              "type": "EXPRESSION",
+              "expression": "Steps.make.output.value",
+              "order": 1
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1642.5555470784502,
+          "top": 490.55557250976557
+        },
+        "parameterMap": {
+          "condition": {
+            "5dQJXl3D1HbqLKeWbgJPie": {
+              "key": "5dQJXl3D1HbqLKeWbgJPie",
+              "type": "EXPRESSION",
+              "expression": "Steps.createForCampaign.output.created",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 3022.518524169922,
+          "top": 210.66666666666652
+        },
+        "parameterMap": {
+          "results": {
+            "6ttTeP0V418U7xMzn0BQB4": {
+              "key": "6ttTeP0V418U7xMzn0BQB4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": false,
+                  "value": "Deal created and notification sent successfully"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__campDetails__d-o-t__output": false,
+          "Steps__d-o-t__if1__d-o-t__false": true
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 2616.074096679687,
+          "top": 340.14814249674475
+        },
+        "parameterMap": {
+          "condition": {
+            "1txdS29wxkIMy91bRpAVLl": {
+              "key": "1txdS29wxkIMy91bRpAVLl",
+              "type": "EXPRESSION",
+              "expression": "Steps.sendDealCreatedNotification.output.sent",
+              "order": 1
+            }
+          }
+        }
+      },
+      "sendDealCreatedNotification": {
+        "statementName": "sendDealCreatedNotification",
+        "name": "SendNotification",
+        "namespace": "CoreServices.Notification",
+        "position": {
+          "left": 2193.9999999999995,
+          "top": 216.74071248372394
+        },
+        "parameterMap": {
+          "notificationName": {
+            "3BLnRzPSTkObFTfX7bvyIL": {
+              "key": "3BLnRzPSTkObFTfX7bvyIL",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "dealCreated"
+            }
+          },
+          "connectionName": {
+            "43yjPwndztwVD6CGmWzLxb": {
+              "key": "43yjPwndztwVD6CGmWzLxb",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "notification"
+            }
+          },
+          "appCode": {
+            "3Xmfdt7crg5QEj5rCob3tp": {
+              "key": "3Xmfdt7crg5QEj5rCob3tp",
+              "type": "VALUE",
+              "expression": "",
+              "value": "leadzump"
+            }
+          },
+          "targetId": {
+            "65IoSoRwRXQjGP2Y7CiHHh": {
+              "key": "65IoSoRwRXQjGP2Y7CiHHh",
+              "type": "EXPRESSION",
+              "expression": "Steps.createForCampaign.output.created.assignedUserId",
+              "value": 2863
+            }
+          },
+          "clientCode": {
+            "1hOnCucdiMArZG8VN2oOpP": {
+              "key": "1hOnCucdiMArZG8VN2oOpP",
+              "type": "EXPRESSION",
+              "expression": "Steps.createForCampaign.output.created.clientCode",
+              "value": "CHULH"
+            }
+          },
+          "notificationCategory": {
+            "6x1nFNwHbQcji3cM0zc1Y0": {
+              "key": "6x1nFNwHbQcji3cM0zc1Y0",
+              "type": "EXPRESSION",
+              "expression": "\"DEAL_CREATE\"",
+              "value": "Default"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "parameters": {
+      "clientCode": {
+        "parameterName": "clientCode",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "appCode": {
+        "parameterName": "appCode",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "leadDetails": {
+        "parameterName": "leadDetails",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "campaignDetails": {
+        "parameterName": "campaignDetails",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      }
+    }
+  },
+  "name": "leadzump.createTicketAndsendNotification",
+  "message": "From transport : Zq5JK8nIZTFbA8Iwz8VhLL",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 7,
+  "updatedAt": "2026-05-14 10:47:12.639000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-07 14:30:19.910000",
+  "createdBy": "<USER>"
+}

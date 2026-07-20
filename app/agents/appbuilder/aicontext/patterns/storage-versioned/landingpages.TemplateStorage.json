@@ -1,0 +1,20 @@
+{
+  "_id": "6489409dce5f9b3a0e3553e5",
+  "schema": {
+    "ref": "LandingPages.template"
+  },
+  "uniqueName": "landingpages_system_s18ekxsraek1",
+  "isAudited": true,
+  "isVersioned": true,
+  "isAppLevel": true,
+  "onlyThruKIRun": false,
+  "name": "TemplateStorage",
+  "message": "From transport : 24jcLIvMHfuDAcrpoFVk0b",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 7,
+  "updatedAt": "2024-06-10 17:54:06.253000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-06-14 04:22:53.150000",
+  "createdBy": "<USER>"
+}

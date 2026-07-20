@@ -1,0 +1,1429 @@
+{
+  "_id": "697c7a129fd7944bbcf43f0b",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "Locations"
+      }
+    }
+  },
+  "rootComponent": "5tDC4cILe6TQuavZzhfVgf",
+  "componentDefinition": {
+    "5tDC4cILe6TQuavZzhfVgf": {
+      "key": "5tDC4cILe6TQuavZzhfVgf",
+      "name": "Page Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "7dFcMcdbCin0Xal2J9CQjA": true,
+        "2nZchW7YI1HLXa6Vd5gaio": true
+      }
+    },
+    "7dFcMcdbCin0Xal2J9CQjA": {
+      "key": "7dFcMcdbCin0Xal2J9CQjA",
+      "name": "text-wrapper",
+      "type": "Grid",
+      "styleProperties": {
+        "435ppyBXJ0NbLtZdNf8Uuv": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1vw"
+              },
+              "paddingTop": {
+                "value": "6vw"
+              },
+              "paddingBottom": {
+                "value": "6vw"
+              },
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1iGDYyCwDlxFSaRrTFUWQJ": true,
+        "2lkQI11VqzO8XqlOOk5cI3": true
+      },
+      "displayOrder": 1
+    },
+    "1iGDYyCwDlxFSaRrTFUWQJ": {
+      "key": "1iGDYyCwDlxFSaRrTFUWQJ",
+      "name": "h",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Find Us\n"
+        }
+      },
+      "styleProperties": {
+        "5pFEDDpU7eYu1ht0nfqdRz": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.857vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.933vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2lkQI11VqzO8XqlOOk5cI3": {
+      "key": "2lkQI11VqzO8XqlOOk5cI3",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Find our locations and opening hours below\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4P4fC083zBerWpdB6SYu9o": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "3.071vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "color": {
+                "value": "rgb(1,137,57)"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "9.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2nZchW7YI1HLXa6Vd5gaio": {
+      "key": "2nZchW7YI1HLXa6Vd5gaio",
+      "name": "locations-wrapper",
+      "type": "Grid",
+      "styleProperties": {
+        "2T6e77n0pvuTL3ayiN3n2F": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "9vw"
+              },
+              "paddingTop": {
+                "value": "4vw"
+              },
+              "paddingBottom": {
+                "value": "4vw"
+              },
+              "paddingLeft": {
+                "value": "4vw"
+              },
+              "paddingRight": {
+                "value": "4vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "15vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_ONLY": {
+              "gap": {
+                "value": "15vw"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "gap": {
+                "value": "15vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1fYzIq1jba1UolSw9aOono": true,
+        "1ScIgFO8WTqbhyuvb3HKfB": true
+      },
+      "displayOrder": 2
+    },
+    "1fYzIq1jba1UolSw9aOono": {
+      "key": "1fYzIq1jba1UolSw9aOono",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "icon": "api/files/static/file/POORN/Vegan/locationicon.png",
+              "title": "Location 01",
+              "street": "500 Terry Francine Street",
+              "locationDetails": "San Francisco, CA 94158",
+              "email": "<EMAIL>",
+              "phone": "<PHONE>",
+              "timeings": "Opening Hours",
+              "mondayToFriday": "8am - 8pm",
+              "saturday": "9am - 7pm",
+              "sunday": "9am - 8pm"
+            },
+            {
+              "icon": "api/files/static/file/POORN/Vegan/locationicon.png",
+              "title": "Location 02",
+              "street": "500 Terry Francine Street",
+              "locationDetails": "San Francisco, CA 94158",
+              "email": "<EMAIL>",
+              "phone": "<PHONE>",
+              "timeings": "Opening Hours",
+              "mondayToFriday": "8am - 8pm",
+              "saturday": "9am - 7pm",
+              "sunday": "9am - 8pm"
+            },
+            {
+              "icon": "api/files/static/file/POORN/Vegan/locationicon.png",
+              "title": "Location 03",
+              "street": "500 Terry Francine Street",
+              "locationDetails": "San Francisco, CA 94158",
+              "email": "<EMAIL>",
+              "phone": "<PHONE>",
+              "timeings": "Opening Hours",
+              "mondayToFriday": "8am - 8pm",
+              "saturday": "9am - 7pm",
+              "sunday": "9am - 8pm"
+            }
+          ]
+        },
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5VHbARf5iHjsMInFhRwlRA": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "13vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5dN4b9PSkTsHUZjv5A8tEV": true
+      },
+      "displayOrder": 1
+    },
+    "5dN4b9PSkTsHUZjv5A8tEV": {
+      "key": "5dN4b9PSkTsHUZjv5A8tEV",
+      "name": "Location-container",
+      "type": "Grid",
+      "styleProperties": {
+        "3Q3O5F7lHgUohQjM6qpf37": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Gr9Dyzr1rIYVpf3RdrdTt": true,
+        "63Di0pnxyAO8zt98pJxcI0": true
+      },
+      "displayOrder": 0
+    },
+    "3Gr9Dyzr1rIYVpf3RdrdTt": {
+      "key": "3Gr9Dyzr1rIYVpf3RdrdTt",
+      "name": "text-wrapper",
+      "type": "Grid",
+      "styleProperties": {
+        "40O6K48yTjnkBZX77zbzhR": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "25cNGjOo09Iyu7a4ggcO7M": true,
+        "3KOp3BNAk9pHPlgmQjJ72Q": true
+      },
+      "displayOrder": 3
+    },
+    "25cNGjOo09Iyu7a4ggcO7M": {
+      "key": "25cNGjOo09Iyu7a4ggcO7M",
+      "name": "content",
+      "type": "Grid",
+      "styleProperties": {
+        "5C4uCK7OYt53l1uH4xkahH": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7HdLRlyEDlxsGR7IWqEAei": true,
+        "9JeBeDGfXOjAvi7nESK2d": true,
+        "3mKS5YzN7eWht2uVPQLpMU": true,
+        "2IeEbpdh4TO1R6PWzcHgvF": true
+      },
+      "displayOrder": 2
+    },
+    "7HdLRlyEDlxsGR7IWqEAei": {
+      "key": "7HdLRlyEDlxsGR7IWqEAei",
+      "name": "street",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.street"
+          }
+        }
+      },
+      "styleProperties": {
+        "2OsoWBBV0F0JALngklmS1m": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "9JeBeDGfXOjAvi7nESK2d": {
+      "key": "9JeBeDGfXOjAvi7nESK2d",
+      "name": "locationDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.locationDetails"
+          }
+        }
+      },
+      "styleProperties": {
+        "l39GorwpWcjLx5riHFQOm": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3mKS5YzN7eWht2uVPQLpMU": {
+      "key": "3mKS5YzN7eWht2uVPQLpMU",
+      "name": "Email",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.email"
+          }
+        }
+      },
+      "styleProperties": {
+        "3Iazjp3LtdrPTD10eZwtDW": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2IeEbpdh4TO1R6PWzcHgvF": {
+      "key": "2IeEbpdh4TO1R6PWzcHgvF",
+      "name": "Phone",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.phone"
+          }
+        }
+      },
+      "styleProperties": {
+        "6jBMMv68VpdcgEbw5fzN5x": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "3cuwMRIs5GS5V5mnAZTaoB": {
+      "key": "3cuwMRIs5GS5V5mnAZTaoB",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3f3VLV9oEo1JRSugWn6Xez": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4wqCtAKESUnnvLGbnsK3LM": {
+      "key": "4wqCtAKESUnnvLGbnsK3LM",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.icon"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5CxJ9ZJ5jySqATPdH7Hmyd": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "35px"
+              },
+              "height": {
+                "value": "42px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3KOp3BNAk9pHPlgmQjJ72Q": {
+      "key": "3KOp3BNAk9pHPlgmQjJ72Q",
+      "name": "timings",
+      "type": "Grid",
+      "styleProperties": {
+        "2x1U1uDYOLV8g1DVsP7bWh": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1bZ83mjUgxt3tSdJAT4nNd": true,
+        "3cCLr1MQEA46FusaLrhu2i": true,
+        "52JRn9NY8thFxvp80bcTbd": true,
+        "35FPFRVrQ41bq7rHQgfIbx": true
+      },
+      "displayOrder": 3
+    },
+    "WHHD5P0sz0v3HqqOTJ3Yf": {
+      "key": "WHHD5P0sz0v3HqqOTJ3Yf",
+      "name": "Timeings",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.timeings"
+          }
+        }
+      },
+      "styleProperties": {
+        "2QwzKpW9RVkTu8HaIIcFU2": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.857vw"
+              },
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "color": {
+                "value": "#000"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.933vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1bZ83mjUgxt3tSdJAT4nNd": {
+      "key": "1bZ83mjUgxt3tSdJAT4nNd",
+      "name": "Mondaytofriday",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.mondayToFriday"
+          }
+        }
+      },
+      "styleProperties": {
+        "3gzjl3RTOqKFbjhbTgExOE": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.857vw"
+              },
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "color": {
+                "value": "#000"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.933vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3cCLr1MQEA46FusaLrhu2i": {
+      "key": "3cCLr1MQEA46FusaLrhu2i",
+      "name": "Saturday",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.saturday"
+          }
+        }
+      },
+      "styleProperties": {
+        "5TgWg2nv7J9dQR6Zb9bGFi": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "52JRn9NY8thFxvp80bcTbd": {
+      "key": "52JRn9NY8thFxvp80bcTbd",
+      "name": "Sunday",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.sunday"
+          }
+        }
+      },
+      "styleProperties": {
+        "45Bsth3CTFuoKTnBPX1LHO": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "63Di0pnxyAO8zt98pJxcI0": {
+      "key": "63Di0pnxyAO8zt98pJxcI0",
+      "name": "image-text-wrapper",
+      "type": "Grid",
+      "styleProperties": {
+        "3U0HHNpK8qBEiEvEiPIedA": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4wqCtAKESUnnvLGbnsK3LM": true,
+        "1YVbk62qJDLyWSJHdtc69R": true
+      },
+      "displayOrder": 1
+    },
+    "1YVbk62qJDLyWSJHdtc69R": {
+      "key": "1YVbk62qJDLyWSJHdtc69R",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        }
+      },
+      "styleProperties": {
+        "3pgWuPaRqm5f41kGeNOaqX": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "2.571vw"
+              },
+              "lineHeight": {
+                "value": "1.1"
+              },
+              "color": {
+                "value": "#000"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "9.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "35FPFRVrQ41bq7rHQgfIbx": {
+      "key": "35FPFRVrQ41bq7rHQgfIbx",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "WHHD5P0sz0v3HqqOTJ3Yf": true
+      },
+      "displayOrder": 1
+    },
+    "1ScIgFO8WTqbhyuvb3HKfB": {
+      "key": "1ScIgFO8WTqbhyuvb3HKfB",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "icon": "api/files/static/file/POORN/Vegan/locationicon.png",
+              "title": "Location 04",
+              "street": "500 Terry Francine Street",
+              "locationDetails": "San Francisco, CA 94158",
+              "email": "<EMAIL>",
+              "phone": "<PHONE>",
+              "timeings": "Opening Hours",
+              "mondayToFriday": "8am - 8pm",
+              "saturday": "9am - 7pm",
+              "sunday": "9am - 8pm"
+            },
+            {
+              "icon": "api/files/static/file/POORN/Vegan/locationicon.png",
+              "title": "Location 05",
+              "street": "500 Terry Francine Street",
+              "locationDetails": "San Francisco, CA 94158",
+              "email": "<EMAIL>",
+              "phone": "<PHONE>",
+              "timeings": "Opening Hours",
+              "mondayToFriday": "8am - 8pm",
+              "saturday": "9am - 7pm",
+              "sunday": "9am - 8pm"
+            },
+            {
+              "icon": "api/files/static/file/POORN/Vegan/locationicon.png",
+              "title": "Location 06",
+              "street": "500 Terry Francine Street",
+              "locationDetails": "San Francisco, CA 94158",
+              "email": "<EMAIL>",
+              "phone": "<PHONE>",
+              "timeings": "Opening Hours",
+              "mondayToFriday": "8am - 8pm",
+              "saturday": "9am - 7pm",
+              "sunday": "9am - 8pm"
+            }
+          ]
+        },
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6c9VxkcqWuaja7uWdQ8jPC": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "13vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1JHbELfJpUsvDzHMLjzFiD": true
+      },
+      "displayOrder": 1
+    },
+    "1JHbELfJpUsvDzHMLjzFiD": {
+      "key": "1JHbELfJpUsvDzHMLjzFiD",
+      "name": "Location-container",
+      "type": "Grid",
+      "styleProperties": {
+        "3Q3O5F7lHgUohQjM6qpf37": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "o9MD9XgLKpIJcVimPawY4": true,
+        "5JZ8EIKmxUgUN14Uj2rU3v": true
+      },
+      "displayOrder": 0
+    },
+    "o9MD9XgLKpIJcVimPawY4": {
+      "key": "o9MD9XgLKpIJcVimPawY4",
+      "name": "text-wrapper",
+      "type": "Grid",
+      "styleProperties": {
+        "40O6K48yTjnkBZX77zbzhR": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "pjBicDYqt7axkaceyiHd2": true,
+        "3LSHCahtLaWkj4a3Z1HNp4": true
+      },
+      "displayOrder": 3
+    },
+    "5JZ8EIKmxUgUN14Uj2rU3v": {
+      "key": "5JZ8EIKmxUgUN14Uj2rU3v",
+      "name": "image-text-wrapper",
+      "type": "Grid",
+      "styleProperties": {
+        "3U0HHNpK8qBEiEvEiPIedA": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4nG7VEoEuRpoGRhGFzHuBZ": true,
+        "3iladDXmQJULm7DPX96qKp": true
+      },
+      "displayOrder": 1
+    },
+    "pjBicDYqt7axkaceyiHd2": {
+      "key": "pjBicDYqt7axkaceyiHd2",
+      "name": "content",
+      "type": "Grid",
+      "styleProperties": {
+        "5C4uCK7OYt53l1uH4xkahH": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "AxcD9RP2HY3VI8EMAC10n": true,
+        "1gWI9ulD8XSLPNlAsgmiix": true,
+        "3AegPYJAC2vyKeHAchIvRP": true,
+        "5mmUPrfYdGz215hxN22S8t": true
+      },
+      "displayOrder": 2
+    },
+    "3LSHCahtLaWkj4a3Z1HNp4": {
+      "key": "3LSHCahtLaWkj4a3Z1HNp4",
+      "name": "timings",
+      "type": "Grid",
+      "styleProperties": {
+        "2x1U1uDYOLV8g1DVsP7bWh": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7lVFNuGER76g4NC4lsnXry": true,
+        "5wtXBcVV9CHTzbWk4fBcRU": true,
+        "6OotKrZZ4Lml5b1DraCOHA": true,
+        "qlRwXuB7qcShWNm5t3V7Y": true
+      },
+      "displayOrder": 3
+    },
+    "4nG7VEoEuRpoGRhGFzHuBZ": {
+      "key": "4nG7VEoEuRpoGRhGFzHuBZ",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.icon"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5CxJ9ZJ5jySqATPdH7Hmyd": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "35px"
+              },
+              "height": {
+                "value": "42px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3iladDXmQJULm7DPX96qKp": {
+      "key": "3iladDXmQJULm7DPX96qKp",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        }
+      },
+      "styleProperties": {
+        "46xp7YZnKowYSJpY8dQCAV": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "2.571vw"
+              },
+              "lineHeight": {
+                "value": "1.1"
+              },
+              "color": {
+                "value": "#000"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "9.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "AxcD9RP2HY3VI8EMAC10n": {
+      "key": "AxcD9RP2HY3VI8EMAC10n",
+      "name": "street",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.street"
+          }
+        }
+      },
+      "styleProperties": {
+        "2iUGtUIa8CwSVdKIPq6THp": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1gWI9ulD8XSLPNlAsgmiix": {
+      "key": "1gWI9ulD8XSLPNlAsgmiix",
+      "name": "locationDetails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.locationDetails"
+          }
+        }
+      },
+      "styleProperties": {
+        "6thFPmilU3nXNnLLsDRFoU": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3AegPYJAC2vyKeHAchIvRP": {
+      "key": "3AegPYJAC2vyKeHAchIvRP",
+      "name": "Email",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.email"
+          }
+        }
+      },
+      "styleProperties": {
+        "7IoLArGWaKfidwzKGMfmKM": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5mmUPrfYdGz215hxN22S8t": {
+      "key": "5mmUPrfYdGz215hxN22S8t",
+      "name": "Phone",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.phone"
+          }
+        }
+      },
+      "styleProperties": {
+        "4lxnxK0fzonwSmn8adGnNw": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "7lVFNuGER76g4NC4lsnXry": {
+      "key": "7lVFNuGER76g4NC4lsnXry",
+      "name": "Mondaytofriday",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.mondayToFriday"
+          }
+        }
+      },
+      "styleProperties": {
+        "52eYwKrMAOIL8RCMrYCE6C": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.857vw"
+              },
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "color": {
+                "value": "#000"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.933vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5wtXBcVV9CHTzbWk4fBcRU": {
+      "key": "5wtXBcVV9CHTzbWk4fBcRU",
+      "name": "Saturday",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.saturday"
+          }
+        }
+      },
+      "styleProperties": {
+        "3bVcz8uLzcSwWzY16GqD9j": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6OotKrZZ4Lml5b1DraCOHA": {
+      "key": "6OotKrZZ4Lml5b1DraCOHA",
+      "name": "Sunday",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.sunday"
+          }
+        }
+      },
+      "styleProperties": {
+        "3iCmqmFteS6N4DtG67Da1n": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "fontSize": {
+                "value": "1.5vw"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "color": {
+                "value": "#000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "qlRwXuB7qcShWNm5t3V7Y": {
+      "key": "qlRwXuB7qcShWNm5t3V7Y",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1fRUc0xIO44MgFJw9aWblL": true
+      },
+      "displayOrder": 1
+    },
+    "1fRUc0xIO44MgFJw9aWblL": {
+      "key": "1fRUc0xIO44MgFJw9aWblL",
+      "name": "Timeings",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.timeings"
+          }
+        }
+      },
+      "styleProperties": {
+        "7efJTpKIVKq6lpO5ewsI6g": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.857vw"
+              },
+              "fontFamily": {
+                "value": "Montserrat"
+              },
+              "color": {
+                "value": "#000"
+              },
+              "lineHeight": {
+                "value": "1.2"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.933vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    }
+  },
+  "name": "Locations",
+  "clientCode": "POORN",
+  "appCode": "veganrestauranttocxdju",
+  "title": "Locations",
+  "version": 17,
+  "updatedAt": "2026-01-30 11:30:01.345000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-30 09:29:54.655000",
+  "createdBy": "<USER>"
+}

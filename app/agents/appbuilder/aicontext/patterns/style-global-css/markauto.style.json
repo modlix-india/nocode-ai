@@ -1,0 +1,13 @@
+{
+  "_id": "63cfac132288ff2273a8beaf",
+  "styleString": " * { transition: width 1s, height 1s, padding-left 1s, padding-right 1s, padding-top 1s, padding-bottom 1s, color 1s, background-size 1s;}",
+  "name": "style",
+  "message": "Style for the markauto",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 2,
+  "updatedAt": "2023-06-14 04:23:50.295000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-01-24 09:59:47.427000",
+  "createdBy": "<USER>"
+}

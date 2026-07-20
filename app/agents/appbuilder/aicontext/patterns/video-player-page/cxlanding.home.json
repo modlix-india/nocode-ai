@@ -1,0 +1,5869 @@
+{
+  "_id": "662137217284ef62dfa51b53",
+  "properties": {
+    "onLoadEvent": "B3nyl9zcpSqIdWVVOUDzu",
+    "loadStrategy": "reload",
+    "wrapShell": false,
+    "title": {
+      "name": {
+        "value": "CX AI for Real Estate: Boost Pre-Sales Efficiency"
+      }
+    },
+    "seo": {
+      "description": {
+        "value": "Elevate your real estate business with Modlix CX AI. Our AI-driven solution streamlines lead generation and nurtures potential clients through the sales funnel, optimizing every stage for faster, more effective conversions."
+      },
+      "robots": {
+        "value": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+      }
+    }
+  },
+  "eventFunctions": {
+    "6670Z52eQqTX0qtG10OC0": {
+      "name": "toggleGrid",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 460.40625,
+            "top": 78.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid1",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_2": {
+          "statementName": "setStore_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 706.40625,
+            "top": 80.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid1",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_3": {
+          "statementName": "setStore_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 194.40625,
+            "top": 313.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid1",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_4": {
+          "statementName": "setStore_Copy_4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 450.40625,
+            "top": 322.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid1",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_5": {
+          "statementName": "setStore_Copy_5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 705.40625,
+            "top": 325.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid1",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 221.40625,
+            "top": 76.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid1",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "B3nyl9zcpSqIdWVVOUDzu": {
+      "name": "onLoad",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 14.40625,
+            "top": 20.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 245.40625,
+            "top": 23.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_2": {
+          "statementName": "setStore_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 487.40625,
+            "top": 31.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_3": {
+          "statementName": "setStore_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 717.40625,
+            "top": 35.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_2__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_4": {
+          "statementName": "setStore_Copy_4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 943.40625,
+            "top": 45.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_3__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_5": {
+          "statementName": "setStore_Copy_5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1184.40625,
+            "top": 35.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_4__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_6": {
+          "statementName": "setStore_Copy_6",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1185.40625,
+            "top": 286.296875
+          },
+          "parameterMap": {
+            "path": {
+              "6zxm7fsvUd5vaPeovmBB5M": {
+                "key": "6zxm7fsvUd5vaPeovmBB5M",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid7"
+              }
+            },
+            "value": {
+              "37oy3tcfvlKA73hI7TiT9R": {
+                "key": "37oy3tcfvlKA73hI7TiT9R",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__onload2__d-o-t__output": true
+          }
+        },
+        "onload2": {
+          "statementName": "onload2",
+          "name": "onload2",
+          "namespace": "_",
+          "position": {
+            "left": 940.40625,
+            "top": 349.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_7__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_7": {
+          "statementName": "setStore_Copy_7",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 700.40625,
+            "top": 320.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3iU82IZlaIeazF6NCWw5FI": {
+                "key": "3iU82IZlaIeazF6NCWw5FI",
+                "type": "EXPRESSION",
+                "expression": "'Page.toggleVideo'",
+                "order": 1
+              }
+            },
+            "value": {
+              "1xH0BllAQch0npnKw1valc": {
+                "key": "1xH0BllAQch0npnKw1valc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 369.25000190734863,
+            "top": 315.29687881469727
+          },
+          "parameterMap": {
+            "path": {
+              "1CLP3luXg9KIx9zgeiNa9P": {
+                "key": "1CLP3luXg9KIx9zgeiNa9P",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "12NZq4VLOYvrhGZkWby2KI": {
+                "key": "12NZq4VLOYvrhGZkWby2KI",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_5__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4NKudFy4EJorBjkt4nZzMn": {
+      "name": "openGrid2",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 277.40625,
+            "top": 86.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid2",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_2": {
+          "statementName": "setStore_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 751.40625,
+            "top": 85.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid2",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_2_Copy_1": {
+          "statementName": "setStore_Copy_2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 262.40625,
+            "top": 337.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid2",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_2_Copy_2": {
+          "statementName": "setStore_Copy_2_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 512.40625,
+            "top": 341.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid2",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_2_Copy_3": {
+          "statementName": "setStore_Copy_2_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 754.40625,
+            "top": 345.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid2",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 513.40625,
+            "top": 88.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid2",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2eRA90kU8kZq7o0uV54nmT": {
+      "name": "opengrid3",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 239.40625,
+            "top": 98.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid3",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 487.40625,
+            "top": 110.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid3",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_2": {
+          "statementName": "setStore_Copy_1_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 230.40625,
+            "top": 366.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid3",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_3": {
+          "statementName": "setStore_Copy_1_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 479.40625,
+            "top": 368.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid3",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_4": {
+          "statementName": "setStore_Copy_1_Copy_4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 754.40625,
+            "top": 361.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid3",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 751.40625,
+            "top": 115.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid3",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4yldFYMuKCa2EmK6G8jACd": {
+      "name": "openGrid4",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 273.40625,
+            "top": 69.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid4",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 504.40625,
+            "top": 73.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid4",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_2": {
+          "statementName": "setStore_Copy_1_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 745.40625,
+            "top": 80.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid4",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_3": {
+          "statementName": "setStore_Copy_1_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 493.40625,
+            "top": 336.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid4",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_4": {
+          "statementName": "setStore_Copy_1_Copy_4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 743.40625,
+            "top": 331.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid4",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 258.40625,
+            "top": 321.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid4",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "77GBo0ONxiZMQ48jFELuP6": {
+      "name": "opengrid5",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 296.40625,
+            "top": 53.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid5",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 544.40625,
+            "top": 55.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid5",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_2": {
+          "statementName": "setStore_Copy_1_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 810.40625,
+            "top": 61.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid5",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_2_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 256.40625,
+            "top": 300.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid5",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_1_Copy_2_Copy_2": {
+          "statementName": "setStore_Copy_1_Copy_2_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 806.40625,
+            "top": 308.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid5",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 550.40625,
+            "top": 301.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid5",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5Ou6dlJ1epgrEd0XbHVNI1": {
+      "name": "opengrid6",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 293.40625,
+            "top": 87.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid1"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid6",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_2": {
+          "statementName": "setStore_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 526.40625,
+            "top": 90.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid2"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid6",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_5": {
+          "statementName": "setStore_Copy_5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 767.40625,
+            "top": 94.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid3"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid6",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_3": {
+          "statementName": "setStore_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 285.40625,
+            "top": 331.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid4"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid6",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore_Copy_4": {
+          "statementName": "setStore_Copy_4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 549.40625,
+            "top": 327.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid5"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "VALUE",
+                "expression": "not Page.toggleGrid6",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 829.40625,
+            "top": 322.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid6"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid6",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "UitFF0eshm5asZKH6W6zV": {
+      "name": "openGrid7",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 253.40625,
+            "top": 77.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3XzrHDyh2oqU0ulTkS5naG": {
+                "key": "3XzrHDyh2oqU0ulTkS5naG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.toggleGrid7"
+              }
+            },
+            "value": {
+              "2YjWJIWYG84IWLRM2lsMPW": {
+                "key": "2YjWJIWYG84IWLRM2lsMPW",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleGrid7",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6zO7i7FMIoS4JNqxB6Vii2": {
+      "name": "openmenu",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 402.5803571428571,
+            "top": 84.57589285714283
+          },
+          "parameterMap": {
+            "path": {
+              "W0WeDPj7mO4GzNqOonfY5": {
+                "key": "W0WeDPj7mO4GzNqOonfY5",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.showMenu"
+              }
+            },
+            "value": {
+              "6RDGtdNusmmqIfPHcOsVQ3": {
+                "key": "6RDGtdNusmmqIfPHcOsVQ3",
+                "type": "EXPRESSION",
+                "expression": "(Page.showMenu??'') = 'show' ? 'close' : 'show'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7j8Br4xSvXyTz8be6VyU8n": {
+      "name": "show_products",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 247.72321428571425,
+            "top": 197.4330357142857
+          },
+          "parameterMap": {
+            "path": {
+              "7B1Q1IZ8EBKWdzWaHQRM5": {
+                "key": "7B1Q1IZ8EBKWdzWaHQRM5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showProducts"
+              }
+            },
+            "value": {
+              "23lSaF01gWcaPuvFMQEyqY": {
+                "key": "23lSaF01gWcaPuvFMQEyqY",
+                "type": "EXPRESSION",
+                "expression": "(Page.showProducts??'') = 'show' ? 'close' : 'show'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2XhuHXUQQ2n4ZdWXjssIER": {
+      "name": "show_resources",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 247.72321428571425,
+            "top": 197.4330357142857
+          },
+          "parameterMap": {
+            "path": {
+              "7B1Q1IZ8EBKWdzWaHQRM5": {
+                "key": "7B1Q1IZ8EBKWdzWaHQRM5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showResources"
+              }
+            },
+            "value": {
+              "23lSaF01gWcaPuvFMQEyqY": {
+                "key": "23lSaF01gWcaPuvFMQEyqY",
+                "type": "EXPRESSION",
+                "expression": "(Page.showResources??'') = 'show' ? 'close' : 'show'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5kCh9OuUIKCdMmGoLLzv5E": {
+      "name": "onload2",
+      "steps": {
+        "set": {
+          "statementName": "set",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 815.6015625,
+            "top": 218.6015625
+          },
+          "parameterMap": {
+            "name": {
+              "4o976zqRsZtsBxlZfwswJZ": {
+                "key": "4o976zqRsZtsBxlZfwswJZ",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.urlSuffix"
+              }
+            },
+            "value": {
+              "7E8vxcQRCklakPCZsye010": {
+                "key": "7E8vxcQRCklakPCZsye010",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            },
+            "path": {
+              "5oTC4sDBE44SycM7VLceQb": {
+                "key": "5oTC4sDBE44SycM7VLceQb",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.urlSuffix"
+              }
+            }
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 194.6015625,
+            "top": 117.6015625
+          },
+          "parameterMap": {
+            "url": {
+              "6gvgT1ZqaHpoTZJasD3pX5": {
+                "key": "6gvgT1ZqaHpoTZJasD3pX5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/api/security/applications/applyAppCodeSuffix?appCode="
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "45jA09WrhQ57S8puOLsD0r": {
+      "name": "openVideo",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 270.40625,
+            "top": 104.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3iU82IZlaIeazF6NCWw5FI": {
+                "key": "3iU82IZlaIeazF6NCWw5FI",
+                "type": "EXPRESSION",
+                "expression": "'Page.toggleVideo'",
+                "order": 1
+              }
+            },
+            "value": {
+              "1xH0BllAQch0npnKw1valc": {
+                "key": "1xH0BllAQch0npnKw1valc",
+                "type": "EXPRESSION",
+                "expression": "not Page.toggleVideo",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3bcipPPWhJlp3C7Khb1dA5": {
+      "name": "New_Function",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 666.0069444444445,
+            "top": 94.88715277777777
+          },
+          "parameterMap": {
+            "path": {
+              "7MC5kP4h2Z4PKeVSd3huw": {
+                "key": "7MC5kP4h2Z4PKeVSd3huw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.brightness"
+              }
+            },
+            "value": {
+              "7BRlWZGUfweK2e1PmXpDT3": {
+                "key": "7BRlWZGUfweK2e1PmXpDT3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "brightness(20%)"
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 455.00000190734863,
+            "top": 214.54687881469727
+          },
+          "parameterMap": {
+            "path": {
+              "2DdZ1K7lGnEP0mJjurNrZZ": {
+                "key": "2DdZ1K7lGnEP0mJjurNrZZ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "5QHt99RUMbkXuzhGuZFqJx": {
+                "key": "5QHt99RUMbkXuzhGuZFqJx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "2S83Cvpn7iR6fU5otd82WM": {
+      "name": "Email",
+      "steps": {
+        "demoCallEmail": {
+          "statementName": "demoCallEmail",
+          "name": "demoCallEmail",
+          "namespace": "cxlanding",
+          "position": {
+            "left": 384.25000190734863,
+            "top": 127.79687881469727
+          },
+          "parameterMap": {
+            "userDetails": {
+              "5VM4D0u0CB8xsGLvMc1OUj": {
+                "key": "5VM4D0u0CB8xsGLvMc1OUj",
+                "type": "EXPRESSION",
+                "expression": "Page.form",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 678.0000019073486,
+            "top": 111.54687881469727
+          },
+          "parameterMap": {
+            "type": {
+              "2A1MJmbLi0b2RL9fxVbIKT": {
+                "key": "2A1MJmbLi0b2RL9fxVbIKT",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SUCCESS"
+              }
+            },
+            "msg": {
+              "4VYNvYv6dMzrAqTXaJ2zHr": {
+                "key": "4VYNvYv6dMzrAqTXaJ2zHr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Mail Sent Successfully"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__demoCallEmail__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 118.00000190734863,
+            "top": 115.29687881469727
+          },
+          "parameterMap": {
+            "path": {
+              "7nt76iSzGTMaRlXORVZHaj": {
+                "key": "7nt76iSzGTMaRlXORVZHaj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "1teT0vros1BulyWdBNOqcQ": {
+                "key": "1teT0vros1BulyWdBNOqcQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "6pw90VG4Ga04bnlUTDbz7j"
+    },
+    "4LuqHO8cI4B3TW3du0gpkr": {
+      "name": "brightnessClose",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 386.34027777777777,
+            "top": 70.33159722222223
+          },
+          "parameterMap": {
+            "path": {
+              "1YKZ81YUGRBiS81LZgfEI3": {
+                "key": "1YKZ81YUGRBiS81LZgfEI3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.brightness"
+              }
+            },
+            "value": {
+              "3VWZ75Q7v4uxk6pzdYmqtG": {
+                "key": "3VWZ75Q7v4uxk6pzdYmqtG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ""
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 123.11805555555554,
+            "top": 28.109375
+          },
+          "parameterMap": {
+            "path": {
+              "6xGgQYDFQVjzKPymTDa5Uy": {
+                "key": "6xGgQYDFQVjzKPymTDa5Uy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "6cRw6LugwCvkRl2bKz8rRb": {
+                "key": "6cRw6LugwCvkRl2bKz8rRb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "2RGH6kCypIPo5apb2iu53G",
+  "componentDefinition": {
+    "2RGH6kCypIPo5apb2iu53G": {
+      "key": "2RGH6kCypIPo5apb2iu53G",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "qObMHNaN1eUXf93KBHmxs": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "overflowY": {
+                "value": "scroll"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "filter": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.brightness"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5kWWigo2qUjB1UpZgLmEw6": true,
+        "3yAVRUDdpOgwMJd6449K5": true,
+        "3gXoRWqXjr1g2GCrF9Gb8B": true,
+        "5jjf6JkJHiUcEMHhFA4ZHM": true,
+        "1b1iL8jJF7lF4rk42gdCTw": true,
+        "6IVd39eCmTHI7uQzHmV1z1": true,
+        "2bVXmWbB8ZbziwA7CsjyLC": true
+      }
+    },
+    "5kWWigo2qUjB1UpZgLmEw6": {
+      "key": "5kWWigo2qUjB1UpZgLmEw6",
+      "name": "Body",
+      "type": "Grid",
+      "styleProperties": {
+        "1Np1vovgEHAJkLjr5ImeW8": {
+          "resolutions": {
+            "ALL": {
+              "background": {
+                "value": "#FFFFFF"
+              },
+              "marginTop": {
+                "value": "4.778vw"
+              },
+              "marginLeft": {
+                "value": "0vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingRight": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "marginTop": {
+                "value": "13.5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1K28wsRr3n7dw7vq7dBldX": true,
+        "K7r3bJQTvIcOCTq0KgSq9": true,
+        "5DVovAysmL3dXlQy11bYv4": true,
+        "4xKcVxgzC5TEPPYEhTmZKW": true
+      },
+      "displayOrder": 2
+    },
+    "3yAVRUDdpOgwMJd6449K5": {
+      "key": "3yAVRUDdpOgwMJd6449K5",
+      "name": "Footer",
+      "type": "Grid",
+      "styleProperties": {
+        "1Xlt5IHcocgvmE0CvXsyS6": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#0E2E33"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "2.083vw"
+              },
+              "paddingBottom": {
+                "value": "2.083vw"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "NrOd0xKTTkBrscHo4Jzsi": true,
+        "2xikuzC9Mrpfjkp01ePzV9": true,
+        "1FqwmVN47tA67cjz2tdqJS": true,
+        "1UoWHvNIvQL3NRnxHZJNuJ": true,
+        "6BuXGKMNb5mZgfVCECklKS": true,
+        "19cFksa8EhE5bXAzBTV3zF": true
+      },
+      "displayOrder": 4
+    },
+    "1K28wsRr3n7dw7vq7dBldX": {
+      "key": "1K28wsRr3n7dw7vq7dBldX",
+      "name": "TitleGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "26PItH9KRlKAKyggzgQJrb": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "gTecprtgd903thpL5OYTA": true,
+        "1OLGi9RVQgdP8HGDbfWO0N": true,
+        "6b2Ex0NkcJ7VedAqUo4Tf8": true,
+        "71oxEe861SGdai4NvyeQSg": true
+      },
+      "displayOrder": 1
+    },
+    "K7r3bJQTvIcOCTq0KgSq9": {
+      "key": "K7r3bJQTvIcOCTq0KgSq9",
+      "name": "UnlockSeemless",
+      "type": "Grid",
+      "styleProperties": {
+        "JIbzu1dJSq8gs5PtMovYt": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#08705C"
+              },
+              "height": {
+                "value": "15.556vw"
+              },
+              "paddingTop": {
+                "value": "2.778vw"
+              },
+              "paddingBottom": {
+                "value": "2.778vw"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "100%"
+              },
+              "paddingTop": {
+                "value": "24px"
+              },
+              "paddingBottom": {
+                "value": "24px"
+              },
+              "paddingLeft": {
+                "value": "24px"
+              },
+              "paddingRight": {
+                "value": "24px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "30px"
+              },
+              "paddingBottom": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "Sx1CGJTBoPka3WJ0CORXf": true,
+        "2v6BJxfvdScSm3S86Nuwyb": true,
+        "4p39B7swOYfTaBsle2PjkI": true
+      },
+      "displayOrder": 4
+    },
+    "Sx1CGJTBoPka3WJ0CORXf": {
+      "key": "Sx1CGJTBoPka3WJ0CORXf",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Unlock Seamless Engagement"
+        }
+      },
+      "styleProperties": {
+        "681hH7GbPFuMZNHFATIAJn": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "16px"
+              },
+              "letterSpacing": {
+                "value": "0em"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": " #FFFFFFCC"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "marginBottom": {
+                "value": "0.764vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "#FFFFFFCC"
+              },
+              "lineHeight": {
+                "value": "12px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#FFFFFF"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2v6BJxfvdScSm3S86Nuwyb": {
+      "key": "2v6BJxfvdScSm3S86Nuwyb",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Transform CX Experience with our app"
+        }
+      },
+      "styleProperties": {
+        "2lK9cZMUbmdfKNcXAhqa5f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "50px"
+              },
+              "letterSpacing": {
+                "value": "-1px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "marginBottom": {
+                "value": "1.458vw"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4p39B7swOYfTaBsle2PjkI": {
+      "key": "4p39B7swOYfTaBsle2PjkI",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Get Started"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'https://cxapp{{Page.urlSuffix}}.modlix.com/clientRegistration'"
+          }
+        }
+      },
+      "styleProperties": {
+        "3HFFl6xCx1DcHiLTa9fACb": {
+          "resolutions": {
+            "ALL": {
+              "rightIcon-background": {
+                "value": "linear-gradient(94.87deg, #CEEC47 -21.94%, #79FA4B 166.27%)"
+              },
+              "background": {
+                "value": "linear-gradient(94.87deg, #CEEC47 -21.94%, #79FA4B 166.27%)"
+              },
+              "rightIcon-fontFamily": {
+                "value": "Poppins"
+              },
+              "rightIcon-fontSize": {
+                "value": "18px"
+              },
+              "rightIcon-fontWeight": {
+                "value": "600"
+              },
+              "rightIcon-lineHeight": {
+                "value": "18px"
+              },
+              "rightIcon-letterSpacing": {
+                "value": "0px"
+              },
+              "rightIcon-textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": " #0E2E33"
+              },
+              "rightIcon-color": {
+                "value": " #0E2E33"
+              },
+              "borderTopLeftRadius": {
+                "value": "30px"
+              },
+              "borderTopRightRadius": {
+                "value": "30px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "30px"
+              },
+              "borderBottomRightRadius": {
+                "value": "30px"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.25vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "2.083vw"
+              },
+              "paddingRight": {
+                "value": "2.083vw"
+              },
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              },
+              "width": {
+                "value": "11.319vw"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "height": {
+                "value": "3.194vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontFamily": {
+                "value": "poppins"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "bold"
+              },
+              "paddingLeft": {
+                "value": "16px"
+              },
+              "paddingRight": {
+                "value": "16px"
+              },
+              "height": {
+                "value": "46px"
+              },
+              "width": {
+                "value": "35vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5DVovAysmL3dXlQy11bYv4": {
+      "key": "5DVovAysmL3dXlQy11bYv4",
+      "name": "FaqGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2BXhE1yYeyrI18yxxEl4c3": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "0px"
+              },
+              "marginTop": {
+                "value": "4.306vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "zoiVia2WfG7noeS5tEL7Z": true,
+        "1gkZCNkjPyhjqYt4SeYcPw": true,
+        "2WMnFdY1PQIuECMfzx0KCI": true,
+        "1WvW98DOaWugGJKpJ00dt3": true
+      },
+      "displayOrder": 6
+    },
+    "zoiVia2WfG7noeS5tEL7Z": {
+      "key": "zoiVia2WfG7noeS5tEL7Z",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Frequently asked questions"
+        }
+      },
+      "styleProperties": {
+        "4tW9O7R3vOg6GsJq67mIPZ": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "2.5vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "2.5vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "22px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1gkZCNkjPyhjqYt4SeYcPw": {
+      "key": "1gkZCNkjPyhjqYt4SeYcPw",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "FAQ\u2019s"
+        }
+      },
+      "styleProperties": {
+        "2C3CWLoceBg5xl1uray5Gv": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "0em"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": " #6941C6"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "marginBottom": {
+                "value": "3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2WMnFdY1PQIuECMfzx0KCI": {
+      "key": "2WMnFdY1PQIuECMfzx0KCI",
+      "name": "questions grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2OimZtJ9RJFSNLJyKG7x6j": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "paddingTop": {
+                "value": "3.472vw"
+              },
+              "gap": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "13.125vw"
+              },
+              "paddingRight": {
+                "value": "13.125vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "0px"
+              },
+              "paddingRight": {
+                "value": "0px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4QATKqWSFCE51lgHM6nGkA": true,
+        "96BJRH9bYohLoyJuzu2Bp": true
+      },
+      "displayOrder": 3
+    },
+    "4QATKqWSFCE51lgHM6nGkA": {
+      "key": "4QATKqWSFCE51lgHM6nGkA",
+      "name": "Left Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4hSmFhqxCdVNgcwUqvuKs0": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1LqXysV6tiJbTAPQWwpCJz": true,
+        "2hrCv4GIPYHmXJyriXNCqj": true,
+        "Jh6QOwicpZomgaGQxIdab": true
+      },
+      "displayOrder": 1
+    },
+    "1LqXysV6tiJbTAPQWwpCJz": {
+      "key": "1LqXysV6tiJbTAPQWwpCJz",
+      "name": "First",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "6670Z52eQqTX0qtG10OC0"
+        }
+      },
+      "styleProperties": {
+        "6F5bxZ0SC5UGTG6gGW3BSR": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.042vw"
+              },
+              "justifyItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "1.736vw"
+              },
+              "paddingBottom": {
+                "value": "1.736vw"
+              },
+              "paddingLeft": {
+                "value": "1.736vw"
+              },
+              "paddingRight": {
+                "value": "1.736vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "boxShadow": {
+                "value": "4px 4px 0px 0px #1C15480D"
+              },
+              "border": {
+                "value": "1px solid #1C15481A"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid1 ? '11.111vw' : '5vw'"
+                }
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "transitionTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid1 ? '25.111vw' : '12.944vw'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "VvO7eT22Rlu4LXhbshjBd": true,
+        "70ZVsidH4v4mUgdL15Gchx": true,
+        "1zhrr6WadDATe3427rub0r": true
+      },
+      "displayOrder": 1
+    },
+    "VvO7eT22Rlu4LXhbshjBd": {
+      "key": "VvO7eT22Rlu4LXhbshjBd",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "CX-APP is a next-generation post-sales real estate platform that combines project management, automated workflows, and customer care."
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid1 "
+          }
+        }
+      },
+      "styleProperties": {
+        "5KtUt6Ajkj0ZoiUwH4P1uX": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "3.9vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1Pe5po5Org3PJjp07JEknN": {
+      "key": "1Pe5po5Org3PJjp07JEknN",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "What is CX-APP?"
+        }
+      },
+      "styleProperties": {
+        "5c2CTNhMu5SkkJM1s6lMCx": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.319vw"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "70ZVsidH4v4mUgdL15Gchx": {
+      "key": "70ZVsidH4v4mUgdL15Gchx",
+      "name": "Top",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "6670Z52eQqTX0qtG10OC0"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "not Page.toggleGrid1"
+          }
+        }
+      },
+      "styleProperties": {
+        "55yt962FmWCmBUVxEtfUP0": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2tBXiyTl56n1jKyWNXZ6pt": true,
+        "71M56aF7yF3ntpz3aIrBnD": true
+      },
+      "displayOrder": 1
+    },
+    "2tBXiyTl56n1jKyWNXZ6pt": {
+      "key": "2tBXiyTl56n1jKyWNXZ6pt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "What is CX-APP?"
+        }
+      },
+      "styleProperties": {
+        "5lDW6m2IQ65XShVDG8hMZ9": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "paddingTop": {
+                "value": "1.389vw"
+              },
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "paddingRight": {
+                "value": "23px"
+              },
+              "fontWeight": {
+                "value": "550"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2hrCv4GIPYHmXJyriXNCqj": {
+      "key": "2hrCv4GIPYHmXJyriXNCqj",
+      "name": "Second",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "2eRA90kU8kZq7o0uV54nmT"
+        }
+      },
+      "styleProperties": {
+        "4w2M5vePm3cTdR7rTjKXZC": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.042vw"
+              },
+              "justifyItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "1.736vw"
+              },
+              "paddingBottom": {
+                "value": "1.736vw"
+              },
+              "paddingLeft": {
+                "value": "1.736vw"
+              },
+              "paddingRight": {
+                "value": "1.736vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "boxShadow": {
+                "value": "4px 4px 0px 0px #1C15480D"
+              },
+              "border": {
+                "value": "1px solid #1C15481A"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid3 ? '11.111vw' : '5vw'"
+                }
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "transitionTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid3 ? '25.111vw' : '12.944vw'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6K0yLDSPKh7j3qaaiu1QOL": true,
+        "cPzVVAKhCrkQVUA9Tz00s": true,
+        "1hkbUDl6XKvewCMrW45J1E": true
+      },
+      "displayOrder": 2
+    },
+    "6K0yLDSPKh7j3qaaiu1QOL": {
+      "key": "6K0yLDSPKh7j3qaaiu1QOL",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "CX-APP offers hassle-free access to information, payments, and updates, an integrated system for quick query resolution, and tailored communication to boost satisfaction."
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid3"
+          }
+        }
+      },
+      "styleProperties": {
+        "1puaI9rZRkiom8X5rDDw9J": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "3.9vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "66DQbGOctykXRqyvpS37Xt": {
+      "key": "66DQbGOctykXRqyvpS37Xt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How does CX-APP enhance customer satisfaction?"
+        }
+      },
+      "styleProperties": {
+        "2PeucE193V4Uw4uXyher9R": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "cPzVVAKhCrkQVUA9Tz00s": {
+      "key": "cPzVVAKhCrkQVUA9Tz00s",
+      "name": "Top",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "2eRA90kU8kZq7o0uV54nmT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid3 = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "2micCe3be855irkXt9Rt5s": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4LVQQkRkcqOe2mQkViHhB5": true,
+        "3DeV5kapQoKfag9tSsDYe3": true
+      },
+      "displayOrder": 1
+    },
+    "4LVQQkRkcqOe2mQkViHhB5": {
+      "key": "4LVQQkRkcqOe2mQkViHhB5",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How does CX-APP enhance customer satisfaction?"
+        }
+      },
+      "styleProperties": {
+        "5Pz0ZCfNVTZjy8EgB6s1bG": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "paddingTop": {
+                "value": "1.389vw"
+              },
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "paddingRight": {
+                "value": "23px"
+              },
+              "fontWeight": {
+                "value": "550"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "Jh6QOwicpZomgaGQxIdab": {
+      "key": "Jh6QOwicpZomgaGQxIdab",
+      "name": "Third",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "77GBo0ONxiZMQ48jFELuP6"
+        }
+      },
+      "styleProperties": {
+        "3DFGsEtGpxy9ArupX6girP": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.042vw"
+              },
+              "justifyItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "1.736vw"
+              },
+              "paddingBottom": {
+                "value": "1.736vw"
+              },
+              "paddingLeft": {
+                "value": "1.736vw"
+              },
+              "paddingRight": {
+                "value": "1.736vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "boxShadow": {
+                "value": "4px 4px 0px 0px #1C15480D"
+              },
+              "border": {
+                "value": "1px solid #1C15481A"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid5 ? '11.111vw' : '5vw'"
+                }
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "transitionTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid5 ? '25.111vw' : '12.944vw'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3DLKH3wZchAlf8V5KLRuBV": true,
+        "5K5sbPYHtpBU2qy56D0Sfk": true,
+        "3MLQJahy7QQmwxaHTYYjGv": true
+      },
+      "displayOrder": 3
+    },
+    "3DLKH3wZchAlf8V5KLRuBV": {
+      "key": "3DLKH3wZchAlf8V5KLRuBV",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "It means a completely paperless workflow, smart automation of routine tasks, and 24/7 online access for builders and customers."
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid5"
+          }
+        }
+      },
+      "styleProperties": {
+        "ldho8a4czYnJJ12gmHVFA": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "3.9vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "61SEYnNyYmyjsWbiM2He3j": {
+      "key": "61SEYnNyYmyjsWbiM2He3j",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "What does 100% digitalization of the post-sales process mean?"
+        }
+      },
+      "styleProperties": {
+        "7BgMTY6lnzam5ItddqIbd9": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5K5sbPYHtpBU2qy56D0Sfk": {
+      "key": "5K5sbPYHtpBU2qy56D0Sfk",
+      "name": "Top",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "77GBo0ONxiZMQ48jFELuP6"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid5 = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "2Rzrj4LDdurr3JuJdeINvd": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "O3F8kfZZF6WoxkSUA1NgR": true,
+        "66arAkfDvyRGjJV6t8F9IQ": true
+      },
+      "displayOrder": 1
+    },
+    "O3F8kfZZF6WoxkSUA1NgR": {
+      "key": "O3F8kfZZF6WoxkSUA1NgR",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "What does 100% digitalization of the post-sales process mean?"
+        }
+      },
+      "styleProperties": {
+        "4DrRMtJMt5IcWXCxF9GAzA": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "paddingTop": {
+                "value": "1.389vw"
+              },
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "paddingRight": {
+                "value": "23px"
+              },
+              "fontWeight": {
+                "value": "550"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "96BJRH9bYohLoyJuzu2Bp": {
+      "key": "96BJRH9bYohLoyJuzu2Bp",
+      "name": "Right Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1L7j8XNd5pwXlPz5x4WlCk": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3qm5C8U3nXL2SoKkrxRF3F": true,
+        "26ljzuR7z76zVmF0PT4Lk4": true,
+        "7ch2fxcxSSG0s4N7InWfsf": true
+      },
+      "displayOrder": 2
+    },
+    "3qm5C8U3nXL2SoKkrxRF3F": {
+      "key": "3qm5C8U3nXL2SoKkrxRF3F",
+      "name": "First",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "4NKudFy4EJorBjkt4nZzMn"
+        }
+      },
+      "styleProperties": {
+        "15sO7a0bIRzSN1Vsc5lqJk": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.042vw"
+              },
+              "justifyItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "1.736vw"
+              },
+              "paddingBottom": {
+                "value": "1.736vw"
+              },
+              "paddingLeft": {
+                "value": "1.736vw"
+              },
+              "paddingRight": {
+                "value": "1.736vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "boxShadow": {
+                "value": "4px 4px 0px 0px #1C15480D"
+              },
+              "border": {
+                "value": "1px solid #1C15481A"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid2 ? '11.111vw' : '5vw'"
+                }
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "transitionTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid2 ? '25.111vw' : '12.944vw'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "W01oDwVomFVyc1GnYT1VH": true,
+        "730bQ1tD0AnyPYkavWidVw": true,
+        "1hiJPeufYLRsITENWlsQCh": true
+      },
+      "displayOrder": 1
+    },
+    "26ljzuR7z76zVmF0PT4Lk4": {
+      "key": "26ljzuR7z76zVmF0PT4Lk4",
+      "name": "Second",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "4yldFYMuKCa2EmK6G8jACd"
+        }
+      },
+      "styleProperties": {
+        "15giZWaQVz80WKbZorWmuX": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.042vw"
+              },
+              "justifyItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "1.736vw"
+              },
+              "paddingBottom": {
+                "value": "1.736vw"
+              },
+              "paddingLeft": {
+                "value": "1.736vw"
+              },
+              "paddingRight": {
+                "value": "1.736vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "boxShadow": {
+                "value": "4px 4px 0px 0px #1C15480D"
+              },
+              "border": {
+                "value": "1px solid #1C15481A"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid4 ? '11.111vw' : '5vw'"
+                }
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "transitionTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid4 ? '25.111vw' : '12.944vw'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3uwibHL3ZkQk0HZ8R0NpBb": true,
+        "51MXbQORTjASncvrepgYzD": true,
+        "4FUfgKe5qidpnVSPlUoN3k": true
+      },
+      "displayOrder": 2
+    },
+    "7ch2fxcxSSG0s4N7InWfsf": {
+      "key": "7ch2fxcxSSG0s4N7InWfsf",
+      "name": "Third",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "5Ou6dlJ1epgrEd0XbHVNI1"
+        }
+      },
+      "styleProperties": {
+        "7mt92a596QyoRFbBHTTWT1": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.042vw"
+              },
+              "justifyItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "1.736vw"
+              },
+              "paddingBottom": {
+                "value": "1.736vw"
+              },
+              "paddingLeft": {
+                "value": "1.736vw"
+              },
+              "paddingRight": {
+                "value": "1.736vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "boxShadow": {
+                "value": "4px 4px 0px 0px #1C15480D"
+              },
+              "border": {
+                "value": "1px solid #1C15481A"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid6 ? '11.111vw' : '5vw'"
+                }
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "transitionTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "paddingTop": {
+                "value": "12px"
+              },
+              "paddingBottom": {
+                "value": "12px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.toggleGrid6 ? '25.111vw' : '12.944vw'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1oWBjAkxLPPZrWSU2ie2rM": true,
+        "7JVoDnal52hICWtx7BbcXe": true,
+        "1QTRqLS13UrpRL6bHRn2iC": true
+      },
+      "displayOrder": 3
+    },
+    "W01oDwVomFVyc1GnYT1VH": {
+      "key": "W01oDwVomFVyc1GnYT1VH",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Yes, CX-APP operates independently of CRM systems, reducing reliance on specific personnel and empowering customers to access information and act autonomously."
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid2"
+          }
+        }
+      },
+      "styleProperties": {
+        "1u5T4xm5DulDe5tkl5HMo5": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "3.9vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2UFvQSZzzivWyWW1BYD1Dt": {
+      "key": "2UFvQSZzzivWyWW1BYD1Dt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Can CX-APP operate independently of CRM systems?"
+        }
+      },
+      "styleProperties": {
+        "5c2CTNhMu5SkkJM1s6lMCx": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "730bQ1tD0AnyPYkavWidVw": {
+      "key": "730bQ1tD0AnyPYkavWidVw",
+      "name": "Top",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "4NKudFy4EJorBjkt4nZzMn"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid2 = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "o7aAMIMXSn6Up31HOXkX8": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6UFCyy2mcE6TO7RvN94YGI": true,
+        "GKErJYAf2ei0vYPaNYLUy": true
+      },
+      "displayOrder": 1
+    },
+    "3uwibHL3ZkQk0HZ8R0NpBb": {
+      "key": "3uwibHL3ZkQk0HZ8R0NpBb",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "CX-APP offers live 360\u00b0 financial insights with instant payment status, balance updates, detailed transaction histories, customizable dashboards, and financial reports."
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid4"
+          }
+        }
+      },
+      "styleProperties": {
+        "4rnIYx6dgrO8EGXdbiokup": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "3.9vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7DbqThqisZ6Abeh5UJpTpG": {
+      "key": "7DbqThqisZ6Abeh5UJpTpG",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How does CX-APP provide financial insights?"
+        }
+      },
+      "styleProperties": {
+        "5c2CTNhMu5SkkJM1s6lMCx": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "51MXbQORTjASncvrepgYzD": {
+      "key": "51MXbQORTjASncvrepgYzD",
+      "name": "Top",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "4yldFYMuKCa2EmK6G8jACd"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid4 = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "UeAk6FctLJ0qlT70bjgHQ": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2U7vTek3GCC7VR1vWUAxd0": true,
+        "4iuNW8yMYFSf7w0Q1rVU1g": true
+      },
+      "displayOrder": 1
+    },
+    "1oWBjAkxLPPZrWSU2ie2rM": {
+      "key": "1oWBjAkxLPPZrWSU2ie2rM",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "CX-APP facilitates seamless home loan processing and approvals, guiding customers through the financial aspects of property purchase."
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid6"
+          }
+        }
+      },
+      "styleProperties": {
+        "6wtsML0WY4jzVSruqtH0yM": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "1.667vw"
+              },
+              "letterSpacing": {
+                "value": "-0.02em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "3.9vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5llDvdAgWmvhwbXsn25n6w": {
+      "key": "5llDvdAgWmvhwbXsn25n6w",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How does CX-APP facilitate home loan processing?"
+        }
+      },
+      "styleProperties": {
+        "5FE0pM81bNCKeIpX4VFmU8": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.319vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7JVoDnal52hICWtx7BbcXe": {
+      "key": "7JVoDnal52hICWtx7BbcXe",
+      "name": "Top",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "5Ou6dlJ1epgrEd0XbHVNI1"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "not Page.toggleGrid6"
+          }
+        }
+      },
+      "styleProperties": {
+        "5J56DbVX3JK9BSv5cr05HR": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "53bpUmBLxStIAV9krA6byL": true,
+        "1vdgKd8ZHY78WGmBFcxIxc": true
+      },
+      "displayOrder": 1
+    },
+    "6UFCyy2mcE6TO7RvN94YGI": {
+      "key": "6UFCyy2mcE6TO7RvN94YGI",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Can CX-APP operate independently of CRM systems?"
+        }
+      },
+      "styleProperties": {
+        "3Zrzzs5FhZFGMwLR1q77OC": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "paddingTop": {
+                "value": "1.389vw"
+              },
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "paddingRight": {
+                "value": "23px"
+              },
+              "fontWeight": {
+                "value": "550"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2U7vTek3GCC7VR1vWUAxd0": {
+      "key": "2U7vTek3GCC7VR1vWUAxd0",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How does CX-APP provide financial insights?"
+        }
+      },
+      "styleProperties": {
+        "3yzZEoORJOAJFNzn736gDr": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "paddingTop": {
+                "value": "1.389vw"
+              },
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "paddingRight": {
+                "value": "23px"
+              },
+              "fontWeight": {
+                "value": "550"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "53bpUmBLxStIAV9krA6byL": {
+      "key": "53bpUmBLxStIAV9krA6byL",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "How does CX-APP facilitate home loan processing?"
+        }
+      },
+      "styleProperties": {
+        "4hWlqnwD3YsNnZ6FYGAffY": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "paddingTop": {
+                "value": "1.389vw"
+              },
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "paddingRight": {
+                "value": "23px"
+              },
+              "fontWeight": {
+                "value": "550"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "NrOd0xKTTkBrscHo4Jzsi": {
+      "key": "NrOd0xKTTkBrscHo4Jzsi",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Seamless Communication, Real-Time Updates, Secure Anywhere Access"
+        }
+      },
+      "styleProperties": {
+        "1WJzSs8vky7ApVXfRBkXR9": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "2.639vw"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "3vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#fff"
+              },
+              "marginBottom": {
+                "value": "0.764vw"
+              },
+              "paddingLeft": {
+                "value": "4.792vw"
+              },
+              "paddingRight": {
+                "value": "4.792vw"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "width": {
+                "value": "75.444vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "34px"
+              },
+              "lineHeight": {
+                "value": "43px"
+              },
+              "marginBottom": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "12px"
+              },
+              "paddingRight": {
+                "value": "12px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "40px"
+              },
+              "marginBottom": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2xikuzC9Mrpfjkp01ePzV9": {
+      "key": "2xikuzC9Mrpfjkp01ePzV9",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "STAY CONNECTED WITH OUR CX APP"
+        }
+      },
+      "styleProperties": {
+        "2lE8Z0aIVUgfZ7uzWAxBeH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "16px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#9FABAD"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "19px"
+              },
+              "letterSpacing": {
+                "value": "5px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "opacity": {
+                "value": "0.6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1FqwmVN47tA67cjz2tdqJS": {
+      "key": "1FqwmVN47tA67cjz2tdqJS",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Get Started now"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'https://cxapp{{Page.urlSuffix}}.modlix.com/clientRegistration'"
+          }
+        }
+      },
+      "styleProperties": {
+        "3HFFl6xCx1DcHiLTa9fACb": {
+          "resolutions": {
+            "ALL": {
+              "rightIcon-background": {
+                "value": "linear-gradient(94.87deg, #CEEC47 -21.94%, #79FA4B 166.27%)"
+              },
+              "background": {
+                "value": "linear-gradient(94.87deg, #CEEC47 -21.94%, #79FA4B 166.27%)"
+              },
+              "rightIcon-fontFamily": {
+                "value": "Poppins"
+              },
+              "rightIcon-fontSize": {
+                "value": "18px"
+              },
+              "rightIcon-fontWeight": {
+                "value": "600"
+              },
+              "rightIcon-lineHeight": {
+                "value": "18px"
+              },
+              "rightIcon-letterSpacing": {
+                "value": "0px"
+              },
+              "rightIcon-textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": " #0E2E33"
+              },
+              "rightIcon-color": {
+                "value": " #0E2E33"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.083vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.083vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.083vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.083vw"
+              },
+              "textDecoration": {
+                "value": ""
+              },
+              "marginBottom": {
+                "value": "5vw"
+              },
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "1.25vw"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "2.083vw"
+              },
+              "paddingRight": {
+                "value": "2.083vw"
+              },
+              "height": {
+                "value": "3.194vw"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "9px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1UoWHvNIvQL3NRnxHZJNuJ": {
+      "key": "1UoWHvNIvQL3NRnxHZJNuJ",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5MJYg0GbyL6xCwf4OlGjfD": {
+          "resolutions": {
+            "ALL": {
+              "borderTopColor": {
+                "value": "#ffffff"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "width": {
+                "value": "72%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "6BuXGKMNb5mZgfVCECklKS": {
+      "key": "6BuXGKMNb5mZgfVCECklKS",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4uptPczvafT9eVkQE9KNzp": {
+          "resolutions": {
+            "ALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "26YEOmDZD6co6IjIFUqp3U": true,
+        "118GKRGuoafmxTPRoHIrwt": true,
+        "1zVZcsRKvyFEAaPGLMDuQZ": true
+      },
+      "displayOrder": 5
+    },
+    "5Ia3BrNoVVPQuKPQY9fuc2": {
+      "key": "5Ia3BrNoVVPQuKPQY9fuc2",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxLandingPage/Group<PHONE>+%281%29.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4a4HkKj3S0slcInVLch3b9": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "11.284vw"
+              },
+              "height": {
+                "value": "2.75vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "26YEOmDZD6co6IjIFUqp3U": {
+      "key": "26YEOmDZD6co6IjIFUqp3U",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "60AVCEi1oGVEcYWUMdldXR": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1JpjGFbAeDGWjzHv1Abcry": true,
+        "1M4dwA4WGHljObmHC4DtFp": true,
+        "5Rm7FWcxAUXXZs1PFxgPAP": true
+      },
+      "displayOrder": 2
+    },
+    "1JpjGFbAeDGWjzHv1Abcry": {
+      "key": "1JpjGFbAeDGWjzHv1Abcry",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Team"
+        }
+      },
+      "styleProperties": {
+        "73c0KdNkCKLkZsGSJLxSXF": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#ffffff"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "19px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#51BCA266"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1M4dwA4WGHljObmHC4DtFp": {
+      "key": "1M4dwA4WGHljObmHC4DtFp",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Marketplace"
+        }
+      },
+      "styleProperties": {
+        "4BEhUjs7a6pgzPtWLJJDys": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#ffffff"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "19px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#51BCA266"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5Rm7FWcxAUXXZs1PFxgPAP": {
+      "key": "5Rm7FWcxAUXXZs1PFxgPAP",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Product"
+        }
+      },
+      "styleProperties": {
+        "3uqwx0P1kQl2UuZilm7pTq": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#ffffff"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "19px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#51BCA266"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "118GKRGuoafmxTPRoHIrwt": {
+      "key": "118GKRGuoafmxTPRoHIrwt",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "children": {
+        "5PuZakpEj4YzpgvLdLBLTx": true,
+        "76VeVskgqaCcHxFmaFGCZM": true,
+        "2FMxpoelIZEnjdBivSvaEW": true,
+        "36vaxhzMHR6xfeHFtb5zib": true
+      },
+      "displayOrder": 3
+    },
+    "5PuZakpEj4YzpgvLdLBLTx": {
+      "key": "5PuZakpEj4YzpgvLdLBLTx",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/linkedin.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "48spD2T2udxzHNIAzvnfUh": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "1.736vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "76VeVskgqaCcHxFmaFGCZM": {
+      "key": "76VeVskgqaCcHxFmaFGCZM",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Youtube.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2FMxpoelIZEnjdBivSvaEW": {
+      "key": "2FMxpoelIZEnjdBivSvaEW",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Instagram.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "7tq0YW0D2mUv4V3UsE99GX": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "1.736vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "36vaxhzMHR6xfeHFtb5zib": {
+      "key": "36vaxhzMHR6xfeHFtb5zib",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Facebook.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "65M0O0OHKldhds9n5jBGiS": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "1.736vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1zhrr6WadDATe3427rub0r": {
+      "key": "1zhrr6WadDATe3427rub0r",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid1 "
+          }
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "2YHeNiyR0fV1JZMcIHDA1K": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "19px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "19px"
+              },
+              "letterSpacing": {
+                "value": "0px"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Pe5po5Org3PJjp07JEknN": true,
+        "1FN4frSzEnJ7n4SUEre3Pl": true
+      },
+      "displayOrder": 2
+    },
+    "1FN4frSzEnJ7n4SUEre3Pl": {
+      "key": "1FN4frSzEnJ7n4SUEre3Pl",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%283%29.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1hkbUDl6XKvewCMrW45J1E": {
+      "key": "1hkbUDl6XKvewCMrW45J1E",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "2eRA90kU8kZq7o0uV54nmT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid3"
+          }
+        }
+      },
+      "styleProperties": {
+        "40eTQiyXCrLs6Tujcnun3h": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "66DQbGOctykXRqyvpS37Xt": true,
+        "3RyaOcRgzpzsjSf1w7wpwd": true
+      },
+      "displayOrder": 2
+    },
+    "3RyaOcRgzpzsjSf1w7wpwd": {
+      "key": "3RyaOcRgzpzsjSf1w7wpwd",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%283%29.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3MLQJahy7QQmwxaHTYYjGv": {
+      "key": "3MLQJahy7QQmwxaHTYYjGv",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "77GBo0ONxiZMQ48jFELuP6"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid5"
+          }
+        }
+      },
+      "styleProperties": {
+        "3YBfbefIjfbAU6BLYqcIVg": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "61SEYnNyYmyjsWbiM2He3j": true,
+        "2hHiJMc9DHqoRnJ1C87j3Z": true
+      },
+      "displayOrder": 2
+    },
+    "2hHiJMc9DHqoRnJ1C87j3Z": {
+      "key": "2hHiJMc9DHqoRnJ1C87j3Z",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%283%29.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1hiJPeufYLRsITENWlsQCh": {
+      "key": "1hiJPeufYLRsITENWlsQCh",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "4NKudFy4EJorBjkt4nZzMn"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid2"
+          }
+        }
+      },
+      "styleProperties": {
+        "7l0Ma04FrKSfLCLOHCr3YQ": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2UFvQSZzzivWyWW1BYD1Dt": true,
+        "zGThfnefnmcmWpboldvdH": true
+      },
+      "displayOrder": 2
+    },
+    "zGThfnefnmcmWpboldvdH": {
+      "key": "zGThfnefnmcmWpboldvdH",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%283%29.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4FUfgKe5qidpnVSPlUoN3k": {
+      "key": "4FUfgKe5qidpnVSPlUoN3k",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "4yldFYMuKCa2EmK6G8jACd"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid4"
+          }
+        }
+      },
+      "styleProperties": {
+        "213lIduIysIzdTo8G7OL7T": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7DbqThqisZ6Abeh5UJpTpG": true,
+        "2Cx3wbo3IcGDbAUz6QzAtP": true
+      },
+      "displayOrder": 2
+    },
+    "2Cx3wbo3IcGDbAUz6QzAtP": {
+      "key": "2Cx3wbo3IcGDbAUz6QzAtP",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%283%29.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1QTRqLS13UrpRL6bHRn2iC": {
+      "key": "1QTRqLS13UrpRL6bHRn2iC",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": "5Ou6dlJ1epgrEd0XbHVNI1"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.toggleGrid6"
+          }
+        }
+      },
+      "styleProperties": {
+        "O3pPDesR9O761PgH2RYk6": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5llDvdAgWmvhwbXsn25n6w": true,
+        "4B2HjvPsRZZ6fgCn2utKz8": true
+      },
+      "displayOrder": 2
+    },
+    "4B2HjvPsRZZ6fgCn2utKz8": {
+      "key": "4B2HjvPsRZZ6fgCn2utKz8",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector%20%283%29.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "19cFksa8EhE5bXAzBTV3zF": {
+      "key": "19cFksa8EhE5bXAzBTV3zF",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3OgessdmjfGrp4ROefBzwZ": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "j0ZcTzb66yBevnTi7O4k": true,
+        "5gcl9WJqpWejgci1E81OpV": true,
+        "1gZuvPfWAQWi13kuGPgsfW": true,
+        "oEVNZABBzwqdozXJd5AUS": true
+      },
+      "displayOrder": 6
+    },
+    "j0ZcTzb66yBevnTi7O4k": {
+      "key": "j0ZcTzb66yBevnTi7O4k",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "60AVCEi1oGVEcYWUMdldXR": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1wWzvvAsDw8qAiPRZovB3N": true,
+        "5rqnS12U3jgq6tIqJRI3Yc": true,
+        "6AcyPj1iS0w9qCAePWNJvx": true
+      },
+      "displayOrder": 3
+    },
+    "1wWzvvAsDw8qAiPRZovB3N": {
+      "key": "1wWzvvAsDw8qAiPRZovB3N",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Team"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "73c0KdNkCKLkZsGSJLxSXF": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#fff"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#51BCA266"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5rqnS12U3jgq6tIqJRI3Yc": {
+      "key": "5rqnS12U3jgq6tIqJRI3Yc",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Marketplace"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "4BEhUjs7a6pgzPtWLJJDys": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#fff"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#51BCA266"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6AcyPj1iS0w9qCAePWNJvx": {
+      "key": "6AcyPj1iS0w9qCAePWNJvx",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Product"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "3uqwx0P1kQl2UuZilm7pTq": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#fff"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "color": {
+                "value": "#51BCA266"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5gcl9WJqpWejgci1E81OpV": {
+      "key": "5gcl9WJqpWejgci1E81OpV",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1IBASukMb4vkegdODw0Cfy": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2M5Fjzw5RoPEv7S2B2VW5j": true,
+        "5AxgLczxvAtYVJahVnVqVn": true,
+        "2bQ1FlMn904k3JcNaipFaa": true,
+        "7wsAWlozExDSbtdQ2ITiXr": true
+      },
+      "displayOrder": 4
+    },
+    "2M5Fjzw5RoPEv7S2B2VW5j": {
+      "key": "2M5Fjzw5RoPEv7S2B2VW5j",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/linkedin.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5AxgLczxvAtYVJahVnVqVn": {
+      "key": "5AxgLczxvAtYVJahVnVqVn",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Youtube.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2bQ1FlMn904k3JcNaipFaa": {
+      "key": "2bQ1FlMn904k3JcNaipFaa",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Instagram.png"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "__truncated__": "... 219 more components omitted for corpus"
+  },
+  "name": "home",
+  "message": "From transport : YsoySzHMtuJBEpjuS6a5j5",
+  "clientCode": "SYSTEM",
+  "appCode": "cxlanding",
+  "version": 10,
+  "updatedAt": "2024-10-26 04:08:13.485000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-04-18 15:07:13.043000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,60 @@
+- 5FC2mafBCatMlAUWmZUd4h (Grid) PageGrid
+  - 5JBh4zaTgV93q87LLHR42z (Grid) Header Grid
+    - 4tZTyzWBvOYf53TNZ3Pf7E (Grid) Grid
+      - Kl34Ylp07OCGndeMHMqet (Image) image
+  - 6CNviIuAFmK2BViHKiOX9L (Grid) Grid
+    - 3QGUC5iLu8yOsfRiMfwj6E (Grid) Side Bar
+      - 3EhQdR607vHdMDvQgXXYAC (Grid) Grid
+        - cwkwbGJPD6b9cijuf7rmE (Grid) Inventory management grid
+          - d3TpkR1GOwYS0eXycGCOB (Text) Text
+        - 7CjLr9lqZxEUqf7dH5WEut (Grid) Specification Grid
+          - 1oZM68i5jYbNXVKFoO1V3x (Text) Text
+      - 7aGm84sD8g2F6nyldDppT8 (Grid) Grid
+        - 77MkRr8Is6R0xdQcAOOoAO (Button) Go to Landing Page
+    - 4sVLF1R12gJcsrNi4OpFZ9 (Grid) Main Page
+      - 41QlfhT6Y1Sqrh4JyxnbS1 (Grid) Booking Form Setup Grid
+        - 7LU3A5Qmu1IEpB1shPPf7I (Text) Text
+        - 6ix3ZDYHdJc7xSmWgsejg8 (Grid) Caret down Icon Grid
+          - 6RTHgWT1FOI5zxAwXGsiqq (Icon) Icon
+        - 6uzsJ6BQNx7QfDbwV46fX2 (Grid) Caret up Icon Grid
+          - 1fKMJJ0mam6lCQYHTXY2qW (Icon) Icon
+      - 5uf5Ry61QUe4vB2AE05ld7 (Grid) Back button Grid
+        - 2wpAhEzyemkCXw7wLLliF0 (Button) button
+      - lz5P9n7w7HL4F8HdLkGGq (Grid) Receipt Grid
+        - 5qJjVsLVzjvK8AqsaSlvgh (Text) receipt header
+        - 52CLaQUZDmPj2EyeQgNt1l (Grid) information grid
+          - 58cGx76Un5VqffqN1CuGIU (Grid) logo upload Grid
+            - 1luufcpnDADo3L4rKVxXax (Text) Text
+            - 69PCfj32HzCG5HY6Gk3VSB (Grid) Grid
+              - 359aEqed9XlGdWbVhrzpSd (Grid) upload Grid container
+                - JbOrY1MGoulJEb27WuHie (FileSelector) File Selector
+              - 4aVsvmHzjPkr3VbZ5Virsy (Text) Text
+          - 28cZ2qM0wUcuhKqJYbLi4t (TextBox) Company Name
+          - 6AXalaFEmN5gkuBteagBXx (TextBox) Name 1
+          - 3Z23k3F1GX2DrZzhHpP3KB (TextBox) Name 2 
+          - 25OLYH18jWCaSXtsaIHmws (TextBox) Minimum Amount
+          - 7GPQI6MBkE5POvsgTrYe8J (Calendar) Calendar
+      - 4gwYFVsyzB0kXiKqOKJXvv (Grid) E-Receipt Details Grid
+        - 357sw3v75A1yldAfLMQXd2 (Text) E-Receipt Details Heading
+        - 6qJymJltLndWyiYG8J1rsp (ArrayRepeater) fields Repeator
+          - 3Ip4ycypvU7ss7gL25j7Zr (TextBox) Company Name
+        - 7oozmuqY359x6SfZ3dQei (Grid) Add receipt block
+          - 5P4GrGiEcXcce9M7X0LH4r (Image) image
+      - 68t8qs7vXQq6tcfbkkJEF (Grid) Payment Details Grid
+        - 1Uwh46rQVyED1WtLafCNSk (Text) Payment Details Heading
+        - 7m3UAUsUT56HFD9tqEo3PK (ArrayRepeater) fields Repeator
+          - 2ZtJ1EVr5ytohGqOUeBGPg (Grid) Payment details count Grid
+            - 63XM4Hkc5REqo72IYdOJVE (Text) E-Receipt Details Heading
+            - 7M7OWB0wEmV1eJUQs9zYb8 (TextBox) Company Name
+            - 1NQGuz6sOvIsvDr4pNVC3l (TextBox) Company Name
+            - BXCNsSAsmZ6QXiqZ63cRY (TextBox) Company Name
+            - 1VdMqyFsoaRlPUMbVa2RWc (TextBox) Company Name
+            - kCdHAIeBSkUeFT1uJoFcQ (TextBox) Company Name
+        - 2QPom9baPLGOGnMvQ7Unsz (Grid) Add receipt block
+          - 3xZ1u211wZNCCO8gHTbvo7 (Image) image
+      - 2ZhSZKV1l6M7eAvFupR2m3 (Grid) Receipt footer Grid
+        - 1UYgS7NaHh59dTqvR546qX (Text) Payment Details Heading
+        - 1dGahl4SjMJoT1xZ1Bkas9 (TextBox) Acknowledgement box
+        - 34IeN5PNU5x7i3eysNrPU7 (TextBox) Note
+    - 2xtdHHbCaRkmUrICs61TOt (Grid) save and continue grid
+      - 6QJPQoFhgSR5Cn9rKqrVOJ (Button) button

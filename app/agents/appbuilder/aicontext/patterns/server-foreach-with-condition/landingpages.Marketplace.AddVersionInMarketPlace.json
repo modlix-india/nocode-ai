@@ -1,0 +1,477 @@
+{
+  "_id": "65bb3cc85f10fd7837e7c0d7",
+  "definition": {
+    "name": "AddVersionInMarketPlace",
+    "namespace": "Marketplace",
+    "parameters": {
+      "notes": {
+        "parameterName": "notes",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "minLength": 3,
+          "maxLength": 2048
+        }
+      },
+      "definition": {
+        "parameterName": "definition",
+        "schema": {
+          "type": [
+            "STRING",
+            "OBJECT"
+          ],
+          "version": 1,
+          "minLength": 3,
+          "maxLength": 1024
+        }
+      },
+      "item": {
+        "parameterName": "item",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "minLength": 3
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "version": {
+            "type": [
+              "OBJECT",
+              "NULL"
+            ],
+            "version": 1,
+            "properties": {
+              "nothing": {
+                "type": [
+                  "STRING"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 49,
+          "top": 50.5
+        },
+        "parameterMap": {
+          "name": {
+            "6qeF40ALZD5yXykINEu30R": {
+              "key": "6qeF40ALZD5yXykINEu30R",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "version"
+            }
+          },
+          "schema": {
+            "1qogmnCsU420ENciQrjiHl": {
+              "key": "1qogmnCsU420ENciQrjiHl",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 668,
+          "top": 920
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 408,
+          "top": 557
+        },
+        "parameterMap": {
+          "condition": {
+            "61YUTgyDZaFhJqlpBxEbeT": {
+              "key": "61YUTgyDZaFhJqlpBxEbeT",
+              "type": "EXPRESSION",
+              "expression": "Steps.postRequest.output.data.accessToken != null",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 777.5,
+          "top": 501
+        },
+        "parameterMap": {
+          "name": {
+            "64erjgd6x9JyrZorNl5hMp": {
+              "key": "64erjgd6x9JyrZorNl5hMp",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.version.item"
+            }
+          },
+          "value": {
+            "2r27gjV099U4U69KPbzR6F": {
+              "key": "2r27gjV099U4U69KPbzR6F",
+              "type": "EXPRESSION",
+              "expression": "Arguments.item",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1051,
+          "top": 504
+        },
+        "parameterMap": {
+          "name": {
+            "3XQ4D4CwsdpThop0Zl0qdg": {
+              "key": "3XQ4D4CwsdpThop0Zl0qdg",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.version.notes"
+            }
+          },
+          "value": {
+            "3If5ne3fBco5WZ5Q8aUTKu": {
+              "key": "3If5ne3fBco5WZ5Q8aUTKu",
+              "type": "EXPRESSION",
+              "expression": "Arguments.notes",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1338,
+          "top": 508.5
+        },
+        "parameterMap": {
+          "name": {
+            "46pcsFhwEXKtuS3my7uOoc": {
+              "key": "46pcsFhwEXKtuS3my7uOoc",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.version.definition"
+            }
+          },
+          "value": {
+            "5M2ZtSG9ehw0S1IFhIKTHv": {
+              "key": "5M2ZtSG9ehw0S1IFhIKTHv",
+              "type": "EXPRESSION",
+              "expression": "Arguments.definition",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 360,
+          "top": 56
+        },
+        "parameterMap": {
+          "name": {
+            "5lWsQJ26UxnqnoZ8OCuyMW": {
+              "key": "5lWsQJ26UxnqnoZ8OCuyMW",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "auth"
+            }
+          },
+          "schema": {
+            "1k3j1zuTG4NByD6Zs6MluH": {
+              "key": "1k3j1zuTG4NByD6Zs6MluH",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1700,
+          "top": 519.5
+        },
+        "parameterMap": {
+          "name": {
+            "wObS5vl36psi7B6FjgpXN": {
+              "key": "wObS5vl36psi7B6FjgpXN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.auth.Authorization"
+            }
+          },
+          "value": {
+            "2l1nLmzLWtzRk8PdCxHJ8P": {
+              "key": "2l1nLmzLWtzRk8PdCxHJ8P",
+              "type": "EXPRESSION",
+              "expression": "Steps.postRequest.output.data.accessToken",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set2__d-o-t__output": true
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2323,
+          "top": 1030.5
+        },
+        "parameterMap": {
+          "results": {
+            "3H90Z1nmuH5WbTjlYEYFQP": {
+              "key": "3H90Z1nmuH5WbTjlYEYFQP",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "version",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest1.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 428,
+          "top": 326
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__postRequest__d-o-t__error": true
+        },
+        "parameterMap": {
+          "eventName": {
+            "3GFBG7WLVbMeLVL5Mwe2PB": {
+              "key": "3GFBG7WLVbMeLVL5Mwe2PB",
+              "type": "VALUE",
+              "value": "error"
+            }
+          },
+          "results": {
+            "4jiQod0wR1lBa97MyAk8WX": {
+              "key": "4jiQod0wR1lBa97MyAk8WX",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Unable to authorize"
+            }
+          }
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2320,
+          "top": 791
+        },
+        "parameterMap": {
+          "eventName": {
+            "34SpF4ue6sfzPuvYbrHGF0": {
+              "key": "34SpF4ue6sfzPuvYbrHGF0",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "3bJ8zCIa086UZDyrEmph5E": {
+              "key": "3bJ8zCIa086UZDyrEmph5E",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Unable to create version"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__postRequest1__d-o-t__error": true
+        }
+      },
+      "postRequest1": {
+        "statementName": "postRequest1",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 1902,
+          "top": 777.5
+        },
+        "parameterMap": {
+          "payload": {
+            "NP8W3Yca2CtdZKZKcmu1N": {
+              "key": "NP8W3Yca2CtdZKZKcmu1N",
+              "type": "EXPRESSION",
+              "expression": "Context.version",
+              "order": 1
+            }
+          },
+          "url": {
+            "qmUcexZylvOCHlDNP9Mwu": {
+              "key": "qmUcexZylvOCHlDNP9Mwu",
+              "type": "VALUE",
+              "order": 1,
+              "value": "/api/core/function/execute/Template/addVersion"
+            }
+          },
+          "headers": {
+            "5Z7RFYfR9WJGtdSbyiv2ry": {
+              "key": "5Z7RFYfR9WJGtdSbyiv2ry",
+              "type": "EXPRESSION",
+              "expression": "Context.auth",
+              "value": {}
+            }
+          },
+          "connectionName": {
+            "2APGO8PPodk1pOGcqRoxPX": {
+              "key": "2APGO8PPodk1pOGcqRoxPX",
+              "type": "VALUE",
+              "value": "marketplace"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set3__d-o-t__output": true
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 31,
+          "top": 347.5
+        },
+        "parameterMap": {
+          "connectionName": {
+            "4KuTBWPLOKVuPTO1HyQjTO": {
+              "key": "4KuTBWPLOKVuPTO1HyQjTO",
+              "type": "VALUE",
+              "expression": "",
+              "value": "marketplace"
+            }
+          },
+          "url": {
+            "cVFSvc8dMlRegx2nXseic": {
+              "key": "cVFSvc8dMlRegx2nXseic",
+              "type": "EXPRESSION",
+              "expression": "\"/api/security/authenticate\"",
+              "order": 1
+            }
+          },
+          "payload": {
+            "3CzqvFk86YoyT12tJteCOh": {
+              "key": "3CzqvFk86YoyT12tJteCOh",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "userName": "confuser",
+                "password": "<REDACTED>"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "executeAuth": "Authorities.Logged_IN",
+  "name": "Marketplace.AddVersionInMarketPlace",
+  "message": "From transport : 24jcLIvMHfuDAcrpoFVk0b",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 4,
+  "updatedAt": "2024-06-10 17:54:06.044000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-02-01 06:40:08.193000",
+  "createdBy": "<USER>"
+}

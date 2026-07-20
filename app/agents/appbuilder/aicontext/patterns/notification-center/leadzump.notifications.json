@@ -1,0 +1,1312 @@
+{
+  "_id": "695e6dedc4c5b44a012fa69b",
+  "properties": {
+    "onLoadEvent": "yX1sZqz3VgqD18AyeFPQa",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "yX1sZqz3VgqD18AyeFPQa": {
+      "name": "onLoad",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1113.8888804117837,
+            "top": 336.329844156901
+          },
+          "parameterMap": {
+            "path": {
+              "3P1qTQozCOc9S9JHUd5Pvb": {
+                "key": "3P1qTQozCOc9S9JHUd5Pvb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.notificationsTab"
+              }
+            },
+            "value": {
+              "6QTQGZsjaItB6l7YNVtPbb": {
+                "key": "6QTQGZsjaItB6l7YNVtPbb",
+                "type": "VALUE",
+                "order": 1,
+                "value": "All notifications"
+              }
+            }
+          }
+        },
+        "fetchAllNotifications": {
+          "statementName": "fetchAllNotifications",
+          "name": "fetchAllNotifications",
+          "namespace": "_",
+          "position": {
+            "left": 572.6296310424805,
+            "top": 393.1898091634114
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7rmVsTo9Mtp9Rimckc0z1U": {
+      "name": "fetchAllNotifications",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 780.6296310424804,
+            "top": 411.1898091634114
+          },
+          "parameterMap": {
+            "path": {
+              "53CVZE6iATr1gMsprapIfn": {
+                "key": "53CVZE6iATr1gMsprapIfn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allNotifications"
+              }
+            },
+            "value": {
+              "1r2x9V6DScYHAou7x7TWDt": {
+                "key": "1r2x9V6DScYHAou7x7TWDt",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 271.2962977091471,
+            "top": 251.52314249674475
+          },
+          "parameterMap": {
+            "url": {
+              "4S0kCoZnw4iroZ7qaf8MwQ": {
+                "key": "4S0kCoZnw4iroZ7qaf8MwQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/api/notification/notifications"
+              }
+            },
+            "queryParams": {
+              "3LiNkmwJ8xU6Gmimmg7Tzo": {
+                "key": "3LiNkmwJ8xU6Gmimmg7Tzo",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "page": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.allNotifications.number ?? 0"
+                    }
+                  },
+                  "size": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.allNotifications.size ?? 20"
+                    }
+                  },
+                  "appCode": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Store.application.appCode"
+                    }
+                  },
+                  "clientCode": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Store.auth.client.code"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1206.9259287516275,
+            "top": 382.52314249674475
+          },
+          "parameterMap": {
+            "condition": {
+              "4YxxEhie9AQfBKmPpGPefE": {
+                "key": "4YxxEhie9AQfBKmPpGPefE",
+                "type": "EXPRESSION",
+                "expression": "Page.allNotifications.content",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1759.2592620849607,
+            "top": 216.4351908365885
+          },
+          "parameterMap": {
+            "path": {
+              "15ULzi7D1CQsNqYVm8tKb1": {
+                "key": "15ULzi7D1CQsNqYVm8tKb1",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.show"
+              }
+            },
+            "value": {
+              "1JlmdZDF4bzxXVy03ghj0x": {
+                "key": "1JlmdZDF4bzxXVy03ghj0x",
+                "type": "EXPRESSION",
+                "expression": "\"Notification\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1663.592595418294,
+            "top": 628.6203689575194
+          },
+          "parameterMap": {
+            "path": {
+              "15ULzi7D1CQsNqYVm8tKb1": {
+                "key": "15ULzi7D1CQsNqYVm8tKb1",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.show"
+              }
+            },
+            "value": {
+              "1JlmdZDF4bzxXVy03ghj0x": {
+                "key": "1JlmdZDF4bzxXVy03ghj0x",
+                "type": "EXPRESSION",
+                "expression": "\"Empty\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1X7kBuWfYU753T28FORWS5": {
+      "name": "navigateToDeal",
+      "steps": {
+        "split": {
+          "statementName": "split",
+          "name": "Split",
+          "namespace": "System.String",
+          "position": {
+            "left": 445.9629643758137,
+            "top": 279.85647583007807
+          },
+          "parameterMap": {
+            "string": {
+              "2WgxLlK3jmy2jzuSEmQpNa": {
+                "key": "2WgxLlK3jmy2jzuSEmQpNa",
+                "type": "EXPRESSION",
+                "expression": "Parent.message",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "4SHtiGbRU2V8YiubKE2J6S": {
+                "key": "4SHtiGbRU2V8YiubKE2J6S",
+                "type": "EXPRESSION",
+                "expression": "\" \"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 903.1851844787597,
+            "top": 427.3009223937987
+          },
+          "parameterMap": {
+            "path": {
+              "159yjxMrGYkUjsmi17HXxn": {
+                "key": "159yjxMrGYkUjsmi17HXxn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.dealCode"
+              }
+            },
+            "value": {
+              "1jlFrEysXOOnDQxgxgLc5q": {
+                "key": "1jlFrEysXOOnDQxgxgLc5q",
+                "type": "EXPRESSION",
+                "expression": "Steps.split.output.result[{{Steps.split.output.result.length -1}}]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1335.5555470784502,
+            "top": 249.9675954182942
+          },
+          "parameterMap": {
+            "linkPath": {
+              "7j6sk5TMNYtkgNzMxWRvTX": {
+                "key": "7j6sk5TMNYtkgNzMxWRvTX",
+                "type": "EXPRESSION",
+                "expression": "'/dealProfile/{{Page.dealCode}}'",
+                "order": 1
+              }
+            },
+            "target": {
+              "181KrOpJqXKujKUm91ESJ5": {
+                "key": "181KrOpJqXKujKUm91ESJ5",
+                "type": "VALUE",
+                "expression": "",
+                "value": "_blank"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2yrwWthTi6z9LO2NDgDYNt": {
+      "name": "loadMore",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 304.6296310424804,
+            "top": 342.52314249674475
+          },
+          "parameterMap": {
+            "path": {
+              "4YYgImi31jCnMGtw4xCb8o": {
+                "key": "4YYgImi31jCnMGtw4xCb8o",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allNotifications.size"
+              }
+            },
+            "value": {
+              "rqsfET0vp0KbUxut5CKgN": {
+                "key": "rqsfET0vp0KbUxut5CKgN",
+                "type": "EXPRESSION",
+                "expression": "Page.allNotifications.size + 20",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchAllNotifications": {
+          "statementName": "fetchAllNotifications",
+          "name": "fetchAllNotifications",
+          "namespace": "_",
+          "position": {
+            "left": 808.296297709147,
+            "top": 281.1898091634114
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "hjvAJlAbwZjWpenGflXLv": {
+      "name": "navigateBack",
+      "steps": {
+        "navigateBack": {
+          "statementName": "navigateBack",
+          "name": "NavigateBack",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 351.99999491373694,
+            "top": 120.39583841959633
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "3siTX2COwIjPTURkW5zN9L",
+  "componentDefinition": {
+    "3siTX2COwIjPTURkW5zN9L": {
+      "key": "3siTX2COwIjPTURkW5zN9L",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5xdmdGNrOk2dH4TmR0RX26": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1psmUcDRXvqDwRhzlcmDIP": true,
+        "1we0qEv6QUHWRNLBtg9rNJ": true
+      }
+    },
+    "1psmUcDRXvqDwRhzlcmDIP": {
+      "key": "1psmUcDRXvqDwRhzlcmDIP",
+      "name": "MainGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5TVPgiuMRKfZdDOJDrLOoT": {
+          "resolutions": {
+            "ALL": {
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#0000000F"
+              },
+              "borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "paddingTop": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "47q74a8aYIK5Bv7txjdEP": true
+      },
+      "displayOrder": 2
+    },
+    "47q74a8aYIK5Bv7txjdEP": {
+      "key": "47q74a8aYIK5Bv7txjdEP",
+      "name": "Tabs",
+      "type": "Tabs",
+      "properties": {
+        "tabs": {
+          "3iFvRBg47fg0Mk7OR7Oshz": {
+            "key": "3iFvRBg47fg0Mk7OR7Oshz",
+            "order": 1,
+            "property": {
+              "value": "All notifications"
+            }
+          }
+        },
+        "defaultActive": {
+          "value": "All notifications"
+        },
+        "designType": {
+          "value": "_underLine"
+        }
+      },
+      "styleProperties": {
+        "45rNJYdZ7nBy496k0Msy3S": {
+          "resolutions": {
+            "ALL": {
+              "tabHighlighter-borderBottomWidth": {
+                "value": "0.14vw"
+              },
+              "tabHighlighter-borderBottomStyle": {
+                "value": "solid"
+              },
+              "tabHighlighter-borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "childContainer-borderRightStyle": {
+                "value": "solid"
+              },
+              "childContainer-borderBottomStyle": {
+                "value": "solid"
+              },
+              "childContainer-borderLeftStyle": {
+                "value": "solid"
+              },
+              "childContainer-borderBottomColor": {
+                "value": "#0000000D"
+              },
+              "childContainer-borderLeftColor": {
+                "value": "#0000000D"
+              },
+              "childContainer-borderBottomLeftRadius": {
+                "value": "0.56vw"
+              },
+              "childContainer-borderBottomRightRadius": {
+                "value": "0.56vw"
+              },
+              "childContainer-borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "childContainer-borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "childContainer-borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "childContainer-paddingTop": {
+                "value": "0vw"
+              },
+              "childContainer-paddingBottom": {
+                "value": "0vw"
+              },
+              "childContainer-paddingLeft": {
+                "value": "0vw"
+              },
+              "childContainer-paddingRight": {
+                "value": "0vw"
+              },
+              "tabHighlighter-backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "childContainer-backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "childContainer-borderRightColor": {
+                "value": "#0000000D"
+              },
+              "tabsSeperator-borderRightStyle": {
+                "value": "none"
+              },
+              "tabsSeperator-borderLeftStyle": {
+                "value": "none"
+              },
+              "tabsSeperator-borderTopStyle": {
+                "value": "none"
+              },
+              "childContainer-maxHeight": {
+                "value": "76vh"
+              },
+              "childContainer-overflow": {
+                "value": "auto"
+              },
+              "tabsContainer-paddingLeft": {
+                "value": "3.13vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "tabsContainer-gap": {
+                "value": "6vw"
+              },
+              "tabsContainer-paddingLeft": {
+                "value": "6.92vw"
+              },
+              "tabsContainer-paddingRight": {
+                "value": "6.92vw"
+              },
+              "tab-paddingLeft": {
+                "value": "1.28vw"
+              },
+              "tab-paddingRight": {
+                "value": "1.28vw"
+              },
+              "tabHighlighter-borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorThree"
+                }
+              },
+              "tabHighlighter-borderBottomStyle": {
+                "value": "solid"
+              },
+              "tabHighlighter-borderBottomWidth": {
+                "value": "1.03vw"
+              },
+              "tabHighlighter-borderTopStyle": {
+                "value": "none"
+              },
+              "tabHighlighter-borderRightStyle": {
+                "value": "none"
+              },
+              "tabHighlighter-borderLeftStyle": {
+                "value": "none"
+              },
+              "tabHighlighter-transform": {
+                "value": "none"
+              },
+              "tabsContainer-backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorOne"
+                }
+              },
+              "childContainer-borderBottomStyle": {
+                "value": "none"
+              },
+              "childContainer-borderRightStyle": {
+                "value": "none"
+              },
+              "childContainer-borderLeftStyle": {
+                "value": "none"
+              },
+              "childContainer-borderBottomLeftRadius": {
+                "value": "0.56vw"
+              },
+              "childContainer-borderTopStyle": {
+                "value": "none"
+              },
+              "icon-display": {
+                "value": "none"
+              },
+              "childContainer-maxHeight": {
+                "value": "65vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1moEEm0PnJ9kGNxXLnhxlO": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.notificationTab"
+      }
+    },
+    "1moEEm0PnJ9kGNxXLnhxlO": {
+      "key": "1moEEm0PnJ9kGNxXLnhxlO",
+      "name": "AllNotifications",
+      "type": "Grid",
+      "properties": {
+        "padding": {
+          "value": "_PADDINGTHREE"
+        }
+      },
+      "styleProperties": {
+        "5zDxGgKM92BPCA1CzrZ7lU": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3iuOd6Ruf4DGmau3zhVxmS": true,
+        "4wL8ZIGJwWziV5bKDhMc9U": true
+      },
+      "displayOrder": 0
+    },
+    "5ZujfXgmv1xu1R3z7W8fKb": {
+      "key": "5ZujfXgmv1xu1R3z7W8fKb",
+      "name": "Notification Repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "1cwRzyO9gdAfdEcUuSiGuV": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Wzv7qUJUsXqYpL6eDsXgp": true
+      },
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.allNotifications.content"
+      }
+    },
+    "1Wzv7qUJUsXqYpL6eDsXgp": {
+      "key": "1Wzv7qUJUsXqYpL6eDsXgp",
+      "name": "Notification",
+      "type": "Grid",
+      "properties": {
+        "border": {
+          "value": "_MEDIUM"
+        },
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6DL9q0BcKxN2H5AGiVsjeJ": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              },
+              "paddingLeft": {
+                "value": "0.69vw"
+              },
+              "paddingRight": {
+                "value": "0.69vw"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Wc58CkZbPNkSj2vX2NSXV": true,
+        "6wr6AGF27yZHrkAwx8idfW": true
+      },
+      "displayOrder": 0
+    },
+    "6ODHek7zqEMCvzzVGi4Llc": {
+      "key": "6ODHek7zqEMCvzzVGi4Llc",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Image"
+        },
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.mimeUrl"
+          }
+        }
+      },
+      "styleProperties": {
+        "528YwDEvkqdVzYOhNTZfsF": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "2.08vw"
+              },
+              "height": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5cVfwXZTocuJJp8ngJUVcz": {
+      "key": "5cVfwXZTocuJJp8ngJUVcz",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/notifications/dateIcon.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "6UUmPY99roFysv29ipBoFN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "0.83vw"
+              },
+              "height": {
+                "value": "0.83vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6yJFNHEXlxMerNNOptqESw": {
+      "key": "6yJFNHEXlxMerNNOptqESw",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.createdAt"
+          }
+        },
+        "stringFormat": {
+          "value": "UTC_TO_MONTH_DD,YYYY_HH:MM"
+        },
+        "textColor": {
+          "value": "_lightLabelText"
+        }
+      },
+      "styleProperties": {
+        "1GHCjPKc6LJW8l1GjDiGf7": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '99'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1Wc58CkZbPNkSj2vX2NSXV": {
+      "key": "1Wc58CkZbPNkSj2vX2NSXV",
+      "name": "ContentGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4ipbA1Pkm2f5SzS6Au8nki": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              },
+              "paddingTop": {
+                "value": "5px"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "width": {
+                "value": "87%"
+              },
+              "flexWrap": {
+                "value": "wrap"
+              },
+              "flexFlow": {
+                "value": "undefined wrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6ODHek7zqEMCvzzVGi4Llc": true,
+        "2irdIC7xxFMCAjJ71PhCGh": true,
+        "5QrouyCgcHnNF93h2aCOGv": true
+      },
+      "displayOrder": 1
+    },
+    "3PpkfBq09MfsGGbuLj7yCR": {
+      "key": "3PpkfBq09MfsGGbuLj7yCR",
+      "name": "Title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        },
+        "textSuffix": {
+          "value": " "
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_coloredText2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2irdIC7xxFMCAjJ71PhCGh": {
+      "key": "2irdIC7xxFMCAjJ71PhCGh",
+      "name": "DateGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5kX4N0734oAFiwdgQQNn05": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5cVfwXZTocuJJp8ngJUVcz": true,
+        "6yJFNHEXlxMerNNOptqESw": true
+      },
+      "displayOrder": 3
+    },
+    "5QrouyCgcHnNF93h2aCOGv": {
+      "key": "5QrouyCgcHnNF93h2aCOGv",
+      "name": "MsgGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "3PpkfBq09MfsGGbuLj7yCR": true,
+        "TNHoFO4ApoGGpzkkMdvjG": true
+      },
+      "displayOrder": 2
+    },
+    "TNHoFO4ApoGGpzkkMdvjG": {
+      "key": "TNHoFO4ApoGGpzkkMdvjG",
+      "name": "Desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.message"
+          }
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_coloredText1"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "BCoXd21fxAdHOQELPRxgX": {
+          "resolutions": {
+            "ALL": {
+              "h5-display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6wr6AGF27yZHrkAwx8idfW": {
+      "key": "6wr6AGF27yZHrkAwx8idfW",
+      "name": "View",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "View Deal"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        },
+        "visibility": {
+          "value": true
+        },
+        "onClick": {
+          "value": "1X7kBuWfYU753T28FORWS5"
+        }
+      },
+      "styleProperties": {
+        "4YfE9udDcBjHZ3kecEW4xj": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "0vw"
+              },
+              "paddingRight": {
+                "value": "0vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3iuOd6Ruf4DGmau3zhVxmS": {
+      "key": "3iuOd6Ruf4DGmau3zhVxmS",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.show = \"Notification\""
+          }
+        }
+      },
+      "styleProperties": {
+        "5E0fYy4pDBaCGAblKmmvCe": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5ZujfXgmv1xu1R3z7W8fKb": true,
+        "6yZpzn5bLyG8RliIhiYLUQ": true
+      },
+      "displayOrder": 2
+    },
+    "6yZpzn5bLyG8RliIhiYLUQ": {
+      "key": "6yZpzn5bLyG8RliIhiYLUQ",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Load more"
+        },
+        "onClick": {
+          "value": "2yrwWthTi6z9LO2NDgDYNt"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allNotifications.totalElements >= 20"
+          }
+        }
+      },
+      "styleProperties": {
+        "6fpemufGSi4PZigVsoPTJb": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4wL8ZIGJwWziV5bKDhMc9U": {
+      "key": "4wL8ZIGJwWziV5bKDhMc9U",
+      "name": "Empty noti Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.show = \"Empty\""
+          }
+        },
+        "padding": {
+          "value": "_PADDINGONE"
+        }
+      },
+      "styleProperties": {
+        "6znzVWkBR3knnQL0SCyauq": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "70vh"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "paddingTop": {
+                "value": "1px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2TGFcdHeyNCmULNw0yhcyn": true,
+        "7ryO9bmwSpAzZIKvEfLhM0": true,
+        "6Sk2MITo57e96anWoQewkt": true
+      },
+      "displayOrder": 2
+    },
+    "2TGFcdHeyNCmULNw0yhcyn": {
+      "key": "2TGFcdHeyNCmULNw0yhcyn",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "To view unread notifications perform some action in deals and other module"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_lightSubText"
+        }
+      },
+      "styleProperties": {
+        "12MnIDxk42YFJbOH4GoA5Z": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7ryO9bmwSpAzZIKvEfLhM0": {
+      "key": "7ryO9bmwSpAzZIKvEfLhM0",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/notifications/Group<PHONE>.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6Sk2MITo57e96anWoQewkt": {
+      "key": "6Sk2MITo57e96anWoQewkt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "No notifications are available"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_lightSubText"
+        }
+      },
+      "styleProperties": {
+        "fR0OmT2s4e25JOwxiaLxF": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "paddingTop": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1we0qEv6QUHWRNLBtg9rNJ": {
+      "key": "1we0qEv6QUHWRNLBtg9rNJ",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1LNCAXyt1T8U9bT1eZ1teS": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {},
+            "ALL": {
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "minHeight": {
+                "value": "60px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2r5UhnLkkQDbINJoHoAiVj": true,
+        "fZrG5eNi701qvVqoCulq5": true
+      }
+    },
+    "2r5UhnLkkQDbINJoHoAiVj": {
+      "key": "2r5UhnLkkQDbINJoHoAiVj",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go Back"
+        },
+        "designType": {
+          "value": "_decorative"
+        },
+        "rightIcon": {
+          "value": " ms material-symbols-rounded mso-arrow_forward_ios"
+        },
+        "onClick": {
+          "value": "hjvAJlAbwZjWpenGflXLv"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "fZrG5eNi701qvVqoCulq5": {
+      "key": "fZrG5eNi701qvVqoCulq5",
+      "name": "notification",
+      "type": "Button",
+      "properties": {
+        "designType": {
+          "value": "_decorative"
+        },
+        "onClick": {
+          "value": ""
+        },
+        "label": {
+          "value": "Notifications"
+        },
+        "readOnly": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    }
+  },
+  "componentVersions": {
+    "1psmUcDRXvqDwRhzlcmDIP": 4,
+    "6yJFNHEXlxMerNNOptqESw": 4,
+    "4wL8ZIGJwWziV5bKDhMc9U": 4,
+    "1Wzv7qUJUsXqYpL6eDsXgp": 4,
+    "6yZpzn5bLyG8RliIhiYLUQ": 4,
+    "3PpkfBq09MfsGGbuLj7yCR": 4,
+    "5QrouyCgcHnNF93h2aCOGv": 4,
+    "6ODHek7zqEMCvzzVGi4Llc": 4,
+    "2TGFcdHeyNCmULNw0yhcyn": 4,
+    "1we0qEv6QUHWRNLBtg9rNJ": 4,
+    "fZrG5eNi701qvVqoCulq5": 4,
+    "1moEEm0PnJ9kGNxXLnhxlO": 4,
+    "2r5UhnLkkQDbINJoHoAiVj": 4,
+    "47q74a8aYIK5Bv7txjdEP": 4,
+    "3siTX2COwIjPTURkW5zN9L": 4,
+    "7ryO9bmwSpAzZIKvEfLhM0": 4,
+    "5cVfwXZTocuJJp8ngJUVcz": 4,
+    "5ZujfXgmv1xu1R3z7W8fKb": 4,
+    "2irdIC7xxFMCAjJ71PhCGh": 4,
+    "6Sk2MITo57e96anWoQewkt": 4,
+    "TNHoFO4ApoGGpzkkMdvjG": 4,
+    "1Wc58CkZbPNkSj2vX2NSXV": 4,
+    "3iuOd6Ruf4DGmau3zhVxmS": 4,
+    "6wr6AGF27yZHrkAwx8idfW": 4
+  },
+  "eventFunctionVersions": {
+    "yX1sZqz3VgqD18AyeFPQa": 4,
+    "2yrwWthTi6z9LO2NDgDYNt": 4,
+    "7rmVsTo9Mtp9Rimckc0z1U": 4,
+    "hjvAJlAbwZjWpenGflXLv": 4,
+    "1X7kBuWfYU753T28FORWS5": 4
+  },
+  "name": "notifications",
+  "message": "From transport : 1wQWGRtNepBvqTPqw2neH6",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN",
+  "appCode": "leadzump",
+  "version": 30,
+  "updatedAt": "2026-05-14 13:46:49.473000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-07 14:30:05.090000",
+  "createdBy": "<USER>"
+}

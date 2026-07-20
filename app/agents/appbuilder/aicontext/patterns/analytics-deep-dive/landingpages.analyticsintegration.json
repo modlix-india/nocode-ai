@@ -1,0 +1,1989 @@
+{
+  "_id": "652ea81ec5b899138220db53",
+  "properties": {
+    "loadStrategy": "reload",
+    "onLoadEvent": "75EeymfJEt8sRGjaHGbMPy"
+  },
+  "eventFunctions": {
+    "75EeymfJEt8sRGjaHGbMPy": {
+      "name": "loadData",
+      "steps": {
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1349.6015625,
+            "top": 383.3984375
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if_Copy_1__d-o-t__true": true
+          },
+          "parameterMap": {
+            "path": {
+              "2xt2POxVa9hGicQzKYr5Np": {
+                "key": "2xt2POxVa9hGicQzKYr5Np",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.selectedAppCode"
+              }
+            },
+            "value": {
+              "6K8KaNuDSoHPEkA44BXRL3": {
+                "key": "6K8KaNuDSoHPEkA44BXRL3",
+                "type": "EXPRESSION",
+                "expression": "Page.searchedApps.content[0].appCode",
+                "order": 1
+              }
+            }
+          }
+        },
+        "selectedDropDown": {
+          "statementName": "selectedDropDown",
+          "name": "selectedDropDown",
+          "namespace": "_",
+          "position": {
+            "left": 1520.8828125,
+            "top": 739.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 717.8828125,
+            "top": 712.9296875
+          },
+          "parameterMap": {
+            "msg": {
+              "18Ef0rteadsKceICamXH5O": {
+                "key": "18Ef0rteadsKceICamXH5O",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setInitData": {
+          "statementName": "setInitData",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 59.630859375,
+            "top": 375.126953125
+          },
+          "parameterMap": {
+            "path": {
+              "7jHzT1MsB8asCR0rqy8kEQ": {
+                "key": "7jHzT1MsB8asCR0rqy8kEQ",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.appsSearch"
+              }
+            },
+            "value": {
+              "5SAFo3OMmQL31UcmTEdsFE": {
+                "key": "5SAFo3OMmQL31UcmTEdsFE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "condition": {
+                    "field": "appName",
+                    "operator": "STRING_LOOSE_EQUAL",
+                    "value": ""
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 377.630859375,
+            "top": 496.376953125
+          },
+          "parameterMap": {
+            "url": {
+              "3XOoTzPmvgVOxl93QiavVU": {
+                "key": "3XOoTzPmvgVOxl93QiavVU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/applications/query"
+              }
+            },
+            "method": {
+              "3tNTPnIm95fnHPNAAfHuZ2": {
+                "key": "3tNTPnIm95fnHPNAAfHuZ2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "12Hwm5gksosuxtjL2XSzCR": {
+                "key": "12Hwm5gksosuxtjL2XSzCR",
+                "type": "EXPRESSION",
+                "expression": "Page.appsSearch",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setInitData__d-o-t__output": true
+          }
+        },
+        "if_Copy_1": {
+          "statementName": "if_Copy_1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1038.6015625,
+            "top": 252
+          },
+          "parameterMap": {
+            "condition": {
+              "z0nPj1GUM65sXcM6uU9Bs": {
+                "key": "z0nPj1GUM65sXcM6uU9Bs",
+                "type": "EXPRESSION",
+                "expression": "(Page.searchedApps.content.length ?? 0 ) > 0",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 719.380859375,
+            "top": 495.376953125
+          },
+          "parameterMap": {
+            "path": {
+              "3STbLZVr9BNXHyxCPZONUU": {
+                "key": "3STbLZVr9BNXHyxCPZONUU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.searchedApps"
+              }
+            },
+            "value": {
+              "5pxoYLDUlU9THKlM4C6Lpe": {
+                "key": "5pxoYLDUlU9THKlM4C6Lpe",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5yhrnCKDINkmD2gGt6w16v": {
+      "name": "save_function",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 41.8828125,
+            "top": 115.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "7FB45JlaKk0ZFJvOPmWvQD": {
+                "key": "7FB45JlaKk0ZFJvOPmWvQD",
+                "type": "EXPRESSION",
+                "expression": "Page.arrayData.length > 0",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore5__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1230.8828125,
+            "top": 39.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3yuJ0bAU5enRh8W4k9GRiJ": {
+                "key": "3yuJ0bAU5enRh8W4k9GRiJ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.tempID"
+              }
+            },
+            "value": {
+              "5VtlOwZTLs1N33RUrgq8uM": {
+                "key": "5VtlOwZTLs1N33RUrgq8uM",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.uuid",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "shortUniqueId": {
+          "statementName": "shortUniqueId",
+          "name": "ShortUniqueId",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1083.8828125,
+            "top": 348.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1337.8828125,
+            "top": 263.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "2vFQffPuwYElZxI1l1a0r": {
+                "key": "2vFQffPuwYElZxI1l1a0r",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.tempID"
+              }
+            },
+            "value": {
+              "6g7mfd1ij5xBT9u2digJQK": {
+                "key": "6g7mfd1ij5xBT9u2digJQK",
+                "type": "EXPRESSION",
+                "expression": "Steps.shortUniqueId.output.id",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1765.8828125,
+            "top": 41.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "72TibnO2Eoyjh5sOD4z8N4": {
+                "key": "72TibnO2Eoyjh5sOD4z8N4",
+                "type": "EXPRESSION",
+                "expression": "'Page.cp.{{Page.tempID}}.part'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ZacA9nxme5bscPAfKwp7w": {
+                "key": "4ZacA9nxme5bscPAfKwp7w",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.part",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2_Copy_1": {
+          "statementName": "setStore2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1761.8828125,
+            "top": 261.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "72TibnO2Eoyjh5sOD4z8N4": {
+                "key": "72TibnO2Eoyjh5sOD4z8N4",
+                "type": "EXPRESSION",
+                "expression": "'Page.cp.{{Page.tempID}}.order'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ZacA9nxme5bscPAfKwp7w": {
+                "key": "4ZacA9nxme5bscPAfKwp7w",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.index",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2_Copy_1_Copy_2": {
+          "statementName": "setStore2_Copy_1_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2137.8828125,
+            "top": 276.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "72TibnO2Eoyjh5sOD4z8N4": {
+                "key": "72TibnO2Eoyjh5sOD4z8N4",
+                "type": "EXPRESSION",
+                "expression": "'Page.cp.{{Page.tempID}}.order'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ZacA9nxme5bscPAfKwp7w": {
+                "key": "4ZacA9nxme5bscPAfKwp7w",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.index",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore2_Copy_1_Copy_1": {
+          "statementName": "setStore2_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1741.8828125,
+            "top": 488.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "72TibnO2Eoyjh5sOD4z8N4": {
+                "key": "72TibnO2Eoyjh5sOD4z8N4",
+                "type": "EXPRESSION",
+                "expression": "'Page.cp.{{Page.tempID}}.place'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ZacA9nxme5bscPAfKwp7w": {
+                "key": "4ZacA9nxme5bscPAfKwp7w",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.place ?? 'BEFORE_HEAD'",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2_Copy_1_Copy_1_Copy_1": {
+          "statementName": "setStore2_Copy_1_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2135.8828125,
+            "top": 492.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "72TibnO2Eoyjh5sOD4z8N4": {
+                "key": "72TibnO2Eoyjh5sOD4z8N4",
+                "type": "EXPRESSION",
+                "expression": "'Page.cp.{{Page.tempID}}.place'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ZacA9nxme5bscPAfKwp7w": {
+                "key": "4ZacA9nxme5bscPAfKwp7w",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.place ?? 'BEFORE_HEAD'",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 423.8828125,
+            "top": 88.9296875
+          },
+          "parameterMap": {
+            "source": {
+              "1HvHDzrO7OXcW42feulwxz": {
+                "key": "1HvHDzrO7OXcW42feulwxz",
+                "type": "EXPRESSION",
+                "expression": "Page.arrayData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore2_Copy_2": {
+          "statementName": "setStore2_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2131.8828125,
+            "top": 50.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "72TibnO2Eoyjh5sOD4z8N4": {
+                "key": "72TibnO2Eoyjh5sOD4z8N4",
+                "type": "EXPRESSION",
+                "expression": "'Page.cp.{{Page.tempID}}.part'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ZacA9nxme5bscPAfKwp7w": {
+                "key": "4ZacA9nxme5bscPAfKwp7w",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.part",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1748.8828125,
+            "top": 725.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "6ZCoN5ELHL9kiCSar2Znyd": {
+                "key": "6ZCoN5ELHL9kiCSar2Znyd",
+                "type": "EXPRESSION",
+                "expression": "'Page.arrayData[{{Steps.forEachLoop.iteration.index}}].uuid'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4ufbDgEvV9Q33oa8QjfQgw": {
+                "key": "4ufbDgEvV9Q33oa8QjfQgw",
+                "type": "EXPRESSION",
+                "expression": "Page.tempID",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 860.8828125,
+            "top": 43.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "3OP1113A1HAdhkTG2yGexn": {
+                "key": "3OP1113A1HAdhkTG2yGexn",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.uuid != undefined and Steps.forEachLoop.iteration.each.uuid != '' ",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if2__d-o-t__true": true
+          }
+        },
+        "if2": {
+          "statementName": "if2",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 514.8828125,
+            "top": 380.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "12IY3opwHqJ6roWrQPvPOj": {
+                "key": "12IY3opwHqJ6roWrQPvPOj",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.part != undefined and Steps.forEachLoop.iteration.each.part != '' ",
+                "order": 1
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1187.8828125,
+            "top": 629.9296875
+          },
+          "parameterMap": {
+            "url": {
+              "3WDpRAHZIcUkOJ6Z3mTWXi": {
+                "key": "3WDpRAHZIcUkOJ6Z3mTWXi",
+                "type": "EXPRESSION",
+                "expression": "\"api/ui/applications/{{Page.applicationDefinition.id}}\"",
+                "order": 1
+              }
+            },
+            "method": {
+              "2A86rEAQ23Ef6uuvKiUgyo": {
+                "key": "2A86rEAQ23Ef6uuvKiUgyo",
+                "type": "VALUE",
+                "expression": "PUT",
+                "order": 1,
+                "value": "PUT"
+              }
+            },
+            "payload": {
+              "3yUkn59hNKerbPtnPUJHw2": {
+                "key": "3yUkn59hNKerbPtnPUJHw2",
+                "type": "EXPRESSION",
+                "expression": "Page.applicationDefinition",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore4__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 864.8828125,
+            "top": 505.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "1PEqbCSRh6GC8JYcuEAVsX": {
+                "key": "1PEqbCSRh6GC8JYcuEAVsX",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.applicationDefinition.properties.codeParts"
+              }
+            },
+            "value": {
+              "27YMVKYhlV3V2ZlVoFosRG": {
+                "key": "27YMVKYhlV3V2ZlVoFosRG",
+                "type": "EXPRESSION",
+                "expression": "Page.cp",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__output": false,
+            "Steps__d-o-t__forEachLoop__d-o-t__output": true
+          }
+        },
+        "setStore5": {
+          "statementName": "setStore5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 23.8828125,
+            "top": 340.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "1T3VYqkjgUP3DbGU1iKquk": {
+                "key": "1T3VYqkjgUP3DbGU1iKquk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.cp"
+              }
+            },
+            "value": {
+              "7aRmp0lIRS20upIxQnYMlq": {
+                "key": "7aRmp0lIRS20upIxQnYMlq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {}
+              }
+            }
+          }
+        },
+        "setStore4_Copy_1": {
+          "statementName": "setStore4_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 196.8828125,
+            "top": 627.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "1PEqbCSRh6GC8JYcuEAVsX": {
+                "key": "1PEqbCSRh6GC8JYcuEAVsX",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.applicationDefinition.properties.codeParts"
+              }
+            },
+            "value": {
+              "27YMVKYhlV3V2ZlVoFosRG": {
+                "key": "27YMVKYhlV3V2ZlVoFosRG",
+                "type": "EXPRESSION",
+                "expression": "Page.cp",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__output": false,
+            "Steps__d-o-t__forEachLoop__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "sendData_Copy_1": {
+          "statementName": "sendData_Copy_1",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 531.8828125,
+            "top": 700.9296875
+          },
+          "parameterMap": {
+            "url": {
+              "3WDpRAHZIcUkOJ6Z3mTWXi": {
+                "key": "3WDpRAHZIcUkOJ6Z3mTWXi",
+                "type": "EXPRESSION",
+                "expression": "\"api/ui/applications/{{Page.applicationDefinition.id}}\"",
+                "order": 1
+              }
+            },
+            "method": {
+              "2A86rEAQ23Ef6uuvKiUgyo": {
+                "key": "2A86rEAQ23Ef6uuvKiUgyo",
+                "type": "VALUE",
+                "expression": "PUT",
+                "order": 1,
+                "value": "PUT"
+              }
+            },
+            "payload": {
+              "3yUkn59hNKerbPtnPUJHw2": {
+                "key": "3yUkn59hNKerbPtnPUJHw2",
+                "type": "EXPRESSION",
+                "expression": "Page.applicationDefinition",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore4__d-o-t__output": false,
+            "Steps__d-o-t__setStore4_Copy_1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "l64kd00XPkFjfjGGTpOsV": {
+      "name": "appsDropdown",
+      "steps": {
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 349.630859375,
+            "top": 249.376953125
+          },
+          "parameterMap": {
+            "url": {
+              "3XOoTzPmvgVOxl93QiavVU": {
+                "key": "3XOoTzPmvgVOxl93QiavVU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/applications/query"
+              }
+            },
+            "method": {
+              "3tNTPnIm95fnHPNAAfHuZ2": {
+                "key": "3tNTPnIm95fnHPNAAfHuZ2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "12Hwm5gksosuxtjL2XSzCR": {
+                "key": "12Hwm5gksosuxtjL2XSzCR",
+                "type": "EXPRESSION",
+                "expression": "Page.appsSearch",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 735.380859375,
+            "top": 192.376953125
+          },
+          "parameterMap": {
+            "path": {
+              "3STbLZVr9BNXHyxCPZONUU": {
+                "key": "3STbLZVr9BNXHyxCPZONUU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ""
+              }
+            },
+            "value": {
+              "5pxoYLDUlU9THKlM4C6Lpe": {
+                "key": "5pxoYLDUlU9THKlM4C6Lpe",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 783.8828125,
+            "top": 459.9296875
+          },
+          "parameterMap": {
+            "msg": {
+              "18Ef0rteadsKceICamXH5O": {
+                "key": "18Ef0rteadsKceICamXH5O",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 30.8828125,
+            "top": 103.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "5wHn7mg40QRZJiPHb7Ouqs": {
+                "key": "5wHn7mg40QRZJiPHb7Ouqs",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.appsSearch.condition.value"
+              }
+            },
+            "value": {
+              "7sVwz7SqkbCGlPJiKjDCCB": {
+                "key": "7sVwz7SqkbCGlPJiKjDCCB",
+                "type": "EXPRESSION",
+                "expression": "Page.appsSearchConditionValue",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "15SHeuaLbB4fGJ09zuYbFZ": {
+      "name": "selectedDropDown",
+      "steps": {
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 49.8828125,
+            "top": 313.9296875
+          },
+          "parameterMap": {
+            "url": {
+              "3O5TOdV5kdsuUVZyHdU5aC": {
+                "key": "3O5TOdV5kdsuUVZyHdU5aC",
+                "type": "VALUE",
+                "expression": "api/ui/applications/",
+                "order": 1,
+                "value": "api/ui/applications/"
+              }
+            },
+            "queryParams": {
+              "ha8PoEJ7HyMi9EsTEnlJZ": {
+                "key": "ha8PoEJ7HyMi9EsTEnlJZ",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "appCode": {
+                    "location": {
+                      "expression": "Page.selectedAppCode",
+                      "type": "EXPRESSION"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 426.8828125,
+            "top": 317.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__fetchData__d-o-t__output__d-o-t__data": false
+          },
+          "parameterMap": {
+            "path": {
+              "6sMjmm6E9x4SUKJinjsw7b": {
+                "key": "6sMjmm6E9x4SUKJinjsw7b",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.appCodeData"
+              }
+            },
+            "value": {
+              "3250ZIwLZxTZpspXpSowuW": {
+                "key": "3250ZIwLZxTZpspXpSowuW",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 824.8828125,
+            "top": 213.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "4IH0ZvZFOMqTYy0vzYaI7h": {
+                "key": "4IH0ZvZFOMqTYy0vzYaI7h",
+                "type": "EXPRESSION",
+                "expression": "Page.appCodeData != undefined",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "message_Copy_1": {
+          "statementName": "message_Copy_1",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1063.8828125,
+            "top": 529.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__false": true
+          },
+          "parameterMap": {
+            "msg": {
+              "cU3UfVeTe5KttvJ1jK4lg": {
+                "key": "cU3UfVeTe5KttvJ1jK4lg",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.selectedappcodeData is undefined"
+              }
+            }
+          }
+        },
+        "fetchData1": {
+          "statementName": "fetchData1",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1296.8828125,
+            "top": 249.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          },
+          "parameterMap": {
+            "url": {
+              "1BdDyL5GrPEUvpQ5Hi3Umi": {
+                "key": "1BdDyL5GrPEUvpQ5Hi3Umi",
+                "type": "EXPRESSION",
+                "expression": "\"api/ui/applications/{{Page.appCodeData.content[0].id}}\"",
+                "order": 1,
+                "value": "api/ui/{{Page.selectedAppData.content[0].id}}"
+              }
+            }
+          }
+        },
+        "manipulatingApplicationDefinition": {
+          "statementName": "manipulatingApplicationDefinition",
+          "name": "manipulatingApplicationDefinition",
+          "namespace": "_",
+          "position": {
+            "left": 2149.8828125,
+            "top": 560.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1758.8828125,
+            "top": 436.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "2Ja7Hjfrgb1FzItr7162n6": {
+                "key": "2Ja7Hjfrgb1FzItr7162n6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.applicationDefinition"
+              }
+            },
+            "value": {
+              "3156qI8zMq9jRKXYfnBmFw": {
+                "key": "3156qI8zMq9jRKXYfnBmFw",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData1.output.data",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1kRM6cOW9wJKbAL60vDlGv": {
+      "name": "manipulatingApplicationDefinition",
+      "steps": {
+        "objectEntries": {
+          "statementName": "objectEntries",
+          "name": "ObjectEntries",
+          "namespace": "System.Object",
+          "position": {
+            "left": 1030.8828125,
+            "top": 438.9296875
+          },
+          "parameterMap": {
+            "source": {
+              "4WNfypiFrrrq1bsgDWnzvd": {
+                "key": "4WNfypiFrrrq1bsgDWnzvd",
+                "type": "EXPRESSION",
+                "expression": "Page.cp",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setForExistingCodeParts__d-o-t__output": true
+          }
+        },
+        "setForEmptyCodeParts": {
+          "statementName": "setForEmptyCodeParts",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 438.8828125,
+            "top": 385.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "5ZqIhxFN49pdxcdhzMnhDk": {
+                "key": "5ZqIhxFN49pdxcdhzMnhDk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.arrayData"
+              }
+            },
+            "value": {
+              "1ndlXLRAaAXChViXhcsuDb": {
+                "key": "1ndlXLRAaAXChViXhcsuDb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {}
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 1343.8828125,
+            "top": 336.9296875
+          },
+          "parameterMap": {
+            "source": {
+              "713JbahR2RFBqrzn0gVfAm": {
+                "key": "713JbahR2RFBqrzn0gVfAm",
+                "type": "EXPRESSION",
+                "expression": "Steps.objectEntries.output.value",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStoreUUID": {
+          "statementName": "setStoreUUID",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1905.8828125,
+            "top": 32.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "728To2yZq8dnThJ3LHyuKT": {
+                "key": "728To2yZq8dnThJ3LHyuKT",
+                "type": "EXPRESSION",
+                "expression": "'Page.arrayData[{{Steps.forEachLoop.iteration.index}}].uuid'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4LKyrKBqdq6oW9gmV7ppsx": {
+                "key": "4LKyrKBqdq6oW9gmV7ppsx",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[0]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Code": {
+          "statementName": "setStore_Code",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1913.8828125,
+            "top": 260.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "728To2yZq8dnThJ3LHyuKT": {
+                "key": "728To2yZq8dnThJ3LHyuKT",
+                "type": "EXPRESSION",
+                "expression": "'Page.arrayData[{{Steps.forEachLoop.iteration.index}}].part'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4LKyrKBqdq6oW9gmV7ppsx": {
+                "key": "4LKyrKBqdq6oW9gmV7ppsx",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1].part",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_place": {
+          "statementName": "setStore_place",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1903.8828125,
+            "top": 496.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "728To2yZq8dnThJ3LHyuKT": {
+                "key": "728To2yZq8dnThJ3LHyuKT",
+                "type": "EXPRESSION",
+                "expression": "'Page.arrayData[{{Steps.forEachLoop.iteration.index}}].place'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4LKyrKBqdq6oW9gmV7ppsx": {
+                "key": "4LKyrKBqdq6oW9gmV7ppsx",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1].place",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_order": {
+          "statementName": "setStore_order",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1909.8828125,
+            "top": 743.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "728To2yZq8dnThJ3LHyuKT": {
+                "key": "728To2yZq8dnThJ3LHyuKT",
+                "type": "EXPRESSION",
+                "expression": "'Page.arrayData[{{Steps.forEachLoop.iteration.index}}].order'",
+                "order": 1
+              }
+            },
+            "value": {
+              "4LKyrKBqdq6oW9gmV7ppsx": {
+                "key": "4LKyrKBqdq6oW9gmV7ppsx",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each[1].order",
+                "order": 1
+              }
+            }
+          }
+        },
+        "sort": {
+          "statementName": "sort",
+          "name": "Sort",
+          "namespace": "System.Array",
+          "position": {
+            "left": 2364.8828125,
+            "top": 209.9296875
+          },
+          "parameterMap": {
+            "source": {
+              "6W4EICVPReKnGOtrAI0VgN": {
+                "key": "6W4EICVPReKnGOtrAI0VgN",
+                "type": "EXPRESSION",
+                "expression": "Page.arrayData",
+                "order": 1
+              }
+            },
+            "length": {
+              "4ZjUl02cJ7kentGOFzKT1d": {
+                "key": "4ZjUl02cJ7kentGOFzKT1d",
+                "type": "EXPRESSION",
+                "expression": "Page.arrayData.length",
+                "value": -1
+              }
+            },
+            "keyPath": {
+              "4JvxQuu52tIxXq7feDmWWM": {
+                "key": "4JvxQuu52tIxXq7feDmWWM",
+                "type": "VALUE",
+                "expression": "",
+                "value": "order"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2683.8828125,
+            "top": 312.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3jZI0ybXIliPMG0RhvTBg7": {
+                "key": "3jZI0ybXIliPMG0RhvTBg7",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.arrayData"
+              }
+            },
+            "value": {
+              "2PsMgnQsLGOKkkxpGLz2Ey": {
+                "key": "2PsMgnQsLGOKkkxpGLz2Ey",
+                "type": "EXPRESSION",
+                "expression": "Steps.sort.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setForExistingCodeParts": {
+          "statementName": "setForExistingCodeParts",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 782.8828125,
+            "top": 111.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "5ZqIhxFN49pdxcdhzMnhDk": {
+                "key": "5ZqIhxFN49pdxcdhzMnhDk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.cp"
+              }
+            },
+            "value": {
+              "1ndlXLRAaAXChViXhcsuDb": {
+                "key": "1ndlXLRAaAXChViXhcsuDb",
+                "type": "EXPRESSION",
+                "expression": "Page.applicationDefinition.properties.codeParts",
+                "order": 1,
+                "value": [
+                  {}
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": false,
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 522.8828125,
+            "top": 90.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "5ZQJaBcIANidNo3MovBq7F": {
+                "key": "5ZQJaBcIANidNo3MovBq7F",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.arrayData"
+              }
+            },
+            "value": {
+              "3E5KEXGgFIwPynS5kFlvow": {
+                "key": "3E5KEXGgFIwPynS5kFlvow",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 174.8828125,
+            "top": 87.0625
+          },
+          "parameterMap": {
+            "condition": {
+              "R7eKaNBA7pPEu089GKK0q": {
+                "key": "R7eKaNBA7pPEu089GKK0q",
+                "type": "EXPRESSION",
+                "expression": "Page.applicationDefinition.properties.codeParts != undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 2361.8828125,
+            "top": 558.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "condition": {
+              "6VyvMoFyRBkXzbmju2XPMQ": {
+                "key": "6VyvMoFyRBkXzbmju2XPMQ",
+                "type": "EXPRESSION",
+                "expression": "Page.arrayData.length = 0",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2743.8828125,
+            "top": 678.9296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          },
+          "parameterMap": {
+            "path": {
+              "2ptVBytWe5PSEYJJ4TwJ3A": {
+                "key": "2ptVBytWe5PSEYJJ4TwJ3A",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.arrayData"
+              }
+            },
+            "value": {
+              "nlHSXwmggLlfriNgHGrzZ": {
+                "key": "nlHSXwmggLlfriNgHGrzZ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {}
+                ]
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "604zUtlMHKeYq6YmAc3JX3": {
+      "name": "addEmptyOnAllClear",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 126.8828125,
+            "top": 91.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "4LItPBloXNJVNSnEzHPcCM": {
+                "key": "4LItPBloXNJVNSnEzHPcCM",
+                "type": "EXPRESSION",
+                "expression": "Page.arrayData.length = 0",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 550.8828125,
+            "top": 188.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "4RYhTzlkK7oC9CRZEMMP3s": {
+                "key": "4RYhTzlkK7oC9CRZEMMP3s",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.arrayData"
+              }
+            },
+            "value": {
+              "2lgpWZAVBcssx0cW5Xhrbe": {
+                "key": "2lgpWZAVBcssx0cW5Xhrbe",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {}
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "4qjPe0Sw3VaiVRdinzQ1lp",
+  "componentDefinition": {
+    "4qjPe0Sw3VaiVRdinzQ1lp": {
+      "key": "4qjPe0Sw3VaiVRdinzQ1lp",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5WKmYJYaJWe26YVgB1l1u5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "overflowY": {
+                "value": "hidden"
+              },
+              "overflowX": {
+                "value": "hidden"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "marginLeft": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2QhK2hnvBtGHki4kwoHsSi": true,
+        "5IUfOk01Nfs9VLE6o4fjVN": true
+      }
+    },
+    "6afVT2t5W8JumWYKOY8Qad": {
+      "key": "6afVT2t5W8JumWYKOY8Qad",
+      "name": "TextAreaDisabled",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "TextArea"
+        },
+        "defaultValue": {
+          "value": "hello"
+        },
+        "validation": {
+          "6foZO2fDKKaxvj3wRW5l2Y": {
+            "key": "6foZO2fDKKaxvj3wRW5l2Y",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "mandatory"
+                }
+              }
+            }
+          }
+        },
+        "readOnly": {
+          "value": true
+        },
+        "supportingText": {
+          "value": "Hello"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1XosmiqHEUNiPMVHnIudxK": {
+      "key": "1XosmiqHEUNiPMVHnIudxK",
+      "name": "TextAreaWithTextFloating",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "TextArea"
+        },
+        "defaultValue": {
+          "value": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam convallis, risus id malesuada maximus, dolor risus tincidunt ante, quis aliquam ante diam quis nunc. Phasellus tristique, libero sed malesuada consequat, velit nisl blandit ligula, sed luctus mauris massa eu mauris. Fusce in urna varius, semper ante at, pellentesque ipsum. Donec euismod odio eget dolor rhoncus convallis. Donec dui risus, pellentesque nec ornare id, congue feugiat leo. Quisque ut purus eget lorem condimentum blandit in sit amet magna. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Praesent nec ex dignissim, laoreet ipsum eu, blandit massa. Morbi aliquam metus vitae tortor hendrerit, non sagittis lectus convallis. Quisque hendrerit tellus sed ante aliquam pretium. Suspendisse eu risus mattis, accumsan lacus vitae, commodo nisl. Etiam maximus facilisis sem non pharetra. Phasellus pellentesque dictum tellus, vel viverra mi.\n\nSed ut est purus. Vivamus tincidunt sagittis mi, ut vulputate ipsum venenatis in. Praesent sagittis placerat posuere. Nulla nisi dolor, aliquam quis sollicitudin vitae, finibus vel purus. Proin sapien leo, ultricies vel ultricies eget, volutpat vitae nisi. Proin viverra ex sed leo blandit, in ultrices magna scelerisque. In vel porta metus. Pellentesque condimentum molestie mi.\n\nDonec dictum laoreet nisi, id placerat velit rutrum vel. In feugiat mauris id urna vehicula aliquet. Etiam tempus quam lectus, id maximus orci fermentum quis. Aenean feugiat facilisis quam, sit amet vestibulum nunc aliquet eget. Nam urna quam, aliquam nec nunc sed, ullamcorper feugiat massa. Nullam tempus, quam ut condimentum tempor, eros enim malesuada enim, sed dignissim tortor lacus et enim. Maecenas et sollicitudin risus. Ut dictum feugiat iaculis. Cras sodales erat ut aliquam rutrum. Praesent porttitor, ex sed fringilla consequat, leo metus porta est, eget mollis ex ligula ut tortor.\n\nMauris mollis rutrum scelerisque. Proin pharetra pulvinar turpis, non feugiat libero condimentum in. Ut vulputate lacinia aliquam. Sed pretium consequat quam at porta. Vivamus ac magna eget tellus sollicitudin euismod et ac nisl. Nunc porta fermentum metus, sit amet lobortis libero dapibus sit amet. Proin porta lorem mi. Phasellus malesuada erat efficitur, tincidunt ligula quis, mattis justo. Donec porta magna vitae dignissim iaculis. Donec laoreet nisi nec nisl ullamcorper mollis. Curabitur vel felis in est sagittis porta a vitae ante. Mauris eu enim magna. Vivamus sit amet pellentesque risus, vitae molestie velit. Mauris vulputate malesuada nibh ut varius.\n\n"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "60MDSELsMUve2G2su3onD7": {
+      "key": "60MDSELsMUve2G2su3onD7",
+      "name": "TextAreaNonFloating",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "TextArea"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "1uBSJKE5HYje266Q2C3RRW": {
+            "key": "1uBSJKE5HYje266Q2C3RRW",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Mandatory Message."
+                }
+              }
+            }
+          }
+        },
+        "messageDisplay": {
+          "value": "_nonFixedMessages"
+        },
+        "onChange": {
+          "value": "6LIscD6fY2Vn83vZQ6Pq4C"
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.textarea"
+      }
+    },
+    "1UYI8yUTYKWp8Qy5B38638": {
+      "key": "1UYI8yUTYKWp8Qy5B38638",
+      "name": "TextAreaFloatingWithSupportText",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "TextArea"
+        },
+        "supportingText": {
+          "value": "Hello World"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "7CVKkm94FImxEDuk0YvtNZ": {
+      "key": "7CVKkm94FImxEDuk0YvtNZ",
+      "name": "TextAreaWithValidation",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "TextArea"
+        },
+        "validation": {
+          "21cc5q7RAAw6Y6imUJJP9c": {
+            "key": "21cc5q7RAAw6Y6imUJJP9c",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Mandatory Message."
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "6qQGglLdb2CjQhbwjvlBQn": {
+      "key": "6qQGglLdb2CjQhbwjvlBQn",
+      "name": "TextAreaDisableNonFloating",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "TextArea"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "readOnly": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "4ECcxEVQE0VDfkZTZRds3K": {
+      "key": "4ECcxEVQE0VDfkZTZRds3K",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.textarea"
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "1I2HIRGNWH0nnhO0Ilcn7": {
+      "key": "1I2HIRGNWH0nnhO0Ilcn7",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5xKhKGqQWSlvVU1j6DhhXk": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "500px"
+              },
+              "marginLeft": {
+                "value": "20px"
+              },
+              "marginRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2QhK2hnvBtGHki4kwoHsSi": true
+      },
+      "displayOrder": 0
+    },
+    "1Pqq9of3ta4jgCQiDlCE07": {
+      "key": "1Pqq9of3ta4jgCQiDlCE07",
+      "name": "repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "showAdd": {
+          "value": true
+        },
+        "showDelete": {
+          "value": true
+        },
+        "showMove": {
+          "value": true
+        },
+        "isItemDraggable": {
+          "value": true
+        },
+        "addEvent": {
+          "value": "4GSyq5YxMa8eHdJ3Ou1mne"
+        },
+        "removeEvent": {
+          "value": "604zUtlMHKeYq6YmAc3JX3"
+        }
+      },
+      "styleProperties": {
+        "6KZ6tW2nkKRtpn5g2RYvSv": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "15px"
+              },
+              "iconGrid-paddingTop": {
+                "value": "15px"
+              },
+              "iconGrid-gap": {
+                "value": "5px"
+              },
+              "iconGrid-display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5PVa3PiQZ8HJhz2YIFcCoT": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.arrayData"
+      }
+    },
+    "7zL7o4ZzNdonwoev4r99md": {
+      "key": "7zL7o4ZzNdonwoev4r99md",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "SAVE"
+        },
+        "type": {
+          "value": "_simpleButtonDesignOne"
+        },
+        "onClick": {
+          "value": "5yhrnCKDINkmD2gGt6w16v"
+        }
+      },
+      "styleProperties": {
+        "2PO9vR625iyeMO5XRuiwSL": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2QhK2hnvBtGHki4kwoHsSi": {
+      "key": "2QhK2hnvBtGHki4kwoHsSi",
+      "name": "topGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "28YNJKyk5obSapVRsXZAu4": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "600px"
+              },
+              "overflow": {
+                "value": "scroll"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "80%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Pqq9of3ta4jgCQiDlCE07": true,
+        "41bNIlZUSJ7L2H3K7KdJJ3": true
+      },
+      "displayOrder": 1
+    },
+    "5PVa3PiQZ8HJhz2YIFcCoT": {
+      "key": "5PVa3PiQZ8HJhz2YIFcCoT",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "placeholder": {
+          "value": "placeholder"
+        },
+        "label": {
+          "value": "Code"
+        },
+        "noFloat": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.part"
+      }
+    },
+    "5IUfOk01Nfs9VLE6o4fjVN": {
+      "key": "5IUfOk01Nfs9VLE6o4fjVN",
+      "name": "buttonGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5PhzQ5aDRD6b8E40lsq59C": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "200px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "marginLeft": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7zL7o4ZzNdonwoev4r99md": true
+      },
+      "displayOrder": 2
+    },
+    "41bNIlZUSJ7L2H3K7KdJJ3": {
+      "key": "41bNIlZUSJ7L2H3K7KdJJ3",
+      "name": "Landing Page Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "label": {
+          "value": "Landing Page"
+        },
+        "data": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.searchedApps.content"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "labelKey": {
+          "value": "appName"
+        },
+        "selectionKey": {
+          "value": "appCode"
+        },
+        "__truncated__": "... 7 more props"
+      },
+      "styleProperties": {
+        "6ST5nZM6mg1i14TyB971AQ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "240px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.selectedAppCode"
+      },
+      "bindingPath2": {
+        "type": "VALUE",
+        "value": "Page.appsSearchConditionValue"
+      }
+    }
+  },
+  "name": "analyticsintegration",
+  "message": "From transport : 3y8kUB0mADxyNoL5c2ujsv",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN",
+  "appCode": "landingpages",
+  "version": 22,
+  "updatedAt": "2024-06-10 17:53:59.394000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-17 15:28:30.325000",
+  "createdBy": "<USER>"
+}

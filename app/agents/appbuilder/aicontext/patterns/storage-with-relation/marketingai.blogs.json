@@ -1,0 +1,102 @@
+{
+  "_id": "6992ea8d7a85a60db82a1dcd",
+  "schema": {
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1,
+    "properties": {
+      "date": {
+        "type": [
+          "LONG"
+        ]
+      },
+      "image": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 1024
+      },
+      "imageCaption": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 512
+      },
+      "metaKeywords": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 1024
+      },
+      "subTitle": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 1024
+      },
+      "authorName": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 512
+      },
+      "title": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 256
+      },
+      "excerpt": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 2048
+      },
+      "metaDescription": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 1024
+      },
+      "slug": {
+        "type": [
+          "STRING"
+        ],
+        "maxLength": 128
+      },
+      "content": {
+        "type": [
+          "STRING"
+        ]
+      }
+    }
+  },
+  "uniqueName": "marketingai_system_b_us07ds9pf2ox",
+  "isAudited": true,
+  "isVersioned": true,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "createAuth": "Authorities.Logged_IN",
+  "updateAuth": "Authorities.Logged_IN",
+  "deleteAuth": "Authorities.Logged_IN",
+  "relations": {
+    "category": {
+      "uniqueRelationId": "marketingai_system_b_1hbm2kueelv7c",
+      "storageName": "blogCategories",
+      "relationType": "TO_MANY",
+      "fieldName": "_id",
+      "deleteConstraint": "NOTHING",
+      "updateConstraint": "NOTHING"
+    }
+  },
+  "name": "blogs",
+  "message": "From transport : 0NIbUPgdjW9iDkjwrrvZFI",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 8,
+  "updatedAt": "2026-05-12 10:28:22.874000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-02-16 09:59:41.973000",
+  "createdBy": "<USER>"
+}

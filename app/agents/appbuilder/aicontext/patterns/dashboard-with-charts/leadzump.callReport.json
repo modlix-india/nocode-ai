@@ -1,0 +1,3316 @@
+{
+  "_id": "68e6093c54201875180b58be",
+  "properties": {
+    "classes": {
+      "3IjxFxOOpUmcniO5v5mTCM": {
+        "key": "3IjxFxOOpUmcniO5v5mTCM",
+        "style": "   0% {\n   transform: translateX(100%)\n   }\n   100% {\n    transform: translateX(0%)\n   }",
+        "selector": "@keyframes columnsAni"
+      }
+    }
+  },
+  "eventFunctions": {
+    "558NICGMlnumNrGG1DiVd3": {
+      "name": "onLoad",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 137.7499942779541,
+            "top": 96.95312881469727
+          },
+          "parameterMap": {
+            "path": {
+              "2nxjdNhBv1RgklToE1DMIX": {
+                "key": "2nxjdNhBv1RgklToE1DMIX",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.filterObject"
+              }
+            },
+            "value": {
+              "7BIGXE3a5cUrgx8AEa5gLN": {
+                "key": "7BIGXE3a5cUrgx8AEa5gLN",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "reportedType": [
+                    {
+                      "toggle": false,
+                      "lable": "By Business Partner"
+                    },
+                    {
+                      "toggle": false,
+                      "lable": "By Product"
+                    }
+                  ],
+                  "callDirection": [
+                    {
+                      "toggle": false,
+                      "lable": "Inbound"
+                    },
+                    {
+                      "toggle": false,
+                      "lable": "Outbound"
+                    }
+                  ],
+                  "Product": [
+                    {
+                      "toggle": false,
+                      "lable": "Cityville"
+                    }
+                  ],
+                  "assignedUsers": [
+                    {
+                      "toggle": false,
+                      "lable": "Siddharth"
+                    },
+                    {
+                      "toggle": false,
+                      "lable": "Rahul"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 533.4999942779541,
+            "top": 85.45312881469727
+          },
+          "parameterMap": {
+            "path": {
+              "6JgXmourZU6apasvitVq8p": {
+                "key": "6JgXmourZU6apasvitVq8p",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.callDetailsReport"
+              }
+            },
+            "value": {
+              "4SzLtW4brnDh1xritJpcxO": {
+                "key": "4SzLtW4brnDh1xritJpcxO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "name": "Neetu Saxsena",
+                    "totalCall": 80,
+                    "outgoingCalls": {
+                      "total": 65,
+                      "connected": 56
+                    },
+                    "incomingCalls": {
+                      "total": 15,
+                      "connected": 10,
+                      "missed": 5
+                    },
+                    "totalConnectedCalls": 66,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "Muskan Sai",
+                    "totalCall": 100,
+                    "outgoingCalls": {
+                      "total": 87,
+                      "connected": 73
+                    },
+                    "incomingCalls": {
+                      "total": 13,
+                      "connected": 8,
+                      "missed": 5
+                    },
+                    "totalConnectedCalls": 81,
+                    "totalCallDuration": "02:20"
+                  },
+                  {
+                    "name": "Steve Jobs",
+                    "totalCall": 120,
+                    "outgoingCalls": {
+                      "total": 93,
+                      "connected": 87
+                    },
+                    "incomingCalls": {
+                      "total": 27,
+                      "connected": 14,
+                      "missed": 13
+                    },
+                    "totalConnectedCalls": 101,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "Neha Nagar",
+                    "totalCall": 43,
+                    "outgoingCalls": {
+                      "total": 32,
+                      "connected": 30
+                    },
+                    "incomingCalls": {
+                      "total": 11,
+                      "connected": 4,
+                      "missed": 7
+                    },
+                    "totalConnectedCalls": 34,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "Saroj Kumar Rout",
+                    "totalCall": 123,
+                    "outgoingCalls": {
+                      "total": 100,
+                      "connected": 90
+                    },
+                    "incomingCalls": {
+                      "total": 23,
+                      "connected": 9,
+                      "missed": 14
+                    },
+                    "totalConnectedCalls": 99,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "Mohana Patil",
+                    "totalCall": 150,
+                    "outgoingCalls": {
+                      "total": 120,
+                      "connected": 111
+                    },
+                    "incomingCalls": {
+                      "total": 30,
+                      "connected": 21,
+                      "missed": 9
+                    },
+                    "totalConnectedCalls": 131,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "John Snow",
+                    "totalCall": 53,
+                    "outgoingCalls": {
+                      "total": 42,
+                      "connected": 35
+                    },
+                    "incomingCalls": {
+                      "total": 11,
+                      "connected": 8,
+                      "missed": 2
+                    },
+                    "totalConnectedCalls": 43,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "Rumman Yezdani",
+                    "totalCall": 90,
+                    "outgoingCalls": {
+                      "total": 80,
+                      "connected": 75
+                    },
+                    "incomingCalls": {
+                      "total": 10,
+                      "connected": 6,
+                      "missed": 4
+                    },
+                    "totalConnectedCalls": 81,
+                    "totalCallDuration": "01:48"
+                  },
+                  {
+                    "name": "Joanna Harris",
+                    "totalCall": 100,
+                    "outgoingCalls": {
+                      "total": 98,
+                      "connected": 80
+                    },
+                    "incomingCalls": {
+                      "total": 2,
+                      "connected": 2,
+                      "missed": 0
+                    },
+                    "totalConnectedCalls": 82,
+                    "totalCallDuration": "01:10"
+                  },
+                  {
+                    "name": "Louis Andrews",
+                    "totalCall": 124,
+                    "outgoingCalls": {
+                      "total": 110,
+                      "connected": 99
+                    },
+                    "incomingCalls": {
+                      "total": 14,
+                      "connected": 14,
+                      "missed": 0
+                    },
+                    "totalConnectedCalls": 113,
+                    "totalCallDuration": "02:35"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6izkYE5jVo8pa3xca9rFQT": {
+      "name": "onClickFilter",
+      "steps": {
+        "filtering": {
+          "statementName": "filtering",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 122,
+            "top": 134.09375
+          },
+          "parameterMap": {
+            "path": {
+              "4q1soVE84OokIZJiECIbnz": {
+                "key": "4q1soVE84OokIZJiECIbnz",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.filter"
+              }
+            },
+            "value": {
+              "44iR0sSXXdWRdqLoi6GqjR": {
+                "key": "44iR0sSXXdWRdqLoi6GqjR",
+                "type": "EXPRESSION",
+                "expression": "not Page.filter",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "collapse": {
+          "statementName": "collapse",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 410.6089747746785,
+            "top": 125.92306009928382
+          },
+          "parameterMap": {
+            "path": {
+              "qccZjIy3eL5p7LFhZxH8T": {
+                "key": "qccZjIy3eL5p7LFhZxH8T",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.collapse"
+              }
+            },
+            "value": {
+              "7yeKNo7whJ2AdutUmUDBDv": {
+                "key": "7yeKNo7whJ2AdutUmUDBDv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__filtering__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 689.7499942779541,
+            "top": 121.95312881469727
+          },
+          "parameterMap": {
+            "path": {
+              "2nxjdNhBv1RgklToE1DMIX": {
+                "key": "2nxjdNhBv1RgklToE1DMIX",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.filterObject"
+              }
+            },
+            "value": {
+              "7BIGXE3a5cUrgx8AEa5gLN": {
+                "key": "7BIGXE3a5cUrgx8AEa5gLN",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "reportedType": [
+                    {
+                      "toggle": false,
+                      "lable": "By Business Partner"
+                    },
+                    {
+                      "toggle": false,
+                      "lable": "By Product"
+                    }
+                  ],
+                  "callDirection": [
+                    {
+                      "toggle": false,
+                      "lable": "Inbound"
+                    },
+                    {
+                      "toggle": false,
+                      "lable": "Outbound"
+                    }
+                  ],
+                  "Product": [
+                    {
+                      "toggle": false,
+                      "lable": "Cityville"
+                    }
+                  ],
+                  "assignedUsers": [
+                    {
+                      "toggle": false,
+                      "lable": "Siddharth"
+                    },
+                    {
+                      "toggle": false,
+                      "lable": "Rahul"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "21a90g9wKliWKX1PU45hVq": {
+      "name": "collapseReportType",
+      "steps": {
+        "collapse": {
+          "statementName": "collapse",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 262.22436269124347,
+            "top": 150.5897267659505
+          },
+          "parameterMap": {
+            "path": {
+              "1Eqhr6jopdHJpCuL5jsj0y": {
+                "key": "1Eqhr6jopdHJpCuL5jsj0y",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.collapseReportType"
+              }
+            },
+            "value": {
+              "32TYxI5Ig8t6FAVXLD7fLR": {
+                "key": "32TYxI5Ig8t6FAVXLD7fLR",
+                "type": "EXPRESSION",
+                "expression": "not Page.collapseReportType",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "qoGMtRRGnVCMyyHtQRUmU": {
+      "name": "collapseProduct",
+      "steps": {
+        "collapse": {
+          "statementName": "collapse",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 262.22436269124347,
+            "top": 150.5897267659505
+          },
+          "parameterMap": {
+            "path": {
+              "1Eqhr6jopdHJpCuL5jsj0y": {
+                "key": "1Eqhr6jopdHJpCuL5jsj0y",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.collapseProduct"
+              }
+            },
+            "value": {
+              "32TYxI5Ig8t6FAVXLD7fLR": {
+                "key": "32TYxI5Ig8t6FAVXLD7fLR",
+                "type": "EXPRESSION",
+                "expression": "not Page.collapseProduct",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6LNXUKVYmsGyVIrAkR2xJC": {
+      "name": "collapseCallDirection",
+      "steps": {
+        "collapse": {
+          "statementName": "collapse",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 127.22436269124347,
+            "top": 147.5897267659505
+          },
+          "parameterMap": {
+            "path": {
+              "1Eqhr6jopdHJpCuL5jsj0y": {
+                "key": "1Eqhr6jopdHJpCuL5jsj0y",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.collapseCallDirection"
+              }
+            },
+            "value": {
+              "32TYxI5Ig8t6FAVXLD7fLR": {
+                "key": "32TYxI5Ig8t6FAVXLD7fLR",
+                "type": "EXPRESSION",
+                "expression": "not Page.collapseCallDirection",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "27IXhMyTyaEdtcMLfjPwcW": {
+      "name": "collapseAssignedUsers",
+      "steps": {
+        "collapse": {
+          "statementName": "collapse",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 262.22436269124347,
+            "top": 150.5897267659505
+          },
+          "parameterMap": {
+            "path": {
+              "1Eqhr6jopdHJpCuL5jsj0y": {
+                "key": "1Eqhr6jopdHJpCuL5jsj0y",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.collapseAssignedUsers"
+              }
+            },
+            "value": {
+              "32TYxI5Ig8t6FAVXLD7fLR": {
+                "key": "32TYxI5Ig8t6FAVXLD7fLR",
+                "type": "EXPRESSION",
+                "expression": "not Page.collapseAssignedUsers",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "1EZfsAJIq1IaD1RreClax5",
+  "componentDefinition": {
+    "1EZfsAJIq1IaD1RreClax5": {
+      "key": "1EZfsAJIq1IaD1RreClax5",
+      "name": "MainContainer",
+      "type": "Grid",
+      "properties": {
+        "padding": {
+          "value": "_PADDINGFOUR"
+        },
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "border": {
+          "value": "_MEDIUM"
+        }
+      },
+      "styleProperties": {
+        "7utcl8fABj1777KmJnGuVl": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "5.56vw"
+              },
+              "borderRightStyle": {
+                "value": "none"
+              },
+              "borderBottomStyle": {
+                "value": "none"
+              },
+              "borderLeftStyle": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3jsf076DjDVxoPABduIwC0": true,
+        "5yTKjcqEPqhGFfyzMskAiv": true,
+        "7bzoHWjDDvSmmNhzYUkzip": true
+      }
+    },
+    "3jsf076DjDVxoPABduIwC0": {
+      "key": "3jsf076DjDVxoPABduIwC0",
+      "name": "Tab Container",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3qFmRCYbUO3eHPuvhkbeGU": true
+      },
+      "displayOrder": 2
+    },
+    "3qFmRCYbUO3eHPuvhkbeGU": {
+      "key": "3qFmRCYbUO3eHPuvhkbeGU",
+      "name": "Tabs",
+      "type": "Tabs",
+      "properties": {
+        "tabs": {
+          "3iFvRBg47fg0Mk7OR7Oshz": {
+            "key": "3iFvRBg47fg0Mk7OR7Oshz",
+            "order": 1,
+            "property": {
+              "value": "Call Dashboard"
+            }
+          },
+          "3fmhmBLHzvC5yFJGK7IRmx": {
+            "key": "3fmhmBLHzvC5yFJGK7IRmx",
+            "order": 3,
+            "property": {
+              "value": "Call Report"
+            }
+          }
+        },
+        "defaultActive": {
+          "value": "Call Dashboard"
+        },
+        "designType": {
+          "value": "_underLine"
+        }
+      },
+      "styleProperties": {
+        "5PR4YFaP3Yn7iZ5Ir7cQCc": {
+          "resolutions": {
+            "ALL": {
+              "tabHighlighter-borderBottomWidth": {
+                "value": "0.14vw"
+              },
+              "tabHighlighter-borderBottomStyle": {
+                "value": "solid"
+              },
+              "tabHighlighter-borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "tabHighlighter-backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "childContainer-borderRightStyle": {
+                "value": "solid"
+              },
+              "childContainer-borderBottomStyle": {
+                "value": "solid"
+              },
+              "childContainer-borderLeftStyle": {
+                "value": "solid"
+              },
+              "childContainer-borderRightColor": {
+                "value": "#0000000D"
+              },
+              "childContainer-borderBottomColor": {
+                "value": "#0000000D"
+              },
+              "childContainer-borderLeftColor": {
+                "value": "#0000000D"
+              },
+              "childContainer-borderTopRightRadius": {
+                "value": "0.56vw"
+              },
+              "childContainer-borderBottomLeftRadius": {
+                "value": "0.56vw"
+              },
+              "childContainer-borderBottomRightRadius": {
+                "value": "0.56vw"
+              },
+              "childContainer-borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "childContainer-borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "childContainer-borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "childContainer-backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "tabsSeperator-borderTopStyle": {
+                "value": "none"
+              },
+              "tabsSeperator-borderRightStyle": {
+                "value": "none"
+              },
+              "tabsSeperator-borderBottomStyle": {
+                "value": "none"
+              },
+              "tabsSeperator-borderLeftStyle": {
+                "value": "none"
+              },
+              "childContainer-paddingTop": {
+                "value": "2.78vw"
+              },
+              "childContainer-paddingBottom": {
+                "value": "2.78vw"
+              },
+              "childContainer-paddingLeft": {
+                "value": "2.78vw"
+              },
+              "childContainer-paddingRight": {
+                "value": "2.78vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2utiYsTcWeLz2p2ILwhnOv": true,
+        "1X8VcIeyEIQcuvIKLaavW2": true
+      },
+      "displayOrder": 0
+    },
+    "2utiYsTcWeLz2p2ILwhnOv": {
+      "key": "2utiYsTcWeLz2p2ILwhnOv",
+      "name": "Call Dashboard",
+      "type": "Grid",
+      "styleProperties": {
+        "1PfnUND9bdN8LM16CnG6LT": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "55NAK6NDhNkNnWluJH5xjH": true
+      },
+      "displayOrder": 1
+    },
+    "1X8VcIeyEIQcuvIKLaavW2": {
+      "key": "1X8VcIeyEIQcuvIKLaavW2",
+      "name": "Table",
+      "type": "Grid",
+      "styleProperties": {
+        "mlZHtiX2jGk41he9v04zO": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0"
+              },
+              "overflowX": {
+                "value": "scroll"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1vd1vYn0NNlo9WjEBIM6Hq": true,
+        "5VrqcvD3XbMsuCoLzEUcfX": true
+      },
+      "displayOrder": 2
+    },
+    "55NAK6NDhNkNnWluJH5xjH": {
+      "key": "55NAK6NDhNkNnWluJH5xjH",
+      "name": "Chart Boxes",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "21aCQSg1YY2EbXKqMKnW3O": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3W1XrIPwbQisftly9brM5X": true,
+        "5aZ5ESOzQY8IGag1zersVt": true
+      },
+      "displayOrder": 1
+    },
+    "3W1XrIPwbQisftly9brM5X": {
+      "key": "3W1XrIPwbQisftly9brM5X",
+      "name": "Bar",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "padding": {
+          "value": "_PADDINGTWO"
+        },
+        "borderRadius": {
+          "value": "_VERYROUND"
+        }
+      },
+      "styleProperties": {
+        "6hA188SlkDR0JAcRmksmLf": {
+          "resolutions": {
+            "ALL": {
+              "minWidth": {
+                "value": "28.31vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1HPsHGdTiCH6nadL626AWl": true,
+        "3blqYJuaWRIaxFWCbbINeL": true,
+        "1S5wYivq53QqiDEWMYgUB7": true,
+        "4zJEKmNNzvwWXvC8RYnsPM": true
+      },
+      "displayOrder": 1
+    },
+    "5yTKjcqEPqhGFfyzMskAiv": {
+      "key": "5yTKjcqEPqhGFfyzMskAiv",
+      "name": "Filter Container",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "65hGwSikxgd0SAhDmo2fl1": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "2.78vw"
+              },
+              "gap": {
+                "value": "0.69vw"
+              },
+              "alignSelf": {
+                "value": "end"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4Jady8wYpwxWKS1RvMuXqy": true,
+        "16XTIF3gVGzxP35tCYhUwJ": true,
+        "5vFK65Mpdel5QeRzB3RTTr": true
+      },
+      "displayOrder": 1
+    },
+    "4Jady8wYpwxWKS1RvMuXqy": {
+      "key": "4Jady8wYpwxWKS1RvMuXqy",
+      "name": "Column",
+      "type": "Button",
+      "properties": {
+        "designType": {
+          "value": "_iconButton"
+        },
+        "leftImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/Column.svg"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "onClick": {
+          "value": "558NICGMlnumNrGG1DiVd3"
+        }
+      },
+      "styleProperties": {
+        "4h6hU54dWXYYAFGFhmPOVC": {
+          "resolutions": {
+            "ALL": {
+              "borderTopLeftRadius": {
+                "value": "0.69vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.69vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.69vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.69vw"
+              },
+              "borderTopWidth": {
+                "value": "0.07vw"
+              },
+              "borderRightWidth": {
+                "value": "0.07vw"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.columns ? \"#11338999\" : \"#0000001a\""
+                }
+              },
+              "borderRightColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.columns ? \"#11338999\" : \"#0000001a\""
+                }
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "boxShadow": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.columns = true ? \"0px 0px 0px 4px #1133891A\" : \"\""
+                }
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.columns ? \"#11338999\" : \"#0000001a\""
+                }
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.columns ? \"#11338999\" : \"#0000001a\""
+                }
+              },
+              "height": {
+                "value": "100%"
+              },
+              "width": {
+                "value": "3.47vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "16XTIF3gVGzxP35tCYhUwJ": {
+      "key": "16XTIF3gVGzxP35tCYhUwJ",
+      "name": "FilterButton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Filters"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        },
+        "leftImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/filter.svg"
+        },
+        "onClick": {
+          "value": "6izkYE5jVo8pa3xca9rFQT"
+        }
+      },
+      "styleProperties": {
+        "1PBaM7VBBYp9tjM8xpN4oN": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.filter = true ? \"0px 0px 0px 4px #1133891A\" : \"\""
+                }
+              },
+              "borderTopColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.filter ? \"#11338999\" : \"\""
+                }
+              },
+              "borderRightColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.filter ? \"#11338999\" : \"\""
+                }
+              },
+              "borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.filter ? \"#11338999\" : \"\""
+                }
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.filter ? \"#11338999\" : \"\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5vFK65Mpdel5QeRzB3RTTr": {
+      "key": "5vFK65Mpdel5QeRzB3RTTr",
+      "name": "Calendar",
+      "type": "Calendar",
+      "properties": {
+        "dayEventsDateFormat": {
+          "value": "x"
+        },
+        "disableTemporalRanges": {
+          "6H94p93ExNe2lfXkn1jGbu": {
+            "key": "6H94p93ExNe2lfXkn1jGbu",
+            "order": 1,
+            "property": {
+              "value": "disableFuture"
+            }
+          }
+        },
+        "storageFormat": {
+          "value": "X"
+        },
+        "calendarDesignType": {
+          "value": "_smallCalendar"
+        },
+        "placeholder": {
+          "value": "Select a date"
+        },
+        "onChange": {
+          "value": "5NQeRWbD2L3Ud9hc2hhsN"
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.startDate"
+      },
+      "bindingPath2": {
+        "type": "VALUE",
+        "value": "Page.filterPayLoad.endDate"
+      }
+    },
+    "4W1bLtiLT9BvoHEloVMAZC": {
+      "key": "4W1bLtiLT9BvoHEloVMAZC",
+      "name": "Left",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "2h9masymjs73PGgHQ1uecO": true,
+        "3iAIiynK5xFFInLtprAfeu": true
+      },
+      "displayOrder": 1
+    },
+    "2h9masymjs73PGgHQ1uecO": {
+      "key": "2h9masymjs73PGgHQ1uecO",
+      "name": "Count",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "1650"
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "4WyU2Ic7wppeIicrziUih1": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.94vw"
+              },
+              "lineHeight": {
+                "value": "1.94vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3iAIiynK5xFFInLtprAfeu": {
+      "key": "3iAIiynK5xFFInLtprAfeu",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "All Calls"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1HPsHGdTiCH6nadL626AWl": {
+      "key": "1HPsHGdTiCH6nadL626AWl",
+      "name": "Top details",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7lQoH2kjD5t1NOZRu1h7ma": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2.78vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4W1bLtiLT9BvoHEloVMAZC": true,
+        "7k0vg0WbMRx9qLyi6xZTbc": true
+      },
+      "displayOrder": 1
+    },
+    "7k0vg0WbMRx9qLyi6xZTbc": {
+      "key": "7k0vg0WbMRx9qLyi6xZTbc",
+      "name": "right",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4eGQZSWInU3JsJJy2vFPlY": true,
+        "1P0fY5lVSwD1LMkWAeNT6v": true
+      },
+      "displayOrder": 1
+    },
+    "4eGQZSWInU3JsJJy2vFPlY": {
+      "key": "4eGQZSWInU3JsJJy2vFPlY",
+      "name": "Count",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "450"
+        },
+        "textColor": {
+          "value": "_labelText"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "4WyU2Ic7wppeIicrziUih1": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.94vw"
+              },
+              "lineHeight": {
+                "value": "1.94vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1P0fY5lVSwD1LMkWAeNT6v": {
+      "key": "1P0fY5lVSwD1LMkWAeNT6v",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Connected Calls"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3blqYJuaWRIaxFWCbbINeL": {
+      "key": "3blqYJuaWRIaxFWCbbINeL",
+      "name": "color represents",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "60yXBscEijuT6VZ4YL2IZu": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              },
+              "marginTop": {
+                "value": "2.08vw"
+              },
+              "marginBottom": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "eLmsuCJPyt9GShKql6ELx": true,
+        "3t0cPtGGLqEbKQPUy02Rl2": true
+      },
+      "displayOrder": 2
+    },
+    "1S5wYivq53QqiDEWMYgUB7": {
+      "key": "1S5wYivq53QqiDEWMYgUB7",
+      "name": "ProgressBar",
+      "type": "ProgressBar",
+      "properties": {
+        "progressBarDesign": {
+          "value": "_circular"
+        },
+        "circularProgressBarIndicatorWidth": {
+          "value": 7
+        },
+        "progressValue": {
+          "value": 70
+        }
+      },
+      "styleProperties": {
+        "4YKDZotonCpdoHGsgO0GK4": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "16.67vw"
+              },
+              "height": {
+                "value": "16.67vw"
+              },
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "eLmsuCJPyt9GShKql6ELx": {
+      "key": "eLmsuCJPyt9GShKql6ELx",
+      "name": "right",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "2aCMWt5aNSj8QNdHaYY9gC": true,
+        "5NQknOeD9ADf2PGdQ29muA": true,
+        "5ogXY1RzDxUU1b1dqXRTtO": true
+      },
+      "displayOrder": 1
+    },
+    "2aCMWt5aNSj8QNdHaYY9gC": {
+      "key": "2aCMWt5aNSj8QNdHaYY9gC",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-circle"
+        }
+      },
+      "styleProperties": {
+        "6q74OKVY8wJ2UKWykmsMxG": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0vw"
+              },
+              "paddingBottom": {
+                "value": "0vw"
+              },
+              "paddingLeft": {
+                "value": "0vw"
+              },
+              "paddingRight": {
+                "value": "0vw"
+              },
+              "fontSize": {
+                "value": "0.56vw"
+              },
+              "color": {
+                "value": "#E36387"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5NQknOeD9ADf2PGdQ29muA": {
+      "key": "5NQknOeD9ADf2PGdQ29muA",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Total Inbound call : "
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5ogXY1RzDxUU1b1dqXRTtO": {
+      "key": "5ogXY1RzDxUU1b1dqXRTtO",
+      "name": "count",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "800\n"
+        },
+        "textColor": {
+          "value": "_lightSubText"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3t0cPtGGLqEbKQPUy02Rl2": {
+      "key": "3t0cPtGGLqEbKQPUy02Rl2",
+      "name": "left",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2xyCkiC1MxRdukg6vkM8I7": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2diGIUSCXvobNWtJQ0ATe0": true,
+        "7uoGqtkuxXgrFDACBElA8E": true,
+        "1YSopKYcc4IbBfrx6qrWf4": true
+      },
+      "displayOrder": 1
+    },
+    "2diGIUSCXvobNWtJQ0ATe0": {
+      "key": "2diGIUSCXvobNWtJQ0ATe0",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-circle"
+        }
+      },
+      "styleProperties": {
+        "6q74OKVY8wJ2UKWykmsMxG": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0vw"
+              },
+              "paddingBottom": {
+                "value": "0vw"
+              },
+              "paddingLeft": {
+                "value": "0vw"
+              },
+              "paddingRight": {
+                "value": "0vw"
+              },
+              "fontSize": {
+                "value": "0.56vw"
+              },
+              "color": {
+                "value": "#1B56FD"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7uoGqtkuxXgrFDACBElA8E": {
+      "key": "7uoGqtkuxXgrFDACBElA8E",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Total outbound call :"
+        }
+      },
+      "styleProperties": {
+        "vXiws0f0r9RPD8p1olBtn": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1YSopKYcc4IbBfrx6qrWf4": {
+      "key": "1YSopKYcc4IbBfrx6qrWf4",
+      "name": "count",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "1650"
+        },
+        "textColor": {
+          "value": "_lightSubText"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4zJEKmNNzvwWXvC8RYnsPM": {
+      "key": "4zJEKmNNzvwWXvC8RYnsPM",
+      "name": "Chart",
+      "type": "Chart",
+      "properties": {
+        "chartType": {
+          "value": "radar"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "1JlOfrS1ImI3gOd4vCIP2x": {
+      "key": "1JlOfrS1ImI3gOd4vCIP2x",
+      "name": "Total call time",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "borderRadius": {
+          "value": "_VERYROUND"
+        },
+        "padding": {
+          "value": "_PADDINGTWO"
+        }
+      },
+      "styleProperties": {
+        "Xmj8Er9eE8CG8QFdASkjS": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.74vw"
+              },
+              "paddingBottom": {
+                "value": "1.25vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4CsCQ2XYPAZQKux5vQMc4h": true,
+        "2cAcFhQVmLGM5B4rtWTnBi": true,
+        "60W5gyqtoPzELAEvxXWNjV": true
+      },
+      "displayOrder": 1
+    },
+    "4CsCQ2XYPAZQKux5vQMc4h": {
+      "key": "4CsCQ2XYPAZQKux5vQMc4h",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/callReport/callIconImage.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "53nIk5S8hHESEcFwlSJoyW": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2cAcFhQVmLGM5B4rtWTnBi": {
+      "key": "2cAcFhQVmLGM5B4rtWTnBi",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Total call time"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "60W5gyqtoPzELAEvxXWNjV": {
+      "key": "60W5gyqtoPzELAEvxXWNjV",
+      "name": "data content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "14:20:10"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#837AF0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5aZ5ESOzQY8IGag1zersVt": {
+      "key": "5aZ5ESOzQY8IGag1zersVt",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4bqZaCnmDY6Az3G4QeBVtj": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw 2.08vw"
+              },
+              "width": {
+                "value": "43.75vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4gbquRCrYut19eJqeqU6VI": true,
+        "5UKqyjFeuq6Ai5ahqxJ14I": true,
+        "1JlOfrS1ImI3gOd4vCIP2x": true,
+        "3j9eiiukoninmYWiM39RSN": true
+      },
+      "displayOrder": 2
+    },
+    "4gbquRCrYut19eJqeqU6VI": {
+      "key": "4gbquRCrYut19eJqeqU6VI",
+      "name": "Max call time",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "borderRadius": {
+          "value": "_VERYROUND"
+        },
+        "padding": {
+          "value": "_PADDINGTWO"
+        }
+      },
+      "styleProperties": {
+        "Xmj8Er9eE8CG8QFdASkjS": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.74vw"
+              },
+              "paddingBottom": {
+                "value": "1.25vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2QVsPsAtDkhyN8NK7oePp1": true,
+        "3tLQqdSufSR9pi0O2YW0Lx": true,
+        "67xDfONypTSvdWK57SFcVt": true
+      },
+      "displayOrder": 2
+    },
+    "2QVsPsAtDkhyN8NK7oePp1": {
+      "key": "2QVsPsAtDkhyN8NK7oePp1",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/callReport/callIconImage.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "53nIk5S8hHESEcFwlSJoyW": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3tLQqdSufSR9pi0O2YW0Lx": {
+      "key": "3tLQqdSufSR9pi0O2YW0Lx",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Total call time"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "67xDfONypTSvdWK57SFcVt": {
+      "key": "67xDfONypTSvdWK57SFcVt",
+      "name": "data content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "14:20:10"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#837AF0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3j9eiiukoninmYWiM39RSN": {
+      "key": "3j9eiiukoninmYWiM39RSN",
+      "name": "Avg call time",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "borderRadius": {
+          "value": "_VERYROUND"
+        },
+        "padding": {
+          "value": "_PADDINGTWO"
+        }
+      },
+      "styleProperties": {
+        "Xmj8Er9eE8CG8QFdASkjS": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.74vw"
+              },
+              "paddingBottom": {
+                "value": "1.25vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "HgOf2hpHzM2m7UrNukJQO": true,
+        "1vvrurQGwPcFCspeE9rPN6": true,
+        "5lpwVYV41Z5UpdiQKNzH84": true
+      },
+      "displayOrder": 1
+    },
+    "HgOf2hpHzM2m7UrNukJQO": {
+      "key": "HgOf2hpHzM2m7UrNukJQO",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/callReport/callIconImage.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "53nIk5S8hHESEcFwlSJoyW": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1vvrurQGwPcFCspeE9rPN6": {
+      "key": "1vvrurQGwPcFCspeE9rPN6",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Total call time"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5lpwVYV41Z5UpdiQKNzH84": {
+      "key": "5lpwVYV41Z5UpdiQKNzH84",
+      "name": "data content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "12:35:54"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#837AF0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5UKqyjFeuq6Ai5ahqxJ14I": {
+      "key": "5UKqyjFeuq6Ai5ahqxJ14I",
+      "name": "Min call time",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "borderRadius": {
+          "value": "_VERYROUND"
+        },
+        "padding": {
+          "value": "_PADDINGTWO"
+        }
+      },
+      "styleProperties": {
+        "Xmj8Er9eE8CG8QFdASkjS": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.74vw"
+              },
+              "paddingBottom": {
+                "value": "1.25vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1zr5xaEvHllJ1IGnkkOcMs": true,
+        "3WHhKKTQuiRqkA4oIM0xwB": true,
+        "57zeagYvjRYUw46wsh6PEf": true
+      },
+      "displayOrder": 3
+    },
+    "1zr5xaEvHllJ1IGnkkOcMs": {
+      "key": "1zr5xaEvHllJ1IGnkkOcMs",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/callReport/callIconImage.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "53nIk5S8hHESEcFwlSJoyW": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3WHhKKTQuiRqkA4oIM0xwB": {
+      "key": "3WHhKKTQuiRqkA4oIM0xwB",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Total call time"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "57zeagYvjRYUw46wsh6PEf": {
+      "key": "57zeagYvjRYUw46wsh6PEf",
+      "name": "data content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "04:30:24"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "3OymKQgpS9p5an9v2glbx3": {
+          "resolutions": {
+            "ALL": {
+              "opacity": {
+                "value": "0.7"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "color": {
+                "value": "#837AF0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7bzoHWjDDvSmmNhzYUkzip": {
+      "key": "7bzoHWjDDvSmmNhzYUkzip",
+      "name": "FilterGrid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SEPTENARYBG"
+        },
+        "border": {
+          "value": "_MEDIUM"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.filter "
+          }
+        }
+      },
+      "styleProperties": {
+        "AMRg3TKfog345nqts8vQv": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "right": {
+                "value": "0vw"
+              },
+              "width": {
+                "value": "19.38vw"
+              },
+              "zIndex": {
+                "value": "8"
+              },
+              "paddingTop": {
+                "value": "1.39vw"
+              },
+              "gap": {
+                "value": "0vw"
+              },
+              "animationName": {
+                "value": "columnsAni"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "animationTimingFunction": {
+                "value": "ease"
+              },
+              "top": {
+                "value": "122px"
+              },
+              "bottom": {
+                "value": "0px"
+              },
+              "height": {
+                "value": "77vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2kovhNHCQpuaQ1y6tcJR2S": true,
+        "j9bl10pnCkPyg13ovVVLc": true,
+        "1NBoSYhHscVpRDtE3nJydr": true,
+        "79CNeu03cbJzhvKKvOwD2L": true,
+        "5NEBMG8vOgxLs3ODyTHikx": true,
+        "6DXanvUK7PmHjxk1rM5Xnk": true,
+        "1XsFQ248rTm39Z13ePa6T4": true,
+        "gqFlA4agjRBmVl8hDjZdY": true,
+        "19jmrkzFWcsYLgqdgvEPR0": true,
+        "6LyPyJ6IUvCbBM8XVaDhY7": true
+      },
+      "displayOrder": 4
+    },
+    "2kovhNHCQpuaQ1y6tcJR2S": {
+      "key": "2kovhNHCQpuaQ1y6tcJR2S",
+      "name": "FilterGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7k88eFfocahKspQslSTZhi": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "marginBottom": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1LhbnMttmhKT5GmhAYZE3L": true,
+        "5KzUnrO9SOIN4iPLBihPpw": true
+      },
+      "displayOrder": 1
+    },
+    "j9bl10pnCkPyg13ovVVLc": {
+      "key": "j9bl10pnCkPyg13ovVVLc",
+      "name": "Report type",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_QUATERNARYBG"
+        },
+        "onClick": {
+          "value": "21a90g9wKliWKX1PU45hVq"
+        }
+      },
+      "styleProperties": {
+        "1PTHd0DfDGWBM2UPYZOwJf": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingTop": {
+                "value": "0.9vw"
+              },
+              "paddingBottom": {
+                "value": "0.9vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5GUFlp1Grm5QFIlEKEDXJL": true,
+        "1cGdDIeet0X0Fd3GYe6QMV": true
+      },
+      "displayOrder": 2
+    },
+    "1NBoSYhHscVpRDtE3nJydr": {
+      "key": "1NBoSYhHscVpRDtE3nJydr",
+      "name": "Repeater Report type",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.collapseReportType"
+          }
+        }
+      },
+      "styleProperties": {
+        "6hROme1fBBojIHsKm3l3EX": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "42sx2ZTiJqXwp9ncu3zTl6": true
+      },
+      "displayOrder": 3
+    },
+    "79CNeu03cbJzhvKKvOwD2L": {
+      "key": "79CNeu03cbJzhvKKvOwD2L",
+      "name": "buttonGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1jh0MRknkxnCGg8kXeejGA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.83vw"
+              },
+              "paddingBottom": {
+                "value": "0.83vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "boxShadow": {
+                "value": "4px 0px 4px 0px #0000001A"
+              },
+              "marginTop": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3FH1PL3FOfQNEJIQbNXQAo": true,
+        "4uobAghcrqG8EZOYvUoGng": true
+      },
+      "displayOrder": 10
+    },
+    "1LhbnMttmhKT5GmhAYZE3L": {
+      "key": "1LhbnMttmhKT5GmhAYZE3L",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Filter"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5KzUnrO9SOIN4iPLBihPpw": {
+      "key": "5KzUnrO9SOIN4iPLBihPpw",
+      "name": "Close",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Button"
+        },
+        "designType": {
+          "value": "_iconButton"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-xmark"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "onClick": {
+          "value": "6izkYE5jVo8pa3xca9rFQT"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5GUFlp1Grm5QFIlEKEDXJL": {
+      "key": "5GUFlp1Grm5QFIlEKEDXJL",
+      "name": "Report type",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Report type"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1cGdDIeet0X0Fd3GYe6QMV": {
+      "key": "1cGdDIeet0X0Fd3GYe6QMV",
+      "name": "Expand",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Button"
+        },
+        "leftIcon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.collapseReportType ? ' fa fa-solid fa-angle-up' : ' fa fa-solid fa-angle-down'"
+          }
+        },
+        "designType": {
+          "value": "_iconButton"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "7DmLE8MJ9kCkIi9IoZRZlD": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "42sx2ZTiJqXwp9ncu3zTl6": {
+      "key": "42sx2ZTiJqXwp9ncu3zTl6",
+      "name": "RepeatorGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5cGa37YpgEzpm6Zqx6AwOH": {
+          "resolutions": {
+            "ALL": {
+              "overflow": {
+                "value": "auto"
+              },
+              "hideScrollBar": {
+                "value": "hide"
+              },
+              "gap": {
+                "value": "0vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7hiunORzTEsa0gmkt9q1jS": true,
+        "25YS2C1plxbeGNhw0zERmA": true
+      },
+      "displayOrder": 1
+    },
+    "3FH1PL3FOfQNEJIQbNXQAo": {
+      "key": "3FH1PL3FOfQNEJIQbNXQAo",
+      "name": "Saveview",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save view"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4uobAghcrqG8EZOYvUoGng": {
+      "key": "4uobAghcrqG8EZOYvUoGng",
+      "name": "ClearAll",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Clear all"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "onClick": {
+          "value": "1zcT2kq7bzJoWqJGYo2tJY"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7hiunORzTEsa0gmkt9q1jS": {
+      "key": "7hiunORzTEsa0gmkt9q1jS",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "4phjGEvHKZIpnTrxCy9WeS": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7Kb3wSajgWtlEtpQ0A5xiJ": true
+      },
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.filterObject.reportedType"
+      }
+    },
+    "7Kb3wSajgWtlEtpQ0A5xiJ": {
+      "key": "7Kb3wSajgWtlEtpQ0A5xiJ",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "21JIRLe63P7fnI8Gi1pwHi": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              },
+              "backgroundColor:hover": {
+                "value": "#F5F5F8"
+              },
+              "justifyContent:hover": {
+                "value": "space-between"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4EgvU51GFyYZpATvshxHUs": true,
+        "3F9XsJX5nWQu9Tmitp9qLC": true
+      },
+      "displayOrder": 0
+    },
+    "4EgvU51GFyYZpATvshxHUs": {
+      "key": "4EgvU51GFyYZpATvshxHUs",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1CB5viEhAGL58cICDX5Kp3": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1D12EnxLzW0tRcrihJoV5m": true
+      },
+      "displayOrder": 1
+    },
+    "3F9XsJX5nWQu9Tmitp9qLC": {
+      "key": "3F9XsJX5nWQu9Tmitp9qLC",
+      "name": "ToggleButton",
+      "type": "ToggleButton",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "offImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOff.svg"
+        },
+        "onImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOn.svg"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "eTi9loFfU48sc1SQzOO7i": {
+          "resolutions": {
+            "ALL": {
+              "icon-height": {
+                "value": "0.5vw"
+              },
+              "fontSize": {
+                "value": "1.2vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.toggle"
+      }
+    },
+    "1D12EnxLzW0tRcrihJoV5m": {
+      "key": "1D12EnxLzW0tRcrihJoV5m",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.lable"
+          }
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText2"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5NEBMG8vOgxLs3ODyTHikx": {
+      "key": "5NEBMG8vOgxLs3ODyTHikx",
+      "name": "Call direction",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_QUATERNARYBG"
+        },
+        "onClick": {
+          "value": "6LNXUKVYmsGyVIrAkR2xJC"
+        }
+      },
+      "styleProperties": {
+        "1PTHd0DfDGWBM2UPYZOwJf": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingTop": {
+                "value": "0.9vw"
+              },
+              "paddingBottom": {
+                "value": "0.9vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4pEac4m3soJ9KMGGbDNcP2": true,
+        "1mzHTBdhAa5hf0CSFkJwPH": true
+      },
+      "displayOrder": 4
+    },
+    "4pEac4m3soJ9KMGGbDNcP2": {
+      "key": "4pEac4m3soJ9KMGGbDNcP2",
+      "name": "Call direction",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Call direction"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1mzHTBdhAa5hf0CSFkJwPH": {
+      "key": "1mzHTBdhAa5hf0CSFkJwPH",
+      "name": "Expand",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Button"
+        },
+        "leftIcon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.collapseCallDirection ? ' fa fa-solid fa-angle-up' : ' fa fa-solid fa-angle-down'"
+          }
+        },
+        "designType": {
+          "value": "_iconButton"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "7DmLE8MJ9kCkIi9IoZRZlD": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6DXanvUK7PmHjxk1rM5Xnk": {
+      "key": "6DXanvUK7PmHjxk1rM5Xnk",
+      "name": "Product",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_QUATERNARYBG"
+        },
+        "onClick": {
+          "value": "qoGMtRRGnVCMyyHtQRUmU"
+        }
+      },
+      "styleProperties": {
+        "1PTHd0DfDGWBM2UPYZOwJf": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingTop": {
+                "value": "0.9vw"
+              },
+              "paddingBottom": {
+                "value": "0.9vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5vCp2Et4QAl3dZIjPXSeJc": true,
+        "uoANA0bVnq5GjPtDNXUsg": true
+      },
+      "displayOrder": 6
+    },
+    "5vCp2Et4QAl3dZIjPXSeJc": {
+      "key": "5vCp2Et4QAl3dZIjPXSeJc",
+      "name": "Product",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Product"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "uoANA0bVnq5GjPtDNXUsg": {
+      "key": "uoANA0bVnq5GjPtDNXUsg",
+      "name": "Expand",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Button"
+        },
+        "leftIcon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.collapseProduct ? ' fa fa-solid fa-angle-up' : ' fa fa-solid fa-angle-down'"
+          }
+        },
+        "designType": {
+          "value": "_iconButton"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "7DmLE8MJ9kCkIi9IoZRZlD": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1XsFQ248rTm39Z13ePa6T4": {
+      "key": "1XsFQ248rTm39Z13ePa6T4",
+      "name": "Assigned users",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_QUATERNARYBG"
+        },
+        "onClick": {
+          "value": "27IXhMyTyaEdtcMLfjPwcW"
+        }
+      },
+      "styleProperties": {
+        "1PTHd0DfDGWBM2UPYZOwJf": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingTop": {
+                "value": "0.9vw"
+              },
+              "paddingBottom": {
+                "value": "0.9vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "48FX4rYvSJWEqN085AMuj4": true,
+        "2LyJJCdrolmpHtd8dUDrYG": true
+      },
+      "displayOrder": 8
+    },
+    "48FX4rYvSJWEqN085AMuj4": {
+      "key": "48FX4rYvSJWEqN085AMuj4",
+      "name": "Assigned users",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Assigned users"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2LyJJCdrolmpHtd8dUDrYG": {
+      "key": "2LyJJCdrolmpHtd8dUDrYG",
+      "name": "Expand",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Button"
+        },
+        "leftIcon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.collapseAssignedUsers ? ' fa fa-solid fa-angle-up' : ' fa fa-solid fa-angle-down'"
+          }
+        },
+        "designType": {
+          "value": "_iconButton"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "7DmLE8MJ9kCkIi9IoZRZlD": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "25YS2C1plxbeGNhw0zERmA": {
+      "key": "25YS2C1plxbeGNhw0zERmA",
+      "name": "SelectallGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "2ekjYZyeH1w6zSwadxDcgi": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4zjMCWGbvz0fCygVGJrvIu": true,
+        "3NVm9XiPNZIxy49Is1NS6P": true
+      },
+      "displayOrder": 1
+    },
+    "4zjMCWGbvz0fCygVGJrvIu": {
+      "key": "4zjMCWGbvz0fCygVGJrvIu",
+      "name": "SelectallText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Select all\n"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3NVm9XiPNZIxy49Is1NS6P": {
+      "key": "3NVm9XiPNZIxy49Is1NS6P",
+      "name": "ToggleButton",
+      "type": "ToggleButton",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "offImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOff.svg"
+        },
+        "onImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOn.svg"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "3muTRAGwcSUrKK8uRwM2cL": {
+          "resolutions": {
+            "ALL": {
+              "icon-height": {
+                "value": "0.5vw"
+              },
+              "fontSize": {
+                "value": "1.2vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.selectAllReportingType"
+      }
+    },
+    "gqFlA4agjRBmVl8hDjZdY": {
+      "key": "gqFlA4agjRBmVl8hDjZdY",
+      "name": "Repeater Call direction",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.collapseCallDirection"
+          }
+        }
+      },
+      "styleProperties": {
+        "6hROme1fBBojIHsKm3l3EX": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "LKXOfP7kkWIpR05zBSTOo": true
+      },
+      "displayOrder": 5
+    },
+    "LKXOfP7kkWIpR05zBSTOo": {
+      "key": "LKXOfP7kkWIpR05zBSTOo",
+      "name": "RepeatorGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5cGa37YpgEzpm6Zqx6AwOH": {
+          "resolutions": {
+            "ALL": {
+              "overflow": {
+                "value": "auto"
+              },
+              "hideScrollBar": {
+                "value": "hide"
+              },
+              "gap": {
+                "value": "0vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3y1M48hZ45HZZbygLdm3Td": true,
+        "7zn6LpitMaEDykBG4fGdou": true
+      },
+      "displayOrder": 1
+    },
+    "3y1M48hZ45HZZbygLdm3Td": {
+      "key": "3y1M48hZ45HZZbygLdm3Td",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "4phjGEvHKZIpnTrxCy9WeS": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4K0pa7HHRhw3UoRlhepaMa": true
+      },
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.filterObject.callDirection"
+      }
+    },
+    "7zn6LpitMaEDykBG4fGdou": {
+      "key": "7zn6LpitMaEDykBG4fGdou",
+      "name": "SelectallGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "2ekjYZyeH1w6zSwadxDcgi": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5g8Npc1lRjYqgdbjgWPA4f": true,
+        "5FAkjlZQpDQMidY3xCkbIV": true
+      },
+      "displayOrder": 1
+    },
+    "4K0pa7HHRhw3UoRlhepaMa": {
+      "key": "4K0pa7HHRhw3UoRlhepaMa",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "21JIRLe63P7fnI8Gi1pwHi": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              },
+              "backgroundColor:hover": {
+                "value": "#F5F5F8"
+              },
+              "justifyContent:hover": {
+                "value": "space-between"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5PpbHPKU4Jp2dQokQ7UuDZ": true,
+        "2VY5ooEtdrzecuBS2Ep0uw": true
+      },
+      "displayOrder": 0
+    },
+    "__truncated__": "... 81 more components omitted for corpus"
+  },
+  "componentVersions": {
+    "3laDGEfzuo8ZxUWj0p84zm": 4,
+    "5mzZCji1s1zNYJf8xOP0yM": 4,
+    "2cFUjibhMxOD4t7LKBBUWm": 4,
+    "2tshJ1XIaG18mWFENLhQqG": 4,
+    "4pEac4m3soJ9KMGGbDNcP2": 4,
+    "b5IBpCuV2it2SPhx8UqdX": 4,
+    "5NEBMG8vOgxLs3ODyTHikx": 4,
+    "5uO2WNGubXafn2zOoWK5jG": 4,
+    "3iAIiynK5xFFInLtprAfeu": 4,
+    "1X8VcIeyEIQcuvIKLaavW2": 4,
+    "5GUFlp1Grm5QFIlEKEDXJL": 4,
+    "ep3jq2j2R065mn6Yg1V6Q": 4,
+    "1zr5xaEvHllJ1IGnkkOcMs": 4,
+    "3D0Ckp6RUd60zKaUSTAct9": 4,
+    "3y1M48hZ45HZZbygLdm3Td": 4,
+    "4Jady8wYpwxWKS1RvMuXqy": 4,
+    "j9bl10pnCkPyg13ovVVLc": 4,
+    "2h9masymjs73PGgHQ1uecO": 4,
+    "2LyJJCdrolmpHtd8dUDrYG": 4,
+    "2WwF4NyNiKnLQjWf8e2eEF": 4,
+    "3WHhKKTQuiRqkA4oIM0xwB": 4,
+    "4eGQZSWInU3JsJJy2vFPlY": 4,
+    "1cGdDIeet0X0Fd3GYe6QMV": 4,
+    "6LyPyJ6IUvCbBM8XVaDhY7": 4,
+    "60W5gyqtoPzELAEvxXWNjV": 4,
+    "2uKX3wdMMits23flGCD1Vh": 4,
+    "7Kb3wSajgWtlEtpQ0A5xiJ": 4,
+    "5VrqcvD3XbMsuCoLzEUcfX": 4,
+    "51AEFHKtLXVL6uQbz9Vqes": 4,
+    "CVkZqFgjnmLUQPCXOYa1z": 4,
+    "6DXanvUK7PmHjxk1rM5Xnk": 4,
+    "1HX9EwXRNV6yFg7mdDGYMp": 4,
+    "4uobAghcrqG8EZOYvUoGng": 4,
+    "2utiYsTcWeLz2p2ILwhnOv": 4,
+    "5NQknOeD9ADf2PGdQ29muA": 4,
+    "5txbWKKJPaBaliLw0jkVsf": 4,
+    "2diGIUSCXvobNWtJQ0ATe0": 4,
+    "4gbquRCrYut19eJqeqU6VI": 4,
+    "1vd1vYn0NNlo9WjEBIM6Hq": 4,
+    "3jsf076DjDVxoPABduIwC0": 4,
+    "50bheuVYI5yH1U6mMhaJZE": 4,
+    "5PpbHPKU4Jp2dQokQ7UuDZ": 4,
+    "2VY5ooEtdrzecuBS2Ep0uw": 4,
+    "4ovmmSNcH4Iqc5hMX0GoSu": 4,
+    "1JlOfrS1ImI3gOd4vCIP2x": 4,
+    "3tLQqdSufSR9pi0O2YW0Lx": 4,
+    "4QCyYzESPTiCAUSTt7Up9P": 4,
+    "7FJYfukwKRKoKY8qrfOYf9": 4,
+    "4zjMCWGbvz0fCygVGJrvIu": 4,
+    "5g8Npc1lRjYqgdbjgWPA4f": 4,
+    "1LhbnMttmhKT5GmhAYZE3L": 4,
+    "52BvGUL64xRuDperggBiWd": 4,
+    "3aJYZS0n4lYO8GuEy4owm2": 4,
+    "2aCMWt5aNSj8QNdHaYY9gC": 4,
+    "Cf00wUE91G9G8hiVj4fmZ": 4,
+    "35BOZeLoLtVlbuWSCJSpHa": 4,
+    "q4zl4rpLu9LFimFgMWJzs": 4,
+    "3LDo570tVQikn06vSnxAqy": 4,
+    "25YS2C1plxbeGNhw0zERmA": 4,
+    "3blqYJuaWRIaxFWCbbINeL": 4,
+    "7hiunORzTEsa0gmkt9q1jS": 4,
+    "23VNWnusPghQsyuN2AQm5b": 4,
+    "1vrHFKY8VZWAb15GG1y8IG": 4,
+    "4CsCQ2XYPAZQKux5vQMc4h": 4,
+    "11eOXykGBhgXMcuMjaQUJ": 4,
+    "3Dy8OMu3Rrz86Pc4sGWOwf": 4,
+    "2CKuZoh1nUxGiZsoKrfFZd": 4,
+    "3JF0xxRdCylAtNjqrNaVZ9": 4,
+    "1XsFQ248rTm39Z13ePa6T4": 4,
+    "3F9XsJX5nWQu9Tmitp9qLC": 4,
+    "7uoGqtkuxXgrFDACBElA8E": 4,
+    "7Jf547EOJjeS4jsMxKTDc": 4,
+    "1P0fY5lVSwD1LMkWAeNT6v": 4,
+    "1kvhjupzwmcDdo7s8y5cIL": 4,
+    "7lWgdQKOemB9EsC2HlJuVb": 4,
+    "7zn6LpitMaEDykBG4fGdou": 4,
+    "3NVm9XiPNZIxy49Is1NS6P": 4,
+    "yTeoEDgQzxAGqS3lctVoO": 4,
+    "73IMVphbNrgCoaSPeyTTiv": 4,
+    "L5ZUZSXZXFRDnLLx99qRi": 4,
+    "4uFAo3q1wsIHosJfOFZ70c": 4,
+    "3FH1PL3FOfQNEJIQbNXQAo": 4,
+    "1k8GY2MLbNM16mQdzINc0C": 4,
+    "5J2TxkkoCQJiB9YIg8KpPR": 4,
+    "19jmrkzFWcsYLgqdgvEPR0": 4,
+    "5TAHEjUJ2uFKjdhUoodpfa": 4,
+    "gqFlA4agjRBmVl8hDjZdY": 4,
+    "1gnk5dxlEOXPSEbqBrNjiI": 4,
+    "1oGXSkLcqH8PAPL3ZYAF9J": 4,
+    "HgOf2hpHzM2m7UrNukJQO": 4,
+    "5vFK65Mpdel5QeRzB3RTTr": 4,
+    "2deFQd0dr1cvabPrJsVZdQ": 4,
+    "2kovhNHCQpuaQ1y6tcJR2S": 4,
+    "2QVsPsAtDkhyN8NK7oePp1": 4,
+    "67xDfONypTSvdWK57SFcVt": 4,
+    "uoANA0bVnq5GjPtDNXUsg": 4,
+    "3CX3rxPblZySD7CJO2vCMK": 4,
+    "1zGlgr4H7nHRPxB6PjLa3B": 4,
+    "5ogXY1RzDxUU1b1dqXRTtO": 4,
+    "3t0cPtGGLqEbKQPUy02Rl2": 4,
+    "5KzUnrO9SOIN4iPLBihPpw": 4,
+    "5yTKjcqEPqhGFfyzMskAiv": 4,
+    "6TokOPS8bErDpQ6ahpGwrl": 4,
+    "4LYKYrqAb1Wjlt2dR1FNst": 4,
+    "3j9eiiukoninmYWiM39RSN": 4,
+    "5YxTuZAEGeNBlvz3m0rEfh": 4,
+    "1vvrurQGwPcFCspeE9rPN6": 4,
+    "57zeagYvjRYUw46wsh6PEf": 4,
+    "1UUyWNG8pffzmRwlwCDFWc": 4,
+    "6no5ptt6SJqu0IWbS74G2u": 4,
+    "3p7ZC6yLEuODVnswNDc436": 4,
+    "23hBZIZSEvJdTEyV9LGCUy": 4,
+    "5aZ5ESOzQY8IGag1zersVt": 4,
+    "lARcxWuGLY8rh4dzjYw4L": 4,
+    "4W1bLtiLT9BvoHEloVMAZC": 4,
+    "7bzoHWjDDvSmmNhzYUkzip": 4,
+    "2cAcFhQVmLGM5B4rtWTnBi": 4,
+    "11ICGFdR3K2idTVqqZ0LCh": 4,
+    "1EZfsAJIq1IaD1RreClax5": 4,
+    "1S5wYivq53QqiDEWMYgUB7": 4,
+    "3qFmRCYbUO3eHPuvhkbeGU": 4,
+    "1anT6wkPwcDvTsdH1PP2uL": 4,
+    "79CNeu03cbJzhvKKvOwD2L": 4,
+    "7H4mbblwFuBR5eO9owFDTB": 4,
+    "1HPsHGdTiCH6nadL626AWl": 4,
+    "5lpwVYV41Z5UpdiQKNzH84": 4,
+    "7k0vg0WbMRx9qLyi6xZTbc": 4,
+    "eLmsuCJPyt9GShKql6ELx": 4,
+    "6iA6bBimItY9gVElX6h1Y3": 4,
+    "48FX4rYvSJWEqN085AMuj4": 4,
+    "4ao3Bt0PIHPoS6m2HwW2r1": 4,
+    "1R6OGMSVxi4lvgX9mk4X1g": 4,
+    "4zJEKmNNzvwWXvC8RYnsPM": 4,
+    "5UKqyjFeuq6Ai5ahqxJ14I": 4,
+    "LKXOfP7kkWIpR05zBSTOo": 4,
+    "5FAkjlZQpDQMidY3xCkbIV": 4,
+    "1YSopKYcc4IbBfrx6qrWf4": 4,
+    "1NBoSYhHscVpRDtE3nJydr": 4,
+    "3hANhDVIX2BoorAqovSoFn": 4,
+    "55NAK6NDhNkNnWluJH5xjH": 4,
+    "4F9MjE3zeAGHrWxcUxnsJI": 4,
+    "5vCp2Et4QAl3dZIjPXSeJc": 4,
+    "1BUFR79ubgymGN9OPUtNo3": 4,
+    "4K0pa7HHRhw3UoRlhepaMa": 4,
+    "16XTIF3gVGzxP35tCYhUwJ": 4,
+    "2glUnYMKPfYi3foCSTD2zC": 4,
+    "5ACHmm1Vuu5b6aV2oTFyjW": 4,
+    "3W1XrIPwbQisftly9brM5X": 4,
+    "1mzHTBdhAa5hf0CSFkJwPH": 4,
+    "2ujv7v4sz1rdlZQxxdwHW0": 4,
+    "3uELByr2l9ubCAwZ5S6IpT": 4,
+    "42sx2ZTiJqXwp9ncu3zTl6": 4,
+    "xJK30B0n14osWruDktY2D": 4,
+    "6n1G8d8A60iWI6gxrGDZIZ": 4,
+    "1vnCLpG1Ouz5oVt5Lk6gEG": 4,
+    "4EgvU51GFyYZpATvshxHUs": 4,
+    "14ukFEUwYc7kwYtguomDDy": 4,
+    "1D12EnxLzW0tRcrihJoV5m": 4,
+    "1pm4Ea3kEgVvrErpAVeYu0": 4,
+    "2eLxSmh7CFbMI2KeNOxKwp": 4,
+    "2xEOyE2bEGRbzyQbpk9csx": 4
+  },
+  "eventFunctionVersions": {
+    "558NICGMlnumNrGG1DiVd3": 4,
+    "27IXhMyTyaEdtcMLfjPwcW": 4,
+    "21a90g9wKliWKX1PU45hVq": 4,
+    "qoGMtRRGnVCMyyHtQRUmU": 4,
+    "6LNXUKVYmsGyVIrAkR2xJC": 4,
+    "6izkYE5jVo8pa3xca9rFQT": 4
+  },
+  "name": "callReport",
+  "message": "From transport : 1wQWGRtNepBvqTPqw2neH6",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 55,
+  "updatedAt": "2026-05-14 13:46:49.472000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-10-08 06:48:28.518000",
+  "createdBy": "<USER>"
+}

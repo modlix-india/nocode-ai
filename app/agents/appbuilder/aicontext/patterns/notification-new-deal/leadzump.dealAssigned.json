@@ -1,0 +1,23 @@
+{
+  "_id": "696a5c746db9c20e249d2321",
+  "notificationType": "INFO",
+  "channelTemplates": {
+    "inapp": {
+      "templateParts": {
+        "en": {
+          "description": "to you by **${userName}** for Product **${productName}**\n##### ${code}",
+          "title": "Deal Assigned",
+          "image": "api/files/static/file/SYSTEM/leadzump/notifications/dealAssigned.svg"
+        }
+      }
+    }
+  },
+  "name": "dealAssigned",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 4,
+  "updatedAt": "2026-01-16 15:51:00.787000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-16 15:42:44.277000",
+  "createdBy": "<USER>"
+}

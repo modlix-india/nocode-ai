@@ -37,6 +37,7 @@ from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream, current_agent_id
 from app.core.session import BaseSession, current_session
 from app.core.context import BaseContext
+from app.services import billing
 from app.core.builtin_tools import (
     close_builtin_rows, on_builtin_tool_result, on_builtin_tool_use,
 )
@@ -61,6 +62,10 @@ class BaseAgent:
     # Defaults to a Title-Cased version of `name` if not set.
     display_name: str | None = None
 
+    # Meta-tools whose schemas the LLM always sees in full (they're the entry
+    # point to the deferred-schema dance — gating them would deadlock).
+    _META_TOOL_NAMES: frozenset[str] = frozenset({"search_tools", "get_tool_schema"})
+
     def __init__(
         self,
         name: str,
@@ -72,6 +77,7 @@ class BaseAgent:
         provider: str | None = None,
         context_management: dict | None = None,
         router_tool: ToolDefinition | None = None,
+        defer_schemas: bool = False,
     ) -> None:
         self.name = name
         self.tools = {t.name: t for t in tools}
@@ -84,11 +90,25 @@ class BaseAgent:
         if not self.display_name:
             self.display_name = name.replace("_", " ").title()
 
-        # Tool-of-tools: LLM sees only the router schema; unwrap
-        # execute(tool=X, params={}) → real call at dispatch (_run_tool_block).
+        # Tool surface strategy — three mutually exclusive modes:
+        #   1. router_tool  → LLM sees only `execute`; we unwrap
+        #                       execute(tool=X, params={}) → real call at
+        #                       dispatch (_run_tool_block).
+        #   2. defer_schemas → LLM sees every tool's name + description with
+        #                       EMPTY parameters; full schema fetched on demand
+        #                       via get_tool_schema. First call to a tool
+        #                       whose schema hasn't been fetched returns a
+        #                       synthetic "here's the schema, retry" result.
+        #                       Meta tools (search_tools, get_tool_schema) keep
+        #                       their full schemas so the dance has an entry
+        #                       point.
+        #   3. otherwise     → All tools advertise full schemas (legacy).
         self._router_tool_name = router_tool.name if router_tool else None
+        self._defer_schemas = bool(defer_schemas) and not router_tool
         if router_tool:
             self._anthropic_tools = [router_tool.to_anthropic_tool()]
+        elif self._defer_schemas:
+            self._anthropic_tools = [self._tool_to_advertised_schema(t) for t in tools]
         else:
             self._anthropic_tools = [t.to_anthropic_tool() for t in tools]
 
@@ -107,6 +127,27 @@ class BaseAgent:
 
         # strong refs so tasks aren't GC'd mid-flight
         self._background_tasks: set[asyncio.Task] = set()
+
+    def _tool_to_advertised_schema(self, tool: ToolDefinition) -> dict[str, Any]:
+        """Anthropic-shaped tool schema for the deferred-tool surface.
+
+        Meta tools keep their full schemas (so the LLM can call them without
+        a prior fetch). Everything else gets advertised with name +
+        description + empty input_schema; the full parameters arrive only
+        after the LLM calls get_tool_schema(name) — at which point we mark
+        it on session.context["fetched_schemas"] and the next invocation
+        dispatches normally.
+        """
+        if tool.name in self._META_TOOL_NAMES:
+            return tool.to_anthropic_tool()
+        if tool.builtin_spec:
+            # Built-in provider tools (web_search etc.) are passed through.
+            return tool.to_anthropic_tool()
+        return {
+            "name": tool.name,
+            "description": (tool.description or "").split("\n", 1)[0],
+            "input_schema": {"type": "object", "properties": {}},
+        }
 
     async def run(
         self,
@@ -215,6 +256,18 @@ class BaseAgent:
         session.start_turn()
         await session.persist_turn_incremental(user_message, "", None)
 
+        # Billing — AI is a metered, gated action. Gate this turn against the
+        # consumer's wallet before any LLM call. Each LLM call is charged
+        # immediately (below), so there is no end-of-turn settlement to snapshot.
+        # check_serving_status fails open.
+        if not await billing.check_serving_status(session.auth):
+            out_msg = "You're out of tokens. Top up your wallet to keep using AI."
+            await event_stream.emit_error(out_msg)
+            await session.persist_turn(user_message, out_msg, None)
+            await session.complete()
+            await event_stream.emit_done(session_id=session.session_id, usage=session.get_usage_summary())
+            return
+
         # Layer 1 — system-prompt context: build_dynamic_context runs ONCE per
         # request and is folded into the (cacheable) system prompt. Agents whose
         # context is fully per-turn (e.g. adzump) return "" here and put their
@@ -293,9 +346,18 @@ class BaseAgent:
             session.accumulate_usage(usage)
             await session.record_token_usage(usage, request_id, resolved_model, provider.name.lower())
 
-            # Reasoning models (e.g. MiniMax M3) return interleaved reasoning in
-            # usage["reasoning_content"]; the API requires it echoed back on the next
-            # turn, so persist it on the assistant message and let the provider re-emit it.
+            # Billing — charge this LLM call's usage immediately. Best-effort;
+            # security weights nothing further (weighting is done in billing.py),
+            # debits allow-negative, and is idempotent per requestId.
+            await billing.charge_llm_call(
+                session.auth, usage, resolved_model, request_id, session.session_id)
+
+            # Thinking-mode providers (DeepSeek V4 Pro, MiniMax M3) stash
+            # interleaved chain-of-thought in usage["reasoning_content"]. The API
+            # requires this text to be passed back on every follow-up turn —
+            # `append_assistant_message` stores it as `_reasoning_content` and the
+            # provider re-emits it. Pop here so it doesn't leak into the persisted
+            # usage record.
             reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
 
             session.append_assistant_message(content_blocks, reasoning_content)
@@ -464,11 +526,19 @@ class BaseAgent:
                 "Please continue the conversation to proceed.]"
             )
 
-        # Persist the turn summary, tool call log, and context
+        # Persist the turn summary, tool call log, and context. Cap the summary
+        # well under the ASSISTANT_SUMMARY column width (TEXT, ~64KB): a verbose
+        # M3 turn can otherwise overflow it, failing the whole turn upsert
+        # (MySQL error 1406) and silently dropping conversation history.
         assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
+        if len(assistant_summary) > 60000:
+            assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
+        # (AI billing is charged per LLM call, immediately, inside the loop above.)
+
+        # Emit pending suggestions (e.g. quick reply buttons) if any
         suggestions = await self.get_pending_suggestions(session, assistant_summary)
         if suggestions:
             await event_stream.emit_suggestions(**suggestions)
@@ -787,7 +857,16 @@ class BaseAgent:
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
         # Request user confirmation for mutating operations.
-        if tool_name in self.CONFIRMATION_TOOLS:
+        # Headless/harness callers set session.context["auto_confirm"]=True to
+        # pre-approve mutations: skip the SSE pause (which would otherwise block
+        # on a /confirm resolver that no headless client provides) AND stamp
+        # confirmed=true so the in-tool gate (e.g. theme creation in
+        # _handlers.py) passes too. Interactive UI sessions leave auto_confirm
+        # unset and keep the normal confirmation flow.
+        if tool_name in self.CONFIRMATION_TOOLS and session.context.get("auto_confirm"):
+            if isinstance(tool_input, dict):
+                tool_input.setdefault("confirmed", True)
+        elif tool_name in self.CONFIRMATION_TOOLS:
             confirmation_id = f"confirm_{tool_use_id}"
             confirm_msg = self._build_confirmation_message(tool_name, display_name, tool_input)
             confirmation = await event_stream.request_confirmation(
@@ -849,10 +928,30 @@ class BaseAgent:
         if not result.success:
             await self._on_tool_error(tool_name, tool_input, result.error or "Unknown error")
 
+        # Multimodal tool_result: when the active provider accepts image
+        # content blocks inside `tool_result.content` (Anthropic does), forward
+        # any screenshot bytes the tool produced as actual image blocks. Without
+        # this the agent on a vision-capable provider only sees a text summary
+        # like "PNG in result.data['image_base64']" — useless. Other providers
+        # keep the plain-string content path.
+        result_content: Any = tool_content
+        try:
+            from app.services.llm_provider import get_llm_provider as _get_llm_provider
+            _provider = _get_llm_provider(self._provider_name)
+            if getattr(_provider, "supports_image_in_tool_result", False):
+                image_blocks = result.extract_anthropic_image_blocks()
+                if image_blocks:
+                    result_content = [
+                        {"type": "text", "text": tool_content},
+                        *image_blocks,
+                    ]
+        except Exception:  # noqa: BLE001
+            pass  # best-effort; fall back to plain text on any provider lookup error
+
         result_block = {
             "type": "tool_result",
             "tool_use_id": tool_use_id,
-            "content": tool_content,
+            "content": result_content,
             "is_error": not result.success,
         }
         # Stamp the elicitation signal on the INTERNAL log_entry (never on
@@ -925,15 +1024,101 @@ class BaseAgent:
             context["event_stream"] = event_stream
         if tool_use_id:
             context["tool_use_id"] = tool_use_id
+        # `progress(msg)` lets a long-running tool stream status lines back
+        # to the UI as `tool_update` SSE frames. Fire-and-forget so tool
+        # bodies stay synchronous (`progress("...")`, not `await progress(...)`).
+        # Tools opt in with `progress = context.get("progress") or (lambda m: None)`.
+        if event_stream and tool_use_id:
+            def _progress(msg: str) -> None:
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(event_stream.emit_tool_update(tool_use_id, str(msg)))
+                except Exception:  # noqa: BLE001
+                    pass
+            context["progress"] = _progress
+        else:
+            context["progress"] = lambda _m: None
+
+        # Phase 3b: deferred-schema gate. When defer_schemas is on and the
+        # LLM calls a non-meta tool whose full schema hasn't been fetched
+        # yet, return a synthetic ToolResult with the schema inline + a
+        # retry instruction. The LLM sees the schema in the tool_result,
+        # then calls the tool again WITH valid args — by which time
+        # fetched_schemas contains its name (set below) so dispatch proceeds.
+        gate = self._gate_deferred_dispatch(tool_name, tool, context)
+        if gate is not None:
+            return gate
 
         try:
-            return await tool.execute(tool_input, context)
+            result = await tool.execute(tool_input, context)
         except Exception as e:
             logger.exception(f"Tool {tool_name} failed")
             return ToolResult(
                 success=False,
                 error=f"Tool execution error: {type(e).__name__}: {e}",
             )
+
+        # If the dispatched tool was get_tool_schema, the LLM has just
+        # fetched a schema — meta_tools' execute already marked it on
+        # ctx["fetched_schemas"] (which is aliased to session.context), so
+        # the next call to that tool will pass the gate.
+        return result
+
+    def _gate_deferred_dispatch(
+        self,
+        tool_name: str,
+        tool: ToolDefinition,
+        context: dict[str, Any],
+    ) -> ToolResult | None:
+        """Return a synthetic schema-injection ToolResult, or None to dispatch.
+
+        Conditions for synthesizing instead of dispatching:
+          - defer_schemas mode is on
+          - The tool is NOT the router and NOT a meta tool
+          - The tool's full schema isn't in session.context["fetched_schemas"]
+
+        When all three hold, we return the schema inline as a successful
+        ToolResult and ALSO mark the tool as fetched — so the next call
+        dispatches normally. This is the same dance Claude Code itself uses
+        (see `claud-code/services/mcp/client.ts`).
+        """
+        if not self._defer_schemas:
+            return None
+        if tool_name == self._router_tool_name:
+            return None
+        if tool_name in self._META_TOOL_NAMES:
+            return None
+        if tool.builtin_spec:
+            # Provider-executed built-ins don't go through this path anyway.
+            return None
+        fetched = context.get("fetched_schemas")
+        # Membership check works on both list and set (covers in-flight
+        # sessions that still hold the legacy set shape).
+        if isinstance(fetched, (list, set)) and tool_name in fetched:
+            return None
+
+        # First call — inject the schema and tell the LLM to retry.
+        import json as _json
+        anthropic_shape = tool.to_anthropic_tool()
+        payload = {
+            "name": tool.name,
+            "description": tool.description,
+            "input_schema": anthropic_shape.get("input_schema", {"type": "object", "properties": {}}),
+        }
+        if isinstance(fetched, list):
+            if tool_name not in fetched:
+                fetched.append(tool_name)
+        elif isinstance(fetched, set):
+            fetched.add(tool_name)
+        body = (
+            f"NOTE: '{tool_name}' was called before its full schema was fetched. "
+            "I'm injecting the schema below and marking it as fetched on this "
+            "session — re-call the tool now with arguments that match the "
+            "schema. Subsequent calls within this conversation will dispatch "
+            "immediately.\n\n"
+            f"```json\n{_json.dumps(payload, indent=2, default=str)}\n```"
+        )
+        return ToolResult(success=True, summary=body)
 
     # ── tail-reminder delivery — the injector the _apply_pre_call phase uses to
     # place a build_turn_reminder (Layer 2) at the message tail ──
@@ -1064,6 +1249,33 @@ class BaseAgent:
         """
         ctx: dict[str, Any] = {
             "session_id": session.session_id,
+            # AuthContext object — kb_app and call_as_app_user read user_id
+            # off it for audit / identity-stamping.
+            "auth": session.auth,
+            # The full tool catalog — meta_tools (search_tools / get_tool_schema)
+            # scope their searches to this list. Re-built each turn from the
+            # agent's registry so newly-registered tools are visible.
+            "tools": list(self.tools.values()),
+            # App-user token resolver — visuals tools (screenshot_page,
+            # drive_page) call this to log the headless browser in as one of
+            # the customer's end users. Returns the cached token if known,
+            # else lazily runs findUserClients + authenticate against
+            # session.auth.app_code using credentials passed in the chat
+            # request's `app_user.{username, password}`. Raises with a clear
+            # hint if neither token nor credentials are available.
+            "get_app_user_token": session.get_app_user_token,
+            # Session-scoped MUTABLE caches. These MUST be aliased to
+            # session.context (via setdefault) so mutations from one tool call
+            # survive into the next call within the same conversation —
+            # critical for:
+            #   * fetched_schemas: tracks which tool schemas have been pulled
+            #     via get_tool_schema, gating first-call dispatch (Phase 3b).
+            #     LIST (not set) so session.context stays JSON-serializable
+            #     for cross-request persistence.
+            #   * pending_kb_updates: stashes propose_kb_update payloads
+            #     awaiting their commit_kb_update partner.
+            "fetched_schemas": session.context.setdefault("fetched_schemas", []),
+            "pending_kb_updates": session.context.setdefault("pending_kb_updates", {}),
         }
         if session.auth:
             ctx["headers"] = session.auth.to_headers()

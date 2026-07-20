@@ -1,0 +1,899 @@
+{
+  "_id": "69b2a07026dcd5062ee91933",
+  "properties": {
+    "seo": {},
+    "title": {
+      "name": {
+        "value": "Analytics Integrations"
+      }
+    },
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "7h4xO81KaspUGmNLiA68EM": {
+      "name": "OnLoad",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 209.19344329833984,
+            "top": 304.67259724934894
+          },
+          "parameterMap": {
+            "condition": {
+              "4hqVsdTHHdCtk9JL8y2FaV": {
+                "key": "4hqVsdTHHdCtk9JL8y2FaV",
+                "type": "EXPRESSION",
+                "expression": "Store.currentApp",
+                "order": 1
+              }
+            }
+          },
+          "comment": "If the current app is set then"
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 520.8601099650064,
+            "top": 282.3392639160156
+          },
+          "parameterMap": {
+            "path": {
+              "6ibsio43BKWLW7aJzS6kAJ": {
+                "key": "6ibsio43BKWLW7aJzS6kAJ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.app"
+              }
+            },
+            "value": {
+              "6itkZ5ODG6wgrnhzjuQEN1": {
+                "key": "6itkZ5ODG6wgrnhzjuQEN1",
+                "type": "EXPRESSION",
+                "expression": "Store.appDefs.{{Store.currentApp}}",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "comment": "Move it to Page storage for easy access"
+        }
+      },
+      "namespace": ""
+    },
+    "3IBd0SsKMYMkMPD9XH3bWd": {
+      "name": "Save",
+      "steps": {
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 242.19344329833973,
+            "top": 220.67259724934894
+          },
+          "parameterMap": {
+            "url": {
+              "3PYDalvcWdOiHZvTnjJWw5": {
+                "key": "3PYDalvcWdOiHZvTnjJWw5",
+                "type": "EXPRESSION",
+                "expression": "'/api/ui/applications/{{Page.app.id}}'",
+                "order": 1
+              }
+            },
+            "method": {
+              "4PDfFCi0Cpb3iPJQSkn4Sl": {
+                "key": "4PDfFCi0Cpb3iPJQSkn4Sl",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PUT"
+              }
+            },
+            "payload": {
+              "3oYqf8ijqHJRLZe7nlIQI7": {
+                "key": "3oYqf8ijqHJRLZe7nlIQI7",
+                "type": "EXPRESSION",
+                "expression": "Page.app",
+                "order": 1
+              }
+            }
+          },
+          "comment": "Save the application definintion"
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 638.8950824737549,
+            "top": 221.75444793701172
+          },
+          "parameterMap": {
+            "condition": {
+              "54Ni59VXy9oFT2KXhRggI7": {
+                "key": "54Ni59VXy9oFT2KXhRggI7",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          },
+          "comment": "If it is saved properly"
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 973.395092010498,
+            "top": 358.7544479370117
+          },
+          "parameterMap": {
+            "path": {
+              "4rwwIDDO23t0gWNoArXJzD": {
+                "key": "4rwwIDDO23t0gWNoArXJzD",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.app"
+              }
+            },
+            "value": {
+              "16WfR9v1sApiQOewP1XDPm": {
+                "key": "16WfR9v1sApiQOewP1XDPm",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "comment": "Save to Page.app"
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1303.1451110839844,
+            "top": 357.0044479370117
+          },
+          "parameterMap": {
+            "path": {
+              "55Z1ZahzNXhmPXG8zEfywQ": {
+                "key": "55Z1ZahzNXhmPXG8zEfywQ",
+                "type": "EXPRESSION",
+                "expression": "'Store.appDefs.{{Page.app.appCode}}'",
+                "order": 1
+              }
+            },
+            "value": {
+              "1ly6CUMpHavx5W3Fgo2qAF": {
+                "key": "1ly6CUMpHavx5W3Fgo2qAF",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "comment": "Save to app defs also for further use"
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 637.1450824737549,
+            "top": 573.7544479370117
+          },
+          "parameterMap": {
+            "msg": {
+              "3SN0FqBI1gLSIm6ZoCwpWW": {
+                "key": "3SN0FqBI1gLSIm6ZoCwpWW",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          },
+          "comment": "If there is any error show a message"
+        },
+        "message1": {
+          "statementName": "message1",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 949.7648773193358,
+            "top": 702.6130807059151
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "parameterMap": {
+            "msg": {
+              "4irU8TejEaQjCzRdvMwLXx": {
+                "key": "4irU8TejEaQjCzRdvMwLXx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Saved"
+              }
+            },
+            "type": {
+              "CV8zhcAu0jUs1ggf8yVDD": {
+                "key": "CV8zhcAu0jUs1ggf8yVDD",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SUCCESS"
+              }
+            }
+          },
+          "comment": "Saved message"
+        }
+      },
+      "namespace": "",
+      "validationCheck": "jhGbZzJ4ddLWM6nFLv2vU"
+    },
+    "1JT6jt22feaP0D94AJbhcV": {
+      "name": "DeleteCodePart",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 320.1658085414341,
+            "top": 212.57651192801336
+          },
+          "parameterMap": {
+            "path": {
+              "79AgKYqDStpPE1z7bbJr9r": {
+                "key": "79AgKYqDStpPE1z7bbJr9r",
+                "type": "EXPRESSION",
+                "expression": "'Page.app.properties.codeParts.{{Parent.__index}}'",
+                "order": 1
+              }
+            },
+            "value": {
+              "56S4scYfdJaI6PnScHSNvG": {
+                "key": "56S4scYfdJaI6PnScHSNvG",
+                "type": "EXPRESSION",
+                "expression": "undefined",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "1cpOJLnSGAvAKdB4OStze4": {
+                "key": "1cpOJLnSGAvAKdB4OStze4",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5MBau3BmLLioGWAa1ESE6k": {
+      "name": "AddIntegration",
+      "steps": {
+        "shortUniqueId": {
+          "statementName": "shortUniqueId",
+          "name": "ShortUniqueId",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 255.45152282714838,
+            "top": 245.14794049944194
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 559.3086656842912,
+            "top": 244.14794049944194
+          },
+          "parameterMap": {
+            "path": {
+              "x0WLBJPgeyM0OTzrDd6Yr": {
+                "key": "x0WLBJPgeyM0OTzrDd6Yr",
+                "type": "EXPRESSION",
+                "expression": "'Page.app.properties.codeParts.{{Steps.shortUniqueId.output.id}}'",
+                "order": 1,
+                "value": ""
+              }
+            },
+            "value": {
+              "2DvnwwAxfXv64g0IyfDHQK": {
+                "key": "2DvnwwAxfXv64g0IyfDHQK",
+                "type": "VALUE",
+                "order": 1,
+                "value": {
+                  "place": "AFTER_HEAD",
+                  "order": 1,
+                  "part": ""
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "jhGbZzJ4ddLWM6nFLv2vU"
+    }
+  },
+  "rootComponent": "6Air9OOrhWU07HE6OphcTM",
+  "componentDefinition": {
+    "1RqbWYYfJ8EpchPdTsn1VY": {
+      "key": "1RqbWYYfJ8EpchPdTsn1VY",
+      "name": "Buttons Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "25Kpix3LbjWdNnmh1UId7z": true
+      },
+      "displayOrder": 3
+    },
+    "6cNWbbkgIDzVhrarQcI4a2": {
+      "key": "6cNWbbkgIDzVhrarQcI4a2",
+      "name": "Code Part",
+      "type": "Grid",
+      "styleProperties": {
+        "2Qt94XmnOakPq4OLTTdzML": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "4.17vw"
+              },
+              "paddingTop": {
+                "value": "1.04vw"
+              },
+              "paddingBottom": {
+                "value": "1.04vw"
+              },
+              "paddingLeft": {
+                "value": "1.04vw"
+              },
+              "paddingRight": {
+                "value": "1.04vw"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "borderTopStyle": {
+                "value": "groove"
+              },
+              "borderRightStyle": {
+                "value": "groove"
+              },
+              "borderBottomStyle": {
+                "value": "groove"
+              },
+              "borderLeftStyle": {
+                "value": "groove"
+              },
+              "borderTopColor": {
+                "value": "#0000001A"
+              },
+              "borderRightColor": {
+                "value": "#0000001A"
+              },
+              "borderBottomColor": {
+                "value": "#0000001A"
+              },
+              "borderLeftColor": {
+                "value": "#0000001A"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.694vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.694vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.694vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.694vw"
+              },
+              "width": {
+                "value": "33.33vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5JSkoFGPlh2BfPLu6MhmFI": true,
+        "33P04R03W5qx4X48YmCaju": true,
+        "1RqbWYYfJ8EpchPdTsn1VY": true
+      },
+      "displayOrder": 0
+    },
+    "25Kpix3LbjWdNnmh1UId7z": {
+      "key": "25Kpix3LbjWdNnmh1UId7z",
+      "name": "Delete Button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Delete"
+        },
+        "onClick": {
+          "value": "1JT6jt22feaP0D94AJbhcV"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-trash-can"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5JSkoFGPlh2BfPLu6MhmFI": {
+      "key": "5JSkoFGPlh2BfPLu6MhmFI",
+      "name": "Position DD Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3KNObt1vgQPMORSM6ok2gS": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "4.86vw"
+              },
+              "paddingTop": {
+                "value": "1.74vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "45G6AwkcUWYV9axWksfUSK": true,
+        "5LGh25Bkw4fwcYq3JvuvFD": true
+      },
+      "displayOrder": 1
+    },
+    "t5NXSnhD8w0hEORXXqOW6": {
+      "key": "t5NXSnhD8w0hEORXXqOW6",
+      "name": "Add Integration",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Add external integration"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "onClick": {
+          "value": "5MBau3BmLLioGWAa1ESE6k"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-plus"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1MemhFc1txtscRq6o7X0HI": {
+      "key": "1MemhFc1txtscRq6o7X0HI",
+      "name": "Code Parts Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "dataType": {
+          "value": "object"
+        },
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6HFDnqn70c05sbkbfmqjmB": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "33.33vw"
+              },
+              "gap": {
+                "value": "3.47vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6cNWbbkgIDzVhrarQcI4a2": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.app.properties.codeParts"
+      }
+    },
+    "4iJX5fMblEslEaeN6H3U4X": {
+      "key": "4iJX5fMblEslEaeN6H3U4X",
+      "name": "Top Right Bar",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "lDuOCjrflSq8QDRm04POB": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "end"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Asdt7YGmYIOd3H2bkhXyy": true
+      }
+    },
+    "33P04R03W5qx4X48YmCaju": {
+      "key": "33P04R03W5qx4X48YmCaju",
+      "name": "Code",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Code"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "69slZqnBkvLRCA2o5fUBnu": {
+            "key": "69slZqnBkvLRCA2o5fUBnu",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Please add the code required"
+                }
+              }
+            }
+          }
+        },
+        "supportingText": {
+          "value": "Code to be placed for starting analytics"
+        }
+      },
+      "styleProperties": {
+        "2gCJGlTC74TXqe1WiHh79C": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              },
+              "supportText-marginTop": {
+                "value": "0.694vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.part"
+      }
+    },
+    "6Air9OOrhWU07HE6OphcTM": {
+      "key": "6Air9OOrhWU07HE6OphcTM",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2Ffb5XQIyPplsGdstmbcDs": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3DKd6pWQx9XBnBcXslPQbv": true,
+        "4iJX5fMblEslEaeN6H3U4X": true,
+        "jhGbZzJ4ddLWM6nFLv2vU": true
+      }
+    },
+    "jhGbZzJ4ddLWM6nFLv2vU": {
+      "key": "jhGbZzJ4ddLWM6nFLv2vU",
+      "name": "Form Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3tgGGV6HEns1wwmS2Ihx9C": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "41.67vw"
+              },
+              "gap": {
+                "value": "2.78vw"
+              },
+              "marginTop": {
+                "value": "3vw"
+              },
+              "marginBottom": {
+                "value": "2vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "40px"
+              },
+              "gap": {
+                "value": "30px"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "display": {
+                "value": "flex"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "75%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1MemhFc1txtscRq6o7X0HI": true,
+        "5kydTvbmKCLUpc8iyo0vAQ": true
+      }
+    },
+    "45G6AwkcUWYV9axWksfUSK": {
+      "key": "45G6AwkcUWYV9axWksfUSK",
+      "name": "Position",
+      "type": "Dropdown",
+      "properties": {
+        "label": {
+          "value": "Position"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "data": {
+          "value": [
+            {
+              "name": "After <head>",
+              "value": "AFTER_HEAD"
+            },
+            {
+              "name": "Before </head>",
+              "value": "BEFORE_HEAD"
+            },
+            {
+              "name": "After <body>",
+              "value": "AFTER_BODY"
+            },
+            {
+              "name": "Before </body>",
+              "value": "BEFORE_BODY"
+            }
+          ]
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "selectionKey": {
+          "value": "value"
+        },
+        "uniqueKey": {
+          "value": "value"
+        },
+        "__truncated__": "... 6 more props"
+      },
+      "styleProperties": {
+        "wql6OamCWnp4VTb7pjzQM": {
+          "resolutions": {
+            "ALL": {
+              "supportText-marginTop": {
+                "value": "0.694vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.place"
+      }
+    },
+    "5LGh25Bkw4fwcYq3JvuvFD": {
+      "key": "5LGh25Bkw4fwcYq3JvuvFD",
+      "name": "Order",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Order"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "supportingText": {
+          "value": "Order in which the code is to be placed"
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        },
+        "validation": {
+          "JGw5BLU09U3rVi3iah30T": {
+            "key": "JGw5BLU09U3rVi3iah30T",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Order is required"
+                }
+              }
+            }
+          }
+        }
+      },
+      "styleProperties": {
+        "6xwBvhrNYwPao939EyxIlN": {
+          "resolutions": {
+            "ALL": {
+              "supportText-marginTop": {
+                "value": "0.694vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.order"
+      }
+    },
+    "3DKd6pWQx9XBnBcXslPQbv": {
+      "key": "3DKd6pWQx9XBnBcXslPQbv",
+      "name": "On Load Timer",
+      "type": "Timer",
+      "properties": {
+        "timerType": {
+          "value": "Non-Repeating"
+        },
+        "duration": {
+          "value": 100
+        },
+        "initialDelay": {
+          "value": 0
+        },
+        "repeatCount": {
+          "value": 1
+        },
+        "onTimerEventFunction": {
+          "value": "7h4xO81KaspUGmNLiA68EM"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Store.currentApp"
+          }
+        },
+        "left": {
+          "value": 121
+        },
+        "top": {
+          "value": 11
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5kydTvbmKCLUpc8iyo0vAQ": {
+      "key": "5kydTvbmKCLUpc8iyo0vAQ",
+      "name": "Button Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5y8y79TLHmizhm0YuxZo2k": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "t5NXSnhD8w0hEORXXqOW6": true
+      },
+      "displayOrder": 1
+    },
+    "3Asdt7YGmYIOd3H2bkhXyy": {
+      "key": "3Asdt7YGmYIOd3H2bkhXyy",
+      "name": "Save",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save Analytics"
+        },
+        "onClick": {
+          "value": "3IBd0SsKMYMkMPD9XH3bWd"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-floppy-disk"
+        }
+      },
+      "styleProperties": {
+        "1wwccxb5JMTeyxOvBmR3Oo": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": true,
+      "displayOrder": 2
+    }
+  },
+  "name": "analytics",
+  "message": "From transport : 3CPZXxcAL2HQJlZv8jragf",
+  "clientCode": "BUYNXT",
+  "appCode": "sitezump",
+  "version": 1,
+  "updatedAt": "2025-09-02 07:04:03",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-03-12 11:16:00.014000",
+  "createdBy": "<USER>"
+}

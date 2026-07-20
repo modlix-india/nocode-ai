@@ -1,0 +1,161 @@
+- 1EZfsAJIq1IaD1RreClax5 (Grid) MainContainer
+  - 5yTKjcqEPqhGFfyzMskAiv (Grid) Filter Container
+    - 5vFK65Mpdel5QeRzB3RTTr (Calendar) Calendar
+    - 16XTIF3gVGzxP35tCYhUwJ (Button) FilterButton
+    - 4Jady8wYpwxWKS1RvMuXqy (Button) Column
+  - 3jsf076DjDVxoPABduIwC0 (Grid) Tab Container
+    - 3qFmRCYbUO3eHPuvhkbeGU (Tabs) Tabs
+      - 2utiYsTcWeLz2p2ILwhnOv (Grid) Call Dashboard
+        - 55NAK6NDhNkNnWluJH5xjH (Grid) Chart Boxes
+          - 3W1XrIPwbQisftly9brM5X (Grid) Bar
+            - 1HPsHGdTiCH6nadL626AWl (Grid) Top details
+              - 4W1bLtiLT9BvoHEloVMAZC (Grid) Left
+                - 3iAIiynK5xFFInLtprAfeu (Text) title
+                - 2h9masymjs73PGgHQ1uecO (Text) Count
+              - 7k0vg0WbMRx9qLyi6xZTbc (Grid) right
+                - 4eGQZSWInU3JsJJy2vFPlY (Text) Count
+                - 1P0fY5lVSwD1LMkWAeNT6v (Text) title
+            - 3blqYJuaWRIaxFWCbbINeL (Grid) color represents
+              - eLmsuCJPyt9GShKql6ELx (Grid) right
+                - 2aCMWt5aNSj8QNdHaYY9gC (Icon) Icon
+                - 5NQknOeD9ADf2PGdQ29muA (Text) Text
+                - 5ogXY1RzDxUU1b1dqXRTtO (Text) count
+              - 3t0cPtGGLqEbKQPUy02Rl2 (Grid) left
+                - 2diGIUSCXvobNWtJQ0ATe0 (Icon) Icon
+                - 7uoGqtkuxXgrFDACBElA8E (Text) Text
+                - 1YSopKYcc4IbBfrx6qrWf4 (Text) count
+            - 1S5wYivq53QqiDEWMYgUB7 (ProgressBar) ProgressBar
+            - 4zJEKmNNzvwWXvC8RYnsPM (Chart) Chart
+          - 5aZ5ESOzQY8IGag1zersVt (Grid) Grid
+            - 1JlOfrS1ImI3gOd4vCIP2x (Grid) Total call time
+              - 4CsCQ2XYPAZQKux5vQMc4h (Image) Image
+              - 2cAcFhQVmLGM5B4rtWTnBi (Text) title
+              - 60W5gyqtoPzELAEvxXWNjV (Text) data content
+            - 3j9eiiukoninmYWiM39RSN (Grid) Avg call time
+              - HgOf2hpHzM2m7UrNukJQO (Image) Image
+              - 1vvrurQGwPcFCspeE9rPN6 (Text) title
+              - 5lpwVYV41Z5UpdiQKNzH84 (Text) data content
+            - 4gbquRCrYut19eJqeqU6VI (Grid) Max call time
+              - 2QVsPsAtDkhyN8NK7oePp1 (Image) Image
+              - 3tLQqdSufSR9pi0O2YW0Lx (Text) title
+              - 67xDfONypTSvdWK57SFcVt (Text) data content
+            - 5UKqyjFeuq6Ai5ahqxJ14I (Grid) Min call time
+              - 1zr5xaEvHllJ1IGnkkOcMs (Image) Image
+              - 3WHhKKTQuiRqkA4oIM0xwB (Text) title
+              - 57zeagYvjRYUw46wsh6PEf (Text) data content
+      - 1X8VcIeyEIQcuvIKLaavW2 (Grid) Table
+        - 1vd1vYn0NNlo9WjEBIM6Hq (Grid) Header
+          - 7lWgdQKOemB9EsC2HlJuVb (Grid) S No.
+            - yTeoEDgQzxAGqS3lctVoO (Text) Text
+          - 1BUFR79ubgymGN9OPUtNo3 (Grid) Name
+            - 1k8GY2MLbNM16mQdzINc0C (Text) Text
+          - 3CX3rxPblZySD7CJO2vCMK (Grid) Total call
+            - 11ICGFdR3K2idTVqqZ0LCh (Text) Text
+          - 3aJYZS0n4lYO8GuEy4owm2 (Grid) Outgoing calls
+            - 7H4mbblwFuBR5eO9owFDTB (Grid) Data
+              - 6TokOPS8bErDpQ6ahpGwrl (Grid) Total
+                - xJK30B0n14osWruDktY2D (Text) Text
+              - 3laDGEfzuo8ZxUWj0p84zm (Grid) Connected
+                - 2tshJ1XIaG18mWFENLhQqG (Text) Text
+            - 1R6OGMSVxi4lvgX9mk4X1g (Grid) Header
+              - 1UUyWNG8pffzmRwlwCDFWc (Text) Text
+          - 3uELByr2l9ubCAwZ5S6IpT (Grid) Incoming calls
+            - 1HX9EwXRNV6yFg7mdDGYMp (Grid) Data
+              - 5mzZCji1s1zNYJf8xOP0yM (Grid) Total
+                - 4F9MjE3zeAGHrWxcUxnsJI (Text) Text
+              - 5TAHEjUJ2uFKjdhUoodpfa (Grid) Missed
+                - 2WwF4NyNiKnLQjWf8e2eEF (Text) Text
+              - 4uFAo3q1wsIHosJfOFZ70c (Grid) Connected
+                - 23hBZIZSEvJdTEyV9LGCUy (Text) Text
+            - 1anT6wkPwcDvTsdH1PP2uL (Grid) Header
+              - 73IMVphbNrgCoaSPeyTTiv (Text) Text
+          - 2glUnYMKPfYi3foCSTD2zC (Grid) Total connected calls
+            - 3LDo570tVQikn06vSnxAqy (Text) Text
+          - 3Dy8OMu3Rrz86Pc4sGWOwf (Grid) Total call time
+            - 6n1G8d8A60iWI6gxrGDZIZ (Text) Text
+        - 5VrqcvD3XbMsuCoLzEUcfX (Grid) Content
+          - 4LYKYrqAb1Wjlt2dR1FNst (ArrayRepeater) Repeator
+            - 4ao3Bt0PIHPoS6m2HwW2r1 (Grid) Each
+              - 50bheuVYI5yH1U6mMhaJZE (Grid) S No.
+                - 4QCyYzESPTiCAUSTt7Up9P (Text) Text
+              - L5ZUZSXZXFRDnLLx99qRi (Grid) Name
+                - 5YxTuZAEGeNBlvz3m0rEfh (Text) Text
+              - 51AEFHKtLXVL6uQbz9Vqes (Grid) Total call
+                - 2deFQd0dr1cvabPrJsVZdQ (Text) Text
+              - 3JF0xxRdCylAtNjqrNaVZ9 (Grid) Outgoing calls
+                - 23VNWnusPghQsyuN2AQm5b (Grid) Total
+                  - 6iA6bBimItY9gVElX6h1Y3 (Text) Text
+                - 6no5ptt6SJqu0IWbS74G2u (Grid) Connected
+                  - 4ovmmSNcH4Iqc5hMX0GoSu (Text) Text
+              - 1oGXSkLcqH8PAPL3ZYAF9J (Grid) Incoming calls
+                - b5IBpCuV2it2SPhx8UqdX (Grid) Total
+                  - 3hANhDVIX2BoorAqovSoFn (Text) Text
+                - 11eOXykGBhgXMcuMjaQUJ (Grid) Missed
+                  - 2cFUjibhMxOD4t7LKBBUWm (Text) Text
+                - CVkZqFgjnmLUQPCXOYa1z (Grid) Connected
+                  - 2CKuZoh1nUxGiZsoKrfFZd (Text) Text
+              - q4zl4rpLu9LFimFgMWJzs (Grid) Total connected calls
+                - 2eLxSmh7CFbMI2KeNOxKwp (Text) Text
+              - 35BOZeLoLtVlbuWSCJSpHa (Grid) Total call time
+                - ep3jq2j2R065mn6Yg1V6Q (Text) Text
+  - 7bzoHWjDDvSmmNhzYUkzip (Grid) FilterGrid
+    - 2kovhNHCQpuaQ1y6tcJR2S (Grid) FilterGrid
+      - 1LhbnMttmhKT5GmhAYZE3L (Text) Text
+      - 5KzUnrO9SOIN4iPLBihPpw (Button) Close
+    - j9bl10pnCkPyg13ovVVLc (Grid) Report type
+      - 5GUFlp1Grm5QFIlEKEDXJL (Text) Report type
+      - 1cGdDIeet0X0Fd3GYe6QMV (Button) Expand
+    - 1NBoSYhHscVpRDtE3nJydr (Grid) Repeater Report type
+      - 42sx2ZTiJqXwp9ncu3zTl6 (Grid) RepeatorGrid
+        - 7hiunORzTEsa0gmkt9q1jS (ArrayRepeater) Repeator
+          - 7Kb3wSajgWtlEtpQ0A5xiJ (Grid) Grid
+            - 4EgvU51GFyYZpATvshxHUs (Grid) Grid
+              - 1D12EnxLzW0tRcrihJoV5m (Text) Text
+            - 3F9XsJX5nWQu9Tmitp9qLC (ToggleButton) ToggleButton
+        - 25YS2C1plxbeGNhw0zERmA (Grid) SelectallGrid
+          - 4zjMCWGbvz0fCygVGJrvIu (Text) SelectallText
+          - 3NVm9XiPNZIxy49Is1NS6P (ToggleButton) ToggleButton
+    - 5NEBMG8vOgxLs3ODyTHikx (Grid) Call direction
+      - 4pEac4m3soJ9KMGGbDNcP2 (Text) Call direction
+      - 1mzHTBdhAa5hf0CSFkJwPH (Button) Expand
+    - gqFlA4agjRBmVl8hDjZdY (Grid) Repeater Call direction
+      - LKXOfP7kkWIpR05zBSTOo (Grid) RepeatorGrid
+        - 3y1M48hZ45HZZbygLdm3Td (ArrayRepeater) Repeator
+          - 4K0pa7HHRhw3UoRlhepaMa (Grid) Grid
+            - 5PpbHPKU4Jp2dQokQ7UuDZ (Grid) Grid
+              - 52BvGUL64xRuDperggBiWd (Text) Text
+            - 2VY5ooEtdrzecuBS2Ep0uw (ToggleButton) ToggleButton
+        - 7zn6LpitMaEDykBG4fGdou (Grid) SelectallGrid
+          - 5g8Npc1lRjYqgdbjgWPA4f (Text) SelectallText
+          - 5FAkjlZQpDQMidY3xCkbIV (ToggleButton) ToggleButton
+    - 6DXanvUK7PmHjxk1rM5Xnk (Grid) Product
+      - 5vCp2Et4QAl3dZIjPXSeJc (Text) Product
+      - uoANA0bVnq5GjPtDNXUsg (Button) Expand
+    - 19jmrkzFWcsYLgqdgvEPR0 (Grid) Repeater Product
+      - 5ACHmm1Vuu5b6aV2oTFyjW (TextBox) Search
+      - lARcxWuGLY8rh4dzjYw4L (Grid) RepeatorGrid
+        - 7Jf547EOJjeS4jsMxKTDc (ArrayRepeater) Repeator
+          - 7FJYfukwKRKoKY8qrfOYf9 (Grid) Grid
+            - 2xEOyE2bEGRbzyQbpk9csx (Grid) Grid
+              - 1pm4Ea3kEgVvrErpAVeYu0 (Text) Text
+            - 14ukFEUwYc7kwYtguomDDy (ToggleButton) ToggleButton
+        - 3p7ZC6yLEuODVnswNDc436 (Grid) SelectallGrid
+          - 1kvhjupzwmcDdo7s8y5cIL (Text) SelectallText
+          - 3D0Ckp6RUd60zKaUSTAct9 (ToggleButton) ToggleButton
+    - 1XsFQ248rTm39Z13ePa6T4 (Grid) Assigned users
+      - 48FX4rYvSJWEqN085AMuj4 (Text) Assigned users
+      - 2LyJJCdrolmpHtd8dUDrYG (Button) Expand
+    - 6LyPyJ6IUvCbBM8XVaDhY7 (Grid) Repeater assignedUsers
+      - 1vrHFKY8VZWAb15GG1y8IG (TextBox) Search
+      - 5J2TxkkoCQJiB9YIg8KpPR (Grid) RepeatorGrid
+        - 1zGlgr4H7nHRPxB6PjLa3B (Grid) SelectallGrid
+          - 1gnk5dxlEOXPSEbqBrNjiI (Text) SelectallText
+          - Cf00wUE91G9G8hiVj4fmZ (ToggleButton) ToggleButton
+        - 2uKX3wdMMits23flGCD1Vh (ArrayRepeater) Repeator
+          - 5uO2WNGubXafn2zOoWK5jG (Grid) Grid
+            - 5txbWKKJPaBaliLw0jkVsf (Grid) Grid
+              - 1vnCLpG1Ouz5oVt5Lk6gEG (Text) Text
+            - 2ujv7v4sz1rdlZQxxdwHW0 (ToggleButton) ToggleButton
+    - 79CNeu03cbJzhvKKvOwD2L (Grid) buttonGrid
+      - 3FH1PL3FOfQNEJIQbNXQAo (Button) Saveview
+      - 4uobAghcrqG8EZOYvUoGng (Button) ClearAll

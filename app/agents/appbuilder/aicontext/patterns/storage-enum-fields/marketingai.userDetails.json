@@ -1,0 +1,70 @@
+{
+  "_id": "67c82b3ab7ebf6221d1c2137",
+  "schema": {
+    "properties": {
+      "fullName": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "mobileNumber": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "emailId": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "industry": {
+        "enums": [
+          "Real Estate",
+          "Medical",
+          "IT"
+        ]
+      },
+      "companyName": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "role": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "companySize": {
+        "enums": [
+          "1-5",
+          "10-30",
+          "50-100",
+          ">100"
+        ]
+      },
+      "url": {
+        "type": [
+          "STRING"
+        ]
+      }
+    },
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1
+  },
+  "uniqueName": "marketingai_system_u_skstand1d3qq",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "name": "userDetails",
+  "message": "From transport : 0NIbUPgdjW9iDkjwrrvZFI",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 37,
+  "updatedAt": "2026-05-12 10:28:22.849000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-03-05 10:45:14.108000",
+  "createdBy": "<USER>"
+}

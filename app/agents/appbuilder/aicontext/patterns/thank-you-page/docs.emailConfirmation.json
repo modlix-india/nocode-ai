@@ -1,0 +1,221 @@
+{
+  "_id": "66a2a7a891063c1493ee2e5d",
+  "properties": {
+    "wrapShell": false
+  },
+  "rootComponent": "7ruShGHRqI1cAr6bmWjzVx",
+  "componentDefinition": {
+    "7ruShGHRqI1cAr6bmWjzVx": {
+      "key": "7ruShGHRqI1cAr6bmWjzVx",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7hgnYZ9AHPEqPoVJ0x7Z0A": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7fd21eux2vnUEoMMirPXCK": true
+      }
+    },
+    "7fd21eux2vnUEoMMirPXCK": {
+      "key": "7fd21eux2vnUEoMMirPXCK",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "7kFHGADobo8APv8ovcu6Vd": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "363px"
+              },
+              "width": {
+                "value": "531px"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4lR4etQ5nhu98RreYAomRI": true,
+        "1Ozq0ABLNp874zFEa6NYuZ": true,
+        "5VOE71qJrhJGQLrgGf05rm": true,
+        "6nQeTNDNjIxD25PlsUbRYS": true,
+        "2oyGhJRooAf4k0T9npky9j": true
+      }
+    },
+    "4lR4etQ5nhu98RreYAomRI": {
+      "key": "4lR4etQ5nhu98RreYAomRI",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-envelope"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "66DFiFrEQtmbNdZnb6QhsD": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "16px"
+              },
+              "width": {
+                "value": "21px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1Ozq0ABLNp874zFEa6NYuZ": {
+      "key": "1Ozq0ABLNp874zFEa6NYuZ",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Account created! Check your email to login and check out our docs"
+        },
+        "textContainer": {
+          "value": "H6"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "styleProperties": {
+        "5WfiWmRiEMxH5fhgV6v87t": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "371px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5VOE71qJrhJGQLrgGf05rm": {
+      "key": "5VOE71qJrhJGQLrgGf05rm",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Congratulation!"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6nQeTNDNjIxD25PlsUbRYS": {
+      "key": "6nQeTNDNjIxD25PlsUbRYS",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Resend confirmation email"
+        }
+      },
+      "styleProperties": {
+        "DzRXYGE1NyXAmjwZ4kEne": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "2oyGhJRooAf4k0T9npky9j": {
+      "key": "2oyGhJRooAf4k0T9npky9j",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Didn\u2019t receive email?"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    }
+  },
+  "name": "emailConfirmation",
+  "message": "From transport : 0rNqflwZYWXvhXVNHiC119",
+  "clientCode": "SYSTEM",
+  "appCode": "docs",
+  "version": 2,
+  "updatedAt": "2024-08-19 10:47:28.820000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-07-25 19:29:44.391000",
+  "createdBy": "<USER>"
+}

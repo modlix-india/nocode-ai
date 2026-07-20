@@ -1,0 +1,2672 @@
+{
+  "_id": "63f718da11288d1e7fb124ce",
+  "properties": {
+    "wrapShell": true,
+    "title": {
+      "name": {
+        "value": "try"
+      },
+      "append": {
+        "value": true
+      }
+    }
+  },
+  "eventFunctions": {
+    "genData": {
+      "name": "genData",
+      "steps": {
+        "loginStep": {
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "statementName": "loginStep",
+          "parameterMap": {
+            "path": {
+              "value1": {
+                "key": "value1",
+                "type": "VALUE",
+                "value": "Store.buttonbarData"
+              }
+            },
+            "value": {
+              "value2": {
+                "key": "value2",
+                "type": "VALUE",
+                "value": [
+                  {
+                    "name": "Raja",
+                    "id": 1,
+                    "department": "IT",
+                    "links": {
+                      "a": {
+                        "b": "Raja_Inner"
+                      }
+                    },
+                    "originalObjectKey": 0
+                  },
+                  {
+                    "name": "Avinash",
+                    "id": 2,
+                    "department": "CS",
+                    "links": {
+                      "a": {
+                        "b": "Avinash_Inner"
+                      }
+                    },
+                    "originalObjectKey": 1
+                  },
+                  {
+                    "name": "Alli",
+                    "id": 3,
+                    "department": "EE",
+                    "links": {
+                      "a": {
+                        "b": "Alli_Inner"
+                      }
+                    },
+                    "originalObjectKey": 2
+                  },
+                  {
+                    "name": "Akhilesh",
+                    "id": 4,
+                    "department": "EC",
+                    "links": {
+                      "a": {
+                        "b": "Akhilesh_Inner"
+                      }
+                    },
+                    "originalObjectKey": 3
+                  },
+                  {
+                    "name": "Surendhar",
+                    "id": 5,
+                    "department": "IT",
+                    "links": {
+                      "a": {
+                        "b": "Surendhar_Inner"
+                      }
+                    },
+                    "originalObjectKey": 4
+                  },
+                  {
+                    "name": "Kiran",
+                    "id": 6,
+                    "department": "IT",
+                    "links": {
+                      "a": {
+                        "b": "Kiran_Inner"
+                      }
+                    },
+                    "originalObjectKey": 5
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "genOutput": {
+          "statementName": "genOutput",
+          "namespace": "System",
+          "name": "GenerateEvent",
+          "dependentStatements": {
+            "Steps__d-o-t__loginStep__d-o-t__output": true
+          }
+        }
+      }
+    }
+  },
+  "rootComponent": "89e11eea-802c-<PHONE>-01f01dba3fff",
+  "componentDefinition": {
+    "89e11eea-802c-4096-9167-01f01dba3fff": {
+      "key": "89e11eea-802c-<PHONE>-01f01dba3fff",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3e27d183-9796-4e7c-a262-c9816604ad15": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100vh"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "9e635882-1e46-4f7a-ab1a-3514f67db430": true,
+        "22b43502-38c0-4be4-8847-7e79ddc5d165": true,
+        "4809c2c4-840e-4e5b-bc03-31b5628f6874": true
+      },
+      "displayOrder": 1
+    },
+    "9e635882-1e46-4f7a-ab1a-3514f67db430": {
+      "key": "9e635882-1e46-4f7a-ab1a-3514f67db430",
+      "name": "saveButton",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": "save"
+        },
+        "onClick": {
+          "value": "genData"
+        }
+      },
+      "styleProperties": {
+        "4ccccc63-8afb-4eb4-ada4-2d969d6db900": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "height": {
+                "value": "38px"
+              },
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "#1F3C3D"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "22b43502-38c0-4be4-8847-7e79ddc5d165": {
+      "key": "22b43502-38c0-4be4-8847-7e79ddc5d165",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "d79ff555-1710-472b-be32-db85ce9587af": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "b01eb365-3b42-4d2a-872f-f3a1a269e3f9": true,
+        "fe4aeadb-ed76-42c4-9b2b-fc1ff0a48878": true
+      },
+      "displayOrder": 2
+    },
+    "b01eb365-3b42-4d2a-872f-f3a1a269e3f9": {
+      "key": "b01eb365-3b42-4d2a-872f-f3a1a269e3f9",
+      "name": " textbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "segment Name"
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "9053d328-5e88-45bc-8681-f874f43a6b36": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.segmentName"
+      }
+    },
+    "fe4aeadb-ed76-42c4-9b2b-fc1ff0a48878": {
+      "key": "fe4aeadb-ed76-42c4-9b2b-fc1ff0a48878",
+      "name": "Segment type",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.segmentType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "styleProperties": {
+        "41e758a2-47b6-4b6e-aae4-cb4affb06cf0": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedSegmentType"
+      }
+    },
+    "4809c2c4-840e-4e5b-bc03-31b5628f6874": {
+      "key": "4809c2c4-840e-4e5b-bc03-31b5628f6874",
+      "name": "TabsGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "0dee28a1-a344-4894-bbe2-7ae24948c319": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "258defa7-e64a-422b-9b0e-e3b45807a91a": true
+      },
+      "displayOrder": 3
+    },
+    "258defa7-e64a-422b-9b0e-e3b45807a91a": {
+      "key": "258defa7-e64a-422b-9b0e-e3b45807a91a",
+      "name": "tabs",
+      "type": "Tabs",
+      "properties": {
+        "tabs": {
+          "value": "Personal details, Professional details,other,Device,Behaviour,Channel Activity"
+        },
+        "defaultActive": {
+          "value": "Channel Activity"
+        }
+      },
+      "styleProperties": {
+        "d4c09fca-5048-49a4-b97d-f35137063e69": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6879f14a-6725-4152-859c-39fe2aead08a": true,
+        "43d42e32-be97-4ed1-bda2-596d727b6490": true,
+        "ef30557b-cf18-4423-a696-8a7f057ef66d": true,
+        "7764ca62-14a5-4768-bd63-c74ae1fea3f1": true,
+        "ea97f0a3-767f-40f7-860b-8d76dce8c1c4": true,
+        "3f437d8b-0ca3-42da-bc50-be40bb44137d": true
+      },
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.tabs"
+      }
+    },
+    "7764ca62-14a5-4768-bd63-c74ae1fea3f1": {
+      "key": "7764ca62-14a5-4768-bd63-c74ae1fea3f1",
+      "name": "PersonalDetails",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4a6afd4b-c8a0-4ec5-ba43-4515fafa88d9": true,
+        "mainGrid2": true
+      }
+    },
+    "4a6afd4b-c8a0-4ec5-ba43-4515fafa88d9": {
+      "key": "4a6afd4b-c8a0-4ec5-ba43-4515fafa88d9",
+      "name": "mainGrid1",
+      "type": "Grid",
+      "styleProperties": {
+        "70f22298-d8da-4d5d-a230-ca28c771b3ea": {
+          "resolutions": {
+            "ALL": {
+              "borderTop": {
+                "value": "1px solid #CECECE"
+              },
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              },
+              "borderLeft": {
+                "value": "1px solid #CECECE"
+              },
+              "borderRight": {
+                "value": "1px solid #CECECE"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "fit-content"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1a1696ed-73ad-4d06-ad9a-aad57c3c3c65": true,
+        "6aa75231-642a-4011-a016-7ba3a6f8221f": true,
+        "02e504da-c2bc-40be-a6b7-f4fe1c42cf2d": true,
+        "f85fec46-40f2-4646-a7d6-51256e58e54b": true,
+        "ac3199fd-1347-46a7-9b0c-8469e1406733": true,
+        "7a03efc4-4735-4c4f-bac7-1dd7d4c8f4ba": true,
+        "88e0fbb0-20e4-4aca-a53f-3ee069db1add": true
+      },
+      "displayOrder": 1
+    },
+    "1a1696ed-73ad-4d06-ad9a-aad57c3c3c65": {
+      "key": "1a1696ed-73ad-4d06-ad9a-aad57c3c3c65",
+      "name": "userlable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "User group"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6aa75231-642a-4011-a016-7ba3a6f8221f": {
+      "key": "6aa75231-642a-4011-a016-7ba3a6f8221f",
+      "name": "borderGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "02e504da-c2bc-40be-a6b7-f4fe1c42cf2d": {
+      "key": "02e504da-c2bc-40be-a6b7-f4fe1c42cf2d",
+      "name": "containerWithLableTextBoxDroptag",
+      "type": "Grid",
+      "styleProperties": {
+        "050febce-e3f2-4a78-9d80-40871ba574c9": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6c4b01f1-8a81-4e95-8ad1-1966eef1f2fc": true,
+        "5bc483ee-7807-4091-b62d-9b0da6a66478": true,
+        "0b7f320d-a0ac-41cc-9644-ceaf8d24f8f4": true
+      },
+      "displayOrder": 2
+    },
+    "6c4b01f1-8a81-4e95-8ad1-1966eef1f2fc": {
+      "key": "6c4b01f1-8a81-4e95-8ad1-1966eef1f2fc",
+      "name": "UserIdlableAndButtonGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "825fdb4c-cc77-4d69-a05a-ad35abfb2944": true,
+        "7ac5e4ed-2914-4000-88a9-4a935781e212": true
+      }
+    },
+    "825fdb4c-cc77-4d69-a05a-ad35abfb2944": {
+      "key": "825fdb4c-cc77-4d69-a05a-ad35abfb2944",
+      "name": "user IDlable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "user ID"
+        }
+      },
+      "override": false
+    },
+    "7ac5e4ed-2914-4000-88a9-4a935781e212": {
+      "key": "7ac5e4ed-<PHONE>-88a9-4a935781e212",
+      "name": "refreshButtonAge",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "ac54ff91-310f-4c70-8016-4ae4c99c6213": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5bc483ee-7807-4091-b62d-9b0da6a66478": {
+      "key": "5bc483ee-<PHONE>-b62d-9b0da6a66478",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7dd82ebf-9a87-485a-8b30-b4a34cd668aa": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "51116393-0df8-4817-81ab-dc13bc0fe024": true,
+        "9bdc5fe2-1b4d-4266-8708-4e63ee451c24": true
+      },
+      "displayOrder": 1
+    },
+    "51116393-0df8-4817-81ab-dc13bc0fe024": {
+      "key": "51116393-0df8-4817-81ab-dc13bc0fe024",
+      "name": "user IDTextbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6baeeaf5-36d0-4f41-a567-8f1369780911": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderLeft": {
+                "value": "none"
+              },
+              "borderRight": {
+                "value": "none"
+              },
+              "borderTop": {
+                "value": "none"
+              },
+              "borderBottom": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.childrenTextBoxdata"
+      }
+    },
+    "9bdc5fe2-1b4d-4266-8708-4e63ee451c24": {
+      "key": "9bdc5fe2-1b4d-<PHONE>-4e63ee451c24",
+      "name": "user IDDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "headerText": {
+          "value": "User ID"
+        },
+        "data": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "__truncated__": "... 3 more props"
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "0b7f320d-a0ac-41cc-9644-ceaf8d24f8f4": {
+      "key": "0b7f320d-a0ac-41cc-9644-ceaf8d24f8f4",
+      "name": "user IDTag",
+      "type": "Tags",
+      "properties": {
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "OBJECT"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "hasInputBox": {
+          "value": false
+        },
+        "label": {
+          "value": "Tags"
+        }
+      },
+      "styleProperties": {
+        "dfc2a52d-cfe1-4263-bb44-213784b5cda5": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "d1f7e0e0-d904-40e9-a125-5cdfe8544066": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.buttonbarData"
+      }
+    },
+    "f85fec46-40f2-4646-a7d6-51256e58e54b": {
+      "key": "f85fec46-40f2-4646-a7d6-51256e58e54b",
+      "name": "containerWithLableTextBoxDroptag",
+      "type": "Grid",
+      "styleProperties": {
+        "619aa3ea-ec81-4d9c-b8c1-ae02b9182f63": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ada2f4da-2731-4b39-bcc5-66c36d133053": true,
+        "a513dc44-9d06-4112-8d8c-6010f95d8536": true,
+        "c85b2e9f-ce46-4b5b-9462-0a00b796cc95": true
+      },
+      "displayOrder": 3
+    },
+    "ada2f4da-2731-4b39-bcc5-66c36d133053": {
+      "key": "ada2f4da-2731-4b39-bcc5-66c36d133053",
+      "name": "UserIdlableAndButtonGridAge",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4c1ff9bd-616f-45cd-bb92-4722188d3e57": true,
+        "43738883-fad8-436f-b04a-ae1238eeca30": true
+      }
+    },
+    "4c1ff9bd-616f-45cd-bb92-4722188d3e57": {
+      "key": "4c1ff9bd-616f-45cd-bb92-4722188d3e57",
+      "name": "Agelable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "Age"
+        }
+      },
+      "override": false
+    },
+    "43738883-fad8-436f-b04a-ae1238eeca30": {
+      "key": "43738883-fad8-436f-b04a-ae1238eeca30",
+      "name": "refreshButtonAge",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "ac54ff91-310f-4c70-8016-4ae4c99c6213": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "a513dc44-9d06-4112-8d8c-6010f95d8536": {
+      "key": "a513dc44-9d06-4112-8d8c-6010f95d8536",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7dd82ebf-9a87-485a-8b30-b4a34cd668aa": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme. widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "b7dc4c85-05f9-4aa2-ad91-041e19046225": true,
+        "f1b12169-c943-4ee3-ac23-a4eed0f654f7": true
+      },
+      "displayOrder": 1
+    },
+    "b7dc4c85-05f9-4aa2-ad91-041e19046225": {
+      "key": "b7dc4c85-05f9-4aa2-ad91-041e19046225",
+      "name": "AgeTextbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6baeeaf5-36d0-4f41-a567-8f1369780911": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderLeft": {
+                "value": "none"
+              },
+              "borderRight": {
+                "value": "none"
+              },
+              "borderTop": {
+                "value": "none"
+              },
+              "borderBottom": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.childrenTextBoxdata"
+      }
+    },
+    "f1b12169-c943-4ee3-ac23-a4eed0f654f7": {
+      "key": "f1b12169-c943-4ee3-ac23-a4eed0f654f7",
+      "name": "AgeDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "headerText": {
+          "value": "Age"
+        },
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "__truncated__": "... 3 more props"
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "c85b2e9f-ce46-4b5b-9462-0a00b796cc95": {
+      "key": "c85b2e9f-ce46-4b5b-9462-0a00b796cc95",
+      "name": "AgeTag",
+      "type": "Tags",
+      "properties": {
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "OBJECT"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "hasInputBox": {
+          "value": false
+        },
+        "label": {
+          "value": "Age"
+        }
+      },
+      "styleProperties": {
+        "dfc2a52d-cfe1-4263-bb44-213784b5cda5": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "d1f7e0e0-d904-40e9-a125-5cdfe8544066": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.buttonbarData"
+      }
+    },
+    "ac3199fd-1347-46a7-9b0c-8469e1406733": {
+      "key": "ac3199fd-1347-46a7-9b0c-8469e1406733",
+      "name": "GenderGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "22b60491-59a4-41d1-a811-4611e23db8ef": true,
+        "c12f1d6c-16a4-4d38-a17c-e44c05ae2543": true,
+        "de117072-3255-4d52-87aa-c0a1d7af62d8": true
+      },
+      "displayOrder": 4
+    },
+    "22b60491-59a4-41d1-a811-4611e23db8ef": {
+      "key": "22b60491-59a4-41d1-a811-4611e23db8ef",
+      "name": "TextBoxAndrefresh",
+      "type": "Grid",
+      "styleProperties": {
+        "eae6513a-49f4-4c53-ad40-f018843c1959": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ba3fcc7c-fb4f-460d-901a-336942c7b58d": true,
+        "5df5f5e9-6b04-403b-8c5f-195354dc3b20": true
+      },
+      "displayOrder": 1
+    },
+    "ba3fcc7c-fb4f-460d-901a-336942c7b58d": {
+      "key": "ba3fcc7c-fb4f-460d-901a-336942c7b58d",
+      "name": "Genderlabel",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "Gender"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5df5f5e9-6b04-403b-8c5f-195354dc3b20": {
+      "key": "5df5f5e9-6b04-403b-8c5f-195354dc3b20",
+      "name": "refreshButtonGender",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "0d7dd2a8-c4b8-481c-bf70-e24aac34f487": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "c12f1d6c-16a4-4d38-a17c-e44c05ae2543": {
+      "key": "c12f1d6c-16a4-4d38-a17c-e44c05ae2543",
+      "name": "GenderDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 3 more props"
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "de117072-3255-4d52-87aa-c0a1d7af62d8": {
+      "key": "de117072-3255-4d52-87aa-c0a1d7af62d8",
+      "name": "borderGridGender",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7a03efc4-4735-4c4f-bac7-1dd7d4c8f4ba": {
+      "key": "7a03efc4-4735-4c4f-bac7-1dd7d4c8f4ba",
+      "name": "MaritalGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "de2b9449-d0a8-4555-8d39-172cc6441716": true,
+        "57810cee-659b-454c-9953-f54f902838b3": true,
+        "25a06e5c-2fd5-41c1-88f5-8ed976b3acec": true
+      },
+      "displayOrder": 4
+    },
+    "de2b9449-d0a8-4555-8d39-172cc6441716": {
+      "key": "de2b9449-d0a8-4555-8d39-172cc6441716",
+      "name": "TextBoxAndrefresh",
+      "type": "Grid",
+      "styleProperties": {
+        "eae6513a-49f4-4c53-ad40-f018843c1959": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "08d2d5b5-c9a2-4528-b6c6-fa63273a9ffe": true,
+        "cb650731-8612-4267-a2dd-24b8701310fb": true
+      },
+      "displayOrder": 1
+    },
+    "08d2d5b5-c9a2-4528-b6c6-fa63273a9ffe": {
+      "key": "08d2d5b5-c9a2-4528-b6c6-fa63273a9ffe",
+      "name": "Genderlabel",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "Marital status"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "cb650731-8612-4267-a2dd-24b8701310fb": {
+      "key": "cb650731-<PHONE>-a2dd-24b8701310fb",
+      "name": "refreshButtonGender",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "0d7dd2a8-c4b8-481c-bf70-e24aac34f487": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "57810cee-659b-454c-9953-f54f902838b3": {
+      "key": "57810cee-659b-454c-9953-f54f902838b3",
+      "name": "MaritalStatusDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "25a06e5c-2fd5-41c1-88f5-8ed976b3acec": {
+      "key": "25a06e5c-2fd5-41c1-88f5-8ed976b3acec",
+      "name": "borderGridMarital",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "88e0fbb0-20e4-4aca-a53f-3ee069db1add": {
+      "key": "88e0fbb0-20e4-4aca-a53f-3ee069db1add",
+      "name": "childrenGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6b6fbc28-9abb-4c50-a1ac-7c0bed535465": true,
+        "71a4db63-7b9a-4502-a245-f15677266e6c": true,
+        "ad79a3e5-6065-437a-bc63-cca1d52804fc": true
+      },
+      "displayOrder": 4
+    },
+    "6b6fbc28-9abb-4c50-a1ac-7c0bed535465": {
+      "key": "6b6fbc28-9abb-4c50-a1ac-7c0bed535465",
+      "name": "TextBoxAndrefresh",
+      "type": "Grid",
+      "styleProperties": {
+        "eae6513a-49f4-4c53-ad40-f018843c1959": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "32f2a69e-dcdb-4463-9911-eec845dfc3c6": true,
+        "8d75c3ef-ec1e-468a-be4f-26a595d3e012": true
+      },
+      "displayOrder": 1
+    },
+    "32f2a69e-dcdb-4463-9911-eec845dfc3c6": {
+      "key": "32f2a69e-dcdb-<PHONE>-eec845dfc3c6",
+      "name": "Childrenlabel",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "No. of Children"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "8d75c3ef-ec1e-468a-be4f-26a595d3e012": {
+      "key": "8d75c3ef-ec1e-468a-be4f-26a595d3e012",
+      "name": "refreshButtonChildren",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "0d7dd2a8-c4b8-481c-bf70-e24aac34f487": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "71a4db63-7b9a-4502-a245-f15677266e6c": {
+      "key": "71a4db63-7b9a-4502-a245-f15677266e6c",
+      "name": "ChildrentextBoxIconGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "71b94d02-7992-4863-83d2-1cb8dbd7ab52": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "flexDirection": {
+                "value": "row"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5e986394-5d06-43d0-93cf-01ba8106ba71": true,
+        "ec58d5ae-f104-407f-8b73-cc6d84eefc5a": true
+      },
+      "displayOrder": 2
+    },
+    "5e986394-5d06-43d0-93cf-01ba8106ba71": {
+      "key": "5e986394-5d06-43d0-93cf-01ba8106ba71",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "d79ff555-1710-472b-be32-db85ce9587af": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme. widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "c8fe57e1-f9fe-4ce7-ac44-9d55563a0cda": true,
+        "a9a3071e-2088-4c79-8e98-ddf16d59d93f": true
+      },
+      "displayOrder": 1
+    },
+    "c8fe57e1-f9fe-4ce7-ac44-9d55563a0cda": {
+      "key": "c8fe57e1-f9fe-4ce7-ac44-9d55563a0cda",
+      "name": "ChildrenDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "a9a3071e-2088-4c79-8e98-ddf16d59d93f": {
+      "key": "a9a3071e-2088-4c79-8e98-ddf16d59d93f",
+      "name": "ChildrenTextbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "36a7d9da-e76e-4006-8e10-646ac888150e": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderLeft": {
+                "value": "none"
+              },
+              "borderRight": {
+                "value": "none"
+              },
+              "borderTop": {
+                "value": "none"
+              },
+              "borderBottom": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.childrenTextBoxdata"
+      }
+    },
+    "ec58d5ae-f104-407f-8b73-cc6d84eefc5a": {
+      "key": "ec58d5ae-f104-407f-8b73-cc6d84eefc5a",
+      "name": "PlusIcon",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-circle-plus"
+        }
+      },
+      "styleProperties": {
+        "ee6b2d3b-aa67-4874-9979-0c7e2c9995e0": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "ad79a3e5-6065-437a-bc63-cca1d52804fc": {
+      "key": "ad79a3e5-6065-437a-bc63-cca1d52804fc",
+      "name": "borderChildren",
+      "type": "Grid",
+      "styleProperties": {
+        "8a78ca0d-9f33-4cc0-b4a6-49224a4bbbac": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "mainGrid2": {
+      "key": "mainGrid2",
+      "name": "maingrid2",
+      "type": "Grid",
+      "styleProperties": {
+        "740ad473-7d32-4a01-a2c3-7f531f41d987": {
+          "resolutions": {
+            "ALL": {
+              "borderTop": {
+                "value": "1px solid #CECECE"
+              },
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              },
+              "borderLeft": {
+                "value": "1px solid #CECECE"
+              },
+              "borderRight": {
+                "value": "1px solid #CECECE"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "fit-content"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "0c5dcaf6-64e3-4aff-83bd-32076c29a494": true,
+        "5e655b7e-ac7a-4489-aa6b-cfba4421311c": true,
+        "b74b5582-8fe5-46bf-9860-ef6d40863197": true,
+        "5d5431f5-e150-438c-9708-45ef76b53795": true,
+        "e7f1ccda-021a-4247-b442-4f9938f1a616": true
+      },
+      "displayOrder": 2
+    },
+    "0c5dcaf6-64e3-4aff-83bd-32076c29a494": {
+      "key": "0c5dcaf6-64e3-4aff-83bd-32076c29a494",
+      "name": "Locationlable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "Location"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5e655b7e-ac7a-4489-aa6b-cfba4421311c": {
+      "key": "5e655b7e-ac7a-4489-aa6b-cfba4421311c",
+      "name": "containerWithLableTextBoxDroptag",
+      "type": "Grid",
+      "styleProperties": {
+        "92c6c544-41fe-4116-96f7-8acf41610625": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3a396962-4ffa-4eec-926f-1c133564c15c": true,
+        "7f933d22-00f6-4ed4-aa54-02da48ba5b00": true,
+        "2a2b0465-ea8e-4cfd-a861-db03842bd240": true
+      },
+      "displayOrder": 2
+    },
+    "3a396962-4ffa-4eec-926f-1c133564c15c": {
+      "key": "3a396962-4ffa-4eec-926f-1c133564c15c",
+      "name": "LocationlableAndButtonGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "7ea46977-e75f-40cf-9ce7-a84eace3bb51": true,
+        "2c117554-dd04-479c-ac93-23f967c57f0c": true
+      }
+    },
+    "7ea46977-e75f-40cf-9ce7-a84eace3bb51": {
+      "key": "7ea46977-e75f-40cf-9ce7-a84eace3bb51",
+      "name": "Citylable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "City"
+        }
+      },
+      "override": false
+    },
+    "2c117554-dd04-479c-ac93-23f967c57f0c": {
+      "key": "2c117554-dd04-479c-ac93-23f967c57f0c",
+      "name": "refreshButtonAge",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "a9868383-6f35-4f66-8f2e-548e83f4adfe": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7f933d22-00f6-4ed4-aa54-02da48ba5b00": {
+      "key": "7f933d22-00f6-4ed4-aa54-02da48ba5b00",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7dd82ebf-9a87-485a-8b30-b4a34cd668aa": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme. widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "a0148359-4b4c-4b43-bbeb-b432fe6bcba1": true,
+        "dbc1658b-0a20-46a4-a4d2-1b829e8695d7": true
+      },
+      "displayOrder": 1
+    },
+    "a0148359-4b4c-4b43-bbeb-b432fe6bcba1": {
+      "key": "a0148359-4b4c-4b43-bbeb-b432fe6bcba1",
+      "name": "CityTextbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "36a7d9da-e76e-4006-8e10-646ac888150e": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderLeft": {
+                "value": "none"
+              },
+              "borderRight": {
+                "value": "none"
+              },
+              "borderTop": {
+                "value": "none"
+              },
+              "borderBottom": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.childrenTextBoxdata"
+      }
+    },
+    "dbc1658b-0a20-46a4-a4d2-1b829e8695d7": {
+      "key": "dbc1658b-0a20-46a4-a4d2-1b829e8695d7",
+      "name": "CityDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "2a2b0465-ea8e-4cfd-a861-db03842bd240": {
+      "key": "2a2b0465-ea8e-4cfd-a861-db03842bd240",
+      "name": "CityTag",
+      "type": "Tags",
+      "properties": {
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "OBJECT"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "hasInputBox": {
+          "value": false
+        },
+        "label": {
+          "value": "Tags"
+        }
+      },
+      "styleProperties": {
+        "d9652d73-2292-4d8f-9112-7ac448eb6951": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "5c7560cd-99ff-4813-b2d1-f821f5dba02b": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.buttonbarData"
+      }
+    },
+    "b74b5582-8fe5-46bf-9860-ef6d40863197": {
+      "key": "b74b5582-8fe5-46bf-9860-ef6d40863197",
+      "name": "containerWithLableTextBoxDroptag",
+      "type": "Grid",
+      "styleProperties": {
+        "cbfee7a2-bb31-43cd-8543-e277da8f04bc": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "b663e0f6-31e4-437f-a094-7f19df79b4dd": true,
+        "06f7bfb9-dc67-40dd-8c5b-03f16326739f": true,
+        "4bb54457-ccc4-40f6-bb93-25c0d6dfc82c": true
+      },
+      "displayOrder": 2
+    },
+    "b663e0f6-31e4-437f-a094-7f19df79b4dd": {
+      "key": "b663e0f6-31e4-437f-a094-7f19df79b4dd",
+      "name": "LocationlableAndButtonGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "03a14af9-d406-49ea-9eb9-3e3be7f21092": true,
+        "27741e8e-8a46-4590-b39c-b63ff5ee5f6c": true
+      }
+    },
+    "03a14af9-d406-49ea-9eb9-3e3be7f21092": {
+      "key": "03a14af9-d406-49ea-9eb9-3e3be7f21092",
+      "name": "Statelable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "State"
+        }
+      },
+      "override": false
+    },
+    "27741e8e-8a46-4590-b39c-b63ff5ee5f6c": {
+      "key": "27741e8e-8a46-4590-b39c-b63ff5ee5f6c",
+      "name": "refreshButtonAge",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "4ace1fc5-9246-4703-9e95-bd35670d88f8": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "06f7bfb9-dc67-40dd-8c5b-03f16326739f": {
+      "key": "06f7bfb9-dc67-40dd-8c5b-03f16326739f",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7dd82ebf-9a87-485a-8b30-b4a34cd668aa": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme. widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "fea16e44-1331-4955-b66a-51c6a4ef51eb": true,
+        "54454911-1dd4-4619-9d2f-9eac65afcc14": true
+      },
+      "displayOrder": 1
+    },
+    "fea16e44-1331-4955-b66a-51c6a4ef51eb": {
+      "key": "fea16e44-<PHONE>-b66a-51c6a4ef51eb",
+      "name": "stateTextbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6baeeaf5-36d0-4f41-a567-8f1369780911": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderLeft": {
+                "value": "none"
+              },
+              "borderRight": {
+                "value": "none"
+              },
+              "borderTop": {
+                "value": "none"
+              },
+              "borderBottom": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.childrenTextBoxdata"
+      }
+    },
+    "54454911-1dd4-4619-9d2f-9eac65afcc14": {
+      "key": "54454911-1dd4-4619-9d2f-9eac65afcc14",
+      "name": "stateDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "4bb54457-ccc4-40f6-bb93-25c0d6dfc82c": {
+      "key": "4bb54457-ccc4-40f6-bb93-25c0d6dfc82c",
+      "name": "StateTag",
+      "type": "Tags",
+      "properties": {
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "OBJECT"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "hasInputBox": {
+          "value": false
+        },
+        "label": {
+          "value": "Tags"
+        }
+      },
+      "styleProperties": {
+        "d9652d73-2292-4d8f-9112-7ac448eb6951": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "5c7560cd-99ff-4813-b2d1-f821f5dba02b": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.buttonbarData"
+      }
+    },
+    "5d5431f5-e150-438c-9708-45ef76b53795": {
+      "key": "5d5431f5-e150-438c-9708-45ef76b53795",
+      "name": "containerWithLableTextBoxDroptag",
+      "type": "Grid",
+      "styleProperties": {
+        "cbfee7a2-bb31-43cd-8543-e277da8f04bc": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "fcb97efd-acf3-4283-9bfb-f8bff4b6e904": true,
+        "90f1a800-0e69-413a-87af-6a79ce2be146": true,
+        "3edf614b-34a2-40dc-8a7f-e51249fc739a": true,
+        "0f10ec51-c07e-436d-a9c4-c43d3ba9ea79": true
+      },
+      "displayOrder": 2
+    },
+    "fcb97efd-acf3-4283-9bfb-f8bff4b6e904": {
+      "key": "fcb97efd-acf3-4283-9bfb-f8bff4b6e904",
+      "name": "LocationlableAndButtonGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "7b84bad2-8fe9-475f-9830-8499b5c7908a": true,
+        "09861b4b-86c8-4ce4-9129-51de879cba47": true
+      }
+    },
+    "7b84bad2-8fe9-475f-9830-8499b5c7908a": {
+      "key": "7b84bad2-8fe9-475f-9830-8499b5c7908a",
+      "name": "countrylable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "Country"
+        }
+      },
+      "override": false
+    },
+    "09861b4b-86c8-4ce4-9129-51de879cba47": {
+      "key": "09861b4b-86c8-4ce4-9129-51de879cba47",
+      "name": "refreshButtonAge",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "9c9a5263-4d80-4de9-a128-8f974be7fecf": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "90f1a800-0e69-413a-87af-6a79ce2be146": {
+      "key": "90f1a800-0e69-413a-87af-6a79ce2be146",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7dd82ebf-9a87-485a-8b30-b4a34cd668aa": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme. widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "2fa372c9-3f4d-4115-badd-c07da0010e8d": true,
+        "e33897db-568d-4e5d-bb33-56ccf7189912": true
+      },
+      "displayOrder": 1
+    },
+    "2fa372c9-3f4d-4115-badd-c07da0010e8d": {
+      "key": "2fa372c9-3f4d-4115-badd-c07da0010e8d",
+      "name": "pincodeTextbox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "isMandatory": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "6baeeaf5-36d0-4f41-a567-8f1369780911": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderLeft": {
+                "value": "none"
+              },
+              "borderRight": {
+                "value": "none"
+              },
+              "borderTop": {
+                "value": "none"
+              },
+              "borderBottom": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.childrenTextBoxdata"
+      }
+    },
+    "e33897db-568d-4e5d-bb33-56ccf7189912": {
+      "key": "e33897db-568d-4e5d-bb33-56ccf7189912",
+      "name": "countryDropdown",
+      "type": "Dropdown",
+      "properties": {
+        "dataBinding": {
+          "location": {
+            "type": "VALUE",
+            "value": "Store.genderType"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "placeholder": {
+          "value": ""
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Store.savedGenderType"
+      }
+    },
+    "0f10ec51-c07e-436d-a9c4-c43d3ba9ea79": {
+      "key": "0f10ec51-c07e-436d-a9c4-c43d3ba9ea79",
+      "name": "PincodeTag",
+      "type": "Tags",
+      "properties": {
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "selectionType": {
+          "value": "OBJECT"
+        },
+        "uniqueKeyType": {
+          "value": "RANDOM"
+        },
+        "uniqueKey": {
+          "value": "id"
+        },
+        "labelKeyType": {
+          "value": "OBJECT"
+        },
+        "labelKey": {
+          "value": "name"
+        },
+        "hasInputBox": {
+          "value": false
+        },
+        "label": {
+          "value": "Tags"
+        }
+      },
+      "styleProperties": {
+        "dfc2a52d-cfe1-4263-bb44-213784b5cda5": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            },
+            "tagcontainerWithInput": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        },
+        "d1f7e0e0-d904-40e9-a125-5cdfe8544066": {
+          "pseudoState": "hover",
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#8790aa"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.country"
+      }
+    },
+    "e7f1ccda-021a-4247-b442-4f9938f1a616": {
+      "key": "e7f1ccda-021a-4247-b442-4f9938f1a616",
+      "name": "containerWithLableTextBoxDroptag",
+      "type": "Grid",
+      "styleProperties": {
+        "1cb45578-9236-455a-a16d-b3e99127aca4": {
+          "resolutions": {
+            "ALL": {
+              "borderBottom": {
+                "value": "1px solid #CECECE"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "99a2218a-aac8-4e57-8efe-dd7223bccf6b": true,
+        "9f9ce9d2-b959-45d8-a6f4-a61ad24131cc": true,
+        "9ad50706-659c-4c63-a7d2-acf583cedd5d": true
+      },
+      "displayOrder": 2
+    },
+    "99a2218a-aac8-4e57-8efe-dd7223bccf6b": {
+      "key": "99a2218a-aac8-4e57-8efe-dd7223bccf6b",
+      "name": "LocationlableAndButtonGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "d1878b1c-f7e8-48bc-ad9d-54de4b60647b": true,
+        "f2dbe029-4aa6-4335-b630-6380b5b78f6c": true
+      }
+    },
+    "d1878b1c-f7e8-48bc-ad9d-54de4b60647b": {
+      "key": "d1878b1c-f7e8-48bc-ad9d-54de4b60647b",
+      "name": "pincodelable",
+      "type": "Label",
+      "properties": {
+        "text": {
+          "value": "pincode"
+        }
+      },
+      "override": false
+    },
+    "f2dbe029-4aa6-4335-b630-6380b5b78f6c": {
+      "key": "f2dbe029-4aa6-4335-b630-6380b5b78f6c",
+      "name": "refreshButtonAge",
+      "type": "Button",
+      "properties": {
+        "type": {
+          "value": "default"
+        },
+        "label": {
+          "value": ""
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-rotate-right"
+        }
+      },
+      "styleProperties": {
+        "9c9a5263-4d80-4de9-a128-8f974be7fecf": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "9f9ce9d2-b959-45d8-a6f4-a61ad24131cc": {
+      "key": "9f9ce9d2-b959-45d8-a6f4-a61ad24131cc",
+      "name": "DropdownTextBoxGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7dd82ebf-9a87-485a-8b30-b4a34cd668aa": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "borderLeft": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderRight": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderTop": {
+                "value": "1px solid #C7C8D6"
+              },
+              "borderBottom": {
+                "value": "1px solid #C7C8D6"
+              },
+              "width": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme. widthForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              },
+              "paddingTop": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.paddingForGridWithDropdownAndTextBoxHasCombinedBorder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "1edb1ff8-7bf9-4e82-8d94-a809db312e28": true,
+        "dca5f944-3ba3-44d8-b987-e1df5dfb1a24": true
+      },
+      "displayOrder": 1
+    },
+    "__truncated__": "... 253 more components omitted for corpus"
+  },
+  "name": "createsegment",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 262,
+  "updatedAt": "2023-06-14 04:23:50.506000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-02-23 07:42:18.186000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,523 @@
+{
+  "_id": "665f4fd1111ddb4fbf3bbb26",
+  "definition": {
+    "name": "updateStatus",
+    "namespace": "ZohoFunctions",
+    "parameters": {
+      "document": {
+        "parameterName": "document",
+        "schema": {
+          "ref": "Sign.uploadStorage.schema",
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 23,
+          "top": 37
+        },
+        "parameterMap": {
+          "name": {
+            "1cSCVaS10prT7BepmmJWvA": {
+              "key": "1cSCVaS10prT7BepmmJWvA",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "filter"
+            }
+          },
+          "schema": {
+            "4VAX5MTeGzx3zlSF1mUueA": {
+              "key": "4VAX5MTeGzx3zlSF1mUueA",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1365,
+          "top": 55
+        },
+        "parameterMap": {
+          "name": {
+            "39rSG1wQDlfXIBMogKyVj3": {
+              "key": "39rSG1wQDlfXIBMogKyVj3",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "fetchedDoc"
+            }
+          },
+          "schema": {
+            "6AeyknCgVV9wN3G1BXnSo7": {
+              "key": "6AeyknCgVV9wN3G1BXnSo7",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1092.5,
+          "top": 295
+        },
+        "parameterMap": {
+          "name": {
+            "3vRCfcsbYT7LtKSG3nXdPB": {
+              "key": "3vRCfcsbYT7LtKSG3nXdPB",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.fetchedDoc"
+            }
+          },
+          "value": {
+            "2yhxoTrzR2HHzHN7mqzkEN": {
+              "key": "2yhxoTrzR2HHzHN7mqzkEN",
+              "type": "EXPRESSION",
+              "expression": "Steps.readPage.output.result.content[0]",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1762,
+          "top": 131
+        },
+        "parameterMap": {
+          "results": {
+            "2Tu2cCg7HzzwJoxfdRJgMz": {
+              "key": "2Tu2cCg7HzzwJoxfdRJgMz",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": "The selected document was already verified"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2399,
+          "top": 609
+        },
+        "parameterMap": {
+          "results": {
+            "6pmYAQqwpzXBlkvN5TxgJ4": {
+              "key": "6pmYAQqwpzXBlkvN5TxgJ4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2359,
+          "top": 328
+        },
+        "parameterMap": {
+          "results": {
+            "76M81XH0pKu1gecUO8cXJQ": {
+              "key": "76M81XH0pKu1gecUO8cXJQ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 949,
+          "top": 13
+        },
+        "parameterMap": {
+          "results": {
+            "ZIYMMkxwwwT4ZanEHIL8E": {
+              "key": "ZIYMMkxwwwT4ZanEHIL8E",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 665,
+          "top": 91
+        },
+        "parameterMap": {
+          "storageName": {
+            "DC0tiS1zQthmn1yZkUSYh": {
+              "key": "DC0tiS1zQthmn1yZkUSYh",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "uploadedDocuments"
+            }
+          },
+          "appCode": {
+            "2B9lpnebYpBed6mJjcVC5z": {
+              "key": "2B9lpnebYpBed6mJjcVC5z",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "filter": {
+            "2DuXz84mjSDHeYIq3vCxVU": {
+              "key": "2DuXz84mjSDHeYIq3vCxVU",
+              "type": "EXPRESSION",
+              "expression": "Context.filter",
+              "value": {}
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set2__d-o-t__output": true
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 331,
+          "top": 272
+        },
+        "parameterMap": {
+          "name": {
+            "ZdzMEQVDQ14agoLs276sg": {
+              "key": "ZdzMEQVDQ14agoLs276sg",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter.value"
+            }
+          },
+          "value": {
+            "5s4s1UCawHMcmsVoqqrhTk": {
+              "key": "5s4s1UCawHMcmsVoqqrhTk",
+              "type": "EXPRESSION",
+              "expression": "Arguments.document.documentId",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": false,
+          "Steps__d-o-t__set3__d-o-t__output": true
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 35,
+          "top": 268
+        },
+        "parameterMap": {
+          "name": {
+            "30UZXPsCK7RPoOmflFzyDl": {
+              "key": "30UZXPsCK7RPoOmflFzyDl",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.filter.field"
+            }
+          },
+          "value": {
+            "3B5U9Erjo0OLKHOUl6zL4S": {
+              "key": "3B5U9Erjo0OLKHOUl6zL4S",
+              "type": "EXPRESSION",
+              "expression": "'documentId'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set4__d-o-t__output": true
+        }
+      },
+      "set4": {
+        "statementName": "set4",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 282,
+          "top": 27
+        },
+        "parameterMap": {
+          "name": {
+            "5pcsk28vUGB1lzslsEWpIJ": {
+              "key": "5pcsk28vUGB1lzslsEWpIJ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.filter"
+            }
+          },
+          "value": {
+            "fjcN42ERiPSSBkpUgsI0X": {
+              "key": "fjcN42ERiPSSBkpUgsI0X",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {}
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "create2": {
+        "statementName": "create2",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 996,
+          "top": 541
+        },
+        "parameterMap": {
+          "name": {
+            "6bsmE5gRxEjwkE9JE3k60t": {
+              "key": "6bsmE5gRxEjwkE9JE3k60t",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "updateField"
+            }
+          },
+          "schema": {
+            "neUftFAnemSZER3FfWnPJ": {
+              "key": "neUftFAnemSZER3FfWnPJ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1406,
+          "top": 326
+        },
+        "parameterMap": {
+          "condition": {
+            "7c7g4axkwvjFxVn0iSerIA": {
+              "key": "7c7g4axkwvjFxVn0iSerIA",
+              "type": "EXPRESSION",
+              "expression": "Context.fetchedDoc.request_status = \"SIGNED\"",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1298,
+          "top": 534
+        },
+        "parameterMap": {
+          "name": {
+            "3ZUTWLto69snMHfmWzwQN9": {
+              "key": "3ZUTWLto69snMHfmWzwQN9",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.updateField"
+            }
+          },
+          "value": {
+            "72TKnUk2fLYOY7IQM6XgHb": {
+              "key": "72TKnUk2fLYOY7IQM6XgHb",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "request_status": "SIGNED"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create2__d-o-t__output": true
+        }
+      },
+      "update": {
+        "statementName": "update",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1870,
+          "top": 388
+        },
+        "parameterMap": {
+          "appCode": {
+            "4SZtgTa7AVLJUpgSpaUntr": {
+              "key": "4SZtgTa7AVLJUpgSpaUntr",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "dataObject": {
+            "1kA48rNkyeMOES2aohzdDy": {
+              "key": "1kA48rNkyeMOES2aohzdDy",
+              "type": "EXPRESSION",
+              "expression": "Context.updateField",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "2iVH7KQbHqx9DSEKwfbRaf": {
+              "key": "2iVH7KQbHqx9DSEKwfbRaf",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "uploadedDocuments"
+            }
+          },
+          "dataObjectId": {
+            "4Aix8h6gbs4BZEnsnwUS5z": {
+              "key": "4Aix8h6gbs4BZEnsnwUS5z",
+              "type": "EXPRESSION",
+              "expression": "Context.fetchedDoc._id",
+              "order": 1
+            }
+          },
+          "isPartial": {
+            "6cBfkumMz4WolyyQBH0YqX": {
+              "key": "6cBfkumMz4WolyyQBH0YqX",
+              "type": "VALUE",
+              "expression": "",
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true,
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      }
+    }
+  },
+  "name": "ZohoFunctions.updateStatus",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 12,
+  "updatedAt": "2026-04-09 04:29:05.877000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:33:05.879000",
+  "createdBy": "<USER>"
+}

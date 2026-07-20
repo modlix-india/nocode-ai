@@ -1,0 +1,2612 @@
+{
+  "_id": "653272348fc99a6064372218",
+  "rootComponent": "6e1MC9BPNbKsJSfpFesKBc",
+  "componentDefinition": {
+    "6e1MC9BPNbKsJSfpFesKBc": {
+      "key": "6e1MC9BPNbKsJSfpFesKBc",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1XW2ORxZe3lMfsszznv27o": {
+          "resolutions": {
+            "ALL": {
+              "overflowY": {
+                "value": "auto"
+              },
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "overflowX": {
+                "value": "auto"
+              },
+              "paddingRight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3lx0WZhimHRrmZxCh3Ykb6": true,
+        "4corpszjofOdhyrtivsrJS": true,
+        "2mxkxQYDv03T6GzKFADAqc": true,
+        "6hjIi9CyZRldQ1lm2S1NZj": true,
+        "7JY8LO09Q0AT7jkKe9Gw2A": true,
+        "72qMG6k4U2Op1OKuU63AcD": true
+      }
+    },
+    "3lx0WZhimHRrmZxCh3Ykb6": {
+      "key": "3lx0WZhimHRrmZxCh3Ykb6",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Simple Menu"
+        }
+      },
+      "styleProperties": {
+        "3noPhzI6d397bt3Ax51Gyg": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "letterSpacing": {
+                "value": "0.04em"
+              },
+              "textTransform": {
+                "value": "uppercase"
+              },
+              "opacity": {
+                "value": "70"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2Km39O4VNJEfpHdLQrBLiH": {
+      "key": "2Km39O4VNJEfpHdLQrBLiH",
+      "name": "Simple Menu horizontal Design 1",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"2Km39O4VNJEfpHdLQrBLiH\",\"objects\":{\"2Km39O4VNJEfpHdLQrBLiH\":{\"key\":\"2Km39O4VNJEfpHdLQrBLiH\",\"name\":\"Simple Menu horizontal Design 1\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"2Km39O4VNJEfpHdLQrBLiH\\\",\\\"objects\\\":{\\\"2Km39O4VNJEfpHdLQrBLiH\\\":{\\\"key\\\":\\\"2Km39O4VNJEfpHdLQrBLiH\\\",\\\"name\\\":\\\"Simple Menu horizontal Design 1\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":true,\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":true,\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":true,\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"2rWkL0xSxQloUHeSizhHKj\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"flex-start\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"paddingTop\\\":{\\\"value\\\":\\\"5px\\\"},\\\"paddingBottom\\\":{\\\"value\\\":\\\"5px\\\"},\\\"paddingLeft\\\":{\\\"value\\\":\\\"5px\\\"},\\\"paddingRight\\\":{\\\"value\\\":\\\"5px\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"wdhaSX6B9NkNXggqyfOYq\\\":true,\\\"56u2LEJrX2L1nsFzY2mOWj\\\":true,\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\":true,\\\"3vwJTluCVD51z8flPlkjcN\\\":true},\\\"displayOrder\\\":1},\\\"wdhaSX6B9NkNXggqyfOYq\\\":{\\\"key\\\":\\\"wdhaSX6B9NkNXggqyfOYq\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"56u2LEJrX2L1nsFzY2mOWj\\\":{\\\"key\\\":\\\"56u2LEJrX2L1nsFzY2mOWj\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign1\\\"}},\\\"styleProperties\\\":{\\\"52QwHyOMZaHLbtZITIMMem\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"cursor\\\":{\\\"value\\\":\\\"grab\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\":{\\\"key\\\":\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"3vwJTluCVD51z8flPlkjcN\\\":{\\\"key\\\":\\\"3vwJTluCVD51z8flPlkjcN\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"2rWkL0xSxQloUHeSizhHKj\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"paddingTop\":{\"value\":\"5px\"},\"paddingBottom\":{\"value\":\"5px\"},\"paddingLeft\":{\"value\":\"5px\"},\"paddingRight\":{\"value\":\"5px\"}}}}},\"override\":false,\"children\":{\"wdhaSX6B9NkNXggqyfOYq\":true,\"3vwJTluCVD51z8flPlkjcN\":true,\"2LM9RnEw3T2g0rdJ8ecEfh\":true,\"56u2LEJrX2L1nsFzY2mOWj\":true},\"displayOrder\":1},\"wdhaSX6B9NkNXggqyfOYq\":{\"key\":\"wdhaSX6B9NkNXggqyfOYq\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign1\"},\"designType\":{\"value\":\"_text\"}},\"override\":false,\"displayOrder\":4},\"3vwJTluCVD51z8flPlkjcN\":{\"key\":\"3vwJTluCVD51z8flPlkjcN\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign1\"},\"designType\":{\"value\":\"_text\"}},\"override\":false,\"displayOrder\":3},\"2LM9RnEw3T2g0rdJ8ecEfh\":{\"key\":\"2LM9RnEw3T2g0rdJ8ecEfh\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign1\"},\"designType\":{\"value\":\"_text\"},\"isMenuOpen\":{\"value\":false}},\"override\":false,\"displayOrder\":2},\"56u2LEJrX2L1nsFzY2mOWj\":{\"key\":\"56u2LEJrX2L1nsFzY2mOWj\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign1\"},\"designType\":{\"value\":\"_text\"},\"subMenuOrientation\":{\"value\":\"_right_orientation\"}},\"styleProperties\":{\"52QwHyOMZaHLbtZITIMMem\":{\"resolutions\":{\"ALL\":{\"cursor\":{\"value\":\"grab\"},\"subMenuContainer-backgroundColor\":{\"value\":\"white\"}}}}},\"override\":false,\"displayOrder\":1}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2rWkL0xSxQloUHeSizhHKj": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "paddingTop": {
+                "value": "5px"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "wdhaSX6B9NkNXggqyfOYq": true,
+        "3vwJTluCVD51z8flPlkjcN": true,
+        "2LM9RnEw3T2g0rdJ8ecEfh": true,
+        "56u2LEJrX2L1nsFzY2mOWj": true
+      },
+      "displayOrder": 1
+    },
+    "wdhaSX6B9NkNXggqyfOYq": {
+      "key": "wdhaSX6B9NkNXggqyfOYq",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign1"
+        },
+        "designType": {
+          "value": "_text"
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "56u2LEJrX2L1nsFzY2mOWj": {
+      "key": "56u2LEJrX2L1nsFzY2mOWj",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign1"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "subMenuOrientation": {
+          "value": "_right_orientation"
+        }
+      },
+      "styleProperties": {
+        "52QwHyOMZaHLbtZITIMMem": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "grab"
+              },
+              "subMenuContainer-backgroundColor": {
+                "value": "white"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2LM9RnEw3T2g0rdJ8ecEfh": {
+      "key": "2LM9RnEw3T2g0rdJ8ecEfh",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign1"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "isMenuOpen": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3vwJTluCVD51z8flPlkjcN": {
+      "key": "3vwJTluCVD51z8flPlkjcN",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign1"
+        },
+        "designType": {
+          "value": "_text"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4corpszjofOdhyrtivsrJS": {
+      "key": "4corpszjofOdhyrtivsrJS",
+      "name": "simpleMenuVerticalGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "4LxQAr5UXPfhTiUlomjOAw": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "gap": {
+                "value": "20px"
+              },
+              "marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Km39O4VNJEfpHdLQrBLiH": true,
+        "2WnLKUhIPdDjxLD7JmfIKW": true,
+        "7lInSLR9WA3TtcIHAK6ltW": true,
+        "6FnhK5l3W511Gsr2CHF04n": true
+      },
+      "displayOrder": 2
+    },
+    "2WnLKUhIPdDjxLD7JmfIKW": {
+      "key": "2WnLKUhIPdDjxLD7JmfIKW",
+      "name": "Simple Menu Horizontal Design 1",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"2WnLKUhIPdDjxLD7JmfIKW\",\"objects\":{\"2WnLKUhIPdDjxLD7JmfIKW\":{\"key\":\"2WnLKUhIPdDjxLD7JmfIKW\",\"name\":\"Simple Menu Horizontal Design 1\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"2WnLKUhIPdDjxLD7JmfIKW\\\",\\\"objects\\\":{\\\"2WnLKUhIPdDjxLD7JmfIKW\\\":{\\\"key\\\":\\\"2WnLKUhIPdDjxLD7JmfIKW\\\",\\\"name\\\":\\\"Simple Menu Horizontal Design 1\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":true,\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":true,\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":true,\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"4KBl9UxJffta5TpDUiuUnZ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"borderTopWidth\\\":{\\\"value\\\":\\\"0.5px\\\"},\\\"borderBottomStyle\\\":{\\\"value\\\":\\\"solid\\\"},\\\"borderBottomColor\\\":{\\\"value\\\":\\\"#0000001A\\\"},\\\"borderBottomWidth\\\":{\\\"value\\\":\\\"0.5px\\\"},\\\"borderTopColor\\\":{\\\"value\\\":\\\"#0000001A\\\"},\\\"borderTopStyle\\\":{\\\"value\\\":\\\"solid\\\"},\\\"paddingTop\\\":{\\\"value\\\":\\\"7px\\\"},\\\"paddingBottom\\\":{\\\"value\\\":\\\"7px\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"1EKWqIad8KbJlB3fMziRHh\\\":true,\\\"7cunETGqjPLPvCmvP4erEY\\\":true,\\\"52qthZ8ShMKnpw1GUSTyEX\\\":true,\\\"2qRWxi6o5pSHhvJGTQj8r2\\\":true},\\\"displayOrder\\\":2},\\\"1EKWqIad8KbJlB3fMziRHh\\\":{\\\"key\\\":\\\"1EKWqIad8KbJlB3fMziRHh\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"7cunETGqjPLPvCmvP4erEY\\\":{\\\"key\\\":\\\"7cunETGqjPLPvCmvP4erEY\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"52qthZ8ShMKnpw1GUSTyEX\\\":{\\\"key\\\":\\\"52qthZ8ShMKnpw1GUSTyEX\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"2qRWxi6o5pSHhvJGTQj8r2\\\":{\\\"key\\\":\\\"2qRWxi6o5pSHhvJGTQj8r2\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"4KBl9UxJffta5TpDUiuUnZ\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"borderTopWidth\":{\"value\":\"0.5px\"},\"borderBottomStyle\":{\"value\":\"solid\"},\"borderBottomColor\":{\"value\":\"#0000001A\"},\"borderBottomWidth\":{\"value\":\"0.5px\"},\"borderTopColor\":{\"value\":\"#0000001A\"},\"borderTopStyle\":{\"value\":\"solid\"},\"paddingTop\":{\"value\":\"7px\"},\"paddingBottom\":{\"value\":\"7px\"},\"cursor\":{\"value\":\"grab\"}}}}},\"override\":false,\"children\":{\"1EKWqIad8KbJlB3fMziRHh\":true,\"7cunETGqjPLPvCmvP4erEY\":true,\"52qthZ8ShMKnpw1GUSTyEX\":true,\"2qRWxi6o5pSHhvJGTQj8r2\":true},\"displayOrder\":2},\"1EKWqIad8KbJlB3fMziRHh\":{\"key\":\"1EKWqIad8KbJlB3fMziRHh\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"7kAhBWleY50WXD64TCzqKb\":{\"resolutions\":{\"ALL\":{\"fontStyle\":{\"value\":\"italic\"}}}}},\"override\":false,\"displayOrder\":4},\"7cunETGqjPLPvCmvP4erEY\":{\"key\":\"7cunETGqjPLPvCmvP4erEY\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign2\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"7qGXCIB2YjkImgXYGoknTM\":{\"resolutions\":{\"ALL\":{\"fontStyle\":{\"value\":\"italic\"}}}}},\"override\":false,\"displayOrder\":1},\"52qthZ8ShMKnpw1GUSTyEX\":{\"key\":\"52qthZ8ShMKnpw1GUSTyEX\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"25C5ggVZkogdEptNCsv9ns\":{\"resolutions\":{\"ALL\":{\"fontStyle\":{\"value\":\"italic\"}}}}},\"override\":false,\"displayOrder\":2},\"2qRWxi6o5pSHhvJGTQj8r2\":{\"key\":\"2qRWxi6o5pSHhvJGTQj8r2\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"46mviiOLzkqWU16lokDjTT\":{\"resolutions\":{\"ALL\":{\"fontStyle\":{\"value\":\"italic\"}}}}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4KBl9UxJffta5TpDUiuUnZ": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "borderTopWidth": {
+                "value": "0.5px"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomColor": {
+                "value": "#0000001A"
+              },
+              "borderBottomWidth": {
+                "value": "0.5px"
+              },
+              "borderTopColor": {
+                "value": "#0000001A"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "paddingTop": {
+                "value": "7px"
+              },
+              "paddingBottom": {
+                "value": "7px"
+              },
+              "cursor": {
+                "value": "grab"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1EKWqIad8KbJlB3fMziRHh": true,
+        "7cunETGqjPLPvCmvP4erEY": true,
+        "52qthZ8ShMKnpw1GUSTyEX": true,
+        "2qRWxi6o5pSHhvJGTQj8r2": true
+      },
+      "displayOrder": 2
+    },
+    "1EKWqIad8KbJlB3fMziRHh": {
+      "key": "1EKWqIad8KbJlB3fMziRHh",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "7kAhBWleY50WXD64TCzqKb": {
+          "resolutions": {
+            "ALL": {
+              "fontStyle": {
+                "value": "italic"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "7cunETGqjPLPvCmvP4erEY": {
+      "key": "7cunETGqjPLPvCmvP4erEY",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign2"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "7qGXCIB2YjkImgXYGoknTM": {
+          "resolutions": {
+            "ALL": {
+              "fontStyle": {
+                "value": "italic"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "52qthZ8ShMKnpw1GUSTyEX": {
+      "key": "52qthZ8ShMKnpw1GUSTyEX",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "25C5ggVZkogdEptNCsv9ns": {
+          "resolutions": {
+            "ALL": {
+              "fontStyle": {
+                "value": "italic"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2qRWxi6o5pSHhvJGTQj8r2": {
+      "key": "2qRWxi6o5pSHhvJGTQj8r2",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "46mviiOLzkqWU16lokDjTT": {
+          "resolutions": {
+            "ALL": {
+              "fontStyle": {
+                "value": "italic"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7lInSLR9WA3TtcIHAK6ltW": {
+      "key": "7lInSLR9WA3TtcIHAK6ltW",
+      "name": "Simple Menu Horizontal Design 1",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"7lInSLR9WA3TtcIHAK6ltW\",\"objects\":{\"7lInSLR9WA3TtcIHAK6ltW\":{\"key\":\"7lInSLR9WA3TtcIHAK6ltW\",\"name\":\"Simple Menu Horizontal Design 1\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"7lInSLR9WA3TtcIHAK6ltW\\\",\\\"objects\\\":{\\\"7lInSLR9WA3TtcIHAK6ltW\\\":{\\\"key\\\":\\\"7lInSLR9WA3TtcIHAK6ltW\\\",\\\"name\\\":\\\"Simple Menu Horizontal Design 1\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":true,\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":true,\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":true,\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"2rWkL0xSxQloUHeSizhHKj\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"1ycBwoXg8gxvbYjTtKQOPA\\\":true,\\\"WfsMvFX5PGk98tUC67cLH\\\":true,\\\"68f90HtVDUrB5JdCQYAIeo\\\":true,\\\"31Xr2Fy0V0RO87rfukkwks\\\":true},\\\"displayOrder\\\":3},\\\"1ycBwoXg8gxvbYjTtKQOPA\\\":{\\\"key\\\":\\\"1ycBwoXg8gxvbYjTtKQOPA\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign4\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"WfsMvFX5PGk98tUC67cLH\\\":{\\\"key\\\":\\\"WfsMvFX5PGk98tUC67cLH\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign4\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"68f90HtVDUrB5JdCQYAIeo\\\":{\\\"key\\\":\\\"68f90HtVDUrB5JdCQYAIeo\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign4\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"31Xr2Fy0V0RO87rfukkwks\\\":{\\\"key\\\":\\\"31Xr2Fy0V0RO87rfukkwks\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign4\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"2rWkL0xSxQloUHeSizhHKj\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"paddingBottom\":{\"value\":\"5px\"},\"paddingLeft\":{\"value\":\"5px\"},\"paddingRight\":{\"value\":\"5px\"},\"paddingTop\":{\"value\":\"5px\"},\"cursor\":{\"value\":\"grab\"}}}}},\"override\":false,\"children\":{\"1ycBwoXg8gxvbYjTtKQOPA\":true,\"WfsMvFX5PGk98tUC67cLH\":true,\"68f90HtVDUrB5JdCQYAIeo\":true,\"31Xr2Fy0V0RO87rfukkwks\":true},\"displayOrder\":3},\"1ycBwoXg8gxvbYjTtKQOPA\":{\"key\":\"1ycBwoXg8gxvbYjTtKQOPA\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign4\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"m5BMgFXUS5bByWB2c2wAN\":{\"resolutions\":{\"ALL\":{\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":4},\"WfsMvFX5PGk98tUC67cLH\":{\"key\":\"WfsMvFX5PGk98tUC67cLH\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign4\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"5Xp69W94fP8mJGNcA2wX1H\":{\"resolutions\":{\"ALL\":{\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":1},\"68f90HtVDUrB5JdCQYAIeo\":{\"key\":\"68f90HtVDUrB5JdCQYAIeo\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign4\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"2fi0QNx0VFAXl1V53wTMlz\":{\"resolutions\":{\"ALL\":{\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":2},\"31Xr2Fy0V0RO87rfukkwks\":{\"key\":\"31Xr2Fy0V0RO87rfukkwks\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign4\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"styleProperties\":{\"3BI4MO9AqzmSOJhmtUAxjA\":{\"resolutions\":{\"ALL\":{\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2rWkL0xSxQloUHeSizhHKj": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              },
+              "paddingTop": {
+                "value": "5px"
+              },
+              "cursor": {
+                "value": "grab"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1ycBwoXg8gxvbYjTtKQOPA": true,
+        "WfsMvFX5PGk98tUC67cLH": true,
+        "68f90HtVDUrB5JdCQYAIeo": true,
+        "31Xr2Fy0V0RO87rfukkwks": true
+      },
+      "displayOrder": 3
+    },
+    "1ycBwoXg8gxvbYjTtKQOPA": {
+      "key": "1ycBwoXg8gxvbYjTtKQOPA",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign4"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "m5BMgFXUS5bByWB2c2wAN": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "WfsMvFX5PGk98tUC67cLH": {
+      "key": "WfsMvFX5PGk98tUC67cLH",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign4"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "5Xp69W94fP8mJGNcA2wX1H": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "68f90HtVDUrB5JdCQYAIeo": {
+      "key": "68f90HtVDUrB5JdCQYAIeo",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign4"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "2fi0QNx0VFAXl1V53wTMlz": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "31Xr2Fy0V0RO87rfukkwks": {
+      "key": "31Xr2Fy0V0RO87rfukkwks",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign4"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "styleProperties": {
+        "3BI4MO9AqzmSOJhmtUAxjA": {
+          "resolutions": {
+            "ALL": {
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6FnhK5l3W511Gsr2CHF04n": {
+      "key": "6FnhK5l3W511Gsr2CHF04n",
+      "name": "Simple Menu Horizontal Design 1",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"6FnhK5l3W511Gsr2CHF04n\",\"objects\":{\"6FnhK5l3W511Gsr2CHF04n\":{\"key\":\"6FnhK5l3W511Gsr2CHF04n\",\"name\":\"Simple Menu Horizontal Design 1\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"6FnhK5l3W511Gsr2CHF04n\\\",\\\"objects\\\":{\\\"6FnhK5l3W511Gsr2CHF04n\\\":{\\\"key\\\":\\\"6FnhK5l3W511Gsr2CHF04n\\\",\\\"name\\\":\\\"Simple Menu Horizontal Design 1\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2Km39O4VNJEfpHdLQrBLiH\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":true,\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":true,\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":true,\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"wdhaSX6B9NkNXggqyfOYq\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"56u2LEJrX2L1nsFzY2mOWj\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2LM9RnEw3T2g0rdJ8ecEfh\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3vwJTluCVD51z8flPlkjcN\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"2rWkL0xSxQloUHeSizhHKj\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"2jJ1UrMVriYKDJyh00nqjd\\\":true,\\\"3SuLM9x7IGd0xKt3tzn1Gk\\\":true,\\\"1TxXETVFwSPrSybSgmaik\\\":true,\\\"2w7wuVasm8pcYritWWLZWl\\\":true},\\\"displayOrder\\\":3},\\\"2jJ1UrMVriYKDJyh00nqjd\\\":{\\\"key\\\":\\\"2jJ1UrMVriYKDJyh00nqjd\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"3SuLM9x7IGd0xKt3tzn1Gk\\\":{\\\"key\\\":\\\"3SuLM9x7IGd0xKt3tzn1Gk\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"1TxXETVFwSPrSybSgmaik\\\":{\\\"key\\\":\\\"1TxXETVFwSPrSybSgmaik\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"2w7wuVasm8pcYritWWLZWl\\\":{\\\"key\\\":\\\"2w7wuVasm8pcYritWWLZWl\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_simpleMenuHorizontalDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"2rWkL0xSxQloUHeSizhHKj\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"paddingTop\":{\"value\":\"5px\"},\"paddingLeft\":{\"value\":\"5px\"},\"paddingRight\":{\"value\":\"5px\"},\"paddingBottom\":{\"value\":\"5px\"},\"cursor\":{\"value\":\"grab\"}}}}},\"override\":false,\"children\":{\"2jJ1UrMVriYKDJyh00nqjd\":true,\"3SuLM9x7IGd0xKt3tzn1Gk\":true,\"1TxXETVFwSPrSybSgmaik\":true,\"2w7wuVasm8pcYritWWLZWl\":true},\"displayOrder\":3},\"2jJ1UrMVriYKDJyh00nqjd\":{\"key\":\"2jJ1UrMVriYKDJyh00nqjd\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign3\"},\"designType\":{\"value\":\"_sides\"}},\"styleProperties\":{\"37Q4c81IQihRnY5CAlc2Ut\":{\"resolutions\":{\"ALL\":{\"height\":{\"value\":\"100%\"}}}}},\"override\":false,\"displayOrder\":4},\"3SuLM9x7IGd0xKt3tzn1Gk\":{\"key\":\"3SuLM9x7IGd0xKt3tzn1Gk\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign3\"},\"designType\":{\"value\":\"_sides\"}},\"styleProperties\":{\"2OYUBO8C4D97nF8rlqW1h2\":{\"resolutions\":{\"ALL\":{\"height\":{\"value\":\"100%\"}}}}},\"override\":false,\"displayOrder\":1},\"1TxXETVFwSPrSybSgmaik\":{\"key\":\"1TxXETVFwSPrSybSgmaik\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign3\"},\"designType\":{\"value\":\"_sides\"}},\"styleProperties\":{\"60yJHD8scOXma59Xn5j0n7\":{\"resolutions\":{\"ALL\":{\"height\":{\"value\":\"100%\"}}}}},\"override\":false,\"displayOrder\":2},\"2w7wuVasm8pcYritWWLZWl\":{\"key\":\"2w7wuVasm8pcYritWWLZWl\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_simpleMenuHorizontalDesign3\"},\"designType\":{\"value\":\"_sides\"}},\"styleProperties\":{\"FLfawBPrAWVHUJqhj7zwA\":{\"resolutions\":{\"ALL\":{\"height\":{\"value\":\"100%\"}}}}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2rWkL0xSxQloUHeSizhHKj": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "paddingTop": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "cursor": {
+                "value": "grab"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2jJ1UrMVriYKDJyh00nqjd": true,
+        "3SuLM9x7IGd0xKt3tzn1Gk": true,
+        "1TxXETVFwSPrSybSgmaik": true,
+        "2w7wuVasm8pcYritWWLZWl": true
+      },
+      "displayOrder": 3
+    },
+    "2jJ1UrMVriYKDJyh00nqjd": {
+      "key": "2jJ1UrMVriYKDJyh00nqjd",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign3"
+        },
+        "designType": {
+          "value": "_sides"
+        }
+      },
+      "styleProperties": {
+        "37Q4c81IQihRnY5CAlc2Ut": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "3SuLM9x7IGd0xKt3tzn1Gk": {
+      "key": "3SuLM9x7IGd0xKt3tzn1Gk",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign3"
+        },
+        "designType": {
+          "value": "_sides"
+        }
+      },
+      "styleProperties": {
+        "2OYUBO8C4D97nF8rlqW1h2": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1TxXETVFwSPrSybSgmaik": {
+      "key": "1TxXETVFwSPrSybSgmaik",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign3"
+        },
+        "designType": {
+          "value": "_sides"
+        }
+      },
+      "styleProperties": {
+        "60yJHD8scOXma59Xn5j0n7": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2w7wuVasm8pcYritWWLZWl": {
+      "key": "2w7wuVasm8pcYritWWLZWl",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_simpleMenuHorizontalDesign3"
+        },
+        "designType": {
+          "value": "_sides"
+        }
+      },
+      "styleProperties": {
+        "FLfawBPrAWVHUJqhj7zwA": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2mxkxQYDv03T6GzKFADAqc": {
+      "key": "2mxkxQYDv03T6GzKFADAqc",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "colored menu"
+        }
+      },
+      "styleProperties": {
+        "3noPhzI6d397bt3Ax51Gyg": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "letterSpacing": {
+                "value": "0.04em"
+              },
+              "textTransform": {
+                "value": "uppercase"
+              },
+              "opacity": {
+                "value": "70"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "21px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6hjIi9CyZRldQ1lm2S1NZj": {
+      "key": "6hjIi9CyZRldQ1lm2S1NZj",
+      "name": "Row 2",
+      "type": "Grid",
+      "styleProperties": {
+        "1OnvanJfbybTYDoVepMBgX": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "10px"
+              },
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7c5E5MoLET2P9roEdbARqa": true,
+        "2nMNA0S6UUCsh91z3ALXof": true,
+        "2HxhB4siHKGZRwRfsq403I": true
+      },
+      "displayOrder": 4
+    },
+    "7c5E5MoLET2P9roEdbARqa": {
+      "key": "7c5E5MoLET2P9roEdbARqa",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"7c5E5MoLET2P9roEdbARqa\",\"objects\":{\"7c5E5MoLET2P9roEdbARqa\":{\"key\":\"7c5E5MoLET2P9roEdbARqa\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"7c5E5MoLET2P9roEdbARqa\\\",\\\"objects\\\":{\\\"7c5E5MoLET2P9roEdbARqa\\\":{\\\"key\\\":\\\"7c5E5MoLET2P9roEdbARqa\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"7c5E5MoLET2P9roEdbARqa\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"7c5E5MoLET2P9roEdbARqa\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"7c5E5MoLET2P9roEdbARqa\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"101px\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"5d8rPLYIAdUDaFsVkmyGjf\\\\\\\":true,\\\\\\\"2xhMGSZKaW51G3wU8vU90n\\\\\\\":true,\\\\\\\"7CwcXnybxs0XL5vBhj0hIb\\\\\\\":true,\\\\\\\"T6uiP81WsI5rQqnG5OuXK\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"5d8rPLYIAdUDaFsVkmyGjf\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"5d8rPLYIAdUDaFsVkmyGjf\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"2xhMGSZKaW51G3wU8vU90n\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2xhMGSZKaW51G3wU8vU90n\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"7CwcXnybxs0XL5vBhj0hIb\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"7CwcXnybxs0XL5vBhj0hIb\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"T6uiP81WsI5rQqnG5OuXK\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"T6uiP81WsI5rQqnG5OuXK\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"3BQuDvlyy5wayf7jPQgYRk\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"5d8rPLYIAdUDaFsVkmyGjf\\\":true,\\\"2xhMGSZKaW51G3wU8vU90n\\\":true,\\\"7CwcXnybxs0XL5vBhj0hIb\\\":true,\\\"T6uiP81WsI5rQqnG5OuXK\\\":true},\\\"displayOrder\\\":2},\\\"5d8rPLYIAdUDaFsVkmyGjf\\\":{\\\"key\\\":\\\"5d8rPLYIAdUDaFsVkmyGjf\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"2xhMGSZKaW51G3wU8vU90n\\\":{\\\"key\\\":\\\"2xhMGSZKaW51G3wU8vU90n\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"7CwcXnybxs0XL5vBhj0hIb\\\":{\\\"key\\\":\\\"7CwcXnybxs0XL5vBhj0hIb\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"T6uiP81WsI5rQqnG5OuXK\\\":{\\\"key\\\":\\\"T6uiP81WsI5rQqnG5OuXK\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"3BQuDvlyy5wayf7jPQgYRk\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"cursor\":{\"value\":\"grab\"}}}}},\"override\":false,\"children\":{\"5d8rPLYIAdUDaFsVkmyGjf\":true,\"2xhMGSZKaW51G3wU8vU90n\":true,\"7CwcXnybxs0XL5vBhj0hIb\":true,\"T6uiP81WsI5rQqnG5OuXK\":true},\"displayOrder\":2},\"5d8rPLYIAdUDaFsVkmyGjf\":{\"key\":\"5d8rPLYIAdUDaFsVkmyGjf\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_secondary\"}},\"styleProperties\":{\"1R7gNN8ulMSRZ7YPT3a0UT\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":4},\"2xhMGSZKaW51G3wU8vU90n\":{\"key\":\"2xhMGSZKaW51G3wU8vU90n\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_secondary\"}},\"override\":false,\"displayOrder\":1},\"7CwcXnybxs0XL5vBhj0hIb\":{\"key\":\"7CwcXnybxs0XL5vBhj0hIb\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_secondary\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"}},\"styleProperties\":{\"3cFLuZTmgl3aMeugB3IKtR\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":2},\"T6uiP81WsI5rQqnG5OuXK\":{\"key\":\"T6uiP81WsI5rQqnG5OuXK\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_secondary\"}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3BQuDvlyy5wayf7jPQgYRk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "cursor": {
+                "value": "grab"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5d8rPLYIAdUDaFsVkmyGjf": true,
+        "2xhMGSZKaW51G3wU8vU90n": true,
+        "7CwcXnybxs0XL5vBhj0hIb": true,
+        "T6uiP81WsI5rQqnG5OuXK": true
+      },
+      "displayOrder": 2
+    },
+    "2nMNA0S6UUCsh91z3ALXof": {
+      "key": "2nMNA0S6UUCsh91z3ALXof",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"2nMNA0S6UUCsh91z3ALXof\",\"objects\":{\"2nMNA0S6UUCsh91z3ALXof\":{\"key\":\"2nMNA0S6UUCsh91z3ALXof\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"2nMNA0S6UUCsh91z3ALXof\\\",\\\"objects\\\":{\\\"2nMNA0S6UUCsh91z3ALXof\\\":{\\\"key\\\":\\\"2nMNA0S6UUCsh91z3ALXof\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"2nMNA0S6UUCsh91z3ALXof\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"2nMNA0S6UUCsh91z3ALXof\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2nMNA0S6UUCsh91z3ALXof\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"101px\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"4IxAmCW908ZvFQdW9Jfufu\\\\\\\":true,\\\\\\\"19UucLphlVrAFJ2Ld4hmnr\\\\\\\":true,\\\\\\\"12Llwumu5wCj5FXkzB37FJ\\\\\\\":true,\\\\\\\"aSK0Xq3aEIPvXyySPIV49\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"4IxAmCW908ZvFQdW9Jfufu\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"4IxAmCW908ZvFQdW9Jfufu\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign1\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"19UucLphlVrAFJ2Ld4hmnr\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"19UucLphlVrAFJ2Ld4hmnr\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign1\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"12Llwumu5wCj5FXkzB37FJ\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"12Llwumu5wCj5FXkzB37FJ\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign1\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"aSK0Xq3aEIPvXyySPIV49\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"aSK0Xq3aEIPvXyySPIV49\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign1\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"6OKV1gp8l1VpUw8aY1tEbm\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"4IxAmCW908ZvFQdW9Jfufu\\\":true,\\\"19UucLphlVrAFJ2Ld4hmnr\\\":true,\\\"12Llwumu5wCj5FXkzB37FJ\\\":true,\\\"aSK0Xq3aEIPvXyySPIV49\\\":true},\\\"displayOrder\\\":1},\\\"4IxAmCW908ZvFQdW9Jfufu\\\":{\\\"key\\\":\\\"4IxAmCW908ZvFQdW9Jfufu\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"19UucLphlVrAFJ2Ld4hmnr\\\":{\\\"key\\\":\\\"19UucLphlVrAFJ2Ld4hmnr\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"12Llwumu5wCj5FXkzB37FJ\\\":{\\\"key\\\":\\\"12Llwumu5wCj5FXkzB37FJ\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"aSK0Xq3aEIPvXyySPIV49\\\":{\\\"key\\\":\\\"aSK0Xq3aEIPvXyySPIV49\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign1\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"6OKV1gp8l1VpUw8aY1tEbm\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"cursor\":{\"value\":\"grab\"}}}}},\"override\":false,\"children\":{\"4IxAmCW908ZvFQdW9Jfufu\":true,\"19UucLphlVrAFJ2Ld4hmnr\":true,\"12Llwumu5wCj5FXkzB37FJ\":true,\"aSK0Xq3aEIPvXyySPIV49\":true},\"displayOrder\":1},\"4IxAmCW908ZvFQdW9Jfufu\":{\"key\":\"4IxAmCW908ZvFQdW9Jfufu\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign1\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"override\":false,\"displayOrder\":4},\"19UucLphlVrAFJ2Ld4hmnr\":{\"key\":\"19UucLphlVrAFJ2Ld4hmnr\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign1\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"override\":false,\"displayOrder\":1},\"12Llwumu5wCj5FXkzB37FJ\":{\"key\":\"12Llwumu5wCj5FXkzB37FJ\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign1\"},\"colorScheme\":{\"value\":\"_quaternary\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"}},\"override\":false,\"displayOrder\":2},\"aSK0Xq3aEIPvXyySPIV49\":{\"key\":\"aSK0Xq3aEIPvXyySPIV49\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign1\"},\"colorScheme\":{\"value\":\"_quaternary\"}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6OKV1gp8l1VpUw8aY1tEbm": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "cursor": {
+                "value": "grab"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4IxAmCW908ZvFQdW9Jfufu": true,
+        "19UucLphlVrAFJ2Ld4hmnr": true,
+        "12Llwumu5wCj5FXkzB37FJ": true,
+        "aSK0Xq3aEIPvXyySPIV49": true
+      },
+      "displayOrder": 1
+    },
+    "2HxhB4siHKGZRwRfsq403I": {
+      "key": "2HxhB4siHKGZRwRfsq403I",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"2HxhB4siHKGZRwRfsq403I\",\"objects\":{\"2HxhB4siHKGZRwRfsq403I\":{\"key\":\"2HxhB4siHKGZRwRfsq403I\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"2HxhB4siHKGZRwRfsq403I\\\",\\\"objects\\\":{\\\"2HxhB4siHKGZRwRfsq403I\\\":{\\\"key\\\":\\\"2HxhB4siHKGZRwRfsq403I\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"2HxhB4siHKGZRwRfsq403I\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"2HxhB4siHKGZRwRfsq403I\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"2HxhB4siHKGZRwRfsq403I\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"101px\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"4feejZjdTymt5sKW3ytW44\\\\\\\":true,\\\\\\\"3CmxDvvBtQjH4jh5qEMQcH\\\\\\\":true,\\\\\\\"73YNNXvV9ao9qURbJxbDVQ\\\\\\\":true,\\\\\\\"5LXHpfIpS5pmtaJ30RLAXs\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"4feejZjdTymt5sKW3ytW44\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"4feejZjdTymt5sKW3ytW44\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"3CmxDvvBtQjH4jh5qEMQcH\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3CmxDvvBtQjH4jh5qEMQcH\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"73YNNXvV9ao9qURbJxbDVQ\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"73YNNXvV9ao9qURbJxbDVQ\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"5LXHpfIpS5pmtaJ30RLAXs\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"5LXHpfIpS5pmtaJ30RLAXs\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_colouredMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"4ahkLqyuTpLNPKAezAPu1U\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"alignItems\\\":{\\\"value\\\":\\\"space-around\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"4feejZjdTymt5sKW3ytW44\\\":true,\\\"3CmxDvvBtQjH4jh5qEMQcH\\\":true,\\\"73YNNXvV9ao9qURbJxbDVQ\\\":true,\\\"5LXHpfIpS5pmtaJ30RLAXs\\\":true},\\\"displayOrder\\\":2},\\\"4feejZjdTymt5sKW3ytW44\\\":{\\\"key\\\":\\\"4feejZjdTymt5sKW3ytW44\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"3CmxDvvBtQjH4jh5qEMQcH\\\":{\\\"key\\\":\\\"3CmxDvvBtQjH4jh5qEMQcH\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"73YNNXvV9ao9qURbJxbDVQ\\\":{\\\"key\\\":\\\"73YNNXvV9ao9qURbJxbDVQ\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"5LXHpfIpS5pmtaJ30RLAXs\\\":{\\\"key\\\":\\\"5LXHpfIpS5pmtaJ30RLAXs\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_colouredMenuDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"4ahkLqyuTpLNPKAezAPu1U\":{\"resolutions\":{\"ALL\":{\"alignItems\":{\"value\":\"flex-start\"},\"justifyContent\":{\"value\":\"space-around\"},\"cursor\":{\"value\":\"grab\"}}}}},\"override\":false,\"children\":{\"4feejZjdTymt5sKW3ytW44\":true,\"3CmxDvvBtQjH4jh5qEMQcH\":true,\"73YNNXvV9ao9qURbJxbDVQ\":true,\"5LXHpfIpS5pmtaJ30RLAXs\":true},\"displayOrder\":2},\"4feejZjdTymt5sKW3ytW44\":{\"key\":\"4feejZjdTymt5sKW3ytW44\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign2\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_quinary\"}},\"styleProperties\":{\"5db9wu3SNaRrOcV15uuuXA\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":4},\"3CmxDvvBtQjH4jh5qEMQcH\":{\"key\":\"3CmxDvvBtQjH4jh5qEMQcH\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign2\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_quinary\"}},\"styleProperties\":{\"7IN1wt8Say16DIWeb1hn1z\":{\"resolutions\":{\"ALL\":{}}}},\"override\":false,\"displayOrder\":1},\"73YNNXvV9ao9qURbJxbDVQ\":{\"key\":\"73YNNXvV9ao9qURbJxbDVQ\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign2\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_quinary\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"}},\"styleProperties\":{\"WGY9uuPcUm2pxqj0C8VG1\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":2},\"5LXHpfIpS5pmtaJ30RLAXs\":{\"key\":\"5LXHpfIpS5pmtaJ30RLAXs\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_colouredMenuDesign2\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_quinary\"}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4ahkLqyuTpLNPKAezAPu1U": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "cursor": {
+                "value": "grab"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4feejZjdTymt5sKW3ytW44": true,
+        "3CmxDvvBtQjH4jh5qEMQcH": true,
+        "73YNNXvV9ao9qURbJxbDVQ": true,
+        "5LXHpfIpS5pmtaJ30RLAXs": true
+      },
+      "displayOrder": 2
+    },
+    "5d8rPLYIAdUDaFsVkmyGjf": {
+      "key": "5d8rPLYIAdUDaFsVkmyGjf",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "1R7gNN8ulMSRZ7YPT3a0UT": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "2xhMGSZKaW51G3wU8vU90n": {
+      "key": "2xhMGSZKaW51G3wU8vU90n",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7CwcXnybxs0XL5vBhj0hIb": {
+      "key": "7CwcXnybxs0XL5vBhj0hIb",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        }
+      },
+      "styleProperties": {
+        "3cFLuZTmgl3aMeugB3IKtR": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "T6uiP81WsI5rQqnG5OuXK": {
+      "key": "T6uiP81WsI5rQqnG5OuXK",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4IxAmCW908ZvFQdW9Jfufu": {
+      "key": "4IxAmCW908ZvFQdW9Jfufu",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign1"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "19UucLphlVrAFJ2Ld4hmnr": {
+      "key": "19UucLphlVrAFJ2Ld4hmnr",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign1"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "12Llwumu5wCj5FXkzB37FJ": {
+      "key": "12Llwumu5wCj5FXkzB37FJ",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign1"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "aSK0Xq3aEIPvXyySPIV49": {
+      "key": "aSK0Xq3aEIPvXyySPIV49",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign1"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4feejZjdTymt5sKW3ytW44": {
+      "key": "4feejZjdTymt5sKW3ytW44",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign2"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        }
+      },
+      "styleProperties": {
+        "5db9wu3SNaRrOcV15uuuXA": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "3CmxDvvBtQjH4jh5qEMQcH": {
+      "key": "3CmxDvvBtQjH4jh5qEMQcH",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign2"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        }
+      },
+      "styleProperties": {
+        "7IN1wt8Say16DIWeb1hn1z": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "73YNNXvV9ao9qURbJxbDVQ": {
+      "key": "73YNNXvV9ao9qURbJxbDVQ",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign2"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        }
+      },
+      "styleProperties": {
+        "WGY9uuPcUm2pxqj0C8VG1": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5LXHpfIpS5pmtaJ30RLAXs": {
+      "key": "5LXHpfIpS5pmtaJ30RLAXs",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_colouredMenuDesign2"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7JY8LO09Q0AT7jkKe9Gw2A": {
+      "key": "7JY8LO09Q0AT7jkKe9Gw2A",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "FIlled menu"
+        }
+      },
+      "styleProperties": {
+        "3noPhzI6d397bt3Ax51Gyg": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "letterSpacing": {
+                "value": "0.04em"
+              },
+              "textTransform": {
+                "value": "uppercase"
+              },
+              "opacity": {
+                "value": "70"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "21px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "1owPWkUtDfGrwBkFLq9WLy": {
+      "key": "1owPWkUtDfGrwBkFLq9WLy",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"1owPWkUtDfGrwBkFLq9WLy\",\"objects\":{\"1owPWkUtDfGrwBkFLq9WLy\":{\"key\":\"1owPWkUtDfGrwBkFLq9WLy\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"layout\":{\"value\":\"ROWLAYOUT\"},\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"1owPWkUtDfGrwBkFLq9WLy\\\",\\\"objects\\\":{\\\"1owPWkUtDfGrwBkFLq9WLy\\\":{\\\"key\\\":\\\"1owPWkUtDfGrwBkFLq9WLy\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"},\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"1owPWkUtDfGrwBkFLq9WLy\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"1owPWkUtDfGrwBkFLq9WLy\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"1owPWkUtDfGrwBkFLq9WLy\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"layout\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"ROWLAYOUT\\\\\\\"}},\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"backgroundColor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"#52BD94\\\\\\\"},\\\\\\\"gap\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"15px\\\\\\\"},\\\\\\\"paddingLeft\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"5px\\\\\\\"},\\\\\\\"paddingTop\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"10px\\\\\\\"},\\\\\\\"paddingBottom\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"10px\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"63OUm4IskLIJ7FiaGWInn4\\\\\\\":true,\\\\\\\"3vmTDLEDJvQIRu945OCDOo\\\\\\\":true,\\\\\\\"6DJYxUVtqe5X0nZEhdQgEC\\\\\\\":true,\\\\\\\"6zqbO6hvcsXEJrENWKQE8n\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"63OUm4IskLIJ7FiaGWInn4\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"63OUm4IskLIJ7FiaGWInn4\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign1\\\\\\\"}},\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"KBKNkhDAjai413oaaY57E\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"fit-content\\\\\\\"},\\\\\\\"whiteSpace\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"nowrap\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":4},\\\\\\\"3vmTDLEDJvQIRu945OCDOo\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3vmTDLEDJvQIRu945OCDOo\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign1\\\\\\\"}},\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"6MAN1Tk4vh64arHqyg5pPM\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"fit-content\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"6DJYxUVtqe5X0nZEhdQgEC\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"6DJYxUVtqe5X0nZEhdQgEC\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign1\\\\\\\"}},\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"2N0taHC2n8ElJODSflQVqu\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"fit-content\\\\\\\"},\\\\\\\"whiteSpace\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"nowrap\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"6zqbO6hvcsXEJrENWKQE8n\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"6zqbO6hvcsXEJrENWKQE8n\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign1\\\\\\\"}},\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"2dGFQ2FBH1IoIpoLK21VdW\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"fit-content\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"}},\\\"styleProperties\\\":{\\\"1MRcdwDBGyHngOlOZn9WIQ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"backgroundColor\\\":{\\\"value\\\":\\\"#52BD94\\\"},\\\"paddingLeft\\\":{\\\"value\\\":\\\"5px\\\"},\\\"paddingTop\\\":{\\\"value\\\":\\\"10px\\\"},\\\"paddingBottom\\\":{\\\"value\\\":\\\"10px\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"63OUm4IskLIJ7FiaGWInn4\\\":true,\\\"3vmTDLEDJvQIRu945OCDOo\\\":true,\\\"6DJYxUVtqe5X0nZEhdQgEC\\\":true,\\\"6zqbO6hvcsXEJrENWKQE8n\\\":true},\\\"displayOrder\\\":1},\\\"63OUm4IskLIJ7FiaGWInn4\\\":{\\\"key\\\":\\\"63OUm4IskLIJ7FiaGWInn4\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign1\\\"}},\\\"styleProperties\\\":{\\\"KBKNkhDAjai413oaaY57E\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"},\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"3vmTDLEDJvQIRu945OCDOo\\\":{\\\"key\\\":\\\"3vmTDLEDJvQIRu945OCDOo\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign1\\\"}},\\\"styleProperties\\\":{\\\"6MAN1Tk4vh64arHqyg5pPM\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"6DJYxUVtqe5X0nZEhdQgEC\\\":{\\\"key\\\":\\\"6DJYxUVtqe5X0nZEhdQgEC\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign1\\\"}},\\\"styleProperties\\\":{\\\"2N0taHC2n8ElJODSflQVqu\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"},\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"6zqbO6hvcsXEJrENWKQE8n\\\":{\\\"key\\\":\\\"6zqbO6hvcsXEJrENWKQE8n\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign1\\\"}},\\\"styleProperties\\\":{\\\"2dGFQ2FBH1IoIpoLK21VdW\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"}},\"styleProperties\":{\"1MRcdwDBGyHngOlOZn9WIQ\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"#52BD94\"},\"paddingLeft\":{\"value\":\"5px\"},\"paddingTop\":{\"value\":\"10px\"},\"paddingBottom\":{\"value\":\"10px\"},\"justifyContent\":{\"value\":\"space-around\"},\"cursor\":{\"value\":\"grab\"},\"display\":{\"value\":\"flex\"},\"alignItems\":{\"value\":\"flex-start\"}}}}},\"override\":false,\"children\":{\"63OUm4IskLIJ7FiaGWInn4\":true,\"3vmTDLEDJvQIRu945OCDOo\":true,\"6DJYxUVtqe5X0nZEhdQgEC\":true,\"6zqbO6hvcsXEJrENWKQE8n\":true},\"displayOrder\":1},\"63OUm4IskLIJ7FiaGWInn4\":{\"key\":\"63OUm4IskLIJ7FiaGWInn4\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign1\"}},\"styleProperties\":{\"5orYkcyjQuPq4pmDymTHjf\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"color\":{\"value\":\"white\"},\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":4},\"3vmTDLEDJvQIRu945OCDOo\":{\"key\":\"3vmTDLEDJvQIRu945OCDOo\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign1\"}},\"styleProperties\":{\"39qQB7vAS6bkeW3YAcXKVR\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"color\":{\"value\":\"white\"},\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":1},\"6DJYxUVtqe5X0nZEhdQgEC\":{\"key\":\"6DJYxUVtqe5X0nZEhdQgEC\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign1\"}},\"styleProperties\":{\"2N0taHC2n8ElJODSflQVqu\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"color\":{\"value\":\"white\"},\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":2},\"6zqbO6hvcsXEJrENWKQE8n\":{\"key\":\"6zqbO6hvcsXEJrENWKQE8n\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign1\"}},\"styleProperties\":{\"3VAtZilaJYCBFwcJiqe3fy\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"color\":{\"value\":\"white\"},\"textDecoration:hover\":{\"value\":\"underline\"}}}}},\"override\":false,\"displayOrder\":3}}}"
+        }
+      },
+      "styleProperties": {
+        "1MRcdwDBGyHngOlOZn9WIQ": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#52BD94"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "cursor": {
+                "value": "grab"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "63OUm4IskLIJ7FiaGWInn4": true,
+        "3vmTDLEDJvQIRu945OCDOo": true,
+        "6DJYxUVtqe5X0nZEhdQgEC": true,
+        "6zqbO6hvcsXEJrENWKQE8n": true
+      },
+      "displayOrder": 1
+    },
+    "63OUm4IskLIJ7FiaGWInn4": {
+      "key": "63OUm4IskLIJ7FiaGWInn4",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "5orYkcyjQuPq4pmDymTHjf": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "3vmTDLEDJvQIRu945OCDOo": {
+      "key": "3vmTDLEDJvQIRu945OCDOo",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "39qQB7vAS6bkeW3YAcXKVR": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6DJYxUVtqe5X0nZEhdQgEC": {
+      "key": "6DJYxUVtqe5X0nZEhdQgEC",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "2N0taHC2n8ElJODSflQVqu": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6zqbO6hvcsXEJrENWKQE8n": {
+      "key": "6zqbO6hvcsXEJrENWKQE8n",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "3VAtZilaJYCBFwcJiqe3fy": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textDecoration:hover": {
+                "value": "underline"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "72qMG6k4U2Op1OKuU63AcD": {
+      "key": "72qMG6k4U2Op1OKuU63AcD",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "px50uO6F0enIxTBGc1yN4": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1owPWkUtDfGrwBkFLq9WLy": true,
+        "286ahH16TfWdifvTv6aD6g": true,
+        "75eGhmcOJRA6hMerr1Bk8G": true,
+        "7wNMvxJaHqj6sOMRI4xhYQ": true,
+        "3S2DwX5hwjMqcpwRTORsaQ": true,
+        "6B7TaaoDFNnT9b2PCq34Fj": true
+      },
+      "displayOrder": 6
+    },
+    "286ahH16TfWdifvTv6aD6g": {
+      "key": "286ahH16TfWdifvTv6aD6g",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"286ahH16TfWdifvTv6aD6g\",\"objects\":{\"286ahH16TfWdifvTv6aD6g\":{\"key\":\"286ahH16TfWdifvTv6aD6g\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"286ahH16TfWdifvTv6aD6g\\\",\\\"objects\\\":{\\\"286ahH16TfWdifvTv6aD6g\\\":{\\\"key\\\":\\\"286ahH16TfWdifvTv6aD6g\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"286ahH16TfWdifvTv6aD6g\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"286ahH16TfWdifvTv6aD6g\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"286ahH16TfWdifvTv6aD6g\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"101px\\\\\\\"},\\\\\\\"backgroundColor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"#F5F5F5\\\\\\\"},\\\\\\\"gap\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"20px\\\\\\\"},\\\\\\\"paddingLeft\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"10px\\\\\\\"},\\\\\\\"paddingTop\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"10px\\\\\\\"},\\\\\\\"paddingBottom\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"10px\\\\\\\"},\\\\\\\"borderStyle\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"solid\\\\\\\"},\\\\\\\"borderColor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"#FFC728\\\\\\\"},\\\\\\\"borderWidth\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"1px\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"66CP38zmr05kXRrYVfZShO\\\\\\\":true,\\\\\\\"4mELEXmqVfuixBZCUGf2p4\\\\\\\":true,\\\\\\\"1oygQSK7wJadYAjvzqYzGJ\\\\\\\":true,\\\\\\\"4ku135qiAuE4UYIXEVgpPH\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"66CP38zmr05kXRrYVfZShO\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"66CP38zmr05kXRrYVfZShO\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"4mELEXmqVfuixBZCUGf2p4\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"4mELEXmqVfuixBZCUGf2p4\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"1oygQSK7wJadYAjvzqYzGJ\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"1oygQSK7wJadYAjvzqYzGJ\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"4ku135qiAuE4UYIXEVgpPH\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"4ku135qiAuE4UYIXEVgpPH\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign2\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"1MRcdwDBGyHngOlOZn9WIQ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"backgroundColor\\\":{\\\"value\\\":\\\"#F5F5F5\\\"},\\\"paddingLeft\\\":{\\\"value\\\":\\\"10px\\\"},\\\"paddingTop\\\":{\\\"value\\\":\\\"10px\\\"},\\\"paddingBottom\\\":{\\\"value\\\":\\\"10px\\\"},\\\"borderStyle\\\":{\\\"value\\\":\\\"solid\\\"},\\\"borderColor\\\":{\\\"value\\\":\\\"#FFC728\\\"},\\\"borderWidth\\\":{\\\"value\\\":\\\"1px\\\"},\\\"justifyContent\\\":{\\\"value\\\":\\\"space-around\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"66CP38zmr05kXRrYVfZShO\\\":true,\\\"4mELEXmqVfuixBZCUGf2p4\\\":true,\\\"1oygQSK7wJadYAjvzqYzGJ\\\":true,\\\"4ku135qiAuE4UYIXEVgpPH\\\":true},\\\"displayOrder\\\":2},\\\"66CP38zmr05kXRrYVfZShO\\\":{\\\"key\\\":\\\"66CP38zmr05kXRrYVfZShO\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign2\\\"}},\\\"styleProperties\\\":{\\\"qrgLDSW56tEy3BU1xe7Kb\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":3},\\\"4mELEXmqVfuixBZCUGf2p4\\\":{\\\"key\\\":\\\"4mELEXmqVfuixBZCUGf2p4\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"1oygQSK7wJadYAjvzqYzGJ\\\":{\\\"key\\\":\\\"1oygQSK7wJadYAjvzqYzGJ\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign2\\\"}},\\\"styleProperties\\\":{\\\"6ShMiVbbzJiWIR76rZYbzf\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"4ku135qiAuE4UYIXEVgpPH\\\":{\\\"key\\\":\\\"4ku135qiAuE4UYIXEVgpPH\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign2\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"1MRcdwDBGyHngOlOZn9WIQ\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"#F5F5F5\"},\"paddingLeft\":{\"value\":\"10px\"},\"paddingTop\":{\"value\":\"15px\"},\"paddingBottom\":{\"value\":\"15px\"},\"borderStyle\":{\"value\":\"solid\"},\"borderColor\":{\"value\":\"#FFC728\"},\"borderWidth\":{\"value\":\"1px\"},\"justifyContent\":{\"value\":\"space-around\"},\"cursor\":{\"value\":\"grab\"},\"display\":{\"value\":\"flexflex-start\"},\"alignItems\":{\"value\":\"flex-start\"},\"paddingRight\":{\"value\":\"10px\"},\"borderTopLeftRadius\":{\"value\":\"2px\"},\"borderTopRightRadius\":{\"value\":\"2px\"},\"borderBottomLeftRadius\":{\"value\":\"2px\"},\"borderBottomRightRadius\":{\"value\":\"2px\"}}}}},\"override\":false,\"children\":{\"66CP38zmr05kXRrYVfZShO\":true,\"4mELEXmqVfuixBZCUGf2p4\":true,\"1oygQSK7wJadYAjvzqYzGJ\":true,\"4ku135qiAuE4UYIXEVgpPH\":true},\"displayOrder\":2},\"66CP38zmr05kXRrYVfZShO\":{\"key\":\"66CP38zmr05kXRrYVfZShO\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"styleProperties\":{\"qrgLDSW56tEy3BU1xe7Kb\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":3},\"4mELEXmqVfuixBZCUGf2p4\":{\"key\":\"4mELEXmqVfuixBZCUGf2p4\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"override\":false,\"displayOrder\":1},\"1oygQSK7wJadYAjvzqYzGJ\":{\"key\":\"1oygQSK7wJadYAjvzqYzGJ\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"styleProperties\":{\"6ShMiVbbzJiWIR76rZYbzf\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":2},\"4ku135qiAuE4UYIXEVgpPH\":{\"key\":\"4ku135qiAuE4UYIXEVgpPH\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign2\"},\"designType\":{\"value\":\"_text\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1MRcdwDBGyHngOlOZn9WIQ": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#F5F5F5"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "borderStyle": {
+                "value": "solid"
+              },
+              "borderColor": {
+                "value": "#FFC728"
+              },
+              "borderWidth": {
+                "value": "1px"
+              },
+              "justifyContent": {
+                "value": "space-around"
+              },
+              "cursor": {
+                "value": "grab"
+              },
+              "display": {
+                "value": "flexflex-start"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "borderTopLeftRadius": {
+                "value": "2px"
+              },
+              "borderTopRightRadius": {
+                "value": "2px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2px"
+              },
+              "borderBottomRightRadius": {
+                "value": "2px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "66CP38zmr05kXRrYVfZShO": true,
+        "4mELEXmqVfuixBZCUGf2p4": true,
+        "1oygQSK7wJadYAjvzqYzGJ": true,
+        "4ku135qiAuE4UYIXEVgpPH": true
+      },
+      "displayOrder": 2
+    },
+    "66CP38zmr05kXRrYVfZShO": {
+      "key": "66CP38zmr05kXRrYVfZShO",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "qrgLDSW56tEy3BU1xe7Kb": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4mELEXmqVfuixBZCUGf2p4": {
+      "key": "4mELEXmqVfuixBZCUGf2p4",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1oygQSK7wJadYAjvzqYzGJ": {
+      "key": "1oygQSK7wJadYAjvzqYzGJ",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "6ShMiVbbzJiWIR76rZYbzf": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4ku135qiAuE4UYIXEVgpPH": {
+      "key": "4ku135qiAuE4UYIXEVgpPH",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "75eGhmcOJRA6hMerr1Bk8G": {
+      "key": "75eGhmcOJRA6hMerr1Bk8G",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"75eGhmcOJRA6hMerr1Bk8G\",\"objects\":{\"75eGhmcOJRA6hMerr1Bk8G\":{\"key\":\"75eGhmcOJRA6hMerr1Bk8G\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"75eGhmcOJRA6hMerr1Bk8G\\\",\\\"objects\\\":{\\\"75eGhmcOJRA6hMerr1Bk8G\\\":{\\\"key\\\":\\\"75eGhmcOJRA6hMerr1Bk8G\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"75eGhmcOJRA6hMerr1Bk8G\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"75eGhmcOJRA6hMerr1Bk8G\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"75eGhmcOJRA6hMerr1Bk8G\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"101px\\\\\\\"},\\\\\\\"gap\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"0\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"5dsaEmgqpY1TcF3PMS1UzV\\\\\\\":true,\\\\\\\"580wj88PuAPY0DNVXfDJBb\\\\\\\":true,\\\\\\\"26cX3kbTfzcARxzQzyjPF3\\\\\\\":true,\\\\\\\"3WhoSuRCJjavJgFJbyUrVZ\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"5dsaEmgqpY1TcF3PMS1UzV\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"5dsaEmgqpY1TcF3PMS1UzV\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"580wj88PuAPY0DNVXfDJBb\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"580wj88PuAPY0DNVXfDJBb\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"26cX3kbTfzcARxzQzyjPF3\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"26cX3kbTfzcARxzQzyjPF3\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"3WhoSuRCJjavJgFJbyUrVZ\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3WhoSuRCJjavJgFJbyUrVZ\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign3\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"1MRcdwDBGyHngOlOZn9WIQ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"gap\\\":{\\\"value\\\":\\\"0\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"5dsaEmgqpY1TcF3PMS1UzV\\\":true,\\\"580wj88PuAPY0DNVXfDJBb\\\":true,\\\"26cX3kbTfzcARxzQzyjPF3\\\":true,\\\"3WhoSuRCJjavJgFJbyUrVZ\\\":true},\\\"displayOrder\\\":3},\\\"5dsaEmgqpY1TcF3PMS1UzV\\\":{\\\"key\\\":\\\"5dsaEmgqpY1TcF3PMS1UzV\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign3\\\"}},\\\"styleProperties\\\":{\\\"EU8Wcd3nsrdVZHzLjiMHp\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":3},\\\"580wj88PuAPY0DNVXfDJBb\\\":{\\\"key\\\":\\\"580wj88PuAPY0DNVXfDJBb\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"26cX3kbTfzcARxzQzyjPF3\\\":{\\\"key\\\":\\\"26cX3kbTfzcARxzQzyjPF3\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign3\\\"}},\\\"styleProperties\\\":{\\\"4acO7AJRanJ14G1DaYZ5X1\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"3WhoSuRCJjavJgFJbyUrVZ\\\":{\\\"key\\\":\\\"3WhoSuRCJjavJgFJbyUrVZ\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign3\\\"}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"7uf4ZTPtdLWQZ09EboxcFZ\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"rgba(82, 189, 148, 0.2)\"},\"cursor\":{\"value\":\"grab\"},\"display\":{\"value\":\"flex\"},\"gap\":{\"value\":\"2px\"},\"paddingTop\":{\"value\":\"15px\"},\"paddingBottom\":{\"value\":\"15px\"},\"paddingLeft\":{\"value\":\"5px\"},\"paddingRight\":{\"value\":\"5px\"},\"justifyContent\":{\"value\":\"center\"}}}}},\"override\":false,\"children\":{\"5dsaEmgqpY1TcF3PMS1UzV\":true,\"580wj88PuAPY0DNVXfDJBb\":true,\"26cX3kbTfzcARxzQzyjPF3\":true,\"3WhoSuRCJjavJgFJbyUrVZ\":true},\"displayOrder\":4},\"5dsaEmgqpY1TcF3PMS1UzV\":{\"key\":\"5dsaEmgqpY1TcF3PMS1UzV\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"}},\"styleProperties\":{\"EU8Wcd3nsrdVZHzLjiMHp\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":3},\"580wj88PuAPY0DNVXfDJBb\":{\"key\":\"580wj88PuAPY0DNVXfDJBb\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"}},\"override\":false,\"displayOrder\":1},\"26cX3kbTfzcARxzQzyjPF3\":{\"key\":\"26cX3kbTfzcARxzQzyjPF3\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"}},\"styleProperties\":{\"4acO7AJRanJ14G1DaYZ5X1\":{\"resolutions\":{\"ALL\":{\"whiteSpace\":{\"value\":\"nowrap\"}}}}},\"override\":false,\"displayOrder\":2},\"3WhoSuRCJjavJgFJbyUrVZ\":{\"key\":\"3WhoSuRCJjavJgFJbyUrVZ\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign3\"},\"designType\":{\"value\":\"_outlined\"}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7uf4ZTPtdLWQZ09EboxcFZ": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "rgba(82, 189, 148, 0.2)"
+              },
+              "cursor": {
+                "value": "grab"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "gap": {
+                "value": "2px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5dsaEmgqpY1TcF3PMS1UzV": true,
+        "580wj88PuAPY0DNVXfDJBb": true,
+        "26cX3kbTfzcARxzQzyjPF3": true,
+        "3WhoSuRCJjavJgFJbyUrVZ": true
+      },
+      "displayOrder": 4
+    },
+    "5dsaEmgqpY1TcF3PMS1UzV": {
+      "key": "5dsaEmgqpY1TcF3PMS1UzV",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "EU8Wcd3nsrdVZHzLjiMHp": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "580wj88PuAPY0DNVXfDJBb": {
+      "key": "580wj88PuAPY0DNVXfDJBb",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "26cX3kbTfzcARxzQzyjPF3": {
+      "key": "26cX3kbTfzcARxzQzyjPF3",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "4acO7AJRanJ14G1DaYZ5X1": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3WhoSuRCJjavJgFJbyUrVZ": {
+      "key": "3WhoSuRCJjavJgFJbyUrVZ",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign3"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7wNMvxJaHqj6sOMRI4xhYQ": {
+      "key": "7wNMvxJaHqj6sOMRI4xhYQ",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"7wNMvxJaHqj6sOMRI4xhYQ\",\"objects\":{\"7wNMvxJaHqj6sOMRI4xhYQ\":{\"key\":\"7wNMvxJaHqj6sOMRI4xhYQ\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"layout\":{\"value\":\"ROWLAYOUT\"},\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"7wNMvxJaHqj6sOMRI4xhYQ\\\",\\\"objects\\\":{\\\"7wNMvxJaHqj6sOMRI4xhYQ\\\":{\\\"key\\\":\\\"7wNMvxJaHqj6sOMRI4xhYQ\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"1MRcdwDBGyHngOlOZn9WIQ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"1RSKsLPyDajCFuPp0wYL6y\\\":true,\\\"5E7VwYE6kcMGtZ2MiJk4C2\\\":true,\\\"6TUwkcsSUwc1CnCJtKelMT\\\":true,\\\"4UHpuV8CgiVFrnLDtF8IpV\\\":true},\\\"displayOrder\\\":4},\\\"1RSKsLPyDajCFuPp0wYL6y\\\":{\\\"key\\\":\\\"1RSKsLPyDajCFuPp0wYL6y\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign4\\\"}},\\\"styleProperties\\\":{\\\"556p3SfVNeMZzDAxkf8SnP\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":4},\\\"5E7VwYE6kcMGtZ2MiJk4C2\\\":{\\\"key\\\":\\\"5E7VwYE6kcMGtZ2MiJk4C2\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign4\\\"}},\\\"styleProperties\\\":{\\\"4GFQpzaBWTjGAwcjZFHTS\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"65px\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"6TUwkcsSUwc1CnCJtKelMT\\\":{\\\"key\\\":\\\"6TUwkcsSUwc1CnCJtKelMT\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign4\\\"}},\\\"styleProperties\\\":{\\\"1JLD71fiheQCIATbf0y2PR\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"},\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"4UHpuV8CgiVFrnLDtF8IpV\\\":{\\\"key\\\":\\\"4UHpuV8CgiVFrnLDtF8IpV\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign4\\\"}},\\\"styleProperties\\\":{\\\"7xIBNQ4JC8wgO7o4jfZOlJ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"}},\"styleProperties\":{\"1MRcdwDBGyHngOlOZn9WIQ\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"cursor\":{\"value\":\"grab\"},\"display\":{\"value\":\"flex\"},\"alignItems\":{\"value\":\"flex-start\"}}}}},\"override\":false,\"children\":{\"1RSKsLPyDajCFuPp0wYL6y\":true,\"5E7VwYE6kcMGtZ2MiJk4C2\":true,\"6TUwkcsSUwc1CnCJtKelMT\":true,\"4UHpuV8CgiVFrnLDtF8IpV\":true},\"displayOrder\":5},\"1RSKsLPyDajCFuPp0wYL6y\":{\"key\":\"1RSKsLPyDajCFuPp0wYL6y\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign4\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"styleProperties\":{\"69sUsBsTuJybpXPB9mNAc4\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"borderColor\":{\"value\":\"#333\"},\"color\":{\"value\":\"#333\"},\"borderColor:hover\":{\"value\":\"transparent\"}}}}},\"override\":false,\"displayOrder\":4},\"5E7VwYE6kcMGtZ2MiJk4C2\":{\"key\":\"5E7VwYE6kcMGtZ2MiJk4C2\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign4\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"styleProperties\":{\"6XhuFv0UyG70gLIiay4FRF\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"borderColor\":{\"value\":\"#333\"},\"color\":{\"value\":\"#333\"},\"borderColor:hover\":{\"value\":\"transparent\"}}}}},\"override\":false,\"displayOrder\":1},\"6TUwkcsSUwc1CnCJtKelMT\":{\"key\":\"6TUwkcsSUwc1CnCJtKelMT\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign4\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"styleProperties\":{\"1JLD71fiheQCIATbf0y2PR\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"borderColor\":{\"value\":\"#333\"},\"color\":{\"value\":\"#333\"},\"borderColor:hover\":{\"value\":\"transparent\"}}}}},\"override\":false,\"displayOrder\":2},\"4UHpuV8CgiVFrnLDtF8IpV\":{\"key\":\"4UHpuV8CgiVFrnLDtF8IpV\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign4\"},\"designType\":{\"value\":\"_outlined\"},\"colorScheme\":{\"value\":\"_tertiary\"}},\"styleProperties\":{\"78FHGD6AlYyYtEeq5YTPzI\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"whiteSpace\":{\"value\":\"nowrap\"},\"borderColor\":{\"value\":\"#333\"},\"color\":{\"value\":\"#333\"},\"borderColor:hover\":{\"value\":\"transparent\"}}}}},\"override\":false,\"displayOrder\":3}}}"
+        }
+      },
+      "styleProperties": {
+        "1MRcdwDBGyHngOlOZn9WIQ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "cursor": {
+                "value": "grab"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1RSKsLPyDajCFuPp0wYL6y": true,
+        "5E7VwYE6kcMGtZ2MiJk4C2": true,
+        "6TUwkcsSUwc1CnCJtKelMT": true,
+        "4UHpuV8CgiVFrnLDtF8IpV": true
+      },
+      "displayOrder": 5
+    },
+    "1RSKsLPyDajCFuPp0wYL6y": {
+      "key": "1RSKsLPyDajCFuPp0wYL6y",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign4"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "69sUsBsTuJybpXPB9mNAc4": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "borderColor": {
+                "value": "#333"
+              },
+              "color": {
+                "value": "#333"
+              },
+              "borderColor:hover": {
+                "value": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "5E7VwYE6kcMGtZ2MiJk4C2": {
+      "key": "5E7VwYE6kcMGtZ2MiJk4C2",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign4"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "6XhuFv0UyG70gLIiay4FRF": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "borderColor": {
+                "value": "#333"
+              },
+              "color": {
+                "value": "#333"
+              },
+              "borderColor:hover": {
+                "value": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6TUwkcsSUwc1CnCJtKelMT": {
+      "key": "6TUwkcsSUwc1CnCJtKelMT",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign4"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "1JLD71fiheQCIATbf0y2PR": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "borderColor": {
+                "value": "#333"
+              },
+              "color": {
+                "value": "#333"
+              },
+              "borderColor:hover": {
+                "value": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4UHpuV8CgiVFrnLDtF8IpV": {
+      "key": "4UHpuV8CgiVFrnLDtF8IpV",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign4"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "78FHGD6AlYyYtEeq5YTPzI": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "borderColor": {
+                "value": "#333"
+              },
+              "color": {
+                "value": "#333"
+              },
+              "borderColor:hover": {
+                "value": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3S2DwX5hwjMqcpwRTORsaQ": {
+      "key": "3S2DwX5hwjMqcpwRTORsaQ",
+      "name": "Simple Menu Design 4",
+      "type": "Grid",
+      "properties": {
+        "dragData": {
+          "value": "TEMPLATE_DRAG_{\"mainKey\":\"3S2DwX5hwjMqcpwRTORsaQ\",\"objects\":{\"3S2DwX5hwjMqcpwRTORsaQ\":{\"key\":\"3S2DwX5hwjMqcpwRTORsaQ\",\"name\":\"Simple Menu Design 4\",\"type\":\"Grid\",\"properties\":{\"dragData\":{\"value\":\"TEMPLATE_DRAG_{\\\"mainKey\\\":\\\"3S2DwX5hwjMqcpwRTORsaQ\\\",\\\"objects\\\":{\\\"3S2DwX5hwjMqcpwRTORsaQ\\\":{\\\"key\\\":\\\"3S2DwX5hwjMqcpwRTORsaQ\\\",\\\"name\\\":\\\"Simple Menu Design 4\\\",\\\"type\\\":\\\"Grid\\\",\\\"properties\\\":{\\\"dragData\\\":{\\\"value\\\":\\\"TEMPLATE_DRAG_{\\\\\\\"mainKey\\\\\\\":\\\\\\\"3S2DwX5hwjMqcpwRTORsaQ\\\\\\\",\\\\\\\"objects\\\\\\\":{\\\\\\\"3S2DwX5hwjMqcpwRTORsaQ\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"3S2DwX5hwjMqcpwRTORsaQ\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Simple Menu Design 4\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Grid\\\\\\\",\\\\\\\"styleProperties\\\\\\\":{\\\\\\\"1MRcdwDBGyHngOlOZn9WIQ\\\\\\\":{\\\\\\\"resolutions\\\\\\\":{\\\\\\\"ALL\\\\\\\":{\\\\\\\"width\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"101px\\\\\\\"}}}}},\\\\\\\"override\\\\\\\":false,\\\\\\\"children\\\\\\\":{\\\\\\\"q2Xlqn7vJJQHaVqR2M6qQ\\\\\\\":true,\\\\\\\"63VJHM88sgMmSzXX2kldru\\\\\\\":true,\\\\\\\"7CbLapbuh0pDMEyRWJBrxk\\\\\\\":true,\\\\\\\"6GcXFN2YcNvezuGToDv5j\\\\\\\":true},\\\\\\\"displayOrder\\\\\\\":0},\\\\\\\"q2Xlqn7vJJQHaVqR2M6qQ\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"q2Xlqn7vJJQHaVqR2M6qQ\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Contact Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Contact Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign5\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3},\\\\\\\"63VJHM88sgMmSzXX2kldru\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"63VJHM88sgMmSzXX2kldru\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Home Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Menu\\\\\\\"},\\\\\\\"pathsActiveFor\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"verticalMenu\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign5\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":1},\\\\\\\"7CbLapbuh0pDMEyRWJBrxk\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"7CbLapbuh0pDMEyRWJBrxk\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"About Us Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Abouts Us\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign5\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":2},\\\\\\\"6GcXFN2YcNvezuGToDv5j\\\\\\\":{\\\\\\\"key\\\\\\\":\\\\\\\"6GcXFN2YcNvezuGToDv5j\\\\\\\",\\\\\\\"name\\\\\\\":\\\\\\\"Pages Menu\\\\\\\",\\\\\\\"type\\\\\\\":\\\\\\\"Menu\\\\\\\",\\\\\\\"properties\\\\\\\":{\\\\\\\"label\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"Pages\\\\\\\"},\\\\\\\"MenuDesignSelectionType\\\\\\\":{\\\\\\\"value\\\\\\\":\\\\\\\"_filledMenuDesign5\\\\\\\"}},\\\\\\\"override\\\\\\\":false,\\\\\\\"displayOrder\\\\\\\":3}}}\\\"},\\\"layout\\\":{\\\"value\\\":\\\"ROWLAYOUT\\\"}},\\\"styleProperties\\\":{\\\"1MRcdwDBGyHngOlOZn9WIQ\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"fit-content\\\"}}}}},\\\"override\\\":false,\\\"children\\\":{\\\"q2Xlqn7vJJQHaVqR2M6qQ\\\":true,\\\"63VJHM88sgMmSzXX2kldru\\\":true,\\\"7CbLapbuh0pDMEyRWJBrxk\\\":true,\\\"6GcXFN2YcNvezuGToDv5j\\\":true},\\\"displayOrder\\\":5},\\\"q2Xlqn7vJJQHaVqR2M6qQ\\\":{\\\"key\\\":\\\"q2Xlqn7vJJQHaVqR2M6qQ\\\",\\\"name\\\":\\\"Contact Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Contact Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign5\\\"}},\\\"styleProperties\\\":{\\\"34b10uP0AIZcZVU8aSdolu\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"80px\\\"},\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":3},\\\"63VJHM88sgMmSzXX2kldru\\\":{\\\"key\\\":\\\"63VJHM88sgMmSzXX2kldru\\\",\\\"name\\\":\\\"Home Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Menu\\\"},\\\"pathsActiveFor\\\":{\\\"value\\\":\\\"verticalMenu\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign5\\\"}},\\\"styleProperties\\\":{\\\"4NYqi2TKEPAtU2PkGUeqw8\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"80px\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":1},\\\"7CbLapbuh0pDMEyRWJBrxk\\\":{\\\"key\\\":\\\"7CbLapbuh0pDMEyRWJBrxk\\\",\\\"name\\\":\\\"About Us Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Abouts Us\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign5\\\"}},\\\"styleProperties\\\":{\\\"7jb1fYQr2Jc3tLWyPu7v7f\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"80px\\\"},\\\"whiteSpace\\\":{\\\"value\\\":\\\"nowrap\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":2},\\\"6GcXFN2YcNvezuGToDv5j\\\":{\\\"key\\\":\\\"6GcXFN2YcNvezuGToDv5j\\\",\\\"name\\\":\\\"Pages Menu\\\",\\\"type\\\":\\\"Menu\\\",\\\"properties\\\":{\\\"label\\\":{\\\"value\\\":\\\"Pages\\\"},\\\"MenuDesignSelectionType\\\":{\\\"value\\\":\\\"_filledMenuDesign5\\\"}},\\\"styleProperties\\\":{\\\"3sigtCc3rd7FIRhM6qBsTy\\\":{\\\"resolutions\\\":{\\\"ALL\\\":{\\\"width\\\":{\\\"value\\\":\\\"80px\\\"}}}}},\\\"override\\\":false,\\\"displayOrder\\\":3}}}\"},\"layout\":{\"value\":\"ROWLAYOUT\"}},\"styleProperties\":{\"1MRcdwDBGyHngOlOZn9WIQ\":{\"resolutions\":{\"ALL\":{\"width\":{\"value\":\"fit-content\"},\"cursor\":{\"value\":\"grab\"},\"display\":{\"value\":\"flex\"},\"alignItems\":{\"value\":\"flex-start\"}}}}},\"override\":false,\"children\":{\"q2Xlqn7vJJQHaVqR2M6qQ\":true,\"63VJHM88sgMmSzXX2kldru\":true,\"7CbLapbuh0pDMEyRWJBrxk\":true,\"6GcXFN2YcNvezuGToDv5j\":true},\"displayOrder\":6},\"q2Xlqn7vJJQHaVqR2M6qQ\":{\"key\":\"q2Xlqn7vJJQHaVqR2M6qQ\",\"name\":\"Contact Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Contact Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign5\"},\"designType\":{\"value\":\"_outlined\"}},\"styleProperties\":{\"3VQC9VzknsOZj3aLlcCYu8\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"rgba(97, 197, 84, 0.20)\"},\"backgroundColor:hover\":{\"value\":\"#61C554\"}}}}},\"override\":false,\"displayOrder\":3},\"63VJHM88sgMmSzXX2kldru\":{\"key\":\"63VJHM88sgMmSzXX2kldru\",\"name\":\"Home Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Menu\"},\"pathsActiveFor\":{\"value\":\"horizontalMenu\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign5\"},\"designType\":{\"value\":\"_outlined\"}},\"styleProperties\":{\"5hTOHnGsX1lv1aykIEauKc\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"rgba(97, 197, 84, 0.20)\"},\"backgroundColor:hover\":{\"value\":\"#61C554\"}}}}},\"override\":false,\"displayOrder\":1},\"7CbLapbuh0pDMEyRWJBrxk\":{\"key\":\"7CbLapbuh0pDMEyRWJBrxk\",\"name\":\"About Us Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Abouts Us\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign5\"},\"designType\":{\"value\":\"_outlined\"}},\"styleProperties\":{\"6Dt1B85LgyGcYq9Kr1fHyq\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"rgba(97, 197, 84, 0.20)\"},\"backgroundColor:hover\":{\"value\":\"#61C554\"}}}}},\"override\":false,\"displayOrder\":2},\"6GcXFN2YcNvezuGToDv5j\":{\"key\":\"6GcXFN2YcNvezuGToDv5j\",\"name\":\"Pages Menu\",\"type\":\"Menu\",\"properties\":{\"label\":{\"value\":\"Pages\"},\"MenuDesignSelectionType\":{\"value\":\"_filledMenuDesign5\"},\"designType\":{\"value\":\"_outlined\"}},\"styleProperties\":{\"1r2a0h4m5H642iqPi00aO8\":{\"resolutions\":{\"ALL\":{\"backgroundColor\":{\"value\":\"rgba(97, 197, 84, 0.20)\"},\"backgroundColor:hover\":{\"value\":\"#61C554\"}}}}},\"override\":false,\"displayOrder\":3}}}"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1MRcdwDBGyHngOlOZn9WIQ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "cursor": {
+                "value": "grab"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "q2Xlqn7vJJQHaVqR2M6qQ": true,
+        "63VJHM88sgMmSzXX2kldru": true,
+        "7CbLapbuh0pDMEyRWJBrxk": true,
+        "6GcXFN2YcNvezuGToDv5j": true
+      },
+      "displayOrder": 6
+    },
+    "q2Xlqn7vJJQHaVqR2M6qQ": {
+      "key": "q2Xlqn7vJJQHaVqR2M6qQ",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign5"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "3VQC9VzknsOZj3aLlcCYu8": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "rgba(97, 197, 84, 0.20)"
+              },
+              "backgroundColor:hover": {
+                "value": "#61C554"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "63VJHM88sgMmSzXX2kldru": {
+      "key": "63VJHM88sgMmSzXX2kldru",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "horizontalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign5"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "5hTOHnGsX1lv1aykIEauKc": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "rgba(97, 197, 84, 0.20)"
+              },
+              "backgroundColor:hover": {
+                "value": "#61C554"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7CbLapbuh0pDMEyRWJBrxk": {
+      "key": "7CbLapbuh0pDMEyRWJBrxk",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign5"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "6Dt1B85LgyGcYq9Kr1fHyq": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "rgba(97, 197, 84, 0.20)"
+              },
+              "backgroundColor:hover": {
+                "value": "#61C554"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6GcXFN2YcNvezuGToDv5j": {
+      "key": "6GcXFN2YcNvezuGToDv5j",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign5"
+        },
+        "designType": {
+          "value": "_outlined"
+        }
+      },
+      "styleProperties": {
+        "1r2a0h4m5H642iqPi00aO8": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "rgba(97, 197, 84, 0.20)"
+              },
+              "backgroundColor:hover": {
+                "value": "#61C554"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "50rv7wMCji1OaTJ4YA2A5l": {
+      "key": "50rv7wMCji1OaTJ4YA2A5l",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "KBKNkhDAjai413oaaY57E": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "11ShU64n6uYr9SD7p1iIjM": {
+      "key": "11ShU64n6uYr9SD7p1iIjM",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "verticalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "6MAN1Tk4vh64arHqyg5pPM": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "37OuIena74aXPuYzKz0L4g": {
+      "key": "37OuIena74aXPuYzKz0L4g",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "2N0taHC2n8ElJODSflQVqu": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1yZb9xPPXa3JhGKC0DcZRc": {
+      "key": "1yZb9xPPXa3JhGKC0DcZRc",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "2dGFQ2FBH1IoIpoLK21VdW": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1XcjceCdg5fHmNFr9Mpx0s": {
+      "key": "1XcjceCdg5fHmNFr9Mpx0s",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "KBKNkhDAjai413oaaY57E": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "cukxv3YtqihmYvhRbAMjx": {
+      "key": "cukxv3YtqihmYvhRbAMjx",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "verticalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "6MAN1Tk4vh64arHqyg5pPM": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2waztVEyYTdTYVSPzU2Zzl": {
+      "key": "2waztVEyYTdTYVSPzU2Zzl",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign1"
+        }
+      },
+      "styleProperties": {
+        "2dGFQ2FBH1IoIpoLK21VdW": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1ANColpJ9FRiVQtrn8pGFY": {
+      "key": "1ANColpJ9FRiVQtrn8pGFY",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "X064f8P4stpjXidYxwQq9": {
+      "key": "X064f8P4stpjXidYxwQq9",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "verticalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "WPV2My4gdMA5sZhtcDK16": {
+      "key": "WPV2My4gdMA5sZhtcDK16",
+      "name": "About Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Abouts Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "31T8iRGAhvOJwtUZ8aUqAq": {
+      "key": "31T8iRGAhvOJwtUZ8aUqAq",
+      "name": "Pages Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pages"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "Pzm9zHGDeZn34mrChzVOc": {
+      "key": "Pzm9zHGDeZn34mrChzVOc",
+      "name": "Contact Us Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Contact Us"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        }
+      },
+      "styleProperties": {
+        "qrgLDSW56tEy3BU1xe7Kb": {
+          "resolutions": {
+            "ALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5Ex6xmVfrphv3bzvyWfgGg": {
+      "key": "5Ex6xmVfrphv3bzvyWfgGg",
+      "name": "Home Menu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Menu"
+        },
+        "pathsActiveFor": {
+          "value": "verticalMenu"
+        },
+        "MenuDesignSelectionType": {
+          "value": "_filledMenuDesign2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "__truncated__": "... 21 more components omitted for corpus"
+  },
+  "name": "horizontalMenu",
+  "message": "From transport : 0ibPq0ornImrihW4UUuzVq",
+  "clientCode": "SYSTEM",
+  "appCode": "editortemplates",
+  "version": 2,
+  "updatedAt": "2024-06-04 17:15:50.696000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-20 12:27:32.553000",
+  "createdBy": "<USER>"
+}
