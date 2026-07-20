@@ -266,8 +266,15 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
 
 async def _emit_panel(context: dict, session_ctx: dict) -> None:
     """Re-emit only the keyword block (keyed upsert, no panel flash)."""
-    craft_id = session_ctx.get("campaign_craft_id") or f"campaign_{context.get('session_id', '')}"
     dump = session_ctx.get("keyword_research") or {}
+    # Key off the craft_id the panel was ORIGINALLY drawn under — keyword_research records it
+    # in the dump's meta. Reading it from the data (not a session key that only coincidentally
+    # holds the same value) guarantees an edit upserts into the same craft container.
+    craft_id = (
+        (dump.get("meta") or {}).get("craft_id")
+        or session_ctx.get("campaign_craft_id")
+        or f"campaign_{context.get('session_id', '')}"
+    )
     await emit_section_update(context.get("event_stream"), craft_id, keyword_review_block(dump))
 
 

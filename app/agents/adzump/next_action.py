@@ -25,6 +25,10 @@ from app.agents.adzump.tools.campaign_data import (
     is_ig_skip,
     is_real_estate,
 )
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    DEFAULT_THEME_IDS,
+    KEYWORD_THEMES,
+)
 
 
 def _is_custom_reply(text: str) -> bool:
@@ -34,6 +38,25 @@ def _is_custom_reply(text: str) -> bool:
     never "custom", so this won't fire on a real value."""
     lu = (text or "").strip().lower()
     return lu == "custom" or lu.startswith("custom")
+
+
+def _ad_group_consent() -> tuple[str, str]:
+    """Plan line + proceed-step for the Google ad-group consent, derived from the keyword-
+    theme registry so adding a theme can't leave this copy naming only Brand/Generic."""
+    labels = [KEYWORD_THEMES[t].label for t in DEFAULT_THEME_IDS]
+    plan_line = "\n  - **Ad groups**: " + " + ".join(labels)
+    all_answer = ",".join(DEFAULT_THEME_IDS)
+    narrow = ", ".join(
+        f'{{label "{KEYWORD_THEMES[t].label} only", answer "{t}"}}' for t in DEFAULT_THEME_IDS
+    )
+    proceed_step = (
+        '(2) THEN, separately, use the present_options tool (field "ad_groups") to '
+        'ask "Proceed to build the campaign?" with these options - each build option '
+        f'carries its own `answer`: {{label "Yes, proceed", answer "{all_answer}"}}, '
+        f'{narrow}, and a plain "No, make changes". Whatever they pick is what gets '
+        "built - do not talk them out of narrowing it."
+    )
+    return plan_line, proceed_step
 
 
 @dataclass(frozen=True)
@@ -350,15 +373,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         # Google Search builds one keyword ad group per theme, so the plan is shown here and
         # the user can narrow it. Meta targets audiences in ad sets - nothing to choose.
         if cctx.is_google:
-            plan_line = "\n  - **Ad groups**: Brand + Generic"
-            proceed_step = (
-                '(2) THEN, separately, use the present_options tool (field "ad_groups") to '
-                'ask "Proceed to build the campaign?" with these options - each build option '
-                'carries its own `answer`: {label "Yes, proceed", answer "brand,generic"}, '
-                '{label "Brand only", answer "brand"}, {label "Generic only", answer '
-                '"generic"}, and a plain "No, make changes". Whatever they pick is what gets '
-                "built - do not talk them out of narrowing it."
-            )
+            plan_line, proceed_step = _ad_group_consent()
         else:
             plan_line = ""
             proceed_step = (

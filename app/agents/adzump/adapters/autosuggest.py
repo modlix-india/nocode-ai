@@ -40,6 +40,17 @@ _DEFAULT_MAX_PER_SEED = 10  # suggestions kept per seed per source
 _DEFAULT_CONCURRENCY = 10  # max in-flight autosuggest requests
 _LOG_ERROR_MAXLEN = 120  # truncation for error messages in logs
 
+# One process-wide client so seed expansion reuses a connection pool instead of building a
+# new one (and its TLS handshakes) per call. Lazily created so it binds to the running loop.
+_shared_client: Optional[httpx.AsyncClient] = None
+
+
+def _shared_async_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client = httpx.AsyncClient()
+    return _shared_client
+
 
 def _parse_suggest_array(data: object) -> list[str]:
     """Parse the ``[query, [suggestions], ...]`` shape Google, YouTube, DuckDuckGo,
@@ -197,8 +208,9 @@ async def fetch_suggestions(
     if not seeds or not sources:
         return []
 
-    owns_client = client is None
-    client = client or httpx.AsyncClient()
+    # No per-call client: reuse the process-wide pool (a caller may still pass its own,
+    # which it owns — either way nothing is closed here).
+    client = client or _shared_async_client()
     sem = asyncio.Semaphore(concurrency)
 
     async def _one(src: SuggestionSource, seed: str) -> tuple[str, str, list[str]]:
@@ -217,13 +229,9 @@ async def fetch_suggestions(
                 )
                 return src.name, seed, []
 
-    try:
-        results = await asyncio.gather(
-            *(_one(src, seed) for src in sources for seed in seeds)
-        )
-    finally:
-        if owns_client:
-            await client.aclose()
+    results = await asyncio.gather(
+        *(_one(src, seed) for src in sources for seed in seeds)
+    )
 
     per_source: dict[str, int] = {}
     seen: set[str] = set()

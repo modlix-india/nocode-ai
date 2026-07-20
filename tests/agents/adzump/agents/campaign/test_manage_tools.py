@@ -209,6 +209,20 @@ class EditPanelReEmitTests(unittest.TestCase):
         self.assertFalse(res.success)
         self.assertEqual(stream.crafts, [])                  # nothing changed → no re-emit
 
+    def test_reemit_keys_off_the_crafts_own_meta_not_a_session_key(self):
+        # The panel was drawn under the craft_id research recorded in the dump's meta; an
+        # edit must upsert into THAT container even when a session key holds a stale value —
+        # so the re-emit works by construction, not by the two happening to coincide.
+        stream = _CaptureStream()
+        ctx = _ctx()
+        ctx["session_context"]["keyword_research"]["meta"]["craft_id"] = "campaign_real"
+        ctx["session_context"]["campaign_craft_id"] = "campaign_stale"  # must NOT win
+        ctx["event_stream"] = stream
+        res = _edit([{"action": "add", "keyword_type": "generic",
+                      "section": "positives", "keyword": "trail shoes"}], ctx)
+        self.assertTrue(res.success)
+        self.assertEqual(stream.crafts[0]["craft_id"], "campaign_real")
+
 
 class EditWrapperTests(unittest.TestCase):
     """The batching wrapper around the shared _apply_edit engine."""
