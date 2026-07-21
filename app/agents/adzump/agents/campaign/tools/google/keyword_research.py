@@ -269,6 +269,12 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
             )
             failed.append(t)
             continue
+        if not res.positives:
+            # An ad group with no keywords can't run. Count it as failed rather than
+            # showing an empty tab that reads as "ready".
+            logger.warning("keyword_research %s selected no keywords", t)
+            failed.append(t)
+            continue
         bundle.themes[t] = res
         counts.append(f"{t} {len(res.positives)}+/{len(res.negatives)}-")
     if failed:

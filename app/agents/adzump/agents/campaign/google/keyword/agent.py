@@ -21,6 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.config import settings
 from app.core.agent import BaseAgent
 from app.core.context import BaseContext
 from app.core.session import AuthContext, BaseSession
@@ -62,7 +63,10 @@ MODEL_TIER = (
     "balanced"  # selection/negatives are judgment-heavy — use the stronger model
 )
 MAX_TURNS = 10  # seed -> expand -> metrics -> select -> negatives, with room to loop
-MAX_TOKENS = 4000
+# Selection deliberates over hundreds of scored candidates and THEN calls a submit tool. A
+# reasoning model spends output tokens on that deliberation, so the budget has to cover both
+# - too small and the run ends mid-thought having submitted nothing.
+MAX_TOKENS = settings.AGENT_MAX_TOKENS
 
 
 def _fill_guidance(text: str) -> str:
