@@ -129,10 +129,7 @@ class SaasClient:
     ) -> ToolResult:
         """Execute an HTTP request and return a structured ToolResult."""
         client = self._get_client()
-        if path.startswith(("http://", "https://")):
-            url = path
-        else:
-            url = path if path.startswith("/") else f"/{path}"
+        url = path if path.startswith("/") else f"/{path}"
 
         # Standalone mode: extract path prefix from headers and prepend to URL.
         # The X-Path-Prefix header is set by the webpack proxy and carried in
@@ -141,11 +138,7 @@ class SaasClient:
         if "X-Path-Prefix" in req_headers:
             url = req_headers.pop("X-Path-Prefix") + url
 
-        logger.info(
-            f"→ {method} {self.gateway_url}{url}"
-            if not path.startswith(("http://", "https://"))
-            else f"→ {method} {url}"
-        )
+        logger.info(f"→ {method} {self.gateway_url}{url}")
 
         try:
             response = await client.request(
@@ -175,8 +168,6 @@ class SaasClient:
                     or "javascript" in content_type
                 ):
                     data = response.text
-                else:
-                    data = response.content
 
             return ToolResult(
                 success=True,
