@@ -1,0 +1,18 @@
+[tool.pytest.ini_options]
+# Tests live under tests/ at the repo root. pyproject is the project's only
+# pytest config — there is no pytest.ini or setup.cfg.
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Default to asyncio strict mode so every async test must opt-in via
+# @pytest.mark.asyncio (avoids silent skips on missing markers).
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+
+# Quiet third-party deprecation noise that pytest surfaces by default.
+filterwarnings = [
+    "ignore::DeprecationWarning:google.*",
+    "ignore::DeprecationWarning:pkg_resources",
+]

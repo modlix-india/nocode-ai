@@ -1,0 +1,78 @@
+{
+  "_id": "67caf973b7ebf6221d1c21a5",
+  "schema": {
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1,
+    "name": "ReceiptDetails",
+    "properties": {
+      "logo": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "directory": {
+            "type": [
+              "BOOLEAN"
+            ]
+          },
+          "name": {
+            "type": [
+              "STRING"
+            ]
+          },
+          "url": {
+            "type": [
+              "STRING"
+            ]
+          }
+        }
+      },
+      "logoColor": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "description": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "notes": {
+        "type": [
+          "ARRAY"
+        ],
+        "items": {
+          "type": [
+            "OBJECT"
+          ],
+          "properties": {
+            "note": {
+              "type": [
+                "STRING"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "uniqueName": "cxapp_system_receipt_qdw1h8xojy9f",
+  "isAudited": false,
+  "isVersioned": true,
+  "isAppLevel": true,
+  "onlyThruKIRun": false,
+  "createAuth": "Authorities.CXAPP.ROLE_Super_Admin",
+  "updateAuth": "Authorities.CXAPP.ROLE_Super_Admin",
+  "deleteAuth": "Authorities.CXAPP.ROLE_Super_Admin",
+  "name": "ReceiptDetails",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 39,
+  "updatedAt": "2026-04-09 04:28:29.036000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-03-07 13:49:39.283000",
+  "createdBy": "<USER>"
+}

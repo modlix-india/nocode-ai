@@ -1,0 +1,67 @@
+- 15efMSfSkJSaCezLQSpgX8 (Grid) PageGrid
+  - 52o6ShPVGwE1Dh5xW5IsEK (Grid) Back Grid
+    - Lt8zlnh8A8VKXKIMZEesj (Button) Back button
+    - 3JFCavzKoLUQ25lCsilLyM (Button) Back button
+  - 1ia4UQvEJ6YtrVp1rPvn8V (Popup) Download Popup
+  - 5KXt8Bdb7o2qFBHsOSJ18C (Grid) TopSection
+    - o0BBNzq8CN8JbKHzW9i1h (Grid) HeaderSection
+      - 24kaNuDz5TWAQUA8mY49Es (Grid) ProfileImageSection
+        - 2EW2oL8QvLKAIPdP0heip0 (Grid) edit button
+          - 3SaECmYOFf5CQrMOB8djIm (Button) button
+        - 6DGKqsylfZso3r6fZtU34Q (Grid) imageGrid
+          - 5Gu6bJ7AIqdQz9FNTOzkBE (Image) Image
+          - IxprSpsJH8WcaaXKmwcQU (Grid) fileselector
+            - 4OFNREcGiGcIYIbAuQDv4p (FileSelector) File Selector
+        - 5bIgntgJxbb7pqfpzAobme (Text) Text
+      - 57xuCCctQlAZh5VE7Wc7dF (Grid) bio
+        - 3EHsGCUS3yzp90jNk78B1G (Grid) edit & actual
+          - 4Hqmdrm4c6CDlpsCtUcFbw (Grid) Edit & Bio
+            - 6sdSk6RzrJ7CLYdVvyZaaj (Button) button
+            - 1XN8eULBvfumIWylZTAXhn (Grid) Grid
+              - 3HX2pRCVn3A21uXCEDW9VZ (Text) Text
+          - 3hBJyJCpp0Ow2SBsYWFqxJ (TextArea) TextArea
+        - 1OM69k1bO7INeE8fEfzuw3 (Grid) joiningDate and save Btns
+          - 1FehhfBGg5VSSFCmVoGrz8 (Grid) joining date
+            - sGjZ2n1Smdvk0sjr4uvIh (Text) Text
+            - 155TXZGrYl6kZ43W58W9xP (Text) Text
+          - 3cGlNpZmrrox1cDKksRKqx (Grid) buttons
+            - 2gFhq2AKqFob9v1D725kx5 (Button) button
+            - 1v6wYZUMSLGbTYQ9ZoV2Ah (Button) button
+    - 3eW3p7OZ5X1R5Sgrwz6AqB (Grid) tabs
+      - 3ZerdVbqKXCxDwqRt7l6JJ (Grid) Basic Details
+        - 3oy0JxK2qooZWiUMighrKx (Icon) Icon
+        - 1IQxjJ73yjVyfzyTvqEpU0 (Text) Text
+      - 6wu6KjQnYImV3JIzaKLRVg (Grid) Investment Details
+        - 45QMyWL48bvNfo97RWq9CB (Image) Image
+        - 3BKsgs8VRlf0ag6DVBJ85x (Text) Text
+      - hdyASGrXgpiD5SZTS2pTT (Grid) Kyc Details
+        - 7KK2yhto4agJGQ7L9fwtnl (Image) Image
+        - 1isW7vwHlxYfmQi1dyR6fG (Text) Text
+      - 3vUZJKEhUnXU2LY9NjnBTW (Grid) Audit Trail
+        - 7yiOA4J9Bdix2MxsRU2vUs (Image) Image
+        - 6YRzdBrdc6aRpc2QJoxwm8 (Text) Text
+    - 3vMpvLLOsAI6U9n0CrDZ8H (Grid) Deal Select
+      - 1IKWVdI40sBoLL4O3YsLg2 (Button) Deal Filter
+      - 1p640pDW4lGJbH5Y6reCsq (Grid) filter button grid
+        - 6FezgNXVsQAYvRvSsDmIox (Image) image
+        - 7t7a6O8rDqHUmfgo9mbmgk (Text) Text
+      - 5ItryusX96NPmIa0mlapXk (Grid) Grid
+        - 4hQvnlTjWyjKT9FZUK8wR0 (Button) Close
+        - 1O58ynbTkyvAiXq8NY2GIZ (Grid) Grid
+          - 2XBq9sOPkju5nyvRZIOKkU (Text) Text
+          - 35qjDyNaZRTZiFr4vSi2MO (Dropdown) 35qjDyNaZRTZiFr4vSi2MO
+          - 5nMNj8Yeu8Bu2EzGr3HcWG (Grid) Grid
+            - 6VAGxjycexGZGeiofPPv0u (Button) Clear filter
+            - 2KF22RE4orJ3qeeV2hxrWi (Button) Save Filter
+    - 2dAiEBmQzC9bkPpQ70Wt4I (Grid) Audit Trail
+      - 1nwEHLL56KpvYoCzQbZhu5 (Grid) No Audit trail Grid
+        - 4MDT0lhSBhE30ENEdzHGod (Text) Text
+      - 7CeA88l7BIkWJIQb5ocOey (ArrayRepeater) Repeator
+        - 5gXdo5AMTRLlUqxUAi80GU (Grid) Logs
+          - 5erkO0MzvnBbTRLd05q2XK (Image) Image
+          - 2XN92w8l2QIoL83UoSBybX (Grid) LogContent
+            - 1Ib8DawTriltSDhitoFapj (Text) Content
+            - 7bfeOijvnmvQbANHmRH671 (Text) Date
+    - 30CMaQrLqBYjzL8hCGy4Vd (Grid) Load more
+      - 5HbGRo7pt3aO5s7Kg4vcUi (Button) Load more
+    - 6zSYvEBC7jNGt6NPwLZATd (Grid) GridLodingProcess

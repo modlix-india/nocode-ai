@@ -1,0 +1,346 @@
+{
+  "_id": "67ebef86b6a5157b8ec5e6c8",
+  "properties": {
+    "wrapShell": false
+  },
+  "rootComponent": "4Fk27kuMdNurtlOvk1hvrW",
+  "componentDefinition": {
+    "4Fk27kuMdNurtlOvk1hvrW": {
+      "key": "4Fk27kuMdNurtlOvk1hvrW",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1ssZGjWi19fyQIAZda6ru": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3CrAHqq3F10z8hlHKWfQev": true,
+        "7LblNGWsWvWfB56OdX3gjF": true,
+        "4gQdUeMurK7uo7PC8ZizKm": true,
+        "3WGDi9ndzILlkaEMSLL6J7": true,
+        "4zGfl9ai5Yoccz4t13iZnm": true
+      }
+    },
+    "3CrAHqq3F10z8hlHKWfQev": {
+      "key": "3CrAHqq3F10z8hlHKWfQev",
+      "name": "heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Something went wrong..."
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "46vaTSvYiOEBNHV5HsUPY6": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "50px"
+              },
+              "color": {
+                "value": "#184A71"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7LblNGWsWvWfB56OdX3gjF": {
+      "key": "7LblNGWsWvWfB56OdX3gjF",
+      "name": "Subtext",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Let\u2019s find a better place for you to go."
+        }
+      },
+      "styleProperties": {
+        "2V2LFS4j0NsnB5OZpwytSv": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#184A71"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "lineHeight": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "4gQdUeMurK7uo7PC8ZizKm": {
+      "key": "4gQdUeMurK7uo7PC8ZizKm",
+      "name": "Subtext",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "We searched everywhere but couldn\u2019t find what you\u2019re looking for."
+        }
+      },
+      "styleProperties": {
+        "2V2LFS4j0NsnB5OZpwytSv": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "value": "#184A71"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "lineHeight": {
+                "value": "26px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3WGDi9ndzILlkaEMSLL6J7": {
+      "key": "3WGDi9ndzILlkaEMSLL6J7",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3KTLqyAZtBshwc5YubWKD3": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5OqpR0688dy4Vs7RRyATEM": true
+      },
+      "displayOrder": 2
+    },
+    "4zGfl9ai5Yoccz4t13iZnm": {
+      "key": "4zGfl9ai5Yoccz4t13iZnm",
+      "name": "Create new section Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "EbRtWwF98h9xgPA1XIHOS": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6bMFAgVJ7hTGESpYaI10F2": true
+      },
+      "displayOrder": 5
+    },
+    "5OqpR0688dy4Vs7RRyATEM": {
+      "key": "5OqpR0688dy4Vs7RRyATEM",
+      "name": "404 GIF",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/newdesign/404%20Error%20No%20BG.gif"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "UWm32J1NU2S002W9373eg": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70%"
+              },
+              "image-width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6bMFAgVJ7hTGESpYaI10F2": {
+      "key": "6bMFAgVJ7hTGESpYaI10F2",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "linkPath": {
+          "value": "/leads"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1ElbQgw7aE40mtI0XALIra": {
+          "resolutions": {
+            "ALL": {
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "borderRadius": {
+                "value": "6px"
+              },
+              "background": {
+                "value": "#0085F2"
+              },
+              "boxShadow": {
+                "value": "0px 1px 3px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "height": {
+                "value": "54px"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1DkpETHj8LNRCsySLeOrt3": true
+      },
+      "displayOrder": 0
+    },
+    "1DkpETHj8LNRCsySLeOrt3": {
+      "key": "1DkpETHj8LNRCsySLeOrt3",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Go to Leads"
+        },
+        "textColor": {
+          "value": "_lightPrimaryText"
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "58cTBmJwwI8YIU2vMg28kO": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "500"
+              },
+              "marginLeft": {
+                "value": "20px"
+              },
+              "marginRight": {
+                "value": "20px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSeven"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "name": "forbidden",
+  "message": "From transport : 3N3IVWR44u6El3IcFN6tXQ",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:18:54.846000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:52:06.474000",
+  "createdBy": "<USER>"
+}

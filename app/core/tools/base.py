@@ -116,6 +116,53 @@ class ToolResult:
             return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
         return text
 
+    # Cap on how many images a single tool result may forward to the LLM.
+    # `screenshot_external_url` can return many shots (multiple scroll
+    # positions × viewport widths); without a cap a single call could blow
+    # the context budget for the rest of the turn.
+    MAX_IMAGE_BLOCKS: int = 6
+
+    def extract_anthropic_image_blocks(self) -> list[dict]:
+        """Return Anthropic-format image blocks present in `self.data`.
+
+        Recognised shapes:
+          - `data["image_base64"]` (+ optional `data["image_mime"]`) — one image.
+          - `data["shots"]` — list of `{image_base64, image_mime?, label?, ...}`
+            (the `screenshot_external_url` shape).
+
+        Returns at most `MAX_IMAGE_BLOCKS` blocks. Failures degrade silently
+        to an empty list — the textual summary still goes through.
+        """
+        if not self.success or not isinstance(self.data, dict):
+            return []
+        blocks: list[dict] = []
+
+        def _push(b64: str, mime: str | None) -> None:
+            if not isinstance(b64, str) or not b64:
+                return
+            if len(blocks) >= self.MAX_IMAGE_BLOCKS:
+                return
+            blocks.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": (mime or "image/png"),
+                    "data": b64,
+                },
+            })
+
+        single_b64 = self.data.get("image_base64")
+        if single_b64:
+            _push(single_b64, self.data.get("image_mime"))
+
+        shots = self.data.get("shots")
+        if isinstance(shots, list):
+            for shot in shots:
+                if not isinstance(shot, dict):
+                    continue
+                _push(shot.get("image_base64"), shot.get("image_mime"))
+        return blocks
+
 
 def tool_params_from_model(model_cls: type[BaseModel]) -> list[ToolParameter]:
     """Derive a tool's parameter list from a pydantic model's JSON schema.

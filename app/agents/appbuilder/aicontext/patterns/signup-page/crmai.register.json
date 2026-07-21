@@ -1,0 +1,3721 @@
+{
+  "_id": "67ebef86b6a5157b8ec5e6de",
+  "properties": {
+    "wrapShell": false
+  },
+  "eventFunctions": {
+    "1SYPPLwurHqftKHHN3LXF7": {
+      "name": "passwordValidationGridTrue",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 329.7232142857142,
+            "top": 143.57589285714283
+          },
+          "parameterMap": {
+            "path": {
+              "6Hc7sSJr1IHCAF5vrBkCn": {
+                "key": "6Hc7sSJr1IHCAF5vrBkCn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.passwordValidationGrid"
+              }
+            },
+            "value": {
+              "2zC1tsZ0C7yJAusonyG48v": {
+                "key": "2zC1tsZ0C7yJAusonyG48v",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6LnpjomIwWIamNiQRGRDAt": {
+      "name": "validations",
+      "steps": {
+        "eightCharactersMin": {
+          "statementName": "eightCharactersMin",
+          "name": "eightCharactersMin",
+          "namespace": "_",
+          "position": {
+            "left": 65.40625,
+            "top": 153.296875
+          }
+        },
+        "oneUpperCaseCheck": {
+          "statementName": "oneUpperCaseCheck",
+          "name": "oneUpperCaseCheck",
+          "namespace": "_",
+          "position": {
+            "left": 332.40625,
+            "top": 161.296875
+          }
+        },
+        "oneLowerCaseCheck": {
+          "statementName": "oneLowerCaseCheck",
+          "name": "oneLowerCaseCheck",
+          "namespace": "_",
+          "position": {
+            "left": 55.40625,
+            "top": 299.296875
+          }
+        },
+        "oneDigitCheck": {
+          "statementName": "oneDigitCheck",
+          "name": "oneDigitCheck",
+          "namespace": "_",
+          "position": {
+            "left": 330.40625,
+            "top": 39.296875
+          }
+        },
+        "oneSpecialCharacterCheck": {
+          "statementName": "oneSpecialCharacterCheck",
+          "name": "oneSpecialCharacterCheck",
+          "namespace": "_",
+          "position": {
+            "left": 235.40625,
+            "top": 537.296875
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1030.40625,
+            "top": 42.296875
+          },
+          "parameterMap": {
+            "path": {
+              "77FRFZpN5nfltX4FBlZ7d1": {
+                "key": "77FRFZpN5nfltX4FBlZ7d1",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allValidations"
+              }
+            },
+            "value": {
+              "85jgGhQzkazc4hb0x7DTa": {
+                "key": "85jgGhQzkazc4hb0x7DTa",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1066.40625,
+            "top": 369.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "path": {
+              "1Am6OfoSfirCoAjNG6LbHE": {
+                "key": "1Am6OfoSfirCoAjNG6LbHE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allValidations"
+              }
+            },
+            "value": {
+              "1KUatqS8I3bAZl5thtjtfO": {
+                "key": "1KUatqS8I3bAZl5thtjtfO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "passwordValidationGridTrue": "<REDACTED>",
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 635.40625,
+            "top": 164.296875
+          },
+          "parameterMap": {
+            "condition": {
+              "3vI1RbfhHKqIgbqBIVS3YG": {
+                "key": "3vI1RbfhHKqIgbqBIVS3YG",
+                "type": "EXPRESSION",
+                "expression": "Page.specialCharacter and Page.oneDigit and  Page.oneLowerCase and Page.oneUpperCase and Page.eightCharacters ",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__oneSpecialCharacterCheck__d-o-t__output": true,
+            "Steps__d-o-t__oneDigitCheck__d-o-t__output": true,
+            "Steps__d-o-t__eightCharactersMin__d-o-t__output": true,
+            "Steps__d-o-t__oneUpperCaseCheck__d-o-t__output": true,
+            "Steps__d-o-t__oneLowerCaseCheck__d-o-t__output": true,
+            "Steps__d-o-t__passwordValidationGridTrue__d-o-t__output": "<REDACTED>"
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1U4Ijw5nNcB7oBkFIRsY4u": {
+      "name": "passwordvalidationGridFalse",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 402.4375,
+            "top": 163.1473214285714
+          },
+          "parameterMap": {
+            "path": {
+              "2pTqYJd3MrOpoXWoqTdCSb": {
+                "key": "2pTqYJd3MrOpoXWoqTdCSb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.passwordValidationGrid"
+              }
+            },
+            "value": {
+              "7IsYby3B8CXE5KyvFoG5Tc": {
+                "key": "7IsYby3B8CXE5KyvFoG5Tc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6dLXeYJXOzv3hFig162c0c": {
+      "name": "register_user",
+      "steps": {
+        "setStore_Copy_2": {
+          "statementName": "setStore_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 71.26116071428567,
+            "top": 604.453125
+          },
+          "parameterMap": {
+            "path": {
+              "2NzlkEZaXLCYzrUlBhNw77": {
+                "key": "2NzlkEZaXLCYzrUlBhNw77",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpForm.clientName"
+              }
+            },
+            "value": {
+              "4Z4pdVlAHVlJhUlhXu6fH4": {
+                "key": "4Z4pdVlAHVlJhUlhXu6fH4",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[2]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 62.261160714285694,
+            "top": 328.453125
+          },
+          "parameterMap": {
+            "path": {
+              "2NzlkEZaXLCYzrUlBhNw77": {
+                "key": "2NzlkEZaXLCYzrUlBhNw77",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpForm.code"
+              }
+            },
+            "value": {
+              "4Z4pdVlAHVlJhUlhXu6fH4": {
+                "key": "4Z4pdVlAHVlJhUlhXu6fH4",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[1]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 691.5468749999999,
+            "top": 331.16741071428567
+          },
+          "parameterMap": {
+            "url": {
+              "5A1MIrRPmbyLXwSzzk23wL": {
+                "key": "5A1MIrRPmbyLXwSzzk23wL",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/clients/register"
+              }
+            },
+            "method": {
+              "629gkCOb4ageSFU1mLy5nU": {
+                "key": "629gkCOb4ageSFU1mLy5nU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "5iNT7I5OGXKQ5o8M9iO98o": {
+                "key": "5iNT7I5OGXKQ5o8M9iO98o",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm",
+                "order": 1
+              }
+            },
+            "headers": {
+              "GorTrY0aSGvIjsgg9UHbU": {
+                "key": "GorTrY0aSGvIjsgg9UHbU",
+                "type": "VALUE",
+                "expression": "",
+                "value": {}
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true,
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true,
+            "Steps__d-o-t__setStore_Copy_2__d-o-t__output": true,
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1684.8325892857142,
+            "top": 676.1674107142857
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__saveUserProfile__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "parameterMap": {
+            "path": {
+              "60MFrmmozzbDP0tiAu4CBn": {
+                "key": "60MFrmmozzbDP0tiAu4CBn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.createSuccess"
+              }
+            },
+            "value": {
+              "putIgaEco2xXs02pycVfn": {
+                "key": "putIgaEco2xXs02pycVfn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2382.4040178571427,
+            "top": 664.453125
+          },
+          "parameterMap": {
+            "linkPath": {
+              "3plpew3eVabWnPMlWb8bi3": {
+                "key": "3plpew3eVabWnPMlWb8bi3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/conversationPage"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": false,
+            "Steps__d-o-t__saveUserProfile__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 87.26116071428567,
+            "top": 68.45312499999999
+          },
+          "parameterMap": {
+            "path": {
+              "2NzlkEZaXLCYzrUlBhNw77": {
+                "key": "2NzlkEZaXLCYzrUlBhNw77",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpForm.emailId"
+              }
+            },
+            "value": {
+              "4Z4pdVlAHVlJhUlhXu6fH4": {
+                "key": "4Z4pdVlAHVlJhUlhXu6fH4",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[2]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 455.22727251052856,
+            "top": 22.525569915771484
+          },
+          "parameterMap": {
+            "path": {
+              "3zk77qbkXjoPxlNGeFxQ8f": {
+                "key": "3zk77qbkXjoPxlNGeFxQ8f",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpForm.businessClient"
+              }
+            },
+            "value": {
+              "6htLbBuX7kKKrZOap0Lxkm": {
+                "key": "6htLbBuX7kKKrZOap0Lxkm",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          }
+        },
+        "saveUserProfile": {
+          "statementName": "saveUserProfile",
+          "name": "saveUserProfile",
+          "namespace": "hrms",
+          "position": {
+            "left": 1960.8125305175781,
+            "top": 289.01562309265137
+          },
+          "parameterMap": {
+            "userDetails": {
+              "55p6jRdY5laSb7P8a7eMde": {
+                "key": "55p6jRdY5laSb7P8a7eMde",
+                "type": "EXPRESSION",
+                "expression": "Page.userDetails",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": false,
+            "Steps__d-o-t__setStore4__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1668.000013078962,
+            "top": 76.51785278320312
+          },
+          "parameterMap": {
+            "path": {
+              "2vkOmVY31NGFCwnUVbLIdm": {
+                "key": "2vkOmVY31NGFCwnUVbLIdm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userDetails"
+              }
+            },
+            "value": {
+              "1EJrSKEYBX7ngB7OtSPa26": {
+                "key": "1EJrSKEYBX7ngB7OtSPa26",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__crmRole__d-o-t__output": true
+          }
+        },
+        "setStore4_Copy_1": {
+          "statementName": "setStore4_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1145.000013078962,
+            "top": 161.51785278320312
+          },
+          "parameterMap": {
+            "path": {
+              "2vkOmVY31NGFCwnUVbLIdm": {
+                "key": "2vkOmVY31NGFCwnUVbLIdm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userDetails.userId"
+              }
+            },
+            "value": {
+              "1EJrSKEYBX7ngB7OtSPa26": {
+                "key": "1EJrSKEYBX7ngB7OtSPa26",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data.id",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "crmRole": {
+          "statementName": "crmRole",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1454.000013078962,
+            "top": 374.5178527832031
+          },
+          "parameterMap": {
+            "path": {
+              "2vkOmVY31NGFCwnUVbLIdm": {
+                "key": "2vkOmVY31NGFCwnUVbLIdm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userDetails.crmRole"
+              }
+            },
+            "value": {
+              "1EJrSKEYBX7ngB7OtSPa26": {
+                "key": "1EJrSKEYBX7ngB7OtSPa26",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Owner"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore4_Copy_1__d-o-t__output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1094.7499796549478,
+            "top": 589.2708338101704
+          },
+          "parameterMap": {
+            "condition": {
+              "6tQrIzS2EggGgJLGUSJRot": {
+                "key": "6tQrIzS2EggGgJLGUSJRot",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data > 0",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "1XDAK4KE6nq8mJxLJ8Y1Yx"
+    },
+    "5VWhtbbygokVulJvVJ6Wwg": {
+      "name": "oneUpperCaseCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 70.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.oneUpperCase"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[A-Z]"
+              }
+            },
+            "regex": {
+              "1lTV7PFlrRoLCB04p4rZPu": {
+                "key": "1lTV7PFlrRoLCB04p4rZPu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[A-Z]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "21M0dER4TOSDZxEudsWLyT": {
+      "name": "eightCharactersMin",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 597.8828125,
+            "top": 91.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.eightCharacters"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 115.8828125,
+            "top": 79.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".{8,}"
+              }
+            },
+            "regex": {
+              "1b9Wb7M7bosqwTVrCKLflj": {
+                "key": "1b9Wb7M7bosqwTVrCKLflj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".{8,}"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "T249dkFTBfzEccmO4BMCW": {
+      "name": "oneLowerCaseCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 113.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.oneLowerCase"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[a-z]"
+              }
+            },
+            "regex": {
+              "4UHBFrUOInAb6sRxd4vRQM": {
+                "key": "4UHBFrUOInAb6sRxd4vRQM",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[a-z]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4VuXSlkmxaABRQgT9H9fvq": {
+      "name": "oneDigitCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 113.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.oneDigit"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[\\d]"
+              }
+            },
+            "regex": {
+              "3iF3p0pc2QQ4WW9zYrIish": {
+                "key": "3iF3p0pc2QQ4WW9zYrIish",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[\\d]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7LNQIKnN48U0adDlD7ImAk": {
+      "name": "oneSpecialCharacterCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 113.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.specialCharacter"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[\\W]"
+              }
+            },
+            "regex": {
+              "49A21kHAM0KmOmNLxCCBwp": {
+                "key": "49A21kHAM0KmOmNLxCCBwp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[\\W]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2NmPbYxa71Fgo40iw6R0cD": {
+      "name": "init_check",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 708.4040178571428,
+            "top": 405.16741071428567
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "path": {
+              "5QPxs4I92VFNJvhDaFEOc2": {
+                "key": "5QPxs4I92VFNJvhDaFEOc2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.invalidUrl"
+              }
+            },
+            "value": {
+              "4rrspMuKozhDqc8UYho3wQ": {
+                "key": "4rrspMuKozhDqc8UYho3wQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 164.11830357142856,
+            "top": 197.73883928571428
+          },
+          "parameterMap": {
+            "condition": {
+              "4PVTcHwclp45EqX1qSopdC": {
+                "key": "4PVTcHwclp45EqX1qSopdC",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[1] != undefined and Store.urlDetails.pathParts[2] != undefined",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "3BL9KPIB2qqfUYNIfwGIzY",
+  "componentDefinition": {
+    "3BL9KPIB2qqfUYNIfwGIzY": {
+      "key": "3BL9KPIB2qqfUYNIfwGIzY",
+      "name": "PageGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1Yn6432gWHJLSstXBJW56m": {
+          "resolutions": {
+            "ALL": {
+              "overflowX": {
+                "value": "hidden"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "backgroundColor": {
+                "value": "#F4F4F4"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2wZ6zeNjGFN0Uxh0aWjXlG": true,
+        "7vPFNTbdHFeAf8Zl4OGCtl": true,
+        "7GmSDNTK3McXXIs0spUezf": true,
+        "6fr91h3QUMzZegPbTU74p5": true
+      }
+    },
+    "2wZ6zeNjGFN0Uxh0aWjXlG": {
+      "key": "2wZ6zeNjGFN0Uxh0aWjXlG",
+      "name": "LeftGridMain",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "FOjb7WqfEcwLkt7181AIj": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "50%"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "overflowY": {
+                "value": "auto"
+              },
+              "position": {
+                "value": "relative"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "BpPjnN3xFhA0cX2LOZCkO": true,
+        "25HYLiW058KoS5RHL21jr8": true,
+        "1ExrVG9bQzH8iCfLKjrLSb": true,
+        "5iHgAJOgkcUe10dpgJLXWT": true,
+        "45BfmelnEg9v2XdlkzU4bT": true,
+        "4fw7aJ8JzlQZ3cl41qYuzC": true
+      },
+      "displayOrder": 1
+    },
+    "BpPjnN3xFhA0cX2LOZCkO": {
+      "key": "BpPjnN3xFhA0cX2LOZCkO",
+      "name": "circleImage1",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/circle.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "47HMngeGdoWfdJ00kHct9E": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "250px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "left": {
+                "value": "0"
+              },
+              "top": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "25HYLiW058KoS5RHL21jr8": {
+      "key": "25HYLiW058KoS5RHL21jr8",
+      "name": "leftBlock.svg",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/mediumLeft.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "6lAlKOYt2EJTVb0munpZeH": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "50px"
+              },
+              "height": {
+                "value": "50px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "140px"
+              },
+              "right": {
+                "value": "0px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              },
+              "top": {
+                "value": "130px"
+              },
+              "right": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1ExrVG9bQzH8iCfLKjrLSb": {
+      "key": "1ExrVG9bQzH8iCfLKjrLSb",
+      "name": "signUpGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "3en05nLX0Ysp4sKgmKWn6g": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7oI0rFj9zrBMZ2gAXubErm": true
+      },
+      "displayOrder": 3
+    },
+    "7oI0rFj9zrBMZ2gAXubErm": {
+      "key": "7oI0rFj9zrBMZ2gAXubErm",
+      "name": "RightGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "4NJGTGA73kAojzoK50Axjc": {
+          "resolutions": {
+            "ALL": {
+              "maxWidth": {
+                "value": "320px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "48MFCZlaowv59z1O0t4YNy": true,
+        "16v6k3Cb1kiBzdMNCXF87d": true,
+        "3bML9dzKsPWk7M5X8zIBbR": true
+      },
+      "displayOrder": 0
+    },
+    "48MFCZlaowv59z1O0t4YNy": {
+      "key": "48MFCZlaowv59z1O0t4YNy",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3aeZ61Z2IhNHgj1mLePcM0": true
+      },
+      "displayOrder": 1
+    },
+    "3aeZ61Z2IhNHgj1mLePcM0": {
+      "key": "3aeZ61Z2IhNHgj1mLePcM0",
+      "name": "bigLabel",
+      "type": "Grid",
+      "styleProperties": {
+        "5BpBjVJajDZPTx2skCvoYu": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2jUbIJpYv8VH1LVWW2vewV": true
+      },
+      "displayOrder": 1
+    },
+    "2jUbIJpYv8VH1LVWW2vewV": {
+      "key": "2jUbIJpYv8VH1LVWW2vewV",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Be among the first to experience our CRM"
+        }
+      },
+      "styleProperties": {
+        "5m04URAkhi4s4C77l7yRj9": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#333"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontSize": {
+                "value": "30px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "16v6k3Cb1kiBzdMNCXF87d": {
+      "key": "16v6k3Cb1kiBzdMNCXF87d",
+      "name": "toggleButtonGrid",
+      "type": "Grid",
+      "override": false,
+      "displayOrder": 2
+    },
+    "3bML9dzKsPWk7M5X8zIBbR": {
+      "key": "3bML9dzKsPWk7M5X8zIBbR",
+      "name": "signUpGrid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signIn'"
+          }
+        }
+      },
+      "styleProperties": {
+        "1NQE4sxIdtQhP2A3aEHRqO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "animationName": {
+                "value": "_fadeInRight"
+              },
+              "animationDuration": {
+                "value": "0.3s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1vReYs4cb8heWsCV1zOF4t": true,
+        "3oN0zlef13SpEYtQ1MOV7X": true,
+        "1JrZKhB3QoUOf13Xyox7AQ": true,
+        "1Xj6q3eyGfbRhYrO4g3L1L": true
+      },
+      "displayOrder": 3
+    },
+    "1vReYs4cb8heWsCV1zOF4t": {
+      "key": "1vReYs4cb8heWsCV1zOF4t",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3ePfxiBCVq7ZtZ5LqsamIq": {
+          "resolutions": {
+            "ALL": {
+              "maxWidth": {
+                "value": "340px"
+              },
+              "gap": {
+                "value": "8px"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3r1zd4akS0EaZKBXk9Rmkr": true,
+        "3OI4gLCOI2Y1JiraQGIPvT": true,
+        "3CL36KlMoPtK4grpSaUPL": true,
+        "3Mhgkr8Bq6HnjQpGqLbUu0": true
+      },
+      "displayOrder": 1
+    },
+    "3r1zd4akS0EaZKBXk9Rmkr": {
+      "key": "3r1zd4akS0EaZKBXk9Rmkr",
+      "name": "first Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "First Name",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-user-large",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "validation": {
+          "2sZVrwlR7tKHhJJjEfjxKF": {
+            "key": "2sZVrwlR7tKHhJJjEfjxKF",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "First name is mandatory"
+                }
+              }
+            }
+          }
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1eHo1CCO6eRbLmYfi7rtuB": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.signUpForm.firstName"
+      }
+    },
+    "3OI4gLCOI2Y1JiraQGIPvT": {
+      "key": "3OI4gLCOI2Y1JiraQGIPvT",
+      "name": "phone number",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Phone Number",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-phone",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "validation": {
+          "5BVV14DabrzlRVpOR0FKF": {
+            "key": "5BVV14DabrzlRVpOR0FKF",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Phone number is mandatory"
+                }
+              }
+            }
+          }
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "dZDMSlW8Z8Awe6lXCn62w": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.signUpForm.phoneNumber"
+      }
+    },
+    "3CL36KlMoPtK4grpSaUPL": {
+      "key": "3CL36KlMoPtK4grpSaUPL",
+      "name": "password",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Password"
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-lock",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "validation": {
+          "NDESbgnO6c8362YfFJh5C": {
+            "key": "NDESbgnO6c8362YfFJh5C",
+            "order": 1,
+            "property": {
+              "value": {
+                "type": "STRING_LENGTH",
+                "minLength": {
+                  "value": 8
+                },
+                "message": {}
+              }
+            }
+          },
+          "2n8nb69YH9lho7NAXhfcIg": {
+            "key": "2n8nb69YH9lho7NAXhfcIg",
+            "order": 2,
+            "property": {
+              "value": {
+                "condition": {},
+                "message": {
+                  "value": "Password is mandatory."
+                }
+              }
+            }
+          }
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "isPassword": "<REDACTED>",
+        "onChange": {
+          "value": "6LnpjomIwWIamNiQRGRDAt"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "__truncated__": "... 6 more props"
+      },
+      "styleProperties": {
+        "7fpvtudnEwTQJTDDNsdueN": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.signUpForm.password"
+      }
+    },
+    "3oN0zlef13SpEYtQ1MOV7X": {
+      "key": "3oN0zlef13SpEYtQ1MOV7X",
+      "name": "validationMessageGrid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.passwordValidationGrid = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "4MzcRwQIr7VEaEXXotvCrU": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "animationName": {
+                "value": "_pulse"
+              },
+              "animationDelay": {
+                "value": "1s"
+              },
+              "animationDuration": {
+                "value": "0.5s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2duYMR4L27Rg286oZ69AMy": true,
+        "5gdit342Yw7xxLfLkzHOvg": true
+      },
+      "displayOrder": 2
+    },
+    "2duYMR4L27Rg286oZ69AMy": {
+      "key": "2duYMR4L27Rg286oZ69AMy",
+      "name": "leftGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4YtHKLhh59FWyW1GdW9GlO": true,
+        "5fTNa7tp88ErLV28lO17Qq": true,
+        "7iG67tWZcJyILqFrvPoHlj": true
+      },
+      "displayOrder": 1
+    },
+    "4YtHKLhh59FWyW1GdW9GlO": {
+      "key": "4YtHKLhh59FWyW1GdW9GlO",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4PNrjNjxnlqAUCok7GNIFV": true,
+        "1rLIXw7bia7NwJdccw1jBM": true
+      },
+      "displayOrder": 1
+    },
+    "5fTNa7tp88ErLV28lO17Qq": {
+      "key": "5fTNa7tp88ErLV28lO17Qq",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2eNTwyjscS0WOIRRcJzsDf": true,
+        "7iNJJBEl7RuIq2bFeJ4YWU": true
+      },
+      "displayOrder": 2
+    },
+    "7iG67tWZcJyILqFrvPoHlj": {
+      "key": "7iG67tWZcJyILqFrvPoHlj",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "je4EkYIClsKgOaCymKTPH": true,
+        "5XFFv9Z8O300QC9bQ6hsgP": true
+      },
+      "displayOrder": 2
+    },
+    "4PNrjNjxnlqAUCok7GNIFV": {
+      "key": "4PNrjNjxnlqAUCok7GNIFV",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One lowercase character"
+        }
+      },
+      "styleProperties": {
+        "3NOen2RKv0ntrUE63eWITN": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1rLIXw7bia7NwJdccw1jBM": {
+      "key": "1rLIXw7bia7NwJdccw1jBM",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3dFMeOMaZfqp4zPCvKLeIx": true
+      },
+      "displayOrder": 1
+    },
+    "2eNTwyjscS0WOIRRcJzsDf": {
+      "key": "2eNTwyjscS0WOIRRcJzsDf",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "8 characters minimum"
+        }
+      },
+      "styleProperties": {
+        "1T7u0WHRzqUth4u3mlwsM8": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7iNJJBEl7RuIq2bFeJ4YWU": {
+      "key": "7iNJJBEl7RuIq2bFeJ4YWU",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4HvGh1guhDnXgu4pbZJHXI": true
+      },
+      "displayOrder": 1
+    },
+    "je4EkYIClsKgOaCymKTPH": {
+      "key": "je4EkYIClsKgOaCymKTPH",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One Special character"
+        }
+      },
+      "styleProperties": {
+        "6Q3PDhu7soIzO6b01IhAJA": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5XFFv9Z8O300QC9bQ6hsgP": {
+      "key": "5XFFv9Z8O300QC9bQ6hsgP",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "6123TG5n5ekCS0KQ94HHCU": true
+      },
+      "displayOrder": 1
+    },
+    "3dFMeOMaZfqp4zPCvKLeIx": {
+      "key": "3dFMeOMaZfqp4zPCvKLeIx",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.oneLowerCase = false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.oneLowerCase = false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "4HvGh1guhDnXgu4pbZJHXI": {
+      "key": "4HvGh1guhDnXgu4pbZJHXI",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.eightCharacters =false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eightCharacters =false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6123TG5n5ekCS0KQ94HHCU": {
+      "key": "6123TG5n5ekCS0KQ94HHCU",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.specialCharacter=false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.specialCharacter = false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5gdit342Yw7xxLfLkzHOvg": {
+      "key": "5gdit342Yw7xxLfLkzHOvg",
+      "name": "rightGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2evMrUbeLjpFUvre8yIh2N": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5NMfdCVx1qxnQu7vmI6eEz": true,
+        "6C2IsdCMZVMW1OMtIsZRWa": true
+      },
+      "displayOrder": 2
+    },
+    "5NMfdCVx1qxnQu7vmI6eEz": {
+      "key": "5NMfdCVx1qxnQu7vmI6eEz",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3kk609CbKDPRMKJHxssJ6u": true,
+        "69qrx21LRlVn93eXGxQfJX": true
+      },
+      "displayOrder": 1
+    },
+    "6C2IsdCMZVMW1OMtIsZRWa": {
+      "key": "6C2IsdCMZVMW1OMtIsZRWa",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "rDHOJXOg4tOJhtG2nBpgE": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4cQDolg3ADJ1YyCAgEEMIt": true,
+        "6CdCh50biytXfl02jDrU2D": true
+      },
+      "displayOrder": 1
+    },
+    "3kk609CbKDPRMKJHxssJ6u": {
+      "key": "3kk609CbKDPRMKJHxssJ6u",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One uppercase character"
+        }
+      },
+      "styleProperties": {
+        "6cJ6VMllSYwETBc93pF4Z4": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "69qrx21LRlVn93eXGxQfJX": {
+      "key": "69qrx21LRlVn93eXGxQfJX",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "flWiA2Tn5FxZKw0F8Np2P": true
+      },
+      "displayOrder": 1
+    },
+    "4cQDolg3ADJ1YyCAgEEMIt": {
+      "key": "4cQDolg3ADJ1YyCAgEEMIt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One number"
+        }
+      },
+      "styleProperties": {
+        "3NOen2RKv0ntrUE63eWITN": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6CdCh50biytXfl02jDrU2D": {
+      "key": "6CdCh50biytXfl02jDrU2D",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "2ptMJpK0h40jdr1oM1FDG5": true
+      },
+      "displayOrder": 1
+    },
+    "flWiA2Tn5FxZKw0F8Np2P": {
+      "key": "flWiA2Tn5FxZKw0F8Np2P",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.oneUpperCase = false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.oneUpperCase=false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2ptMJpK0h40jdr1oM1FDG5": {
+      "key": "2ptMJpK0h40jdr1oM1FDG5",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.oneDigit = false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.oneDigit= false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1JrZKhB3QoUOf13Xyox7AQ": {
+      "key": "1JrZKhB3QoUOf13Xyox7AQ",
+      "name": "Passwordbutton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Sign up"
+        },
+        "onClick": {
+          "value": "6dLXeYJXOzv3hFig162c0c"
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.invalidUrl = true or Page.allValidations = false or Page.signUpForm.lastName = undefined or Page.signUpForm.firstName = undefined"
+          }
+        }
+      },
+      "styleProperties": {
+        "56ajSkcR3UB60ehelIPBUS": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FFF"
+              },
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "normal"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1Xj6q3eyGfbRhYrO4g3L1L": {
+      "key": "1Xj6q3eyGfbRhYrO4g3L1L",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2V1xaCIHTkuLmjMsTntX1o": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "30px"
+              },
+              "marginTop": {
+                "value": "35px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0"
+              },
+              "height": {
+                "value": "50px"
+              },
+              "flexDirection": {
+                "value": "column"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5evXaJympYsqMXsZmPsnns": true,
+        "4OcNcQOahgbJVIG45XL9hI": true
+      },
+      "displayOrder": 4
+    },
+    "5evXaJympYsqMXsZmPsnns": {
+      "key": "5evXaJympYsqMXsZmPsnns",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Already have an account?"
+        }
+      },
+      "styleProperties": {
+        "3QvUyIj4vb57AJOkSznb9L": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#333"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "/* 150% */letterSpacing": {
+                "value": "0.16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4OcNcQOahgbJVIG45XL9hI": {
+      "key": "4OcNcQOahgbJVIG45XL9hI",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "1OU9uYD0XMOwmc6v6fltrT": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "transparent"
+              },
+              "color": {
+                "value": "#0085F2"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.01em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "marginLeft": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1VWd4Ydl50OEhUNRCiIbPI": true
+      },
+      "displayOrder": 2
+    },
+    "1VWd4Ydl50OEhUNRCiIbPI": {
+      "key": "1VWd4Ydl50OEhUNRCiIbPI",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Sign In"
+        },
+        "linkPath": {
+          "value": "/login"
+        }
+      },
+      "styleProperties": {
+        "70pzqESFAh8AMtvks5sWoy": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#0085F2"
+              },
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "18px"
+              },
+              "/* 100% */letterSpacing": {
+                "value": "0.18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5iHgAJOgkcUe10dpgJLXWT": {
+      "key": "5iHgAJOgkcUe10dpgJLXWT",
+      "name": "circleImage",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/bottom-circle.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "47HMngeGdoWfdJ00kHct9E": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "189px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "bottom": {
+                "value": "0"
+              },
+              "left": {
+                "value": "0"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "45BfmelnEg9v2XdlkzU4bT": {
+      "key": "45BfmelnEg9v2XdlkzU4bT",
+      "name": "weHavesentAlinkGridSignUp",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": true,
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.invalidUrl = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "13PTklqb1NvC9blJENtaxz": {
+          "resolutions": {
+            "ALL": {
+              "bottom": {
+                "value": "0px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "background": {
+                "value": "#F0F6F5"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+              },
+              "backgroundColor": {
+                "value": "#F8EFF0"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "backgroundColor": {
+                "value": "#F8EFF0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7spQIxNZoWxjL1GNZIVvwB": true
+      },
+      "displayOrder": 5
+    },
+    "7spQIxNZoWxjL1GNZIVvwB": {
+      "key": "7spQIxNZoWxjL1GNZIVvwB",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3tVW8hh2lIteBjNNQNXgV5": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_zoomIn"
+              },
+              "animationDuration": {
+                "value": "0.5s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5f2u2yq4m1L8mETR1UrEUo": true,
+        "3aqBZS2aPSJwpCBJjQHfoy": true
+      },
+      "displayOrder": 1
+    },
+    "5f2u2yq4m1L8mETR1UrEUo": {
+      "key": "5f2u2yq4m1L8mETR1UrEUo",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-circle-xmark"
+        }
+      },
+      "styleProperties": {
+        "p9OhcXOdXX4Gx0v6qA5Aj": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "18px"
+              },
+              "color": {
+                "value": "#FE3939"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3aqBZS2aPSJwpCBJjQHfoy": {
+      "key": "3aqBZS2aPSJwpCBJjQHfoy",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oops! Looks like something's wrong with your url."
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              },
+              "color": {
+                "value": "#FE3939"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4fw7aJ8JzlQZ3cl41qYuzC": {
+      "key": "4fw7aJ8JzlQZ3cl41qYuzC",
+      "name": "successmessage",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.createSuccess = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "13PTklqb1NvC9blJENtaxz": {
+          "resolutions": {
+            "ALL": {
+              "bottom": {
+                "value": "0px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "background": {
+                "value": "#F0F6F5"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5BZI1k2Tbd9JgYYQrKBKoi": true
+      },
+      "displayOrder": 6
+    },
+    "5BZI1k2Tbd9JgYYQrKBKoi": {
+      "key": "5BZI1k2Tbd9JgYYQrKBKoi",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3tVW8hh2lIteBjNNQNXgV5": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_zoomIn"
+              },
+              "animationDuration": {
+                "value": "0.5s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3PSZBNqsILZk2CdSyrukiE": true,
+        "6oS6SvGvddj9SbA3ub7FRN": true
+      },
+      "displayOrder": 1
+    },
+    "3PSZBNqsILZk2CdSyrukiE": {
+      "key": "3PSZBNqsILZk2CdSyrukiE",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-circle-check"
+        }
+      },
+      "styleProperties": {
+        "p9OhcXOdXX4Gx0v6qA5Aj": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": " #52BD94"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6oS6SvGvddj9SbA3ub7FRN": {
+      "key": "6oS6SvGvddj9SbA3ub7FRN",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Account created. You will be redirected to your dashboard."
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#52BD94"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7vPFNTbdHFeAf8Zl4OGCtl": {
+      "key": "7vPFNTbdHFeAf8Zl4OGCtl",
+      "name": "RightGridMain",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "4PXFnWyFXvykvS25XfkFLt": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#151515"
+              },
+              "width": {
+                "value": "50%"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "7wcX5NE498NJeRatWBAnBL": true
+      },
+      "displayOrder": 2
+    },
+    "7wcX5NE498NJeRatWBAnBL": {
+      "key": "7wcX5NE498NJeRatWBAnBL",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Coming soon.."
+        }
+      },
+      "styleProperties": {
+        "5R9Vm5V3tvSaDyhd1C59OQ": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "bold"
+              },
+              "fontSize": {
+                "value": "50px"
+              },
+              "color": {
+                "value": "#FFFFFF"
+              },
+              "lineHeight": {
+                "value": "40px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3Mhgkr8Bq6HnjQpGqLbUu0": {
+      "key": "3Mhgkr8Bq6HnjQpGqLbUu0",
+      "name": "last Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Last Name",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-user-large",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "validation": {
+          "5BVV14DabrzlRVpOR0FKF": {
+            "key": "5BVV14DabrzlRVpOR0FKF",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Last name is mandatory"
+                }
+              }
+            }
+          }
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "dZDMSlW8Z8Awe6lXCn62w": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.signUpForm.lastName"
+      }
+    },
+    "7GmSDNTK3McXXIs0spUezf": {
+      "key": "7GmSDNTK3McXXIs0spUezf",
+      "name": "LeftGridNew",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "xR3FtgLpbnlNlZqBhMaUr": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "49.444vw"
+              },
+              "paddingRight": {
+                "value": "5.556vw"
+              },
+              "paddingLeft": {
+                "value": "13.472vw"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "overflowY": {
+                "value": "auto"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4fzBfz8aw7EHVJpMI1VBkz": true,
+        "6QRX0SjT9xdNPK89NwGcTW": true,
+        "25KMlx2mlXTAUXMFVttfZ3": true
+      },
+      "displayOrder": 3
+    },
+    "4fzBfz8aw7EHVJpMI1VBkz": {
+      "key": "4fzBfz8aw7EHVJpMI1VBkz",
+      "name": "registrationGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5IZm9YVXSP0FR70g5xlSRm": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "paddingLeft": {
+                "value": "2.778vw"
+              },
+              "paddingRight": {
+                "value": "2.778vw"
+              },
+              "width": {
+                "value": "30.417vw"
+              },
+              "paddingTop": {
+                "value": "3.681vw"
+              },
+              "boxShadow": {
+                "value": "0px 1px 3px 0px #0000001A"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.694vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.694vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.694vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.694vw"
+              },
+              "paddingBottom": {
+                "value": "2.778vw"
+              },
+              "gap": {
+                "value": "0vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "952KGKpemmX8Uf7hMGt8H": true,
+        "4UKvUsipTNAB3UpmF2fIwS": true,
+        "3fSMsLABHZ1xPUAPCUKWqz": true,
+        "351wp2BPJVOygGpeRbj8fY": true,
+        "5V5qacQgVle5LMzoZS7Os8": true,
+        "1s2wyMnglYyLXGHzHjIy5k": true,
+        "1f53pSn2wsSRmoumCQChqN": true
+      },
+      "displayOrder": 1
+    },
+    "952KGKpemmX8Uf7hMGt8H": {
+      "key": "952KGKpemmX8Uf7hMGt8H",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/crm ai/Vector.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "1n73n8uITuisvgn8GAhm7Z": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "6.597vw"
+              },
+              "height": {
+                "value": "1.875vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4UKvUsipTNAB3UpmF2fIwS": {
+      "key": "4UKvUsipTNAB3UpmF2fIwS",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Register now\n\n"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "47QVNsvabeLymWWmfKtZw6": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3fSMsLABHZ1xPUAPCUKWqz": {
+      "key": "3fSMsLABHZ1xPUAPCUKWqz",
+      "name": "registrationtextboxsGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1g5HADypWxyGTkl9kPgO5M": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "2.583vw"
+              },
+              "gap": {
+                "value": "3.083vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1c9Yano7flT5ZGCyrMR9Z": true,
+        "1tq1Jto0boyCWYEFvujJ94": true,
+        "2uUx10qM2dI9v2mjx96Op": true,
+        "2zoaJC7542PEQ5xPT9dEzL": true
+      },
+      "displayOrder": 4
+    },
+    "351wp2BPJVOygGpeRbj8fY": {
+      "key": "351wp2BPJVOygGpeRbj8fY",
+      "name": "validationMessageGrid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.passwordValidationGrid = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "4MzcRwQIr7VEaEXXotvCrU": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "animationName": {
+                "value": "_pulse"
+              },
+              "animationDelay": {
+                "value": "1s"
+              },
+              "animationDuration": {
+                "value": "0.5s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1SbTg1sEMTwqZEBWS2XTiA": true,
+        "xG17a2FpjBZ1URgS89h6Z": true
+      },
+      "displayOrder": 5
+    },
+    "1SbTg1sEMTwqZEBWS2XTiA": {
+      "key": "1SbTg1sEMTwqZEBWS2XTiA",
+      "name": "leftGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "7fmxAA7A4UWAAvyR4HAOtk": true,
+        "5tFLVNWhLw8ojYHMRHbtNL": true,
+        "5dqxbLKrmwWB2tTCv34RDB": true
+      },
+      "displayOrder": 1
+    },
+    "xG17a2FpjBZ1URgS89h6Z": {
+      "key": "xG17a2FpjBZ1URgS89h6Z",
+      "name": "rightGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2evMrUbeLjpFUvre8yIh2N": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4I4yhb9IRLY1BRO0mJnTrU": true,
+        "63yKxobRKTXnO7Lj0XW9Fv": true
+      },
+      "displayOrder": 2
+    },
+    "7fmxAA7A4UWAAvyR4HAOtk": {
+      "key": "7fmxAA7A4UWAAvyR4HAOtk",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4RMGNv5U7Kn3frtevHMidO": true,
+        "2S4KgECGitm9q1SBEbthq3": true
+      },
+      "displayOrder": 1
+    },
+    "5tFLVNWhLw8ojYHMRHbtNL": {
+      "key": "5tFLVNWhLw8ojYHMRHbtNL",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2AIxDG9vuz6LLGh1WFlMD3": true,
+        "7HCQc6BEBNaF2IDMNdR0NV": true
+      },
+      "displayOrder": 2
+    },
+    "5dqxbLKrmwWB2tTCv34RDB": {
+      "key": "5dqxbLKrmwWB2tTCv34RDB",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "689sYpMsxlyjzKg4wUx7jQ": true,
+        "1QO04hdb1onpRqJXJlqHuv": true
+      },
+      "displayOrder": 2
+    },
+    "4I4yhb9IRLY1BRO0mJnTrU": {
+      "key": "4I4yhb9IRLY1BRO0mJnTrU",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6c1I4qws42TUi2FgPkPFgN": true,
+        "1TnXZ5BVvvP0WTSHdjP11q": true
+      },
+      "displayOrder": 1
+    },
+    "63yKxobRKTXnO7Lj0XW9Fv": {
+      "key": "63yKxobRKTXnO7Lj0XW9Fv",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "rDHOJXOg4tOJhtG2nBpgE": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2HjgQbMN2Jse12pbxrqRRP": true,
+        "4udtmVNT80ibRL2zKfF5Sk": true
+      },
+      "displayOrder": 1
+    },
+    "4RMGNv5U7Kn3frtevHMidO": {
+      "key": "4RMGNv5U7Kn3frtevHMidO",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One lowercase character"
+        }
+      },
+      "styleProperties": {
+        "3NOen2RKv0ntrUE63eWITN": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2S4KgECGitm9q1SBEbthq3": {
+      "key": "2S4KgECGitm9q1SBEbthq3",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "20L3EMBeNWVYElDxubuX93": true
+      },
+      "displayOrder": 1
+    },
+    "2AIxDG9vuz6LLGh1WFlMD3": {
+      "key": "2AIxDG9vuz6LLGh1WFlMD3",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "8 characters minimum"
+        }
+      },
+      "styleProperties": {
+        "1T7u0WHRzqUth4u3mlwsM8": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7HCQc6BEBNaF2IDMNdR0NV": {
+      "key": "7HCQc6BEBNaF2IDMNdR0NV",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "PyxIBiJujQ8r89IEjXXQR": true
+      },
+      "displayOrder": 1
+    },
+    "689sYpMsxlyjzKg4wUx7jQ": {
+      "key": "689sYpMsxlyjzKg4wUx7jQ",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One Special character"
+        }
+      },
+      "styleProperties": {
+        "6Q3PDhu7soIzO6b01IhAJA": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1QO04hdb1onpRqJXJlqHuv": {
+      "key": "1QO04hdb1onpRqJXJlqHuv",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "FSApEMu8XsDXGDN3BhTbA": true
+      },
+      "displayOrder": 1
+    },
+    "6c1I4qws42TUi2FgPkPFgN": {
+      "key": "6c1I4qws42TUi2FgPkPFgN",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One uppercase character"
+        }
+      },
+      "styleProperties": {
+        "6cJ6VMllSYwETBc93pF4Z4": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1TnXZ5BVvvP0WTSHdjP11q": {
+      "key": "1TnXZ5BVvvP0WTSHdjP11q",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "5YQEqc1JJwfJW6XazfNwsq": true
+      },
+      "displayOrder": 1
+    },
+    "2HjgQbMN2Jse12pbxrqRRP": {
+      "key": "2HjgQbMN2Jse12pbxrqRRP",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One number"
+        }
+      },
+      "styleProperties": {
+        "3NOen2RKv0ntrUE63eWITN": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4udtmVNT80ibRL2zKfF5Sk": {
+      "key": "4udtmVNT80ibRL2zKfF5Sk",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "2VtwaeNXetalIcQPHdMO8C": true
+      },
+      "displayOrder": 1
+    },
+    "20L3EMBeNWVYElDxubuX93": {
+      "key": "20L3EMBeNWVYElDxubuX93",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.oneLowerCase = false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.oneLowerCase = false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "PyxIBiJujQ8r89IEjXXQR": {
+      "key": "PyxIBiJujQ8r89IEjXXQR",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.eightCharacters =false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eightCharacters =false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "__truncated__": "... 25 more components omitted for corpus"
+  },
+  "name": "register",
+  "message": "From transport : 3N3IVWR44u6El3IcFN6tXQ",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:18:54.874000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:52:06.603000",
+  "createdBy": "<USER>"
+}

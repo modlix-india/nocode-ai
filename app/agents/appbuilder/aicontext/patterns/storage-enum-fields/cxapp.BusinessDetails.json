@@ -1,0 +1,100 @@
+{
+  "_id": "665f4ba8111ddb4fbf3bbaa4",
+  "schema": {
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1,
+    "name": "BusinessDetails",
+    "properties": {
+      "title": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 3,
+        "maxLength": 512
+      },
+      "description": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 3,
+        "maxLength": 2048
+      },
+      "image": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 3,
+        "maxLength": 1024
+      },
+      "applicationLogo": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "defaultEmailId": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "communicationEmailId": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "phoneNumber": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "password": "<REDACTED>",
+      "zoho": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "apiKey": "<REDACTED>",
+          "secretCode": "<REDACTED>"
+        }
+      },
+      "userName": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "headerImage": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "kycProcess": {
+        "enums": [
+          "MANUAL",
+          "VERIFICATION"
+        ]
+      }
+    },
+    "required": [
+      "image",
+      "title"
+    ]
+  },
+  "uniqueName": "cxapp_system_busines_1je9wetjj846x",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": true,
+  "onlyThruKIRun": false,
+  "createAuth": "Authorities.CXAPP.ROLE_Super_Admin",
+  "updateAuth": "Authorities.CXAPP.ROLE_Super_Admin",
+  "deleteAuth": "Authorities.CXAPP.ROLE_Super_Admin",
+  "name": "BusinessDetails",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 112,
+  "updatedAt": "2026-04-09 04:28:29.049000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:15:20.530000",
+  "createdBy": "<USER>"
+}

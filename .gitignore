@@ -216,3 +216,8 @@ comparison_screenshots/
 # macOS system files
 .DS_Store
 **/.DS_Store
+
+scripts/bench_results
+
+# page analyzer run artifacts (screenshots/analysis.json) - local only
+runs/

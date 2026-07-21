@@ -1,0 +1,24 @@
+{
+  "_id": "665f4f7d111ddb4fbf3bbae2",
+  "schema": {
+    "ref": "hrms.ScheduleCallDetails",
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1
+  },
+  "uniqueName": "hrms_system_schedule_vey4wpjak602",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": true,
+  "onlyThruKIRun": true,
+  "name": "ScheduleCallDetails",
+  "message": "From transport : 0FfQUnuG1R6hc1WsU1FuxV",
+  "clientCode": "SYSTEM",
+  "appCode": "hrms",
+  "version": 52,
+  "updatedAt": "2026-04-09 04:28:36.638000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:31:41.546000",
+  "createdBy": "<USER>"
+}

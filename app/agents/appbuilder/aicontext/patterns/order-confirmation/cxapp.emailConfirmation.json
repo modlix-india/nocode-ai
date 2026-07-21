@@ -1,0 +1,508 @@
+{
+  "_id": "6621371b7284ef62dfa51b25",
+  "properties": {
+    "wrapShell": false
+  },
+  "rootComponent": "6yTwfWjUfKcFYl5gqbs7Ii",
+  "componentDefinition": {
+    "6yTwfWjUfKcFYl5gqbs7Ii": {
+      "key": "6yTwfWjUfKcFYl5gqbs7Ii",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "7xo3MQiX1Xf7sTcEOzdQzp": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "paddingTop": {
+                "value": "30px"
+              },
+              "paddingBottom": {
+                "value": "30px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "273ageCuKIHNGAloO2NEtQ": true,
+        "1AgJD1KPEyTSBDqmzj79Zr": true
+      }
+    },
+    "7fd21eux2vnUEoMMirPXCK": {
+      "key": "7fd21eux2vnUEoMMirPXCK",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "7kFHGADobo8APv8ovcu6Vd": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "531px"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "50px"
+              },
+              "paddingBottom": {
+                "value": "50px"
+              },
+              "paddingLeft": {
+                "value": "50px"
+              },
+              "paddingRight": {
+                "value": "50px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "95%"
+              },
+              "paddingTop": {
+                "value": "30px"
+              },
+              "paddingBottom": {
+                "value": "30px"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "30px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            },
+            "WIDE_SCREEN": {
+              "height": {
+                "value": "363px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            },
+            "MOBILE_POTRAIT_SCREEN": {
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "boxShadow": {
+                "value": " 0px 4px 15px 0px #0000001A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4lR4etQ5nhu98RreYAomRI": true,
+        "1Ozq0ABLNp874zFEa6NYuZ": true,
+        "5VOE71qJrhJGQLrgGf05rm": true,
+        "6nQeTNDNjIxD25PlsUbRYS": true,
+        "2oyGhJRooAf4k0T9npky9j": true
+      },
+      "displayOrder": 0
+    },
+    "4lR4etQ5nhu98RreYAomRI": {
+      "key": "4lR4etQ5nhu98RreYAomRI",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-envelope"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "66DFiFrEQtmbNdZnb6QhsD": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "16px"
+              },
+              "width": {
+                "value": "21px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1Ozq0ABLNp874zFEa6NYuZ": {
+      "key": "1Ozq0ABLNp874zFEa6NYuZ",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Account created! Check your email to login and check out our projects"
+        },
+        "textContainer": {
+          "value": "H6"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "styleProperties": {
+        "5WfiWmRiEMxH5fhgV6v87t": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "371px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5VOE71qJrhJGQLrgGf05rm": {
+      "key": "5VOE71qJrhJGQLrgGf05rm",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Congratulations!"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6nQeTNDNjIxD25PlsUbRYS": {
+      "key": "6nQeTNDNjIxD25PlsUbRYS",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Resend confirmation email"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "DzRXYGE1NyXAmjwZ4kEne": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "40px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "2oyGhJRooAf4k0T9npky9j": {
+      "key": "2oyGhJRooAf4k0T9npky9j",
+      "name": "Link",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Didn\u2019t receive email?"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "273ageCuKIHNGAloO2NEtQ": {
+      "key": "273ageCuKIHNGAloO2NEtQ",
+      "name": "Header",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_OCTONARYBG"
+        }
+      },
+      "styleProperties": {
+        "30fAjCfGkHKDEvGfoyHtiV": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "50px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4z4dT9P8b1Ti1NjUPBhkkj": true,
+        "1FicR3AI4ErSHRB6Vw0uit": true
+      },
+      "displayOrder": 1
+    },
+    "4z4dT9P8b1Ti1NjUPBhkkj": {
+      "key": "4z4dT9P8b1Ti1NjUPBhkkj",
+      "name": "logo",
+      "type": "Grid",
+      "styleProperties": {
+        "5YD7YB5CYVoyAsQHv56MDY": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "163.46px"
+              },
+              "height": {
+                "value": "24.69px"
+              },
+              "marginTop": {
+                "value": "12px"
+              },
+              "marginBottom": {
+                "value": "12px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7GyWUKV6FnSDV2PHAkwWAV": true
+      },
+      "displayOrder": 1
+    },
+    "1FicR3AI4ErSHRB6Vw0uit": {
+      "key": "1FicR3AI4ErSHRB6Vw0uit",
+      "name": "Developer Text",
+      "type": "Grid",
+      "styleProperties": {
+        "6r2nU41ixr4eiOt4vmrr09": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "66px"
+              },
+              "height": {
+                "value": "10px"
+              },
+              "marginTop": {
+                "value": "15px"
+              },
+              "marginBottom": {
+                "value": "15px"
+              },
+              "marginLeft": {
+                "value": "8px"
+              },
+              "marginRight": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7GyWUKV6FnSDV2PHAkwWAV": {
+      "key": "7GyWUKV6FnSDV2PHAkwWAV",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "72YRlRpUs0KAqY8H3UDczl": true
+      },
+      "displayOrder": 0
+    },
+    "72YRlRpUs0KAqY8H3UDczl": {
+      "key": "72YRlRpUs0KAqY8H3UDczl",
+      "name": "cx app logo",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/emailConfirmation/Modlix+white.png"
+        }
+      },
+      "styleProperties": {
+        "73qUnzBS7Y1CbxndKmZ5C4": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1AgJD1KPEyTSBDqmzj79Zr": {
+      "key": "1AgJD1KPEyTSBDqmzj79Zr",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4u6KsKl4TUg5hRmJyY65ur": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "90%"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7fd21eux2vnUEoMMirPXCK": true
+      },
+      "displayOrder": 2
+    }
+  },
+  "name": "emailConfirmation",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 103,
+  "updatedAt": "2026-04-09 04:27:54.767000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-04-18 15:07:07.964000",
+  "createdBy": "<USER>"
+}

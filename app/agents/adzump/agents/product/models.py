@@ -4,6 +4,8 @@ Ported from ds/core/models/scraping.py - simplified to remove geo/location
 models not needed in nocode-ai.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 from pydantic import BaseModel

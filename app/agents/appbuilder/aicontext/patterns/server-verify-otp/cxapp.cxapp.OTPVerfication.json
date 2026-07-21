@@ -1,0 +1,265 @@
+{
+  "_id": "69a7cce67bbc5e405dd0e03d",
+  "definition": {
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1954.9999999999986,
+          "top": 710.5555725097649
+        },
+        "parameterMap": {
+          "name": {
+            "5dzU30Vyj9hDQRhoEXmxRG": {
+              "key": "5dzU30Vyj9hDQRhoEXmxRG",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "payload"
+            }
+          },
+          "schema": {
+            "2h0231wpueF3M16DMrdQuX": {
+              "key": "2h0231wpueF3M16DMrdQuX",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2550.999999999998,
+          "top": 713.5555725097649
+        },
+        "parameterMap": {
+          "name": {
+            "75Bv9RsaLXoXdS5u77Gtar": {
+              "key": "75Bv9RsaLXoXdS5u77Gtar",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.payload"
+            }
+          },
+          "value": {
+            "1LpvoeRSJoHAIuEI8QKm3u": {
+              "key": "1LpvoeRSJoHAIuEI8QKm3u",
+              "type": "EXPRESSION",
+              "expression": "Steps.make.output.value",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 3222.999992370603,
+          "top": 704.555587768554
+        },
+        "parameterMap": {
+          "results": {
+            "2mNMUE0ErsbhodCv1NXRKh": {
+              "key": "2mNMUE0ErsbhodCv1NXRKh",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent_Copy_1": {
+        "statementName": "generateEvent_Copy_1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 3333.555526733396,
+          "top": 990.6666946411124
+        },
+        "parameterMap": {
+          "results": {
+            "2mNMUE0ErsbhodCv1NXRKh": {
+              "key": "2mNMUE0ErsbhodCv1NXRKh",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.error.data"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "9GOpuanycr95h24P2PiJB": {
+              "key": "9GOpuanycr95h24P2PiJB",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        }
+      },
+      "make": {
+        "statementName": "make",
+        "name": "Make",
+        "namespace": "System",
+        "position": {
+          "left": 2239.9999999999986,
+          "top": 730.555587768554
+        },
+        "parameterMap": {
+          "resultShape": {
+            "1PyrmdHRt8cHGuOGug4oAQ": {
+              "key": "1PyrmdHRt8cHGuOGug4oAQ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "@entity": "in.co.sandbox.kyc.aadhaar.okyc.request",
+                "reference_id": "{{Arguments.reference}}",
+                "otp": "{{Arguments.otp}}"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 2853.999999999998,
+          "top": 650.5555725097652
+        },
+        "parameterMap": {
+          "connectionName": {
+            "5Q6opUE8yFNePE1Vymb4XV": {
+              "key": "5Q6opUE8yFNePE1Vymb4XV",
+              "type": "VALUE",
+              "order": 1,
+              "value": "KYCVerification"
+            }
+          },
+          "url": {
+            "2gn0kHxMI64d1tidrmHDr6": {
+              "key": "2gn0kHxMI64d1tidrmHDr6",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "/kyc/aadhaar/okyc/otp/verify"
+            }
+          },
+          "headers": {
+            "imEb5Jo0XW3cwc1uVWI53": {
+              "key": "imEb5Jo0XW3cwc1uVWI53",
+              "type": "VALUE",
+              "expression": "",
+              "value": {
+                "Authorization": "eyJ0eXAiOiJKV1MiLCJhbGciOiJSU0FTU0FfUFNTX1NIQV81MTIiLCJraWQiOiIwYzYwMGUzMS01MDAwLTRkYTItYjM3YS01ODdkYTA0ZTk4NTEifQ.eyJ3b3Jrc3BhY2VfaWQiOiJmOTIxMTdjYi04MTdmLTQ4ZTMtYmNjNi04NWIyN2UzNjk1YzkiLCJzdWIiOiJrZXlfbGl2ZV8xNGU4NzdhNDFmNGU0MWI0OWY1MzcyNDZhOThkODdhYyIsImFwaV9rZXkiOiJrZXlfbGl2ZV8xNGU4NzdhNDFmNGU0MWI0OWY1MzcyNDZhOThkODdhYyIsImF1ZCI6IkFQSSIsImludGVudCI6IkFDQ0VTU19UT0tFTiIsImlzcyI6InByb2QxLWFwaS5zYW5kYm94LmNvLmluIiwiaWF0IjoxNzc0MzM3MDQyLCJleHAiOjE3NzQ0MjM0NDJ9.vIhB-z3ECXn6JRdwAvi9UJd0jbTwZRxX0n-R74pQvigC8FUyoP4rvwyIW8OnqTSOGVhlx-nFQVTUjrUqVR10vPfkOruLZ-Q1CV72Pmky28svuxle33x6pGrgtjeeLsQowLN3oK-UwSemI7HGZDr74JWvZPKR5Btvx_jqTq_NBweF3bSmk8az2XpAPl4014EJfN_shkzxHL5yFpub0yaY_2kLqS8Opuz_0ePghoTTihtz8Fe6j5XyEKiUM0fn8ZKRBKHHuybi3Mw3I1UZoM8FhsThwCuaFe6LPNSGe8VIowVagJ83UFacsEbAhphEqx7_vaPpJirW4uc77yxK_dGZwg",
+                "x-api-key": "key_live_14e877a41f4e41b49f537246a98d87ac",
+                "Content-Type": "application/json"
+              }
+            }
+          },
+          "payload": {
+            "64jY6fpEv1NyvT3d3rv7eB": {
+              "key": "64jY6fpEv1NyvT3d3rv7eB",
+              "type": "EXPRESSION",
+              "expression": "Context.payload",
+              "order": 1
+            }
+          },
+          "fileType": {
+            "3MHNzN9zB62owhytz9l0PK": {
+              "key": "3MHNzN9zB62owhytz9l0PK",
+              "type": "VALUE",
+              "expression": "",
+              "value": "static"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      }
+    },
+    "parameters": {
+      "reference": {
+        "parameterName": "reference",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "otp": {
+        "parameterName": "otp",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "name": "OTPVerfication",
+    "namespace": "cxapp"
+  },
+  "name": "cxapp.OTPVerfication",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 2,
+  "updatedAt": "2026-04-09 04:28:28.911000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-03-04 06:10:46.019000",
+  "createdBy": "<USER>"
+}

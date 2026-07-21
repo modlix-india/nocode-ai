@@ -4,6 +4,8 @@ Extracts structured content from raw HTML.
 Captures all visible text, not just <p> tags.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from urllib.parse import urljoin

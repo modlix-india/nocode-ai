@@ -1,0 +1,354 @@
+{
+  "_id": "684d6f675aef151850c74058",
+  "properties": {
+    "wrapShell": false,
+    "title": {
+      "name": {
+        "value": "Forbidden"
+      }
+    }
+  },
+  "rootComponent": "5ZSjQH7oOYBSDntmYAXiJo",
+  "componentDefinition": {
+    "5ZSjQH7oOYBSDntmYAXiJo": {
+      "key": "5ZSjQH7oOYBSDntmYAXiJo",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "6QMwsDaiGCAsIb6E4OCfSd": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100vh"
+              },
+              "gap": {
+                "value": "0px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "20vw"
+              },
+              "paddingBottom": {
+                "value": "20vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4mWZDIiXLP9RVR66TSZHHm": true,
+        "xdyAIPwCNfdKLLheytZG5": true
+      }
+    },
+    "xdyAIPwCNfdKLLheytZG5": {
+      "key": "xdyAIPwCNfdKLLheytZG5",
+      "name": "Company logo",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/leadzumpLogo.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "3abI9jweDoaRU2CvgJaHnw": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "2vw"
+              },
+              "paddingLeft": {
+                "value": "5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "4mWZDIiXLP9RVR66TSZHHm": {
+      "key": "4mWZDIiXLP9RVR66TSZHHm",
+      "name": "bodyGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2XSK8838cz97ySREU5g6oJ": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3vw"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "flexGrow": {
+                "value": "1"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "6vw"
+              },
+              "flexGrow": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "328JvRUsFYMyjZCTfIieRH": true,
+        "2e8sTusUT0aT7PcjYUN1vz": true,
+        "WNUJdHBYMjB3PYcAyMzpM": true
+      },
+      "displayOrder": 1
+    },
+    "2IrOJytn3uS9NdZDC1ZHzl": {
+      "key": "2IrOJytn3uS9NdZDC1ZHzl",
+      "name": "heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Access Denied"
+        }
+      },
+      "styleProperties": {
+        "33AOx1NrNrILPSuKctrph3": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "32px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "25px"
+              },
+              "lineHeight": {
+                "value": "25px"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "328JvRUsFYMyjZCTfIieRH": {
+      "key": "328JvRUsFYMyjZCTfIieRH",
+      "name": "forbidden image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/acces_denied.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "3wA47WBd1PNn3DM0p4bsJQ": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_pulse"
+              },
+              "animationDuration": {
+                "value": "3s"
+              },
+              "animationIterationCount": {
+                "value": "infinite"
+              },
+              "animationTimingFunction": {
+                "value": "ease-in-out"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "50vw"
+              },
+              "height": {
+                "value": "50vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2e8sTusUT0aT7PcjYUN1vz": {
+      "key": "2e8sTusUT0aT7PcjYUN1vz",
+      "name": "text grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1xS23XAHOvQYTkIahpMtii": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "1.46vh"
+              },
+              "width": {
+                "value": "45.14vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90vw"
+              },
+              "gap": {
+                "value": "2vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2IrOJytn3uS9NdZDC1ZHzl": true,
+        "6MhPLT5fAP2batQ9PFzF04": true
+      },
+      "displayOrder": 2
+    },
+    "WNUJdHBYMjB3PYcAyMzpM": {
+      "key": "WNUJdHBYMjB3PYcAyMzpM",
+      "name": "redirecting homepage button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to homepage"
+        },
+        "onClick": {
+          "value": "3FEraMywWa3sF6AE0zYXNS"
+        },
+        "linkPath": {
+          "value": "/deals"
+        }
+      },
+      "styleProperties": {
+        "4MQLyOdm0wsrZ7PUjzAbbD": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "13.33vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6MhPLT5fAP2batQ9PFzF04": {
+      "key": "6MhPLT5fAP2batQ9PFzF04",
+      "name": "content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oops! You've stumbled upon restricted territory. Seek permission or continue your journey elsewhere"
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "styleProperties": {
+        "3BznHf6cODTZXMf8mMu9cs": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "30px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '99'"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "25px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    }
+  },
+  "componentVersions": {
+    "328JvRUsFYMyjZCTfIieRH": 4,
+    "WNUJdHBYMjB3PYcAyMzpM": 4,
+    "2IrOJytn3uS9NdZDC1ZHzl": 4,
+    "6MhPLT5fAP2batQ9PFzF04": 4,
+    "xdyAIPwCNfdKLLheytZG5": 4,
+    "2e8sTusUT0aT7PcjYUN1vz": 4,
+    "5ZSjQH7oOYBSDntmYAXiJo": 4,
+    "4mWZDIiXLP9RVR66TSZHHm": 4
+  },
+  "eventFunctionVersions": {},
+  "name": "forbiddenPage",
+  "message": "From transport : 1wQWGRtNepBvqTPqw2neH6",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 69,
+  "updatedAt": "2026-05-14 13:46:49.670000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-06-14 12:47:35.231000",
+  "createdBy": "<USER>"
+}
