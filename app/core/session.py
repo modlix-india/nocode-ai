@@ -718,15 +718,11 @@ current_session: ContextVar[Optional["BaseSession"]] = ContextVar(
 async def record_oneshot_usage(
     usage: dict[str, int], model: str, provider: str = "openai", step: str | None = None
 ) -> None:
-    """Bill a standalone one-shot LLM call to the active agent's session — the SAME path the
-    loop uses (``accumulate_usage`` + ``record_token_usage`` + an immediate ``charge_llm_call``),
-    so a one-shot OUTSIDE the loop is tracked AND charged, not tracked-but-uncharged. No-op
-    when no session is active; never raises.
+    """Track AND charge a one-shot LLM call (one made outside the agent loop) against the
+    active session — the same two halves the loop does per call. No-op with no session.
 
-    ``step`` tags the recorded row with a distinct agent label ("<agent>:<step>") so the
-    one-shot's cost shows as its own line in per-agent breakdowns. The session_id and the
-    client/user billing identity are unchanged, so the total and the campaign-cost rollup
-    (summed by session) still include it."""
+    ``step`` labels the row "<agent>:<step>" so its cost is its own line; the session and
+    billing identity are unchanged."""
     session = current_session.get()
     if session is None:
         return
