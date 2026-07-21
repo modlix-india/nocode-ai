@@ -40,23 +40,21 @@ def _is_custom_reply(text: str) -> bool:
     return lu == "custom" or lu.startswith("custom")
 
 
-def _ad_group_consent() -> tuple[str, str]:
-    """Plan line + proceed-step for the Google ad-group consent, derived from the keyword-
-    theme registry so adding a theme can't leave this copy naming only Brand/Generic."""
-    labels = [KEYWORD_THEMES[t].label for t in DEFAULT_THEME_IDS]
-    plan_line = "\n  - **Ad groups**: " + " + ".join(labels)
-    all_answer = ",".join(DEFAULT_THEME_IDS)
-    narrow = ", ".join(
-        f'{{label "{KEYWORD_THEMES[t].label} only", answer "{t}"}}' for t in DEFAULT_THEME_IDS
+def _ad_group_question() -> str:
+    """The Google ad-group choice - one chip per keyword theme plus a combined one, derived
+    from the theme registry so a new theme becomes a chip without touching this copy."""
+    ids = list(DEFAULT_THEME_IDS)
+    chips = ", ".join(
+        f'{{label "{KEYWORD_THEMES[t].label}", answer "{t}"}}' for t in ids
     )
-    proceed_step = (
-        '(2) THEN, separately, use the present_options tool (field "ad_groups") to '
-        'ask "Proceed to build the campaign?" with these options - each build option '
-        f'carries its own `answer`: {{label "Yes, proceed", answer "{all_answer}"}}, '
-        f'{narrow}, and a plain "No, make changes". Whatever they pick is what gets '
-        "built - do not talk them out of narrowing it."
+    combined = "Both" if len(ids) == 2 else "All"
+    return (
+        'use the present_options tool (field "ad_groups") to ask "Which ad groups should '
+        "we build?\" with these options - each carries its own `answer`: "
+        f'{chips}, {{label "{combined}", answer "{",".join(ids)}"}}. Whatever they pick is '
+        "what gets built - do not talk them out of narrowing it. CALL the tool - never type "
+        "the call into your reply."
     )
-    return plan_line, proceed_step
 
 
 @dataclass(frozen=True)
@@ -92,6 +90,9 @@ class CampaignContext:
     # branch from "prepare the campaign" (run keyword research) to "launch". Defaulted so
     # existing test fixtures that build CampaignContext directly need no change.
     keyword_research_done: bool = False
+    # True once the user okays the campaign summary - the gate between showing the summary
+    # and asking which ad groups to build.
+    summary_confirmed: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -126,6 +127,10 @@ class CampaignContext:
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
             keyword_research_done=bool(ctx.get("keyword_research")),
+            summary_confirmed=str(
+                (ctx.get("campaign_spec") or {}).get("summary_confirmed", "")
+            ).lower()
+            == "true",
         )
 
     @property
@@ -362,50 +367,60 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 )
 
     if not missing and not cctx.keyword_research_done:
-        meta_extra = ""
-        if cctx.is_meta:
-            meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-            meta_extra += (
-                "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-                if cctx.spec.get("ig_page")
-                else "\n  - **Instagram Account**: not linked (Facebook only)"
+        if not cctx.summary_confirmed:
+            # Show what we collected and ask only whether to go ahead. What gets built is
+            # the user's choice in the next step, so nothing is listed here as decided.
+            meta_extra = ""
+            if cctx.is_meta:
+                meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+                meta_extra += (
+                    "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
+                    if cctx.spec.get("ig_page")
+                    else "\n  - **Instagram Account**: not linked (Facebook only)"
+                )
+            missing.append(
+                "review & publish - TWO separate steps this turn:\n"
+                "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
+                "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
+                "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
+                "do NOT abbreviate):\n\n"
+                "Here's your campaign summary:\n\n"
+                "  - **Product**: <product name from State>\n"
+                "  - **Website**: <website URL from State>\n"
+                "  - **Location**: <location from State>\n"
+                "  - **Platform**: <platform from State>\n"
+                "  - **Duration**: <duration from State>\n"
+                "  - **Daily Budget**: <budget from State>\n"
+                "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
+                "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
+                f"{meta_extra}\n"
+                "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
+                "if competitor_analysis_attempted is true with empty list, or 'declined' "
+                "if competitive_analysis_declined='true'>\n\n"
+                "EVERY bullet must be present - do not omit any.\n"
+                '(2) THEN, separately, use the present_options tool (field '
+                '"summary_confirmed") to ask "Proceed to build the campaign?" with exactly '
+                'two options: {label "Yes, proceed", answer "true"} and a plain "No, make '
+                'changes". Do NOT ask about ad groups yet - that is the next step. These '
+                "are tools to CALL - never type tool-call syntax into your reply, only the "
+                "markdown summary above is text."
             )
-        # Google Search builds one keyword ad group per theme, so the plan is shown here and
-        # the user can narrow it. Meta targets audiences in ad sets - nothing to choose.
-        if cctx.is_google:
-            plan_line, proceed_step = _ad_group_consent()
+        elif cctx.is_google and not cctx.spec.get("ad_groups"):
+            # Google Search builds one keyword ad group per theme the user picks. Meta
+            # targets audiences in ad sets - its own consent when that lands.
+            missing.append("ad groups - " + _ad_group_question())
         else:
-            plan_line = ""
-            proceed_step = (
-                '(2) THEN, separately, use the present_options tool to ask "Proceed to build '
-                'the campaign?" with chips: Yes, proceed / No, make changes.'
+            missing.append(
+                "build the campaign - the user okayed the summary"
+                + (
+                    f' and chose the ad groups ("{cctx.spec.get("ad_groups")}")'
+                    if cctx.spec.get("ad_groups")
+                    else ""
+                )
+                + ". Call the prepare_campaign_review tool (no arguments) NOW - it "
+                "researches the keywords and shows them in the review panel. Do NOT "
+                "re-post the summary and do NOT ask either question again."
             )
-        missing.append(
-            "review & publish - TWO separate steps this turn:\n"
-            "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
-            "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
-            "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
-            "do NOT abbreviate):\n\n"
-            "Here's your campaign summary:\n\n"
-            "  - **Product**: <product name from State>\n"
-            "  - **Website**: <website URL from State>\n"
-            "  - **Location**: <location from State>\n"
-            "  - **Platform**: <platform from State>\n"
-            "  - **Duration**: <duration from State>\n"
-            "  - **Daily Budget**: <budget from State>\n"
-            "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
-            "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
-            f"{meta_extra}\n"
-            "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
-            "if competitor_analysis_attempted is true with empty list, or 'declined' "
-            "if competitive_analysis_declined='true'>"
-            f"{plan_line}\n\n"
-            "EVERY bullet must be present - do not omit any.\n"
-            f"{proceed_step} When the user picks a build option, run the "
-            "prepare_campaign_review tool (no arguments) - it researches the keywords and "
-            "shows them in the review panel. These are tools to CALL - never type tool-call "
-            "syntax into your reply, only the markdown summary above is text."
-        )
     elif not missing:
         # keyword_research already done - keywords are in the panel; confirm launch.
         missing.append(

@@ -359,7 +359,19 @@ class ReviewPublishPrescriptionTests(unittest.TestCase):
         self.assertNotIn("prepare_campaign_review(", review)
         # but it must still instruct CALLING those tools (intent prose form)
         self.assertIn("present_options tool", review)
-        self.assertIn("prepare_campaign_review tool", review)
+
+    def test_build_step_names_its_tool_without_call_syntax(self):
+        # Same F20 rule on the step that actually starts the build.
+        base = _full_google_cctx()
+        cctx = dataclasses.replace(
+            base, summary_confirmed=True, spec={**base.spec, "ad_groups": "brand,generic"}
+        )
+        build = next(
+            (m for m in _next_action(cctx) if m.startswith("build the campaign")), None
+        )
+        self.assertIsNotNone(build)
+        self.assertNotIn("prepare_campaign_review(", build)
+        self.assertIn("prepare_campaign_review tool", build)
 
 
 def _full_meta_cctx():
@@ -383,29 +395,52 @@ def _full_meta_cctx():
 
 
 class AdGroupConsentTests(unittest.TestCase):
-    """The review step shows the ad-group plan and lets the user narrow it — Google only."""
+    """Two consents, in order: okay the summary, THEN choose the ad groups (Google only).
+    What gets built is the user's pick, so the summary never states it as decided."""
 
-    def _review(self, cctx) -> str:
-        review = next((m for m in _next_action(cctx) if "review & publish" in m), None)
-        self.assertIsNotNone(review, "review & publish should appear")
-        return review
+    def _step(self, cctx, prefix: str) -> str:
+        steps = _next_action(cctx)
+        step = next((m for m in steps if m.startswith(prefix)), None)
+        self.assertIsNotNone(step, f"expected a {prefix!r} step; got: {steps}")
+        return step or ""
 
-    def test_google_shows_the_plan_and_offers_to_narrow_it(self):
-        review = self._review(_full_google_cctx())
-        self.assertIn("**Ad groups**: Brand + Generic", review)  # the plan we state
-        self.assertIn('field "ad_groups"', review)               # captured into the spec
-        self.assertIn("Brand only", review)
-        self.assertIn("Generic only", review)
-        self.assertNotIn("present_options(", review)             # F20: prose, not syntax
+    def test_summary_step_only_asks_whether_to_proceed(self):
+        review = self._step(_full_google_cctx(), "review & publish")
+        self.assertNotIn("**Ad groups**", review)       # not ours to declare
+        self.assertNotIn("Brand", review)
+        self.assertIn('field "summary_confirmed"', review)
+        self.assertIn("Yes, proceed", review)
+        self.assertIn("No, make changes", review)
+        self.assertNotIn("present_options(", review)    # F20: prose, not syntax
+
+    def test_ad_groups_asked_only_once_the_summary_is_okayed(self):
+        cctx = dataclasses.replace(_full_google_cctx(), summary_confirmed=True)
+        ask = self._step(cctx, "ad groups")
+        self.assertIn('field "ad_groups"', ask)         # captured into the spec
+        for label in ("Brand", "Generic", "Both"):      # one chip per theme + combined
+            self.assertIn(f'"{label}"', ask)
+        self.assertNotIn("present_options(", ask)
+
+    def test_both_consents_in_hand_builds(self):
+        base = _full_google_cctx()
+        cctx = dataclasses.replace(
+            base, summary_confirmed=True, spec={**base.spec, "ad_groups": "brand"}
+        )
+        build = self._step(cctx, "build the campaign")
+        self.assertIn("prepare_campaign_review tool", build)
+        self.assertIn("do NOT ask either question again", build)
 
     def test_meta_is_never_asked_about_ad_groups(self):
         # Meta targets audiences in ad sets and has no keywords — the question is meaningless.
-        review = self._review(_full_meta_cctx())
+        review = self._step(_full_meta_cctx(), "review & publish")
         self.assertNotIn("**Ad groups**", review)
         self.assertNotIn("ad_groups", review)
-        self.assertNotIn("Brand only", review)
         self.assertIn("Proceed to build", review)   # still confirms
         self.assertIn("Facebook Page", review)      # still Meta-specific
+
+    def test_meta_goes_straight_to_build_after_the_summary(self):
+        cctx = dataclasses.replace(_full_meta_cctx(), summary_confirmed=True)
+        self.assertIn("prepare_campaign_review tool", self._step(cctx, "build the campaign"))
 
 
 # ── F23/F27 · value-only advance chip for prose asks ────────────────────────

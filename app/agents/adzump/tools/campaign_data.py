@@ -84,6 +84,7 @@ ALLOWED_FIELDS = {
     "competitive_analysis_declined",
     "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
     "ad_groups",  # Google: ad groups to build; bounded by the tool enum + _resolve_themes
+    "summary_confirmed",  # "true" once the user okays the campaign summary - gates the ad-group ask
 }
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
