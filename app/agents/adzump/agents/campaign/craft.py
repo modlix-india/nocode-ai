@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 from app.agents.adzump.platform import is_google as _is_google, is_meta as _is_meta
+from app.agents.adzump.agents.campaign.google.keyword.models import AdGroupStatus
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +73,14 @@ def keyword_review_block(dump: dict) -> dict:
             }
             for n in (kset.get("negatives") or [])
         ]
+        # Highest demand first, so review starts with the keywords that matter most.
+        pos_rows.sort(key=lambda r: r.get("volume") or 0, reverse=True)
+        neg_rows.sort(key=lambda r: r.get("volume") or 0, reverse=True)
         tabs.append(
             {
                 "key": key,
                 "label": label,
+                "status": kset.get("status") or AdGroupStatus.COMPLETE.value,
                 "sections": [
                     {
                         "key": "positives",
@@ -94,6 +99,19 @@ def keyword_review_block(dump: dict) -> dict:
                 ],
             }
         )
+    # Ad groups still running or given up on get a tab too, so the panel accounts for every
+    # one the user chose instead of silently showing a subset.
+    meta = dump.get("meta") or {}
+    for status in (AdGroupStatus.PENDING.value, AdGroupStatus.FAILED.value):
+        for key in meta.get(status) or []:
+            tabs.append(
+                {
+                    "key": key,
+                    "label": key.replace("_", " ").title(),
+                    "status": status,
+                    "sections": [],
+                }
+            )
     return {"id": "keyword_review", "type": "keyword_review", "tabs": tabs}
 
 

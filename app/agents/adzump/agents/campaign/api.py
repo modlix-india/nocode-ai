@@ -141,21 +141,12 @@ def stream_keyword_widget(
         try:
             ctx = agent.build_tool_context(session)
             ctx["event_stream"] = event_stream
-            await event_stream.emit_tool_start(
-                tool_use_id="widget_keyword",
-                tool_name="update_keyword",
-                display_name="Keyword Update",
-                tool_input=params,
-            )
             result = await update_keywords(params, ctx)
             if result.success:
                 await session.save_context()
-            await event_stream.emit_tool_result(
-                tool_use_id="widget_keyword",
-                tool_name="update_keyword",
-                success=result.success,
-                summary=result.summary or result.error or "",
-            )
+            # The panel already shows the change, so the reply is the confirmation — or the
+            # reason it was refused — as prose rather than a tool card.
+            await event_stream.emit_text(result.summary or result.error or "")
         except Exception as e:
             logger.exception("Keyword widget action failed")
             await event_stream.emit_error(str(e))

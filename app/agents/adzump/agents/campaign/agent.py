@@ -13,6 +13,7 @@ import logging
 import time
 from typing import Any
 
+from app.config import settings
 from app.core.agent import BaseAgent
 from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream
@@ -25,10 +26,12 @@ from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
 
 logger = logging.getLogger(__name__)
 
-PROVIDER = "openai"
+PROVIDER = "deepseek"  # matches the keyword agent it spawns
 MODEL_TIER = "balanced"
 MAX_TURNS = 5  # call the platform tool(s) and stop — small loop
-MAX_TOKENS = 2000
+# A reasoning model spends output tokens deliberating before it calls a tool, so the budget
+# covers both.
+MAX_TOKENS = settings.AGENT_MAX_TOKENS
 
 
 class _CampaignStream(ChildAgentStream):

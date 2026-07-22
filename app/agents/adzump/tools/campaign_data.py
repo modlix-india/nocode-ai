@@ -91,6 +91,10 @@ ALLOWED_FIELDS = {
 # (via session_ctx["account_names"]).
 _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 
+# Plain yes/no gates. The click itself is the answer, so present_options captures it whether
+# or not the model attached one to the chip - these asks have no separate value to map.
+CONSENT_FIELDS = {"summary_confirmed"}
+
 # Free-text fields whose values must be traceable to the user's most recent
 # message. Together with _ACCOUNT_LIKE_FIELDS, every allowed field passes
 # through one kind of traceability check. The two decline flags

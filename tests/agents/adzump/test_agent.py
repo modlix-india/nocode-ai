@@ -435,12 +435,23 @@ class AdGroupConsentTests(unittest.TestCase):
         review = self._step(_full_meta_cctx(), "review & publish")
         self.assertNotIn("**Ad groups**", review)
         self.assertNotIn("ad_groups", review)
-        self.assertIn("Proceed to build", review)   # still confirms
-        self.assertIn("Facebook Page", review)      # still Meta-specific
+        self.assertIn("Proceed with the campaign", review)  # still confirms
+        self.assertIn("Facebook Page", review)              # still Meta-specific
 
-    def test_meta_goes_straight_to_build_after_the_summary(self):
+    def test_meta_skips_the_build_and_goes_straight_to_launch(self):
+        # Meta has no build tools yet, so a confirmed Meta campaign must NOT spawn
+        # prepare_campaign_review — that unsatisfiable call is what looped. It goes to launch.
         cctx = dataclasses.replace(_full_meta_cctx(), summary_confirmed=True)
-        self.assertIn("prepare_campaign_review tool", self._step(cctx, "build the campaign"))
+        step = self._step(cctx, "launch")
+        self.assertIn("launch_campaign", step)
+        self.assertNotIn("prepare_campaign_review", step)
+        self.assertNotIn("keyword", step.lower())  # no keyword review for Meta
+
+    def test_meta_never_prescribes_prepare_campaign_review_in_any_state(self):
+        base = _full_meta_cctx()
+        for cctx in (base, dataclasses.replace(base, summary_confirmed=True)):
+            joined = " ".join(_next_action(cctx))
+            self.assertNotIn("prepare_campaign_review", joined)
 
 
 # ── F23/F27 · value-only advance chip for prose asks ────────────────────────

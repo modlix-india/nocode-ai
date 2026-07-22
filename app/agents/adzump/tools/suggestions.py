@@ -19,6 +19,7 @@ from typing import Any
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.core.session import record_oneshot_usage
 from app.config import settings
+from app.agents.adzump.tools.campaign_data import CONSENT_FIELDS
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,8 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     for opt in options:
         if isinstance(opt, str):
             normalized.append({"label": opt, "value": opt})
+            if field in CONSENT_FIELDS:
+                answer_map[opt] = opt
         elif isinstance(opt, dict) and opt.get("label"):
             label = str(opt["label"])
             value = str(opt.get("value") or label)
@@ -69,6 +72,10 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             # are fall-through - absent from the map → capture defers to the LLM.
             if opt.get("answer") is not None:
                 answer_map[value] = str(opt["answer"])
+            elif field in CONSENT_FIELDS:
+                # A yes/no gate: the click is the answer, so it stays capturable even
+                # when the model omits `answer`.
+                answer_map[value] = value
         else:
             return ToolResult(success=False, error=f"Invalid option: {opt!r}")
 

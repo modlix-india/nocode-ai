@@ -252,6 +252,66 @@ class EditWrapperTests(unittest.TestCase):
         self.assertFalse(res.success)
 
 
+class ManageMemoryTests(unittest.TestCase):
+    """handle() runs a throwaway session per call, so a follow-up ("yes, add that one") only
+    resolves if the recent exchanges are replayed — and the orchestrator must not narrate the
+    outcome it was never told."""
+
+    def _handle(self, parent_ctx: dict, user_message: str, reply: str):
+        from unittest import mock
+        from app.agents.adzump.agents.campaign.google.keyword import agent as kw_agent
+        from app.core.session import BaseSession
+
+        agent = kw_agent.get_keyword_manage_agent()
+        seen: dict = {}
+
+        async def fake_run(user_message, session, event_stream):  # no self — patched on instance
+            seen["seeded"] = list(session.messages)  # what the agent sees before it speaks
+            session.append_user_message(user_message)
+            session.append_assistant_message([{"type": "text", "text": reply}])
+
+        async def fake_goc(self, session_id, auth):
+            self.session_id = "throwaway"
+            return "throwaway"
+
+        with mock.patch.object(agent, "run", new=fake_run), \
+                mock.patch.object(BaseSession, "get_or_create", new=fake_goc):
+            ctx = {"session_context": parent_ctx, "auth": mock.MagicMock(), "event_stream": None}
+            res = asyncio.run(agent.handle(user_message, ctx))
+        return res, seen
+
+    def _parent(self, conversation=None):
+        return {
+            "keyword_research": {"themes": {
+                "brand": {"theme": "brand", "label": "Brand", "positives": [], "negatives": []}},
+                "meta": {}},
+            "product_data": {"product_name": "Kajaria"},
+            "kw_conversation": conversation or [],
+        }
+
+    def test_prior_exchange_is_replayed_into_the_run(self):
+        prior = [{"user": "why no staircase keyword?",
+                  "reply": "It never came up — the one with demand is 'kajaria staircase tiles'."}]
+        _res, seen = self._handle(self._parent(prior), "yes add that one", "Done — added.")
+        replayed = " ".join(str(m.get("content")) for m in seen["seeded"])
+        self.assertIn("kajaria staircase tiles", replayed)  # the referent is now resolvable
+
+    def test_exchange_is_recorded_and_window_is_bounded(self):
+        from app.agents.adzump.agents.campaign.google.keyword.agent import KW_MANAGE_HISTORY_TURNS
+        prior = [{"user": f"q{i}", "reply": f"a{i}"} for i in range(KW_MANAGE_HISTORY_TURNS + 2)]
+        parent = self._parent(prior)
+        self._handle(parent, "add trail shoes", "Added trail shoes.")
+        conv = parent["kw_conversation"]
+        self.assertLessEqual(len(conv), KW_MANAGE_HISTORY_TURNS)          # bounded
+        self.assertEqual(conv[-1], {"user": "add trail shoes", "reply": "Added trail shoes."})  # newest kept
+
+    def test_return_tells_the_orchestrator_not_to_narrate(self):
+        res, _ = self._handle(self._parent(), "add trail shoes", "Added trail shoes.")
+        self.assertTrue(res.success)
+        self.assertIn("do not restate", res.summary.lower())
+        self.assertNotIn("trail shoes", res.summary)  # the outcome is NOT handed to the orchestrator
+
+
 class ManageReminderRendersFullyTests(unittest.TestCase):
     """The manage turn-prompt nests each ad group's selection bar, whose text carries
     $target_count / $max_seeds. A single substitution pass would leave those literal —

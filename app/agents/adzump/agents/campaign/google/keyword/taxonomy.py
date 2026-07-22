@@ -22,9 +22,9 @@ from app.agents.adzump.agents.campaign.google.keyword.models import OfferingTaxo
 
 logger = logging.getLogger(__name__)
 
-# Headroom for the richest inputs (up to 10 core + 10 sibling terms + fields); a truncated
-# JSON object would be unparseable and silently drop to the minimal fallback.
-_MAX_TOKENS = 1200
+# A reasoning model spends output tokens deliberating before it emits the JSON, so the budget
+# covers both — too small and the object is truncated into the minimal fallback.
+_MAX_TOKENS = settings.AGENT_MAX_TOKENS
 
 _SYSTEM = "You are a paid-search strategist. Output strict JSON only — no markdown, no commentary."
 
@@ -38,6 +38,7 @@ BUSINESS:
 Return JSON exactly in this shape:
 {{
   "primary_offering": "the crisp category a buyer shops for (buyer's words, not the seller's marketing label)",
+  "brand_terms": ["the word(s) a buyer types to mean THIS company specifically"],
   "core_terms": ["the actual products/services they sell — terms a buyer would type"],
   "sibling_categories": ["adjacent categories in the SAME industry they do NOT sell"],
   "is_location_specific": true,
@@ -45,6 +46,10 @@ Return JSON exactly in this shape:
 }}
 
 Rules:
+- brand_terms name the COMPANY, never its industry — drop any generic word that happens to sit
+  in the company name: "Kajaria Ceramics" -> ["kajaria"] (ceramics is the industry, and a buyer
+  typing it does not mean this company); "Sumadhura Group" -> ["sumadhura"]. Empty if the name
+  is entirely generic.
 - core_terms MUST come from the business details — never invent an offering they don't have.
 - sibling_categories are same-industry NEIGHBOURS the business does NOT offer (what buyers confuse it with),
   so they can be kept out of positives and used as negatives.
@@ -95,9 +100,13 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
     try:
         from openai import AsyncOpenAI
 
-        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        # DeepSeek via the OpenAI-compatible client (same API; different base_url/key/model).
+        client = AsyncOpenAI(
+            api_key=settings.DEEPSEEK_API_KEY, base_url=settings.DEEPSEEK_BASE_URL
+        )
+        model = settings.DEEPSEEK_MODEL_BALANCED
         resp = await client.chat.completions.create(
-            model=settings.OPENAI_MODEL_BALANCED,
+            model=model,
             messages=[
                 {"role": "system", "content": _SYSTEM},
                 {"role": "user", "content": _PROMPT.format(brief=brief)},
@@ -114,7 +123,7 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
                     "input_tokens": resp.usage.prompt_tokens,
                     "output_tokens": resp.usage.completion_tokens,
                 },
-                settings.OPENAI_MODEL_BALANCED,
+                model,  # bill the model actually used
                 step="offering_taxonomy",
             )
         # extract_json tolerates a ```json fence and returns None (never raises) on
@@ -127,6 +136,7 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
             primary_offering=str(
                 data.get("primary_offering") or fallback.primary_offering
             ).strip(),
+            brand_terms=list(data.get("brand_terms") or []),
             core_terms=list(data.get("core_terms") or []),
             sibling_categories=list(data.get("sibling_categories") or []),
             is_location_specific=bool(data.get("is_location_specific", True)),
@@ -135,8 +145,9 @@ async def derive_offering_taxonomy(product: dict) -> OfferingTaxonomy:
             ),
         )
         logger.info(
-            "offering_taxonomy: primary=%r core=%d siblings=%d local=%s informational=%s",
+            "offering_taxonomy: primary=%r brand=%s core=%d siblings=%d local=%s informational=%s",
             taxonomy.primary_offering,
+            taxonomy.brand_terms,
             len(taxonomy.core_terms),
             len(taxonomy.sibling_categories),
             taxonomy.is_location_specific,

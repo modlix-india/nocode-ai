@@ -511,7 +511,7 @@ async def _attach_negative_volumes(context: dict, negatives: list[dict]) -> None
         )
     fetched = {m["keyword"]: m["volume"] for m in metrics}
     for neg in negatives:
-        if neg["volume"] == 0:
+        if neg["volume"] == 0:  # pool-hits already have a volume; backfill only the rest
             neg["volume"] = fetched.get(neg["keyword"], 0)
 
 

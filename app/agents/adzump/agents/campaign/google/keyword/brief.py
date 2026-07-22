@@ -6,6 +6,8 @@ from the saved session for an edit — so what the agent knows can't drift betwe
 
 from __future__ import annotations
 
+from app.agents.adzump.agents.campaign.google.keyword.constants import MAX_SERVICE_AREAS
+
 
 def business_text(product: dict) -> str:
     """The business the keywords must target."""
@@ -70,5 +72,5 @@ def resolve_location(product: dict, is_location_specific: bool) -> tuple[str, li
     names = [str(a.get("name")).strip() for a in areas if a.get("name")]
     city = next((str(a.get("city")).strip() for a in areas if a.get("city")), "")
     primary = _location_text(product) or city or (names[0] if names else "")
-    service_areas = [n for n in names if n and n.lower() != primary.lower()][:8]
+    service_areas = [n for n in names if n and n.lower() != primary.lower()][:MAX_SERVICE_AREAS]
     return primary, service_areas

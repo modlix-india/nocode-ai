@@ -40,6 +40,18 @@ def _is_custom_reply(text: str) -> bool:
     return lu == "custom" or lu.startswith("custom")
 
 
+# A refusal, however the chip was labelled or answered.
+_CONSENT_REFUSALS = ("false", "no")
+
+
+def _is_affirmative(value: object) -> bool:
+    """Whether a captured consent answer means yes. The model sends either the answer we
+    asked for ("true"/"false") or lets the chip label through ("Yes, proceed"), so both
+    shapes have to read the same way."""
+    text = str(value or "").strip().lower()
+    return bool(text) and not text.startswith(_CONSENT_REFUSALS)
+
+
 def _ad_group_question() -> str:
     """The Google ad-group choice - one chip per keyword theme plus a combined one, derived
     from the theme registry so a new theme becomes a chip without touching this copy."""
@@ -127,10 +139,9 @@ class CampaignContext:
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
             keyword_research_done=bool(ctx.get("keyword_research")),
-            summary_confirmed=str(
-                (ctx.get("campaign_spec") or {}).get("summary_confirmed", "")
-            ).lower()
-            == "true",
+            summary_confirmed=_is_affirmative(
+                (ctx.get("campaign_spec") or {}).get("summary_confirmed")
+            ),
         )
 
     @property
@@ -366,67 +377,68 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "option). If none are linked, the tool says so - offer Facebook-only."
                 )
 
-    if not missing and not cctx.keyword_research_done:
-        if not cctx.summary_confirmed:
-            # Show what we collected and ask only whether to go ahead. What gets built is
-            # the user's choice in the next step, so nothing is listed here as decided.
-            meta_extra = ""
-            if cctx.is_meta:
-                meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-                meta_extra += (
-                    "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-                    if cctx.spec.get("ig_page")
-                    else "\n  - **Instagram Account**: not linked (Facebook only)"
-                )
-            missing.append(
-                "review & publish - TWO separate steps this turn:\n"
-                "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
-                "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
-                "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
-                "do NOT abbreviate):\n\n"
-                "Here's your campaign summary:\n\n"
-                "  - **Product**: <product name from State>\n"
-                "  - **Website**: <website URL from State>\n"
-                "  - **Location**: <location from State>\n"
-                "  - **Platform**: <platform from State>\n"
-                "  - **Duration**: <duration from State>\n"
-                "  - **Daily Budget**: <budget from State>\n"
-                "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
-                "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
-                f"{meta_extra}\n"
-                "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
-                "if competitor_analysis_attempted is true with empty list, or 'declined' "
-                "if competitive_analysis_declined='true'>\n\n"
-                "EVERY bullet must be present - do not omit any.\n"
-                '(2) THEN, separately, use the present_options tool (field '
-                '"summary_confirmed") to ask "Proceed to build the campaign?" with exactly '
-                'two options: {label "Yes, proceed", answer "true"} and a plain "No, make '
-                'changes". Do NOT ask about ad groups yet - that is the next step. These '
-                "are tools to CALL - never type tool-call syntax into your reply, only the "
-                "markdown summary above is text."
+    if not missing and not cctx.summary_confirmed:
+        # Every platform reviews the summary and confirms before anything is built or launched.
+        # What gets built is the user's choice in the next step, so nothing is decided here.
+        meta_extra = ""
+        if cctx.is_meta:
+            meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
+            meta_extra += (
+                "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
+                if cctx.spec.get("ig_page")
+                else "\n  - **Instagram Account**: not linked (Facebook only)"
             )
-        elif cctx.is_google and not cctx.spec.get("ad_groups"):
-            # Google Search builds one keyword ad group per theme the user picks. Meta
-            # targets audiences in ad sets - its own consent when that lands.
+        missing.append(
+            "review & publish - TWO separate steps this turn:\n"
+            "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
+            "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
+            "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
+            "do NOT abbreviate):\n\n"
+            "Here's your campaign summary:\n\n"
+            "  - **Product**: <product name from State>\n"
+            "  - **Website**: <website URL from State>\n"
+            "  - **Location**: <location from State>\n"
+            "  - **Platform**: <platform from State>\n"
+            "  - **Duration**: <duration from State>\n"
+            "  - **Daily Budget**: <budget from State>\n"
+            "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
+            "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
+            f"{meta_extra}\n"
+            "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
+            "if competitor_analysis_attempted is true with empty list, or 'declined' "
+            "if competitive_analysis_declined='true'>\n\n"
+            "EVERY bullet must be present - do not omit any.\n"
+            '(2) THEN, separately, use the present_options tool (field '
+            '"summary_confirmed") to ask "Proceed with the campaign?" with exactly '
+            'two options: {label "Yes, proceed", answer "true"} and a plain "No, make '
+            'changes". These are tools to CALL - never type tool-call syntax into your '
+            "reply, only the markdown summary above is text."
+        )
+    elif not missing and cctx.is_google and not cctx.keyword_research_done:
+        # Google-only build stage: pick the ad groups, then research the keywords. Other
+        # platforms have no build step yet and skip straight to launch below.
+        if not cctx.spec.get("ad_groups"):
             missing.append("ad groups - " + _ad_group_question())
         else:
             missing.append(
-                "build the campaign - the user okayed the summary"
-                + (
-                    f' and chose the ad groups ("{cctx.spec.get("ad_groups")}")'
-                    if cctx.spec.get("ad_groups")
-                    else ""
-                )
-                + ". Call the prepare_campaign_review tool (no arguments) NOW - it "
-                "researches the keywords and shows them in the review panel. Do NOT "
-                "re-post the summary and do NOT ask either question again."
+                'build the campaign - the user okayed the summary and chose the ad groups '
+                f'("{cctx.spec.get("ad_groups")}"). Call the prepare_campaign_review tool (no '
+                "arguments) NOW - it researches the keywords and shows them in the review "
+                "panel. Do NOT re-post the summary and do NOT ask either question again."
             )
     elif not missing:
-        # keyword_research already done - keywords are in the panel; confirm launch.
+        # Launch. Google has keywords in the panel to review first; other platforms go
+        # straight from the confirmed summary to the launch confirm.
+        review = (
+            "The keyword suggestions are shown in the panel. Ask the user to review and edit "
+            "them (add / remove / edit), then "
+            if cctx.is_google
+            else "The campaign details are confirmed. "
+        )
         missing.append(
-            "review keywords & launch - the keyword suggestions are shown in the panel. "
-            "Ask the user to review and edit them (add / remove / edit), then call "
-            "`present_options(question=\"Ready to launch the campaign?\", "
+            "launch - "
+            + review
+            + "call `present_options(question=\"Ready to launch the campaign?\", "
             "options=[\"Yes, launch\", \"No, make changes\"])`. "
             "**On the user's 'Yes, launch' reply, call `launch_campaign()` (no params) - "
             "that's the one tool that persists the campaign.**"

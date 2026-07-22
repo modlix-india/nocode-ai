@@ -27,13 +27,13 @@ sequenceDiagram
     participant KA as KeywordResearchAgent
     participant Panel as Review Panel (craft)
 
-    User->>Main: confirms summary + picks ad groups → spec["ad_groups"]
+    User->>Main: 1. confirms summary (Yes/No)  2. picks ad groups → spec["ad_groups"]
     Main->>CC: prepare_campaign_review()
     CC->>CA: create(campaign_spec, product_data, craft_id = campaign_<sid>)
     CA->>KR: keyword_research()  (reads spec["ad_groups"])
     KR->>KA: one theme per chosen ad group (parallel) — see google/keyword/AGENT.md
-    KA-->>KR: positives + negatives + rejections
-    KR->>Panel: emit_campaign_craft(craft_id)  (one tab per ad group)
+    KA-->>KR: positives + negatives + rejections + per-ad-group status
+    KR->>Panel: emit each ad group AS IT LANDS (progressive; keyed, no repaint)
     KR-->>CA: result bundle
     CA-->>CC: keyword_research result (persisted on the MAIN session)
     CC-->>Main: "shown in panel — ask user to review"
@@ -87,8 +87,8 @@ tools land as drop-ins instead of forcing a refactor of the main agent later.
 | `tools` | `GOOGLE_CAMPAIGN_TOOLS` (= `[keyword_research]`) | one platform's tools at a time |
 | `model_tier` | `balanced` | tool-selection orchestration |
 | `MAX_TURNS` | 5 | run the build tool(s) and stop — small loop |
-| `MAX_TOKENS` | 2000 | it orchestrates; it shouldn't write prose |
-| provider | `openai` | — |
+| `MAX_TOKENS` | `settings.AGENT_MAX_TOKENS` | provider-sized — a reasoning model spends output tokens deliberating before a tool call, so a hardcoded budget starves it |
+| provider | `deepseek` | reasoning model; matches the keyword agent it spawns. Switchable at config level |
 
 `create(campaign_spec, product_data, craft_id, parent_event_stream, auth)` seeds a fresh
 sub-session with the collected campaign data, runs the loop, and **returns the
@@ -110,10 +110,14 @@ What the agent calls today. It:
    reads `spec["ad_groups"]`; no `keyword_type` param — the model doesn't pick).
 3. Derives the **offering taxonomy** from `product_data` (cached, fail-soft).
 4. Resolves **geo** + **location/service areas**.
-5. Runs **one theme per chosen ad group in parallel** through the `KeywordResearchAgent`
-   (one failing or timing out still returns the other; nothing is persisted if all fail).
-6. **Idempotent** — same inputs re-show the saved set instead of re-running.
-7. Emits the campaign craft via `emit_campaign_craft` — one tab per ad group.
+5. Runs **one theme per chosen ad group in parallel** through the `KeywordResearchAgent`,
+   emitting **each ad group's tab as it lands** (progressive). One failing/timing-out still
+   returns the other; a timed-out ad group keeps its finished work as `partial`; nothing is
+   persisted only if *every* ad group is empty.
+6. **Idempotent per ad group** — on the same inputs, an ad group that already has keywords is
+   carried forward (`… (kept)`) and only the rest re-run; changed inputs re-run everything.
+7. Emits the craft in place via `emit_section_update` (keyed, no repaint); a full
+   `emit_campaign_craft` happens only on the first run — see `google/keyword/AGENT.md` §2.0.
 
 Keyword internals (seed → expand → score → select → negatives, the prompts, the gates)
 are documented in [`google/keyword/AGENT.md`](google/keyword/AGENT.md) — not duplicated here.
@@ -172,4 +176,4 @@ next tool).
 
 The campaign craft (`campaign_<session>`) and the product/setup craft (`adzump_<session>`)
 are separate panels. A focus-stealing issue between them — and its fix — is documented in
-[`google/keyword/AGENT.md` §12](google/keyword/AGENT.md#12-craft-panel-focus-the-two-craft-rule).
+[`google/keyword/AGENT.md` §11](google/keyword/AGENT.md#11-craft-panel-focus-the-two-craft-rule).

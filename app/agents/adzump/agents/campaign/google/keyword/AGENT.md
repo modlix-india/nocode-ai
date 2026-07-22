@@ -73,8 +73,8 @@ sequenceDiagram
     participant KA as KeywordResearchAgent
     participant Panel as Review Panel (craft)
 
-    Note over User,Main: summary shows the plan — "Ad groups: Brand + Generic" —<br/>with chips: Yes, proceed / Brand only / Generic only / No
-    User->>Main: picks ad groups (chip or words) → spec["ad_groups"]
+    Note over User,Main: TWO consents (see §2.0):<br/>1. summary → "Proceed to build?" Yes/No → summary_confirmed<br/>2. "Which ad groups?" Brand/Generic/Both → spec["ad_groups"]
+    User->>Main: Yes, proceed → then picks ad groups
     Main->>CC: prepare_campaign_review()  (no params)
     CC->>CA: create(spec, product_data, craft_id = campaign_<sid>)
     CA->>KR: keyword_research()  (reads spec["ad_groups"])
@@ -83,8 +83,8 @@ sequenceDiagram
         KR->>KA: research(theme=brand,   taxonomy, geo, …)
         KR->>KA: research(theme=generic, taxonomy, geo, …)
     end
-    KA-->>KR: KeywordSet(positives, negatives, rejections)
-    KR->>Panel: emit_campaign_craft(craft_id)  (one tab per ad group)
+    KA-->>KR: KeywordSet(positives, negatives, rejections, status)
+    KR->>Panel: emit each ad group AS IT LANDS (progressive; the rest show "researching") — §2.0
     KR-->>CA: result bundle → CA returns it → CC persists on the MAIN session
     CC-->>Main: elicited=multi → loop pauses, review open
     Note over User,Panel: TWO edit paths (see §2.1):<br/>• panel click → keyword_update, 0 LLM<br/>• words ("why X?", "add …") → manage_keywords → KA.handle()
@@ -102,19 +102,40 @@ sequenceDiagram
 | **`KeywordResearchAgent`** | The agentic loop. `research()` = generate one theme; `handle()` = answer/edit an existing set | `agents/campaign/google/keyword/agent.py` |
 | **`manage_keywords` tool** | Main-agent router → `KeywordResearchAgent.handle()`; forwards the user's verbatim words | `tools/keyword_management.py` |
 
-### The consent step — the user picks the ad groups (Google only)
+### 2.0 The consent step — two decisions, then progressive build (Google only)
 
-The confirm step already runs `present_options("Proceed to build the campaign?")`, so the
-ad-group plan **rides that same prompt** — no extra turn. The summary ends with a
-`- **Ad groups**: Brand + Generic` line and the chips become
-*Yes, proceed / Brand only / Generic only / No, make changes*, captured into
-`spec["ad_groups"]` (`field="ad_groups"`; `set_campaign_spec` also accepts the spoken form,
-"no, only brand"). The model **doesn't** pick — `keyword_research` has no `keyword_type`
-param; it reads the user's choice via `_resolve_themes(spec)`, which normalises whatever
-lands (chip label / CSV / list / nothing → the full plan we showed).
+Approving the campaign and choosing ad groups are **two separate asks** (`next_action.py`),
+because what to build is the user's choice, not something to state as decided:
 
-**Gated to Google.** Meta targets audiences in ad sets and has no keywords, so a Meta run is
-never asked the ad-group question (`next_action.py` gates on `cctx.is_google`).
+1. **Proceed?** The summary is shown with **no ad-group line**, and
+   `present_options(field="summary_confirmed")` asks *Yes, proceed / No, make changes*. Each
+   is a plain yes/no gate, so `summary_confirmed` is a **consent field** (`campaign_data.py`):
+   the click is captured whether or not the model attaches an `answer`.
+2. **Which ad groups?** Only after a Yes, `present_options(field="ad_groups")` offers
+   *Brand / Generic / Both* — chips derived from the theme registry (`_ad_group_question`),
+   captured into `spec["ad_groups"]`.
+
+Each state guards on its own "already done", so neither ask repeats. The model **doesn't**
+pick the themes — `keyword_research` has no `keyword_type` param; it reads the choice via
+`_resolve_themes(spec)`. **Gated to Google.** Meta uses ad sets, not keyword ad groups, so a
+Meta run is never asked the ad-group question (`cctx.is_google`).
+
+**Progressive panel.** `keyword_research` runs the chosen themes in parallel and emits **each
+ad group's tab the moment it finishes** (`asyncio.as_completed` → keyed `emit_section_update`);
+the ones still running show as `pending`. So a fast ad group is reviewable while a slow one is
+still working, instead of the whole panel waiting on the slowest. The panel is **read-only
+until nothing is `pending`** — an edit mid-run would be wiped by the next tab landing.
+
+**Per-ad-group outcome** (`AdGroupStatus`, `models.py`): each ad group is `complete`,
+`partial` (positives kept, the 400s run ended before negatives), `pending`, or `failed`
+(nothing usable). A cancelled run's finished work is salvaged, not dropped (§5); `partial` and
+`failed` tabs are shown with a reason, never hidden.
+
+**Per-ad-group idempotency / retry.** Re-running on the same inputs **carries forward** any ad
+group that already has keywords and researches only the rest (summary shows `… (kept)`), so a
+retry costs the failed ad group, not the whole run. Changing an input (e.g. the ad account)
+re-runs everything. Both the retry and the "already researched" re-show update the panel **in
+place** — a full craft re-emit happens only on the first run, never a repaint.
 
 ### 2.1 Review & edit — two paths, split by the *kind* of edit
 
@@ -131,6 +152,12 @@ Both paths mutate the **same** `session_ctx["keyword_research"]` through the **s
 `_apply_edit` engine (see §5), so a spoken edit can never break an invariant a click
 couldn't. The launch step, when it comes, reads the already-edited set from the session —
 edits are honoured without the agent re-enumerating them.
+
+**Panel presentation** (`craft.py`): rows render **volume-descending** (highest demand first),
+so a newly added low-volume keyword sorts into place rather than to the top. A panel click
+replies in **prose** ("Updated 'X' in brand positives") rather than a tool card, and a
+*rejected* click states the reason the same way — these confirmations are live-only (the fast
+path persists no turn).
 
 **How this relates to the location agent.** The location sub-agent runs *every* geo edit
 (even a map click) through its own LLM loop. Keywords instead keep the 0-LLM fast path for
@@ -217,6 +244,25 @@ judgment stays in the agent's reasoning:
 Generate and manage are **two configured instances of the same class** (§5): the generate
 instance carries the build prompt + the top five tools, the manage instance its own prompt +
 `expand`/`metrics`/`lookup`/`edit`. `expand_keywords`/`keyword_metrics` appear on both.
+
+> **If — and only if — runs keep hitting the 400s ceiling** (§2.0 / `_RESEARCH_TIMEOUT_SECONDS`):
+> generation always calls `keyword_metrics` immediately after `expand_keywords` with no
+> decision in between, so the two could be merged into one `expand_and_score` tool for the
+> **generate instance only** — saving a full judgment-free model turn (~a minute on a reasoning
+> model). The manage instance keeps them separate (an edit scores a specific term without
+> expanding). Cost: it changes generation prompts, so the golden fixture is re-captured in the
+> same commit. Do this against measurements, not preemptively.
+
+> **If input tokens per generation turn keep climbing:** every `keyword_metrics` /
+> `fetch_more_candidates` page stays in the loop's message history, so a multi-turn run
+> re-sends every earlier page (~20k input tokens by turn 4). Dropping **superseded** tool
+> results — the expansion echo once metrics has scored it; an old candidate page once a newer
+> one has replaced it *and* selection is done — makes each turn cheaper and faster with no
+> quality loss. **"Superseded" must be defined carefully**: a page dropped while the model is
+> still selecting from it hides real candidates, so target only genuinely-replaced results.
+> This *removes* stale tool results from the research loop; the manage agent's conversation
+> memory (Issue-1 follow-up) *adds* a bounded history — different agent, opposite direction, no
+> interaction. Decide it against the the timing measurements, not preemptively.
 
 **LLM proposes, the tool layer disposes.** Every keyword the model emits passes deterministic
 gates it can't skip: keyword normalisation + length, match-type/intent coercion,
@@ -379,9 +425,21 @@ click, which is exactly why the submit tools are absent from the manage instance
 all, edit targets any), so the framing does too: `build_dynamic_context` lists all ad groups,
 and the MANAGE prompt renders **each built ad group's own `select_guidance`** — the *same*
 policy strings the sets were built with — so an addition to any ad group must clear the bar it
-was built with. The standard can't drift, because it's the same string rendered into both the
-build and the edit. (`kw_sources` is likewise the **union** across the built ad groups, so a
-manage-mode `expand_keywords` reaches the same surfaces — YouTube included — a fresh run would.)
+was built with, applied to the **set** being added, not each keyword alone (which is how a
+scoped ask like "keywords for X" would otherwise balloon into ten phrasings of one concept).
+(`kw_sources` is likewise the **union** across the built ad groups, so a manage-mode
+`expand_keywords` reaches the same surfaces — YouTube included — a fresh run would.)
+
+**The agent sees the live set.** `build_turn_reminder` (per turn, never per run) renders the
+current keywords with volumes, so "remove the 5 lowest" is one batched `edit_keywords` against
+a list it can read — not 45 single `lookup_keyword` calls. Rebuilt each turn, so an edit made
+earlier in the same run is already reflected: it never trims against a stale list.
+
+**Finishing a partial ad group.** For an ad group left `partial` by a timed-out run (positives
+but no negatives), the MANAGE prompt renders **that theme's `negative_guidance`** too, so
+*"finish the generic ad group"* derives and adds the negatives; `_apply_edit` flips its status
+`partial → complete` once negatives exist, clearing the panel's warning. No research session is
+rehydrated — negatives come from the offering/siblings/positives, all already in context.
 
 **Routing.** `manage_keywords` (a main-agent tool, `tools/keyword_management.py`) exposes
 **only `user_message`** — no structured params for the orchestrator to fabricate, same
@@ -413,6 +471,11 @@ Product analysis doesn't persist a category/sibling taxonomy, so we **derive one
 run** from the confirmed `product_data` (business_type, products/services, USPs, summary) via a
 single balanced-tier LLM call (cached by an offering fingerprint, fail-soft). It yields:
 
+- **`brand_terms`** — the word(s) that mean THIS company, *not* its industry: "Kajaria
+  Ceramics" → `["kajaria"]` (ceramics is the industry). Persisted into the result's
+  `meta["brand_terms"]` so the panel's **0-LLM edit gate** reads a brand the model identified
+  rather than guessing from the company name — which is what let `ceramics tiles` slip into the
+  Brand ad group. Empty → the gate falls back to name tokens (degraded; worth surfacing loudly).
 - **`core_terms`** — what the business actually sells (anchor every seed here)
 - **`sibling_categories`** — adjacent same-industry things it does *not* sell (→ negatives)
 - **`is_location_specific`** — local/regional vs national/online (drives location anchoring)
@@ -430,35 +493,7 @@ e.g. *3 BHK villa* for a *3 BHK apartment* buyer) may be targeted as a deliberat
 
 ---
 
-## 7. Reading the run logs (the funnel)
-
-Each theme emits a clean, greppable funnel. To follow one: `grep "type=generic"`.
-
-```
-kw_expand type=generic seeds=60 autosuggest=445 pool=200 overflow=281
-keyword_planner: scoring 200 candidates in 14 Planner call(s)
-kw_metrics type=generic sent=200 planner_ideas=4793 recovered=123 scored_pool=600
-kw_submit_positive type=generic submitted=15 kept=9 dropped=6
-kw_submit_negative type=generic submitted=14 kept=14 dropped=0
-keyword_research done type=generic positives=9 negatives=14
-```
-
-| Log line | Read it as |
-|---|---|
-| `kw_expand … pool=… overflow=…` | `pool` = top slice sent to the Planner's expansion; `overflow` = real autosuggest queries beyond the cap, scored later (not discarded) |
-| `keyword_planner: scoring N … M call(s)` | the pool reaches `generateKeywordIdeas`; `M = ceil(N / 15)` calls |
-| `kw_metrics … planner_ideas=… recovered=… scored_pool=…` | `planner_ideas` = what the expansion returned; **`recovered`** = clean terms rescued via historical metrics (§3.2); `scored_pool` = stored for selection |
-| `kw_submit_positive/negative … submitted/kept/dropped` | model proposed → validated & kept → dropped (not in the scored pool / dupe / overlap) |
-| `keyword_research done` | final counts that reach the panel |
-| `kw_edit applied=… rejected=… themes=…` | a MANAGE-mode edit (§5): how many changes landed vs were rejected by the shared engine |
-
-> Tip: the hundreds of `httpx … 200 OK` lines are httpx's own logger. Set
-> `logging.getLogger("httpx").setLevel(logging.WARNING)` to collapse the log to just the
-> `kw_*` funnel.
-
----
-
-## 8. Old vs new at a glance
+## 7. Old vs new at a glance
 
 | | Legacy (Adzump-AI `GoogleKeywordService`) | New (`KeywordResearchAgent`) |
 |---|---|---|
@@ -475,7 +510,7 @@ keyword_research done type=generic positives=9 negatives=14
 
 ---
 
-## 9. File map
+## 8. File map
 
 ```
 agents/campaign/google/keyword/
@@ -489,8 +524,8 @@ agents/campaign/google/keyword/
 ├── manage_tools.py  the 2 manage tools (lookup_keyword, edit_keywords)
 ├── brief.py         shared seed builder (business_text / conversation_text / resolve_location)
 ├── taxonomy.py      derive_offering_taxonomy — the business-agnostic context layer
-├── models.py        KeywordSet / OptimizedKeyword / NegativeKeyword / Rejection + validators
-└── constants.py     pool/seed/selection/rejection size knobs (see §10)
+├── models.py        KeywordSet(+status) / AdGroupStatus / OptimizedKeyword / NegativeKeyword / Rejection + validators
+└── constants.py     pool/seed/selection/rejection size knobs (see §9)
 
 agents/campaign/                     CampaignAgent shell + keyword_research orchestrator tool
 agents/campaign/tools/google/keyword_update.py   the shared _apply_edit engine (widget + agent)
@@ -500,7 +535,7 @@ tools/keyword_management.py          main-agent manage_keywords router → handl
 tools/prepare_campaign_review.py     main-agent entry that spawns the CampaignAgent
 ```
 
-## 10. Tuning knobs (`constants.py`)
+## 9. Tuning knobs (`constants.py`)
 
 | Constant | Value | Meaning |
 |---|---|---|
@@ -512,21 +547,28 @@ tools/prepare_campaign_review.py     main-agent entry that spawns the CampaignAg
 | `MAX_NEGATIVE_COUNT` | 40 | negatives kept per theme |
 | `MAX_REJECTIONS_RECORDED` | 50 | "why not" ledger per rule (session-scoped, §4) |
 | `_SEED_CHUNK_SIZE` (planner) | 15 | candidates per Planner call → calls = ⌈pool / 15⌉ |
+| `_RESEARCH_TIMEOUT_SECONDS` (`keyword_research.py`) | 400 | per-ad-group ceiling; a hit → `partial` (§2.0). Raise against measured runs, not preemptively |
 
 ---
 
-## 11. LLM provider
+## 10. LLM provider
 
-The agent's **tool-use loop** runs on **OpenAI** today (`PROVIDER = "openai"` in `agent.py`)
-through one abstraction — `app/services/llm_provider.py` → `get_llm_provider(name)`, an
-`LLMProvider` ABC with a uniform tool-calling + streaming interface, implemented by
+The keyword agent's **tool-use loop** runs on **DeepSeek** (`PROVIDER = "deepseek"` in
+`agent.py`) through one abstraction — `app/services/llm_provider.py` → `get_llm_provider(name)`,
+an `LLMProvider` ABC with a uniform tool-calling + streaming interface, implemented by
 `AnthropicProvider`, `OpenAIProvider`, and `DeepSeekProvider`. The loop talks to the
 **interface, never a vendor SDK**, so it switches at config level. The target must support
 tool/function calling.
 
-**The taxonomy step is the exception** — `taxonomy.py` makes a direct **AsyncOpenAI one-shot**
-call in JSON mode (the sanctioned pattern for a self-contained inference), so it is
-**OpenAI-only** and independent of `PROVIDER`.
+**Output budgets come from `settings.AGENT_MAX_TOKENS`, never a hardcoded number.** A reasoning
+model (DeepSeek, etc.) spends output tokens *deliberating before* it calls a tool, so a budget
+sized for a non-thinking model starves the run — it stops mid-thought having submitted nothing.
+Every budget in this flow (the loop, and the taxonomy one-shot) derives from the setting so the
+capacity follows the provider.
+
+**The taxonomy step is a direct one-shot** — `taxonomy.py` calls **DeepSeek** through the
+OpenAI-compatible Chat Completions API in JSON mode (self-contained inference), budgeted from
+`settings.AGENT_MAX_TOKENS`.
 
 **Billing for the one-shot.** A one-shot bypasses the loop, so nothing bills it automatically.
 `record_oneshot_usage` (core `session.py`) does both halves the loop does per LLM call: it
@@ -539,7 +581,7 @@ dropped or lumped onto the main agent.
 
 ---
 
-## 12. Craft-panel focus (the two-craft rule)
+## 11. Craft-panel focus (the two-craft rule)
 
 This flow uses two crafts — the setup craft (`adzump_<session>`) and the campaign
 keyword-review craft (`campaign_<session>`). To stop a trailing setup re-emit from stealing

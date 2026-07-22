@@ -36,6 +36,7 @@ from app.agents.adzump.agents.campaign.google.keyword.brief import (
     resolve_location,
 )
 from app.agents.adzump.agents.campaign.google.keyword.models import (
+    AdGroupStatus,
     BusinessProfile,
     KeywordSet,
     Rejection,
@@ -58,7 +59,7 @@ from app.agents.adzump.agents.campaign.google.keyword.tools import (
 
 logger = logging.getLogger(__name__)
 
-PROVIDER = "openai"
+PROVIDER = "deepseek"  # DeepSeek V4 Pro — reasoning-heavy selection at low cost
 MODEL_TIER = (
     "balanced"  # selection/negatives are judgment-heavy — use the stronger model
 )
@@ -67,6 +68,29 @@ MAX_TURNS = 10  # seed -> expand -> metrics -> select -> negatives, with room to
 # reasoning model spends output tokens on that deliberation, so the budget has to cover both
 # - too small and the run ends mid-thought having submitted nothing.
 MAX_TOKENS = settings.AGENT_MAX_TOKENS
+# The throwaway manage session carries no history of its own, so a bounded window of prior
+# manage exchanges is kept on the main session and replayed into each run — enough for a
+# follow-up to reference what the agent said earlier.
+KW_MANAGE_HISTORY_TURNS = 4
+_MANAGE_REPLY_CAP = 1500  # chars of a stored reply — bounds the seeded history
+
+
+def _reply_text(messages: list[dict]) -> str:
+    """The assistant's spoken text across ``messages`` — the keyword agent's reply."""
+    parts: list[str] = []
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        content = m.get("content")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            parts.extend(
+                b.get("text", "")
+                for b in content
+                if isinstance(b, dict) and b.get("type") == "text"
+            )
+    return "".join(parts).strip()
 
 
 def _fill_guidance(text: str) -> str:
@@ -78,6 +102,26 @@ def _fill_guidance(text: str) -> str:
         target_count=constants.TARGET_POSITIVE_COUNT,
         max_negatives=constants.MAX_NEGATIVE_COUNT,
     )
+
+
+def _current_keywords(built: dict) -> str:
+    """The saved set with volumes — what the agent is editing, so it can pick "the lowest
+    volume ones" in one call instead of looking them up one at a time."""
+    lines: list[str] = []
+    for theme_id, kset in built.items():
+        label = (kset or {}).get("label") or theme_id
+        for section in ("positives", "negatives"):
+            rows = (kset or {}).get(section) or []
+            if not rows:
+                continue
+            # Highest first, so "the lowest volume ones" is the tail rather than a ranking
+            # the agent has to work out.
+            items = ", ".join(
+                f"{r.get('keyword', '')} ({r.get('volume', 0)})"
+                for r in sorted(rows, key=lambda r: r.get("volume") or 0, reverse=True)
+            )
+            lines.append(f"{label} {section} ({len(rows)}): {items}")
+    return "\n".join(lines)
 
 
 class _ReviewStream(ChildAgentStream):
@@ -202,16 +246,38 @@ class KeywordResearchAgent(BaseAgent):
             # own bar, so an addition to any of them still has to clear the standard it was
             # built with.
             built = (ctx.get("keyword_research") or {}).get("themes") or {}
-            standards = "\n\n".join(
-                f"**{get_theme(t).label} ad group** — additions here must clear this bar:\n"
-                f"{_fill_guidance(get_theme(t).select_guidance)}"
-                for t in built
-                if t in KEYWORD_THEMES
-            ) or _fill_guidance(theme.select_guidance)
-            return Template(phase_prompt(Phase.MANAGE, theme)).safe_substitute(
+            bars: list[str] = []
+            for t, kset in built.items():
+                if t not in KEYWORD_THEMES:
+                    continue
+                built_theme = get_theme(t)
+                bar = (
+                    f"**{built_theme.label} ad group** — additions here must clear this bar:\n"
+                    f"{_fill_guidance(built_theme.select_guidance)}"
+                )
+                # A run cut short before its negatives phase leaves the ad group unfinished;
+                # its negatives standard is what the user is asking you to apply.
+                if (kset or {}).get("status") == AdGroupStatus.PARTIAL.value:
+                    bar += (
+                        f"\n\nThis ad group has NO negatives yet. To finish it, derive them "
+                        f"and add them with edit_keywords against this bar:\n"
+                        f"{_fill_guidance(built_theme.negative_guidance)}"
+                    )
+                bars.append(bar)
+            standards = "\n\n".join(bars) or _fill_guidance(theme.select_guidance)
+            rendered = Template(phase_prompt(Phase.MANAGE, theme)).safe_substitute(
                 user_message=ctx.get("kw_user_message", ""),
                 select_guidance=standards,
             )
+            # Rebuilt every turn from the live set, so an edit made earlier this run is
+            # already reflected — the agent never trims against a stale list.
+            current = _current_keywords(built)
+            if current:
+                rendered += (
+                    "\n\nCURRENT KEYWORDS — the saved set you are editing, "
+                    f"keyword (monthly volume):\n{current}"
+                )
+            return rendered
         if not ctx.get("kw_candidates"):
             phase = Phase.SEED
         elif "kw_positives" not in ctx:
@@ -253,6 +319,7 @@ class KeywordResearchAgent(BaseAgent):
         location: str = "",
         service_areas: list[str] | None = None,
         business_url: str = "",
+        partial_sink: dict[str, KeywordSet] | None = None,
     ) -> KeywordSet:
         """Run one theme's keyword research and return its KeywordSet.
 
@@ -299,6 +366,12 @@ class KeywordResearchAgent(BaseAgent):
         except asyncio.CancelledError:
             # Orchestrator wait_for timeout cancels us with CancelledError (a
             # BaseException the handler below misses) — close the card, then re-raise.
+            # Phases that finished are handed back through the sink: the keywords are
+            # real, and the caller decides what to do with an unfinished set.
+            if partial_sink is not None:
+                partial_sink[keyword_type] = self._build_result(
+                    keyword_type, session.context, status=AdGroupStatus.PARTIAL
+                )
             await stream._emit_finished(
                 agent_id=agent_id,
                 run_start=run_start,
@@ -412,6 +485,15 @@ class KeywordResearchAgent(BaseAgent):
             "campaign_craft_id": parent_ctx.get("campaign_craft_id") or "",
         }
 
+        # Replay the recent manage exchanges as conversation history. Built through the
+        # session's own message constructors, so the shape stays whatever the providers
+        # consume rather than a hand-written format that could drift on a provider change.
+        history: list[dict] = parent_ctx.get("kw_conversation") or []
+        for past in history[-KW_MANAGE_HISTORY_TURNS:]:
+            session.append_user_message(str(past.get("user", "")))
+            session.append_assistant_message([{"type": "text", "text": str(past.get("reply", ""))}])
+        seeded_len = len(session.messages)
+
         parent_stream = context.get("event_stream")
         agent_id = "keyword_research_manage"  # same machine family as keyword_research_{theme}
         run_start = time.monotonic()
@@ -446,14 +528,27 @@ class KeywordResearchAgent(BaseAgent):
                     summary=summary,
                 )
 
-        # The agent already spoke and already wrote through; the orchestrator adds nothing.
+        # Append this exchange to the main session's window, newest kept, oldest dropped.
+        reply = _reply_text(session.messages[seeded_len:])
+        if reply:
+            parent_ctx["kw_conversation"] = (
+                history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]
+            )[-KW_MANAGE_HISTORY_TURNS:]
+
+        # The keyword agent has already replied to the user directly (forwarded prose). Tell the
+        # orchestrator exactly that — it was NOT told the outcome, so it must not state one (1b).
         return ToolResult(
             success=True,
-            summary="Handled the keyword request; the reply is already on screen.",
+            summary=(
+                "The keyword agent replied to the user directly (shown above). You were not "
+                "told what it changed — do not restate or claim any outcome; just continue."
+            ),
         )
 
     @staticmethod
-    def _build_result(keyword_type: str, ctx: dict) -> KeywordSet:
+    def _build_result(
+        keyword_type: str, ctx: dict, status: AdGroupStatus = AdGroupStatus.COMPLETE
+    ) -> KeywordSet:
         # The submit tools already stored validated model dumps; rebuild the typed
         # objects, skipping any malformed item rather than sinking the whole set.
         theme = get_theme(keyword_type)
@@ -478,6 +573,7 @@ class KeywordResearchAgent(BaseAgent):
         return KeywordSet(
             theme=theme.id,
             label=theme.label,
+            status=status,
             positives=positives,
             negatives=negatives,
             rejections=rejections,

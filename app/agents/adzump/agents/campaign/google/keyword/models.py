@@ -171,11 +171,25 @@ class Rejection(BaseModel):
     reason: str = ""  # the model's words, when it named one
 
 
+class AdGroupStatus(str, Enum):
+    """State of one ad group in the review panel — the vocabulary the panel and UI share.
+
+    A KeywordSet only ever carries COMPLETE or PARTIAL; PENDING and FAILED describe ad
+    groups that have no set at all, so they reach the panel through the result's meta.
+    """
+
+    COMPLETE = "complete"  # positives and negatives both selected
+    PARTIAL = "partial"  # positives kept, the run ended before negatives
+    PENDING = "pending"  # still being researched
+    FAILED = "failed"  # nothing usable came back
+
+
 class KeywordSet(BaseModel):
     """One theme's ad group: what we target, what we exclude, and what we passed over."""
 
     theme: str  # KeywordTheme.id
     label: str = ""  # carried so the panel renders without a code-side lookup
+    status: AdGroupStatus = AdGroupStatus.COMPLETE
     positives: list[OptimizedKeyword] = Field(default_factory=list)
     negatives: list[NegativeKeyword] = Field(default_factory=list)
     rejections: list[Rejection] = Field(default_factory=list)
@@ -196,6 +210,9 @@ class OfferingTaxonomy(BaseModel):
     primary_offering: str = (
         ""  # crisp category a buyer shops for, e.g. "duplex villaments"
     )
+    brand_terms: list[str] = Field(
+        default_factory=list
+    )  # the words that mean THIS company — "kajaria", not the "ceramics" in its name
     core_terms: list[str] = Field(
         default_factory=list
     )  # what they sell — anchor positives here
@@ -212,7 +229,7 @@ class OfferingTaxonomy(BaseModel):
         True  # False = transient fail-soft fallback (the caller must not cache it)
     )
 
-    @field_validator("core_terms", "sibling_categories")
+    @field_validator("brand_terms", "core_terms", "sibling_categories")
     @classmethod
     def _norm_terms(cls, v: list[str]) -> list[str]:
         out: list[str] = []

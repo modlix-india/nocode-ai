@@ -26,7 +26,10 @@ from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MIN_LENGTH,
 )
 from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
-from app.agents.adzump.agents.campaign.google.keyword.models import normalize as _normalize
+from app.agents.adzump.agents.campaign.google.keyword.models import (
+    AdGroupStatus,
+    normalize as _normalize,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +94,13 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
         return None
 
     theme = get_theme(keyword_type)
+    dump = session_ctx.get("keyword_research") or {}
+    themes = dump.get("themes") or {}
+    # The brand the taxonomy named, not the whole company name — "Kajaria Ceramics" carries
+    # its industry too. Sets built before it was recorded fall back to the name.
+    brand_terms = (dump.get("meta") or {}).get("brand_terms") or []
     product_name = str((session_ctx.get("product_data") or {}).get("product_name") or "")
-    themes = (session_ctx.get("keyword_research") or {}).get("themes") or {}
-    brand_tokens = _tokens(product_name)
+    brand_tokens = _tokens(" ".join(brand_terms)) if brand_terms else _tokens(product_name)
 
     def _positives_where(requires_brand: bool) -> list[dict]:
         return [
@@ -104,7 +111,7 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
         ]
 
     if theme.requires_brand_token:
-        if product_name:
+        if brand_tokens:
             # Fuzzy match so deliberate brand misspellings (a real brand keyword) still pass.
             if not any(_is_brandish(t, brand_tokens) for t in kw_tokens):
                 return (
@@ -122,7 +129,7 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
     else:
         # Block when ALL brand-name tokens are present — partial overlap is category noise.
         # Fuzzy (like the brand direction) so a misspelled brand ("dulingo") is caught too.
-        if product_name and brand_tokens and all(_is_brandish(bt, kw_tokens) for bt in brand_tokens):
+        if brand_tokens and all(_is_brandish(bt, kw_tokens) for bt in brand_tokens):
             return (
                 f"'{keyword}' contains the full brand name — "
                 "brand-specific keywords belong in the brand ad group."
@@ -250,6 +257,9 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
 
     # Persist mutations back into session state.
     kset[section] = rows
+    # An ad group whose run ended before its negatives phase is finished once they exist.
+    if kset.get("status") == AdGroupStatus.PARTIAL.value and kset.get("negatives"):
+        kset["status"] = AdGroupStatus.COMPLETE.value
     themes[keyword_type] = kset
     dump["themes"] = themes
     session_ctx["keyword_research"] = dump
