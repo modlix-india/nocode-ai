@@ -54,6 +54,7 @@ from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURIT
 from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
 from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
 from app.agents.appbuilder.tools.modlix.runtime import TOOLS as _MODLIX_RUNTIME_TOOLS
+from app.agents.appbuilder.tools.template_author import TEMPLATE_AUTHOR_TOOLS
 from app.agents.appbuilder.tools.meta_tools import META_TOOLS
 from app.agents.appbuilder.tools.code_workspace import CODE_WORKSPACE_TOOLS as WORKSPACE_TOOLS
 from app.agents.appbuilder.tools.kb_app import KB_APP_TOOLS
@@ -92,6 +93,7 @@ MODLIX_TOOLS: list[ToolDefinition] = (
     + list(_MODLIX_APP_ADMIN_TOOLS)
     + list(_MODLIX_MESSAGING_TOOLS)
     + list(_MODLIX_RUNTIME_TOOLS)
+    + list(TEMPLATE_AUTHOR_TOOLS)  # author_template — AI-generate template content (shared with editor AI tab)
 )  # Phase 1.4b modlix port complete
 
 ALL_TOOLS: list[ToolDefinition] = (
