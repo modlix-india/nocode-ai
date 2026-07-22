@@ -25,12 +25,19 @@ from app.core.base_router import (
 from app.core.session import BaseSession, AuthContext
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
+from app.agents.adzump.agents.campaign.api import (
+    router as campaign_api_router,
+    parse_keyword_widget_message,
+    stream_keyword_widget,
+)
 from app.agents.adzump.agents.location.search_router import router as location_search_router
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 create_common_routes(router, agent_name="adzump")
+# Campaign-creation endpoints (e.g. keyword/volume for the review panel).
+router.include_router(campaign_api_router)
 router.include_router(location_search_router)
 
 
@@ -69,6 +76,13 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
             if a.type == "image" and a.data
         ]
 
+    # Keyword widget: structured JSON action from the campaign keyword panel (fast path, no LLM).
+    kw_widget = parse_keyword_widget_message(body.message)
+    if kw_widget is not None:
+        return stream_keyword_widget(agent, session, kw_widget)
+
     return stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )
+
+

@@ -25,6 +25,10 @@ from app.agents.adzump.tools.campaign_data import (
     is_ig_skip,
     is_real_estate,
 )
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    DEFAULT_THEME_IDS,
+    KEYWORD_THEMES,
+)
 
 
 def _is_custom_reply(text: str) -> bool:
@@ -34,6 +38,35 @@ def _is_custom_reply(text: str) -> bool:
     never "custom", so this won't fire on a real value."""
     lu = (text or "").strip().lower()
     return lu == "custom" or lu.startswith("custom")
+
+
+# A refusal, however the chip was labelled or answered.
+_CONSENT_REFUSALS = ("false", "no")
+
+
+def _is_affirmative(value: object) -> bool:
+    """Whether a captured consent answer means yes. The model sends either the answer we
+    asked for ("true"/"false") or lets the chip label through ("Yes, proceed"), so both
+    shapes have to read the same way."""
+    text = str(value or "").strip().lower()
+    return bool(text) and not text.startswith(_CONSENT_REFUSALS)
+
+
+def _ad_group_question() -> str:
+    """The Google ad-group choice - one chip per keyword theme plus a combined one, derived
+    from the theme registry so a new theme becomes a chip without touching this copy."""
+    ids = list(DEFAULT_THEME_IDS)
+    chips = ", ".join(
+        f'{{label "{KEYWORD_THEMES[t].label}", answer "{t}"}}' for t in ids
+    )
+    combined = "Both" if len(ids) == 2 else "All"
+    return (
+        'use the present_options tool (field "ad_groups") to ask "Which ad groups should '
+        "we build?\" with these options - each carries its own `answer`: "
+        f'{chips}, {{label "{combined}", answer "{",".join(ids)}"}}. Whatever they pick is '
+        "what gets built - do not talk them out of narrowing it. CALL the tool - never type "
+        "the call into your reply."
+    )
 
 
 @dataclass(frozen=True)
@@ -65,6 +98,13 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    # True once prepare_campaign_review has run and stored keyword_research - flips the review
+    # branch from "prepare the campaign" (run keyword research) to "launch". Defaulted so
+    # existing test fixtures that build CampaignContext directly need no change.
+    keyword_research_done: bool = False
+    # True once the user okays the campaign summary - the gate between showing the summary
+    # and asking which ad groups to build.
+    summary_confirmed: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -98,6 +138,10 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            keyword_research_done=bool(ctx.get("keyword_research")),
+            summary_confirmed=_is_affirmative(
+                (ctx.get("campaign_spec") or {}).get("summary_confirmed")
+            ),
         )
 
     @property
@@ -333,7 +377,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "option). If none are linked, the tool says so - offer Facebook-only."
                 )
 
-    if not missing:
+    if not missing and not cctx.summary_confirmed:
+        # Every platform reviews the summary and confirms before anything is built or launched.
+        # What gets built is the user's choice in the next step, so nothing is decided here.
         meta_extra = ""
         if cctx.is_meta:
             meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
@@ -362,11 +408,40 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
             "if competitive_analysis_declined='true'>\n\n"
             "EVERY bullet must be present - do not omit any.\n"
-            "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
-            "the campaign?\" with chips: Yes, launch / No, make changes. When the user "
-            "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the one "
-            "tool that persists the campaign. These are tools to CALL - never type "
-            "tool-call syntax into your reply, only the markdown summary above is text."
+            '(2) THEN, separately, use the present_options tool (field '
+            '"summary_confirmed") to ask "Proceed with the campaign?" with exactly '
+            'two options: {label "Yes, proceed", answer "true"} and a plain "No, make '
+            'changes". These are tools to CALL - never type tool-call syntax into your '
+            "reply, only the markdown summary above is text."
+        )
+    elif not missing and cctx.is_google and not cctx.keyword_research_done:
+        # Google-only build stage: pick the ad groups, then research the keywords. Other
+        # platforms have no build step yet and skip straight to launch below.
+        if not cctx.spec.get("ad_groups"):
+            missing.append("ad groups - " + _ad_group_question())
+        else:
+            missing.append(
+                'build the campaign - the user okayed the summary and chose the ad groups '
+                f'("{cctx.spec.get("ad_groups")}"). Call the prepare_campaign_review tool (no '
+                "arguments) NOW - it researches the keywords and shows them in the review "
+                "panel. Do NOT re-post the summary and do NOT ask either question again."
+            )
+    elif not missing:
+        # Launch. Google has keywords in the panel to review first; other platforms go
+        # straight from the confirmed summary to the launch confirm.
+        review = (
+            "The keyword suggestions are shown in the panel. Ask the user to review and edit "
+            "them (add / remove / edit), then "
+            if cctx.is_google
+            else "The campaign details are confirmed. "
+        )
+        missing.append(
+            "launch - "
+            + review
+            + "call `present_options(question=\"Ready to launch the campaign?\", "
+            "options=[\"Yes, launch\", \"No, make changes\"])`. "
+            "**On the user's 'Yes, launch' reply, call `launch_campaign()` (no params) - "
+            "that's the one tool that persists the campaign.**"
         )
 
     return missing
