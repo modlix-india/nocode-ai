@@ -1,0 +1,666 @@
+{
+  "_id": "696a688a5c6dc118d3efe17f",
+  "definition": {
+    "name": "createTicketAndSN",
+    "namespace": "leadzump",
+    "parameters": {
+      "ticketRequest": {
+        "parameterName": "ticketRequest",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "loggedInUser": {
+        "parameterName": "loggedInUser",
+        "schema": {
+          "type": [
+            "LONG"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 117.1851908365885,
+          "top": 206.33333333333331
+        },
+        "parameterMap": {
+          "name": {
+            "2KrSP7O8FSmfT9bJChzt6b": {
+              "key": "2KrSP7O8FSmfT9bJChzt6b",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "leadObj"
+            }
+          },
+          "schema": {
+            "42IN6UVAcqtCLFfQIRZXIV": {
+              "key": "42IN6UVAcqtCLFfQIRZXIV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "appCode": {
+        "statementName": "appCode",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 306.18519083658856,
+          "top": 465.5185241699219
+        },
+        "parameterMap": {
+          "name": {
+            "7iizekjk2KizV27E9sJQ4C": {
+              "key": "7iizekjk2KizV27E9sJQ4C",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.leadObj"
+            }
+          },
+          "value": {
+            "56oT3yACCD2yFnr3Qolr6z": {
+              "key": "56oT3yACCD2yFnr3Qolr6z",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": {
+                "comment": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Argument.comment"
+                  }
+                },
+                "appCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.appCode"
+                  }
+                },
+                "clientCode": {
+                  "location": {
+                    "type": "EXPRESSION",
+                    "expression": "Arguments.clientCode"
+                  }
+                }
+              },
+              "expression": "Arguments.ticketRequest"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1343.5185241699216,
+          "top": 604.9629516601561
+        },
+        "parameterMap": {
+          "condition": {
+            "1LM2GgNQCTxETE4nTMky6l": {
+              "key": "1LM2GgNQCTxETE4nTMky6l",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.output.created",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent_Copy_1_Copy_1": {
+        "statementName": "generateEvent_Copy_1_Copy_1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1475.222213745117,
+          "top": 1476.5555725097652
+        },
+        "parameterMap": {
+          "results": {
+            "6ttTeP0V418U7xMzn0BQB4": {
+              "key": "6ttTeP0V418U7xMzn0BQB4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.createRequest.error.error"
+                }
+              }
+            },
+            "6wdHfeTl8KqNuZGudFtSFk": {
+              "key": "6wdHfeTl8KqNuZGudFtSFk",
+              "type": "EXPRESSION",
+              "expression": "",
+              "order": 2,
+              "value": {
+                "name": "notificationStatus",
+                "value": {
+                  "isExpression": false,
+                  "value": "Notification not sent!"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "22KBTF4yfLY8mt3jrTpZbq": {
+              "key": "22KBTF4yfLY8mt3jrTpZbq",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": false,
+          "Steps__d-o-t__if2__d-o-t__true": true
+        }
+      },
+      "if2": {
+        "statementName": "if2",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1109.8148091634114,
+          "top": 1191.4814885457354
+        },
+        "parameterMap": {
+          "condition": {
+            "hsGyeM2rw8YvztYNnbujF": {
+              "key": "hsGyeM2rw8YvztYNnbujF",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.error.error",
+              "order": 1
+            }
+          }
+        }
+      },
+      "create_Copy_1": {
+        "statementName": "create_Copy_1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2061.740763346354,
+          "top": 585.4074109395344
+        },
+        "parameterMap": {
+          "name": {
+            "2KrSP7O8FSmfT9bJChzt6b": {
+              "key": "2KrSP7O8FSmfT9bJChzt6b",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "notificationPayload"
+            }
+          },
+          "schema": {
+            "42IN6UVAcqtCLFfQIRZXIV": {
+              "key": "42IN6UVAcqtCLFfQIRZXIV",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "set_Copy_1_Copy_1": {
+        "statementName": "set_Copy_1_Copy_1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 3005.7408142089844,
+          "top": 1696.5555661519365
+        },
+        "parameterMap": {
+          "name": {
+            "3K0qOAULzpulIFe7GJNvGT": {
+              "key": "3K0qOAULzpulIFe7GJNvGT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.notificationPayload.productName"
+            }
+          },
+          "value": {
+            "6xs6V64p2ftxQHg5vSwDoS": {
+              "key": "6xs6V64p2ftxQHg5vSwDoS",
+              "type": "EXPRESSION",
+              "expression": "Steps.getWalkInProduct.output.result.name",
+              "order": 1
+            }
+          }
+        }
+      },
+      "makeId": {
+        "statementName": "makeId",
+        "name": "Make",
+        "namespace": "System",
+        "position": {
+          "left": 2520.5555725097656,
+          "top": 1685.4074363708494
+        },
+        "parameterMap": {
+          "resultShape": {
+            "6G8qFxdm0KHM9OHCvln2Vh": {
+              "key": "6G8qFxdm0KHM9OHCvln2Vh",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "id": "{{Steps.createForCampaign.output.created.productId}}"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set_Copy_1__d-o-t__output": true
+        }
+      },
+      "if1_Copy_1": {
+        "statementName": "if1_Copy_1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 4157.259287516275,
+          "top": 1505.5185305277505
+        },
+        "parameterMap": {
+          "condition": {
+            "2MSdA72ibl6EGNnEL5NTbn": {
+              "key": "2MSdA72ibl6EGNnEL5NTbn",
+              "type": "EXPRESSION",
+              "expression": "Steps.sendDealCreatedNotification.output.sent",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent_Copy_2": {
+        "statementName": "generateEvent_Copy_2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 4653.148142496744,
+          "top": 1178.5555788675942
+        },
+        "parameterMap": {
+          "results": {
+            "6ttTeP0V418U7xMzn0BQB4": {
+              "key": "6ttTeP0V418U7xMzn0BQB4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": false,
+                  "value": "Not error"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "2vM2LZBs3mfco7Dj2GNSWO": {
+              "key": "2vM2LZBs3mfco7Dj2GNSWO",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1_Copy_1__d-o-t__false": true
+        }
+      },
+      "createRequest": {
+        "statementName": "createRequest",
+        "name": "CreateRequest",
+        "namespace": "EntityProcessor.Ticket",
+        "position": {
+          "left": 827.5185241699218,
+          "top": 641.2962849934895
+        },
+        "parameterMap": {
+          "ticketRequest": {
+            "3Q68S7R7SJ1pV0uVEHYIPy": {
+              "key": "3Q68S7R7SJ1pV0uVEHYIPy",
+              "type": "EXPRESSION",
+              "expression": "Steps.make.output.value",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2203.7407633463545,
+          "top": 1161.7407442728677
+        },
+        "parameterMap": {
+          "name": {
+            "3K0qOAULzpulIFe7GJNvGT": {
+              "key": "3K0qOAULzpulIFe7GJNvGT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.notificationPayload.source"
+            }
+          },
+          "value": {
+            "6xs6V64p2ftxQHg5vSwDoS": {
+              "key": "6xs6V64p2ftxQHg5vSwDoS",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.output.created.source",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create_Copy_1__d-o-t__output": true
+        }
+      },
+      "set_Copy_1": {
+        "statementName": "set_Copy_1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2331.0740966796875,
+          "top": 1439.148161570231
+        },
+        "parameterMap": {
+          "name": {
+            "3K0qOAULzpulIFe7GJNvGT": {
+              "key": "3K0qOAULzpulIFe7GJNvGT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.notificationPayload.subSource"
+            }
+          },
+          "value": {
+            "6xs6V64p2ftxQHg5vSwDoS": {
+              "key": "6xs6V64p2ftxQHg5vSwDoS",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.output.created.subSource",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "getWalkInProduct": {
+        "statementName": "getWalkInProduct",
+        "name": "GetWalkInProduct",
+        "namespace": "EntityProcessor.ProductWalkInForm",
+        "position": {
+          "left": 2538.777862548828,
+          "top": 1901.1481599807737
+        },
+        "parameterMap": {
+          "appCode": {
+            "55kUiVGQIdBO4cTveU7q55": {
+              "key": "55kUiVGQIdBO4cTveU7q55",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "leadzump"
+            }
+          },
+          "clientCode": {
+            "7ALAQiuHL0DNlgG1BznR8F": {
+              "key": "7ALAQiuHL0DNlgG1BznR8F",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.output.created.clientCode",
+              "order": 1
+            }
+          },
+          "productId": {
+            "4nTArc2VSHHkJBgs127R9P": {
+              "key": "4nTArc2VSHHkJBgs127R9P",
+              "type": "EXPRESSION",
+              "expression": "Steps.makeId.output.value",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set_Copy_1_Copy_2": {
+        "statementName": "set_Copy_1_Copy_2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 3288.629669189453,
+          "top": 2007.8518638610838
+        },
+        "parameterMap": {
+          "name": {
+            "3K0qOAULzpulIFe7GJNvGT": {
+              "key": "3K0qOAULzpulIFe7GJNvGT",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.notificationPayload.code"
+            }
+          },
+          "value": {
+            "6xs6V64p2ftxQHg5vSwDoS": {
+              "key": "6xs6V64p2ftxQHg5vSwDoS",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.output.created.code",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set_Copy_1_Copy_1__d-o-t__output": true
+        }
+      },
+      "sendDealCreatedNotification": {
+        "statementName": "sendDealCreatedNotification",
+        "name": "SendNotification",
+        "namespace": "CoreServices.Notification",
+        "position": {
+          "left": 3726.481577555339,
+          "top": 1334.9629739125567
+        },
+        "parameterMap": {
+          "notificationName": {
+            "3BLnRzPSTkObFTfX7bvyIL": {
+              "key": "3BLnRzPSTkObFTfX7bvyIL",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "dealCreated"
+            }
+          },
+          "connectionName": {
+            "43yjPwndztwVD6CGmWzLxb": {
+              "key": "43yjPwndztwVD6CGmWzLxb",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "notification"
+            }
+          },
+          "appCode": {
+            "3Xmfdt7crg5QEj5rCob3tp": {
+              "key": "3Xmfdt7crg5QEj5rCob3tp",
+              "type": "VALUE",
+              "expression": "",
+              "value": "leadzump"
+            }
+          },
+          "targetId": {
+            "65IoSoRwRXQjGP2Y7CiHHh": {
+              "key": "65IoSoRwRXQjGP2Y7CiHHh",
+              "type": "EXPRESSION",
+              "expression": "Steps.createRequest.output.created.assignedUserId",
+              "value": 2863
+            }
+          },
+          "notificationCategory": {
+            "6x1nFNwHbQcji3cM0zc1Y0": {
+              "key": "6x1nFNwHbQcji3cM0zc1Y0",
+              "type": "EXPRESSION",
+              "expression": "\"DEAL_CREATE\"",
+              "value": "Default"
+            }
+          },
+          "payload": {
+            "4FAWcbb58Ms3z8dqErV0PT": {
+              "key": "4FAWcbb58Ms3z8dqErV0PT",
+              "type": "EXPRESSION",
+              "expression": "Context.notificationPayload",
+              "value": {}
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": false,
+          "Steps__d-o-t__set_Copy_1__d-o-t__output": false,
+          "Steps__d-o-t__set_Copy_1_Copy_1__d-o-t__output": false,
+          "Steps__d-o-t__set_Copy_1_Copy_2__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 4582.148193359375,
+          "top": 1739.8518638610838
+        },
+        "parameterMap": {
+          "results": {
+            "6ttTeP0V418U7xMzn0BQB4": {
+              "key": "6ttTeP0V418U7xMzn0BQB4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.createRequest.output.created"
+                }
+              }
+            },
+            "6zGSU7ouNY9fTQ7gA8Zq8R": {
+              "key": "6zGSU7ouNY9fTQ7gA8Zq8R",
+              "type": "VALUE",
+              "expression": "",
+              "order": 2,
+              "value": {
+                "name": "notificationStatus",
+                "value": {
+                  "isExpression": false,
+                  "value": "Notification sent!"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__campDetails__d-o-t__output": false,
+          "Steps__d-o-t__if__d-o-t__false": false,
+          "Steps__d-o-t__if__d-o-t__true": false,
+          "Steps__d-o-t__if1_Copy_1__d-o-t__true": true
+        }
+      },
+      "make": {
+        "statementName": "make",
+        "name": "Make",
+        "namespace": "System",
+        "position": {
+          "left": 450.85185750325513,
+          "top": 720.0370483398438
+        },
+        "parameterMap": {
+          "resultShape": {
+            "60BtrqMpZbTXxAeHxchqvO": {
+              "key": "60BtrqMpZbTXxAeHxchqvO",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "{{Context.leadObj.name}}",
+                "phoneNumber": {
+                  "number": "{{Context.leadObj.phoneNumber}}"
+                },
+                "email": {
+                  "address": "{{Context.leadObj.email}}"
+                },
+                "source": "{{Context.leadObj.source}}",
+                "subSource": "{{Context.leadObj.subSource}}",
+                "productId": {
+                  "id": "{{Context.leadObj.productId}}"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__appCode__d-o-t__output": true
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {},
+          "notificationStatus": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "result": {}
+        }
+      }
+    }
+  },
+  "name": "leadzump.createTicketAndSN",
+  "message": "From transport : 0NLasvcaI96EIUO3Ck7GsQ",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 28,
+  "updatedAt": "2026-05-14 13:47:05.191000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-16 16:34:18.236000",
+  "createdBy": "<USER>"
+}

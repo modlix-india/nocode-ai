@@ -1,0 +1,23 @@
+{
+  "_id": "696a5c0b6db9c20e249d231f",
+  "notificationType": "INFO",
+  "defaultLanguage": "en",
+  "channelTemplates": {
+    "inapp": {
+      "templateParts": {
+        "en": {
+          "description": "A Channel Partner has added a new deal for product.",
+          "title": "CP Deal Added"
+        }
+      }
+    }
+  },
+  "name": "cpDealCreate",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 2,
+  "updatedAt": "2026-01-16 15:41:56.633000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-16 15:40:59.284000",
+  "createdBy": "<USER>"
+}

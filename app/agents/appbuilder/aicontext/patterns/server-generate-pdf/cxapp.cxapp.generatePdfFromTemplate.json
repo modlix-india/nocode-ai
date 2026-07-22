@@ -1,0 +1,227 @@
+{
+  "_id": "6773f1ce86db9b6eefa63b35",
+  "definition": {
+    "name": "generatePdfFromTemplate",
+    "namespace": "cxapp",
+    "steps": {
+      "templateToPdf": {
+        "statementName": "templateToPdf",
+        "name": "TemplateToPdf",
+        "namespace": "CoreServices.File",
+        "position": {
+          "left": 536.5714242117745,
+          "top": 120.4285452706473
+        },
+        "parameterMap": {
+          "templateName": {
+            "6BxruIqCbUkv5N0aQCC0g1": {
+              "key": "6BxruIqCbUkv5N0aQCC0g1",
+              "type": "EXPRESSION",
+              "expression": "Arguments.templateName",
+              "order": 1,
+              "value": "eoiTemplate"
+            }
+          },
+          "clientCode": {
+            "4zsmcZJJXDeiKrAnJOpt5C": {
+              "key": "4zsmcZJJXDeiKrAnJOpt5C",
+              "type": "EXPRESSION",
+              "expression": "Arguments.clientCode",
+              "value": "SYSTEM"
+            }
+          },
+          "appCode": {
+            "3zojOntQKQLEVXbnBkJKf0": {
+              "key": "3zojOntQKQLEVXbnBkJKf0",
+              "type": "EXPRESSION",
+              "expression": "Arguments.appCode",
+              "value": "cxapp"
+            }
+          },
+          "fileName": {
+            "7p8t6tsdvvhPr0mnLWKEsI": {
+              "key": "7p8t6tsdvvhPr0mnLWKEsI",
+              "type": "EXPRESSION",
+              "expression": "Arguments.fileName",
+              "value": "testDoc4.pdf"
+            }
+          },
+          "templateData": {
+            "7pTApE7yZpotV05EhlK5z5": {
+              "key": "7pTApE7yZpotV05EhlK5z5",
+              "type": "EXPRESSION",
+              "value": {
+                "dateOfEOI": "22/02/1996",
+                "opportunityId": "400",
+                "leadSource": "DCRM",
+                "subSource": "Facebook"
+              },
+              "expression": "Arguments.templateData"
+            }
+          },
+          "fileOverride": {
+            "1AALW9TqKoKHjDtj5KB2m": {
+              "key": "1AALW9TqKoKHjDtj5KB2m",
+              "type": "EXPRESSION",
+              "expression": "Arguments.fileOverride",
+              "value": true
+            }
+          },
+          "fileType": {
+            "3frHMLSFPe1UTm12LMe4CB": {
+              "key": "3frHMLSFPe1UTm12LMe4CB",
+              "type": "EXPRESSION",
+              "expression": "Arguments.fileType",
+              "value": "static"
+            }
+          },
+          "fileLocation": {
+            "2MB4Kc6pNRwfN7Pb4DhvJQ": {
+              "key": "2MB4Kc6pNRwfN7Pb4DhvJQ",
+              "type": "EXPRESSION",
+              "expression": "Arguments.fileLocation",
+              "value": "/"
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1016.9999956403458,
+          "top": 327.71428571428567
+        },
+        "parameterMap": {
+          "results": {
+            "7en4ws39dWpXowMwlaT2T3": {
+              "key": "7en4ws39dWpXowMwlaT2T3",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.templateToPdf.output.fileData"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "2U0skzUCtSSj1DHjybUZ4o": {
+              "key": "2U0skzUCtSSj1DHjybUZ4o",
+              "type": "VALUE",
+              "expression": "",
+              "value": "result"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__templateToPdf__d-o-t__output": true
+        }
+      }
+    },
+    "events": {
+      "result": {
+        "name": "result",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "parameters": {
+      "clientCode": {
+        "parameterName": "clientCode",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "fileName": {
+        "parameterName": "fileName",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "templateName": {
+        "parameterName": "templateName",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "templateData": {
+        "parameterName": "templateData",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1,
+          "defaultValue": {}
+        }
+      },
+      "fileOverride": {
+        "parameterName": "fileOverride",
+        "schema": {
+          "defaultValue": false,
+          "version": 1,
+          "type": [
+            "BOOLEAN"
+          ]
+        }
+      },
+      "fileLocation": {
+        "parameterName": "fileLocation",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1,
+          "defaultValue": "/"
+        }
+      },
+      "appCode": {
+        "parameterName": "appCode",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "fileType": {
+        "parameterName": "fileType",
+        "schema": {
+          "defaultValue": "static",
+          "version": 1,
+          "type": [
+            "STRING"
+          ]
+        }
+      }
+    }
+  },
+  "name": "cxapp.generatePdfFromTemplate",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 73,
+  "updatedAt": "2026-04-09 04:28:28.920000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-12-31 13:29:50.280000",
+  "createdBy": "<USER>"
+}

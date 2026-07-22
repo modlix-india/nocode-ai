@@ -1,0 +1,71 @@
+{
+  "_id": "66816e9c968c2d219d49b9d9",
+  "schema": {
+    "type": "OBJECT",
+    "additionalProperties": false,
+    "properties": {
+      "contact": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 3,
+        "maxLength": 150
+      }
+    },
+    "required": [
+      "contact"
+    ]
+  },
+  "uniqueName": "limitirldxkckegpvb_uvbx3fcryx4j",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "readAuth": "Authorities.Logged_IN",
+  "updateAuth": "Authorities.Logged_IN",
+  "deleteAuth": "Authorities.Logged_IN",
+  "fieldDefinitionMap": {
+    "contact": {
+      "key": "contact",
+      "uuid": "4etB36AUCDRKH6x2uKWOVh",
+      "order": 0,
+      "label": "Contact",
+      "placeholder": "Phone Number / Email",
+      "inputType": "text",
+      "numberType": "",
+      "validation": {
+        "STRING_LENGTH": {
+          "uuid": "6VMTAPRo1pltMrk3bDc2Dm",
+          "order": 0,
+          "type": "STRING_LENGTH",
+          "minLength": 3,
+          "maxLength": 150,
+          "message": "Minimum 3 characters and maximum 150 characters"
+        },
+        "MANDATORY": {
+          "uuid": "6KbjxXwsNjoRcCjrYMjfLX",
+          "order": 1,
+          "type": "MANDATORY",
+          "message": "Please enter a phone number or an email"
+        }
+      },
+      "schema": {
+        "type": [
+          "STRING"
+        ],
+        "minLength": 3,
+        "maxLength": 150
+      },
+      "editorType": "TextBoxEditor",
+      "maxChars": 150
+    }
+  },
+  "name": "formStorage",
+  "clientCode": "DILIP",
+  "appCode": "limitirldxkckegpvbkyoj",
+  "version": 2,
+  "updatedAt": "2024-06-30 14:41:49.684000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-30 14:41:32.466000",
+  "createdBy": "<USER>"
+}

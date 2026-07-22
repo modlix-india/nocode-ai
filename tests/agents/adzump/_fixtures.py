@@ -1,7 +1,7 @@
 """Shared test fixtures for Adzump agent tests.
 
-ONE place to build the scaffolding every test needs — a session stand-in, the
-`set_campaign_spec` context pair, a `CampaignContext`, and a fake event stream —
+ONE place to build the scaffolding every test needs - a session stand-in, the
+`set_campaign_spec` context pair, a `CampaignContext`, and a fake event stream -
 so test files stop re-rolling their own `types.SimpleNamespace` + `RE`/`SAAS`
 constants + `_ctx`/`_session` helpers (the duplication that made the suite read
 as "generated on the fly").
@@ -84,6 +84,7 @@ def make_cctx(
     competitor_names: list | None = None,
     attempted: bool = False,
     ig_offered: bool = False,
+    awaiting: str | None = None,
     turn: int = 1,
 ) -> CampaignContext:
     """A `CampaignContext` for `_next_action` / prescription tests."""
@@ -99,6 +100,7 @@ def make_cctx(
         last_user=last_user,
         pending_location=None,
         ig_offered=ig_offered,
+        awaiting_custom_field=awaiting,
     )
 
 
@@ -110,7 +112,7 @@ def elicitation(field: str, answers: dict | None = None, *, expects: str = "sing
 
 
 class FakeStream:
-    """Captures `emit_text` calls — the happy path most tool tests need."""
+    """Captures `emit_text` calls - the happy path most tool tests need."""
 
     def __init__(self) -> None:
         self.texts: list[str] = []

@@ -1,8 +1,8 @@
-"""SummaryAgent — single-shot BaseAgent for the gpt-4o profile summary.
+"""SummaryAgent - single-shot BaseAgent for the gpt-4o profile summary.
 
 Replaces the direct ``openai.chat.completions.create(...)`` call in
 ``agents/product/tools/scrape/profile.py``. The agent runs ``BaseAgent.run()``
-with no tools and ``max_turns=1`` — a single LLM call wrapped in the
+with no tools and ``max_turns=1`` - a single LLM call wrapped in the
 standard agent loop so it picks up the same observability, retry, and
 event-streaming hooks as ProductAgent.
 
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 #
 # Sticking with gpt-4o for the summary call. ProductAgent uses Sonnet
 # 4.6 (Anthropic) for orchestration; this is the helper LLM. Different
-# provider is fine — BaseAgent's ``provider`` arg routes correctly.
+# provider is fine - BaseAgent's ``provider`` arg routes correctly.
 SUMMARY_PROVIDER = "openai"
 SUMMARY_MODEL_TIER = "balanced"
 SUMMARY_MODEL_OVERRIDE = "openai:gpt-4o"
@@ -51,7 +51,7 @@ SUMMARY_MAX_TURNS = 1
 class _CraftBoundStream(AgentEventStream):
     """Routes assistant text deltas to a specific craft-panel block.
 
-    The default BaseAgent loop calls ``event_stream.emit_text(delta)`` —
+    The default BaseAgent loop calls ``event_stream.emit_text(delta)`` -
     that lands in the chat surface. The summary should land in the
     ``summary_text`` craft block instead, so this wrapper rewrites
     ``emit_text → emit_craft_text(craft_id, ...)``. Other event types
@@ -150,7 +150,7 @@ class SummaryAgent(BaseAgent):
 
     def __init__(self) -> None:
         context = build_summary_context()
-        # Skip the async doc-load phase — there are no doc paths.
+        # Skip the async doc-load phase - there are no doc paths.
         context._cached_static_text = context._static_prefix
 
         super().__init__(
@@ -172,7 +172,7 @@ class SummaryAgent(BaseAgent):
         return cls._instance
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
-        # Nothing to expose to tools — there aren't any. Keep the override
+        # Nothing to expose to tools - there aren't any. Keep the override
         # for symmetry with ProductAgent / future agents.
         return super().build_tool_context(session)
 
@@ -192,7 +192,7 @@ class SummaryAgent(BaseAgent):
 
         v6 (2026-05-27, S1): emits agent_finished on both success + error
         paths so the Profile Writer span closes in the UI. Without this
-        emit the row stays in 'running' state indefinitely — observed
+        emit the row stays in 'running' state indefinitely - observed
         336s+ after the summary stream actually completed.
         """
         import time as _time
@@ -201,7 +201,7 @@ class SummaryAgent(BaseAgent):
         sub_session = BaseSession(agent_name="summary_gen")
         await sub_session.get_or_create(None, auth)
 
-        # Selective context sharing — the sub-agent doesn't need much,
+        # Selective context sharing - the sub-agent doesn't need much,
         # but pass craft_id along so any future builder hooks can use it.
         if parent_session_context is not None:
             sub_session.context = {
@@ -213,7 +213,7 @@ class SummaryAgent(BaseAgent):
 
         # The system prompt already names the task ("summarise this
         # business"); the user message is just the scraped content.
-        # Truncate at 15k chars — same cap as the old direct call.
+        # Truncate at 15k chars - same cap as the old direct call.
         msg = f"Website: {url}\n\n{(scraped_text or '')[:15000]}"
 
         try:
@@ -235,7 +235,7 @@ class SummaryAgent(BaseAgent):
             )
             raise
 
-        # Find the last assistant message — that's the summary text.
+        # Find the last assistant message - that's the summary text.
         final_text = ""
         for m in reversed(sub_session.get_messages()):
             if m.get("role") != "assistant":
@@ -252,7 +252,7 @@ class SummaryAgent(BaseAgent):
 
         final_text = final_text.strip()
         # rightMeta-overflow fix (2026-05-27): success path sends empty
-        # summary. The full profile text is already in the craft panel —
+        # summary. The full profile text is already in the craft panel -
         # duplicating 120 chars into the agent row's right meta overflowed
         # and added zero new info. See agent-row-rightmeta-overflow plan.
         # Error path keeps a non-empty summary because that info isn't
@@ -288,7 +288,7 @@ class SummaryAgent(BaseAgent):
           · BAD:  the marketing-copy preview (full text already in craft panel)
         When the agent's output is rendered in a sibling panel, send "".
         AgentGroup.tsx defensively caps long strings, but the contract is
-        the source of truth — don't push the UI cap as the contract.
+        the source of truth - don't push the UI cap as the contract.
         """
         if parent_event_stream is None:
             return

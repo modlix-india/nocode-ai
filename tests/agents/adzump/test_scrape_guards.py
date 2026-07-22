@@ -1,7 +1,7 @@
-"""Lock #4 — scrape guards (scrape/tool.py): `_is_same_website` + the 5-scrape cap.
+"""Lock #4 - scrape guards (scrape/tool.py): `_is_same_website` + the 5-scrape cap.
 
 `_is_same_website` carries a documented near-bug: it must use `removeprefix("www.")`,
-NOT `lstrip("www.")` — lstrip treats "www." as a char SET {w,.} and would mangle a
+NOT `lstrip("www.")` - lstrip treats "www." as a char SET {w,.} and would mangle a
 real domain like "wisco.com" → "isco.com". The cap rejects re-scrapes + over-budget
 calls (MAX_SCRAPE_CALLS=5).
 
@@ -44,22 +44,28 @@ class IsSameWebsiteLock(unittest.TestCase):
         self.assertFalse(_is_same_website("https://wisco.com", "https://isco.com"))
 
 
+def _pages(*urls: str) -> dict:
+    """product_data["pages"] shape: entry presence = successful scrape."""
+    return {u: {"screenshot_url": ""} for u in urls}
+
+
 class ScrapeCapLock(unittest.TestCase):
 
     def test_fresh_under_cap_proceeds(self):
         r = _reject_if_duplicate_or_over_cap(
-            "https://earthenambience.in", ["https://purvasparklingspring.com"], 1)
+            "https://earthenambience.in", _pages("https://purvasparklingspring.com"))
         self.assertIsNone(r)   # None = proceed
 
     def test_duplicate_rejected(self):
         r = _reject_if_duplicate_or_over_cap(
-            "https://purvasparklingspring.com", ["https://purvasparklingspring.com"], 1)
+            "https://purvasparklingspring.com", _pages("https://purvasparklingspring.com"))
         self.assertIsNotNone(r)
         self.assertFalse(r.success)
 
     def test_over_cap_rejected(self):
         r = _reject_if_duplicate_or_over_cap(
-            "https://brand-new.in", ["a", "b", "c", "d", "e"], MAX_SCRAPE_CALLS)
+            "https://brand-new.in",
+            _pages(*(f"https://site{i}.in" for i in range(MAX_SCRAPE_CALLS))))
         self.assertIsNotNone(r)
         self.assertFalse(r.success)
 

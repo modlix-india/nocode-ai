@@ -31,6 +31,43 @@ from app.db.models import AiTokenUsageCreate
 logger = logging.getLogger(__name__)
 
 
+async def _resolve_app_user_id(
+    client: Any,
+    gateway_url: str,
+    login_headers: dict[str, str],
+    username: str,
+    app_code: str,
+) -> int:
+    """Step 1 of app-user login: POST /findUserClients and pick the userId.
+
+    Module-level so BaseSession._login_app_user stays under the linter's
+    complexity bar. Returns the userId or raises with a clear hint.
+    """
+    find_resp = await client.post(
+        f"{gateway_url}/api/security/users/findUserClients",
+        headers=login_headers,
+        json={"userName": username},
+    )
+    if find_resp.status_code >= 400:
+        raise RuntimeError(
+            f"findUserClients failed for app-user '{username}' in app "
+            f"'{app_code}': HTTP {find_resp.status_code}: "
+            f"{find_resp.text[:200]}"
+        )
+    rows = find_resp.json() if find_resp.content else []
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError(
+            f"No user '{username}' found in app '{app_code}'. "
+            "Confirm the username and that this app has end users."
+        )
+    user_id = rows[0].get("userId")
+    if not user_id:
+        raise RuntimeError(
+            f"findUserClients returned an entry without userId: {rows[0]}"
+        )
+    return user_id
+
+
 @dataclass
 class AuthContext:
     """Authentication context passed from the HTTP request.
@@ -97,6 +134,116 @@ class BaseSession:
         }
         self._turn_count: int = 0
         self._db_session_created: bool = False
+        # App-user identity — separate from self.auth. Used only by tools that
+        # interact with the CUSTOMER'S app as one of its end users
+        # (screenshot_page, drive_page, call_as_app_user). Stored as the raw
+        # request input (token or username+password) and resolved lazily by
+        # get_app_user_token() into a cached bearer token for the conversation.
+        self._app_user_input: Optional[dict[str, Any]] = None
+        self._app_user_token: Optional[str] = None
+
+    def set_app_user(self, app_user: Optional[dict[str, Any]]) -> None:
+        """Stash the app-user credentials from the ChatRequest.
+
+        Pass either a dict with 'token' (pre-obtained app-user JWT) or 'username'
+        + 'password'. None clears any prior value. Lazy: no auth call happens
+        here — the token is resolved on first get_app_user_token().
+        """
+        self._app_user_input = app_user or None
+        # If the caller passed a fresh credential set, drop any previously
+        # cached token so the next get_app_user_token() re-resolves.
+        if app_user:
+            self._app_user_token = app_user.get("token") if app_user.get("token") else None
+
+    async def get_app_user_token(self) -> str:
+        """Resolve and return the app-user bearer token.
+
+        Resolution order:
+          1. Return cached token if one was provided or previously resolved.
+          2. If username+password are set, run findUserClients + authenticate
+             against `self.auth.app_code` (the target app being built) and
+             cache the resulting accessToken.
+          3. Raise RuntimeError with a clear remediation hint.
+        """
+        if self._app_user_token:
+            return self._app_user_token
+
+        username, password = self._require_app_user_creds()
+        target_app, client_code = self._require_app_user_app()
+        token = await self._login_app_user(username, password, target_app, client_code)
+        self._app_user_token = token
+        return token
+
+    def _require_app_user_creds(self) -> tuple[str, str]:
+        """Pull (username, password) from the app-user input or raise."""
+        if not self._app_user_input:
+            raise RuntimeError(
+                "app-user credentials required for this tool. Pass "
+                "`app_user.token` OR `app_user.{username, password}` in the "
+                "chat request. The developer JWT (your Authorization header) "
+                "doesn't have a session in the customer's app — it can only "
+                "author platform objects, not render the app as an end user."
+            )
+        username = self._app_user_input.get("username")
+        password = self._app_user_input.get("password")
+        if not (username and password):
+            raise RuntimeError(
+                "app_user provided but missing username or password. Pass "
+                "both, or pass an already-obtained `token` directly."
+            )
+        return username, password
+
+    def _require_app_user_app(self) -> tuple[str, str]:
+        """Pull (app_code, client_code) for app-user login or raise."""
+        if not self.auth or not self.auth.app_code:
+            raise RuntimeError(
+                "app-user login needs a target app_code on the session — "
+                "set `app_code` on the chat request before invoking tools "
+                "that need an app-user identity."
+            )
+        return self.auth.app_code, self.auth.client_code or ""
+
+    async def _login_app_user(
+        self, username: str, password: str, app_code: str, client_code: str,
+    ) -> str:
+        """Run findUserClients + authenticate, return the accessToken.
+
+        Two-step platform auth kept inline (not via the modlix port) to avoid
+        a cyclic dependency between core/ and agents/.
+        """
+        import httpx
+        from app.config import settings
+
+        gw = settings.GATEWAY_URL.rstrip("/")
+        login_headers = {"appCode": app_code, "clientCode": client_code}
+        async with httpx.AsyncClient(timeout=getattr(settings, "HTTP_TIMEOUT", 30.0)) as client:
+            user_id = await _resolve_app_user_id(
+                client, gw, login_headers, username, app_code,
+            )
+            auth_resp = await client.post(
+                f"{gw}/api/security/authenticate",
+                headers=login_headers,
+                json={
+                    "userName": username,
+                    "userId": user_id,
+                    "password": password,
+                    "rememberMe": False,  # app-user sessions stay short-lived
+                },
+            )
+            if auth_resp.status_code >= 400:
+                raise RuntimeError(
+                    f"authenticate failed for app-user '{username}' (userId={user_id}) "
+                    f"in app '{app_code}': HTTP {auth_resp.status_code}: "
+                    f"{auth_resp.text[:200]}"
+                )
+            body = auth_resp.json() if auth_resp.content else {}
+            token = body.get("accessToken") if isinstance(body, dict) else None
+            if not token:
+                raise RuntimeError(
+                    f"authenticate response missing accessToken for "
+                    f"app-user '{username}': {body}"
+                )
+            return token
 
     async def get_or_create(self, session_id: Optional[str], auth: AuthContext) -> str:
         """Initialize the session — reuse existing or create new.
@@ -496,7 +643,10 @@ class BaseSession:
 
             for turn in history:
                 user_text = turn.user_instruction or ""
-                assistant_text = turn.assistant_summary or "(Performed actions via tools)"
+                assistant_text = (
+                    turn.assistant_summary
+                    or _tool_only_turn_note(turn.tool_calls_json)
+                )
 
                 if not user_text:
                     continue
@@ -522,3 +672,29 @@ class BaseSession:
             )
         except Exception as e:
             logger.warning(f"Failed to restore conversation history: {e}")
+
+
+def _tool_only_turn_note(tool_calls_json: str | None) -> str:
+    """Stand-in assistant text for a restored turn that produced no prose.
+
+    Built from the tools' own result summaries so it reads like a NORMAL
+    reply. Any meta-placeholder in this slot eventually gets parroted
+    verbatim into chat by the resumed model - both "(Performed actions via
+    tools)" and a bracketed "[transcript note: ...]" were, live - so the
+    only safe stand-in is text that is also acceptable user-facing prose.
+    Elicitation turns (widget was the reply) restore as the widget's own
+    summary ("Map + prompt shown for ..."), which is exactly the context
+    the resumed model needs."""
+    calls: list[dict] = []
+    if tool_calls_json:
+        try:
+            calls = [c for c in json.loads(tool_calls_json) if isinstance(c, dict)]
+        except (ValueError, TypeError):
+            pass
+    summaries = [s for s in ((c.get("summary") or "").strip() for c in calls) if s]
+    if summaries:
+        return " ".join(summaries)[:500]
+    tool_names = list(dict.fromkeys(c.get("tool") for c in calls if c.get("tool")))
+    if tool_names:
+        return f"Done ({', '.join(tool_names)})."
+    return "Done."

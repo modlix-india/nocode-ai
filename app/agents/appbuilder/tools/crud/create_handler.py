@@ -10,7 +10,12 @@ from app.agents.appbuilder.tools.crud._handlers import generic_create
 
 
 async def _create_execute(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    object_type = params["object_type"]
+    object_type = params.get("object_type")
+    if not object_type:
+        return ToolResult(
+            success=False,
+            error=f"`object_type` is required. One of: {OBJECT_TYPE_ENUM}.",
+        )
     config = OBJECT_TYPES.get(object_type)
     if not config:
         return ToolResult(success=False, error=f"Unknown object_type: {object_type}")

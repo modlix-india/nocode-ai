@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
     try:
         from app.agents.appbuilder.context import build_appbuilder_context
         from app.agents.appbuilder.agent import AppBuilderAgent
-        from app.agents.appbuilder.catalog import ComponentCatalog
+        from app.agents.appbuilder.catalog import ComponentCatalog, set_catalog
         from app.agents.appbuilder.api_catalog import ApiCatalog
         from app.agents.appbuilder.tools.registry import ALL_TOOLS
         from app.agents.appbuilder.router import set_appbuilder_agent
@@ -88,6 +88,7 @@ async def lifespan(app: FastAPI):
         logger.info("Loading component catalog (URL=%s) ...", settings.COMPONENT_CATALOG_URL or "(fallback)")
         catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
         await catalog.load()
+        set_catalog(catalog)  # register module-level singleton for tool helpers
         logger.info("Component catalog loaded: %d types", len(catalog.get_all_types()))
 
         logger.info("Loading API catalog ...")
@@ -111,6 +112,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
+
+    # ── AppBuilder v4 — code-first agent (1 tool, minimal persona) ─────
+    try:
+        from app.agents.appbuilderv4.agent import AppBuilderV4Agent
+        from app.agents.appbuilderv4.context import build_v4_context
+        from app.agents.appbuilderv4.tools import TOOLS as V4_TOOLS
+        from app.agents.appbuilderv4.router import set_appbuilderv4_agent
+
+        v4_context = build_v4_context()
+        await v4_context.load()
+        v4_agent = AppBuilderV4Agent(
+            context_builder=v4_context,
+            tools=V4_TOOLS,
+            provider=settings.APPBUILDER_PROVIDER,
+        )
+        set_appbuilderv4_agent(v4_agent)
+        logger.info(f"AppBuilderV4 Agent initialized with {len(V4_TOOLS)} tool(s)")
+    except Exception:
+        logger.exception("Failed to initialize AppBuilderV4 Agent")
+        logger.warning("AppBuilderV4 Agent will be unavailable")
 
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
@@ -191,13 +212,26 @@ app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
-# Adzump agent router
+# AppBuilder v4 (code-first) router — coexists with v3 until v4 proves out.
+from app.agents.appbuilderv4.router import router as appbuilderv4_router
+app.include_router(appbuilderv4_router, prefix=f"{API_PREFIX}/appbuilderv4", tags=["AppBuilderV4"])
+
+# Adzump agent router (chat + common routes + location geo-search typeahead)
 from app.agents.adzump.router import router as adzump_router
 app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"])
+
+# Adzump2 agent router (CampaignPlan builder)
+from app.agents.adzump2.router import router as adzump2_router
+app.include_router(adzump2_router, prefix=f"{API_PREFIX}/adzump2", tags=["Adzump2"])
 
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
 app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
+
+# Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
+# Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.
+from app.api.admin_app_kb import router as admin_app_kb_router
+app.include_router(admin_app_kb_router)
 
 
 # Root health check (for direct container health checks)
@@ -218,6 +252,7 @@ async def root():
             "health": "/api/ai/health",
             "appbuilder_chat": "/api/ai/appbuilder/chat",
             "adzump_chat": "/api/ai/adzump/chat",
+            "adzump2_chat": "/api/ai/adzump2/chat",
             "docs": "/api/ai/docs"
         }
     }
@@ -232,7 +267,8 @@ async def api_root():
         "endpoints": {
             "health": "/api/ai/health",
             "appbuilder_chat": "/api/ai/appbuilder/chat",
-            "adzump_chat": "/api/ai/adzump/chat"
+            "adzump_chat": "/api/ai/adzump/chat",
+            "adzump2_chat": "/api/ai/adzump2/chat"
         }
     }
 

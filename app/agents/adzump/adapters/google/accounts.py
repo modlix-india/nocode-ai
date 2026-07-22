@@ -1,4 +1,4 @@
-"""Google Ads accounts adapter — lists accessible MCCs and their sub-accounts.
+"""Google Ads accounts adapter - lists accessible MCCs and their sub-accounts.
 
 Ported from ``ds/adapters/google/accounts.py``. Auth headers (the user's
 forwarded request headers) are passed per-call instead of read from a global

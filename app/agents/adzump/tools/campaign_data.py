@@ -1,17 +1,17 @@
-"""Campaign spec tool — stores campaign-defining fields in session context.
+"""Campaign spec tool - stores campaign-defining fields in session context.
 
 The LLM calls ``set_campaign_spec`` to record the parameters that define a
 campaign (platform, budget, duration, accounts, etc.) into
 ``session.context["campaign_spec"]``. Storage is:
 
-- **Idempotent** — re-sending unchanged state is a silent no-op.
-- **Value-validated** — free-text fields must trace to the user's most recent
+- **Idempotent** - re-sending unchanged state is a silent no-op.
+- **Value-validated** - free-text fields must trace to the user's most recent
   message; account/page ids must have been returned by a fetch tool.
-- **Provenance-tracked** — each field write records the turn it was set in
+- **Provenance-tracked** - each field write records the turn it was set in
   (``session.context["_spec_set_at"][field]``), so the dynamic context can
   render "just set" vs "set N turns ago" and the LLM can reason about state
   age.
-- **Delta-summarized** — when a field overwrites a prior value, the tool
+- **Delta-summarized** - when a field overwrites a prior value, the tool
   summary reads ``"platform (was Google Ads → Meta)"`` so historical assistant
   messages carry the transition.
 """
@@ -82,10 +82,10 @@ ALLOWED_FIELDS = {
     "fb_page",
     "ig_page",
     "competitive_analysis_declined",
-    "ig_page_declined",  # v3 · F3 — Instagram is optional; "true" = Facebook-only
+    "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
 }
 
-# IDs from Google Ads / Meta — must be traceable to a fetch tool's output
+# IDs from Google Ads / Meta - must be traceable to a fetch tool's output
 # (via session_ctx["account_names"]).
 _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 
@@ -103,7 +103,7 @@ _USER_TEXT_FIELDS = {
     "ig_page_declined",
 }
 
-# v3 · F2 — when a campaign field that OTHERS depend on is *changed*, those
+# v3 · F2 - when a campaign field that OTHERS depend on is *changed*, those
 # dependents are now stale and must be cleared. Without this a Google→Meta
 # switch leaks the old platform's account ids into the launch payload
 # (business_storage builds `accounts` straight from spec), and the forward-only
@@ -122,7 +122,7 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "fb_page": ("ig_page", "ig_page_declined"),
 }
 
-# v3 · F3 — phrases that mean "skip linking Instagram, run Facebook-only".
+# v3 · F3 - phrases that mean "skip linking Instagram, run Facebook-only".
 # Consulted by the ig_page_declined traceability rule (chip-click text like
 # "Continue with Facebook only") and by _next_action (typed "skip insta",
 # "lets do it later"). Kept narrow + scoped to the IG-pending branch.
@@ -149,8 +149,8 @@ def is_ig_skip(text: str) -> bool:
     return any(p in lu for p in _IG_SKIP_PHRASES) or lu in ("skip", "later", "no", "n")
 
 
-# F11 — phrases that mean "skip competitor analysis". Substring-based, so it's
-# comma-robust ("No, skip competitor analysis for now" matches) — unlike the old
+# F11 - phrases that mean "skip competitor analysis". Substring-based, so it's
+# comma-robust ("No, skip competitor analysis for now" matches) - unlike the old
 # `"no" in lu.split()` which broke on the trailing comma in "no,". Bare no/n/skip
 # only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
 # decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
@@ -169,7 +169,7 @@ def is_decline(text: str) -> bool:
     return any(p in lu for p in _DECLINE_PHRASES) or lu in ("no", "n", "skip", "later")
 
 
-# F17 — markers that a "decline-looking" reply is actually a request/question for
+# F17 - markers that a "decline-looking" reply is actually a request/question for
 # something else, so it must NOT be auto-recorded as declined (it goes to the LLM
 # instead). is_decline is substring-based and over-fires on these: "not now, first
 # tell me about the audience" (defer+ask), "no competitors named yet" (informing).
@@ -181,7 +181,7 @@ _DECLINE_AMBIG_MARKERS = (
 
 def is_clear_decline_reply(text: str) -> bool:
     """True only for a TYPED reply that is an unambiguous decline (no follow-up
-    request). Tighter than is_decline — used to auto-record the decline in code
+    request). Tighter than is_decline - used to auto-record the decline in code
     (deterministic) while leaving doubtful replies for the model to judge. Chip
     clicks are captured separately by exact option match; this covers free text."""
     lu = (text or "").strip().lower()
@@ -238,13 +238,13 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flag — accept "true" when the user declines (chip or typed). Uses
+    # Decline flag - accept "true" when the user declines (chip or typed). Uses
     # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
     # silently rejected "no, skip competitor analysis for now" → re-ask loop).
     if field == "competitive_analysis_declined":
         return v in ("true", "yes", "1") and is_decline(lu)
 
-    # v3 · F3 — Instagram-skip flag. Accept "true" when the user opts out of
+    # v3 · F3 - Instagram-skip flag. Accept "true" when the user opts out of
     # linking IG, by chip ("Continue with Facebook only") or typed ("skip insta",
     # "do it later"). Same shape as the competitor decline above.
     if field == "ig_page_declined":
@@ -263,21 +263,21 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         if v_platform is not None and Platform.from_value(lu) is v_platform:
             return True
     if field in ("duration", "budget"):
-        # PR2 · Option 2 — normalization-aware: a typed reply and a normalized
+        # PR2 · Option 2 - normalization-aware: a typed reply and a normalized
         # candidate that parse to the SAME canonical value are traceable, even
         # when their raw digits differ ("4k" vs "₹4,000/day"). Hardens the LLM's
         # own save path too.
         #
-        # v3 · F1 — the old loose digit-substring fallback (digits_v in
+        # v3 · F1 - the old loose digit-substring fallback (digits_v in
         # digits_lu) was DELETED: it leaked an unrelated number through (a stored
         # "5 days" traced to "I have 15 properties" because "5" ⊂ "15"). The one
-        # legitimate case it used to cover — a typed bare number meaning days —
+        # legitimate case it used to cover - a typed bare number meaning days -
         # is now handled CANONICALLY: parse_typed_answer reads bare "30" → "30
         # days" (duration-only), so both sides parse equal and match above.
-        # F24 — read the user's message for ALL values it supports for this field
+        # F24 - read the user's message for ALL values it supports for this field
         # (corrections with a cue word, multi-number volunteered messages), then
         # accept iff the model's canonical value is one of them. The anti-invention
-        # property is this canonical equality, NOT a digit-substring — so F1 (a
+        # property is this canonical equality, NOT a digit-substring - so F1 (a
         # stored "5 days" tracing to "15 properties") stays closed.
         cur = currency_for(session_ctx)
         cand = parse_typed_answer(field, str(value), cur)
@@ -330,7 +330,7 @@ async def _set_campaign_spec(
     stored_keys: list[str] = []
     kept: list[str] = []
     rejected: list[tuple[str, Any, str]] = []
-    # F2 · the whole incoming set is the "batch" — a field changed in this call
+    # F2 · the whole incoming set is the "batch" - a field changed in this call
     # must never be cleared by another field's cascade in the same call.
     batch_fields = set(incoming.keys())
     for k, v in incoming.items():
@@ -341,13 +341,13 @@ async def _set_campaign_spec(
         elif k not in _ACCOUNT_LIKE_FIELDS and spec.get(k) not in (None, ""):
             # v5 · an ALREADY-STORED text field re-sent with an unverifiable
             # paraphrase (live loop: stored full address re-sent as
-            # "Bengaluru"). Keep the stored value as a no-op SUCCESS — an
+            # "Bengaluru"). Keep the stored value as a no-op SUCCESS - an
             # error here reads as "retry me" and fueled 25+ identical calls.
             # A genuine correction is traceable to the user's message and
             # stores normally above. Account-like fields are EXCLUDED (Kiran):
             # their same-id echoes are already normalized away upstream, so a
             # different unknown id on a stored account field is an attempted
-            # switch — it must stay an actionable rejection (re-fetch / hint),
+            # switch - it must stay an actionable rejection (re-fetch / hint),
             # never a silent keep.
             kept.append(f"{k} (kept '{spec.get(k)}')")
         else:
@@ -357,7 +357,7 @@ async def _set_campaign_spec(
         session_ctx.pop("_spec_reject_streak", None)
 
     # If everything was rejected on EMPTY fields, return a guidance error. If
-    # anything was stored or kept, keep going — append the rejection note to
+    # anything was stored or kept, keep going - append the rejection note to
     # the summary so the LLM sees which fields it needs to re-ask for.
     if not stored_keys and not kept:
         pairs = ", ".join(f"{k}={v} ({why})" for k, v, why in rejected)
@@ -369,7 +369,7 @@ async def _set_campaign_spec(
             preview,
         )
         # v5 · circuit breaker: the same FIELD-SET rejected 3+ times in a row
-        # gets a hard stop-steer. F12: key on the field set, NOT (field,value) —
+        # gets a hard stop-steer. F12: key on the field set, NOT (field,value) -
         # a model inventing FRESH values each retry (30d→45d→60d) would otherwise
         # reset the streak every turn and evade the breaker forever. Safe to
         # collapse across values: this path is all-rejected (nothing stored), and
@@ -384,23 +384,23 @@ async def _set_campaign_spec(
                 success=False,
                 summary="Let me ask you about that instead of guessing.",  # user sees this; steer stays model-only
                 error=(
-                    f"STOP — {pairs} rejected {n} times: these values are NOT traceable "
+                    f"STOP - {pairs} rejected {n} times: these values are NOT traceable "
                     "to anything the user said (you may be inventing them). Do NOT call "
-                    "set_campaign_spec again — ASK the user via present_options."
+                    "set_campaign_spec again - ASK the user via present_options."
                 ),
             )
         return ToolResult(
             success=False,
             summary="Let me confirm that with you rather than assume.",  # user sees this; steer stays model-only
             error=(
-                f"Cannot set {pairs} — NOT traceable to the user's last message "
+                f"Cannot set {pairs} - NOT traceable to the user's last message "
                 f"('{preview}'); do not invent or default these. ASK the user via "
                 "present_options, then store only what they actually say."
             ),
         )
 
     # Are we DONE after this write? If yes, inject the review prescription
-    # into the tool result so the LLM renders the summary on the same turn —
+    # into the tool result so the LLM renders the summary on the same turn -
     # the dynamic context computed at start-of-turn doesn't know the field
     # we just stored is set.
     review_hint = _review_hint_if_complete(spec, session_ctx)
@@ -408,7 +408,7 @@ async def _set_campaign_spec(
     # v5 · kept no-ops get one steer line so the model stops re-sending them.
     kept_note = (
         (
-            f" {'; '.join(kept)} — already set: do NOT re-send stored fields, "
+            f" {'; '.join(kept)} - already set: do NOT re-send stored fields, "
             "only send NEW values the user just gave."
         )
         if kept
@@ -416,13 +416,13 @@ async def _set_campaign_spec(
     )
 
     if rejected:
-        # Partial: log + steer. F17c — if this call stored NOTHING new (only kept
+        # Partial: log + steer. F17c - if this call stored NOTHING new (only kept
         # paraphrases + rejected invents), it made no forward progress, so flag
         # no_progress and let the core stuck-step breaker count it. A kept+rejected
         # bleed that stores nothing is the same retry-me loop as an all-failed turn
         # (live: 18 consecutive calls; the 'kept' silently disarmed both breakers).
         # When something WAS stored this call it's real progress → no flag.
-        # (Supersedes the v5 "don't fire the breaker here" note — that was about the
+        # (Supersedes the v5 "don't fire the breaker here" note - that was about the
         # separate reject-streak breaker, not this no_progress/stuck-step path.)
         logger.warning(
             "campaign_spec_partial: stored=%s kept=%s rejected=%s call=%s user_said=%r",
@@ -435,7 +435,7 @@ async def _set_campaign_spec(
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
         # User sees only what was actually stored; the rejection steer + kept/
-        # review hints are model-only — never leak validator internals to chat.
+        # review hints are model-only - never leak validator internals to chat.
         user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
         return ToolResult(
             success=True,
@@ -446,7 +446,7 @@ async def _set_campaign_spec(
 
     if not stored_keys:
         # kept-only: nothing changed; say so without an error the model would retry.
-        # F15: data["no_progress"]=True — this success stored NOTHING new, so the
+        # F15: data["no_progress"]=True - this success stored NOTHING new, so the
         # core stuck-loop breaker counts it (a model that ignores the "do NOT
         # re-send" steer and loops kept-noops gets the tool quarantined, same as
         # an all-failed loop). Distinct from the v5 reject-streak (all-rejected).
@@ -467,39 +467,33 @@ async def _set_campaign_spec(
     )
 
 
-def _store_location_meta(
+def _store_confirmed_location(
     session_ctx: dict, location_value: Any, last_user: str
 ) -> None:
-    """Location side-effect: clear the map-confirm marker + stash lat/lng for save.
-    Plain "confirm" / typed-city paths store the address with null coordinates."""
+    """Write the confirmed location onto product_data.place + clear the confirm
+    marker. Map-pin carries coords; typed-city clears them → next run re-geocodes."""
     session_ctx.pop("_pending_location_confirm", None)
     from app.agents.adzump.services.business_storage import parse_location_update
 
+    product = session_ctx.setdefault("product_data", {})
+    place = product.setdefault("place", {})
     loc_payload = parse_location_update(last_user)
     if loc_payload:
-        display_name = ""
-        product = session_ctx.get("product_data") or {}
-        if product.get("product_name") and product.get("location"):
-            display_name = f"{product['product_name']}, {product['location']}"
-        session_ctx["_location_meta"] = {
-            "address": loc_payload["address"] or str(location_value),
-            "lat": loc_payload["lat"],
-            "lng": loc_payload["lng"],
-            "displayName": display_name,
-        }
+        place["address"] = loc_payload["address"] or str(location_value)
+        place["lat"] = loc_payload["lat"]
+        place["lng"] = loc_payload["lng"]
     else:
-        session_ctx["_location_meta"] = {
-            "address": str(location_value),
-            "lat": None,
-            "lng": None,
-            "displayName": "",
-        }
+        place["address"] = str(location_value)
+        place["lat"] = None
+        place["lng"] = None
+    name = product.get("product_name") or ""
+    place["display_name"] = f"{name}, {place['address']}" if name and place["address"] else ""
 
 
 def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
-    """v3 · F2 — clear the fields that depend on ``field`` (now stale because
+    """v3 · F2 - clear the fields that depend on ``field`` (now stale because
     ``field`` changed). NEVER clears a field that is being set in the SAME
-    set_campaign_spec call (``batch_fields``) — otherwise a bundled
+    set_campaign_spec call (``batch_fields``) - otherwise a bundled
     {platform, account} write would undo its own account. Returns the names
     actually cleared (for the delta string)."""
     deps = _FIELD_DEPENDENTS.get(field)
@@ -522,7 +516,7 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
 
 
 def clear_competitor_decline(session_ctx: dict) -> bool:
-    """F26 — competitors are now present (analyzed / looked-up), so a PRIOR
+    """F26 - competitors are now present (analyzed / looked-up), so a PRIOR
     "declined" is void: a launched/reviewed campaign must never report
     'declined' alongside a populated competitor list (the contradictory state
     reachable via decline→reverse). Pop the flag AND its provenance, mirroring
@@ -543,7 +537,7 @@ def _apply_field(
     turn: int,
     batch_fields=frozenset(),
 ) -> tuple[bool, str]:
-    """Validated single-field write — the one place a campaign_spec field is
+    """Validated single-field write - the one place a campaign_spec field is
     checked and stored. Shared by `set_campaign_spec` (LLM path) and PR2
     `_capture_tagged_answer` (harness path) so they cannot diverge on the
     traceability rule. ``value`` must already be normalized + changed (callers
@@ -564,14 +558,18 @@ def _apply_field(
             if field == "ig_page":
                 # v5 · live mangle: the model sent ig_page="true" meaning a
                 # Facebook-only decline. Point it at the right key.
-                reason += ' — to run Facebook-only, set ig_page_declined="true" instead'
+                reason += ' - to run Facebook-only, set ig_page_declined="true" instead'
             return (False, reason)
     prior = spec.get(field)
     spec[field] = value
     set_at[field] = turn
+    # Any successful edit reopens the draft: the launch-idempotency flag must
+    # not outlive the spec it launched, or edit-then-relaunch is refused
+    # forever while the every-turn autosave silently updates the "live" record.
+    spec.pop("campaign_status", None)
     if field == "location":
-        _store_location_meta(session_ctx, value, last_user)
-    # v3 · F2 — cascade ONLY on a genuine change (overwrite), never on first-set
+        _store_confirmed_location(session_ctx, value, last_user)
+    # v3 · F2 - cascade ONLY on a genuine change (overwrite), never on first-set
     # or an idempotent re-send (prior empty / equal → no clear). This is what
     # makes a Google→Meta switch drop the stale Google ids while a re-fire of
     # the same value is a safe no-op.
@@ -615,7 +613,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         ):
             return ""
 
-    # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) — but it must have
+    # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) - but it must have
     # been OFFERED, i.e. an ig_page was picked OR ig_page_declined is set. This
     # gates review until the IG choice has been made once, without making IG
     # mandatory (Facebook-only is a valid campaign).
@@ -636,7 +634,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         )
     return (
         "\n\nALL CAMPAIGN FIELDS ARE NOW SET. Do NOT call any other tool yet. "
-        "Render this exact markdown summary on this turn — copy values VERBATIM "
+        "Render this exact markdown summary on this turn - copy values VERBATIM "
         "from the `## State` block in the system prompt (do not rephrase, do "
         "not drop fields, do not replace IDs with placeholders like 'Linked' "
         "or 'Connected'):\n\n"
@@ -655,7 +653,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         'Then call `present_options(question="Ready to launch the campaign?", '
         'options=["Yes, launch", "No, make changes"])`. EVERY bullet must '
         "be present. **On the user's 'Yes, launch' reply, call "
-        "`launch_campaign()` (no params) — that's the one tool that persists "
+        "`launch_campaign()` (no params) - that's the one tool that persists "
         "the campaign.**"
     )
 
@@ -663,7 +661,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
 set_campaign_spec = ToolDefinition(
     name="set_campaign_spec",
     description=(
-        "Store campaign-spec fields — the parameters that define the campaign "
+        "Store campaign-spec fields - the parameters that define the campaign "
         "being built (platform, budget, duration, location, account selection). "
         "Call this whenever the user provides a value via button click, typed "
         "text, or a widget callback. You can set multiple fields in a single "
@@ -700,7 +698,7 @@ set_campaign_spec = ToolDefinition(
             name="parent_account",
             type="string",
             description=(
-                "Selected parent account id — Google Ads manager (MCC) customer_id "
+                "Selected parent account id - Google Ads manager (MCC) customer_id "
                 "or Meta Business id, depending on platform."
             ),
             required=False,
@@ -709,7 +707,7 @@ set_campaign_spec = ToolDefinition(
             name="account",
             type="string",
             description=(
-                "Selected final ad account id — child of parent_account. "
+                "Selected final ad account id - child of parent_account. "
                 "Google Ads customer_id or Meta ad account id."
             ),
             required=False,
@@ -717,13 +715,13 @@ set_campaign_spec = ToolDefinition(
         ToolParameter(
             name="fb_page",
             type="string",
-            description="Meta only — Facebook page id the campaign will post from.",
+            description="Meta only - Facebook page id the campaign will post from.",
             required=False,
         ),
         ToolParameter(
             name="ig_page",
             type="string",
-            description="Meta only — Instagram Business account id linked to the fb_page.",
+            description="Meta only - Instagram Business account id linked to the fb_page.",
             required=False,
         ),
     ],

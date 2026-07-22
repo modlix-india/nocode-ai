@@ -2,9 +2,9 @@
 
 The LLM stores a free-text value in ``session.campaign_spec["platform"]``
 (it might be ``"Google Ads"``, ``"google ads"``, ``"Meta"``, ``"facebook"``
-or any near-variant). Every consumer that branches on this — the launch
+or any near-variant). Every consumer that branches on this - the launch
 event payload, the traceability check, the review-summary builder, the
-account adapter selector — needs to agree on what each variant means.
+account adapter selector - needs to agree on what each variant means.
 
 Helpers here are the canonical answer. Don't inline `"meta" in str.lower()`
 checks in new code; use ``Platform.from_value`` / ``is_google`` / ``is_meta``.
@@ -14,7 +14,7 @@ Conventions:
   (e.g. the SSE ``complete`` event: ``"platform": "google" | "meta"``).
 - ``CANONICAL_LABEL`` is the user-facing free-text label written into
   ``campaign_spec["platform"]`` when we resolve a user-typed message
-  to a platform. Reading code never relies on the exact string — it
+  to a platform. Reading code never relies on the exact string - it
   goes through ``Platform.from_value`` first.
 """
 
@@ -35,12 +35,12 @@ class Platform(str, Enum):
         """Map any free-text platform string to the enum, or None if unknown.
 
         Matches whichever keyword appears first in ``value``. Order matters
-        only for hypothetical ambiguous strings ("google meta") — first
+        only for hypothetical ambiguous strings ("google meta") - first
         match wins, which is fine in practice.
 
         v9 I-2 fix: match keywords on WORD BOUNDARIES, not raw substrings.
         The old ``k in v`` test let the 2-char Meta abbreviations "ig"/"fb"
-        false-match inside ordinary words — e.g. "ig" ∈ "r**ig**ht" made
+        false-match inside ordinary words - e.g. "ig" ∈ "r**ig**ht" made
         "let's continue, right now" parse as Meta, mis-prescribing a platform
         the user never picked. ``\\b`` requires the keyword to stand alone.
         """
@@ -63,7 +63,7 @@ _META_KEYWORDS = ("meta", "facebook", "instagram", "fb", "ig")
 
 # User-facing label written into campaign_spec["platform"] when the
 # intent router resolves a typed message into a platform pick. The LLM
-# may write its own variants too — readers must always normalize.
+# may write its own variants too - readers must always normalize.
 CANONICAL_LABEL: dict[Platform, str] = {
     Platform.GOOGLE: "Google Ads",
     Platform.META: "Meta",
@@ -79,6 +79,20 @@ def is_meta(value: str | None) -> bool:
 
 
 def to_enum_value(value: str | None) -> str:
-    """Stable enum string for JSON payloads — ``"google"`` / ``"meta"`` / ``""``."""
+    """Stable enum string for JSON payloads - ``"google"`` / ``"meta"`` / ``""``."""
     p = Platform.from_value(value)
     return p.value if p else ""
+
+
+def is_mapped_for(target_areas: list[dict] | None, platform: str | None) -> bool:
+    """True if the areas carry the platform's nested handle (area.google /
+    area.meta) - i.e. mapping has run for THIS platform. A platform switch
+    leaves the other platform's handles behind, so this turns False and
+    re-mapping gets prescribed. Unknown platform: any areas count."""
+    areas = target_areas or []
+    p = Platform.from_value(platform)
+    if p is Platform.GOOGLE:
+        return any(a.get("google") for a in areas)
+    if p is Platform.META:
+        return any(a.get("meta") for a in areas)
+    return bool(areas)

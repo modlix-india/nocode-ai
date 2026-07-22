@@ -1,0 +1,465 @@
+{
+  "_id": "665f4f8e111ddb4fbf3bbae8",
+  "definition": {
+    "name": "ActivateKYC",
+    "namespace": "kyc",
+    "parameters": {
+      "kyc": {
+        "parameterName": "kyc",
+        "schema": {
+          "ref": "kyc.Account",
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "kycDetails": {
+            "ref": "kyc.Account",
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 21.199996948242188,
+          "top": 36.199981689453125
+        },
+        "parameterMap": {
+          "name": {
+            "6in4T5nDfOow3KTDLTUxRX": {
+              "key": "6in4T5nDfOow3KTDLTUxRX",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "readObject"
+            }
+          },
+          "schema": {
+            "2EpIByKHgxQZza2jns3QxR": {
+              "key": "2EpIByKHgxQZza2jns3QxR",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "ref": "kyc.Account"
+              }
+            }
+          }
+        }
+      },
+      "context": {
+        "statementName": "context",
+        "name": "GetAuthentication",
+        "namespace": "CoreServices.SecurityContext",
+        "position": {
+          "left": 146.1999969482422,
+          "top": 648.2000045776367
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 806.1999969482422,
+          "top": 559.2000045776367
+        },
+        "parameterMap": {
+          "name": {
+            "FvKMqutkSqYAk1LkGdr4s": {
+              "key": "FvKMqutkSqYAk1LkGdr4s",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.readObject"
+            }
+          },
+          "value": {
+            "1paNUHz5lijXkIIZJFGoNJ": {
+              "key": "1paNUHz5lijXkIIZJFGoNJ",
+              "type": "EXPRESSION",
+              "expression": "Steps.read.output.result",
+              "order": 1
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 286.1999969482422,
+          "top": 223.1999969482422
+        },
+        "parameterMap": {
+          "condition": {
+            "3mCknC4ia9HcbU0yjloxUK": {
+              "key": "3mCknC4ia9HcbU0yjloxUK",
+              "type": "EXPRESSION",
+              "expression": "Arguments.kyc._id",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 673.4999961853027,
+          "top": 1270.0000076293945
+        },
+        "parameterMap": {
+          "results": {
+            "7ITPx1EiDzQO4FBbNqhvfp": {
+              "key": "7ITPx1EiDzQO4FBbNqhvfp",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "kycDetails",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1145.2499961853027,
+          "top": 820.9999980926514
+        },
+        "parameterMap": {
+          "eventName": {
+            "4UvFbk4mQhc2KqZQcw4wk4": {
+              "key": "4UvFbk4mQhc2KqZQcw4wk4",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "4OFPH2eAzuHhBKehc4ZHHR": {
+              "key": "4OFPH2eAzuHhBKehc4ZHHR",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": false,
+                  "value": "You don't have access to update."
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__false": false,
+          "Steps__d-o-t__if2__d-o-t__false": true
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1454.2499961853027,
+          "top": 825.7500076293945
+        },
+        "parameterMap": {
+          "results": {
+            "4J0B5S6Fj8OdLu84qeQQLJ": {
+              "key": "4J0B5S6Fj8OdLu84qeQQLJ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "kycDetails",
+                "value": {
+                  "isExpression": false,
+                  "value": null
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__generateEvent1__d-o-t__output": true
+        }
+      },
+      "read": {
+        "statementName": "read",
+        "name": "Read",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 534.1999969482422,
+          "top": 431.20000076293945
+        },
+        "parameterMap": {
+          "dataObjectId": {
+            "6R9jvoJWMcO7ZSNeKRaLG8": {
+              "key": "6R9jvoJWMcO7ZSNeKRaLG8",
+              "type": "EXPRESSION",
+              "expression": "Arguments.kyc._id",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "61GJynw1nCotnRopmUsrok": {
+              "key": "61GJynw1nCotnRopmUsrok",
+              "type": "EXPRESSION",
+              "expression": "'Account'",
+              "order": 1
+            }
+          },
+          "appCode": {
+            "6SX8uqQd4RC37FqlBXjHyJ": {
+              "key": "6SX8uqQd4RC37FqlBXjHyJ",
+              "type": "VALUE",
+              "expression": "",
+              "value": "kyc"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1092.1999969482422,
+          "top": 566.2000122070312
+        },
+        "parameterMap": {
+          "name": {
+            "6onpfHLvKFk4htB6HEvJbc": {
+              "key": "6onpfHLvKFk4htB6HEvJbc",
+              "type": "VALUE",
+              "order": 1,
+              "value": "Context.readObject.status"
+            }
+          },
+          "value": {
+            "75CeeCvkOtCyDFhNO52epX": {
+              "key": "75CeeCvkOtCyDFhNO52epX",
+              "type": "EXPRESSION",
+              "expression": "'VERIFIED'",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "update": {
+        "statementName": "update",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 421.1999969482422,
+          "top": 1112.5999755859375
+        },
+        "parameterMap": {
+          "storageName": {
+            "3lhuZSQANkyVQwRd8JLDqI": {
+              "key": "3lhuZSQANkyVQwRd8JLDqI",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Account"
+            }
+          },
+          "dataObjectId": {
+            "7gygc5a3jXlhAEsH4AuWiF": {
+              "key": "7gygc5a3jXlhAEsH4AuWiF",
+              "type": "EXPRESSION",
+              "expression": "Arguments.kyc._id",
+              "order": 1
+            }
+          },
+          "appCode": {
+            "3ytA1TZp5NV53rdc2WJuxr": {
+              "key": "3ytA1TZp5NV53rdc2WJuxr",
+              "type": "VALUE",
+              "expression": "",
+              "value": "kyc"
+            }
+          },
+          "dataObject": {
+            "22OxutTDlmWra5iSjUdYD": {
+              "key": "22OxutTDlmWra5iSjUdYD",
+              "type": "EXPRESSION",
+              "expression": "Context.readObject",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": true,
+          "Steps__d-o-t__if2__d-o-t__true": false
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 207.1999969482422,
+          "top": 848.2000122070312
+        },
+        "parameterMap": {
+          "condition": {
+            "35OYxUcn53gpseDYPydLO4": {
+              "key": "35OYxUcn53gpseDYPydLO4",
+              "type": "EXPRESSION",
+              "expression": "Context.readObject.userId = Steps.context.output.auth.user.id",
+              "order": 1
+            }
+          }
+        }
+      },
+      "if2": {
+        "statementName": "if2",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 624.7499961853027,
+          "top": 820.5000228881836
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__false": true
+        },
+        "parameterMap": {
+          "condition": {
+            "4mZdTpaWpI9eRkayZZkvmO": {
+              "key": "4mZdTpaWpI9eRkayZZkvmO",
+              "type": "EXPRESSION",
+              "expression": "Steps.context.output.auth.loggedInFromClientId = Steps.context.output.auth.user.clientId",
+              "order": 1
+            }
+          }
+        }
+      },
+      "update1": {
+        "statementName": "update1",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1020.4000005722046,
+          "top": 1095
+        },
+        "parameterMap": {
+          "appCode": {
+            "1xZ0tdtREE8A7RfNJLUKNo": {
+              "key": "1xZ0tdtREE8A7RfNJLUKNo",
+              "type": "VALUE",
+              "expression": "",
+              "value": "kyc"
+            }
+          },
+          "dataObject": {
+            "4LkpLKQBvosPOEQznlRd2R": {
+              "key": "4LkpLKQBvosPOEQznlRd2R",
+              "type": "EXPRESSION",
+              "expression": "Context.readObject",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "3RoQ0cvOEm3Hooa2mcYK87": {
+              "key": "3RoQ0cvOEm3Hooa2mcYK87",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Account"
+            }
+          },
+          "dataObjectId": {
+            "6O7D9TWVPiLZ7iw7ENbbZX": {
+              "key": "6O7D9TWVPiLZ7iw7ENbbZX",
+              "type": "EXPRESSION",
+              "expression": "Arguments.kyc._id",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if2__d-o-t__true": true
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1295,
+          "top": 1271.6000366210938
+        },
+        "parameterMap": {
+          "results": {
+            "3Rpsp50SgYftgrmWrXoMt1": {
+              "key": "3Rpsp50SgYftgrmWrXoMt1",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "kycDetails",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update1.output.result"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "kyc.ActivateKYC",
+  "message": "From transport : 07wfTy9J9xNSJSU3kuuU2v",
+  "clientCode": "SYSTEM",
+  "appCode": "kyc",
+  "version": 55,
+  "updatedAt": "2026-04-09 04:28:50.885000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:31:58.604000",
+  "createdBy": "<USER>"
+}

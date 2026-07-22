@@ -1,0 +1,537 @@
+{
+  "_id": "684d6f675aef151850c7405d",
+  "properties": {
+    "wrapShell": false,
+    "title": {
+      "name": {
+        "value": "Page Not Found"
+      }
+    }
+  },
+  "eventFunctions": {
+    "3FEraMywWa3sF6AE0zYXNS": {
+      "name": "navigateToDeals",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 383.8046875,
+            "top": 124.1015625
+          },
+          "parameterMap": {
+            "linkPath": {
+              "6QfEb2hCRjWJg2LV4nFhC5": {
+                "key": "6QfEb2hCRjWJg2LV4nFhC5",
+                "type": "VALUE",
+                "expression": "/deals",
+                "order": 1,
+                "value": "/deals"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "6QDZNNO84Yt7jtjDGYa46C",
+  "componentDefinition": {
+    "6QDZNNO84Yt7jtjDGYa46C": {
+      "key": "6QDZNNO84Yt7jtjDGYa46C",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "53YR4iazBkSfoQWCpBvqwS": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100vh"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "20vw"
+              },
+              "paddingBottom": {
+                "value": "20vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5ulFnN4Rw1vwM678SdkBVN": true,
+        "7bv0U96638iivSGo4075pa": true,
+        "2VlGaLqbQDOKzhhxVKfdmY": true
+      }
+    },
+    "5ulFnN4Rw1vwM678SdkBVN": {
+      "key": "5ulFnN4Rw1vwM678SdkBVN",
+      "name": "BodyGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4VM8OJM2XU56rQSQhYRTZE": {
+          "resolutions": {
+            "ALL": {
+              "flexGrow": {
+                "value": "1"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "5vw"
+              },
+              "paddingLeft": {
+                "value": "9.03vw"
+              },
+              "paddingRight": {
+                "value": "9.03vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2gas3zRFNeixlWITTsvX5E": true,
+        "3oRsS0Iw7Lw1CodU6j8Fc4": true
+      },
+      "displayOrder": 2
+    },
+    "7bv0U96638iivSGo4075pa": {
+      "key": "7bv0U96638iivSGo4075pa",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/leadzumpLogo.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "7FylXdPruehnegv9iDU8G3": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "5vw"
+              },
+              "paddingLeft": {
+                "value": "5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2gas3zRFNeixlWITTsvX5E": {
+      "key": "2gas3zRFNeixlWITTsvX5E",
+      "name": "404 Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/404_Status.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "1Axn4IVeUrPvlTPxHBWMED": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "50vw"
+              },
+              "height": {
+                "value": "50vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2K5gOpTmGJFjPiJVkI1JuA": {
+      "key": "2K5gOpTmGJFjPiJVkI1JuA",
+      "name": "content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "We regret to inform you that the requested page is unavailable. Please return to the homepage for alternative navigation. Thank you for your understanding."
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "styleProperties": {
+        "13p4xlKQ3DLHgdiUXuQRgO": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "22px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '99'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2eJU5D6lpFDKaXca87BFv3": {
+      "key": "2eJU5D6lpFDKaXca87BFv3",
+      "name": "header",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oops..."
+        }
+      },
+      "styleProperties": {
+        "5WfnZvjmvLyqXJ97wAIy4f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3V9FibxyhGeyPom6EvqVUK": {
+      "key": "3V9FibxyhGeyPom6EvqVUK",
+      "name": "go to button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to homepage"
+        },
+        "onClick": {
+          "value": "3FEraMywWa3sF6AE0zYXNS"
+        }
+      },
+      "styleProperties": {
+        "4sMuY1c0MPSqceHDxMbZxj": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "13.33vw"
+              },
+              "marginTop": {
+                "value": "2.44vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3oRsS0Iw7Lw1CodU6j8Fc4": {
+      "key": "3oRsS0Iw7Lw1CodU6j8Fc4",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "66RiBGdhISLlLjAklBawEh": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "36.81vw"
+              },
+              "gap": {
+                "value": "1.46vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2K5gOpTmGJFjPiJVkI1JuA": true,
+        "2eJU5D6lpFDKaXca87BFv3": true,
+        "3V9FibxyhGeyPom6EvqVUK": true
+      },
+      "displayOrder": 1
+    },
+    "2VlGaLqbQDOKzhhxVKfdmY": {
+      "key": "2VlGaLqbQDOKzhhxVKfdmY",
+      "name": "MobileBodyGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "4VM8OJM2XU56rQSQhYRTZE": {
+          "resolutions": {
+            "ALL": {
+              "flexGrow": {
+                "value": "1"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "2vw"
+              },
+              "paddingLeft": {
+                "value": "9.03vw"
+              },
+              "paddingRight": {
+                "value": "9.03vw"
+              },
+              "display": {
+                "value": "none"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "34Uy3Rs4rrvD1NcwU4HKEH": true,
+        "wHiZaMbAzzK4wSW1rFoNx": true
+      },
+      "displayOrder": 3
+    },
+    "34Uy3Rs4rrvD1NcwU4HKEH": {
+      "key": "34Uy3Rs4rrvD1NcwU4HKEH",
+      "name": "404 Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/404_Status.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "1Axn4IVeUrPvlTPxHBWMED": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "70vw"
+              },
+              "height": {
+                "value": "50vw"
+              }
+            },
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "wHiZaMbAzzK4wSW1rFoNx": {
+      "key": "wHiZaMbAzzK4wSW1rFoNx",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "66RiBGdhISLlLjAklBawEh": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3vw"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "54P4EBeYupIKOuyFcR6yen": true,
+        "31Xdj91vDnFAwm2Jytrsc6": true,
+        "5eSaEGrNVsG5xuACPohC15": true
+      },
+      "displayOrder": 2
+    },
+    "54P4EBeYupIKOuyFcR6yen": {
+      "key": "54P4EBeYupIKOuyFcR6yen",
+      "name": "content",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "We regret to inform you that the requested page is unavailable. Please return to the homepage for alternative navigation. Thank you for your understanding."
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "styleProperties": {
+        "13p4xlKQ3DLHgdiUXuQRgO": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "22px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '99'"
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "24px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "31Xdj91vDnFAwm2Jytrsc6": {
+      "key": "31Xdj91vDnFAwm2Jytrsc6",
+      "name": "header",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oops..."
+        }
+      },
+      "styleProperties": {
+        "5WfnZvjmvLyqXJ97wAIy4f": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "32px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "32px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontFamily": {
+                "value": "Inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5eSaEGrNVsG5xuACPohC15": {
+      "key": "5eSaEGrNVsG5xuACPohC15",
+      "name": "go to button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to homepage"
+        },
+        "onClick": {
+          "value": "3FEraMywWa3sF6AE0zYXNS"
+        }
+      },
+      "styleProperties": {
+        "4sMuY1c0MPSqceHDxMbZxj": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "marginTop": {
+                "value": "2.44vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "componentVersions": {
+    "6QDZNNO84Yt7jtjDGYa46C": 4,
+    "54P4EBeYupIKOuyFcR6yen": 4,
+    "3V9FibxyhGeyPom6EvqVUK": 4,
+    "7bv0U96638iivSGo4075pa": 4,
+    "2eJU5D6lpFDKaXca87BFv3": 4,
+    "wHiZaMbAzzK4wSW1rFoNx": 4,
+    "2gas3zRFNeixlWITTsvX5E": 4,
+    "2VlGaLqbQDOKzhhxVKfdmY": 4,
+    "5ulFnN4Rw1vwM678SdkBVN": 4,
+    "3oRsS0Iw7Lw1CodU6j8Fc4": 4,
+    "2K5gOpTmGJFjPiJVkI1JuA": 4,
+    "34Uy3Rs4rrvD1NcwU4HKEH": 4,
+    "31Xdj91vDnFAwm2Jytrsc6": 4,
+    "5eSaEGrNVsG5xuACPohC15": 4
+  },
+  "eventFunctionVersions": {
+    "3FEraMywWa3sF6AE0zYXNS": 4
+  },
+  "name": "pageNotFound",
+  "message": "From transport : 1wQWGRtNepBvqTPqw2neH6",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 69,
+  "updatedAt": "2026-05-14 13:46:49.475000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-06-14 12:47:35.232000",
+  "createdBy": "<USER>"
+}
