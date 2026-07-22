@@ -85,6 +85,46 @@ class ChatRequest(BaseModel):
     app_user: Optional[AppUserAuth] = None
 
 
+class TemplateAiRequest(BaseModel):
+    """Request for the editor AI tab: a prompt plus the current (possibly unsaved) template."""
+
+    prompt: str
+    template: Optional[dict] = None
+    language: Optional[str] = "en"
+    part: Optional[str] = "body"
+    templateType: Optional[str] = "email"
+
+
+@router.post("/template")
+async def author_template(
+    body: TemplateAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Generate/revise template content from a prompt. Returns {subject, html, message}.
+
+    Backs the Template Editor's AI tab (the aiEndpoint property). Stateless — the whole current
+    template is sent so work-in-progress previews without saving.
+    """
+    from app.services.template_ai import generate_template_content
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    tpl = body.template or {}
+    lang = body.language or tpl.get("defaultLanguage") or "en"
+    part = body.part or "body"
+    lang_parts = (tpl.get("templateParts") or {}).get(lang) or {}
+    current_html = lang_parts.get(part, "") if isinstance(lang_parts, dict) else ""
+    current_subject = lang_parts.get("subject", "") if isinstance(lang_parts, dict) else ""
+
+    return await generate_template_content(
+        prompt=body.prompt,
+        template_type=body.templateType or tpl.get("templateType") or "email",
+        current_html=current_html,
+        current_subject=current_subject,
+        language=lang,
+    )
+
+
 @router.post("/chat")
 async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_context)):
     """Stream an appbuilder agent response as SSE."""
