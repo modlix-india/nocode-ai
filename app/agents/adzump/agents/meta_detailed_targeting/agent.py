@@ -3,47 +3,47 @@
 Runs the LLM-based pipeline to discover, enrich, and validate Meta audience
 targeting segments for a given ad account.
 
-Workflow (driven by the LLM via the 4 tools in tools/targeting_tools.py):
-  1. search_targeting  – find seed segment IDs from product brief keywords
-  2. browse_targeting  – fetch full segment catalog for each category (×3)
-  3. suggest_related   – enrich interest pool with related segments
-  4. validate_targeting – validate candidates, apply limits, stash final result
+Workflow (driven by the LLM via the 5 tools in tools/targeting_tools.py):
+  1. fetch_interests                - discover interest targeting candidates
+  2. fetch_behaviors                - discover behavior targeting candidates
+  3. fetch_demographics             - discover demographic targeting candidates
+  4. search_professional_demographics - search job titles, employers, majors
+  5. validate_targeting             - validate selected candidates, stash final result
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any, List
+from typing import Any
 
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream, current_agent_id
-from app.agents.adzump.agents.campaign.meta.subagent_event_stream import (
+from app.agents.adzump.agents.meta_detailed_targeting.subagent_event_stream import (
     MetaPassthroughEventStream,
 )
-from app.agents.adzump.agents.campaign.meta.context import (
-    build_detailed_targeting_context,
-)
-from app.agents.adzump.agents.campaign.meta.models import (
+from app.agents.adzump.agents.meta_detailed_targeting.models import (
     MetaTargetingSuggestionResult,
     TargetingEntity,
 )
-from app.agents.adzump.agents.campaign.meta.tools import TARGETING_TOOLS
+from app.agents.adzump.agents.meta_detailed_targeting.context import (
+    build_detailed_targeting_context,
+)
+from app.agents.adzump.agents.meta_detailed_targeting.tools import TARGETING_TOOLS
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 # Turn budget for the LLM loop.
-# Pipeline needs at minimum: search(1) + browse×3(3) + suggest(1) + validate(1) = 6 calls.
-# Add reasoning turns, retries, and curate step — 25 gives comfortable headroom.
-_MAX_TURNS = 12
+# Pipeline has comfortable headroom at 20 turns.
+_MAX_TURNS = 20
 
 
 class DetailedTargetingAgent(BaseAgent):
     """Agent that discovers, curates, and validates Meta targeting segments.
 
-    The agent provides a system prompt and 4 tools. The LLM orchestrates the
+    The agent provides a system prompt and 5 tools. The LLM orchestrates the
     full pipeline; Python only handles session setup, context injection, result
     assembly, and UI emission.
     """
@@ -52,12 +52,15 @@ class DetailedTargetingAgent(BaseAgent):
     _instance: DetailedTargetingAgent | None = None
 
     def __init__(self) -> None:
+        from app.agents.adzump.agents.meta_detailed_targeting.tools.detailed_targeting_tool import (
+            delete_targeting_segment,
+        )
+        combined_tools = list(TARGETING_TOOLS) + [delete_targeting_segment]
+
         context = build_detailed_targeting_context()
-        # Pre-warm the static context to avoid an extra load() call at runtime
-        context._cached_static_text = context._static_prefix
         super().__init__(
             name="detailed_targeting",
-            tools=TARGETING_TOOLS,
+            tools=combined_tools,
             context_builder=context,
             model_tier=settings.AGENT_MODEL_TIER,
             max_turns=_MAX_TURNS,
@@ -85,6 +88,9 @@ class DetailedTargetingAgent(BaseAgent):
         """
         ctx = super().build_tool_context(session)
         ctx["session_context"] = session.context
+        # Expose the live session object so the sub-agent tools can resolve
+        # the parent session-level data when called from this sub-agent loop.
+        ctx["_session"] = session
         # Forward auth and ad_account_id stored by recommend() so every tool
         # can reach the Meta API without needing them as LLM-supplied params.
         if "auth" in session.context:
@@ -99,8 +105,8 @@ class DetailedTargetingAgent(BaseAgent):
     # Override: Inject dynamic business context (summary, spec) into LLM system prompt
     # ------------------------------------------------------------------
     async def build_dynamic_context(self, session: BaseSession) -> str:
-        """Serialize and inject the stashed parent session context (business summary
-        and campaign objective/location) directly into the dynamic prompt context.
+        """Serialize and inject the stashed parent session context (business summary,
+        campaign objective/location, and current targeting state) directly into the dynamic prompt context.
         """
         ctx = await super().build_dynamic_context(session)
         parent_ctx = session.context.get("parent_session_context") or {}
@@ -114,6 +120,18 @@ class DetailedTargetingAgent(BaseAgent):
 
         context_str = f"BUSINESS DESCRIPTION:\n{summary}\n\n"
         context_str += f"CAMPAIGN OBJECTIVE: {spec.get('objective', 'N/A')}\n"
+
+        # Inject current targeting state if present
+        targeting = parent_ctx.get("detailed_targeting") or {}
+        entities = targeting.get("entities") or []
+        if entities:
+            context_str += "\nCURRENT TARGETING:\n"
+            for entity in entities:
+                ent_id = entity.get("id")
+                ent_name = entity.get("name")
+                ent_type = entity.get("type")
+                context_str += f"- ID: {ent_id} | Name: {ent_name} | Type: {ent_type}\n"
+
         return f"{ctx}\n{context_str}".strip()
 
     # ------------------------------------------------------------------
@@ -142,6 +160,14 @@ class DetailedTargetingAgent(BaseAgent):
         sub_session.context["auth"] = auth
         sub_session.context["ad_account_id"] = ad_account_id
         sub_session.context["parent_session_context"] = parent_session_context
+        # Seed the sub-session context with existing detailed targeting segments
+        # from the parent session context so the sub-agent operates on a complete copy.
+        import copy
+        parent_targeting = parent_session_context.get("detailed_targeting") or {}
+        sub_session.context["detailed_targeting"] = copy.deepcopy(parent_targeting)
+        # Store the parent session_id so sub-agent tools can build the
+        # correct craft_id even when running from within the sub-agent LLM loop.
+        sub_session.context["_parent_session_id"] = session_id
 
         ctx_token = current_agent_id.set("detailed_targeting")
         wrapped_stream = MetaPassthroughEventStream(
@@ -154,10 +180,13 @@ class DetailedTargetingAgent(BaseAgent):
                 ad_account_id,
             )
 
+            # Ensure the context builder is asynchronously loaded before running the LLM loop
+            await self.context_builder.load()
+
             # ------------------------------------------------------------------
             # 2. Run the LLM loop
-            #    The LLM will call the 4 tools in order; validate_targeting (the
-            #    last tool) stashes the final dict into sub_session.context.
+            #    The LLM will execute search and discovery tools; validate_targeting
+            #    stashes the final result into sub_session.context.
             # ------------------------------------------------------------------
             await self.run(
                 user_query,  # user message driven by query
@@ -187,59 +216,19 @@ class DetailedTargetingAgent(BaseAgent):
 
             # ------------------------------------------------------------------
             # 3. Read the stashed result
-            #    validate_targeting writes {"interests": [...], "demographics": [...],
-            #    "behaviors": [...]} into sub_session.context["detailed_targeting"].
+            #    validate_targeting writes {"entities": [...]} into
+            #    sub_session.context["detailed_targeting"].
             # ------------------------------------------------------------------
             raw: dict[str, Any] = sub_session.context.get("detailed_targeting") or {}
-
             if not raw or not any(raw.values()):
-                logger.warning(
-                    "[DetailedTargeting] validate_targeting result not found in context; "
-                    "falling back to scanning session messages"
-                )
-                from app.agents.adzump._shared import extract_json
-
-                for msg in reversed(getattr(sub_session, "messages", [])):
-                    if msg.get("role") == "assistant":
-                        content = msg.get("content")
-                        if isinstance(content, str):
-                            raw = extract_json(content) or {}
-                        elif isinstance(content, list):
-                            for block in content:
-                                if (
-                                    isinstance(block, dict)
-                                    and block.get("type") == "text"
-                                ):
-                                    raw = extract_json(block.get("text", "")) or {}
-                                    if raw:
-                                        break
-                        if raw and any(raw.values()):
-                            break
-
-            if not raw or not any(raw.values()):
-                logger.warning(
-                    "[DetailedTargeting] No targeting results found after fallback scan"
-                )
+                logger.warning("[DetailedTargeting] validate_targeting result not found in context.")
 
             # ------------------------------------------------------------------
             # 4. Assemble MetaTargetingSuggestionResult
             # ------------------------------------------------------------------
-            def _to_entities(items: list[dict]) -> list[TargetingEntity]:
-                out: list[TargetingEntity] = []
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    try:
-                        out.append(TargetingEntity(**item))
-                    except Exception:
-                        logger.debug("Skipping malformed entity: %r", item)
-                return out
-
-            final_result = MetaTargetingSuggestionResult(
-                interests=_to_entities(raw.get("interests", [])),
-                demographics=_to_entities(raw.get("demographics", [])),
-                behaviors=_to_entities(raw.get("behaviors", [])),
-            )
+            raw_entities = raw.get("entities", [])
+            entities = [e for e in (TargetingEntity.from_meta(x) for x in raw_entities) if e]
+            final_result = MetaTargetingSuggestionResult(entities=entities)
 
             # Stash for parent session visibility
             parent_session_context["detailed_targeting"] = final_result.model_dump()
@@ -259,11 +248,7 @@ class DetailedTargetingAgent(BaseAgent):
                 result=final_result,
             )
 
-            summary = (
-                f"interests={len(final_result.interests)} "
-                f"demographics={len(final_result.demographics)} "
-                f"behaviors={len(final_result.behaviors)}"
-            )
+            summary = f"entities={len(final_result.entities)}"
             logger.info("[DetailedTargeting] Done — %s", summary)
             await self._emit_finished(
                 parent_event_stream, run_start, sub_session, "success", summary
@@ -315,7 +300,7 @@ class DetailedTargetingAgent(BaseAgent):
         craft_id: str,
         title: str,
         result: MetaTargetingSuggestionResult,
-        search_results: List[dict] | None = None,
+        search_results: list[dict] | None = None,
     ) -> None:
         """Emit a targeting_manager craft block to the UI."""
 
@@ -333,27 +318,16 @@ class DetailedTargetingAgent(BaseAgent):
                 "size": _format_size(item),
                 "path": item.path or [],
                 "description": item.description or "",
-                "category": item.category,
+                "type": item.type,
                 "audience_size_lower_bound": item.audience_size_lower_bound,
                 "audience_size_upper_bound": item.audience_size_upper_bound,
             }
 
-        serialized_search = []
-        for r in search_results or []:
-            try:
-                entity = TargetingEntity(**r) if isinstance(r, dict) else r
-                serialized_search.append(_serialize(entity))
-            except Exception:
-                logger.warning("Failed to serialize search result item: %r", r)
-
         blocks = [
             {
                 "type": "targeting_manager",
-                "interests": [_serialize(i) for i in result.interests],
-                "demographics": [_serialize(d) for d in result.demographics],
-                "behaviors": [_serialize(b) for b in result.behaviors],
-                "search_results": serialized_search,
-                "searchResults": serialized_search,
+                "entities": [_serialize(e) for e in result.entities],
+                "searchResults": search_results or [],
             }
         ]
         await stream.emit_craft(

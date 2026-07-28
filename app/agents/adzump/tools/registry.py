@@ -18,7 +18,7 @@ from app.agents.adzump.tools.research import RESEARCH_TOOLS
 from app.agents.adzump.tools.location import LOCATION_TOOLS
 from app.agents.adzump.tools.launch import LAUNCH_TOOLS
 from app.agents.adzump.tools.asset_manage import MANAGE_ASSETS_TOOLS
-from app.agents.adzump.agents.campaign.meta.tools.detailed_targeting_tool import TARGETING_TOOLS as META_TARGETING_TOOLS
+from app.agents.adzump.agents.meta_detailed_targeting.tools.detailed_targeting_tool import TARGETING_TOOLS as META_TARGETING_TOOLS
 
 ALL_TOOLS = [
     *BUSINESS_TOOLS,

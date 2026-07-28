@@ -5,10 +5,11 @@ Graph API. Uses the `meta_client` singleton from `client.py` for all HTTP
 calls. Each fetch method applies the correct multi-phase API strategy for
 its category:
 
-  - fetch_interests : search per seed + targetingsuggestions expansion
-  - fetch_behaviors : full catalog browse + search per seed
-  - fetch_demographics : full tree browse + search per seed x 8 subtypes
-  - validate         : batched GET targetingvalidation (50 per batch)
+  - fetch_interests       : search per seed + targetingsuggestions expansion
+  - fetch_behaviors       : full catalog browse + search per seed
+  - fetch_demographics    : browse 5 fixed subtypes + optional search 3 open subtypes
+  - search_open_demographics : targetingsearch per seed across work/education subtypes
+  - validate              : batched GET targetingvalidation (50 per batch)
 """
 
 from __future__ import annotations
@@ -19,10 +20,7 @@ import logging
 from typing import Any
 
 from app.agents.adzump.adapters.meta.client import meta_client
-from app.agents.adzump.agents.campaign.meta.models import (
-    TargetingEntity,
-    map_type_to_category,
-)
+from app.agents.adzump.agents.meta_detailed_targeting.models import TargetingEntity
 
 logger = logging.getLogger(__name__)
 
@@ -34,15 +32,25 @@ META_API_MAX_RETRY_ATTEMPTS = 2
 META_API_SUGGESTIONS_MAX_SEEDS = 50
 META_API_CONCURRENT_REQUESTS_SEMAPHORE = asyncio.Semaphore(10)
 
-DEMOGRAPHIC_SUBTYPES = (
+# Fixed catalog subtypes — small, enumerable lists. targetingbrowse returns all entries.
+DEMOGRAPHIC_FIXED_SUBTYPES = (
     "life_events",
     "family_statuses",
     "income",
     "industries",
+    "education_statuses",
+    
+)
+
+# Open/searchable subtypes — large databases (job titles, employers, majors).
+# targetingbrowse returns 0 entries; these require a keyword search like interests.
+DEMOGRAPHIC_SEARCHABLE_SUBTYPES = (
     "work_positions",
     "work_employers",
     "education_majors",
-    "education_statuses",
+    "moms",                  
+    "home_ownership",       
+    "household_composition",
 )
 
 
@@ -60,20 +68,7 @@ def _normalize_account_id(account_id: str) -> str:
 
 def _parse_entity(item: dict[str, Any]) -> TargetingEntity | None:
     """Parse a raw Meta API item into a TargetingEntity. Returns None on failure."""
-    try:
-        category = map_type_to_category(item.get("type", ""))
-        return TargetingEntity(
-            id=str(item.get("id", "")),
-            name=str(item.get("name", "")),
-            type=str(item.get("type", "")),
-            category=category,
-            audience_size_lower_bound=item.get("audience_size_lower_bound"),
-            audience_size_upper_bound=item.get("audience_size_upper_bound"),
-            path=item.get("path") or [],
-            description=item.get("description") or "",
-        )
-    except Exception:
-        return None
+    return TargetingEntity.from_meta(item)
 
 
 def _deduplicate(entities: list[TargetingEntity]) -> list[TargetingEntity]:
@@ -267,7 +262,7 @@ class TargetingAdapter:
             for seed in seeds
         ]
 
-        all_results = await asyncio.gather(browse_task, *search_tasks, return_exceptions=True)
+        all_results = await asyncio.gather(*search_tasks, browse_task, return_exceptions=True)
 
         entities: list[TargetingEntity] = []
         for result in all_results:
@@ -277,32 +272,67 @@ class TargetingAdapter:
         return _deduplicate(entities)
 
     # ------------------------------------------------------------------
-    # fetch_demographics
+    # fetch_demographics  (fixed catalog — no seeds needed)
     # ------------------------------------------------------------------
     async def fetch_demographics(
         self,
         client_code: str,
         auth_headers: dict[str, str],
         account_id: str,
-        seeds: list[str],
     ) -> list[TargetingEntity]:
-        """Fetch demographics via full tree browse + per-seed x per-subtype search.
+        """Fetch the complete fixed demographic catalog via per-subtype browse.
+
+        Browses only the 5 fixed subtypes (life_events, family_statuses, income,
+        industries, education_statuses) which return a full, enumerable list.
+        The 3 open subtypes (work_positions, work_employers, education_majors)
+        are NOT browsed here because they return 0 results without a query.
+        Use search_open_demographics() for those.
 
         Parallel:
-            GET /{account_id}/targetingbrowse  (no limit_type - full tree)
-            GET /{account_id}/targetingsearch?q={seed}&limit_type={subtype}
-                for each seed x each of the 8 DEMOGRAPHIC_SUBTYPES
-
-        e.g. 3 seeds x 8 subtypes = 24 search requests + 1 browse = 25 total.
-        Returns merged, deduplicated demographic entities.
+            GET /{account_id}/targetingbrowse?limit_type={subtype}
+                for each of DEMOGRAPHIC_FIXED_SUBTYPES
+        Returns merged, deduplicated demographic entities (~99 total).
         """
-        browse_task = self._fetch_with_retry(
-            client_code=client_code,
-            auth_headers=auth_headers,
-            account_id=account_id,
-            endpoint="targetingbrowse",
-            params={},
-        )
+        browse_tasks = [
+            self._fetch_with_retry(
+                client_code=client_code,
+                auth_headers=auth_headers,
+                account_id=account_id,
+                endpoint="targetingbrowse",
+                params={"limit_type": subtype},
+            )
+            for subtype in DEMOGRAPHIC_FIXED_SUBTYPES
+        ]
+
+        all_results = await asyncio.gather(*browse_tasks, return_exceptions=True)
+
+        entities: list[TargetingEntity] = []
+        for result in all_results:
+            if isinstance(result, list):
+                entities.extend(result)
+
+        return _deduplicate(entities)
+
+    # ------------------------------------------------------------------
+    # search_open_demographics  (job titles / employers / majors)
+    # ------------------------------------------------------------------
+    async def search_open_demographics(
+        self,
+        client_code: str,
+        auth_headers: dict[str, str],
+        account_id: str,
+        seeds: list[str],
+    ) -> list[TargetingEntity]:
+        """Search open demographic databases (work_positions, work_employers, education_majors).
+
+        These subtypes contain thousands of entries and cannot be enumerated via browse.
+        They require keyword-based search, identical to fetch_interests.
+
+        Parallel:
+            GET /{account_id}/targetingsearch?q={seed}&limit_type={subtype}
+                for each seed x each of DEMOGRAPHIC_SEARCHABLE_SUBTYPES
+        Returns merged, deduplicated entities.
+        """
         search_tasks = [
             self._fetch_with_retry(
                 client_code=client_code,
@@ -312,10 +342,10 @@ class TargetingAdapter:
                 params={"q": seed, "limit_type": subtype},
             )
             for seed in seeds
-            for subtype in DEMOGRAPHIC_SUBTYPES
+            for subtype in DEMOGRAPHIC_SEARCHABLE_SUBTYPES
         ]
 
-        all_results = await asyncio.gather(browse_task, *search_tasks, return_exceptions=True)
+        all_results = await asyncio.gather(*search_tasks, return_exceptions=True)
 
         entities: list[TargetingEntity] = []
         for result in all_results:
@@ -350,11 +380,7 @@ class TargetingAdapter:
 
         async def _validate_batch(batch: list[TargetingEntity]) -> list[TargetingEntity]:
             try:
-                targeting_list = [
-                    {"type": str(e.category or "interests").lower(), "id": str(e.id)}
-                    for e in batch
-                    if e.id
-                ]
+                targeting_list = [e.to_validation_pair() for e in batch if e.id]
                 response = await meta_client.get(
                     endpoint=full_endpoint,
                     client_code=client_code,
