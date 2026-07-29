@@ -18,15 +18,15 @@ from app.agents.adzump.creative_intelligence.sources.base import SourceFetch
 
 
 class FakeSource:
-    def __init__(self, *, creatives=None, fail=False):
+    def __init__(self, *, creatives=None, fail=False, exc: Exception | None = None):
         self._creatives = creatives or []
-        self._fail = fail
+        self._exc = exc if exc is not None else (AdLibraryError("boom") if fail else None)
         self.calls = 0
 
     async def fetch(self, *, domain, name):
         self.calls += 1
-        if self._fail:
-            raise AdLibraryError("boom")
+        if self._exc is not None:
+            raise self._exc
         return SourceFetch(creatives=self._creatives, resolved_name=name)
 
 
@@ -79,16 +79,44 @@ class CreativesForPolicyTests(unittest.TestCase):
         self.assertEqual(rec.creatives[0].creative_id, "new")
 
     def test_source_failure_serves_stale(self):
-        src = FakeSource(fail=True)
-        rec = self._run(stored=_stale_record(), source=src)
-        self.assertEqual(src.calls, 1)
-        self.assertIsNotNone(rec)
-        self.assertEqual(rec.creatives[0].creative_id, "old")  # the stale record
+        # ANY source failure serves stale - the vendor error, a transport
+        # error, or a bad-JSON body - never a raise out of creatives_for.
+        for name, exc in [("vendor", AdLibraryError("boom")),
+                          ("transport", ConnectionError("reset")),
+                          ("bad json", ValueError("not json"))]:
+            with self.subTest(case=name):
+                src = FakeSource(exc=exc)
+                rec = self._run(stored=_stale_record(), source=src)
+                self.assertEqual(src.calls, 1)
+                self.assertIsNotNone(rec)
+                self.assertEqual(rec.creatives[0].creative_id, "old")
 
     def test_empty_fetch_marks_status_empty(self):
         src = FakeSource(creatives=[])
         rec = self._run(stored=None, source=src)
         self.assertEqual(rec.fetch_status, "empty")
+
+    def test_empty_fetch_keeps_prior_record(self):
+        # A transiently-empty search result must not overwrite a good record
+        # (shared store: zero creatives for a full TTL, essences destroyed).
+        src = FakeSource(creatives=[])
+        rec = self._run(stored=_stale_record(), source=src)
+        self.assertEqual(rec.creatives[0].creative_id, "old")
+        library.store.upsert_competitor.assert_not_awaited()
+
+    def test_one_failed_competitor_does_not_abort_the_batch(self):
+        good = _fresh_record()
+
+        async def one_bad(*, key, name, ctx, force=False, source=None, enrich=None):
+            if key == "bad.com":
+                raise RuntimeError("poisoned record")
+            return good
+
+        with mock.patch.object(library, "creatives_for", new=one_bad):
+            results = asyncio.run(library.creatives_for_all(
+                [{"name": "Bad", "url": "https://bad.com"},
+                 {"name": "Nike", "url": "https://nike.com"}], ctx={}))
+        self.assertEqual(list(results), ["nike.com"])
 
     def test_no_key_returns_none(self):
         rec = asyncio.run(library.creatives_for(key="", name="x", ctx={}, source=FakeSource()))
@@ -167,6 +195,19 @@ class EnrichIngestTests(unittest.TestCase):
         by_id = {c.creative_id: c for c in rec.creatives}
         self.assertEqual(by_id["a1"].essence.angle, "cached")
         self.assertEqual(by_id["b2"].essence.angle, "fresh")
+
+    def test_carousel_is_rehosted_hashed_and_essenced(self):
+        # Carousel/collection assets are images: rehost them like image ads so
+        # they get durable URLs, dedup hashes, and an essence.
+        carousel = Creative(creative_id="c9", media_type="carousel",
+                            source_asset_url="https://vendor/c9.jpg")
+        enrich = FakeEnrich(essences={"c9": Essence(angle="grid of rooms")})
+        rec = self._run(stored=None, enrich=enrich,
+                        source=FakeSource(creatives=[carousel]))
+        stored = rec.creatives[0]
+        self.assertEqual(stored.file_url, "https://files/c9.jpg")
+        self.assertEqual(stored.content_hash, "c9")
+        self.assertEqual(stored.essence.angle, "grid of rooms")
 
     def test_no_still_creative_is_stored_with_essence_none(self):
         # A video with no rehostable poster: no bytes -> no hash -> skipped by

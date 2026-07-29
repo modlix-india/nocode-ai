@@ -15,10 +15,18 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
+
+from pydantic import ValidationError
 
 from app.config import settings
-from app.agents.adzump._shared import build_ds_headers, extract_storage_records
+from app.agents.adzump._shared import (
+    STORAGE_CREATE,
+    STORAGE_READ_PAGE,
+    STORAGE_UPDATE,
+    extract_storage_records,
+    host_of,
+    storage_headers,
+)
 from app.agents.appbuilder.tools._shared import get_saas_client
 from app.agents.adzump.creative_intelligence.models import Competitor
 
@@ -30,27 +38,25 @@ APP_CODE = "marketingai"
 # collection (the universal hierarchy ancestor every client can reach).
 LIBRARY_CLIENT_CODE = "SYSTEM"
 
-READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
-CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
-UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
-
 DEFAULT_FRESHNESS_DAYS = 30
+# An "empty" record is a retry-soon marker, not a month of "this brand runs no
+# ads" - keyword search results are noisy, so refetch empties the next day.
+EMPTY_RECORD_FRESHNESS_DAYS = 1
 
 
 # ── Keys & freshness (pure) ──────────────────────────────────────────────────
 
 
 def competitor_key(domain_or_url: str) -> str:
-    """Canonical dedup key: the bare host, lowercased, no ``www.``. Two clients
-    querying ``https://www.Nike.com/air`` and ``nike.com`` resolve to the same
-    ``nike.com`` record. Matches how ``business_storage`` canonicalizes hosts."""
-    if not domain_or_url:
+    """Canonical dedup key: the bare host, lowercased, no ``www.`` - the shared
+    ``host_of`` normalization, so the dedup key can never diverge from how the
+    rest of the competitor pipeline canonicalizes hosts. Two clients querying
+    ``https://www.Nike.com/air`` and ``nike.com`` resolve to the same record."""
+    raw = (domain_or_url or "").strip()
+    if not raw:
         return ""
-    raw = domain_or_url.strip()
     # urlparse needs a scheme to populate netloc; bare "nike.com" lands in path.
-    parsed = urlparse(raw if "//" in raw else f"//{raw}")
-    host = (parsed.netloc or parsed.path or "").lower().strip("/")
-    return host.removeprefix("www.")
+    return host_of(raw if "//" in raw else f"//{raw}")
 
 
 def freshness_days() -> int:
@@ -69,8 +75,10 @@ def is_stale(competitor: Competitor | None, max_age_days: int | None = None) -> 
         return True
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=timezone.utc)
-    window = timedelta(days=max_age_days if max_age_days is not None else freshness_days())
-    return datetime.now(timezone.utc) - ts > window
+    days = max_age_days if max_age_days is not None else freshness_days()
+    if competitor.fetch_status == "empty":
+        days = min(days, EMPTY_RECORD_FRESHNESS_DAYS)
+    return datetime.now(timezone.utc) - ts > timedelta(days=days)
 
 
 # ── Headers ──────────────────────────────────────────────────────────────────
@@ -84,13 +92,7 @@ def _library_client_code(ctx: dict) -> str:
 
 
 def _library_headers(ctx: dict) -> dict[str, str]:
-    h = build_ds_headers(ctx)
-    cc = _library_client_code(ctx)
-    if cc:
-        h["clientCode"] = cc
-    h["AppCode"] = APP_CODE
-    h["Content-Type"] = "application/json"
-    return h
+    return storage_headers(ctx, APP_CODE, client_code=_library_client_code(ctx))
 
 
 # ── Reads ──────────────────────────────────────────────────────────────────
@@ -114,7 +116,8 @@ async def _read(key: str, ctx: dict) -> tuple[Competitor | None, str | None]:
         "clientCode": _library_client_code(ctx),
         "filter": {"field": "competitorKey", "value": key},
     }
-    result = await get_saas_client().post(READ_PAGE, headers=_library_headers(ctx), json=payload)
+    result = await get_saas_client().post(
+        STORAGE_READ_PAGE, headers=_library_headers(ctx), json=payload)
     if not result.success:
         logger.info("creative_library_read_miss: key=%s err=%s", key, result.error)
         return None, None
@@ -123,7 +126,15 @@ async def _read(key: str, ctx: dict) -> tuple[Competitor | None, str | None]:
         return None, None
     record = records[-1]
     record_id = record.get("_id") or record.get("id")
-    return Competitor.model_validate(record), record_id
+    try:
+        return Competitor.model_validate(record), record_id
+    except ValidationError as e:
+        # A record another writer version corrupted must stay recoverable: treat
+        # it as a miss (stale -> refetch) but keep the id so the upsert can
+        # overwrite it instead of permanently poisoning the key.
+        logger.warning("creative_library_invalid_record: key=%s err=%s",
+                       key, str(e)[:200])
+        return None, record_id
 
 
 # ── Writes ─────────────────────────────────────────────────────────────────
@@ -147,7 +158,8 @@ async def upsert_competitor(competitor: Competitor, ctx: dict) -> str | None:
             "dataObject": record,
             "isPartial": False,  # full refresh - replace stale creatives wholesale
         }
-        result = await get_saas_client().post(UPDATE, headers=_library_headers(ctx), json=payload)
+        result = await get_saas_client().post(
+            STORAGE_UPDATE, headers=_library_headers(ctx), json=payload)
         if not result.success:
             logger.warning("creative_library_update_failed: key=%s err=%s", key, result.error)
             return None
@@ -155,7 +167,8 @@ async def upsert_competitor(competitor: Competitor, ctx: dict) -> str | None:
         return existing_id
 
     payload = {"storageName": STORAGE_NAME, "appCode": APP_CODE, "dataObject": record}
-    result = await get_saas_client().post(CREATE, headers=_library_headers(ctx), json=payload)
+    result = await get_saas_client().post(
+        STORAGE_CREATE, headers=_library_headers(ctx), json=payload)
     if not result.success:
         logger.warning("creative_library_create_failed: key=%s err=%s", key, result.error)
         return None

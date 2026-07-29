@@ -8,13 +8,56 @@ product_data lists) - that's the picker's / T-014's concern.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from hashlib import md5
+from io import BytesIO
 
 from app.agents.adzump._shared import build_ds_headers, host_of
 
 logger = logging.getLogger(__name__)
+
+
+def shrink_image_to_jpeg(
+    image_bytes: bytes,
+    *,
+    long_edge: int,
+    quality: int,
+    exif: bool = False,
+    only_if_larger: bool = False,
+) -> bytes | None:
+    """The one image-downscale rule: decode, optionally exif-transpose, cap the
+    long edge, composite alpha onto white (a bare RGB convert composites onto
+    black and distorts), emit JPEG. Shared by the product thumb pipeline and the
+    essence vision pass so the alpha/resize rules can't drift.
+
+    ``only_if_larger=True`` returns None when the image is already within the
+    cap - the caller keeps the original bytes and skips a pointless re-encode.
+    None also means "could not decode" (SVG, truncated); callers degrade, never
+    crash. Sync + CPU-bound: call via ``asyncio.to_thread`` from async paths."""
+    try:
+        from PIL import Image, ImageOps
+
+        img = Image.open(BytesIO(image_bytes))
+        if only_if_larger and max(img.size) <= long_edge:
+            return None
+        if exif:
+            img = ImageOps.exif_transpose(img)
+        if max(img.size) > long_edge:
+            img.thumbnail((long_edge, long_edge))
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGBA")
+            white = Image.new("RGB", img.size, (255, 255, 255))
+            white.paste(img, mask=img.getchannel("A"))
+            img = white
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=quality)
+        return out.getvalue()
+    except Exception:
+        return None
 
 
 _IMAGE_KIND_FOLDERS = {
@@ -195,8 +238,8 @@ async def upload_and_analyze(
     name: str = "",
     perceptual: bool = False,
 ) -> dict | None:
-    """Upload bytes + attach render hints. Returns {url, format, contentHash,
-    **hints} or None on upload failure. Hints (`background`, `fit`) are passed in
+    """Upload bytes + attach render hints. Returns {url, format, **hints} or
+    None on upload failure. Hints (`background`, `fit`) are passed in
     by the caller - typically derived from the vision LLM that already inspected
     the thumbnail to pick the asset. Empty/None hints just produce a {url, format}
     block; the UI renders that on its neutral default tile.
@@ -204,25 +247,25 @@ async def upload_and_analyze(
     `name` = semantic name from the LLM that saw the image ('project-logo',
     'floor-plan-3bhk'); see `_asset_filename` for the scheme.
 
-    `perceptual` adds a `perceptualHash` (DCT hash of the decoded image) to the
-    result - only the competitor-creative dedup path needs it, so it's off by
-    default (product/logo uploads skip the decode). md5 stays on the raw bytes;
-    the perceptual hash decodes the image once."""
+    `perceptual` adds a `contentHash` (md5 of the raw bytes) and a
+    `perceptualHash` (DCT hash of the decoded image) to the result - only the
+    competitor-creative dedup path needs them, and asset display dicts copy
+    every non-url key, so hashes stay out of product/logo render hints."""
     ext = _ext_for_content_type(content_type)
     filename = _asset_filename(context, name, kind, image_bytes, content_type)
     url = await upload_image(image_bytes, filename, kind, context, content_type)
     if not url:
         return None
     clean_hints = {k: v for k, v in (hints or {}).items() if v}
-    # Full content hash of the bytes - the dedup + essence-cache key for the
-    # creative library (the filename uses the first 6 chars of the same md5).
-    content_hash = md5(image_bytes).hexdigest()
-    result = {"url": url, "format": ext, "contentHash": content_hash, **clean_hints}
+    result = {"url": url, "format": ext, **clean_hints}
     if perceptual:
         # Lazy import: keeps this generic util off the creative_intelligence
         # package init (no import cycle), and a missing dep just yields "".
         from app.agents.adzump.creative_intelligence.phash import compute_phash
-        result["perceptualHash"] = compute_phash(image_bytes)
+        # md5 = Tier-1 dedup + essence-cache key (the filename reuses its first
+        # 6 chars); pHash decodes the image, so keep it off the event loop.
+        result["contentHash"] = md5(image_bytes).hexdigest()
+        result["perceptualHash"] = await asyncio.to_thread(compute_phash, image_bytes)
     logger.info(
         "upload_and_analyze: kind=%s url=%s format=%s hints=%s bytes=%d perceptual=%s",
         kind, url, ext, clean_hints, len(image_bytes), perceptual,
@@ -241,13 +284,13 @@ async def rehost_image(
     so the UI can render with the right tile contrast; the LLM that picked
     the asset is the source of truth for those, not pixel sampling here.
 
-    `perceptual=True` also returns a `perceptualHash` plus the downloaded
-    `imageBytes`/`contentType` - the competitor-creative ingest hashes AND
-    essence-analyzes the same bytes, and handing them back saves a re-download
-    from the vendor's TTL-flaky URL. Other callers skip the decode and the
-    byte carry.
+    `perceptual=True` also returns `contentHash`/`perceptualHash` plus the
+    downloaded `imageBytes`/`contentType` - the competitor-creative ingest
+    hashes AND essence-analyzes the same bytes, and handing them back saves a
+    re-download from the vendor's TTL-flaky URL. Other callers skip the decode
+    and the byte carry.
 
-    Returns {url, format, contentHash, **hints} on success. None on any failure
+    Returns {url, format, **hints} on success. None on any failure
     (timeout, non-image, oversize, upload failure)."""
     if not source_url:
         return None

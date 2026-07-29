@@ -6,7 +6,7 @@ analysis fields. Latest-launch-wins per URL - no history (yet).
 
 Reuses:
 - `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
-- `app.agents.adzump._shared.build_ds_headers` (auth headers from tool context)
+- `app.agents.adzump._shared.storage_headers` (auth headers for storage calls)
 """
 
 from __future__ import annotations
@@ -24,9 +24,12 @@ from app.agents.adzump.platform import (
 )
 from app.agents.adzump.models import Image, Logo, check_product
 from app.agents.adzump._shared import (
-    build_ds_headers,
+    STORAGE_CREATE as CREATE,
+    STORAGE_READ_PAGE as READ_PAGE,
+    STORAGE_UPDATE as UPDATE,
     extract_storage_records as _extract_records,
     primary_screenshot_url,
+    storage_headers,
 )
 from app.agents.appbuilder.tools._shared import get_saas_client
 
@@ -35,11 +38,6 @@ logger = logging.getLogger(__name__)
 STORAGE_NAME = "AISuggestedData"
 APP_CODE = "marketingai"
 SCHEMA_VERSION = 1
-
-READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
-CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
-UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
-
 
 def _normalize_url(url: str) -> str:
     """Canonicalize a business URL for storage keys and lookups.
@@ -64,10 +62,7 @@ def _storage_headers(ctx: dict) -> dict[str, str]:
     """Auth headers for storage calls. AppCode pinned to ``marketingai``
     because the storage collection is appCode-scoped - clientCode stays
     from the user's session (privacy boundary)."""
-    h = build_ds_headers(ctx)
-    h["AppCode"] = APP_CODE
-    h["Content-Type"] = "application/json"
-    return h
+    return storage_headers(ctx, APP_CODE)
 
 
 # ── Reads ─────────────────────────────────────────────────────────────────

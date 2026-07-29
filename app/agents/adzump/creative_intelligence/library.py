@@ -31,10 +31,7 @@ from app.agents.adzump.creative_intelligence.models import (
     Competitor,
     MAX_CREATIVES_PER_COMPETITOR,
 )
-from app.agents.adzump.creative_intelligence.sources.adlibrary import (
-    AdLibrarySource,
-    AdLibraryError,
-)
+from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibrarySource
 from app.agents.adzump.creative_intelligence.sources.base import AdIntelligenceSource
 
 logger = logging.getLogger(__name__)
@@ -82,9 +79,20 @@ async def creatives_for(
     logger.info("creative_intelligence: fetching key=%s reason=%s", key, why)
     try:
         fetched = await src.fetch(domain=key, name=name)
-    except AdLibraryError as e:
-        logger.warning("creative_intelligence: source fetch failed key=%s: %s", key, e)
+    except Exception as e:
+        # AdLibraryError, transport errors, bad JSON - ANY source failure serves
+        # stale rather than raising (the batch contract in the module docstring).
+        logger.warning("creative_intelligence: source fetch failed key=%s: %s: %s",
+                       key, type(e).__name__, str(e)[:200])
         return record  # serve stale if we have it; else None
+
+    if not fetched.creatives and record and record.creatives:
+        # A transiently-empty search result must not destroy a good record
+        # (shared store: everyone would see zero creatives for a full TTL,
+        # and the stored essences would be lost). Serve the prior record.
+        logger.warning("creative_intelligence: empty fetch, keeping prior record "
+                       "key=%s (%d creatives)", key, len(record.creatives))
+        return record
 
     competitor = Competitor(
         competitor_key=key,
@@ -123,8 +131,15 @@ async def creatives_for_all(
             continue
         if key in results:  # same domain listed twice - fetch once
             continue
-        record = await creatives_for(key=key, name=name, ctx=ctx, force=force,
-                                     source=source, enrich=enrich)
+        try:
+            record = await creatives_for(key=key, name=name, ctx=ctx, force=force,
+                                         source=source, enrich=enrich)
+        except Exception as e:
+            # One competitor must never abort the batch (e.g. a stored record
+            # that no longer validates) - the rest still resolve.
+            logger.warning("creative_intelligence: competitor failed key=%s: %s: %s",
+                           key, type(e).__name__, str(e)[:200])
+            continue
         if record:
             results[key] = record
     logger.info("creative_intelligence: resolved=%d skipped_no_domain=%d", len(results), skipped)
@@ -133,9 +148,10 @@ async def creatives_for_all(
 
 async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple[bytes, str]]:
     """Rehost creative images into our file store so the library doesn't depend on
-    the source's (undocumented-TTL) URLs. For image ads the creative itself
-    (-> fileUrl); for video ads the poster still (-> posterUrl). Video bytes are
-    not downloaded (large). Best-effort, bounded, concurrent.
+    the source's (undocumented-TTL) URLs. For image/carousel/collection ads the
+    asset itself is an image (-> fileUrl); for video ads the poster still
+    (-> posterUrl). Video bytes are not downloaded (large). Best-effort, bounded,
+    concurrent.
 
     Returns ``{content_hash: (bytes, content_type)}`` - the rehosted bytes, kept
     so the Tier-3 essence pass analyzes exactly what was hashed, without a
@@ -145,9 +161,10 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
     # (creative, source_image_url, sets_poster)
     jobs: list[tuple] = []
     for c in competitor.creatives:
-        if c.media_type == "image" and c.source_asset_url:
+        if c.media_type != "video" and c.source_asset_url:
+            # image / carousel / collection: the asset itself is an image
             jobs.append((c, c.source_asset_url, False))
-        elif c.poster_source_url:  # video (or carousel) still
+        elif c.poster_source_url:  # video still
             jobs.append((c, c.poster_source_url, True))
     jobs = jobs[:MAX_BINARIES_PER_COMPETITOR]
     if not jobs:

@@ -23,9 +23,9 @@ import asyncio
 import base64
 import json
 import logging
-from io import BytesIO
 from pathlib import Path
 
+from app.agents.adzump._uploads import shrink_image_to_jpeg
 from app.agents.adzump.agents.product.models import (
     PageContent,
     ProductAssets,
@@ -391,45 +391,15 @@ SCREENSHOT_JPEG_QUALITY = 75
 
 def _downscale_screenshot_to_jpeg_bytes(image_bytes: bytes) -> bytes | None:
     """Resample a full-page screenshot so its long edge ≤ SCREENSHOT_LONG_EDGE.
-    Accepts JPEG/PNG bytes; emits JPEG. No mode coercion needed - Playwright
-    emits RGB JPEG with no alpha channel.
-    """
-    try:
-        from PIL import Image
-
-        img = Image.open(BytesIO(image_bytes))
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        if max(img.size) > SCREENSHOT_LONG_EDGE:
-            img.thumbnail((SCREENSHOT_LONG_EDGE, SCREENSHOT_LONG_EDGE))
-        out = BytesIO()
-        img.save(out, "JPEG", quality=SCREENSHOT_JPEG_QUALITY)
-        return out.getvalue()
-    except Exception:
-        return None
+    Accepts JPEG/PNG bytes; emits JPEG."""
+    return shrink_image_to_jpeg(
+        image_bytes, long_edge=SCREENSHOT_LONG_EDGE, quality=SCREENSHOT_JPEG_QUALITY)
 
 
 def _downscale_to_jpeg_bytes(image_bytes: bytes, content_type: str) -> bytes | None:
     """Resize the image so its long edge is THUMB_LONG_EDGE; return JPEG bytes.
-    Composites transparent backgrounds onto white so the vision LLM (and the
-    UI thumbnail tile) see the actual image, not the alpha channel."""
-    try:
-        from PIL import Image
-
-        img = Image.open(BytesIO(image_bytes))
-        if img.mode in ("RGBA", "LA", "P"):
-            img = img.convert("RGBA")
-            background = Image.new("RGB", img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1])
-            img = background
-        else:
-            img = img.convert("RGB")
-
-        if max(img.size) > THUMB_LONG_EDGE:
-            img.thumbnail((THUMB_LONG_EDGE, THUMB_LONG_EDGE))
-
-        out = BytesIO()
-        img.save(out, "JPEG", quality=THUMB_JPEG_QUALITY)
-        return out.getvalue()
-    except Exception:
-        return None
+    The shared shrink rule composites transparent backgrounds onto white so the
+    vision LLM (and the UI thumbnail tile) see the actual image, not the alpha
+    channel."""
+    return shrink_image_to_jpeg(
+        image_bytes, long_edge=THUMB_LONG_EDGE, quality=THUMB_JPEG_QUALITY)

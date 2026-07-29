@@ -61,6 +61,24 @@ class RenderCompetitorCreativesTests(unittest.TestCase):
         self.assertTrue(cards[0]["caption"].startswith("▶"))
         self.assertEqual(cards[0]["url"], "p.jpg")
 
+    def test_url_precedence_prefers_rehosted_over_vendor(self):
+        cases = [
+            ("image rehosted", {"mediaType": "image", "fileUrl": "f.jpg",
+                                "sourceAssetUrl": "v.jpg"}, "f.jpg"),
+            ("carousel poster rehosted", {"mediaType": "carousel",
+                                          "posterUrl": "p.jpg",
+                                          "sourceAssetUrl": "v.jpg"}, "p.jpg"),
+            ("vendor fallback", {"mediaType": "carousel",
+                                 "sourceAssetUrl": "v.jpg"}, "v.jpg"),
+            ("video poster", {"mediaType": "video", "posterUrl": "p.jpg",
+                              "posterSourceUrl": "vp.jpg"}, "p.jpg"),
+        ]
+        for name, creative, expected in cases:
+            with self.subTest(case=name):
+                blocks = []
+                render_competitor_creatives(blocks, "Nike", [creative], 1, 1)
+                self.assertEqual(_image_cards(blocks)[0]["url"], expected)
+
     def test_caps_at_six_and_pairs_two_up(self):
         blocks = []
         render_competitor_creatives(blocks, "Nike", [_img(i) for i in range(10)], 10, 4)

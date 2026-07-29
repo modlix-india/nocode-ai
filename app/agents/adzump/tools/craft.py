@@ -34,7 +34,7 @@ def render_competitors(
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Competitors"})
 
-    # Comparison table — every rival on one scannable surface. Ad counts aren't
+    # Comparison table - every rival on one scannable surface. Ad counts aren't
     # known at analysis time (creatives are fetched separately), so the 4th column
     # is the strategic Gap rather than an ad count.
     blocks.append({
@@ -43,9 +43,9 @@ def render_competitors(
         "rows": [
             [
                 c.get("name") or "?",
-                str(c.get("business_type") or "—"),
-                str(c.get("pricing") or "—"),
-                str(c.get("weakness") or "—"),
+                str(c.get("business_type") or "-"),
+                str(c.get("pricing") or "-"),
+                str(c.get("weakness") or "-"),
             ]
             for c in valid
         ],
@@ -97,8 +97,10 @@ def render_competitor_creatives(
     cards: list[dict] = []
     for c in (creatives or []):
         is_video = c.get("mediaType") == "video"
+        # Prefer rehosted URLs (fileUrl/posterUrl) over the vendor's TTL-flaky
+        # source URLs, whatever the media type.
         url = (c.get("posterUrl") or c.get("posterSourceUrl")) if is_video \
-            else (c.get("fileUrl") or c.get("sourceAssetUrl"))
+            else (c.get("fileUrl") or c.get("posterUrl") or c.get("sourceAssetUrl"))
         if not url:
             continue
         caption = str(c.get("headline") or "").strip()
@@ -122,7 +124,7 @@ def render_competitor_creatives(
         metric_row.append({"type": "metric", "label": "Paused", "value": str(max(t - a, 0))})
 
     blocks.append({"type": "divider"})
-    blocks.append({"type": "heading", "text": f"{competitor_name} — Ad Creatives", "level": 2})
+    blocks.append({"type": "heading", "text": f"{competitor_name} - Ad Creatives", "level": 2})
     blocks.append({"type": "row", "children": metric_row})
     # 2-up grid: pairs of image blocks per row (each flexes to ~50% width).
     for i in range(0, len(cards), 2):
@@ -220,7 +222,7 @@ async def emit_craft_panel(
     # 6. Competitors
     render_competitors(blocks, competitive)
 
-    # 7. Competitor creatives — render them HERE, as part of the rebuild, so a
+    # 7. Competitor creatives - render them HERE, as part of the rebuild, so a
     # later rebuild never wipes the on-demand-appended grid (the disappearing-
     # creatives bug). Each competitor carries its own `creatives` + creative counts
     # once `fetch_competitor_creatives` has run; absent until then.

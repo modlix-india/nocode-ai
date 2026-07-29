@@ -21,9 +21,7 @@ Cost: ~same as today (sticking with gpt-4o-mini · see D5b in notes).
 
 from __future__ import annotations
 
-import json
 import logging
-import re
 from typing import Any
 
 from pydantic import ValidationError
@@ -32,6 +30,7 @@ from app.core.agent import BaseAgent
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 
+from app.agents.adzump._shared import extract_json
 from app.agents.adzump.agents.vision.context import (
     build_select_context,
     build_review_context,
@@ -74,46 +73,13 @@ VISION_MAX_TOKENS = 600
 VISION_MAX_TURNS = 1
 
 
-# Regex matches the FIRST ```json … ``` fence in the assistant text.
-# Same shape ProductAgent uses for its final JSON.
-_JSON_FENCE_RE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
-
-
-def _extract_json_from_text(text: str) -> dict | None:
-    """Extract the first ```json fenced block from assistant text.
-
-    The model is instructed to emit a single fenced JSON block as its
-    final message. This helper handles the common shapes: fenced block,
-    bare object, or fenced-without-language.
-    """
-    if not text:
-        return None
-    m = _JSON_FENCE_RE.search(text)
-    raw = m.group(1) if m else text.strip()
-    # Strip stray code fences if model emitted ``` without language tag.
-    raw = re.sub(r"^```[a-z]*\s*", "", raw)
-    raw = re.sub(r"\s*```\s*$", "", raw)
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        # Last resort: find the first {...} block.
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                return json.loads(raw[start : end + 1])
-            except json.JSONDecodeError:
-                return None
-        return None
-
-
 def _parse_selection(final_text: str) -> AssetSelection:
     """Parse and validate the LLM's final JSON as an ``AssetSelection``.
 
     Returns an empty ``AssetSelection()`` on any parse / validation failure.
     The caller treats empty as a decline → upload via AD Pilot UI.
     """
-    payload = _extract_json_from_text(final_text)
+    payload = extract_json(final_text)
     if not payload:
         logger.warning("vision_select_no_json final_text=%r", final_text[:300])
         return AssetSelection()
@@ -128,7 +94,7 @@ def _parse_selection(final_text: str) -> AssetSelection:
 def _parse_review(final_text: str) -> ReviewResult:
     """Parse the review-each final JSON as a ``ReviewResult``. Empty on any
     parse/validation failure (caller treats empty as 'no usable verdicts')."""
-    payload = _extract_json_from_text(final_text)
+    payload = extract_json(final_text)
     if not payload:
         logger.warning("vision_review_no_json final_text=%r", final_text[:300])
         return ReviewResult()

@@ -14,11 +14,9 @@ into the library's ingest by the tool, so the domain stays model-free.
 
 from __future__ import annotations
 
+import asyncio
 import base64
-import io
-import json
 import logging
-import re
 import time
 
 from pydantic import ValidationError
@@ -27,6 +25,8 @@ from app.core.agent import BaseAgent
 from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream
 
+from app.agents.adzump._shared import extract_json
+from app.agents.adzump._uploads import shrink_image_to_jpeg
 from app.agents.adzump.agents.creative_essence.context import build_essence_context
 from app.agents.adzump.agents.creative_essence.models import (
     CreativeImage,
@@ -173,7 +173,10 @@ class EssenceAnalyst(BaseAgent):
                 "craft_id": parent_session_context.get("craft_id", ""),
             }
 
-        user_message, image_blocks = _build_essence_message(chunk)
+        # CPU-bound (PIL decode/shrink + base64 per image) - off the event loop
+        # so a 12-image chunk doesn't stall SSE keepalives.
+        user_message, image_blocks = await asyncio.to_thread(
+            _build_essence_message, chunk)
         try:
             await self.run(
                 user_message=user_message,
@@ -258,7 +261,7 @@ def _build_essence_message(
         if c.cta:
             copy_bits.append(f"cta={c.cta[:60]!r}")
         meta = " ".join(copy_bits) or "(no ad copy captured)"
-        note = " (video ad - this is its poster still)" if c.media_type != "image" else ""
+        note = " (video ad - this is its poster still)" if c.media_type == "video" else ""
         lines.append(f"[Image {idx}] media_type={c.media_type}{note} {meta}")
 
         data, content_type = _shrink_for_vision(ci.data, ci.content_type)
@@ -275,36 +278,14 @@ def _build_essence_message(
 
 def _shrink_for_vision(data: bytes, content_type: str) -> tuple[bytes, str]:
     """Bound vision-input cost: re-encode anything over the long-edge cap to a
-    1024px JPEG. Small images and undecodable bytes pass through unchanged -
-    a failed shrink degrades to the original, never drops the image."""
-    try:
-        from PIL import Image, ImageOps  # imagehash dep - present wherever pHash works
-
-        img = Image.open(io.BytesIO(data))
-        if max(img.size) <= _MAX_IMAGE_DIM:
-            return data, content_type
-        img = ImageOps.exif_transpose(img)
-        img.thumbnail((_MAX_IMAGE_DIM, _MAX_IMAGE_DIM))
-        if img.mode in ("RGBA", "LA", "P"):
-            # Alpha composites onto white (the product thumb-pipeline rule);
-            # a bare RGB convert would composite onto black and distort.
-            img = img.convert("RGBA")
-            white = Image.new("RGB", img.size, "white")
-            white.paste(img, mask=img.getchannel("A"))
-            img = white
-        else:
-            img = img.convert("RGB")
-        out = io.BytesIO()
-        img.save(out, format="JPEG", quality=_JPEG_QUALITY)
-        return out.getvalue(), "image/jpeg"
-    except Exception:
-        return data, content_type
-
-
-# Same final-JSON conventions as VisionAnalyst (fenced block preferred, bare
-# object fallback). Kept as a local copy: the sub-agent plumbing consolidation
-# is parked until the generic sub-agent call tool lands.
-_JSON_FENCE_RE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
+    1024px JPEG (the shared downscale rule). Small images and undecodable bytes
+    pass through unchanged - a failed shrink degrades to the original, never
+    drops the image."""
+    out = shrink_image_to_jpeg(
+        data, long_edge=_MAX_IMAGE_DIM, quality=_JPEG_QUALITY,
+        exif=True, only_if_larger=True,
+    )
+    return (out, "image/jpeg") if out else (data, content_type)
 
 
 def _final_assistant_text(session: BaseSession) -> str:
@@ -325,24 +306,10 @@ def _final_assistant_text(session: BaseSession) -> str:
 def _parse_batch(final_text: str) -> EssenceBatch | None:
     """Parse the final text as an ``EssenceBatch``. None on any parse or
     validation failure - the caller decides whether to fall back per-creative."""
-    if not final_text:
+    payload = extract_json(final_text)
+    if payload is None:
+        logger.warning("essence_no_json final_text=%r", final_text[:300])
         return None
-    m = _JSON_FENCE_RE.search(final_text)
-    raw = m.group(1) if m else final_text.strip()
-    raw = re.sub(r"^```[a-z]*\s*", "", raw)
-    raw = re.sub(r"\s*```\s*$", "", raw)
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        start, end = raw.find("{"), raw.rfind("}")
-        if start == -1 or end <= start:
-            logger.warning("essence_no_json final_text=%r", final_text[:300])
-            return None
-        try:
-            payload = json.loads(raw[start : end + 1])
-        except json.JSONDecodeError:
-            logger.warning("essence_bad_json final_text=%r", final_text[:300])
-            return None
     try:
         return EssenceBatch.model_validate(payload)
     except ValidationError as e:

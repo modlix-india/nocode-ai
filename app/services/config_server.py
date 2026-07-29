@@ -79,7 +79,7 @@ class ConfigServerClient:
                             parts = key.split(".")
                             self._set_nested(config, parts[1:], value)
                         # Shared adzump.* properties (e.g. adzump.adLibraryAPIKey in
-                        # application-default.yml) — kept under the "adzump" namespace.
+                        # application-default.yml) - kept under the "adzump" namespace.
                         elif key.startswith("adzump."):
                             self._set_nested(config, key.split("."), value)
                         # Collect shared redis.* properties (will be used as fallback)

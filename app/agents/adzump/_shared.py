@@ -24,6 +24,25 @@ def build_ds_headers(context: dict) -> dict[str, str]:
     return headers
 
 
+# CoreServices.Storage endpoints - one home for the gateway contract, shared by
+# every storage-backed module (business_storage, creative_intelligence.store).
+STORAGE_READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
+STORAGE_CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
+STORAGE_UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
+
+
+def storage_headers(ctx: dict, app_code: str, client_code: str | None = None) -> dict[str, str]:
+    """Headers for CoreServices.Storage calls. ``app_code`` pins the collection's
+    appCode scope. ``client_code`` overrides the session's clientCode (e.g. the
+    SYSTEM-shared creative library); omitted, the user's own scope applies."""
+    h = build_ds_headers(ctx)
+    if client_code:
+        h["clientCode"] = client_code
+    h["AppCode"] = app_code
+    h["Content-Type"] = "application/json"
+    return h
+
+
 def extract_storage_records(raw: Any) -> list[dict]:
     """Unwrap CoreServices.Storage's response envelope into a flat record list.
     The gateway wraps the storage result in two ``result`` levels, then either
@@ -99,26 +118,35 @@ def clean_input_url(raw) -> str | None:
 
 import json as _json
 
-_JSON_BLOCK_RE = _re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", _re.DOTALL)
+_JSON_FENCE_RE = _re.compile(r"```json\s*\n(.*?)\n```", _re.DOTALL)
 
 
 def extract_json(text: str) -> dict | None:
-    """Pull the first JSON object out of an LLM response (```json ...``` or raw)."""
+    """Pull the first JSON object out of an LLM response. The one parser for
+    every final-JSON sub-agent (vision, creative_essence, product) - handles a
+    ```json fence, a fence without a language tag, a bare object, and falls back
+    to the first {...} span. None when nothing parses."""
     if not text:
         return None
-    match = _JSON_BLOCK_RE.search(text)
-    candidate = match.group(1) if match else None
-    if candidate is None:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end > start:
-            candidate = text[start : end + 1]
-    if not candidate:
+    m = _JSON_FENCE_RE.search(text)
+    raw = m.group(1) if m else text.strip()
+    # Strip stray code fences if the model emitted ``` without a language tag.
+    raw = _re.sub(r"^```[a-z]*\s*", "", raw)
+    raw = _re.sub(r"\s*```\s*$", "", raw)
+    try:
+        payload = _json.loads(raw)
+        if isinstance(payload, dict):
+            return payload
+    except _json.JSONDecodeError:
+        pass
+    start, end = raw.find("{"), raw.rfind("}")
+    if start == -1 or end <= start:
         return None
     try:
-        return _json.loads(candidate)
+        payload = _json.loads(raw[start : end + 1])
     except _json.JSONDecodeError:
         return None
+    return payload if isinstance(payload, dict) else None
 
 
 # ─── Shared URL / host helpers ────────────────────────────────────────────
