@@ -115,13 +115,15 @@ async def upload_image(
     kind: str,
     context: dict,
     content_type: str = "application/octet-stream",
+    timeout_s: float = 30.0,
 ) -> str | None:
-    """Upload an image to the gateway files API under the folder for `kind`.
+    """Upload an asset to the gateway files API under the folder for `kind`.
 
     `kind` ∈ {"screenshot", "logo", "creative"}.
     `content_type` is what we declare in the multipart form so the gateway
     stores it correctly - without this the form was hardcoded to image/jpeg
-    and SVG / WebP uploads were getting mis-labeled.
+    and SVG / WebP uploads were getting mis-labeled. `timeout_s` exists for
+    the video rehost path - a multi-MB body doesn't fit the image default.
     """
     folder = _IMAGE_KIND_FOLDERS.get(kind, "screenshots")
     ct = (content_type or "application/octet-stream").split(";", 1)[0].strip()
@@ -143,7 +145,7 @@ async def upload_image(
             "accept": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=timeout_s) as client:
             await client.post(
                 f"{base}/api/files/static/directory/{folder}",
                 headers=file_headers,
@@ -195,6 +197,9 @@ _CTYPE_EXT = {
     "image/x-icon": "ico",
     "image/vnd.microsoft.icon": "ico",
     "image/avif": "avif",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "video/quicktime": "mov",
 }
 
 
@@ -326,3 +331,54 @@ async def rehost_image(
         result["imageBytes"] = data
         result["contentType"] = ctype
     return result
+
+
+# Video rehost bounds: a competitor ad video is typically 2-15 MB; anything
+# bigger is skipped (the poster still remains) rather than buffered.
+VIDEO_MAX_BYTES = 50 * 1024 * 1024
+_VIDEO_TIMEOUT_S = 120.0
+
+
+async def rehost_video(source_url: str, kind: str, context: dict, *, name: str = "") -> str | None:
+    """Download a video and re-host it on our file store. Returns the hosted
+    URL, or None on any failure/oversize - the caller keeps the poster still
+    either way. Streams the download so an oversize body aborts early instead
+    of buffering past VIDEO_MAX_BYTES."""
+    if not source_url:
+        return None
+    try:
+        import httpx
+
+        chunks: list[bytes] = []
+        total = 0
+        async with httpx.AsyncClient(timeout=_VIDEO_TIMEOUT_S, follow_redirects=True) as client:
+            async with client.stream("GET", source_url) as resp:
+                if resp.status_code != 200:
+                    logger.info("video_rehost_skip: status=%d url=%s",
+                                resp.status_code, source_url[:200])
+                    return None
+                ctype = (resp.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+                if not ctype.startswith("video/"):
+                    ctype = "video/mp4"
+                if int(resp.headers.get("content-length") or 0) > VIDEO_MAX_BYTES:
+                    logger.info("video_rehost_skip: oversize url=%s", source_url[:200])
+                    return None
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    if total > VIDEO_MAX_BYTES:
+                        logger.info("video_rehost_skip: oversize-stream url=%s", source_url[:200])
+                        return None
+                    chunks.append(chunk)
+    except Exception as e:
+        logger.info("video_rehost_fetch_failed: url=%s err=%s", source_url[:200], str(e)[:200])
+        return None
+
+    video_bytes = b"".join(chunks)
+    if not video_bytes:
+        return None
+    filename = _asset_filename(context, name, kind, video_bytes, ctype)
+    url = await upload_image(video_bytes, filename, kind, context, ctype,
+                             timeout_s=_VIDEO_TIMEOUT_S)
+    if url:
+        logger.info("video_rehosted: kind=%s bytes=%d url=%s", kind, total, url)
+    return url

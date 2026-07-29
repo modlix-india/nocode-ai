@@ -40,6 +40,9 @@ logger = logging.getLogger(__name__)
 # (the dedup + essence-cache keys). Matches the creative cap - a lower binary cap
 # would leave the tail unhashed and un-dedupable.
 MAX_BINARIES_PER_COMPETITOR = MAX_CREATIVES_PER_COMPETITOR
+# Video files are orders of magnitude bigger than stills - rehost only the
+# first few per competitor (the craft carousel renders 12 creatives total).
+MAX_VIDEOS_PER_COMPETITOR = 6
 
 _DEFAULT_SOURCE = AdLibrarySource()
 
@@ -147,11 +150,12 @@ async def creatives_for_all(
 
 
 async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple[bytes, str]]:
-    """Rehost creative images into our file store so the library doesn't depend on
-    the source's (undocumented-TTL) URLs. For image/carousel/collection ads the
-    asset itself is an image (-> fileUrl); for video ads the poster still
-    (-> posterUrl). Video bytes are not downloaded (large). Best-effort, bounded,
-    concurrent.
+    """Rehost creative binaries into our file store so the library doesn't depend
+    on the source's (undocumented-TTL) URLs. For image/carousel/collection ads
+    the asset itself is an image (-> fileUrl); for video ads BOTH the poster
+    still (-> posterUrl) and the video file (-> fileUrl, size-capped - the
+    craft click-through must keep playing after the vendor URL expires).
+    Best-effort, bounded, concurrent.
 
     Returns ``{content_hash: (bytes, content_type)}`` - the rehosted bytes, kept
     so the Tier-3 essence pass analyzes exactly what was hashed, without a
@@ -160,14 +164,19 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
     binaries: dict[str, tuple[bytes, str]] = {}
     # (creative, source_image_url, sets_poster)
     jobs: list[tuple] = []
+    video_jobs: list = []
     for c in competitor.creatives:
         if c.media_type != "video" and c.source_asset_url:
             # image / carousel / collection: the asset itself is an image
             jobs.append((c, c.source_asset_url, False))
-        elif c.poster_source_url:  # video still
+            continue
+        if c.poster_source_url:  # video still
             jobs.append((c, c.poster_source_url, True))
+        if c.media_type == "video" and c.source_asset_url:
+            video_jobs.append(c)
     jobs = jobs[:MAX_BINARIES_PER_COMPETITOR]
-    if not jobs:
+    video_jobs = video_jobs[:MAX_VIDEOS_PER_COMPETITOR]
+    if not jobs and not video_jobs:
         return binaries
 
     async def _one(c, src: str, is_poster: bool) -> None:
@@ -187,9 +196,23 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
                 binaries[c.content_hash] = (
                     res["imageBytes"], res.get("contentType") or "image/jpeg")
 
-    await asyncio.gather(*(_one(c, s, p) for c, s, p in jobs), return_exceptions=True)
+    async def _one_video(c) -> None:
+        url = await _uploads.rehost_video(
+            c.source_asset_url, "competitor_creative", ctx,
+            name=f"{key}-{c.creative_id}",
+        )
+        if url:
+            c.file_url = url  # dedup hashes stay on the poster still
+
+    await asyncio.gather(
+        *(_one(c, s, p) for c, s, p in jobs),
+        *(_one_video(c) for c in video_jobs),
+        return_exceptions=True,
+    )
     done = sum(1 for c, _, p in jobs if (c.poster_url if p else c.file_url))
-    logger.info("creative_intelligence: rehosted %d/%d images key=%s", done, len(jobs), key)
+    videos_done = sum(1 for c in video_jobs if c.file_url)
+    logger.info("creative_intelligence: rehosted %d/%d images %d/%d videos key=%s",
+                done, len(jobs), videos_done, len(video_jobs), key)
     return binaries
 
 

@@ -83,6 +83,48 @@ def render_competitors(
 # horizontally, so this is a payload cap, not a layout constraint.
 _RENDER_PER_COMPETITOR = 12
 
+# (metrics key, card label) - rendered in this order, zeros omitted.
+_CREATIVE_METRICS = [
+    ("impressions", "impressions"),
+    ("views", "views"),
+    ("likes", "likes"),
+    ("comments", "comments"),
+    ("shares", "shares"),
+]
+
+
+def _fmt_count(n) -> str:
+    """1234 -> '1.2K', 2500000 -> '2.5M' - compact card-footer numbers."""
+    n = int(n or 0)
+    for cut, suffix in ((1_000_000, "M"), (1_000, "K")):
+        if n >= cut:
+            return f"{n / cut:.1f}".rstrip("0").rstrip(".") + suffix
+    return str(n)
+
+
+def _creative_badges(c: dict) -> list[dict]:
+    """Active/Paused status + days-running chips for one creative card."""
+    badges = [
+        {"label": "Active", "tone": "active"}
+        if c.get("isActive") else {"label": "Paused", "tone": "paused"}
+    ]
+    days = int(c.get("daysRunning") or 0)
+    if days > 0:
+        badges.append({"label": f"{days}d"})
+    return badges
+
+
+def _creative_meta(c: dict) -> str:
+    """Compact non-zero metrics line ('1.2M impressions · 340 likes').
+    Empty when the vendor reported nothing - the card then shows no meta."""
+    metrics = c.get("metrics") or {}
+    parts = [
+        f"{_fmt_count(metrics[key])} {label}"
+        for key, label in _CREATIVE_METRICS
+        if int(metrics.get(key) or 0) > 0
+    ]
+    return " · ".join(parts[:3])
+
 
 def render_competitor_creatives(
     children: list[dict],
@@ -94,8 +136,10 @@ def render_competitor_creatives(
     (Total/Active/Paused) + a horizontal thumbnail carousel.
 
     The one builder behind every panel render (`render_competitors`), so an
-    on-demand fetch and a full rebuild draw byte-identical sections. Videos
-    tile via their poster still (flagged ▶); creatives with no usable image
+    on-demand fetch and a full rebuild draw byte-identical sections. Each card
+    carries status/days badges + a non-zero metrics line. Videos tile via
+    their poster still (flagged ▶) and click through to the PLAYABLE video
+    (rehosted fileUrl, vendor URL fallback); creatives with no usable image
     are skipped. No-op when nothing is renderable.
     """
     cards: list[dict] = []
@@ -103,7 +147,8 @@ def render_competitor_creatives(
         is_video = c.get("mediaType") == "video"
         # Prefer rehosted URLs (fileUrl/posterUrl) over the vendor's TTL-flaky
         # source URLs, whatever the media type.
-        url = (c.get("posterUrl") or c.get("posterSourceUrl")) if is_video \
+        poster = c.get("posterUrl") or c.get("posterSourceUrl")
+        url = poster if is_video \
             else (c.get("fileUrl") or c.get("posterUrl") or c.get("sourceAssetUrl"))
         if not url:
             continue
@@ -111,8 +156,18 @@ def render_competitor_creatives(
         if is_video:
             caption = f"▶ {caption}".strip()
         card: dict = {"type": "image", "url": url}
+        if is_video:
+            # Poster in the tile; the click target is the video itself, so
+            # opening it in a new tab plays natively.
+            video_url = c.get("fileUrl") or c.get("sourceAssetUrl")
+            if video_url:
+                card = {"type": "image", "url": video_url, "thumb_url": poster}
         if caption:
             card["caption"] = caption[:120]
+        card["badges"] = _creative_badges(c)
+        meta = _creative_meta(c)
+        if meta:
+            card["meta"] = meta
         cards.append(card)
         if len(cards) >= _RENDER_PER_COMPETITOR:
             break

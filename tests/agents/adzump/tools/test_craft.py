@@ -79,6 +79,30 @@ class CompetitorCardsTests(unittest.TestCase):
                 children,
                 [{"mediaType": "video", "posterUrl": "p.jpg", "headline": "Watch"}], 1, 1)
             self.assertTrue(_carousel_cards(children)[0]["caption"].startswith("▶"))
+        with self.subTest("video click-through is the playable rehosted video"):
+            children = []
+            render_competitor_creatives(
+                children,
+                [{"mediaType": "video", "posterUrl": "p.jpg", "fileUrl": "v.mp4"}], 1, 1)
+            card = _carousel_cards(children)[0]
+            self.assertEqual((card["url"], card["thumb_url"]), ("v.mp4", "p.jpg"))
+        with self.subTest("badges + non-zero metrics line"):
+            children = []
+            render_competitor_creatives(children, [{
+                "mediaType": "image", "fileUrl": "f.jpg", "isActive": True,
+                "daysRunning": 112,
+                "metrics": {"impressions": 2_500_000, "likes": 0, "views": 980},
+            }], 1, 1)
+            card = _carousel_cards(children)[0]
+            self.assertEqual([b["label"] for b in card["badges"]], ["Active", "112d"])
+            self.assertEqual(card["badges"][0]["tone"], "active")
+            self.assertEqual(card["meta"], "2.5M impressions · 980 views")
+        with self.subTest("paused + zero metrics -> paused badge, no meta key"):
+            children = []
+            render_competitor_creatives(children, [_img(1)], 1, 0)
+            card = _carousel_cards(children)[0]
+            self.assertEqual(card["badges"], [{"label": "Paused", "tone": "paused"}])
+            self.assertNotIn("meta", card)
         with self.subTest("payload cap; no-usable-image is a noop"):
             children = []
             render_competitor_creatives(children, [_img(i) for i in range(20)], 20, 4)

@@ -69,6 +69,9 @@ class LibraryTests(unittest.TestCase):
         p = mock.patch.object(library._uploads, "rehost_image",
                               new=mock.AsyncMock(side_effect=_rehost_hashing_by_creative_id))
         p.start(); self.addCleanup(p.stop)
+        v = mock.patch.object(library._uploads, "rehost_video",
+                              new=mock.AsyncMock(return_value="https://files/video.mp4"))
+        v.start(); self.addCleanup(v.stop)
         u = mock.patch.object(library.store, "upsert_competitor",
                               new=mock.AsyncMock(return_value="id1"))
         u.start(); self.addCleanup(u.stop)
@@ -148,6 +151,15 @@ class LibraryTests(unittest.TestCase):
             stored = rec.creatives[0]
             self.assertEqual((stored.file_url, stored.content_hash, stored.essence.angle),
                              ("https://files/c9.jpg", "c9", "grid of rooms"))
+        with self.subTest("video file rehosts for click-through playback"):
+            video = Creative(creative_id="vid", media_type="video",
+                             source_asset_url="https://vendor/vid.mp4",
+                             poster_source_url="https://vendor/vid.jpg")
+            rec = self._run(stored=None, enrich=FakeEnrich(),
+                            source=FakeSource(creatives=[video]))
+            stored = rec.creatives[0]
+            self.assertEqual(stored.file_url, "https://files/video.mp4")
+            self.assertEqual(stored.poster_url, "https://files/vid.jpg")
         with self.subTest("video with no still: skipped by vision, stored essence=None"):
             enrich = FakeEnrich(essences={"a1": Essence(angle="x")})
             rec = self._run(stored=None, enrich=enrich,
