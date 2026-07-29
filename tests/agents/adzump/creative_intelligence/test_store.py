@@ -1,8 +1,9 @@
-"""Unit: creative_intelligence/store.py - pure key + freshness logic.
+"""Unit: creative_intelligence/store.py - key normalization, freshness, poisoned reads.
 
-competitor_key normalizes hosts to one dedup key; is_stale reads a real field on
-the typed Competitor (no shape-guessing) and treats missing/unparseable timestamps
-as stale (safer to refetch).
+competitor_key normalizes hosts to one dedup key; is_stale treats missing or
+unparseable timestamps as stale (safer to refetch) and gives empty records a
+short retry window; a stored record that no longer validates reads as an
+overwritable miss instead of permanently poisoning its key.
 """
 from __future__ import annotations
 
@@ -16,70 +17,52 @@ from app.agents.adzump.creative_intelligence.models import Competitor
 from app.agents.adzump.creative_intelligence import store
 
 
-class CompetitorKeyTests(unittest.TestCase):
-    def test_normalization_table(self):
-        cases = [
+def _comp(fetched_at: str, **fields) -> Competitor:
+    return Competitor(competitor_key="x.com", last_fetched_at=fetched_at, **fields)
+
+
+class StoreTests(unittest.TestCase):
+    def test_key_freshness_and_poisoned_read(self):
+        for raw, expected in [
             ("https://www.Nike.com/air", "nike.com"),
             ("nike.com", "nike.com"),
             ("http://uk.gymshark.com/", "uk.gymshark.com"),
             ("WWW.Example.COM", "example.com"),
             ("", ""),
             ("   ", ""),
-        ]
-        for raw, expected in cases:
-            with self.subTest(raw=raw):
+        ]:
+            with self.subTest(key=raw or repr(raw)):
                 self.assertEqual(store.competitor_key(raw), expected)
 
-
-class IsStaleTests(unittest.TestCase):
-    def _comp(self, fetched_at: str) -> Competitor:
-        return Competitor(competitor_key="x.com", last_fetched_at=fetched_at)
-
-    def test_missing_record_is_stale(self):
-        self.assertTrue(store.is_stale(None))
-
-    def test_no_timestamp_is_stale(self):
-        self.assertTrue(store.is_stale(self._comp("")))
-
-    def test_unparseable_timestamp_is_stale(self):
-        self.assertTrue(store.is_stale(self._comp("not-a-date")))
-
-    def test_fresh_and_old_boundary(self):
         now = datetime.now(timezone.utc)
         fresh = (now - timedelta(days=1)).isoformat()
+        two_days = (now - timedelta(days=2)).isoformat()
         old = (now - timedelta(days=99)).isoformat()
-        self.assertFalse(store.is_stale(self._comp(fresh), max_age_days=30))
-        self.assertTrue(store.is_stale(self._comp(old), max_age_days=30))
-
-    def test_naive_timestamp_is_handled(self):
         naive = datetime.now().replace(tzinfo=None).isoformat()
-        # naive recent time should not raise and should read as fresh
-        self.assertFalse(store.is_stale(self._comp(naive), max_age_days=30))
+        for name, record, stale in [
+            ("missing record", None, True),
+            ("no timestamp", _comp(""), True),
+            ("unparseable timestamp", _comp("not-a-date"), True),
+            ("fresh", _comp(fresh), False),
+            ("old", _comp(old), True),
+            ("naive recent timestamp reads fresh, no raise", _comp(naive), False),
+            # fetch_status="empty" is a retry-soon marker: stale after
+            # EMPTY_RECORD_FRESHNESS_DAYS, not the full freshness window.
+            ("empty record past the short window", _comp(two_days, fetch_status="empty"), True),
+            ("non-empty record at the same age", _comp(two_days), False),
+        ]:
+            with self.subTest(stale=name):
+                self.assertEqual(store.is_stale(record, max_age_days=30), stale)
 
-    def test_empty_record_gets_the_short_window(self):
-        # fetch_status="empty" is a retry-soon marker: stale after
-        # EMPTY_RECORD_FRESHNESS_DAYS, not the full freshness window.
-        two_days = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
-        empty = Competitor(competitor_key="x.com", last_fetched_at=two_days,
-                           fetch_status="empty")
-        self.assertTrue(store.is_stale(empty, max_age_days=30))
-        self.assertFalse(store.is_stale(self._comp(two_days), max_age_days=30))
-
-
-class InvalidRecordTests(unittest.TestCase):
-    def test_read_treats_invalid_record_as_overwritable_miss(self):
-        # A stored record that no longer validates must read as a miss (stale ->
-        # refetch) while keeping its id, so the upsert can overwrite it rather
-        # than permanently poisoning the key.
-        bad = {"_id": "rec1", "competitorKey": "x.com", "creatives": "not-a-list"}
-        result = SimpleNamespace(success=True,
-                                 data={"result": {"result": {"content": [bad]}}},
-                                 error=None)
-        client = SimpleNamespace(post=mock.AsyncMock(return_value=result))
-        with mock.patch.object(store, "get_saas_client", return_value=client):
-            competitor, record_id = asyncio.run(store._read("x.com", {}))
-        self.assertIsNone(competitor)
-        self.assertEqual(record_id, "rec1")
+        with self.subTest("invalid stored record reads as an overwritable miss"):
+            bad = {"_id": "rec1", "competitorKey": "x.com", "creatives": "not-a-list"}
+            result = SimpleNamespace(success=True, error=None,
+                                     data={"result": {"result": {"content": [bad]}}})
+            client = SimpleNamespace(post=mock.AsyncMock(return_value=result))
+            with mock.patch.object(store, "get_saas_client", return_value=client):
+                competitor, record_id = asyncio.run(store._read("x.com", {}))
+            self.assertIsNone(competitor)
+            self.assertEqual(record_id, "rec1")  # kept so upsert can overwrite
 
 
 if __name__ == "__main__":

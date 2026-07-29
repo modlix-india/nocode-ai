@@ -1,9 +1,9 @@
-"""Unit: app/agents/adzump/tools/craft.py - render_competitor_creatives.
+"""Unit: tools/craft.py - render_competitor_creatives.
 
 The shared builder used by both the on-demand append and the full-panel rebuild,
 so a rebuild redraws creatives instead of dropping them. Locks: skip creatives
-with no usable image, video poster + play marker, the 6-thumbnail cap, and the
-2-up row pairing. No-op when nothing is renderable.
+with no usable image, rehosted-over-vendor URL precedence, video poster + play
+marker, the thumbnail cap, and the 2-up row pairing.
 """
 from __future__ import annotations
 
@@ -12,10 +12,8 @@ import unittest
 from app.agents.adzump.tools.craft import render_competitor_creatives, _RENDER_PER_COMPETITOR
 
 
-def _img(i, **over):
-    d = {"mediaType": "image", "fileUrl": f"img{i}.jpg", "headline": f"h{i}"}
-    d.update(over)
-    return d
+def _img(i):
+    return {"mediaType": "image", "fileUrl": f"img{i}.jpg", "headline": f"h{i}"}
 
 
 def _rows(blocks):
@@ -30,66 +28,52 @@ def _image_cards(blocks):
 
 
 class RenderCompetitorCreativesTests(unittest.TestCase):
-    def test_noop_on_empty(self):
-        blocks = []
-        render_competitor_creatives(blocks, "Nike", [], 0, 0)
-        self.assertEqual(blocks, [])
-
-    def test_noop_when_no_usable_image(self):
-        blocks = []
-        render_competitor_creatives(blocks, "Nike", [{"mediaType": "image", "headline": "x"}], 5, 2)
-        self.assertEqual(blocks, [])
-
-    def test_heading_and_metric_row_present(self):
-        blocks = []
-        render_competitor_creatives(blocks, "Nike", [_img(1)], 4, 3)
-        headings = [b for b in blocks if b["type"] == "heading"]
-        self.assertTrue(any("Nike" in h["text"] for h in headings))
-        metric_rows = [r for r in _rows(blocks) if r["children"] and r["children"][0].get("type") == "metric"]
-        self.assertEqual(len(metric_rows), 1)
-        labels = [m["label"] for m in metric_rows[0]["children"]]
-        self.assertIn("Total ads", labels)
-        self.assertIn("Paused", labels)  # present because total > 0
-
-    def test_video_gets_play_marker_from_poster(self):
-        blocks = []
-        render_competitor_creatives(
-            blocks, "Nike",
-            [{"mediaType": "video", "posterUrl": "p.jpg", "headline": "Watch"}], 1, 1)
-        cards = _image_cards(blocks)
-        self.assertEqual(len(cards), 1)
-        self.assertTrue(cards[0]["caption"].startswith("▶"))
-        self.assertEqual(cards[0]["url"], "p.jpg")
-
-    def test_url_precedence_prefers_rehosted_over_vendor(self):
-        cases = [
+    def test_render(self):
+        for name, creative_list in [
+            ("empty list", []),
+            ("no usable image", [{"mediaType": "image", "headline": "x"}]),
+        ]:
+            with self.subTest(noop=name):
+                blocks = []
+                render_competitor_creatives(blocks, "Nike", creative_list, 5, 2)
+                self.assertEqual(blocks, [])
+        with self.subTest("heading + metric row present"):
+            blocks = []
+            render_competitor_creatives(blocks, "Nike", [_img(1)], 4, 3)
+            self.assertTrue(any("Nike" in b["text"] for b in blocks if b["type"] == "heading"))
+            metric_rows = [r for r in _rows(blocks)
+                           if r["children"] and r["children"][0].get("type") == "metric"]
+            labels = [m["label"] for m in metric_rows[0]["children"]]
+            self.assertIn("Total ads", labels)
+            self.assertIn("Paused", labels)  # present because total > 0
+        for name, creative, expected in [
             ("image rehosted", {"mediaType": "image", "fileUrl": "f.jpg",
                                 "sourceAssetUrl": "v.jpg"}, "f.jpg"),
-            ("carousel poster rehosted", {"mediaType": "carousel",
-                                          "posterUrl": "p.jpg",
+            ("carousel poster rehosted", {"mediaType": "carousel", "posterUrl": "p.jpg",
                                           "sourceAssetUrl": "v.jpg"}, "p.jpg"),
-            ("vendor fallback", {"mediaType": "carousel",
-                                 "sourceAssetUrl": "v.jpg"}, "v.jpg"),
+            ("vendor fallback", {"mediaType": "carousel", "sourceAssetUrl": "v.jpg"}, "v.jpg"),
             ("video poster", {"mediaType": "video", "posterUrl": "p.jpg",
                               "posterSourceUrl": "vp.jpg"}, "p.jpg"),
-        ]
-        for name, creative, expected in cases:
-            with self.subTest(case=name):
+        ]:
+            with self.subTest(url_precedence=name):
                 blocks = []
                 render_competitor_creatives(blocks, "Nike", [creative], 1, 1)
                 self.assertEqual(_image_cards(blocks)[0]["url"], expected)
-
-    def test_caps_at_six_and_pairs_two_up(self):
-        blocks = []
-        render_competitor_creatives(blocks, "Nike", [_img(i) for i in range(10)], 10, 4)
-        cards = _image_cards(blocks)
-        self.assertEqual(len(cards), _RENDER_PER_COMPETITOR)  # 6
-        image_rows = [r for r in _rows(blocks)
-                      if r["children"] and r["children"][0].get("type") == "image"]
-        # 6 cards, 2 per row -> 3 rows, each with <= 2
-        self.assertEqual(len(image_rows), 3)
-        for r in image_rows:
-            self.assertLessEqual(len(r["children"]), 2)
+        with self.subTest("video gets the play marker from its poster"):
+            blocks = []
+            render_competitor_creatives(
+                blocks, "Nike",
+                [{"mediaType": "video", "posterUrl": "p.jpg", "headline": "Watch"}], 1, 1)
+            self.assertTrue(_image_cards(blocks)[0]["caption"].startswith("▶"))
+        with self.subTest("caps thumbnails and pairs rows 2-up"):
+            blocks = []
+            render_competitor_creatives(blocks, "Nike", [_img(i) for i in range(10)], 10, 4)
+            self.assertEqual(len(_image_cards(blocks)), _RENDER_PER_COMPETITOR)  # 6
+            image_rows = [r for r in _rows(blocks)
+                          if r["children"] and r["children"][0].get("type") == "image"]
+            self.assertEqual(len(image_rows), 3)
+            for r in image_rows:
+                self.assertLessEqual(len(r["children"]), 2)
 
 
 if __name__ == "__main__":
