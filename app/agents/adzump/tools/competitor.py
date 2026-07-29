@@ -11,7 +11,10 @@ import logging
 from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.tools.campaign_data import clear_competitor_decline
+from app.agents.adzump.tools.campaign_data import (
+    clear_competitor_decline,
+    pending_creatives_fetch_steer,
+)
 from app.agents.adzump._shared import (
     emit_progress,
     host_of,
@@ -217,10 +220,12 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         existing = session_ctx.get("competitor_analysis")
         if existing and existing.get("competitors"):
             comp_count = len(existing["competitors"])
+            summary = f"Already analyzed: {comp_count} competitors found."
             return ToolResult(
                 success=True,
                 data={"competitive": existing},
-                summary=f"Already analyzed: {comp_count} competitors found.",
+                summary=summary,
+                model_summary=summary + pending_creatives_fetch_steer(context),
                 audience="both",
             )
         # Cross-session: try the storage record before spawning the sub-agent.
@@ -233,10 +238,12 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                     existing = session_ctx.get("competitor_analysis")
                     if existing and existing.get("competitors"):
                         comp_count = len(existing["competitors"])
+                        summary = f"Reused {comp_count} competitors from storage."
                         return ToolResult(
                             success=True,
                             data={"competitive": existing, "from_storage": True},
-                            summary=f"Reused {comp_count} competitors from storage.",
+                            summary=summary,
+                            model_summary=summary + pending_creatives_fetch_steer(context),
                             audience="both",
                         )
         except Exception as e:
@@ -342,7 +349,11 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
 
         summary = f"Found {comp_count} competitors: {', '.join(names)}"
         return ToolResult(
-            success=True, data={"competitive": competitive}, summary=summary, audience="both"
+            success=True,
+            data={"competitive": competitive},
+            summary=summary,
+            model_summary=summary + pending_creatives_fetch_steer(context),
+            audience="both",
         )
 
     except Exception as e:

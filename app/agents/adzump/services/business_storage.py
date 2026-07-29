@@ -6,7 +6,7 @@ analysis fields. Latest-launch-wins per URL - no history (yet).
 
 Reuses:
 - `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
-- `app.agents.adzump._shared.build_ds_headers` (auth headers from tool context)
+- `app.agents.adzump._shared.storage_headers` (auth headers for storage calls)
 """
 
 from __future__ import annotations
@@ -23,7 +23,14 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.models.product import Image, Logo, check_product
-from app.agents.adzump._shared import build_ds_headers, primary_screenshot_url
+from app.agents.adzump._shared import (
+    STORAGE_CREATE as CREATE,
+    STORAGE_READ_PAGE as READ_PAGE,
+    STORAGE_UPDATE as UPDATE,
+    extract_storage_records as _extract_records,
+    primary_screenshot_url,
+    storage_headers,
+)
 from app.agents.appbuilder.tools._shared import get_saas_client
 
 logger = logging.getLogger(__name__)
@@ -31,11 +38,6 @@ logger = logging.getLogger(__name__)
 STORAGE_NAME = "AISuggestedData"
 APP_CODE = "marketingai"
 SCHEMA_VERSION = 1
-
-READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
-CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
-UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
-
 
 def _normalize_url(url: str) -> str:
     """Canonicalize a business URL for storage keys and lookups.
@@ -60,36 +62,10 @@ def _storage_headers(ctx: dict) -> dict[str, str]:
     """Auth headers for storage calls. AppCode pinned to ``marketingai``
     because the storage collection is appCode-scoped - clientCode stays
     from the user's session (privacy boundary)."""
-    h = build_ds_headers(ctx)
-    h["AppCode"] = APP_CODE
-    h["Content-Type"] = "application/json"
-    return h
+    return storage_headers(ctx, APP_CODE)
 
 
 # ── Reads ─────────────────────────────────────────────────────────────────
-
-
-def _extract_records(raw: Any) -> list[dict]:
-    """Mirror ds's StorageResponse.content unwrap: gateway wraps the storage
-    result in two `result` levels, then either has `content` (paged) or
-    returns records directly. Tolerates both."""
-    if raw is None:
-        return []
-    data = raw
-    if isinstance(data, list) and data:
-        data = data[0]
-    # 2-level unwrap of the known `result.result` envelope
-    for _ in range(2):
-        if isinstance(data, dict) and "result" in data:
-            data = data["result"]
-        else:
-            break
-    if data is None:
-        return []
-    if isinstance(data, dict) and "content" in data:
-        content = data["content"]
-        return content if isinstance(content, list) else [content]
-    return data if isinstance(data, list) else [data]
 
 
 async def get_by_url(url: str, ctx: dict) -> dict | None:

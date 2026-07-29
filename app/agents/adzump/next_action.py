@@ -22,8 +22,10 @@ from app.agents.adzump.platform import (
 )
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
+    competitor_creatives_offer_resolved,
     is_ig_skip,
     is_real_estate,
+    wants_competitor_creatives,
 )
 
 
@@ -65,6 +67,17 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    # True once the Meta creative-inspiration offer is settled (fetched,
+    # declined, or moot) - computed by the shared predicate in campaign_data so
+    # this gate and the review gate can never disagree. Stops the offer from
+    # re-firing. Defaulted for direct test construction.
+    competitor_creatives_offer_resolved: bool = False
+    # True once the creative-inspiration question has been PUT ON SCREEN (marker
+    # set by present_options, field "competitor_creatives_declined"). Between
+    # offered and resolved, _next_action prescribes reacting to the reply -
+    # never the ask text again (live bug: a Yes resolved nothing, so the
+    # verbatim ask re-fired and the model copied it instead of fetching).
+    competitor_creatives_offered: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -98,6 +111,12 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            competitor_creatives_offer_resolved=competitor_creatives_offer_resolved(
+                ctx.get("campaign_spec") or {}, ctx
+            ),
+            competitor_creatives_offered=bool(
+                ctx.get("_competitor_creatives_offered")
+            ),
         )
 
     @property
@@ -239,6 +258,56 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "decline.\n"
             "(These are instructions to CALL tools - never type tool-call syntax into your reply.)"
         )
+
+    # Meta creative inspiration - Meta campaigns are creative-bound, so the
+    # competitors' running ads are the seed material. Consent-gated (ad-library
+    # credits + vision tokens). Offer-once is enforced by the offered marker
+    # (set when present_options fires with the tagged field), not by model
+    # judgment: once offered, the ask text is NEVER re-prescribed - the live
+    # re-ask loop was a Yes reply resolving nothing, so the verbatim ask
+    # re-fired and the model copied it instead of fetching.
+    if cctx.is_meta and not cctx.competitor_creatives_offer_resolved:
+        fetch_chain = (
+            "call `fetch_competitor_creatives`"
+            if cctx.competitor_names
+            else "run `analyze_competitors`, THEN `fetch_competitor_creatives` "
+            "in the same turn"
+        )
+        if not cctx.competitor_creatives_offered:
+            question = (
+                "Want to see the ads your competitors are running right now?"
+                if cctx.competitor_names
+                else "Want me to analyze your competitors and show the ads "
+                "they're running?"
+            )
+            missing.append(
+                "competitor creatives - offer it ONCE: ask via the present_options "
+                f'tool (field "competitor_creatives_declined"): "{question}" with '
+                "chips Yes / No. A No (or a clear typed decline) is recorded for "
+                "you automatically - do NOT call set_campaign_spec for it. (This is "
+                "an instruction to CALL the tool - never type tool-call syntax into "
+                "your reply.)"
+            )
+        elif wants_competitor_creatives(cctx.last_user):
+            missing.append(
+                f'competitor creatives - the user said YES ("{cctx.last_user[:40]}") '
+                f"to the offer you already made. {fetch_chain} NOW. Do NOT ask "
+                "again via present_options - the question was already asked and "
+                "answered. (These are instructions to CALL tools - never type "
+                "tool-call syntax into your reply.)"
+            )
+        else:
+            missing.append(
+                "competitor creatives - you ALREADY offered this; never re-ask it "
+                "as if new. React to the user's reply instead: they want it (yes / "
+                f"show me) → {fetch_chain}; a clear decline is recorded "
+                "automatically - do NOT call set_campaign_spec for it; a reply "
+                "about something ELSE → address it first, then re-ask the SAME "
+                'Yes/No present_options (field "competitor_creatives_declined"); '
+                "do NOT treat a doubtful reply as a decline. (These are "
+                "instructions to CALL tools - never type tool-call syntax into "
+                "your reply.)"
+            )
 
     if not cctx.spec.get("duration"):
         if cctx.awaiting_custom_field == "duration":

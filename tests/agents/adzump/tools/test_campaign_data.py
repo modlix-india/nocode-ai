@@ -140,6 +140,16 @@ class DependencyCascadeTests(unittest.TestCase):
         cleared = _clear_dependents("platform", sc, frozenset())
         self.assertIn("account", cleared)
 
+    def test_platform_change_voids_creatives_offered_marker(self):
+        sc = _ctx({"platform": "Meta"})
+        sc["_competitor_creatives_offered"] = True
+        _clear_dependents("platform", sc, frozenset())
+        self.assertNotIn("_competitor_creatives_offered", sc)
+        # A downstream change (fb_page) leaves the offer marker alone.
+        sc["_competitor_creatives_offered"] = True
+        _clear_dependents("fb_page", sc, frozenset())
+        self.assertIn("_competitor_creatives_offered", sc)
+
 
 # ── v5 · set_campaign_spec retry-loop fixes ────────────────────────────────
 # Live bug (2026-06-10, cityville run): the model re-sent the whole spec with
@@ -293,15 +303,128 @@ class ClearDeclineReplyTableTests(unittest.TestCase):
         clear = ["no", "n", "no thanks", "no thanks, skip it", "skip it",
                  "No, skip competitor analysis", "not now", "maybe later", "no need"]
         ambiguous = ["no competitors named yet", "not now, first tell me about the audience",
-                     "no, make it Meta", "what about competitors?", "no — which ones?",
-                     "skip — but tell me how it works"]
+                     "no, make it Meta", "what about competitors?", "no - which ones?",
+                     "skip - but tell me how it works"]
         for text, expected in [(t, True) for t in clear] + \
                               [(t, False) for t in ambiguous]:
             with self.subTest(text=text):
                 self.assertEqual(bool(is_clear_decline_reply(text)), expected)
 
 
+class ClearAffirmativeReplyTableTests(unittest.TestCase):
+    """The shared yes-core behind the launch + competitor-creatives gates."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import is_clear_affirmative_reply
+        cases = [
+            ("yes", True), ("YES", True), ("yes, show me", True),
+            ("go ahead", True), ("sure, do it", True), ("okay", True),
+            ("", False),
+            ("yesterday we discussed eyes", False),   # word boundary
+            ("what budget did we pick?", False),      # question, no go-ahead
+            ("no thanks", False),                     # clear decline wins
+            ("not now, maybe later", False),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(is_clear_affirmative_reply(text), expected)
+
+    def test_creatives_decline_flag_traceability(self):
+        from app.agents.adzump.tools.campaign_data import _field_traceable
+        ctx = {"product_data": dict(RE), "campaign_spec": {}, "_spec_set_at": {}}
+        for user, expected in [("No", True), ("no thanks", True), ("yes please", False)]:
+            with self.subTest(user=user):
+                self.assertEqual(
+                    _field_traceable("competitor_creatives_declined", "true", user, ctx),
+                    expected)
+
+
+class CreativesOfferResolvedTests(unittest.TestCase):
+    """The ONE predicate behind _next_action's offer gate and the review gate."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import (
+            competitor_creatives_offer_resolved,
+        )
+        rival = {"name": "R", "url": "https://r.com"}
+        cases = [
+            ("declined", {"competitor_creatives_declined": "true"}, {}, True),
+            ("analysis itself declined",
+             {"competitive_analysis_declined": "true"}, {}, True),
+            ("fetch completed, zero ads", {},
+             {"_competitor_creatives_fetched": True,
+              "competitor_analysis": {"competitors": [dict(rival)]}}, True),
+            ("creatives attached (pre-marker session)", {},
+             {"competitor_analysis": {"competitors": [
+                 {**rival, "creatives": [{"creativeId": "1"}]}]}}, True),
+            ("moot: analysis ran, no named rivals", {},
+             {"competitor_analysis": {"competitors": [{"url": "https://x.com"}]}},
+             True),
+            ("unresolved: rivals found, no consent yet", {},
+             {"competitor_analysis": {"competitors": [dict(rival)]}}, False),
+            ("unresolved: no analysis yet", {}, {}, False),
+        ]
+        for name, spec, session_ctx, expected in cases:
+            with self.subTest(case=name):
+                self.assertEqual(
+                    competitor_creatives_offer_resolved(spec, session_ctx),
+                    expected)
+
+
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────
+class WantsCompetitorCreativesTests(unittest.TestCase):
+    """The ONE consent predicate behind fetch_competitor_creatives' hard gate
+    and _next_action's said-yes prescription - they must never disagree."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import wants_competitor_creatives
+        cases = [
+            ("Yes", True), ("yes, go ahead", True), ("sure", True),
+            ("show me their ads", True), ("let's see the creatives", True),
+            ("fetch their ads please", True),
+            ("", False),
+            ("no thanks", False),                           # clear decline wins
+            ("what will this cost me?", False),             # question, no consent
+            ("show me the budget options", False),          # verb without ad noun
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(wants_competitor_creatives(text), expected)
+
+
+class PendingCreativesFetchSteerTests(unittest.TestCase):
+    """analyze_competitors results carry the fetch reminder while a consented
+    creative fetch is still owed - live 2026-07-29: the model burned the Yes
+    on a pre-analysis fetch attempt, then never fetched after analyzing."""
+
+    def test_table(self):
+        from types import SimpleNamespace
+        from app.agents.adzump.tools.campaign_data import pending_creatives_fetch_steer
+
+        def ctx(*, platform="Meta", offered=True, fetched=False, last_user="Yes"):
+            session_ctx = {
+                "campaign_spec": {"platform": platform},
+                "_competitor_creatives_offered": offered,
+                "_competitor_creatives_fetched": fetched,
+            }
+            session = SimpleNamespace(messages=[{"role": "user", "content": last_user}])
+            return {"session_context": session_ctx, "_session": session}
+
+        cases = [
+            ("owed: offered + yes + unfetched", ctx(), True),
+            ("google flow", ctx(platform="Google Ads"), False),
+            ("never offered", ctx(offered=False), False),
+            ("already fetched (resolved)", ctx(fetched=True), False),
+            ("reply is not consent", ctx(last_user="30 days"), False),
+        ]
+        for name, context, owed in cases:
+            with self.subTest(case=name):
+                steer = pending_creatives_fetch_steer(context)
+                self.assertEqual(bool(steer), owed)
+                if owed:
+                    self.assertIn("fetch_competitor_creatives", steer)
+
+
 class ClearHelperTests(unittest.TestCase):
     def test_pops_flag_and_provenance(self):
         sc = {"campaign_spec": {"platform": "Google Ads",

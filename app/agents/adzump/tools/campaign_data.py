@@ -83,6 +83,7 @@ ALLOWED_FIELDS = {
     "ig_page",
     "competitive_analysis_declined",
     "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
+    "competitor_creatives_declined",  # Meta-only creative-inspiration offer
 }
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
@@ -101,6 +102,7 @@ _USER_TEXT_FIELDS = {
     "location",
     "competitive_analysis_declined",
     "ig_page_declined",
+    "competitor_creatives_declined",
 }
 
 # v3 · F2 - when a campaign field that OTHERS depend on is *changed*, those
@@ -117,6 +119,7 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
         "ig_page",
         "ig_page_declined",
         "competitive_analysis_declined",
+        "competitor_creatives_declined",
     ),
     "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
     "fb_page": ("ig_page", "ig_page_declined"),
@@ -190,6 +193,66 @@ def is_clear_decline_reply(text: str) -> bool:
     return not any(m in lu for m in _DECLINE_AMBIG_MARKERS)
 
 
+# Word-boundary yes-core shared by the consent GATES on costly/irreversible
+# actions (launch_campaign, fetch_competitor_creatives). A gate, not NLU: the
+# model still interprets language and decides WHEN to call the tool; the
+# harness refuses when the user's most recent message carries no explicit
+# go-ahead. Each gate may OR in its own action verbs (launch/publish, show/see).
+_CLEAR_AFFIRMATIVE_RE = re.compile(
+    r"\b(yes|yeah|yep|sure|ok(?:ay)?|go ahead|do it|proceed|"
+    r"confirm(?:ed)?|approve(?:d)?)\b"
+)
+
+
+def is_clear_affirmative_reply(text: str) -> bool:
+    """True when the user's latest message is an explicit go-ahead (and not a
+    clear decline - "no thanks, yes to the budget change" stays a decline)."""
+    lu = (text or "").strip().lower()
+    if not lu or is_clear_decline_reply(lu):
+        return False
+    return bool(_CLEAR_AFFIRMATIVE_RE.search(lu))
+
+
+# Creative-specific go-ahead verbs, ORed onto the shared yes-core: "show me
+# their ads" is consent even without a bare "yes".
+_CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)\b")
+
+
+def wants_competitor_creatives(text: str) -> bool:
+    """True when the user's latest message clearly asks for competitor ads.
+    The ONE consent predicate shared by fetch_competitor_creatives' hard gate
+    and _next_action's said-yes prescription, so the prescription never tells
+    the model to call a tool whose gate would refuse."""
+    lu = (text or "").strip().lower()
+    if not lu or is_clear_decline_reply(lu):
+        return False
+    return is_clear_affirmative_reply(lu) or bool(_CREATIVE_VERBS_RE.search(lu))
+
+
+def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
+    """Model-only line appended to analyze_competitors results when a consented
+    creative fetch is still owed THIS turn. Live 2026-07-29: the model burned
+    the user's Yes on a pre-analysis fetch attempt (refused: no competitors),
+    ran the analysis as told, then skipped ahead to the duration question -
+    the fetch never happened. The analysis result itself now carries the
+    reminder, so the chain can't be dropped between tools."""
+    session_ctx = context.get("session_context") or {}
+    spec = session_ctx.get("campaign_spec") or {}
+    if Platform.from_value(spec.get("platform")) is not Platform.META:
+        return ""
+    if not session_ctx.get("_competitor_creatives_offered"):
+        return ""
+    if competitor_creatives_offer_resolved(spec, session_ctx):
+        return ""
+    if not wants_competitor_creatives(_last_user_text(context)):
+        return ""
+    return (
+        " The user already said YES to seeing competitor ads - call "
+        "`fetch_competitor_creatives` NOW, in this same turn, before asking "
+        "anything else."
+    )
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")
@@ -238,10 +301,10 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flag - accept "true" when the user declines (chip or typed). Uses
+    # Decline flags - accept "true" when the user declines (chip or typed). Uses
     # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
     # silently rejected "no, skip competitor analysis for now" → re-ask loop).
-    if field == "competitive_analysis_declined":
+    if field in ("competitive_analysis_declined", "competitor_creatives_declined"):
         return v in ("true", "yes", "1") and is_decline(lu)
 
     # v3 · F3 - Instagram-skip flag. Accept "true" when the user opts out of
@@ -512,6 +575,10 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     # "Instagram options were already offered" marker (F3).
     if field in ("platform", "parent_account", "fb_page"):
         session_ctx.pop("_ig_offered", None)
+    # A platform switch voids the creative-inspiration offer too (Meta-only):
+    # re-offering after a Google round-trip is harmless; a stale marker is not.
+    if field == "platform":
+        session_ctx.pop("_competitor_creatives_offered", None)
     return cleared
 
 
@@ -527,6 +594,31 @@ def clear_competitor_decline(session_ctx: dict) -> bool:
         return False
     (session_ctx.get("_spec_set_at") or {}).pop("competitive_analysis_declined", None)
     return True
+
+
+def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
+    """The Meta creative-inspiration offer is settled: don't re-ask, don't block
+    review on it. The ONE predicate shared by `_next_action`'s offer gate and
+    `_review_hint_if_complete`, so the prescription and the completeness gate can
+    never disagree. Resolved when:
+      declined - the user said no to creatives, or to competitive analysis
+                 itself (never re-open a consent already refused);
+      fetched  - a consented fetch ran to completion (the session marker set by
+                 fetch_competitor_creatives), even when it found zero ads - an
+                 empty result must not re-ask forever;
+      moot     - analysis ran and found no named rivals to fetch for."""
+    if "competitor_creatives_declined" in spec:
+        return True
+    if "competitive_analysis_declined" in spec:
+        return True
+    if session_ctx.get("_competitor_creatives_fetched"):
+        return True
+    competitive_raw = session_ctx.get("competitor_analysis")
+    competitors = (competitive_raw or {}).get("competitors") or []
+    if any(c.get("creatives") for c in competitors):
+        return True  # pre-marker sessions where creatives are already attached
+    named = [c for c in competitors if (c.get("name") or "").strip()]
+    return competitive_raw is not None and not named
 
 
 def _apply_field(
@@ -620,6 +712,12 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     if is_meta and not (
         spec.get("fb_page") and (spec.get("ig_page") or spec.get("ig_page_declined"))
     ):
+        return ""
+
+    # Meta: the competitor-creatives offer must be resolved once - fetched,
+    # declined, or moot. The SAME predicate _next_action's offer gate uses, so
+    # "complete" here never disagrees with an offer the prescription still asks.
+    if is_meta and not competitor_creatives_offer_resolved(spec, session_ctx):
         return ""
 
     meta_extra = ""

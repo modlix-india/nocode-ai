@@ -20,7 +20,12 @@ def render_competitors(
     *,
     include_headers: bool = True,
 ) -> None:
-    """Append competitor cards to an existing blocks list."""
+    """Append competitor cards to an existing blocks list.
+
+    One collapsible per rival: the header carries the name, a clickable
+    website link, and an "N ads" badge (once creatives are fetched) so a
+    CLOSED card still shows both; the body holds the detail key-values and,
+    below them, the creatives (metric tiles + horizontal carousel)."""
     competitors = competitive.get("competitors") or []
     valid: list[dict] = [
         c
@@ -35,27 +40,150 @@ def render_competitors(
         blocks.append({"type": "heading", "text": "Competitors"})
 
     for c in valid:
-        blocks.append({"type": "heading", "text": c.get("name") or "?", "level": 2})
-        kv_items: list[dict] = []
-        if c.get("url"):
-            kv_items.append({"key": "Website", "value": str(c["url"])})
-        if c.get("business_type"):
-            kv_items.append({"key": "Format", "value": str(c["business_type"])})
+        detail: list[dict] = []
         if c.get("location"):
-            kv_items.append({"key": "Location", "value": str(c["location"])})
-        if c.get("pricing"):
-            kv_items.append({"key": "Pricing", "value": str(c["pricing"])})
+            detail.append({"key": "Location", "value": str(c["location"])})
         key_usps = c.get("key_usps") or []
         if isinstance(key_usps, list) and key_usps:
-            kv_items.append(
+            detail.append(
                 {"key": "USPs", "value": ", ".join(str(u) for u in key_usps[:3])}
             )
-        if c.get("weakness"):
-            kv_items.append({"key": "Gap", "value": str(c["weakness"])})
-        if kv_items:
-            blocks.append({"type": "key_value", "items": kv_items})
         if c.get("why_competitor"):
-            blocks.append({"type": "text", "content": str(c["why_competitor"])})
+            detail.append({"key": "Why", "value": str(c["why_competitor"])})
+        if c.get("weakness"):
+            detail.append({"key": "Gap", "value": str(c["weakness"])})
+
+        children: list[dict] = []
+        if detail:
+            children.append({"type": "key_value", "items": detail})
+        creatives = c.get("creatives") or []
+        if creatives:
+            render_competitor_creatives(
+                children, creatives,
+                c.get("totalCreatives", 0), c.get("activeCreatives", 0),
+            )
+        if not children:
+            continue
+
+        card: dict = {
+            "type": "collapsible",
+            "summary": c.get("name") or "?",
+            "children": children,
+        }
+        # Header metadata - stays visible when the card is closed.
+        if c.get("url"):
+            card["summary_url"] = str(c["url"])
+        if creatives:
+            total = int(c.get("totalCreatives") or 0)
+            card["badge"] = f"{total} ad" + ("" if total == 1 else "s")
+        blocks.append(card)
+
+
+# How many creative thumbnails to show per competitor. The carousel scrolls
+# horizontally, so this is a payload cap, not a layout constraint.
+_RENDER_PER_COMPETITOR = 12
+
+# (metrics key, card label) - rendered in this order, zeros omitted.
+_CREATIVE_METRICS = [
+    ("impressions", "impressions"),
+    ("views", "views"),
+    ("likes", "likes"),
+    ("comments", "comments"),
+    ("shares", "shares"),
+]
+
+
+def _fmt_count(n) -> str:
+    """1234 -> '1.2K', 2500000 -> '2.5M' - compact card-footer numbers."""
+    n = int(n or 0)
+    for cut, suffix in ((1_000_000, "M"), (1_000, "K")):
+        if n >= cut:
+            return f"{n / cut:.1f}".rstrip("0").rstrip(".") + suffix
+    return str(n)
+
+
+def _creative_badges(c: dict) -> list[dict]:
+    """Active/Paused status + days-running chips for one creative card."""
+    badges = [
+        {"label": "Active", "tone": "active"}
+        if c.get("isActive") else {"label": "Paused", "tone": "paused"}
+    ]
+    days = int(c.get("daysRunning") or 0)
+    if days > 0:
+        badges.append({"label": f"{days}d"})
+    return badges
+
+
+def _creative_meta(c: dict) -> str:
+    """Compact non-zero metrics line ('1.2M impressions · 340 likes').
+    Empty when the vendor reported nothing - the card then shows no meta."""
+    metrics = c.get("metrics") or {}
+    parts = [
+        f"{_fmt_count(metrics[key])} {label}"
+        for key, label in _CREATIVE_METRICS
+        if int(metrics.get(key) or 0) > 0
+    ]
+    return " · ".join(parts[:3])
+
+
+def render_competitor_creatives(
+    children: list[dict],
+    creatives: list[dict],
+    total,
+    active,
+) -> None:
+    """Append one competitor's creatives INSIDE its card: metric tiles
+    (Total/Active/Paused) + a horizontal thumbnail carousel.
+
+    The one builder behind every panel render (`render_competitors`), so an
+    on-demand fetch and a full rebuild draw byte-identical sections. Each card
+    carries status/days badges + a non-zero metrics line. Videos tile via
+    their poster still (flagged ▶) and click through to the PLAYABLE video
+    (rehosted fileUrl, vendor URL fallback); creatives with no usable image
+    are skipped. No-op when nothing is renderable.
+    """
+    cards: list[dict] = []
+    for c in (creatives or []):
+        is_video = c.get("mediaType") == "video"
+        # Prefer rehosted URLs (fileUrl/posterUrl) over the vendor's TTL-flaky
+        # source URLs, whatever the media type.
+        poster = c.get("posterUrl") or c.get("posterSourceUrl")
+        url = poster if is_video \
+            else (c.get("fileUrl") or c.get("posterUrl") or c.get("sourceAssetUrl"))
+        if not url:
+            continue
+        caption = str(c.get("headline") or "").strip()
+        if is_video:
+            caption = f"▶ {caption}".strip()
+        card: dict = {"type": "image", "url": url}
+        if is_video:
+            # Poster in the tile; the click target is the video itself, so
+            # opening it in a new tab plays natively.
+            video_url = c.get("fileUrl") or c.get("sourceAssetUrl")
+            if video_url:
+                card = {"type": "image", "url": video_url, "thumb_url": poster}
+        if caption:
+            card["caption"] = caption[:120]
+        card["badges"] = _creative_badges(c)
+        meta = _creative_meta(c)
+        if meta:
+            card["meta"] = meta
+        cards.append(card)
+        if len(cards) >= _RENDER_PER_COMPETITOR:
+            break
+    if not cards:
+        return
+
+    t, a = int(total or 0), int(active or 0)
+    metric_row: list[dict] = [
+        {"type": "metric", "label": "Total ads", "value": str(t)},
+        {"type": "metric", "label": "Active", "value": str(a)},
+    ]
+    if t:
+        metric_row.append({"type": "metric", "label": "Paused", "value": str(max(t - a, 0))})
+
+    children.append({"type": "row", "children": metric_row})
+    children.append({"type": "carousel", "children": cards})
 
 
 async def emit_craft_panel(
@@ -146,7 +274,9 @@ async def emit_craft_panel(
         blocks.append({"id": "summary_heading", "type": "heading", "text": "Product Summary"})
         blocks.append({"id": "summary_text", "type": "text", "content": baked_summary})
 
-    # 6. Competitors
+    # 6. Competitors - each card nests its own creatives (metric tiles +
+    # carousel) once `fetch_competitor_creatives` has attached them, so a
+    # later rebuild never drops them (the disappearing-creatives bug).
     render_competitors(blocks, competitive)
 
     await stream.emit_craft(
@@ -155,6 +285,40 @@ async def emit_craft_panel(
         blocks,
         append=False,
     )
+
+
+async def rerender_craft(
+    session_ctx: dict, context: dict, product: dict, platform: str
+) -> None:
+    """Re-emit the full craft panel from session state after it changes.
+
+    Does NOT persist - callers must save before calling this. No-op when the
+    stream/craft/url plumbing isn't in place (e.g. unit tests)."""
+    from app.agents.adzump._shared import primary_screenshot_url
+    from app.agents.adzump.services.business_storage import resolve_url
+
+    stream = context.get("event_stream")
+    craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
+    url = resolve_url(session_ctx)
+    if not (stream and craft_id and url):
+        return
+    try:
+        competitive = session_ctx.get("competitor_analysis") or {"competitors": []}
+        await emit_craft_panel(
+            stream,
+            craft_id,
+            url,
+            product,
+            competitive,
+            screenshot_url=primary_screenshot_url(product),
+            baked_summary=(
+                (session_ctx.get("product_profile") or {}).get("summary")
+                or product.get("summary", "")
+            ),
+            platform=platform,
+        )
+    except Exception as e:
+        logger.warning("Craft panel re-render failed: %s", e)
 
 
 async def append_competitor_blocks(

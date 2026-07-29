@@ -78,13 +78,16 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     suggestions = {"options": normalized, "mode": mode}
 
     parent_session = context.get("_session")
-    if parent_session:
-        parent_session.context["_pending_suggestions"] = suggestions
-    else:
-        session_ctx = context.get("session_context")
-        if session_ctx is None:
-            return ToolResult(success=False, error="No session context available.")
-        session_ctx["_pending_suggestions"] = suggestions
+    session_ctx = parent_session.context if parent_session else context.get("session_context")
+    if session_ctx is None:
+        return ToolResult(success=False, error="No session context available.")
+    session_ctx["_pending_suggestions"] = suggestions
+    # Offer-once marker: once the Meta creative-inspiration question is on
+    # screen, _next_action stops prescribing the ask and prescribes reacting to
+    # the reply instead (live bug: a Yes resolved nothing, the verbatim ask
+    # re-fired next turn, and the model copied it instead of fetching).
+    if field == "competitor_creatives_declined":
+        session_ctx["_competitor_creatives_offered"] = True
 
     # Stream the question into the assistant message so it visually precedes
     # the chips. Wrapped in newlines so it separates from any conversational
@@ -98,7 +101,6 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     # match (panel rec); a divergent paraphrase still falls through to emit.
     stream = context.get("event_stream")
     if stream is not None:
-        parent_session = context.get("_session")
         streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
         nq = _norm_q(question)
         already = bool(nq) and nq in _norm_q(streamed)
@@ -185,12 +187,12 @@ present_options = ToolDefinition(
             description=(
                 "Set ONLY for data-collection asks that fill a campaign field "
                 "(platform / duration / budget / competitive_analysis_declined / "
-                "account picks). The harness then stores the user's answer "
-                "directly. For each capturable option give an `answer` (the value "
-                "to store on click; usually == value; \"true\" for a competitor "
-                "decline). Omit `answer` on fall-through options (\"Custom\", "
-                "competitor \"Yes\"). Leave `field` unset for control-flow asks "
-                "(launch confirmation)."
+                "competitor_creatives_declined / account picks). The harness then "
+                "stores the user's answer directly. For each capturable option "
+                "give an `answer` (the value to store on click; usually == value; "
+                "\"true\" for a competitor decline). Omit `answer` on fall-through "
+                "options (\"Custom\", competitor \"Yes\"). Leave `field` unset for "
+                "control-flow asks (launch confirmation)."
             ),
             required=False,
         ),

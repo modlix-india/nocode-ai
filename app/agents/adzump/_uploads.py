@@ -8,13 +8,56 @@ product_data lists) - that's the picker's / T-014's concern.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from hashlib import md5
+from io import BytesIO
 
 from app.agents.adzump._shared import build_ds_headers, host_of
 
 logger = logging.getLogger(__name__)
+
+
+def shrink_image_to_jpeg(
+    image_bytes: bytes,
+    *,
+    long_edge: int,
+    quality: int,
+    exif: bool = False,
+    only_if_larger: bool = False,
+) -> bytes | None:
+    """The one image-downscale rule: decode, optionally exif-transpose, cap the
+    long edge, composite alpha onto white (a bare RGB convert composites onto
+    black and distorts), emit JPEG. Shared by the product thumb pipeline and the
+    essence vision pass so the alpha/resize rules can't drift.
+
+    ``only_if_larger=True`` returns None when the image is already within the
+    cap - the caller keeps the original bytes and skips a pointless re-encode.
+    None also means "could not decode" (SVG, truncated); callers degrade, never
+    crash. Sync + CPU-bound: call via ``asyncio.to_thread`` from async paths."""
+    try:
+        from PIL import Image, ImageOps
+
+        img = Image.open(BytesIO(image_bytes))
+        if only_if_larger and max(img.size) <= long_edge:
+            return None
+        if exif:
+            img = ImageOps.exif_transpose(img)
+        if max(img.size) > long_edge:
+            img.thumbnail((long_edge, long_edge))
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGBA")
+            white = Image.new("RGB", img.size, (255, 255, 255))
+            white.paste(img, mask=img.getchannel("A"))
+            img = white
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=quality)
+        return out.getvalue()
+    except Exception:
+        return None
 
 
 _IMAGE_KIND_FOLDERS = {
@@ -23,6 +66,9 @@ _IMAGE_KIND_FOLDERS = {
     "creative": "creatives",
     "logo_thumb": "logos",
     "creative_thumb": "creatives",
+    # Competitor ad creatives rehosted from adlibrary.com into our file store
+    # so the shared library doesn't depend on adlibrary's (undocumented-TTL) URLs.
+    "competitor_creative": "competitor-creatives",
 }
 
 _REHOST_TIMEOUT_S = 5.0
@@ -69,13 +115,15 @@ async def upload_image(
     kind: str,
     context: dict,
     content_type: str = "application/octet-stream",
+    timeout_s: float = 30.0,
 ) -> str | None:
-    """Upload an image to the gateway files API under the folder for `kind`.
+    """Upload an asset to the gateway files API under the folder for `kind`.
 
     `kind` ∈ {"screenshot", "logo", "creative"}.
     `content_type` is what we declare in the multipart form so the gateway
     stores it correctly - without this the form was hardcoded to image/jpeg
-    and SVG / WebP uploads were getting mis-labeled.
+    and SVG / WebP uploads were getting mis-labeled. `timeout_s` exists for
+    the video rehost path - a multi-MB body doesn't fit the image default.
     """
     folder = _IMAGE_KIND_FOLDERS.get(kind, "screenshots")
     ct = (content_type or "application/octet-stream").split(";", 1)[0].strip()
@@ -97,7 +145,7 @@ async def upload_image(
             "accept": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=timeout_s) as client:
             await client.post(
                 f"{base}/api/files/static/directory/{folder}",
                 headers=file_headers,
@@ -149,6 +197,9 @@ _CTYPE_EXT = {
     "image/x-icon": "ico",
     "image/vnd.microsoft.icon": "ico",
     "image/avif": "avif",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "video/quicktime": "mov",
 }
 
 
@@ -190,31 +241,46 @@ async def upload_and_analyze(
     context: dict,
     hints: dict | None = None,
     name: str = "",
+    perceptual: bool = False,
 ) -> dict | None:
     """Upload bytes + attach render hints. Returns {url, format, **hints} or
-    None on upload failure. Hints (`background`, `fit`) are passed in by the
-    caller - typically derived from the vision LLM that already inspected the
-    thumbnail to pick the asset. Empty/None hints just produce a {url, format}
+    None on upload failure. Hints (`background`, `fit`) are passed in
+    by the caller - typically derived from the vision LLM that already inspected
+    the thumbnail to pick the asset. Empty/None hints just produce a {url, format}
     block; the UI renders that on its neutral default tile.
 
     `name` = semantic name from the LLM that saw the image ('project-logo',
-    'floor-plan-3bhk'); see `_asset_filename` for the scheme."""
+    'floor-plan-3bhk'); see `_asset_filename` for the scheme.
+
+    `perceptual` adds a `contentHash` (md5 of the raw bytes) and a
+    `perceptualHash` (DCT hash of the decoded image) to the result - only the
+    competitor-creative dedup path needs them, and asset display dicts copy
+    every non-url key, so hashes stay out of product/logo render hints."""
     ext = _ext_for_content_type(content_type)
     filename = _asset_filename(context, name, kind, image_bytes, content_type)
     url = await upload_image(image_bytes, filename, kind, context, content_type)
     if not url:
         return None
     clean_hints = {k: v for k, v in (hints or {}).items() if v}
+    result = {"url": url, "format": ext, **clean_hints}
+    if perceptual:
+        # Lazy import: keeps this generic util off the creative_intelligence
+        # package init (no import cycle), and a missing dep just yields "".
+        from app.agents.adzump.creative_intelligence.phash import compute_phash
+        # md5 = Tier-1 dedup + essence-cache key (the filename reuses its first
+        # 6 chars); pHash decodes the image, so keep it off the event loop.
+        result["contentHash"] = md5(image_bytes).hexdigest()
+        result["perceptualHash"] = await asyncio.to_thread(compute_phash, image_bytes)
     logger.info(
-        "upload_and_analyze: kind=%s url=%s format=%s hints=%s bytes=%d",
-        kind, url, ext, clean_hints, len(image_bytes),
+        "upload_and_analyze: kind=%s url=%s format=%s hints=%s bytes=%d perceptual=%s",
+        kind, url, ext, clean_hints, len(image_bytes), perceptual,
     )
-    return {"url": url, "format": ext, **clean_hints}
+    return result
 
 
 async def rehost_image(
     source_url: str, kind: str, context: dict, hints: dict | None = None,
-    name: str = "",
+    name: str = "", perceptual: bool = False,
 ) -> dict | None:
     """Download an image and re-host on our service, attaching render hints.
 
@@ -222,6 +288,12 @@ async def rehost_image(
     `hints` (`background`, `fit`) are passed through to the upload record
     so the UI can render with the right tile contrast; the LLM that picked
     the asset is the source of truth for those, not pixel sampling here.
+
+    `perceptual=True` also returns `contentHash`/`perceptualHash` plus the
+    downloaded `imageBytes`/`contentType` - the competitor-creative ingest
+    hashes AND essence-analyzes the same bytes, and handing them back saves a
+    re-download from the vendor's TTL-flaky URL. Other callers skip the decode
+    and the byte carry.
 
     Returns {url, format, **hints} on success. None on any failure
     (timeout, non-image, oversize, upload failure)."""
@@ -252,4 +324,61 @@ async def rehost_image(
         "rehost_fetched: kind=%s bytes=%d ctype=%s src=%s",
         kind, len(data), ctype, source_url[:200],
     )
-    return await upload_and_analyze(data, ctype, source_url, kind, context, hints, name=name)
+    result = await upload_and_analyze(
+        data, ctype, source_url, kind, context, hints, name=name, perceptual=perceptual,
+    )
+    if result is not None and perceptual:
+        result["imageBytes"] = data
+        result["contentType"] = ctype
+    return result
+
+
+# Video rehost bounds: a competitor ad video is typically 2-15 MB; anything
+# bigger is skipped (the poster still remains) rather than buffered.
+VIDEO_MAX_BYTES = 50 * 1024 * 1024
+_VIDEO_TIMEOUT_S = 120.0
+
+
+async def rehost_video(source_url: str, kind: str, context: dict, *, name: str = "") -> str | None:
+    """Download a video and re-host it on our file store. Returns the hosted
+    URL, or None on any failure/oversize - the caller keeps the poster still
+    either way. Streams the download so an oversize body aborts early instead
+    of buffering past VIDEO_MAX_BYTES."""
+    if not source_url:
+        return None
+    try:
+        import httpx
+
+        chunks: list[bytes] = []
+        total = 0
+        async with httpx.AsyncClient(timeout=_VIDEO_TIMEOUT_S, follow_redirects=True) as client:
+            async with client.stream("GET", source_url) as resp:
+                if resp.status_code != 200:
+                    logger.info("video_rehost_skip: status=%d url=%s",
+                                resp.status_code, source_url[:200])
+                    return None
+                ctype = (resp.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+                if not ctype.startswith("video/"):
+                    ctype = "video/mp4"
+                if int(resp.headers.get("content-length") or 0) > VIDEO_MAX_BYTES:
+                    logger.info("video_rehost_skip: oversize url=%s", source_url[:200])
+                    return None
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    if total > VIDEO_MAX_BYTES:
+                        logger.info("video_rehost_skip: oversize-stream url=%s", source_url[:200])
+                        return None
+                    chunks.append(chunk)
+    except Exception as e:
+        logger.info("video_rehost_fetch_failed: url=%s err=%s", source_url[:200], str(e)[:200])
+        return None
+
+    video_bytes = b"".join(chunks)
+    if not video_bytes:
+        return None
+    filename = _asset_filename(context, name, kind, video_bytes, ctype)
+    url = await upload_image(video_bytes, filename, kind, context, ctype,
+                             timeout_s=_VIDEO_TIMEOUT_S)
+    if url:
+        logger.info("video_rehosted: kind=%s bytes=%d url=%s", kind, total, url)
+    return url
