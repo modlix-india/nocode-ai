@@ -24,7 +24,7 @@ from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
     wants_competitor_creatives,
 )
-from app.agents.adzump.tools.craft import render_competitor_creatives
+from app.agents.adzump.tools.craft import rerender_craft
 
 logger = logging.getLogger(__name__)
 
@@ -55,21 +55,6 @@ def _essence_enrich(context: dict):
         )
 
     return _enrich
-
-
-async def _render_creatives(stream, craft_id: str, title: str, competitor_name: str,
-                            creatives: list[dict], total: int, active: int) -> None:
-    """Append one competitor's creative section (heading + metric tiles + 2-up
-    grid) to the craft panel via the shared builder - the SAME one the full-panel
-    rebuild uses, so the appended grid and the rebuilt grid are byte-identical."""
-    blocks: list[dict] = []
-    render_competitor_creatives(blocks, competitor_name, creatives, total, active)
-    if not blocks:
-        return
-    try:
-        await stream.emit_craft(craft_id, title, blocks, append=True)
-    except Exception as e:
-        logger.warning("creative_craft_append_failed: %s", str(e)[:200])
 
 
 async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult:
@@ -128,17 +113,15 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
     # (see campaign_data.competitor_creatives_offer_resolved).
     session_ctx["_competitor_creatives_fetched"] = True
 
-    # Attach creatives back to each competitor entry (persisted in session) and
-    # render them into the existing craft panel.
-    stream = context.get("event_stream")
-    craft_id = session_ctx.get("craft_id", "")
+    # Attach creatives back to each competitor entry (persisted in session),
+    # then rebuild the panel ONCE - each competitor card nests its own
+    # creatives, so there is no appendable standalone section anymore.
     business = session_ctx.get("product_data") or {}
-    title = business.get("product_name", "")
 
     total_creatives = 0
     enriched = 0
     for comp in competitors:
-        key, name = ci.competitor_identity(comp)
+        key, _name = ci.competitor_identity(comp)
         record = results.get(key)
         if not record:
             continue
@@ -148,11 +131,9 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         comp["activeCreatives"] = dumped["activeCreatives"]
         total_creatives += dumped["totalCreatives"]
         enriched += 1
-        if stream and craft_id:
-            await _render_creatives(
-                stream, craft_id, title, name or key,
-                dumped["creatives"], dumped["totalCreatives"], dumped["activeCreatives"],
-            )
+    if enriched:
+        await rerender_craft(session_ctx, context, business,
+                             spec.get("platform") or "")
 
     summary = (
         f"Fetched creatives for {enriched} competitor"

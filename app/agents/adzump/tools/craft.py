@@ -20,7 +20,12 @@ def render_competitors(
     *,
     include_headers: bool = True,
 ) -> None:
-    """Append competitor cards to an existing blocks list."""
+    """Append competitor cards to an existing blocks list.
+
+    One collapsible per rival: the header carries the name, a clickable
+    website link, and an "N ads" badge (once creatives are fetched) so a
+    CLOSED card still shows both; the body holds the detail key-values and,
+    below them, the creatives (metric tiles + horizontal carousel)."""
     competitors = competitive.get("competitors") or []
     valid: list[dict] = [
         c
@@ -34,25 +39,6 @@ def render_competitors(
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Competitors"})
 
-    # Comparison table - every rival on one scannable surface. Ad counts aren't
-    # known at analysis time (creatives are fetched separately), so the 4th column
-    # is the strategic Gap rather than an ad count.
-    blocks.append({
-        "type": "table",
-        "headers": ["Rival", "Format", "Pricing", "Gap"],
-        "rows": [
-            [
-                c.get("name") or "?",
-                str(c.get("business_type") or "-"),
-                str(c.get("pricing") or "-"),
-                str(c.get("weakness") or "-"),
-            ]
-            for c in valid
-        ],
-    })
-
-    # Per-rival detail tucked behind a collapsible so the table stays uncluttered:
-    # Location / USPs / why-a-competitor / website (Gap already lives in the table).
     for c in valid:
         detail: list[dict] = []
         if c.get("location"):
@@ -64,35 +50,53 @@ def render_competitors(
             )
         if c.get("why_competitor"):
             detail.append({"key": "Why", "value": str(c["why_competitor"])})
-        if c.get("url"):
-            detail.append({"key": "Website", "value": str(c["url"])})
-        if not detail:
+        if c.get("weakness"):
+            detail.append({"key": "Gap", "value": str(c["weakness"])})
+
+        children: list[dict] = []
+        if detail:
+            children.append({"type": "key_value", "items": detail})
+        creatives = c.get("creatives") or []
+        if creatives:
+            render_competitor_creatives(
+                children, creatives,
+                c.get("totalCreatives", 0), c.get("activeCreatives", 0),
+            )
+        if not children:
             continue
-        blocks.append({
+
+        card: dict = {
             "type": "collapsible",
             "summary": c.get("name") or "?",
-            "children": [{"type": "key_value", "items": detail}],
-        })
+            "children": children,
+        }
+        # Header metadata - stays visible when the card is closed.
+        if c.get("url"):
+            card["summary_url"] = str(c["url"])
+        if creatives:
+            total = int(c.get("totalCreatives") or 0)
+            card["badge"] = f"{total} ad" + ("" if total == 1 else "s")
+        blocks.append(card)
 
 
-# How many creative thumbnails to show per competitor in the panel.
-_RENDER_PER_COMPETITOR = 6
+# How many creative thumbnails to show per competitor. The carousel scrolls
+# horizontally, so this is a payload cap, not a layout constraint.
+_RENDER_PER_COMPETITOR = 12
 
 
 def render_competitor_creatives(
-    blocks: list[dict],
-    competitor_name: str,
+    children: list[dict],
     creatives: list[dict],
     total,
     active,
 ) -> None:
-    """Append one competitor's creative section: heading + metric tiles
-    (Total/Active/Paused) + a 2-up image grid.
+    """Append one competitor's creatives INSIDE its card: metric tiles
+    (Total/Active/Paused) + a horizontal thumbnail carousel.
 
-    Shared by the on-demand fetch (`creatives._render_creatives`) and the
-    full-panel rebuild (`emit_craft_panel`) so a rebuild never drops the
-    creatives. Videos tile via their poster still (flagged ▶); creatives with no
-    usable image are skipped. No-op when nothing is renderable.
+    The one builder behind every panel render (`render_competitors`), so an
+    on-demand fetch and a full rebuild draw byte-identical sections. Videos
+    tile via their poster still (flagged ▶); creatives with no usable image
+    are skipped. No-op when nothing is renderable.
     """
     cards: list[dict] = []
     for c in (creatives or []):
@@ -123,12 +127,8 @@ def render_competitor_creatives(
     if t:
         metric_row.append({"type": "metric", "label": "Paused", "value": str(max(t - a, 0))})
 
-    blocks.append({"type": "divider"})
-    blocks.append({"type": "heading", "text": f"{competitor_name} - Ad Creatives", "level": 2})
-    blocks.append({"type": "row", "children": metric_row})
-    # 2-up grid: pairs of image blocks per row (each flexes to ~50% width).
-    for i in range(0, len(cards), 2):
-        blocks.append({"type": "row", "children": cards[i:i + 2]})
+    children.append({"type": "row", "children": metric_row})
+    children.append({"type": "carousel", "children": cards})
 
 
 async def emit_craft_panel(
@@ -219,24 +219,10 @@ async def emit_craft_panel(
         blocks.append({"id": "summary_heading", "type": "heading", "text": "Product Summary"})
         blocks.append({"id": "summary_text", "type": "text", "content": baked_summary})
 
-    # 6. Competitors
+    # 6. Competitors - each card nests its own creatives (metric tiles +
+    # carousel) once `fetch_competitor_creatives` has attached them, so a
+    # later rebuild never drops them (the disappearing-creatives bug).
     render_competitors(blocks, competitive)
-
-    # 7. Competitor creatives - render them HERE, as part of the rebuild, so a
-    # later rebuild never wipes the on-demand-appended grid (the disappearing-
-    # creatives bug). Each competitor carries its own `creatives` + creative counts
-    # once `fetch_competitor_creatives` has run; absent until then.
-    for c in (competitive.get("competitors") or []):
-        creatives = c.get("creatives") or []
-        if not creatives:
-            continue
-        render_competitor_creatives(
-            blocks,
-            c.get("name") or "?",
-            creatives,
-            c.get("totalCreatives", 0),
-            c.get("activeCreatives", 0),
-        )
 
     await stream.emit_craft(
         craft_id,
@@ -244,6 +230,40 @@ async def emit_craft_panel(
         blocks,
         append=False,
     )
+
+
+async def rerender_craft(
+    session_ctx: dict, context: dict, product: dict, platform: str
+) -> None:
+    """Re-emit the full craft panel from session state after it changes.
+
+    Does NOT persist - callers must save before calling this. No-op when the
+    stream/craft/url plumbing isn't in place (e.g. unit tests)."""
+    from app.agents.adzump._shared import primary_screenshot_url
+    from app.agents.adzump.services.business_storage import resolve_url
+
+    stream = context.get("event_stream")
+    craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
+    url = resolve_url(session_ctx)
+    if not (stream and craft_id and url):
+        return
+    try:
+        competitive = session_ctx.get("competitor_analysis") or {"competitors": []}
+        await emit_craft_panel(
+            stream,
+            craft_id,
+            url,
+            product,
+            competitive,
+            screenshot_url=primary_screenshot_url(product),
+            baked_summary=(
+                (session_ctx.get("product_profile") or {}).get("summary")
+                or product.get("summary", "")
+            ),
+            platform=platform,
+        )
+    except Exception as e:
+        logger.warning("Craft panel re-render failed: %s", e)
 
 
 async def append_competitor_blocks(
