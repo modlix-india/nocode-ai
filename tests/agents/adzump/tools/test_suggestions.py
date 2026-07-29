@@ -88,6 +88,26 @@ class PresentOptionsTagTests(unittest.TestCase):
             {"session_context": {}}))
         self.assertIsNone(res.data)
 
+    def test_creatives_offer_sets_offered_marker(self):
+        # regression: live 2026-07-27 re-ask loop - _next_action needs a
+        # code-level "the offer is on screen" signal to stop re-prescribing
+        # the ask after a Yes (which resolves nothing by itself).
+        session_ctx: dict = {}
+        asyncio.run(_present_options(
+            {"question": "Want to see competitor ads?",
+             "options": ["Yes", {"label": "No", "value": "No", "answer": "true"}],
+             "field": "competitor_creatives_declined"},
+            {"session_context": session_ctx}))
+        self.assertTrue(session_ctx["_competitor_creatives_offered"])
+
+    def test_other_fields_do_not_set_offered_marker(self):
+        session_ctx: dict = {}
+        asyncio.run(_present_options(
+            {"question": "How long?", "options": ["30 days", "Custom"],
+             "field": "duration"},
+            {"session_context": session_ctx}))
+        self.assertNotIn("_competitor_creatives_offered", session_ctx)
+
 
 if __name__ == "__main__":
     unittest.main()

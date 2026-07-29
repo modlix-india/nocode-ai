@@ -44,31 +44,72 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
     META = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",
             "parent_account": "P", "account": "A", "fb_page": "F", "ig_page": "I"}
 
-    def test_meta_with_analysis_offers_the_fetch(self):
-        m = _next_action(make_cctx(dict(self.META), product=SAAS,
-                                   competitor_names=["Rival"], attempted=True))
-        offer = [x for x in m if "competitor creatives" in x]
-        self.assertEqual(len(offer), 1)
-        self.assertIn("fetch_competitor_creatives", offer[0])
-        self.assertIn("competitor_creatives_declined", offer[0])
+    def _offer_lines(self, **kw):
+        m = _next_action(make_cctx(dict(self.META), product=SAAS, **kw))
+        return [x for x in m if "competitor creatives" in x]
 
-    def test_meta_without_analysis_prescribes_analysis_then_fetch(self):
-        m = _next_action(make_cctx(dict(self.META), product=SAAS))
-        offer = [x for x in m if "competitor creatives" in x]
-        self.assertEqual(len(offer), 1)
-        self.assertIn("analyze_competitors, THEN", offer[0])
-
-    def test_offer_is_suppressed_when_moot(self):
-        declined = dict(self.META)
-        declined["competitor_creatives_declined"] = "true"
+    def test_unoffered_prescribes_the_ask_once(self):
         cases = [
-            ("declined", make_cctx(declined, product=SAAS,
-                                   competitor_names=["R"], attempted=True)),
-            ("already fetched", make_cctx(dict(self.META), product=SAAS,
-                                          competitor_names=["R"], attempted=True,
-                                          creatives_fetched=True)),
-            ("analysis found zero", make_cctx(dict(self.META), product=SAAS,
-                                              attempted=True)),
+            ("with analysis", dict(competitor_names=["Rival"], attempted=True),
+             "Want to see the ads your competitors are running right now?"),
+            ("without analysis", {},
+             "Want me to analyze your competitors and show the ads they're running?"),
+        ]
+        for name, kw, question in cases:
+            with self.subTest(case=name):
+                offer = self._offer_lines(**kw)
+                self.assertEqual(len(offer), 1)
+                self.assertIn("present_options", offer[0])
+                self.assertIn("competitor_creatives_declined", offer[0])
+                self.assertIn(question, offer[0])
+
+    def test_offered_plus_yes_prescribes_fetch_not_reask(self):
+        # regression: live 2026-07-27 - after a Yes chip click the verbatim ask
+        # re-fired (nothing marks a Yes as resolving the offer) and the model
+        # copied it instead of fetching.
+        cases = [
+            ("yes, competitors known", ["Rival"], True, "Yes",
+             "call `fetch_competitor_creatives`"),
+            ("yes, no analysis yet", [], False, "Yes",
+             "run `analyze_competitors`, THEN `fetch_competitor_creatives`"),
+            ("creative verbs count as yes", ["Rival"], True, "show me their ads",
+             "call `fetch_competitor_creatives`"),
+        ]
+        for name, names, attempted, reply, chain in cases:
+            with self.subTest(case=name):
+                offer = self._offer_lines(competitor_names=names, attempted=attempted,
+                                          creatives_offered=True, last_user=reply)
+                self.assertEqual(len(offer), 1)
+                self.assertIn(chain, offer[0])
+                self.assertIn("said YES", offer[0])
+                # The verbatim question must be gone - it's what the model copied.
+                self.assertNotIn("Want me to analyze your competitors", offer[0])
+                self.assertNotIn("Want to see the ads", offer[0])
+
+    def test_offered_plus_unclear_reply_prescribes_react_not_fresh_ask(self):
+        offer = self._offer_lines(creatives_offered=True,
+                                  last_user="what will this cost me?")
+        self.assertEqual(len(offer), 1)
+        self.assertIn("ALREADY offered", offer[0])
+        self.assertNotIn("Want me to analyze your competitors", offer[0])
+        self.assertNotIn("Want to see the ads", offer[0])
+
+    def test_from_session_reads_offered_marker(self):
+        offered = make_session(spec=dict(self.META),
+                               _competitor_creatives_offered=True)
+        self.assertTrue(
+            CampaignContext.from_session(offered).competitor_creatives_offered)
+        self.assertFalse(
+            CampaignContext.from_session(make_session(spec=dict(self.META)))
+            .competitor_creatives_offered)
+
+    def test_offer_is_suppressed_when_resolved(self):
+        # Declined/fetched/moot resolution is computed by the shared predicate
+        # (covered in test_campaign_data); _next_action only honours the flag.
+        cases = [
+            ("offer resolved", make_cctx(dict(self.META), product=SAAS,
+                                         competitor_names=["R"], attempted=True,
+                                         creatives_resolved=True)),
             ("google flow", make_cctx({**self.META, "platform": "Google Ads"},
                                       product=SAAS, competitor_names=["R"],
                                       attempted=True)),
@@ -136,10 +177,11 @@ class InstagramOptionalTests(unittest.TestCase):
 
     def test_declined_drops_ig_and_reaches_review(self):
         # regression: F3 (Instagram optional). The Meta creatives offer is
-        # answered too - like IG, it's a once-asked step that precedes review.
+        # answered too - like IG, it's a once-asked step that precedes review
+        # (from_session derives creatives_resolved from the declined flag).
         spec = {**self.META_FULL, "ig_page_declined": "true",
                 "competitor_creatives_declined": "true"}
-        m = _next_action(make_cctx(spec, product=SAAS))
+        m = _next_action(make_cctx(spec, product=SAAS, creatives_resolved=True))
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
 
@@ -183,7 +225,13 @@ class TaggedCaptureTests(unittest.TestCase):
 
     def test_table(self):
         decline = elicitation("competitive_analysis_declined")
+        creatives_decline = elicitation("competitor_creatives_declined")
         cases = [  # (name, pe, user, stored, consumed)
+            ("creatives decline chip", creatives_decline, "No",
+             {"competitor_creatives_declined": "true"}, True),
+            ("creatives typed clear decline", creatives_decline, "no thanks, skip it",
+             {"competitor_creatives_declined": "true"}, True),
+            ("creatives yes falls through to model", creatives_decline, "Yes", {}, False),
             ("duration chip", _dur_pe(), "30 days",
              {"duration": "30 days"}, True),
             ("budget preset chip", _budget_pe(), "₹10,000/day",

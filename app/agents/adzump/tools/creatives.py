@@ -15,7 +15,6 @@ don't spend ad-library credits unless creatives are actually wanted.
 from __future__ import annotations
 
 import logging
-import re
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
@@ -23,25 +22,11 @@ from app.agents.adzump import creative_intelligence as ci
 from app.agents.adzump.platform import is_meta
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
-    is_clear_affirmative_reply,
-    is_clear_decline_reply,
+    wants_competitor_creatives,
 )
 from app.agents.adzump.tools.craft import render_competitor_creatives
 
 logger = logging.getLogger(__name__)
-
-# Creative-specific go-ahead verbs, ORed onto the shared yes-core (the
-# launch_campaign gate shape): "show me their ads" is consent even without a
-# bare "yes".
-_CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)\b")
-
-
-def _user_wants_creatives(last_user: str) -> bool:
-    """True when the user's latest message clearly asks for competitor ads."""
-    lu = (last_user or "").strip().lower()
-    if not lu or is_clear_decline_reply(lu):
-        return False
-    return is_clear_affirmative_reply(lu) or bool(_CREATIVE_VERBS_RE.search(lu))
 
 
 def _essence_enrich(context: dict):
@@ -105,7 +90,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
                 "do not offer or fetch them."
             ),
         )
-    if not _user_wants_creatives(_last_user_text(context)):
+    if not wants_competitor_creatives(_last_user_text(context)):
         return ToolResult(
             success=False,
             error=(
@@ -136,6 +121,12 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         logger.warning("fetch_competitor_creatives failed: %s: %s",
                        type(e).__name__, str(e)[:200])
         return ToolResult(success=False, error=f"Creative fetch failed: {e}")
+
+    # The consented fetch ran to completion - the offer is resolved even when it
+    # found nothing (zero ads, no usable domains). An explicit marker, not the
+    # creative lists: an empty result must not re-open the consent every turn
+    # (see campaign_data.competitor_creatives_offer_resolved).
+    session_ctx["_competitor_creatives_fetched"] = True
 
     # Attach creatives back to each competitor entry (persisted in session) and
     # render them into the existing craft panel.

@@ -85,5 +85,23 @@ class CompetitorsGateTests(unittest.TestCase):
         fetch.assert_not_awaited()
 
 
+class FetchMarkerTests(unittest.TestCase):
+    def test_completed_fetch_sets_the_marker_even_with_zero_creatives(self):
+        # The marker (not the creative lists) resolves the consent offer - a
+        # zero-ad result must not re-open the offer every turn.
+        ctx = _ctx()
+        result, _ = _run(ctx)
+        self.assertTrue(result.success)
+        self.assertTrue(ctx["session_context"]["_competitor_creatives_fetched"])
+
+    def test_failed_fetch_leaves_the_marker_unset(self):
+        ctx = _ctx()
+        with mock.patch.object(creatives.ci, "creatives_for_all",
+                               new=mock.AsyncMock(side_effect=RuntimeError("boom"))):
+            result = asyncio.run(creatives._fetch_competitor_creatives({}, ctx))
+        self.assertFalse(result.success)
+        self.assertNotIn("_competitor_creatives_fetched", ctx["session_context"])
+
+
 if __name__ == "__main__":
     unittest.main()

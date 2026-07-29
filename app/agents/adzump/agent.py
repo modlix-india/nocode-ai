@@ -156,8 +156,9 @@ class AdzumpAgent(BaseAgent):
             value = parse_typed_answer(
                 field, last_user, currency_for(session.context)
             )  # (b) typed
-        if value is None and field == "competitive_analysis_declined" \
-                and is_clear_decline_reply(last_user):
+        if value is None and field in (
+            "competitive_analysis_declined", "competitor_creatives_declined"
+        ) and is_clear_decline_reply(last_user):
             value = "true"  # (c) F17 · typed clear decline
         if value is None:
             # v4 · F10 - the user picked the "Custom" escape on a duration/budget

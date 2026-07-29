@@ -213,6 +213,22 @@ def is_clear_affirmative_reply(text: str) -> bool:
     return bool(_CLEAR_AFFIRMATIVE_RE.search(lu))
 
 
+# Creative-specific go-ahead verbs, ORed onto the shared yes-core: "show me
+# their ads" is consent even without a bare "yes".
+_CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)\b")
+
+
+def wants_competitor_creatives(text: str) -> bool:
+    """True when the user's latest message clearly asks for competitor ads.
+    The ONE consent predicate shared by fetch_competitor_creatives' hard gate
+    and _next_action's said-yes prescription, so the prescription never tells
+    the model to call a tool whose gate would refuse."""
+    lu = (text or "").strip().lower()
+    if not lu or is_clear_decline_reply(lu):
+        return False
+    return is_clear_affirmative_reply(lu) or bool(_CREATIVE_VERBS_RE.search(lu))
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")
@@ -542,6 +558,10 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     # "Instagram options were already offered" marker (F3).
     if field in ("platform", "parent_account", "fb_page"):
         session_ctx.pop("_ig_offered", None)
+    # A platform switch voids the creative-inspiration offer too (Meta-only):
+    # re-offering after a Google round-trip is harmless; a stale marker is not.
+    if field == "platform":
+        session_ctx.pop("_competitor_creatives_offered", None)
     return cleared
 
 
@@ -557,6 +577,31 @@ def clear_competitor_decline(session_ctx: dict) -> bool:
         return False
     (session_ctx.get("_spec_set_at") or {}).pop("competitive_analysis_declined", None)
     return True
+
+
+def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
+    """The Meta creative-inspiration offer is settled: don't re-ask, don't block
+    review on it. The ONE predicate shared by `_next_action`'s offer gate and
+    `_review_hint_if_complete`, so the prescription and the completeness gate can
+    never disagree. Resolved when:
+      declined - the user said no to creatives, or to competitive analysis
+                 itself (never re-open a consent already refused);
+      fetched  - a consented fetch ran to completion (the session marker set by
+                 fetch_competitor_creatives), even when it found zero ads - an
+                 empty result must not re-ask forever;
+      moot     - analysis ran and found no named rivals to fetch for."""
+    if "competitor_creatives_declined" in spec:
+        return True
+    if "competitive_analysis_declined" in spec:
+        return True
+    if session_ctx.get("_competitor_creatives_fetched"):
+        return True
+    competitive_raw = session_ctx.get("competitor_analysis")
+    competitors = (competitive_raw or {}).get("competitors") or []
+    if any(c.get("creatives") for c in competitors):
+        return True  # pre-marker sessions where creatives are already attached
+    named = [c for c in competitors if (c.get("name") or "").strip()]
+    return competitive_raw is not None and not named
 
 
 def _apply_field(
@@ -653,16 +698,10 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         return ""
 
     # Meta: the competitor-creatives offer must be resolved once - fetched,
-    # declined, or moot (analysis ran, zero rivals). Mirrors _next_action's
-    # offer conditions exactly, so "complete" here never disagrees with an
-    # offer the prescription is still asking.
-    if is_meta and "competitor_creatives_declined" not in spec:
-        competitive_raw = session_ctx.get("competitor_analysis")
-        competitors = (competitive_raw or {}).get("competitors") or []
-        fetched = any(c.get("creatives") for c in competitors)
-        moot = competitive_raw is not None and not competitors
-        if not (fetched or moot):
-            return ""
+    # declined, or moot. The SAME predicate _next_action's offer gate uses, so
+    # "complete" here never disagrees with an offer the prescription still asks.
+    if is_meta and not competitor_creatives_offer_resolved(spec, session_ctx):
+        return ""
 
     meta_extra = ""
     if is_meta:
