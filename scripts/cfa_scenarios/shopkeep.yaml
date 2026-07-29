@@ -1,0 +1,116 @@
+name: shopkeep
+description: |
+  Inventory + POS app build. Exercises CRUD-app pattern with a different
+  shape than taskmate: 4 storages, 3 retail profiles, transactional server fn
+  (stock decrement), warm-orange theme. Validates the persona's
+  theme-required and KB-write rules a second time.
+
+client_code: SYSTEM
+app_code: shopkeep
+app_user:
+  username: sysadmin@modlix.com
+  password: Pass@1234
+
+setup_actions:
+  - type: delete_app
+    app_code: shopkeep
+  - type: mongo_purge_ui
+    app_code: shopkeep
+  - type: mysql_purge_archived
+    app_code: shopkeep
+  - type: evict_app_cache
+    app_code: shopkeep
+    client_code: SYSTEM
+
+turns:
+  - |-
+    Build me an inventory + POS app called "shopkeep" in the SYSTEM client.
+    First turn only:
+    1. create_app (appCode=shopkeep, name="Shopkeep", appType=APP, accessType=OWN).
+    2. Pick or create a warm-orange retail theme (primary ~#F97316, secondary ~#FB923C) and bind it via update_app.
+    3. Confirm with get_app + get_theme.
+    No pages / storages / functions yet.
+  - |-
+    Now create 4 storages on shopkeep, all with role-gated CRUD auth:
+    - Product: { id, sku (unique), name, description, price (NUMBER, required), cost (NUMBER), stock (INTEGER, default 0), createdAt }
+    - Customer: { id, name (required), phone, email, createdAt }
+    - Sale: { id, customerId (relates Customer), total (NUMBER), tax (NUMBER), createdAt, cashierId (USER) }
+    - SaleLine: { id, saleId (relates Sale), productId (relates Product), quantity (INTEGER, required), unitPrice (NUMBER), lineTotal (NUMBER) }
+    Use sensible defaults: admin all-access; cashier+manager read on Product/Customer, write on Sale/SaleLine.
+  - |-
+    Now create three ROLES for shopkeep (the scenario says "profiles" but the day-to-day
+    sense — see persona "Roles vs Profiles"): Admin, Cashier, Manager. Use `create_role`
+    for each; do NOT pass app_id.
+    Confirm with list_roles.
+  - |-
+    Now turn shopkeep into a real customer-facing app so customers can self-register and login:
+    1. `create_profile(name="ShopkeepCustomer", app_id=<shopkeep security id>)` — this is the profile
+       customers will be auto-assigned on registration. (Use list_security_apps or list_apps to find the id.)
+    2. `configure_app_for_customer_signup(app_code="shopkeep", app_id=<id>, profile_id=<from step 1>)`
+       to wire usageType=B2C, REGISTRATION_TYPE_NO_VERIFICATION, the userProfile/fileAccess/appAccess
+       reg entries — all in one call.
+    Confirm by reading back the security app row + properties.
+  - |-
+    Author two server-side Kirun functions on shopkeep:
+    1. calculateCartTotal(lines): given a list of {productId, quantity}, look up each Product, compute
+       subtotal = sum(quantity * price), tax = subtotal * 0.07, total = subtotal + tax. Return { subtotal, tax, total }.
+    2. recordSale(customerId, lines): transactional — for each line, decrement Product.stock by quantity
+       (fail if stock < quantity); write the Sale + SaleLine rows; return the Sale row.
+    Use kirun DSL. Validate both by executing them with fake input.
+  - |-
+    Build the LOGIN page on shopkeep using the bound theme (no hard-coded colors).
+    Compose per the persona's login recipe — create_page + add_component for the card
+    layout, patch_component_styles for the centered card, set_bindings (bare strings;
+    the tool wraps) for Page.email / Page.password, and save_page_event_function_from_text
+    for handleLogin (UIEngine.Login with userName / identifierType=EMAIL_ID /
+    rememberMe=true; NO Navigate). Finish with update_app to set loginPage + defaultPage.
+  - |-
+    Build the HOME (POS terminal) page on shopkeep.
+    - create_page(name="home")
+    - Header with "Shopkeep POS" title + Logout.
+    - Two-column layout: LEFT = product search field (TextBox) + product list (ArrayRepeater over `product` storage, clickable cards). RIGHT = cart table (ArrayRepeater over a Page-state list of {productId, quantity, unitPrice, lineTotal}) + running total (call calculateCartTotal on cart change), + "Complete sale" button calling recordSale.
+    Stop. ≤15 tool calls.
+  - |-
+    Build the PRODUCTS page on shopkeep.
+    - create_page(name="products")
+    - Header with "Inventory" + back button.
+    - Product table (ArrayRepeater) with columns: SKU, name, price, stock, actions. Actions: edit-price + adjust-stock (visible only when current user has the Manager or Admin role — use visibility expression checking the profile authority).
+    Stop. ≤15 tool calls.
+  - |-
+    Build the SALES HISTORY page on shopkeep.
+    - create_page(name="sales-history")
+    - Header with title + back.
+    - Sale rows table with drill-in to a SaleLine breakdown panel.
+    - After this page is in place, update_app to set properties.defaultPage="home" and properties.loginPage="login".
+    Stop. ≤15 tool calls.
+  - |-
+    Write the per-app KB:
+    1. propose_kb_update(section="overview") with a one-paragraph description of shopkeep, then commit.
+    2. propose_kb_update(section="decisions_log") with ONE entry explaining the theme + ONE entry
+       about the transactional-stock-decrement choice for recordSale. Two commits total here is fine.
+  - |-
+    Give me a final summary: app + theme bound, 4 storages, 3 profiles + role authorities, 2 server functions,
+    4 pages, defaultPage + loginPage set, KB has overview + at least 2 decisions_log entries. One paragraph,
+    no further authoring.
+
+kb_expectations:
+  overview: 1
+  decisions_log: 2
+
+verify:
+  - description: Login as sysadmin and route to home (POS terminal)
+    drive_actions:
+      - { type: goto, page_name: login, app_code: shopkeep }
+      - { type: type, selector: "input[type=email]", text: "sysadmin@modlix.com" }
+      - { type: type, selector: "input[type=password]", text: "Pass@1234" }
+      - { type: click, selector: "button[type=submit]" }
+      - { type: wait_for_url, pattern: "/page/home" }
+      - { type: screenshot, label: pos-terminal }
+  - description: Products page renders inventory
+    drive_actions:
+      - { type: goto, page_name: products, app_code: shopkeep }
+      - { type: screenshot, label: products-list }
+  - description: Sales history page renders
+    drive_actions:
+      - { type: goto, page_name: sales-history, app_code: shopkeep }
+      - { type: screenshot, label: sales-history }

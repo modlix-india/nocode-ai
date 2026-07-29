@@ -1,0 +1,23 @@
+{
+  "_id": "652ea82ff59684426b1492f4",
+  "tasks": {
+    "one": {
+      "key": "one",
+      "order": 0,
+      "type": "SEND_EMAIL",
+      "parameters": {
+        "template": "userRegistration",
+        "connectionName": "mail"
+      }
+    }
+  },
+  "name": "USER_REGISTERED",
+  "message": "From transport : 24jcLIvMHfuDAcrpoFVk0b",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 6,
+  "updatedAt": "2024-06-10 17:54:06",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-17 15:28:47.951000",
+  "createdBy": "<USER>"
+}

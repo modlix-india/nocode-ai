@@ -1,0 +1,803 @@
+{
+  "_id": "671a5216a2880348c0483a7d",
+  "definition": {
+    "namespace": "cxapp",
+    "name": "scheduleCallCMEmailFn",
+    "parameters": {
+      "scheduledCallDetails": {
+        "parameterName": "scheduledCallDetails",
+        "schema": {
+          "ref": "hrms.ScheduleCallDetails",
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 98.99999491373683,
+          "top": 520.000010172526
+        },
+        "parameterMap": {
+          "name": {
+            "1BAXmJxWwPsfJCr22wAFvo": {
+              "key": "1BAXmJxWwPsfJCr22wAFvo",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "details"
+            }
+          },
+          "schema": {
+            "3PDgXtolJPMIOcsLqMMcPG": {
+              "key": "3PDgXtolJPMIOcsLqMMcPG",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "type": "OBJECT"
+              }
+            }
+          }
+        }
+      },
+      "saveCallDetails": {
+        "statementName": "saveCallDetails",
+        "name": "saveCallDetails",
+        "namespace": "hrms",
+        "position": {
+          "left": 66.66666158040357,
+          "top": 797.6666768391926
+        },
+        "parameterMap": {
+          "scheduleCallDetails": {
+            "5XzEgu4BqOMfdBchQ1uo10": {
+              "key": "5XzEgu4BqOMfdBchQ1uo10",
+              "type": "EXPRESSION",
+              "expression": "Arguments.scheduledCallDetails",
+              "order": 1
+            }
+          }
+        }
+      },
+      "read": {
+        "statementName": "read",
+        "name": "Read",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 60.66666158040357,
+          "top": 44.99999491373694
+        },
+        "parameterMap": {
+          "dataObjectId": {
+            "23OIQFkCUhgSIuk5Rhk7oM": {
+              "key": "23OIQFkCUhgSIuk5Rhk7oM",
+              "type": "EXPRESSION",
+              "expression": "Arguments.scheduledCallDetails.projectId",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "ESlPh4lIAGL6u1ZazbZNc": {
+              "key": "ESlPh4lIAGL6u1ZazbZNc",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Project"
+            }
+          },
+          "appCode": {
+            "2lznhy2OjOJKTE6TtEV5r3": {
+              "key": "2lznhy2OjOJKTE6TtEV5r3",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          }
+        }
+      },
+      "settinguserdetails": {
+        "statementName": "settinguserdetails",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 485.66666158040357,
+          "top": 848.6666615804036
+        },
+        "parameterMap": {
+          "name": {
+            "7Ew4cSpPsl7zfwxgDvGUmu": {
+              "key": "7Ew4cSpPsl7zfwxgDvGUmu",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.user"
+            }
+          },
+          "value": {
+            "78JcimtJOUH1yX1hKn5WBS": {
+              "key": "78JcimtJOUH1yX1hKn5WBS",
+              "type": "EXPRESSION",
+              "expression": "Steps.saveCallDetails.output.scheduleCallDetails",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2580.6666615804033,
+          "top": 999.9999949137369
+        },
+        "parameterMap": {
+          "results": {
+            "1jauReq3BbAtk7CfwenO60": {
+              "key": "1jauReq3BbAtk7CfwenO60",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "user",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.details.user"
+                }
+              }
+            },
+            "7C3Xw99xIk4eD8bYKUbk2e": {
+              "key": "7C3Xw99xIk4eD8bYKUbk2e",
+              "type": "VALUE",
+              "expression": "",
+              "order": 2,
+              "value": {
+                "name": "contactManager",
+                "value": {
+                  "isExpression": true,
+                  "value": "Context.details.contactManager"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__sendEmailtocontactmanger__d-o-t__output": true
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 898.1428527832031,
+          "top": 723.1428571428571
+        },
+        "parameterMap": {
+          "storageName": {
+            "3xpB845HyZy23loNG7ONmo": {
+              "key": "3xpB845HyZy23loNG7ONmo",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "BusinessDetails"
+            }
+          },
+          "appCode": {
+            "7v1N45ecB560Dw9tt7moJd": {
+              "key": "7v1N45ecB560Dw9tt7moJd",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__settingcontactmangerdetails__d-o-t__output": true,
+          "Steps__d-o-t__settinguserdetails__d-o-t__output": true
+        }
+      },
+      "settingcontactmangerdetails": {
+        "statementName": "settingcontactmangerdetails",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 460.9999949137368,
+          "top": 504.99999491373694
+        },
+        "parameterMap": {
+          "name": {
+            "Qhg8BaJrICk9oaHRYILVF": {
+              "key": "Qhg8BaJrICk9oaHRYILVF",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.contactManager"
+            }
+          },
+          "value": {
+            "57ZQYl6D9QKl1Id6HwGfaL": {
+              "key": "57ZQYl6D9QKl1Id6HwGfaL",
+              "type": "EXPRESSION",
+              "expression": "Steps.read.output.result.contactManager",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "getAppUrl": {
+        "statementName": "getAppUrl",
+        "name": "GetAppUrl",
+        "namespace": "CoreServices.Security",
+        "position": {
+          "left": 1171.5714351109095,
+          "top": 740.7142857142857
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__readPage__d-o-t__output": true
+        },
+        "parameterMap": {
+          "appCode": {
+            "6PGTNvX5nb77cDVSFYfxoQ": {
+              "key": "6PGTNvX5nb77cDVSFYfxoQ",
+              "type": "VALUE",
+              "order": 1,
+              "value": "cxapp"
+            }
+          }
+        }
+      },
+      "sendEmailtocontactmanger": {
+        "statementName": "sendEmailtocontactmanger",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 2174.999994913737,
+          "top": 1019.9999949137368
+        },
+        "parameterMap": {
+          "templateData": {
+            "2nAo72FTBtExbgxWs4tEzN": {
+              "key": "2nAo72FTBtExbgxWs4tEzN",
+              "type": "EXPRESSION",
+              "expression": "Context.details",
+              "value": {}
+            }
+          },
+          "address": {
+            "5Ww6VjyrzIbTu5Df3RQSkS": {
+              "key": "5Ww6VjyrzIbTu5Df3RQSkS",
+              "type": "EXPRESSION",
+              "order": 1
+            }
+          },
+          "templateName": {
+            "68UXUUDUEZOQzpYaLh3JVr": {
+              "key": "68UXUUDUEZOQzpYaLh3JVr",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "meetingScheduledContactManager"
+            }
+          },
+          "appCode": {
+            "d7L59eMeDyrI2GoS8PJ2j": {
+              "key": "d7L59eMeDyrI2GoS8PJ2j",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "connectionName": {
+            "2etUhXlcDhv9zAWBVgkZB4": {
+              "key": "2etUhXlcDhv9zAWBVgkZB4",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1479.7142922537666,
+          "top": 762.4285714285713
+        },
+        "parameterMap": {
+          "name": {
+            "7pPblXZgbwbNkAm7q9XMW5": {
+              "key": "7pPblXZgbwbNkAm7q9XMW5",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.imageDomain"
+            }
+          },
+          "value": {
+            "2TTiTG5PZJMsP2MPZitl0y": {
+              "key": "2TTiTG5PZJMsP2MPZitl0y",
+              "type": "EXPRESSION",
+              "expression": "'{{Steps.getAppUrl.output.result}}/{{Steps.readPage.output.result.content[0].image}}'",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1793.2857491629463,
+          "top": 769.1428571428571
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        },
+        "parameterMap": {
+          "name": {
+            "1UVuKBOrJSp45fYyscBm3S": {
+              "key": "1UVuKBOrJSp45fYyscBm3S",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.details.fromEmailId"
+            }
+          },
+          "value": {
+            "2pBoQXZoX668OFQgj1RZ8O": {
+              "key": "2pBoQXZoX668OFQgj1RZ8O",
+              "type": "EXPRESSION",
+              "expression": "'{{Steps.readPage.output.result.content[0].defaultEmailId}}'",
+              "order": 1
+            }
+          }
+        }
+      },
+      "sendEmailtocustomer": {
+        "statementName": "sendEmailtocustomer",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 2799.6666615804033,
+          "top": 1803.6666615804036
+        },
+        "parameterMap": {
+          "templateData": {
+            "5wTkrumVtg2xfNIUrmgQXA": {
+              "key": "5wTkrumVtg2xfNIUrmgQXA",
+              "type": "EXPRESSION",
+              "expression": "Context.details",
+              "value": {}
+            }
+          },
+          "address": {
+            "M8J4t8liSYmrr6USbXlK0": {
+              "key": "M8J4t8liSYmrr6USbXlK0",
+              "type": "EXPRESSION",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "2Th3KBdxVUOAPOIqeilses": {
+              "key": "2Th3KBdxVUOAPOIqeilses",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "appCode": {
+            "4JiJbThbmIiiMSkOuQg27A": {
+              "key": "4JiJbThbmIiiMSkOuQg27A",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "templateName": {
+            "3nMQgDO7cZulqirxstVBa9": {
+              "key": "3nMQgDO7cZulqirxstVBa9",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "meetingScheduledCustomer"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if3__d-o-t__true": true
+        }
+      },
+      "create_Copy_1": {
+        "statementName": "create_Copy_1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1212.666666666666,
+          "top": 1866.0000152587882
+        },
+        "parameterMap": {
+          "name": {
+            "on42FJ2GjrwNT4Url39Ih": {
+              "key": "on42FJ2GjrwNT4Url39Ih",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "emailTemplateData"
+            }
+          },
+          "schema": {
+            "4kpBLP1Ok0YYJciXkmh9eX": {
+              "key": "4kpBLP1Ok0YYJciXkmh9eX",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "Type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 906.6666666666662,
+          "top": 1864.0000152587882
+        },
+        "parameterMap": {
+          "name": {
+            "FLBjwUlqUlD8dSBsfyOhg": {
+              "key": "FLBjwUlqUlD8dSBsfyOhg",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "allowToSendEmail"
+            }
+          },
+          "schema": {
+            "3XBcKWncTXTvOvyWdt62jX": {
+              "key": "3XBcKWncTXTvOvyWdt62jX",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "Type": "BOOLEAN"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set1__d-o-t__output": true
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1830.666666666666,
+          "top": 2960.000015258788
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1629.666666666666,
+          "top": 2584.000015258788
+        },
+        "parameterMap": {
+          "condition": {
+            "7wRiSFBau1rCiAxaJZGJHH": {
+              "key": "7wRiSFBau1rCiAxaJZGJHH",
+              "type": "EXPRESSION",
+              "expression": "Context.emailTemplateData.isAllEmailsEnabled = true",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set_Copy_1__d-o-t__output": true
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2455.666666666666,
+          "top": 2622.000015258788
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if2__d-o-t__true": true
+        }
+      },
+      "set3_Copy_1": {
+        "statementName": "set3_Copy_1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2263.666666666666,
+          "top": 2966.000015258788
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": false
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if2__d-o-t__false": true
+        }
+      },
+      "set1_Copy_1": {
+        "statementName": "set1_Copy_1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2283.666666666666,
+          "top": 2156.000015258788
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": true
+        }
+      },
+      "if3": {
+        "statementName": "if3",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 2426.666666666666,
+          "top": 1864.0000152587882
+        },
+        "parameterMap": {
+          "condition": {
+            "tFljBOTzPYilv55XSfGtH": {
+              "key": "tFljBOTzPYilv55XSfGtH",
+              "type": "EXPRESSION",
+              "expression": "Context.allowToSendEmail = true",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__output": true
+        }
+      },
+      "readEmailtemplateconf": {
+        "statementName": "readEmailtemplateconf",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1536.666666666666,
+          "top": 1851.0000152587882
+        },
+        "parameterMap": {
+          "appCode": {
+            "1tnDKOnEn9CfcwYnoFav0h": {
+              "key": "1tnDKOnEn9CfcwYnoFav0h",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "storageName": {
+            "tpM5nuePg6ZAcAwj223oS": {
+              "key": "tpM5nuePg6ZAcAwj223oS",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "emailAccessControl"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create_Copy_1__d-o-t__output": true
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 2046.666666666666,
+          "top": 1864.0000152587882
+        },
+        "parameterMap": {
+          "condition": {
+            "2ZxrlmvttzlhccmzzYJNmw": {
+              "key": "2ZxrlmvttzlhccmzzYJNmw",
+              "type": "EXPRESSION",
+              "expression": "Steps.readEmailtemplateconf.output.result.content.length = 0",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set_Copy_1": {
+        "statementName": "set_Copy_1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1807.666666666666,
+          "top": 2242.000015258788
+        },
+        "parameterMap": {
+          "name": {
+            "L2VnuArdpp3kaPrGnIDBz": {
+              "key": "L2VnuArdpp3kaPrGnIDBz",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.emailTemplateData"
+            }
+          },
+          "value": {
+            "59B86ycRTbRnKj1DNmxZyE": {
+              "key": "59B86ycRTbRnKj1DNmxZyE",
+              "type": "EXPRESSION",
+              "expression": "Steps.readEmailtemplateconf.output.result.content[0]",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__false": true
+        }
+      },
+      "if2": {
+        "statementName": "if2",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 2009.666666666666,
+          "top": 2584.000015258788
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        },
+        "parameterMap": {
+          "condition": {
+            "6beg5gJWMtKqyFoX9tlAXz": {
+              "key": "6beg5gJWMtKqyFoX9tlAXz",
+              "type": "EXPRESSION",
+              "expression": "Context.emailTemplateData.data.meetingScheduledCustomer.isEmailEnabled = true",
+              "order": 1
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "contactManger": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          },
+          "user": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1,
+            "ref": "hrms.ScheduleCallDetails"
+          }
+        }
+      }
+    }
+  },
+  "name": "cxapp.scheduleCallCMEmailFn",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 79,
+  "updatedAt": "2026-04-09 04:28:28.926000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-10-24 13:56:38.433000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,142 @@
+{
+  "_id": "666a734d7141c655f00c1ad6",
+  "definition": {
+    "namespace": "sign",
+    "name": "getRequestStatus",
+    "parameters": {
+      "request_id": {
+        "parameterName": "request_id",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 458,
+          "top": 310
+        },
+        "parameterMap": {
+          "results": {
+            "5J4Dn3wmxwcGX9apDDhprc": {
+              "key": "5J4Dn3wmxwcGX9apDDhprc",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.getRequest.error.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 405,
+          "top": 80.25
+        },
+        "parameterMap": {
+          "results": {
+            "15CPNTe1vlPeFZ3oiT48c1": {
+              "key": "15CPNTe1vlPeFZ3oiT48c1",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "result",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.getRequest.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "getRequest": {
+        "statementName": "getRequest",
+        "name": "GetRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 49,
+          "top": 43
+        },
+        "parameterMap": {
+          "connectionName": {
+            "7tjT2O3dwaZfFsIzAqdgeB": {
+              "key": "7tjT2O3dwaZfFsIzAqdgeB",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "ZohoRestSign"
+            }
+          },
+          "appCode": {
+            "5tpsQkzE1SIicjagIBnEVF": {
+              "key": "5tpsQkzE1SIicjagIBnEVF",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "url": {
+            "5qaJsGSRJ1MtxSMF4ns8nx": {
+              "key": "5qaJsGSRJ1MtxSMF4ns8nx",
+              "type": "EXPRESSION",
+              "expression": "'/api/v1/requests/{{Arguments.request_id}}'",
+              "order": 1,
+              "value": ""
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "result": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "sign.getRequestStatus",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 48,
+  "updatedAt": "2026-04-09 04:29:05.856000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-13 04:19:25.659000",
+  "createdBy": "<USER>"
+}

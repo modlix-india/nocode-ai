@@ -1,0 +1,128 @@
+name: clone_linear
+description: |
+  Clone the linear.app marketing site. Source screenshots are attached as image
+  content blocks (you SEE them directly); pair that with extract_site_assets for
+  real imagery and compare_to_source after each section. Animations live in a
+  create_style global doc. No HTML parsing.
+
+client_code: SYSTEM
+app_code: clonelinear
+app_user:
+  username: sysadmin@modlix.com
+  password: Pass@1234
+
+clone_target:
+  url: https://linear.app
+  page_name: home
+  scroll_positions: [0.0, 0.5, 1.0]
+  viewport_width: 1440
+  severity_budget:
+    high: 0
+    medium: 4
+
+setup_actions:
+  - type: delete_app
+    app_code: clonelinear
+  - type: mongo_purge_ui
+    app_code: clonelinear
+  - type: mysql_purge_archived
+    app_code: clonelinear
+  - type: evict_app_cache
+    app_code: clonelinear
+    client_code: SYSTEM
+
+turns:
+  - |-
+    Bootstrap a new app to host a linear.app clone:
+    1. create_app(app_code="clonelinear", app_type="SITE", default_page="home"). Note: appCode must be alphabet-only.
+    2. Create a theme that matches linear.app's modern dark-leaning palette (deep gray/blue background,
+       accent purple #5e6ad2, white text). Bind it via update_app.
+    Stop after the app + theme are in place. No pages yet.
+  - |-
+    Capture the source AND harvest real assets:
+    1. `screenshot_external_url(url="https://linear.app", scroll_positions=[0.0, 0.5, 1.0])` —
+       the three PNGs come back ATTACHED as image content blocks. LOOK at them; they are your
+       source of truth. Note the source_handle returned per shot — you will pass them to
+       compare_to_source after each section build.
+    2. `extract_site_assets(url="https://linear.app", max_assets=80)` — downloads every <img>,
+       inline <svg>, and CSS background-image from linear.app, uploads them into this app's
+       static asset space, and returns a manifest mapping original URL → modlix_url. Bind
+       these modlix_url values into Image components when authoring — never invent placeholder
+       URLs and never use generate_image for content imagery during a clone.
+    3. propose_kb_update(section="decisions_log", body="Captured linear.app source +
+       harvested N assets; will author section-by-section with compare_to_source after each.")
+       and commit.
+  - |-
+    Author the HOME page on clonelinear section-by-section, top-to-bottom in visual order.
+
+    SECTION A — hero (gradient + animated headline rotator):
+    - create_page(name="home")
+    - Add the hero Grid with the gradient background. Use theme variables (no hard-coded hex).
+    - Add the headline as a TextLabel with COPY verbatim from the source screenshot. Use the
+      hero image from the extracted assets manifest if one exists.
+    - The headline word-rotator @keyframes goes into `create_style(name="cloneAnimations",
+      css="@keyframes wordRotate { ... }, @keyframes heroGradient { ... }")`. Reference the
+      animation via styleProperties.animation on the relevant component.
+    - Add the CTA button row beneath.
+    - VERIFY: `compare_to_source(page_name="home", source_handle="<top shot handle>")`. Read the
+      returned diff list. For every entry with severity=high, apply ONE targeted fix
+      (patch_component_styles / update_component_props) and re-compare. Do not move to the next
+      section until severity=high count is zero for this section.
+    End the turn here. ≤20 tool calls.
+  - |-
+    Continue authoring HOME — middle sections.
+
+    SECTION B — feature cards row (with sibling parity — every card has icon + title + description):
+    - Add a feature-cards Grid below the hero with the same number of cards you see in the source
+      screenshot. Use COPY verbatim and images from the manifest.
+    - Update the global style doc with `@keyframes fadeInUp` and reference from each card.
+    - VERIFY: `compare_to_source(page_name="home", source_handle="<middle shot handle>")`. Fix all
+      severity=high diffs in this section before moving on.
+
+    SECTION C — animated brand-logo strip:
+    - Add the horizontal logo strip. Use the actual partner logos from the extract_site_assets
+      manifest (look for `role=content` SVGs with small width/height). Populate every visible
+      slot — do not leave gaps.
+    - Add `@keyframes logoScroll` and apply.
+    - VERIFY: `compare_to_source(page_name="home", source_handle="<middle shot handle>")`.
+  - |-
+    Finish HOME — footer + final compare.
+
+    SECTION D — footer (LAST in visual order; it is the bottom of the page, not the second child of root):
+    - Add the multi-column footer: product / company / resources / legal columns + social links.
+    - Use COPY verbatim. Use theme variables for spacing and colors.
+    - VERIFY: `compare_to_source(page_name="home", source_handle="<bottom shot handle>")`.
+
+    Final polish:
+    - If `compare_to_source` still reports severity=high diffs, apply targeted patch_component_styles
+      / move_component fixes. Re-compare until all severity=high diffs are gone or you have run
+      5 compare rounds on this page.
+    - update_app to set defaultPage=home if not already set.
+  - |-
+    Write the per-app KB:
+    1. propose_kb_update(section="overview") with a one-paragraph description of the clonelinear app, then commit.
+    2. propose_kb_update(section="decisions_log") with ONE entry noting (a) the animations approach (global style doc keyframes + per-component animation references), and (b) any CSS approximation you had to make (e.g., particle WebGL replaced with CSS gradient animation). Commit.
+  - |-
+    Final summary, no more authoring:
+    - Confirm the home page exists with hero + feature cards + logo strip + footer sections.
+    - Confirm the global style doc exists with at least 3 @keyframes definitions.
+    - Confirm theme is bound.
+    - Confirm KB has overview + decisions_log entries.
+
+kb_expectations:
+  overview: 1
+  decisions_log: 2
+
+verify:
+  - description: Page loads + hero gradient renders
+    drive_actions:
+      - { type: goto, page_name: home, app_code: clonelinear }
+      - { type: screenshot, label: hero }
+  - description: Mid-page scroll-triggered cards render
+    drive_actions:
+      - { type: scroll, by: 800 }
+      - { type: screenshot, label: middle }
+  - description: Footer at bottom
+    drive_actions:
+      - { type: scroll, to: bottom }
+      - { type: screenshot, label: footer }

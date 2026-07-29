@@ -1,0 +1,4258 @@
+{
+  "_id": "6698af4c8c4a5b3e77a3224b",
+  "properties": {
+    "onLoadEvent": "3bcipPPWhJlp3C7Khb1dA5"
+  },
+  "eventFunctions": {
+    "3bcipPPWhJlp3C7Khb1dA5": {
+      "name": "On_load",
+      "steps": {
+        "setStore1_Copy_7": {
+          "statementName": "setStore1_Copy_7",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 174.4000015258789,
+            "top": 241.96249389648438
+          },
+          "parameterMap": {
+            "path": {
+              "2LqT8sXykYsWm906Yq1Uji": {
+                "key": "2LqT8sXykYsWm906Yq1Uji",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.id"
+              }
+            },
+            "value": {
+              "6AsD0VXtgnxrkF65PawDVE": {
+                "key": "6AsD0VXtgnxrkF65PawDVE",
+                "type": "VALUE",
+                "expression": "Parent.question",
+                "order": 1,
+                "value": "undefined"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 466.71428571428567,
+            "top": 79.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "4WX11IOXLGfwwwy5n6jLJd": {
+                "key": "4WX11IOXLGfwwwy5n6jLJd",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.concept"
+              }
+            },
+            "value": {
+              "3V7MrEnft0Uz4IdLVyZcnh": {
+                "key": "3V7MrEnft0Uz4IdLVyZcnh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "What is Fincity Investment?",
+                    "Answer": "Fincity Investment is an online technology platform that provides users access to a curated set of real estate investment options and enables them to invest in any of the investments basis their selection."
+                  },
+                  {
+                    "Question": "What is fractional ownership or fractional investing?",
+                    "Answer": "Fractional ownership is when multiple investors come together to invest capital in an asset (which could be real estate, airplane, art etc.). It provides investors a percentage ownership in an asset, which gives proportionate rights in the income and capital value appreciation of the asset. It is a simple way to own an expensive asset, by splitting the ownership. Fractional ownership of real estate splits the ownership of high value property into smaller fractions to provide alternative investment avenues to retail investors along with proportionate ownership rights in the asset. It\u2019s a traditional concept and the simplest example of this is owning shares in a company, through which you have a fractional ownership in the company."
+                  },
+                  {
+                    "Question": "Are these investments through Fractional Ownership in Commercial Property secured?",
+                    "Answer": "Yes, all the investments are fully secured by underlying real estate. Such investments offer a fractional ownership in the underlying real estate. The real estate can be office, retail, warehousing, data center or residential assets. Such assets could either be operational (stabilized through a long-term lease) or under construction. Comprehensive details are available under the respective opportunity sections."
+                  },
+                  {
+                    "Question": "Are all fractional commercial real estate investment opportunities backed by real estate assets?",
+                    "Answer": "Yes. All fractional commercial real estate investment opportunities showcased on the platform, have real estate as the underlying asset through ownership. We believe that real estate is one of the most tangible asset class offering adequate security."
+                  },
+                  {
+                    "Question": "How is fractional investing on the platform different than REITs?",
+                    "Answer": "REITs, or real estate investment trusts is a trust that owns various income producing real estate. The REIT Manager has discretion to manage these assets on behalf of the REIT unitholders or investors. As per regulations, it is required to invest majority of the capital in completed assets and distribute at least 90% of the distributable income from these assets. The key differences between REIT and fractional investing are: 1. Fractional investing involves investing in a particular asset in a particular micro-market with a particular risk profile. On the other hand, REITs are diversified across a pool of assets across geographies. A simple way to understand this difference is investing in a particular stock versus investing in a sector specific mutual fund. Investors have their own views on each type basis individual specific risk appetite and invest across both basis their risk profiles. 2. In fractional investing, you can choose your investments across assets or geography. In REITs, the REIT manager has discretion to manage the investments through buying or selling assets. This makes fractional investing more customizable in terms of portfolio creation and diversification across asset classes. At present REITs in India are more asset class specific. 3. REITs, listed on stock exchanges, are more volatile in terms of the price movements. On the other hand, fractional investing is less volatile when compared to REITs. REITs have a lower investment amount and hence are more liquid as they trade on the stock exchanges. 4. Fractional investments are more illiquid, but our platform aggregates demand to facilitate secondary transfers of fractional investments. 5. At present, REITs are more asset class specific and only office REITs are available. On the other hand, fractional investing allows investors to customize their real estate portfolio from a more diverse pool of investments across asset class like office, warehousing and other emerging asset classes."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 781.7142857142857,
+            "top": 95.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "2Sq1BYpSic4mYrUXTIhF0s": {
+                "key": "2Sq1BYpSic4mYrUXTIhF0s",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.investmentStructure"
+              }
+            },
+            "value": {
+              "1x2N6wNS9yaxmSjyDpzuK0": {
+                "key": "1x2N6wNS9yaxmSjyDpzuK0",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "Who can invest?",
+                    "Answer": "Resident Indian, Non Resident Indian (NRI) and Overseas Citizen of India (OCI)."
+                  },
+                  {
+                    "Question": "How are the investments structured?",
+                    "Answer": "Each investment is held in a special purpose vehicle (SPV), which will be a private limited company. In a private limited company, the Investors are issued shares and debentures of the SPV holding the asset, which represents their investment in the SPV."
+                  },
+                  {
+                    "Question": "Is the property registered in my name?",
+                    "Answer": "No, the property or asset is registered in a separate SPV setup specifically for the purpose of acquisition and holding the particular asset."
+                  },
+                  {
+                    "Question": "How do I obtain a title interest (ownership) of the property?",
+                    "Answer": "As mentioned above, the title to the property is in the name of the SPV. In terms of your fractional ownership, you will be issued ownership in the specific SPV holding the property, proportionate to the amount invested. The proportionate ownership in the SPV is represented in the form of securities issued to you. The above structure enables a user to get fractional ownership of the property."
+                  },
+                  {
+                    "Question": "Does the structure of holding the property in a SPV in any way legally impact my interest in the property?",
+                    "Answer": "No. Many companies and individuals have historically and continue to hold properties through property specific SPVs. Investment in a property through the SPV route for property ownership provides the same interest in the underlying property as direct ownership of property and does not legally impact any title interest in the property."
+                  },
+                  {
+                    "Question": "What are the instruments through which my investment will be made?",
+                    "Answer": "Investment is made through subscription of shares and debentures in the SPV in compliance with applicable laws."
+                  },
+                  {
+                    "Question": "What are the documents that are executed by the investor?",
+                    "Answer": "Term sheet, subscription agreements and other related agreements will be executed."
+                  },
+                  {
+                    "Question": "Is there any liability on the investor as a shareholder, for any act of the Pvt Ltd company?",
+                    "Answer": "No."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore_Copy_2": {
+          "statementName": "setStore_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1092.7142857142858,
+            "top": 95.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "3KqO3ZZlsmuDbXCCLIs22P": {
+                "key": "3KqO3ZZlsmuDbXCCLIs22P",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.investmentProcess"
+              }
+            },
+            "value": {
+              "4a7vmMpMIp5toba1FtSLZe": {
+                "key": "4a7vmMpMIp5toba1FtSLZe",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "Is the entire investment process digital?",
+                    "Answer": "Yes. Fincity Investment strives to make property investment as simple, seamless and transparent as investing in stocks. Hence the entire investment process for the investor is paperless right from KYC compliances, accessing property diligence reports and execution of transaction documents. We ensure that all investment information and diligence reports are made available upfront to enable your investment decision. Hence the investment process is completed in a few days rather than the traditional real estate investment process which takes a few months."
+                  },
+                  {
+                    "Question": "How much is the token amount for the investment?",
+                    "Answer": "The token amount is 10% of your total investment amount."
+                  },
+                  {
+                    "Question": "How are my funds secured while the investment is under offer/subscription?",
+                    "Answer": "Until the investment opportunity is fully subscribed, your funds are kept in a separate escrow account and will be held in trust. These funds are completely ringfenced from the operations of the Company and are safely kept in a legal escrow operated by a Trustee."
+                  },
+                  {
+                    "Question": "When does the registration happen?",
+                    "Answer": "The registration of the property in the SPV is done as soon as the investment opportunity is fully subscribed and will be completed within the window period starting from the day the opportunity goes live for investment. The window period is mentioned under each opportunity and is around 60-90 days."
+                  },
+                  {
+                    "Question": "Will I have to go for the property registration, in case of fractional ownership?",
+                    "Answer": "No, as the property is being registered in an SPV, you will not be required to go for the registration. Authorised representatives of the SPV will complete the property registration compliances."
+                  },
+                  {
+                    "Question": "What happens if the opportunity is not fully subscribed?",
+                    "Answer": "In such a case, we refund the entire investment amount made till date back to the investor."
+                  },
+                  {
+                    "Question": "Is my payment refundable?",
+                    "Answer": "No. Any payment made towards an investment opportunity, which gets fully subscribed, is non-refundable."
+                  },
+                  {
+                    "Question": "Can I take a loan to finance a portion of my investment amount?",
+                    "Answer": "As of now there are no loans that can be taken to finance a portion of the investment amount."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore_Copy_3": {
+          "statementName": "setStore_Copy_3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1414.7142857142858,
+            "top": 104.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "6RR7HNk8QF8ZLk6wD5Zh4E": {
+                "key": "6RR7HNk8QF8ZLk6wD5Zh4E",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.investmentReturns"
+              }
+            },
+            "value": {
+              "53py8n3NfxiXNNa2ELxOUE": {
+                "key": "53py8n3NfxiXNNa2ELxOUE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "Are the returns guaranteed? What are the risks involved?",
+                    "Answer": "No. The returns are not guaranteed. All returns are projections and are subject to changes in macroeconomic conditions, tenant default, vacancy, leasing risk, changing real estate market conditions, development risk, change in real estate regulations, title/litigation risk, approval risk, cash flow risk, liquidity risk, default risk etc. We advise investors to undertake their independent assessment (or through their counsels) on the attractiveness of any opportunity, vetting of diligence reports and independent assessment of projected returns. Fincity Investment will never recommend/advise/solicit any investment. The company is merely providing a platform to showcase curated real estate investment opportunities."
+                  },
+                  {
+                    "Question": "Are the returns shown post-tax?",
+                    "Answer": "No. All returns, including yield and returns, are shown on pre-tax and on gross basis."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore_Copy_4": {
+          "statementName": "setStore_Copy_4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 532.7142857142857,
+            "top": 350.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "59GLj9Rv1wVPsCOucsC8cq": {
+                "key": "59GLj9Rv1wVPsCOucsC8cq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.assetPortfolio"
+              }
+            },
+            "value": {
+              "3PJdadABdcAZzuiXXicK49": {
+                "key": "3PJdadABdcAZzuiXXicK49",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "What is the scope of property services offered by the company to the investors, in case of fractional ownership?",
+                    "Answer": "The company or its affiliates provide certain property services in relation to real estate asset held in the SPV. The scope of the property services is summarized below:\n1. Co-ordinating the property management (through 3rd party property managers) including management of lease, refurbishment (if required) and other activities that may be required for upkeep of property (like property tax payments). Actual costs for point 1 and towards brokerage, refurbishment and property tax will be charged to the SPV.\n2. Negotiations and management efforts with existing lessee.\n3. SPV compliances, audits and tax filings. (not including applicable taxes in SPV)\n4. Co-ordination efforts for rent transfers from lessees to SPV and then to investors."
+                  },
+                  {
+                    "Question": "What does the property services fee of 1% for fractional ownership charged on the Capital invested cover?",
+                    "Answer": "The property services fee charged covers cost for SPV\u2019s compliances such as tax filings and audit expenses, rent transfers, use of the technology platform for portfolio management and property updates, management costs for coordination efforts with existing lessees. The property services fee is only being charged for commercial property investment opportunities listed on the platform."
+                  },
+                  {
+                    "Question": "What is the scope of the Portfolio management by the company?",
+                    "Answer": "Each user has access to a digital portfolio dashboard attached to their user account which provides information regarding the performance of their investments including distributions, returns details and property updates. Investor voting required for key decisions regarding the property is also done through the Portfolio section."
+                  },
+                  {
+                    "Question": "What happens if a lessee moves out and property becomes vacant?",
+                    "Answer": "In such an event, there would be no rental income/ distributions to the investors during the period the property is vacant. The company\u2019s asset management team works with occupiers, brokers and operators to find a suitable tenant for the property."
+                  },
+                  {
+                    "Question": "What is the concept of voting by investors and how does the process run?",
+                    "Answer": "Certain key decisions to be undertaken by the SPV like re-leasing, property sale or property refurbishments are carried out based on decisions taken through voting by the investors in the particular investment. A decision is taken basis a simple majority concept, unless a higher threshold is prescribed under applicable laws."
+                  },
+                  {
+                    "Question": "How do I exit my investment, in case of fractional ownership?",
+                    "Answer": "You can list your investment for resale through the secondary market on the platform where we find suitable bids against your offer for sale. Alternately in the case of fractional ownership, after a certain number of years, the investors can vote to sell the SPV or the asset to another financial investor or operator."
+                  },
+                  {
+                    "Question": "Can I sell my investment to a 3rd party through my own network?",
+                    "Answer": "Yes. In such an event, the user may contact the relationship manager to help facilitate the transfer."
+                  },
+                  {
+                    "Question": "What happens if the platform ceases to operate?",
+                    "Answer": "The assets are held in specific SPVs which are separate distinct entities from the company or the tech platform. There would be no impact to the specific SPVs if the platform ceases to operate. In an event that the platform ceases to operate, the Company would cease to provide asset management services. In such a scenario, the Company will assist the investors in engaging a third-party entity to provide such services to ensure continuity and sustained operations of the SPVs."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore_Copy_5": {
+          "statementName": "setStore_Copy_5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 833.7142857142857,
+            "top": 366.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "58a2QIBk3UhJtpmjCvbLDb": {
+                "key": "58a2QIBk3UhJtpmjCvbLDb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.servicesFees"
+              }
+            },
+            "value": {
+              "1AWY1Gw9g4CgiUMn8MS96N": {
+                "key": "1AWY1Gw9g4CgiUMn8MS96N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "What are the fees that are payable by investors?",
+                    "Answer": "We charge the following fees:\n1. One time Acquisition fee of up to 3% on Capital invested at the time of investment. This forms a part of the property acquisition cost. This is towards the costs for deal origination, research, brokerage fees and deals screening. Only a few deals pass through our stringent underwriting standards, which are eventually then offered to you on the platform.\n2. Property Services fee of 1% per annum on Capital invested payable monthly.\n3. Performance fee, which is a percentage of the upside over the investor reaching a hurdle IRR. Please refer to respective investment opportunity details on the website."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore_Copy_6": {
+          "statementName": "setStore_Copy_6",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1180.7142857142858,
+            "top": 370.85267857142856
+          },
+          "parameterMap": {
+            "path": {
+              "5IJF2EuuD4b8ogTRTYD4Mz": {
+                "key": "5IJF2EuuD4b8ogTRTYD4Mz",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.taxation"
+              }
+            },
+            "value": {
+              "1hdJxO9Ph6zTbO9xWX09iN": {
+                "key": "1hdJxO9Ph6zTbO9xWX09iN",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "Question": "Is TDS deducted on the distributions?",
+                    "Answer": "Yes, TDS is deducted as per applicable laws."
+                  },
+                  {
+                    "Question": "How are the distributions happening from SPV to the investor, in case of fractional ownership?",
+                    "Answer": "The investors receive distributions from the SPV in the form of monthly interest on the securities (debentures) held by investors in such SPV. TDS certificates will be provided to you on a quarterly or semi-annual basis."
+                  },
+                  {
+                    "Question": "What is the tax payable by investors on the distributions received?",
+                    "Answer": "The distributions are taxable in the hands of the users as per the user\u2019s respective tax bracket. Further, distributions would also be subject to a deduction of tax (TDS) at a rate of 10% before remitting to the user. A TDS certificate will be provided for any tax deducted at source on a quarterly or semi-annual basis and such TDS would be available as a credit to the Investor. The tax implications provided herein are provided on an indicative basis and users are advised to consult their respective tax experts with respect to any tax related matters."
+                  },
+                  {
+                    "Question": "How are exits from investments taxed?",
+                    "Answer": "Any amount received by an investor through exit of investment would be taxable as capital gains in the hands of the investor. If the investment in equity shares is held by the Investor for a period greater than 24 months, such capital gains would be treated as long term in nature and taxable at 20% (plus surcharge and cess), subject to indexation. If the investment is held by the Investor for a period less than 24 months, such capital gains would be treated as short term in nature and taxable as per the user\u2019s respective tax bracket. If the investment in debentures is held by the Investor for a period greater than 36 months, such capital gains would be treated as long term in nature and taxable at 20% (plus surcharge and cess). If the investment is held by the Investor for a period less than 36 months, such capital gains would be treated as short term in nature and taxable as per the user\u2019s respective tax bracket."
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 130.875,
+            "top": 559.751953125
+          },
+          "parameterMap": {
+            "path": {
+              "t18NPnJIFdQ2FheYMpU2H": {
+                "key": "t18NPnJIFdQ2FheYMpU2H",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sections"
+              }
+            },
+            "value": {
+              "6m8CRxdH5G54Cilx1v9g8N": {
+                "key": "6m8CRxdH5G54Cilx1v9g8N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "name": "concept",
+                    "heading": "Concept & Regularity"
+                  },
+                  {
+                    "name": "investmentStructure",
+                    "heading": "Investment Structure"
+                  },
+                  {
+                    "name": "investmentProcess",
+                    "heading": "Investment Process"
+                  },
+                  {
+                    "name": "investmentReturns",
+                    "heading": "Investment Returns"
+                  },
+                  {
+                    "name": "assetPortfolio",
+                    "heading": "Asset Portfolio"
+                  },
+                  {
+                    "name": "servicesFees",
+                    "heading": "Services Fees"
+                  },
+                  {
+                    "name": "taxation",
+                    "heading": "Taxation"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1046.2500019073486,
+            "top": 617.2968788146973
+          },
+          "parameterMap": {
+            "path": {
+              "1CLP3luXg9KIx9zgeiNa9P": {
+                "key": "1CLP3luXg9KIx9zgeiNa9P",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "12NZq4VLOYvrhGZkWby2KI": {
+                "key": "12NZq4VLOYvrhGZkWby2KI",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_5__d-o-t__output": false
+          }
+        },
+        "onload2": {
+          "statementName": "onload2",
+          "name": "onload2",
+          "namespace": "_",
+          "position": {
+            "left": 1713.8000030517574,
+            "top": 498.3500061035155
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3N4hTvFGD7yDsqJ5X9rFAv": {
+      "name": "onClickOpen",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 708.4000015258789,
+            "top": 158.96249389648438
+          },
+          "parameterMap": {
+            "path": {
+              "2LqT8sXykYsWm906Yq1Uji": {
+                "key": "2LqT8sXykYsWm906Yq1Uji",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.id"
+              }
+            },
+            "value": {
+              "6AsD0VXtgnxrkF65PawDVE": {
+                "key": "6AsD0VXtgnxrkF65PawDVE",
+                "type": "EXPRESSION",
+                "expression": "Parent.Question",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        }
+      },
+      "namespace": ""
+    },
+    "1V6zRvsexZuRMVAK7lZOCY": {
+      "name": "onClickClose",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 630.5000005449567,
+            "top": 286.96428571428567
+          },
+          "parameterMap": {
+            "path": {
+              "5bIiCSwEOv4xEU7X7evLeF": {
+                "key": "5bIiCSwEOv4xEU7X7evLeF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.id"
+              }
+            },
+            "value": {
+              "7Icxbd4Wc4wbRmr6LQ5hRw": {
+                "key": "7Icxbd4Wc4wbRmr6LQ5hRw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "undefined"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "WLpl0ZTkn4vEMy1bDViDT": {
+      "name": "onChange",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2640.3571254185267,
+            "top": 614.2321341378348
+          },
+          "parameterMap": {
+            "path": {
+              "1x8VrGIroquf4IYmlvCxDq": {
+                "key": "1x8VrGIroquf4IYmlvCxDq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.temp"
+              }
+            },
+            "value": {
+              "70NXS1WDMPy1KTU8xWn7Zg": {
+                "key": "70NXS1WDMPy1KTU8xWn7Zg",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 618.4107134682791,
+            "top": 279.25
+          },
+          "parameterMap": {
+            "path": {
+              "76VIj6TTsDVdgi0WMinFgE": {
+                "key": "76VIj6TTsDVdgi0WMinFgE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.temp"
+              }
+            },
+            "value": {
+              "5GMPL8gkXIUwxkH1yUiqPn": {
+                "key": "5GMPL8gkXIUwxkH1yUiqPn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sectionLoop__d-o-t__iteration": true
+          }
+        },
+        "sectionLoop": {
+          "statementName": "sectionLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 327.00669642857144,
+            "top": 176.65625
+          },
+          "parameterMap": {
+            "source": {
+              "4Df6bEu6nqBsDO2suSWmLD": {
+                "key": "4Df6bEu6nqBsDO2suSWmLD",
+                "type": "EXPRESSION",
+                "expression": "Page.sections",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "lowerCase": {
+          "statementName": "lowerCase",
+          "name": "LowerCase",
+          "namespace": "System.String",
+          "position": {
+            "left": 741.4352678571429,
+            "top": 52.51339285714285
+          },
+          "parameterMap": {
+            "string": {
+              "2gdGMrb6ZzvlFwHjmxZEBx": {
+                "key": "2gdGMrb6ZzvlFwHjmxZEBx",
+                "type": "EXPRESSION",
+                "expression": "Page.search",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "contains": {
+          "statementName": "contains",
+          "name": "Contains",
+          "namespace": "System.String",
+          "position": {
+            "left": 1417.7142878941127,
+            "top": 258.80356270926336
+          },
+          "parameterMap": {
+            "string": {
+              "2IYr44qxLskiGjVODDCOpb": {
+                "key": "2IYr44qxLskiGjVODDCOpb",
+                "type": "EXPRESSION",
+                "expression": "Steps.qlowerCase.output.result",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "7lQvhpbh2uRKmWYfbQWmP": {
+                "key": "7lQvhpbh2uRKmWYfbQWmP",
+                "type": "EXPRESSION",
+                "expression": "Steps.lowerCase.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2176.2924107142853,
+            "top": 602.2276785714286
+          },
+          "parameterMap": {
+            "path": {
+              "1ZQCZ5Y5Lf7sdaqYlx6HKv": {
+                "key": "1ZQCZ5Y5Lf7sdaqYlx6HKv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.eq.Answer"
+              }
+            },
+            "value": {
+              "4aTxxjB1j5bVuLeeZsrXZC": {
+                "key": "4aTxxjB1j5bVuLeeZsrXZC",
+                "type": "EXPRESSION",
+                "expression": "Steps.replace.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 38.28571428571428,
+            "top": 45.14508928571428
+          },
+          "parameterMap": {
+            "condition": {
+              "3JLBZv2p0HH9IvcWF81onu": {
+                "key": "3JLBZv2p0HH9IvcWF81onu",
+                "type": "EXPRESSION",
+                "expression": "Page.search.length",
+                "order": 1
+              }
+            }
+          }
+        },
+        "resetSectionLoop": {
+          "statementName": "resetSectionLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 176.00669642857144,
+            "top": 429.65625
+          },
+          "parameterMap": {
+            "source": {
+              "4Df6bEu6nqBsDO2suSWmLD": {
+                "key": "4Df6bEu6nqBsDO2suSWmLD",
+                "type": "EXPRESSION",
+                "expression": "Page.sections",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": false,
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "containsAnswer": {
+          "statementName": "containsAnswer",
+          "name": "Contains",
+          "namespace": "System.String",
+          "position": {
+            "left": 1416.7142878941127,
+            "top": 504.80356270926336
+          },
+          "parameterMap": {
+            "string": {
+              "2IYr44qxLskiGjVODDCOpb": {
+                "key": "2IYr44qxLskiGjVODDCOpb",
+                "type": "EXPRESSION",
+                "expression": "Steps.alowerCase.output.result",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "7lQvhpbh2uRKmWYfbQWmP": {
+                "key": "7lQvhpbh2uRKmWYfbQWmP",
+                "type": "EXPRESSION",
+                "expression": "Steps.lowerCase.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "alowerCase": {
+          "statementName": "alowerCase",
+          "name": "LowerCase",
+          "namespace": "System.String",
+          "position": {
+            "left": 1035.578125,
+            "top": 546.9419642857142
+          },
+          "parameterMap": {
+            "string": {
+              "YEwwT0N6HFSjlYEurea0o": {
+                "key": "YEwwT0N6HFSjlYEurea0o",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.Answer",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1069.1785714285713,
+            "top": 949.2321341378347
+          },
+          "parameterMap": {
+            "path": {
+              "1AqKMmzWWFlgCF417AkPFl": {
+                "key": "1AqKMmzWWFlgCF417AkPFl",
+                "type": "EXPRESSION",
+                "order": 1,
+                "value": "",
+                "expression": "'Page.{{Steps.sectionLoop.iteration.each.name}}Result'"
+              }
+            },
+            "value": {
+              "7FWFuR3D2oZ3TB9ej8hMDH": {
+                "key": "7FWFuR3D2oZ3TB9ej8hMDH",
+                "type": "EXPRESSION",
+                "expression": "Page.temp",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__output": true
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 638.000002179827,
+            "top": 571.0892769949777
+          },
+          "parameterMap": {
+            "source": {
+              "2nYySS19xA2tN11L9tzV0x": {
+                "key": "2nYySS19xA2tN11L9tzV0x",
+                "type": "EXPRESSION",
+                "expression": "Page.{{Steps.sectionLoop.iteration.each.name}}",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "qlowerCase": {
+          "statementName": "qlowerCase",
+          "name": "LowerCase",
+          "namespace": "System.String",
+          "position": {
+            "left": 1036.1495535714284,
+            "top": 333.22767857142856
+          },
+          "parameterMap": {
+            "string": {
+              "4okT700NbOM0flifUb7xPH": {
+                "key": "4okT700NbOM0flifUb7xPH",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.Question",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2208.2924107142853,
+            "top": 221.51339285714283
+          },
+          "parameterMap": {
+            "path": {
+              "6MesHiUgRqgZJLEi0XqkIJ": {
+                "key": "6MesHiUgRqgZJLEi0XqkIJ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.eq"
+              }
+            },
+            "value": {
+              "1Ix2nJYepTgVKVErUQkhYv": {
+                "key": "1Ix2nJYepTgVKVErUQkhYv",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "replace": {
+          "statementName": "replace",
+          "name": "Replace",
+          "namespace": "System.String",
+          "position": {
+            "left": 2578.2924107142853,
+            "top": 177.22767857142856
+          },
+          "parameterMap": {
+            "string": {
+              "5R2fE6xuX3bFjM5eUbHJ9T": {
+                "key": "5R2fE6xuX3bFjM5eUbHJ9T",
+                "type": "EXPRESSION",
+                "expression": "Page.eq.Answer",
+                "order": 1
+              }
+            },
+            "secondString": {
+              "S1SSSnFsYIV56jXBSBEcC": {
+                "key": "S1SSSnFsYIV56jXBSBEcC",
+                "type": "EXPRESSION",
+                "expression": "Page.search",
+                "order": 1,
+                "value": ""
+              }
+            },
+            "thirdString": {
+              "12F1iqpyQT0y3qPCDqHk0o": {
+                "key": "12F1iqpyQT0y3qPCDqHk0o",
+                "type": "EXPRESSION",
+                "expression": "'*'+Page.search+'*'",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 2346.0357055664062,
+            "top": 829.0892769949778
+          },
+          "parameterMap": {
+            "source": {
+              "3WQVOTzn3QvInhZazqe0o7": {
+                "key": "3WQVOTzn3QvInhZazqe0o7",
+                "type": "EXPRESSION",
+                "expression": "Page.temp",
+                "order": 1
+              }
+            },
+            "element": {
+              "520HVQt3gzOApDr4qTTNFc": {
+                "key": "520HVQt3gzOApDr4qTTNFc",
+                "type": "EXPRESSION",
+                "expression": "Page.eq",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__setStore4__d-o-t__output": true,
+            "Steps__d-o-t__setStore3__d-o-t__output": false
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1814.3214285714284,
+            "top": 452.66070556640625
+          },
+          "parameterMap": {
+            "condition": {
+              "6xIEnwaK8OmzQ1oklaJl0N": {
+                "key": "6xIEnwaK8OmzQ1oklaJl0N",
+                "type": "EXPRESSION",
+                "expression": "Steps.contains.output.result or Steps.containsAnswer.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2_Copy_1": {
+          "statementName": "setStore2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 405.17857142857133,
+            "top": 900.2321341378347
+          },
+          "parameterMap": {
+            "path": {
+              "1AqKMmzWWFlgCF417AkPFl": {
+                "key": "1AqKMmzWWFlgCF417AkPFl",
+                "type": "EXPRESSION",
+                "order": 1,
+                "value": "",
+                "expression": "'Page.{{Steps.resetSectionLoop.iteration.each.name}}Result'"
+              }
+            },
+            "value": {
+              "7FWFuR3D2oZ3TB9ej8hMDH": {
+                "key": "7FWFuR3D2oZ3TB9ej8hMDH",
+                "type": "EXPRESSION",
+                "expression": "undefined",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "7H7JebC7wEVCmViAOxsnsz": {
+                "key": "7H7JebC7wEVCmViAOxsnsz",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4LuqHO8cI4B3TW3du0gpkr": {
+      "name": "brightnessClose",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 386.34027777777777,
+            "top": 70.33159722222223
+          },
+          "parameterMap": {
+            "path": {
+              "1YKZ81YUGRBiS81LZgfEI3": {
+                "key": "1YKZ81YUGRBiS81LZgfEI3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.brightness"
+              }
+            },
+            "value": {
+              "3VWZ75Q7v4uxk6pzdYmqtG": {
+                "key": "3VWZ75Q7v4uxk6pzdYmqtG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ""
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 123.11805555555554,
+            "top": 28.109375
+          },
+          "parameterMap": {
+            "path": {
+              "6xGgQYDFQVjzKPymTDa5Uy": {
+                "key": "6xGgQYDFQVjzKPymTDa5Uy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "6cRw6LugwCvkRl2bKz8rRb": {
+                "key": "6cRw6LugwCvkRl2bKz8rRb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2S83Cvpn7iR6fU5otd82WM": {
+      "name": "Email",
+      "steps": {
+        "demoCallEmail": {
+          "statementName": "demoCallEmail",
+          "name": "demoCallEmail",
+          "namespace": "cxlanding",
+          "position": {
+            "left": 384.25000190734863,
+            "top": 127.79687881469727
+          },
+          "parameterMap": {
+            "userDetails": {
+              "5VM4D0u0CB8xsGLvMc1OUj": {
+                "key": "5VM4D0u0CB8xsGLvMc1OUj",
+                "type": "EXPRESSION",
+                "expression": "Page.form",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 678.0000019073486,
+            "top": 111.54687881469727
+          },
+          "parameterMap": {
+            "type": {
+              "2A1MJmbLi0b2RL9fxVbIKT": {
+                "key": "2A1MJmbLi0b2RL9fxVbIKT",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SUCCESS"
+              }
+            },
+            "msg": {
+              "4VYNvYv6dMzrAqTXaJ2zHr": {
+                "key": "4VYNvYv6dMzrAqTXaJ2zHr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Mail Sent Successfully"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__demoCallEmail__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 118.00000190734863,
+            "top": 115.29687881469727
+          },
+          "parameterMap": {
+            "path": {
+              "7nt76iSzGTMaRlXORVZHaj": {
+                "key": "7nt76iSzGTMaRlXORVZHaj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "1teT0vros1BulyWdBNOqcQ": {
+                "key": "1teT0vros1BulyWdBNOqcQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "6pw90VG4Ga04bnlUTDbz7j"
+    },
+    "20WRwr6gSv7GdiCbDkJQSW": {
+      "name": "New_Function",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 666.0069444444445,
+            "top": 94.88715277777777
+          },
+          "parameterMap": {
+            "path": {
+              "7MC5kP4h2Z4PKeVSd3huw": {
+                "key": "7MC5kP4h2Z4PKeVSd3huw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.brightness"
+              }
+            },
+            "value": {
+              "7BRlWZGUfweK2e1PmXpDT3": {
+                "key": "7BRlWZGUfweK2e1PmXpDT3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "brightness(20%)"
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 455.00000190734863,
+            "top": 214.54687881469727
+          },
+          "parameterMap": {
+            "path": {
+              "2DdZ1K7lGnEP0mJjurNrZZ": {
+                "key": "2DdZ1K7lGnEP0mJjurNrZZ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.popup"
+              }
+            },
+            "value": {
+              "5QHt99RUMbkXuzhGuZFqJx": {
+                "key": "5QHt99RUMbkXuzhGuZFqJx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "5kCh9OuUIKCdMmGoLLzv5E": {
+      "name": "onload2",
+      "steps": {
+        "set": {
+          "statementName": "set",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 815.6015625,
+            "top": 218.6015625
+          },
+          "parameterMap": {
+            "name": {
+              "4o976zqRsZtsBxlZfwswJZ": {
+                "key": "4o976zqRsZtsBxlZfwswJZ",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.urlSuffix"
+              }
+            },
+            "value": {
+              "7E8vxcQRCklakPCZsye010": {
+                "key": "7E8vxcQRCklakPCZsye010",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            },
+            "path": {
+              "5oTC4sDBE44SycM7VLceQb": {
+                "key": "5oTC4sDBE44SycM7VLceQb",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.urlSuffix"
+              }
+            }
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 194.6015625,
+            "top": 117.6015625
+          },
+          "parameterMap": {
+            "url": {
+              "6gvgT1ZqaHpoTZJasD3pX5": {
+                "key": "6gvgT1ZqaHpoTZJasD3pX5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/api/security/applications/applyAppCodeSuffix?appCode="
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "448z9qB3ol6iACBHZtOAMV",
+  "componentDefinition": {
+    "448z9qB3ol6iACBHZtOAMV": {
+      "key": "448z9qB3ol6iACBHZtOAMV",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "3bGgrFKAt2O1MkhAMSqntn": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "overflowY": {
+                "value": "scroll"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "filter": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.brightness"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3gXoRWqXjr1g2GCrF9Gb8B": true,
+        "5nImRHtlazmHEpVdlWa7KO": true,
+        "3yAVRUDdpOgwMJd6449K5": true,
+        "2bVXmWbB8ZbziwA7CsjyLC": true
+      }
+    },
+    "3gXoRWqXjr1g2GCrF9Gb8B": {
+      "key": "3gXoRWqXjr1g2GCrF9Gb8B",
+      "name": "headerGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1i78nZh5Z91LkHI5REpT8q": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px #0000000D"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "width": {
+                "value": "100vw"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "left": {
+                "value": "0px"
+              },
+              "zIndex": {
+                "value": "6"
+              },
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "4.1vw"
+              },
+              "paddingRight": {
+                "value": "4.1vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "paddingRight": {
+                "value": "40px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "zIndex": {
+                "value": "2"
+              },
+              "paddingTop": {
+                "value": "2.5vw"
+              },
+              "paddingBottom": {
+                "value": "2.5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1D6wE0mPXS13lr2JMs8xaO": true,
+        "1MaUdUdO2mZ0U3FYChh6oA": true,
+        "xmevoi1yrFglhvPA3D4iK": true
+      },
+      "displayOrder": 1
+    },
+    "1D6wE0mPXS13lr2JMs8xaO": {
+      "key": "1D6wE0mPXS13lr2JMs8xaO",
+      "name": "logoGrid",
+      "type": "Grid",
+      "properties": {
+        "linkPath": {
+          "value": "/home"
+        }
+      },
+      "styleProperties": {
+        "1x2ldmz2zgJs2GkbUmklmc": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "11.739vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4iL6JnYQdN0AHXmdTqa6zs": true
+      },
+      "displayOrder": 1
+    },
+    "1MaUdUdO2mZ0U3FYChh6oA": {
+      "key": "1MaUdUdO2mZ0U3FYChh6oA",
+      "name": "menuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "RrkNwswiVWERb0z1sctjZ": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3.472vw"
+              },
+              "marginTop": {
+                "value": "vw"
+              },
+              "marginBottom": {
+                "value": "vw"
+              },
+              "marginLeft": {
+                "value": "19.583vw"
+              },
+              "marginRight": {
+                "value": "1.472vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4Rqe1HTcWrvoH0JFoOqERs": true,
+        "2CaeJ5qrEdCc9pTQSYqdty": true,
+        "7CMEDUfThy42fLJRCYCXOt": true,
+        "18neaWnCVcuVlqbE7Q3fhy": true,
+        "4lvEOTjNVb9pvZ6KBItAL7": true
+      },
+      "displayOrder": 2
+    },
+    "xmevoi1yrFglhvPA3D4iK": {
+      "key": "xmevoi1yrFglhvPA3D4iK",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Schedule a free demo"
+        },
+        "onClick": {
+          "value": "20WRwr6gSv7GdiCbDkJQSW"
+        }
+      },
+      "styleProperties": {
+        "5Uu9QlFoDY9lbTHntka5R7": {
+          "resolutions": {
+            "ALL": {
+              "borderTopLeftRadius": {
+                "value": "50px"
+              },
+              "borderTopRightRadius": {
+                "value": "50px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "50px"
+              },
+              "borderBottomRightRadius": {
+                "value": "50px"
+              },
+              "paddingLeft": {
+                "value": "1.319vw"
+              },
+              "paddingRight": {
+                "value": "1.319vw"
+              },
+              "paddingTop": {
+                "value": "0.833vw"
+              },
+              "paddingBottom": {
+                "value": "0.833vw"
+              },
+              "borderTopColor": {
+                "value": "#000000"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightColor": {
+                "value": "#000000"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomColor": {
+                "value": "#000000"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftColor": {
+                "value": "#000000"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "color": {
+                "value": "#31313B"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "width": {
+                "value": "14.444vw"
+              },
+              "height": {
+                "value": "2.778vw"
+              },
+              "backgroundImage": {
+                "value": "linear-gradient(235deg, #fff 50%, #000 50%)"
+              },
+              "backgroundSize": {
+                "value": "220%"
+              },
+              "backgroundPosition": {
+                "value": "100%"
+              },
+              "backgroundPosition:hover": {
+                "value": "0%"
+              },
+              "transitionProperty": {
+                "value": "all"
+              },
+              "transitionDuration": {
+                "value": "1s"
+              },
+              "color:hover": {
+                "value": "#fff"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "4iL6JnYQdN0AHXmdTqa6zs": {
+      "key": "4iL6JnYQdN0AHXmdTqa6zs",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxLandingPage/cxfinallogomodlix.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "233WXfek2sCXECgGHyNivs": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "143px"
+              }
+            },
+            "ALL": {
+              "width": {
+                "value": "11.728vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4Rqe1HTcWrvoH0JFoOqERs": {
+      "key": "4Rqe1HTcWrvoH0JFoOqERs",
+      "name": "supportMenuItemGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3JST03gxhcljaJzTg0PMRX": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "4.514vw"
+              },
+              "height": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "51uL0f4f2tAU2Tp0ws1l8s": true
+      },
+      "displayOrder": 2
+    },
+    "2CaeJ5qrEdCc9pTQSYqdty": {
+      "key": "2CaeJ5qrEdCc9pTQSYqdty",
+      "name": "customersMenuItemGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3JST03gxhcljaJzTg0PMRX": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "6.25vw"
+              },
+              "height": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5olmAYgyq7sUjXciyVHCZb": true
+      },
+      "displayOrder": 1
+    },
+    "7CMEDUfThy42fLJRCYCXOt": {
+      "key": "7CMEDUfThy42fLJRCYCXOt",
+      "name": "pricingMenuItemGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3JST03gxhcljaJzTg0PMRX": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "3.958vw"
+              },
+              "height": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6MzwZIXpKRLDl3hnBuvOJi": true
+      },
+      "displayOrder": 3
+    },
+    "18neaWnCVcuVlqbE7Q3fhy": {
+      "key": "18neaWnCVcuVlqbE7Q3fhy",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "showTip": {
+          "value": true
+        },
+        "showOnHover": {
+          "value": true
+        },
+        "closeOnLeave": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "5bmnSCP7j1IWKcFz00fwpR": {
+          "resolutions": {
+            "ALL": {
+              "popoverParentContainer-zIndex": {
+                "value": "9"
+              },
+              "popoverContainer-zIndex": {
+                "value": "9"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2qLZbwHHAhfmuPVWhUvAeJ": true,
+        "4z15qig5FKNC3yo2GGXSEr": true
+      },
+      "displayOrder": 5
+    },
+    "4lvEOTjNVb9pvZ6KBItAL7": {
+      "key": "4lvEOTjNVb9pvZ6KBItAL7",
+      "name": "Resources Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3JST03gxhcljaJzTg0PMRX": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "6.944vw"
+              },
+              "height": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5p9D0xp3GTIybMVcqUT7sK": true
+      },
+      "displayOrder": 4
+    },
+    "51uL0f4f2tAU2Tp0ws1l8s": {
+      "key": "51uL0f4f2tAU2Tp0ws1l8s",
+      "name": "supportMenu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Support"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "icon": {
+          "value": "."
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "5jVhKduoPzIUbCMOB4ajak": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight:hover": {
+                "value": "600"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#190041"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5olmAYgyq7sUjXciyVHCZb": {
+      "key": "5olmAYgyq7sUjXciyVHCZb",
+      "name": "customersMenu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Customers"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "icon": {
+          "value": "."
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "5rX7bAme7CPSgV5l7uOarv": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight:hover": {
+                "value": "600"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#190041"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6MzwZIXpKRLDl3hnBuvOJi": {
+      "key": "6MzwZIXpKRLDl3hnBuvOJi",
+      "name": "pricingMenu",
+      "type": "Menu",
+      "properties": {
+        "label": {
+          "value": "Pricing"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "icon": {
+          "value": "."
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "D2K116Fg73zprYwsZP3ZM": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight:hover": {
+                "value": "600"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "#190041"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2qLZbwHHAhfmuPVWhUvAeJ": {
+      "key": "2qLZbwHHAhfmuPVWhUvAeJ",
+      "name": "productsMenuItemGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3JST03gxhcljaJzTg0PMRX": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "6.111vw"
+              },
+              "height": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6t97TMQGeS8kiD5zRvPktI": true,
+        "DzGGKfHAvnCsizdm5aF3b": true
+      },
+      "displayOrder": 1
+    },
+    "4z15qig5FKNC3yo2GGXSEr": {
+      "key": "4z15qig5FKNC3yo2GGXSEr",
+      "name": "allProductsSubMenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3TJh4VSQ392OD706ll4dBn": {
+          "resolutions": {
+            "ALL": {
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "borderTopColor": {
+                "value": "#0000000D"
+              },
+              "borderRightColor": {
+                "value": "#0000000D"
+              },
+              "borderBottomColor": {
+                "value": "#0000000D"
+              },
+              "borderLeftColor": {
+                "value": "#0000000D"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "40px"
+              },
+              "paddingLeft": {
+                "value": "40px"
+              },
+              "paddingRight": {
+                "value": "40px"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "boxShadow": {
+                "value": "0px 4px 15px 0px rgba(0, 0, 0, 0.10)"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "maxHeight": {
+                "value": "80vh"
+              },
+              "maxWidth": {
+                "value": "80vw"
+              },
+              "overflowY": {
+                "value": "auto"
+              },
+              "zIndex": {
+                "value": "7"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "bottom": {
+                "value": "10px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "wI984sc0TrKg7dBG0Awa0": true,
+        "2SlEZdvz9AfPQ0APQkfEk8": true,
+        "6z3rGP4KwyBbt11YpfFk8d": true,
+        "6OiLUF3YU7c9oTTgpXzzrd": true,
+        "5sBDm3L8hiJHrVeIli3mwg": true,
+        "6Ip1SVdAFdjNYA33nbp13Q": true,
+        "1kwNhIdOX8YCBoJ5r1l3rJ": true,
+        "5pwwNxWxP6utvuumqgnalW": true
+      },
+      "displayOrder": 2
+    },
+    "5p9D0xp3GTIybMVcqUT7sK": {
+      "key": "5p9D0xp3GTIybMVcqUT7sK",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Resources"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "7FA2bvMPHqo47iHebkfuUA": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#190041"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6t97TMQGeS8kiD5zRvPktI": {
+      "key": "6t97TMQGeS8kiD5zRvPktI",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Products"
+        }
+      },
+      "styleProperties": {
+        "7FA2bvMPHqo47iHebkfuUA": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#190041"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "13px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "DzGGKfHAvnCsizdm5aF3b": {
+      "key": "DzGGKfHAvnCsizdm5aF3b",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " ms material-symbols-outlined mso-expand_more"
+        }
+      },
+      "styleProperties": {
+        "2plDuGuQ4dTHxaaEC0on2T": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2px"
+              },
+              "color": {
+                "value": "#190041"
+              },
+              "lineHeight": {
+                "value": "1.4vw"
+              },
+              "fontSize": {
+                "value": "1.4vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "wI984sc0TrKg7dBG0Awa0": {
+      "key": "wI984sc0TrKg7dBG0Awa0",
+      "name": "marketingAutomationmenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6ZNMzJj1gQe25t9pxpyrat": true,
+        "1ZF8lGXyLIl1nc2CFEgjQ8": true
+      },
+      "displayOrder": 2
+    },
+    "2SlEZdvz9AfPQ0APQkfEk8": {
+      "key": "2SlEZdvz9AfPQ0APQkfEk8",
+      "name": "hrmsmenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5GNNb1lYeXu8muPu1BwdD6": true,
+        "30T1zmuFHPy2ejxF0lXKRa": true
+      },
+      "displayOrder": 1
+    },
+    "6z3rGP4KwyBbt11YpfFk8d": {
+      "key": "6z3rGP4KwyBbt11YpfFk8d",
+      "name": "pagebuildermenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'https://pages{{Page.urlSuffix}}.modlix.com'"
+          }
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4AwUTbjZ20UedpnrBc8V6F": true,
+        "4GEqAxMdkLZChnrLSm3ly": true
+      },
+      "displayOrder": 3
+    },
+    "6OiLUF3YU7c9oTTgpXzzrd": {
+      "key": "6OiLUF3YU7c9oTTgpXzzrd",
+      "name": "cxappmenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'https://cxapp{{Page.urlSuffix}}.modlix.com/clientRegistration'"
+          }
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4vLVsXfztjVO07jcAMaCk": true,
+        "3oPFK4xhxV2IHl6JxdLSo6": true
+      },
+      "displayOrder": 4
+    },
+    "5sBDm3L8hiJHrVeIli3mwg": {
+      "key": "5sBDm3L8hiJHrVeIli3mwg",
+      "name": "marketplacemenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'https://mrktplace{{Page.urlSuffix}}.modlix.com'"
+          }
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Xxe1eWrIuJvkrrNUKGbZi": true,
+        "4Ba25qZu6xmOCvtPkAbsav": true
+      },
+      "displayOrder": 5
+    },
+    "6Ip1SVdAFdjNYA33nbp13Q": {
+      "key": "6Ip1SVdAFdjNYA33nbp13Q",
+      "name": "appbuildermenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'https://apps{{Page.urlSuffix}}.modlix.com'"
+          }
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4CvjIZ5YrmyPf9b0gqT5Mj": true,
+        "2OSbfzumWpO3abTqZFMjBo": true
+      },
+      "displayOrder": 6
+    },
+    "1kwNhIdOX8YCBoJ5r1l3rJ": {
+      "key": "1kwNhIdOX8YCBoJ5r1l3rJ",
+      "name": "crmmenuGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "72Cz3ypxeFmSKTV8OGhoMC": true,
+        "6bc8HIGb4ORVAliSjAVfxZ": true
+      },
+      "displayOrder": 7
+    },
+    "5pwwNxWxP6utvuumqgnalW": {
+      "key": "5pwwNxWxP6utvuumqgnalW",
+      "name": "projectmanagementGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6QDAUXXpRnc2etSvIkBFOk": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "start"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor:hover": {
+                "value": "#00000005"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2uMNh5Y2R9BCksufYm6Ebb": true,
+        "4RRvLEAVrO2kWKaKgRwceU": true
+      },
+      "displayOrder": 8
+    },
+    "6ZNMzJj1gQe25t9pxpyrat": {
+      "key": "6ZNMzJj1gQe25t9pxpyrat",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "210px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4kN8NfTVp9pu2HO3ksDEUw": true,
+        "lIe9ZNgyzqzY5sgOSaZcF": true,
+        "2GkWW6JQ5WtoTNnytzNC8i": true
+      },
+      "displayOrder": 1
+    },
+    "1ZF8lGXyLIl1nc2CFEgjQ8": {
+      "key": "1ZF8lGXyLIl1nc2CFEgjQ8",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "6PefCtjUXgLxooT6jftjZj": true
+      },
+      "displayOrder": 1
+    },
+    "5GNNb1lYeXu8muPu1BwdD6": {
+      "key": "5GNNb1lYeXu8muPu1BwdD6",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6hb8P0Zn0OyycNGqVtpRVm": true,
+        "38VlxedzMXkkcNorEBI1ur": true,
+        "2Lo4ricYw7Y8YBmNHYjLQ9": true
+      },
+      "displayOrder": 1
+    },
+    "30T1zmuFHPy2ejxF0lXKRa": {
+      "key": "30T1zmuFHPy2ejxF0lXKRa",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3k3bddyDoHd9c8h7cag3lp": true
+      },
+      "displayOrder": 1
+    },
+    "4AwUTbjZ20UedpnrBc8V6F": {
+      "key": "4AwUTbjZ20UedpnrBc8V6F",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3ysQzmAEqNIBbBVXTP7838": true,
+        "3FKkD4vEcDhxZtTD4sLBQZ": true
+      },
+      "displayOrder": 2
+    },
+    "4GEqAxMdkLZChnrLSm3ly": {
+      "key": "4GEqAxMdkLZChnrLSm3ly",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "2edLVUVGVq2KzDXJm8um02": true
+      },
+      "displayOrder": 1
+    },
+    "4vLVsXfztjVO07jcAMaCk": {
+      "key": "4vLVsXfztjVO07jcAMaCk",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6RU1pJIqKlWScMIyrgNX7O": true,
+        "6gci1dNXWjBdS8GpLUGt3Q": true,
+        "7z9tdQA2BymU9lrApgVYb6": true
+      },
+      "displayOrder": 2
+    },
+    "3oPFK4xhxV2IHl6JxdLSo6": {
+      "key": "3oPFK4xhxV2IHl6JxdLSo6",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1j42jrojGjJ6vQ839vKpl": true
+      },
+      "displayOrder": 1
+    },
+    "3Xxe1eWrIuJvkrrNUKGbZi": {
+      "key": "3Xxe1eWrIuJvkrrNUKGbZi",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2meeVuStjyybGK77NV9kvw": true,
+        "5cfKeQ19Euv6x3TOTK1Yha": true
+      },
+      "displayOrder": 2
+    },
+    "4Ba25qZu6xmOCvtPkAbsav": {
+      "key": "4Ba25qZu6xmOCvtPkAbsav",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1Yw2OaQRhwgwsWTzOLzBJL": true
+      },
+      "displayOrder": 1
+    },
+    "4CvjIZ5YrmyPf9b0gqT5Mj": {
+      "key": "4CvjIZ5YrmyPf9b0gqT5Mj",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5i3NdPuKk073lFNut3lYCd": true,
+        "6v7El1qc7QhEOPKz0EqahR": true
+      },
+      "displayOrder": 2
+    },
+    "2OSbfzumWpO3abTqZFMjBo": {
+      "key": "2OSbfzumWpO3abTqZFMjBo",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "11MBc9F1RdiDEU1vYR6EIQ": true
+      },
+      "displayOrder": 1
+    },
+    "72Cz3ypxeFmSKTV8OGhoMC": {
+      "key": "72Cz3ypxeFmSKTV8OGhoMC",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "210px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5z7e7AYSTHTdsRKUO27uKz": true,
+        "3yrFiNt19GfNuOMPzPsAfe": true,
+        "6IDWHxKad9FiTqhqu1QYww": true
+      },
+      "displayOrder": 2
+    },
+    "6bc8HIGb4ORVAliSjAVfxZ": {
+      "key": "6bc8HIGb4ORVAliSjAVfxZ",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "57ilGpezJJw9kmxHfKKo6C": true
+      },
+      "displayOrder": 1
+    },
+    "2uMNh5Y2R9BCksufYm6Ebb": {
+      "key": "2uMNh5Y2R9BCksufYm6Ebb",
+      "name": "textGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "14Rnbm6nZT1LWG1NHpZEl5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5PjtPujuiptrejswFMmdHU": true,
+        "6bBJfrFtLdhM7Biw10yCMK": true,
+        "mJkbHHaxLHaoPM0jHxfrp": true
+      },
+      "displayOrder": 2
+    },
+    "4RRvLEAVrO2kWKaKgRwceU": {
+      "key": "4RRvLEAVrO2kWKaKgRwceU",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3pVc6X1xoKI6P4rORnqUJv": true
+      },
+      "displayOrder": 1
+    },
+    "4kN8NfTVp9pu2HO3ksDEUw": {
+      "key": "4kN8NfTVp9pu2HO3ksDEUw",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marketing automation"
+        }
+      },
+      "styleProperties": {
+        "3Ae61Ry1kAlwLogCZRQWGt": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14.5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "lIe9ZNgyzqzY5sgOSaZcF": {
+      "key": "lIe9ZNgyzqzY5sgOSaZcF",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Automated marketing for streamlined campaign management"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2GkWW6JQ5WtoTNnytzNC8i": {
+      "key": "2GkWW6JQ5WtoTNnytzNC8i",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/comingsoon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "3q90GooSi69hsl0cqVJwf9": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "-18px"
+              },
+              "left": {
+                "value": "-5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6PefCtjUXgLxooT6jftjZj": {
+      "key": "6PefCtjUXgLxooT6jftjZj",
+      "name": "iconma",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/marketingautomation.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6hb8P0Zn0OyycNGqVtpRVm": {
+      "key": "6hb8P0Zn0OyycNGqVtpRVm",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "HRMS"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "38VlxedzMXkkcNorEBI1ur": {
+      "key": "38VlxedzMXkkcNorEBI1ur",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Streamline HR processes effortlessly"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2Lo4ricYw7Y8YBmNHYjLQ9": {
+      "key": "2Lo4ricYw7Y8YBmNHYjLQ9",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/comingsoon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "3q90GooSi69hsl0cqVJwf9": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "-18px"
+              },
+              "left": {
+                "value": "-5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3k3bddyDoHd9c8h7cag3lp": {
+      "key": "3k3bddyDoHd9c8h7cag3lp",
+      "name": "iconhrms",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/hrms.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3ysQzmAEqNIBbBVXTP7838": {
+      "key": "3ysQzmAEqNIBbBVXTP7838",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Page builder"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3FKkD4vEcDhxZtTD4sLBQZ": {
+      "key": "3FKkD4vEcDhxZtTD4sLBQZ",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Website page builder for easy customization"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2edLVUVGVq2KzDXJm8um02": {
+      "key": "2edLVUVGVq2KzDXJm8um02",
+      "name": "iconpagebuilder",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/pagebuilder.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6RU1pJIqKlWScMIyrgNX7O": {
+      "key": "6RU1pJIqKlWScMIyrgNX7O",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "CX app"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6gci1dNXWjBdS8GpLUGt3Q": {
+      "key": "6gci1dNXWjBdS8GpLUGt3Q",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Enhancing personalized customer experiences"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7z9tdQA2BymU9lrApgVYb6": {
+      "key": "7z9tdQA2BymU9lrApgVYb6",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/beta.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "3q90GooSi69hsl0cqVJwf9": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "-16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1j42jrojGjJ6vQ839vKpl": {
+      "key": "1j42jrojGjJ6vQ839vKpl",
+      "name": "iconcxapp",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/cxapp.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2meeVuStjyybGK77NV9kvw": {
+      "key": "2meeVuStjyybGK77NV9kvw",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marketplace"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5cfKeQ19Euv6x3TOTK1Yha": {
+      "key": "5cfKeQ19Euv6x3TOTK1Yha",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Platform connecting buyers and sellers online"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1Yw2OaQRhwgwsWTzOLzBJL": {
+      "key": "1Yw2OaQRhwgwsWTzOLzBJL",
+      "name": "iconmarketplace",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/marketplace.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5i3NdPuKk073lFNut3lYCd": {
+      "key": "5i3NdPuKk073lFNut3lYCd",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "App builder"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6v7El1qc7QhEOPKz0EqahR": {
+      "key": "6v7El1qc7QhEOPKz0EqahR",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Platform for building custom applications easily"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "11MBc9F1RdiDEU1vYR6EIQ": {
+      "key": "11MBc9F1RdiDEU1vYR6EIQ",
+      "name": "iconmappbuilder",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/appbuilder.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5z7e7AYSTHTdsRKUO27uKz": {
+      "key": "5z7e7AYSTHTdsRKUO27uKz",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "CRM"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3yrFiNt19GfNuOMPzPsAfe": {
+      "key": "3yrFiNt19GfNuOMPzPsAfe",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Managing customer relationships, boosting business growth"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6IDWHxKad9FiTqhqu1QYww": {
+      "key": "6IDWHxKad9FiTqhqu1QYww",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/comingsoon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "3q90GooSi69hsl0cqVJwf9": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "-18px"
+              },
+              "left": {
+                "value": "-5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "57ilGpezJJw9kmxHfKKo6C": {
+      "key": "57ilGpezJJw9kmxHfKKo6C",
+      "name": "iconmcrm",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/crm.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5PjtPujuiptrejswFMmdHU": {
+      "key": "5PjtPujuiptrejswFMmdHU",
+      "name": "mainText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Project management"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6bBJfrFtLdhM7Biw10yCMK": {
+      "key": "6bBJfrFtLdhM7Biw10yCMK",
+      "name": "subText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Planning, organizing, and overseeing project tasks"
+        }
+      },
+      "styleProperties": {
+        "3e47masbuUiCDGtoqMGGOs": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "mJkbHHaxLHaoPM0jHxfrp": {
+      "key": "mJkbHHaxLHaoPM0jHxfrp",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/comingsoon.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "3q90GooSi69hsl0cqVJwf9": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "-18px"
+              },
+              "left": {
+                "value": "-5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3pVc6X1xoKI6P4rORnqUJv": {
+      "key": "3pVc6X1xoKI6P4rORnqUJv",
+      "name": "iconprojectmanagement",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/opbracket/projectmanagement.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "2gIrhjzNIxMLRv3FIdXg3Y": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "22px"
+              },
+              "height": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5nImRHtlazmHEpVdlWa7KO": {
+      "key": "5nImRHtlazmHEpVdlWa7KO",
+      "name": "FAQ GRID",
+      "type": "Grid",
+      "styleProperties": {
+        "7AcLRTSs9IGkpOg43TNZrT": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "4.9vw"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "overflowX": {
+                "value": "hidden"
+              },
+              "width": {
+                "value": "100vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7tlFvyrm259FiZbAKBMYKe": true,
+        "2XtCNVhXOQPP3ojR60LiaS": true
+      },
+      "displayOrder": 2
+    },
+    "7tlFvyrm259FiZbAKBMYKe": {
+      "key": "7tlFvyrm259FiZbAKBMYKe",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxLandingPage/Mask+group+%282%29.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "7pCCdsDQZG3lMv72VhLz3U": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "5vw"
+              },
+              "width": {
+                "value": "200vw"
+              },
+              "image-overflowX": {
+                "value": "hidden"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2XtCNVhXOQPP3ojR60LiaS": {
+      "key": "2XtCNVhXOQPP3ojR60LiaS",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "override": false,
+      "children": {
+        "2bwc0yZUKuDog5u2RokgLE": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.sections"
+      }
+    },
+    "2bwc0yZUKuDog5u2RokgLE": {
+      "key": "2bwc0yZUKuDog5u2RokgLE",
+      "name": "Section Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4ky4g6HHuWKmB53WfRXhw7": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "FU2tKpHQkghunSSyHFCpI": true,
+        "3dZxGG8WCwiQ2rLZ3iWGAy": true
+      },
+      "displayOrder": 0
+    },
+    "FU2tKpHQkghunSSyHFCpI": {
+      "key": "FU2tKpHQkghunSSyHFCpI",
+      "name": "Heading & Search bar Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5ZsR3geN0ZC32gcl7OiO84": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "6.111vw"
+              },
+              "paddingLeft": {
+                "value": "20.556vw"
+              },
+              "marginBottom": {
+                "value": "4.167vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0vw"
+              },
+              "paddingTop": {
+                "value": "0vw"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "68A6VduVCNj7k6i4Vvxgw9": true,
+        "4DPsAkLZGLLDKTsf1v45R3": true
+      },
+      "displayOrder": 1
+    },
+    "68A6VduVCNj7k6i4Vvxgw9": {
+      "key": "68A6VduVCNj7k6i4Vvxgw9",
+      "name": "Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.heading"
+          }
+        }
+      },
+      "styleProperties": {
+        "6BuGyJvmO43eibhx1JAsdJ": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "2.292vw"
+              },
+              "lineHeight": {
+                "value": "2.292vw"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "width": {
+                "value": "24.403vw"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "marginRight": {
+                "value": "4.514vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.292vw"
+              },
+              "width": {
+                "value": "90.403vw"
+              },
+              "marginRight": {
+                "value": "0vw"
+              },
+              "marginBottom": {
+                "value": "4vw"
+              },
+              "lineHeight": {
+                "value": "7.292vw"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "4vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4DPsAkLZGLLDKTsf1v45R3": {
+      "key": "4DPsAkLZGLLDKTsf1v45R3",
+      "name": "Search TextBox",
+      "type": "TextBox",
+      "properties": {
+        "leftIcon": {
+          "value": " ms material-symbols-outlined mso-search"
+        },
+        "placeholder": {
+          "value": "Search"
+        },
+        "onChange": {
+          "value": "WLpl0ZTkn4vEMy1bDViDT"
+        },
+        "onClear": {
+          "value": ""
+        },
+        "updateStoreImmediately": {
+          "value": false
+        },
+        "onBlur": {
+          "value": ""
+        },
+        "emptyValue": {
+          "value": "ENMPTYSTRING"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.__index = 0"
+          }
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "7GO12w41kBfJ8FIXilBmfy": {
+          "resolutions": {
+            "ALL": {
+              "leftIcon-marginRight": {
+                "value": "1vw"
+              },
+              "borderTopColor": {
+                "value": "#E2E2E2"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.417vw"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "0.097vw"
+              },
+              "borderRightColor": {
+                "value": "#E2E2E2"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "0.097vw"
+              },
+              "borderBottomColor": {
+                "value": "#E2E2E2"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "0.097vw"
+              },
+              "borderLeftColor": {
+                "value": "#E2E2E2"
+              },
+              "borderLeftWidth": {
+                "value": "0.097vw"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "width": {
+                "value": "30.972vw"
+              },
+              "height": {
+                "value": "3.472vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "10.472vw"
+              },
+              "leftIcon-marginRight": {
+                "value": "3vw"
+              },
+              "leftIcon-borderTopLeftRadius": {
+                "value": "8.333vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "1.417vw"
+              },
+              "borderTopRightRadius": {
+                "value": "1.417vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "1.417vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "1.417vw"
+              },
+              "width": {
+                "value": "75.972vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.search"
+      }
+    },
+    "3dZxGG8WCwiQ2rLZ3iWGAy": {
+      "key": "3dZxGG8WCwiQ2rLZ3iWGAy",
+      "name": "Each Section Repeator",
+      "type": "ArrayRepeater",
+      "styleProperties": {
+        "Of2qm5IgKv71DIKPOUhnn": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5uBHF2QEUza68IfGBP2yUF": true
+      },
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "EXPRESSION",
+        "value": "Page.concept",
+        "expression": "(Page.{{Parent.name}}Result != undefined) ? 'Page.{{Parent.name}}Result':'Page.{{Parent.name}}' "
+      }
+    },
+    "__truncated__": "... 53 more components omitted for corpus"
+  },
+  "name": "FAQ",
+  "message": "From transport : YsoySzHMtuJBEpjuS6a5j5",
+  "clientCode": "SYSTEM",
+  "appCode": "cxlanding",
+  "version": 5,
+  "updatedAt": "2024-10-26 04:08:13.451000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-07-18 05:59:40.009000",
+  "createdBy": "<USER>"
+}

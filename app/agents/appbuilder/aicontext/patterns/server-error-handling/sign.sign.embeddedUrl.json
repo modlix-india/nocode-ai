@@ -1,0 +1,296 @@
+{
+  "_id": "666a734d7141c655f00c1add",
+  "definition": {
+    "namespace": "sign",
+    "name": "embeddedUrl",
+    "parameters": {
+      "request_id": {
+        "parameterName": "request_id",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "action_id": {
+        "parameterName": "action_id",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "hostName": {
+        "parameterName": "hostName",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {}
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "embeddedurl": {
+            "ref": "sign.EmbeddedResponse",
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1502,
+          "top": 612
+        },
+        "parameterMap": {
+          "results": {
+            "1zZwujt0Zf8ZPelhUcpG5d": {
+              "key": "1zZwujt0Zf8ZPelhUcpG5d",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "embeddedurl",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifFailed__d-o-t__false": true
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 795,
+          "top": 132.5
+        },
+        "parameterMap": {
+          "appCode": {
+            "7hgdKf45QYkAtlRQ4lSBSA": {
+              "key": "7hgdKf45QYkAtlRQ4lSBSA",
+              "type": "VALUE",
+              "expression": "",
+              "value": "sign"
+            }
+          },
+          "connectionName": {
+            "1EDWIROv6BJKkFyjNR4GT3": {
+              "key": "1EDWIROv6BJKkFyjNR4GT3",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "ZohoRestSign"
+            }
+          },
+          "url": {
+            "1zuWSdv1szSryVzOj8Ld53": {
+              "key": "1zuWSdv1szSryVzOj8Ld53",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": "",
+              "expression": "\"api/v1/requests/{{Arguments.request_id}}/actions/{{Arguments.action_id}}/embedtoken?host={{Arguments.hostName}}\""
+            }
+          },
+          "payload": {
+            "2WRbk8rs56tnQGDC6hz8Tm": {
+              "key": "2WRbk8rs56tnQGDC6hz8Tm",
+              "type": "EXPRESSION",
+              "expression": "",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1190,
+          "top": 126
+        },
+        "parameterMap": {
+          "results": {
+            "28c7fX0tudt72KD9kPH3Da": {
+              "key": "28c7fX0tudt72KD9kPH3Da",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.error.data"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "4hioy0nlZMFberU2rElYtl": {
+              "key": "4hioy0nlZMFberU2rElYtl",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        }
+      },
+      "getAuthentication": {
+        "statementName": "getAuthentication",
+        "name": "GetAuthentication",
+        "namespace": "CoreServices.SecurityContext",
+        "position": {
+          "left": 36.25,
+          "top": 68.125
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 112,
+          "top": 362.875
+        },
+        "parameterMap": {
+          "condition": {
+            "4trCrmvJmaZuP0DSE38ENq": {
+              "key": "4trCrmvJmaZuP0DSE38ENq",
+              "type": "EXPRESSION",
+              "expression": "Steps.getAuthentication.output.auth.loggedInFromClientId = Steps.getAuthentication.output.auth.user.clientId",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 437.5,
+          "top": 106.875
+        },
+        "parameterMap": {
+          "eventName": {
+            "3zDldZRWTBNrN9Fu6CIkO4": {
+              "key": "3zDldZRWTBNrN9Fu6CIkO4",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "1FO6MwSVeKuRWAwJop1SYB": {
+              "key": "1FO6MwSVeKuRWAwJop1SYB",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": false,
+                  "value": "You don't access to trigger the embedded url"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "ifFailed": {
+        "statementName": "ifFailed",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1245.8571428571427,
+          "top": 367.99999999999994
+        },
+        "parameterMap": {
+          "condition": {
+            "6uspgDA6kMdJ0yHpd1TC5K": {
+              "key": "6uspgDA6kMdJ0yHpd1TC5K",
+              "type": "EXPRESSION",
+              "expression": "Steps.postRequest.output.statusCode >= 400",
+              "order": 1
+            }
+          }
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1678.9999999999998,
+          "top": 272.2857142857143
+        },
+        "parameterMap": {
+          "eventName": {
+            "N91rfSKG08EfWXMJuWq9i": {
+              "key": "N91rfSKG08EfWXMJuWq9i",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "6JMaGzhS962xu2plEpFr7r": {
+              "key": "6JMaGzhS962xu2plEpFr7r",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "embeddedurl",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data.message"
+                }
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__ifFailed__d-o-t__true": true
+        }
+      }
+    }
+  },
+  "name": "sign.embeddedUrl",
+  "message": "From transport : 2abvRhMjikANkq4nzHY5Sy",
+  "clientCode": "SYSTEM",
+  "appCode": "sign",
+  "version": 48,
+  "updatedAt": "2026-04-09 04:29:05.862000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-13 04:19:25.678000",
+  "createdBy": "<USER>"
+}

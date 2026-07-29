@@ -1,0 +1,2121 @@
+{
+  "_id": "69735a49a7e83926bb337eba",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "orderonline"
+      }
+    }
+  },
+  "eventFunctions": {
+    "4sywgbyX5zpBVFtJzMZD0g": {
+      "name": "Onhover",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 196.77777862548828,
+            "top": 69.04167175292969
+          },
+          "parameterMap": {
+            "path": {
+              "1mNaS7gshJfv35I4g6YNOV": {
+                "key": "1mNaS7gshJfv35I4g6YNOV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.onhover"
+              }
+            },
+            "value": {
+              "XIe8LqXbZeFTjZgw52env": {
+                "key": "XIe8LqXbZeFTjZgw52env",
+                "type": "EXPRESSION",
+                "expression": "Parent.__index",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "aVQqVkXwwZuWF30wcW81e": {
+                "key": "aVQqVkXwwZuWF30wcW81e",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "55LN5dpEzkQzDt09pxO2gf": {
+      "name": "onleaveOR",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 247.77777862548828,
+            "top": 141.0416717529297
+          },
+          "parameterMap": {
+            "path": {
+              "5ULRTLXknPh7WuP4c1c2yj": {
+                "key": "5ULRTLXknPh7WuP4c1c2yj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.onhover"
+              }
+            },
+            "value": {
+              "2LnflwXZcwexlmUu4RcS9O": {
+                "key": "2LnflwXZcwexlmUu4RcS9O",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5ttmFmrJdJm8JuYrbU1RHF": {
+      "name": "onleaveBG",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 247.77777862548828,
+            "top": 141.0416717529297
+          },
+          "parameterMap": {
+            "path": {
+              "5ULRTLXknPh7WuP4c1c2yj": {
+                "key": "5ULRTLXknPh7WuP4c1c2yj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.onhoverbg"
+              }
+            },
+            "value": {
+              "2LnflwXZcwexlmUu4RcS9O": {
+                "key": "2LnflwXZcwexlmUu4RcS9O",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1doDqQaNd1EmiXzQbZ4Unx": {
+      "name": "OnhoverBG",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 196.77777862548828,
+            "top": 69.04167175292969
+          },
+          "parameterMap": {
+            "path": {
+              "1mNaS7gshJfv35I4g6YNOV": {
+                "key": "1mNaS7gshJfv35I4g6YNOV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.onhoverbg"
+              }
+            },
+            "value": {
+              "XIe8LqXbZeFTjZgw52env": {
+                "key": "XIe8LqXbZeFTjZgw52env",
+                "type": "EXPRESSION",
+                "expression": "Parent.__index",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "aVQqVkXwwZuWF30wcW81e": {
+                "key": "aVQqVkXwwZuWF30wcW81e",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2qXKcrJjKbScBK9sVTo9ZE": {
+      "name": "OnhoverFF",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 308.7777786254883,
+            "top": 67.04167175292969
+          },
+          "parameterMap": {
+            "path": {
+              "1mNaS7gshJfv35I4g6YNOV": {
+                "key": "1mNaS7gshJfv35I4g6YNOV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.onhoverff"
+              }
+            },
+            "value": {
+              "XIe8LqXbZeFTjZgw52env": {
+                "key": "XIe8LqXbZeFTjZgw52env",
+                "type": "EXPRESSION",
+                "expression": "Parent.__index",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "aVQqVkXwwZuWF30wcW81e": {
+                "key": "aVQqVkXwwZuWF30wcW81e",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "rmV1CNUb26djDrNxeIxIM": {
+      "name": "onleaveFF",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 247.77777862548828,
+            "top": 141.0416717529297
+          },
+          "parameterMap": {
+            "path": {
+              "5ULRTLXknPh7WuP4c1c2yj": {
+                "key": "5ULRTLXknPh7WuP4c1c2yj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.onhoverff"
+              }
+            },
+            "value": {
+              "2LnflwXZcwexlmUu4RcS9O": {
+                "key": "2LnflwXZcwexlmUu4RcS9O",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "5tDC4cILe6TQuavZzhfVgf",
+  "componentDefinition": {
+    "5tDC4cILe6TQuavZzhfVgf": {
+      "key": "5tDC4cILe6TQuavZzhfVgf",
+      "name": "Page Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "CotRtGsorJ176StYicK82": true
+      }
+    },
+    "CotRtGsorJ176StYicK82": {
+      "key": "CotRtGsorJ176StYicK82",
+      "name": "Order online",
+      "type": "Grid",
+      "styleProperties": {
+        "1HTqazDS26IqT2vETnuS9B": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "10vw"
+              },
+              "paddingBottom": {
+                "value": "6.625vw"
+              },
+              "gap": {
+                "value": "4vw"
+              },
+              "paddingLeft": {
+                "value": "4vw"
+              },
+              "paddingRight": {
+                "value": "4vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "10vw"
+              },
+              "paddingLeft": {
+                "value": "4vw"
+              },
+              "paddingRight": {
+                "value": "4vw"
+              },
+              "paddingTop": {
+                "value": "18vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6g0ogTJojwSmPx4MnioA6x": true,
+        "3ftLU9JFAyLDT7OopBJCqw": true,
+        "5k0ayph6EsTlxWTn9h921S": true,
+        "7ptqHDyfGJf0suGD0g7wf6": true,
+        "7lx6DGDL9hNGqRLYZpF4JP": true,
+        "3lVtCyxIOR5Ev0CyjXPVDo": true
+      }
+    },
+    "6g0ogTJojwSmPx4MnioA6x": {
+      "key": "6g0ogTJojwSmPx4MnioA6x",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Order Online"
+        }
+      },
+      "styleProperties": {
+        "3gHeiZ7m3AGqSvrH8SonfA": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "3.333vw"
+              },
+              "lineHeight": {
+                "value": "3.333vw"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.179vw"
+              },
+              "lineHeight": {
+                "value": "7.179vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3ftLU9JFAyLDT7OopBJCqw": {
+      "key": "3ftLU9JFAyLDT7OopBJCqw",
+      "name": "buttons",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1fMQNabSmorDQVSymDJxyA": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "flexFlow": {
+                "value": "row undefined"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1ZDNNXubThTtSgRrxWcm4i": true,
+        "UrdKeK2OaYEe8UkEb7a3C": true,
+        "5Jh7BZMbrrqOXMKtZL3kv5": true
+      },
+      "displayOrder": 2
+    },
+    "1ZDNNXubThTtSgRrxWcm4i": {
+      "key": "1ZDNNXubThTtSgRrxWcm4i",
+      "name": "Oldies Remix",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Oldies Remix"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "linkPath": {
+          "value": "#7ptqHDyfGJf0suGD0g7wf6"
+        }
+      },
+      "styleProperties": {
+        "ld1FvjC5Doi2g85Z6xaqN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "max-content"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "borderTopLeftRadius:hover": {
+                "value": "0px"
+              },
+              "borderTopRightRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomWidth:hover": {
+                "value": "1px"
+              },
+              "borderBottomStyle:hover": {
+                "value": "solid"
+              },
+              "borderBottomColor:hover": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize:hover": {
+                "value": "3.59vw"
+              },
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "UrdKeK2OaYEe8UkEb7a3C": {
+      "key": "UrdKeK2OaYEe8UkEb7a3C",
+      "name": "Floral Fusion",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Floral Fusion"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "linkPath": {
+          "value": "#3lVtCyxIOR5Ev0CyjXPVDo"
+        }
+      },
+      "styleProperties": {
+        "ld1FvjC5Doi2g85Z6xaqN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "max-content"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "borderTopLeftRadius:hover": {
+                "value": "0px"
+              },
+              "borderTopRightRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomWidth:hover": {
+                "value": "1px"
+              },
+              "borderBottomStyle:hover": {
+                "value": "solid"
+              },
+              "borderBottomColor:hover": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5Jh7BZMbrrqOXMKtZL3kv5": {
+      "key": "5Jh7BZMbrrqOXMKtZL3kv5",
+      "name": "Bitter Galore",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Bitter Galore"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "linkPath": {
+          "value": "#7lx6DGDL9hNGqRLYZpF4JP"
+        }
+      },
+      "styleProperties": {
+        "ld1FvjC5Doi2g85Z6xaqN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "max-content"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "borderTopLeftRadius:hover": {
+                "value": "0px"
+              },
+              "borderTopRightRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomLeftRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomRightRadius:hover": {
+                "value": "0px"
+              },
+              "borderBottomWidth:hover": {
+                "value": "1px"
+              },
+              "borderBottomStyle:hover": {
+                "value": "solid"
+              },
+              "borderBottomColor:hover": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5k0ayph6EsTlxWTn9h921S": {
+      "key": "5k0ayph6EsTlxWTn9h921S",
+      "name": "Cocktails",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Cocktails"
+        }
+      },
+      "styleProperties": {
+        "3gHeiZ7m3AGqSvrH8SonfA": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "2.222vw"
+              },
+              "lineHeight": {
+                "value": "2.222vw"
+              },
+              "color": {
+                "value": "#002c5d"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "6.154vw"
+              },
+              "lineHeight": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7ptqHDyfGJf0suGD0g7wf6": {
+      "key": "7ptqHDyfGJf0suGD0g7wf6",
+      "name": "Oldies Remix",
+      "type": "Grid",
+      "styleProperties": {
+        "1IxFyUbQLLZcd3wbPHOkFN": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4SPmN9vybJkz6MDYNmPWGx": true,
+        "4BkFlQhaiJisA9KdsPxdlZ": true
+      },
+      "displayOrder": 4
+    },
+    "4SPmN9vybJkz6MDYNmPWGx": {
+      "key": "4SPmN9vybJkz6MDYNmPWGx",
+      "name": "Oldies Remix",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oldies Remix"
+        }
+      },
+      "styleProperties": {
+        "u1dJFtKveilOzvDZ2nQA": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.944vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4BkFlQhaiJisA9KdsPxdlZ": {
+      "key": "4BkFlQhaiJisA9KdsPxdlZ",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "title": "Bloody Cherry",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/bloodcherry.jpg"
+            },
+            {
+              "title": "Magic Hour",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/magichour.jpg"
+            },
+            {
+              "title": "Tiki Taka",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/tikitaka.jpg"
+            },
+            {
+              "title": "Americana",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/americana.jpg"
+            }
+          ]
+        },
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4Tas1rJp7tbgc18J45gged": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "4vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5RpDVqHE8Ouh4Uk9H9xLyl": true
+      },
+      "displayOrder": 2
+    },
+    "5RpDVqHE8Ouh4Uk9H9xLyl": {
+      "key": "5RpDVqHE8Ouh4Uk9H9xLyl",
+      "name": "item",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onMouseEnter": {
+          "value": "4sywgbyX5zpBVFtJzMZD0g"
+        },
+        "onMouseLeave": {
+          "value": "55LN5dpEzkQzDt09pxO2gf"
+        }
+      },
+      "styleProperties": {
+        "5I4QagBNkmRVXYcP93og4H": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "stretch"
+              },
+              "backgroundColor": {
+                "value": "#ffcd32"
+              },
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              },
+              "paddingLeft": {
+                "value": "1vw"
+              },
+              "paddingRight": {
+                "value": "1vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.5vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.5vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.5vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.5vw"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#000000"
+              },
+              "borderRightColor": {
+                "value": "#000000"
+              },
+              "borderBottomColor": {
+                "value": "#000000"
+              },
+              "borderLeftColor": {
+                "value": "#000000"
+              },
+              "scale": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.onhover = Parent.__index ? \"1.05\" : \"1\""
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "2vw"
+              },
+              "paddingBottom": {
+                "value": "2vw"
+              },
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "1vw"
+              },
+              "borderTopRightRadius": {
+                "value": "1vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "1vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "TcAlUe9glIA1nlJRW2ynu": true,
+        "5VPbQeRO89UJrSCfxkeHJR": true
+      },
+      "displayOrder": 0
+    },
+    "TcAlUe9glIA1nlJRW2ynu": {
+      "key": "TcAlUe9glIA1nlJRW2ynu",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.imgLink"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "6NK7botsy57AqNVVVuNXny": {
+          "resolutions": {
+            "ALL": {
+              "image-width": {
+                "value": "100%"
+              },
+              "image-height": {
+                "value": "100%"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "20.833vw"
+              },
+              "height": {
+                "value": "10.556vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "0.8vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "46vw"
+              },
+              "height": {
+                "value": "23.077vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5VPbQeRO89UJrSCfxkeHJR": {
+      "key": "5VPbQeRO89UJrSCfxkeHJR",
+      "name": "content",
+      "type": "Grid",
+      "styleProperties": {
+        "3rLV7QHemL4jojF3RgsmPt": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5GwV9ulACv61reDWronKmH": true,
+        "4VJTRSFZtUKvsiZ35ZUec2": true
+      },
+      "displayOrder": 1
+    },
+    "5GwV9ulACv61reDWronKmH": {
+      "key": "5GwV9ulACv61reDWronKmH",
+      "name": "title & description",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3LFBQFsMgKlIrXkoRNeiUs": true,
+        "7LNshbPEcN93Yi1obrwPlv": true
+      },
+      "displayOrder": 1
+    },
+    "3LFBQFsMgKlIrXkoRNeiUs": {
+      "key": "3LFBQFsMgKlIrXkoRNeiUs",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.description"
+          }
+        }
+      },
+      "styleProperties": {
+        "3hdYBJ6noxjfrIcVuxijUj": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "lineHeight": {
+                "value": "1vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "lineHeight": {
+                "value": "3.59vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7LNshbPEcN93Yi1obrwPlv": {
+      "key": "7LNshbPEcN93Yi1obrwPlv",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        }
+      },
+      "styleProperties": {
+        "7ekZYKGLw5B057jExdqJUX": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4VJTRSFZtUKvsiZ35ZUec2": {
+      "key": "4VJTRSFZtUKvsiZ35ZUec2",
+      "name": "price",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.price"
+          }
+        }
+      },
+      "styleProperties": {
+        "7sxWFIyR3ZrlqPDQCdJJG1": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7lx6DGDL9hNGqRLYZpF4JP": {
+      "key": "7lx6DGDL9hNGqRLYZpF4JP",
+      "name": "Bitter Galore",
+      "type": "Grid",
+      "styleProperties": {
+        "s5QiZzjq8LjCiFW1qAl0L": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1whVnkqeyXRtjGDP8I0I4Y": true,
+        "5CjQL6yCM06BshGbuy6Eje": true
+      },
+      "displayOrder": 5
+    },
+    "1whVnkqeyXRtjGDP8I0I4Y": {
+      "key": "1whVnkqeyXRtjGDP8I0I4Y",
+      "name": "Bitter Galore",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Bitter Galore"
+        }
+      },
+      "styleProperties": {
+        "4BiFMe5aRzQ09jvizA6qvv": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.944vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5CjQL6yCM06BshGbuy6Eje": {
+      "key": "5CjQL6yCM06BshGbuy6Eje",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "title": "Pomelo Yuzu",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/pomelo.jpg"
+            },
+            {
+              "title": "Lime Supreme",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/lime.avif"
+            },
+            {
+              "title": "Ginger White",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/gingerwhite.avif"
+            },
+            {
+              "title": "Citrus Blend",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/citrusblend.avif"
+            }
+          ]
+        },
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7K8fPKnHf7dUJlUaiQSgc3": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "4vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3ipoVjA50Pz5HPj8n77RpT": true
+      },
+      "displayOrder": 2
+    },
+    "3ipoVjA50Pz5HPj8n77RpT": {
+      "key": "3ipoVjA50Pz5HPj8n77RpT",
+      "name": "item",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onMouseEnter": {
+          "value": "1doDqQaNd1EmiXzQbZ4Unx"
+        },
+        "onMouseLeave": {
+          "value": "5ttmFmrJdJm8JuYrbU1RHF"
+        }
+      },
+      "styleProperties": {
+        "5OGIV7HOqxMAm6kZJJ3mlx": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "stretch"
+              },
+              "backgroundColor": {
+                "value": "#ffcd32"
+              },
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              },
+              "paddingLeft": {
+                "value": "1vw"
+              },
+              "paddingRight": {
+                "value": "1vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.5vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.5vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.5vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.5vw"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#000000"
+              },
+              "borderRightColor": {
+                "value": "#000000"
+              },
+              "borderBottomColor": {
+                "value": "#000000"
+              },
+              "borderLeftColor": {
+                "value": "#000000"
+              },
+              "scale": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.onhoverbg = Parent.__index ? \"1.05\" : \"1\""
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "2vw"
+              },
+              "paddingBottom": {
+                "value": "2vw"
+              },
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "1vw"
+              },
+              "borderTopRightRadius": {
+                "value": "1vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "1vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "1vw"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "scale": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.onhoverbg = Parent.__index ? \"1.05\" : \"1\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4ljPUA6pFJFuVgiXSkLUsi": true,
+        "2Nz7oYLDJU0ufCnXMRThMi": true
+      },
+      "displayOrder": 0
+    },
+    "4ljPUA6pFJFuVgiXSkLUsi": {
+      "key": "4ljPUA6pFJFuVgiXSkLUsi",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.imgLink"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "3cofB2PxbEwQj0u5UvCMlT": {
+          "resolutions": {
+            "ALL": {
+              "image-width": {
+                "value": "100%"
+              },
+              "image-height": {
+                "value": "100%"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "20.833vw"
+              },
+              "height": {
+                "value": "10.556vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "0.8vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "46vw"
+              },
+              "height": {
+                "value": "23.077vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2Nz7oYLDJU0ufCnXMRThMi": {
+      "key": "2Nz7oYLDJU0ufCnXMRThMi",
+      "name": "content",
+      "type": "Grid",
+      "styleProperties": {
+        "3rLV7QHemL4jojF3RgsmPt": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "MprYkDIstLsrH5PtlT0Db": true,
+        "113gOrEad7JjwcnKfvDO4s": true
+      },
+      "displayOrder": 1
+    },
+    "MprYkDIstLsrH5PtlT0Db": {
+      "key": "MprYkDIstLsrH5PtlT0Db",
+      "name": "title & description",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1he1r3DilPWH39zkTsWfBQ": true,
+        "7137QLx3MXiCeIsgQmZM9e": true
+      },
+      "displayOrder": 1
+    },
+    "113gOrEad7JjwcnKfvDO4s": {
+      "key": "113gOrEad7JjwcnKfvDO4s",
+      "name": "price",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.price"
+          }
+        }
+      },
+      "styleProperties": {
+        "6GgZOyIQkTQnRktsevsHfe": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1he1r3DilPWH39zkTsWfBQ": {
+      "key": "1he1r3DilPWH39zkTsWfBQ",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.description"
+          }
+        }
+      },
+      "styleProperties": {
+        "1I44FR9hR1VbCYyDliVT6d": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "lineHeight": {
+                "value": "1vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "lineHeight": {
+                "value": "3.59vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7137QLx3MXiCeIsgQmZM9e": {
+      "key": "7137QLx3MXiCeIsgQmZM9e",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        }
+      },
+      "styleProperties": {
+        "1LWZvjB9r4Y2DfQ6rk2dZh": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3lVtCyxIOR5Ev0CyjXPVDo": {
+      "key": "3lVtCyxIOR5Ev0CyjXPVDo",
+      "name": "Floral Fusion",
+      "type": "Grid",
+      "styleProperties": {
+        "6VK0If1bcwMBa5ky046e6C": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "6vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "55OeWA3f56FWGVB0xKSWC": true,
+        "SInp3d3lQMYH0tS6ejiSA": true
+      },
+      "displayOrder": 6
+    },
+    "55OeWA3f56FWGVB0xKSWC": {
+      "key": "55OeWA3f56FWGVB0xKSWC",
+      "name": "Floral Fusion",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Floral Fusion"
+        }
+      },
+      "styleProperties": {
+        "vTJqtsPWXyHrYh5WzMXXS": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.944vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "SInp3d3lQMYH0tS6ejiSA": {
+      "key": "SInp3d3lQMYH0tS6ejiSA",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "title": "Lavender Dew",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/lavender.avif"
+            },
+            {
+              "title": "Lilly Rose",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/lily.avif"
+            },
+            {
+              "title": "Jasmine Edge",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/jasmine.avif"
+            },
+            {
+              "title": "Spicy Blossom",
+              "description": "I\u2019m an item description. Click \u201cEdit Menu\u201d to open the Restaurant Menu editor and change my text.",
+              "price": "$9.99",
+              "imgLink": "api/files/static/file/SRUJA1/Ap\u00e9ritivo/spicy.avif"
+            }
+          ]
+        },
+        "layout": {
+          "value": "THREECOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "15kUAjgGvLg80RrPrmnCgT": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "4vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5r07vchFK9pNSYbfWEhrha": true
+      },
+      "displayOrder": 2
+    },
+    "5r07vchFK9pNSYbfWEhrha": {
+      "key": "5r07vchFK9pNSYbfWEhrha",
+      "name": "item",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onMouseEnter": {
+          "value": "2qXKcrJjKbScBK9sVTo9ZE"
+        },
+        "onMouseLeave": {
+          "value": "rmV1CNUb26djDrNxeIxIM"
+        }
+      },
+      "styleProperties": {
+        "5jcOipaQFy3ZMT011Hozsv": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "stretch"
+              },
+              "backgroundColor": {
+                "value": "#ffcd32"
+              },
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              },
+              "paddingLeft": {
+                "value": "1vw"
+              },
+              "paddingRight": {
+                "value": "1vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.5vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.5vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.5vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.5vw"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderTopColor": {
+                "value": "#000000"
+              },
+              "borderRightColor": {
+                "value": "#000000"
+              },
+              "borderBottomColor": {
+                "value": "#000000"
+              },
+              "borderLeftColor": {
+                "value": "#000000"
+              },
+              "scale": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.onhoverff = Parent.__index ? \"1.05\" : \"1\""
+                }
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "2vw"
+              },
+              "paddingBottom": {
+                "value": "2vw"
+              },
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "1vw"
+              },
+              "borderTopRightRadius": {
+                "value": "1vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "1vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4yzwFKMb9YVaiDpAIoJYNj": true,
+        "2fUC6AWpDIbaqm3POwRMfl": true
+      },
+      "displayOrder": 0
+    },
+    "4yzwFKMb9YVaiDpAIoJYNj": {
+      "key": "4yzwFKMb9YVaiDpAIoJYNj",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/appbuilder/sample.svg",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.imgLink"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "3qDAyM7Ul23xzyOXKpeu0": {
+          "resolutions": {
+            "ALL": {
+              "image-width": {
+                "value": "100%"
+              },
+              "image-height": {
+                "value": "100%"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "20.833vw"
+              },
+              "height": {
+                "value": "10.556vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "0.8vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "0.8vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "46vw"
+              },
+              "height": {
+                "value": "23.077vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.11vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2fUC6AWpDIbaqm3POwRMfl": {
+      "key": "2fUC6AWpDIbaqm3POwRMfl",
+      "name": "content",
+      "type": "Grid",
+      "styleProperties": {
+        "3rLV7QHemL4jojF3RgsmPt": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6XKfoSYSubhWbt6hN8gqIG": true,
+        "6kvhudfGvTBwem0Lmih6Xx": true
+      },
+      "displayOrder": 1
+    },
+    "6XKfoSYSubhWbt6hN8gqIG": {
+      "key": "6XKfoSYSubhWbt6hN8gqIG",
+      "name": "title & description",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "2aSuJo3EhZtjMtvvQnBzwp": true,
+        "4kN1OWlCR2nj643sugkTgP": true
+      },
+      "displayOrder": 1
+    },
+    "6kvhudfGvTBwem0Lmih6Xx": {
+      "key": "6kvhudfGvTBwem0Lmih6Xx",
+      "name": "price",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.price"
+          }
+        }
+      },
+      "styleProperties": {
+        "6gchckOmbK2eIjO8qDxcqw": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2aSuJo3EhZtjMtvvQnBzwp": {
+      "key": "2aSuJo3EhZtjMtvvQnBzwp",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.description"
+          }
+        }
+      },
+      "styleProperties": {
+        "3bKcelitHBFhrq6k3GQh6C": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              },
+              "lineHeight": {
+                "value": "1vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "lineHeight": {
+                "value": "3.59vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4kN1OWlCR2nj643sugkTgP": {
+      "key": "4kN1OWlCR2nj643sugkTgP",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        }
+      },
+      "styleProperties": {
+        "4gNK2F93GiLKmb9xJz9JjZ": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "caudex"
+              },
+              "fontSize": {
+                "value": "1.11vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.11vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    }
+  },
+  "name": "orderonline",
+  "clientCode": "SRUJA1",
+  "appCode": "apritivorlfbvpechrlamg",
+  "title": "orderonline",
+  "version": 13,
+  "updatedAt": "2026-01-24 11:27:03.192000",
+  "updatedBy": "<USER>",
+  "createdAt": "2026-01-23 11:23:53.868000",
+  "createdBy": "<USER>"
+}

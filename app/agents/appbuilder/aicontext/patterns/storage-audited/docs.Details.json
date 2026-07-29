@@ -1,0 +1,27 @@
+{
+  "_id": "66a2a79f9d666d786cd8418b",
+  "schema": {
+    "ref": "docs.Details",
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1
+  },
+  "uniqueName": "docs_system_details_tocvvm4lkd42",
+  "isAudited": true,
+  "isVersioned": true,
+  "isAppLevel": false,
+  "onlyThruKIRun": false,
+  "createAuth": "Authorities.DOCS.ROLE_Docs_Admin",
+  "updateAuth": "Authorities.DOCS.ROLE_Docs_Admin",
+  "deleteAuth": "Authorities.DOCS.ROLE_Docs_Admin",
+  "name": "Details",
+  "message": "From transport : 20IjpwoYywjRUszUkGHR5Z",
+  "clientCode": "SYSTEM",
+  "appCode": "docs",
+  "version": 2,
+  "updatedAt": "2024-08-19 10:47:36.003000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-07-25 19:29:35.974000",
+  "createdBy": "<USER>"
+}

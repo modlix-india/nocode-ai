@@ -1,0 +1,149 @@
+{
+  "_id": "6773f1c269373e0c0bec59fb",
+  "definition": {
+    "name": "deleteScheduleCallById",
+    "namespace": "hrms",
+    "parameters": {
+      "_id": {
+        "parameterName": "_id",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 969.9999999999999,
+          "top": 384.99999999999994
+        },
+        "parameterMap": {
+          "results": {
+            "685Zl9zLmsfg97BYQBlyCR": {
+              "key": "685Zl9zLmsfg97BYQBlyCR",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.delete.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 937.9999999999999,
+          "top": 660.6666666666665
+        },
+        "parameterMap": {
+          "eventName": {
+            "106WG29KYdJTmhtggxsTPD": {
+              "key": "106WG29KYdJTmhtggxsTPD",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          },
+          "results": {
+            "7nLn2C7sNZvBas69tym8NJ": {
+              "key": "7nLn2C7sNZvBas69tym8NJ",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.delete.error.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "statementName": "delete",
+        "name": "Delete",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 616.6666666666666,
+          "top": 408.33333333333326
+        },
+        "parameterMap": {
+          "appCode": {
+            "2n6sCx09zyAjme9g6jBHub": {
+              "key": "2n6sCx09zyAjme9g6jBHub",
+              "type": "VALUE",
+              "expression": "",
+              "value": "hrms"
+            }
+          },
+          "storageName": {
+            "65pHnxPG4Rl3NF9zO6x19g": {
+              "key": "65pHnxPG4Rl3NF9zO6x19g",
+              "type": "VALUE",
+              "order": 1,
+              "value": "ScheduleCallDetails"
+            }
+          },
+          "dataObjectId": {
+            "8E2STgof5s4ZWV8rZpjHb": {
+              "key": "8E2STgof5s4ZWV8rZpjHb",
+              "type": "EXPRESSION",
+              "order": 1,
+              "value": "",
+              "expression": "Arguments._id"
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "hrms.deleteScheduleCallById",
+  "message": "From transport : 0FfQUnuG1R6hc1WsU1FuxV",
+  "clientCode": "SYSTEM",
+  "appCode": "hrms",
+  "version": 37,
+  "updatedAt": "2026-04-09 04:28:36.569000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-12-31 13:29:38.681000",
+  "createdBy": "<USER>"
+}

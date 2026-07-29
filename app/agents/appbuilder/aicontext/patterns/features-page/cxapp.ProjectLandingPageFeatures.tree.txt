@@ -1,0 +1,47 @@
+- 4R19TWwEnNPR8051fTsbvM (Grid) PageGrid
+  - 7EfbyNwDXwtUuALc4aWRQL (Grid) mobile grid
+    - 4wvZs9WI9OQbviEAy0faWz (Grid) menu toggle Grid
+      - 6BX9NNo9t6fyVR0JK244xr (Text) Text
+      - 2qcIzPgHOWY3eGKkaNUeZF (Icon) Icon
+    - 4ASHCylzQaAOIQDQtHvPcV (Grid) stepper Grid
+      - 2YjE1n1PwHn9lLTM7KH9VK (Stepper) Stepper
+  - 2UC7UTeZY5Ty52s1FyzSCw (Grid) Project Highlights
+    - 2HfmYhkvuvTOo8DdMvotTG (Text) Text
+    - 5VeEwrIP0QYeclX7ozwRRx (Grid) Grid
+      - 6LmGzxAqugPNV5CWfiMAZj (Grid) Grid
+        - 7BG2DuPsdLB0k5qZFghy9 (Text) Text
+        - GgLkulcNNrsyqHofbynQY (ImageWithBrowser) imageWithBrowser
+      - 5kcHTikxn5oSpH1XtYy0kg (Grid) Grid
+        - 5RUewC7VLCtzbAXUPtdEit (Text) Text
+        - 7M6ihzbD8FVDsU4NaQauhx (Button) button
+    - 7HA7LXSwQV8zQRDfayEZxf (ArrayRepeater) Project Highlight Repeator
+      - 6FO0BaeYcR6t8jXjYKXxCP (Grid) Highlits Grid
+        - 6STT6nPGGj4qOgozbZeApU (TextBox) TextBox
+    - 7tImKLZ6uE9z1mB5UfC3oR (Grid) Grid
+      - 4vsgKFWs2BDL4Vm6YMJKck (Icon) Icon
+      - M7RTlSNpHfvQ5igLJao3O (Text) Text
+  - 6aBlLSF3Vqlg2l6XR1Uo2s (Grid) Technical Specification
+    - 2mzoOqh79U0cvyOjmCnFiK (Text) Text
+    - 65PAnp1QRkFkqRJn7pO6kx (ArrayRepeater) Technical Specification Repeator
+      - 5GWVIrp7MHunixJmBsl5G7 (Grid) Grid
+        - 4JXl57CkTrkwmwPrg7t3bn (Grid) Content Text
+          - 6deEAhcMkpgaHDkH1qGrMu (TextBox) TextBox
+        - 1JzghB3isyCCg0AKQoAaMS (Grid) Label Grid
+          - cI7YaGMM8wDFueVeJunU1 (TextBox) TextBox
+    - 3pDqTRLdTnOcHFJuz5v32R (Grid) Grid
+      - 15VxCWxyvPYKYcvWdJjNbe (Icon) Icon
+      - 5x6snngbI80g9CqBfUPL2D (Text) Text
+  - 2DZRgsPTpxuama5WAliCfa (Grid) Amenities
+    - 5MSEK6nrurxiQMKOm7QUwT (Text) Text
+    - 2m0MgpAEFmG86tq1slUaek (Grid) Grid
+      - 1oKs3GBggY4X7djp4A3x8D (ArrayRepeater) Amenities Repeator
+        - XzB5w9VSA6VjofaBXSo87 (Grid) Highlits Grid
+          - MMfElxTxd7NpzinLNBnBk (TextBox) TextBox
+          - 2buxPmNu7DHfn6jSbbDsFQ (ImageWithBrowser) imageWithBrowser
+      - OKASpcCwBqXwifpFUyTLQ (Grid) Grid
+        - 1AlxNwhz5BeSvy8I5vWXF2 (ImageWithBrowser) imageWithBrowser
+        - 49GJYdm4v8aoepkloZREsp (Grid) Grid
+          - 5aksZvqpEptVOgGcwlLDVt (Text) Text
+    - 38EOGd2uN0pUKIO9FqlOib (Grid) Grid
+      - u5bPPcZsQz5jFGUxZ8HnB (Icon) Icon
+      - 1KRul4RBdh0wy3ckFxI2Tm (Text) Text

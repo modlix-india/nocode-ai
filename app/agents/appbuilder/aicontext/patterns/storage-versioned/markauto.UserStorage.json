@@ -1,0 +1,22 @@
+{
+  "_id": "63ecc8e1cad5f072b796169f",
+  "schema": {
+    "ref": "Model.User"
+  },
+  "uniqueName": "markauto_system_user_rhlmwaowy2pe",
+  "isAudited": false,
+  "isVersioned": true,
+  "isAppLevel": false,
+  "createAuth": "Authorities.User_CREATE",
+  "readAuth": "Authorities.User_READ",
+  "updateAuth": "Authorities.User_UPDATE",
+  "deleteAuth": "Authorities.User_DELETE",
+  "name": "UserStorage",
+  "clientCode": "SYSTEM",
+  "appCode": "markauto",
+  "version": 2,
+  "updatedAt": "2023-06-14 04:16:22.769000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-02-15 11:58:25.513000",
+  "createdBy": "<USER>"
+}

@@ -96,19 +96,22 @@ async def apply_migration(version: str, description: str, file_path: Path) -> bo
         # Read SQL file
         sql_content = file_path.read_text(encoding="utf-8")
 
-        # Split by semicolons to execute multiple statements
-        # Filter out empty statements and comments-only statements
-        statements = []
-        for stmt in sql_content.split(";"):
-            # Remove comment lines and clean up
-            lines = []
-            for line in stmt.split("\n"):
-                stripped = line.strip()
-                # Skip empty lines and comment-only lines
-                if stripped and not stripped.startswith("--"):
-                    lines.append(line)
+        # STRIP `-- ...` line comments FIRST so semicolons inside comments
+        # don't split statements. The prior "split by ; then drop --" order
+        # broke on `-- ... is the live state; prior versions ...` because
+        # the semicolon-in-comment split happened before the line was
+        # recognised as a comment, leaving orphaned text on the next stmt.
+        comment_stripped_lines: list[str] = []
+        for line in sql_content.split("\n"):
+            if line.strip().startswith("--"):
+                continue
+            comment_stripped_lines.append(line)
+        sql_no_comments = "\n".join(comment_stripped_lines)
 
-            clean_stmt = "\n".join(lines).strip()
+        # Split by semicolons to execute multiple statements
+        statements = []
+        for stmt in sql_no_comments.split(";"):
+            clean_stmt = stmt.strip()
             if clean_stmt:
                 statements.append(clean_stmt)
 

@@ -1,0 +1,122 @@
+- 69l3t7Rk6w751xjsXEdAC1 (Grid) PageGrid
+  - 3dBKplIpkSYaiuMghkWZx9 (Grid) NavigationGrid
+    - 7rp0qIo0ADb8Dpxhmt3Bl3 (Button) button 1
+    - 2DAIApnDjaln9o4t55kd9o (Button) button 2
+  - 2fy1VzmdmUpAmJnxbunuTm (Grid) Main Grid
+    - mEUKxpaqvTEgWNplwiu6U (Grid) Top Grid
+      - 50MCJpfRtMIHgxTnAIlubg (Text) Text
+      - 4Fh2SabB5h9IY65hHFO0Qo (Grid) Button Grid
+        - OMQuTN4qvvxeWqFaXzad1 (Button) button
+        - 17anoHzBqhlGdqg0jL4Gyv (Grid) Main Toggle
+          - 563hlJvi9avx2q2dCy16ee (Grid) Users
+            - 47JtBsqKxF3pVnMImfYIjB (Image) image
+            - 7gUpbgMihPMLWrhyQeqKPC (Text) Text
+          - 75SLlnQ8rfTZiw9hgxXERp (Grid) InvitedUsers
+            - Aa9p3efvNfZynzASFwPp4 (Image) image
+            - 2XCCdPGWHm7Do1GranCXdk (Text) Text
+    - 4TqdP02t9NzUxlcWR6KgBB (Grid) Users Table Grid
+      - pdG4n7TsM06AjR2tAW9ig (Table) Table
+        - 3HDO7PIjHBU63Vtmv212Qt (TableColumns) TableColumns
+          - 3tTeuUijHNL9fhINDYT0i0 (TableColumn) SerialNo
+            - 3vSGMl9slgq07PpLuig5wx (Text) Text
+          - 1fREasrzXfF8qXhXDiWPDG (TableColumn) UserName
+            - Hf0r8R05IExgGveFCyhxM (Grid) UserNameGrid
+              - 7qZ5pm24hSZp5f9n4806e2 (Grid) InitialGrid
+                - 4SJhIYnd1KSKZ5ZcDnZWQ8 (Text) Text
+              - 5KL34BnDYdspDZU4EoFS4M (Text) UserName
+          - 5nYGB8M5DKs1TyTD0GQ94O (TableColumn) EmailID
+            - 1D6vn2C8kSOnF9Hxzag7kv (Text) Text
+          - 7vkeUBpOtuI7IbKh1zePDl (TableColumn) Phone number
+            - 3yzusQuPsZqgqb9i9ez0IF (Text) phoneNumber
+          - 6OfX0L0cUvzuimMXUOJdhQ (TableColumn) Profile
+            - 2l3zRH3IymRfhxCcWOWJmY (Text) Profile
+          - 2XwdunL4PDXQk3XAefg7Zn (TableColumn) Status
+            - 81KQzIj8eSA79fyoLeS18 (Grid) StatusGrid
+              - cuhddgHVL0C6M8hj5pbST (Text) Text
+          - 2oVUFKBVWlToouHRASReKS (TableColumn) Actions
+            - 5bVuqtoWCrVj7EJXS0JMnf (Popover) Popover
+              - 4aG7mZALLaoLcW0oDj6b7R (Grid) Grid
+                - Fz9y3PnFU9Y7RJrVNwSQj (Image) Image
+              - au83SphoUEtsdxP0h0PH2 (Grid) OuterGrid
+                - 5ZRZITdMjNRDl0sTFBLtnd (Grid) PopoverGrid
+                  - 3fq71MblaN9Psgp7SZAE7i (Button) Edit
+                  - ZnOZuZuMZ53F1S0Eg1URG (Button) makeInActive
+        - LnenjJVmXz16mGbC1apyE (TableEmptyGrid) TableEmptyGrid
+          - ZpfrSUTHLI4NNPLIysmNL (Grid) Grid
+            - 1e2WTncHlKHyyOaqcm99nY (ArrayRepeater) Repeator
+              - 3vJbmykZMJRpRxcuE87waf (Grid) Grid
+                - 1Y8zTXOShzwhIYo0l166OT (Text) Text
+            - BSRp0MaLSnJMjNbsrPJ3D (Grid) Image Grid
+              - uyYSEAmchaS4xUzCcNX7i (Image) Image
+              - 57y2VGDcdBUsMNudPYju8m (Text) Text
+    - 2JVDuMfun60JpypZpB0tBX (Grid) Invited Users Table Grid
+      - 55Tgfk5wNrrRsBcfgGWC1E (Table) Table
+        - 12R0BdapQlGgvgJpvvz2IF (TableColumns) TableColumns
+          - 2pmAxUPMgIXdU59R0euEGG (TableColumn) SlNo
+            - 42EdFKTlq0OTotU1MpGpJu (Text) SlNo
+          - 3GNs1xXJ8JiLVqghKBI9aj (TableColumn) UserName
+            - 79Q21h1TpzV51drVnwjyoR (Grid) UserNameGrid
+              - 5rv2QI0PnWbtMmAOhQ5OgW (Grid) InitialGrid
+                - lRfaKXWx5bBGAiAD82N5Y (Text) Text
+              - 3DEK0Bpisq7IuTUeAd1BUt (Text) UserName
+          - 1fpagKkPQEDNMFfVPszrWm (TableColumn) EmailID
+            - 3AgFNJihkDo6gK9j6FWrbM (Text) EmailId
+          - 3EY3DM4TS8qVdqsTZF70tZ (TableColumn) Phone number
+            - 36nBkHYVyzizlYzCOgcMnJ (Text) phonenumber
+          - 5OAlt6TN78i0v0OUw9bYqX (TableColumn) Profile
+            - 1fiaip9Wv1lflidZI85Ijb (Text) Profile
+          - OL0sWuYA9ajc1VXzjoj1D (TableColumn) Actions
+            - 1wzvAwlErCbbAWJfPtkIkK (Popover) Popover
+              - 6s5DLVq5O3GuFklrh8GjgO (Grid) Grid
+                - 6W3NeAEHUXmXUR5j4Efu29 (Image) Image
+              - 3uJ4Mq153qZYLT4jtjm2do (Grid) OuterGrid
+                - 5FS05oaz91RY4aljqXloyP (Grid) PopoverGrid
+                  - 67cL3MbQ6R47EgQOmXjv1Y (Button) Revoke
+                  - 52X1Z0IjAcK9kTx7Ur3s0m (Button) Edit_HIDE
+        - 70w0uFxQlF1gW3TPy4TyP9 (TableEmptyGrid) TableEmptyGrid
+          - 4mXL8u3NwJID9FCroUern6 (Grid) Grid
+            - 3PpHSDVApvQaCZVwqKelSo (ArrayRepeater) Repeator
+              - 5toYyCkNGAkGNkv25XUdXA (Grid) Grid
+                - 5sV9QxjKfFjgCp7ITT4AwH (Text) Text
+            - 2XdiePJUFzhJyBfgNj15KX (Grid) Image Grid
+              - 3xarvxQua6ZTZXWLbe8rEk (Image) Image
+              - 4lMg2Ul5shQoOS7AWwq36n (Text) Text
+  - x6klWv3QtCuwpzzlwJPWg (Popup) Popup
+    - 3qGO3PqmmYC8vQukcRmrMN (Grid) Main Grid
+      - 1rkycvJhgMULd6DwJwyXjo (TextBox) First name TextBox
+      - 2OZOxfAwQZk9aa9X8y4NJS (TextBox) last name TextBox
+      - 3C9Ml9mFRSA6XIqKwEQ8I8 (TextBox) email TextBox
+      - s9yJU4Wuq0WlNLOI1avGZ (Dropdown) Profiles Dropdown
+    - 27zDiYgYGU10QsZzGNhrqg (Button) button
+  - 31FV5HeQ4XZvnVePo4WY4u (Popup) ActiveInActivePopup
+    - 1a0uF5jJWQO4Y2lxmPJUx1 (Grid) Container
+      - 2NLIKtv6buOMTwjX83ONMT (Image) Image
+      - 4cFXfqiWoB7MkEMyY76AlZ (Grid) Grid
+        - 3ijOB99UAGDNUIB2GDD5A5 (Text) Header
+        - 6fe438IqVZapwOYaCb2Igi (Text) Para
+      - 7x5kgmeMkrVDTxWfbWAq1w (Grid) ButtonGrid
+        - 7JNcvfTyPezEBCwcSNf7MF (Button) Deactivate user
+        - 2c8haRJcFYs7jDbeCMEyF (Button) CancelButton
+  - 6qLLZ3EP6IJRlst62ARHxG (Popup) RejectInvitation
+    - 5sfQ7eKEPPW2mBR7Lv2czv (Grid) Container
+      - 3hnBVCR8G6tFDyMKrDDdid (Image) Image
+      - 2qsW0ibzC64NPgSrfi1Trh (Grid) Grid
+        - 2SGjB8yW0xxccPDURqNeRS (Text) Header
+        - 3s7aI9KW4bj8MBSS9sKeQK (Text) Para
+      - 5XxYk0fX85Zgx0ZphOTkQB (Grid) ButtonGrid
+        - rpoDpKIShQf6nfi8u0Q6F (Button) Revoke
+        - 3IM346oP0cjtOAbpFsIkUI (Button) CancelButton
+  - 6kLqrNBAvjnWx5Z2ZnUdha (Popup) UserRequestPopup
+    - 71eF7jlFEqSIkZrj69TTyo (Grid) Grid
+      - 3bLjWYLi4so7xAk1pLVANm (Image) Image
+      - OA8RJeMkSYKZ85hxYr5LA (Text) title
+      - 4cRNex1cdJNfFZRaMb0M5r (Text) Text
+      - 1cKlso5yTSV2joJ5Qi79dP (Dropdown) Dropdown
+      - 2H7fLPz9AqvyzL2dhQKHUQ (Grid) Grid
+        - 2swQ6Yga8kX8XlreVzUehc (Button) Accept request
+        - 6Cw1NyOtDBhvItuaik2Vam (Button) Reject request
+  - 6IrGuUktx30f0ISinxSbUF (Popup) new invite success Popup
+    - 1fG4hkbVt8X4aN5b1TyHEC (Grid) DeleteGrid
+      - 3sDpcJek9pkJjXlT0QtMp4 (Image) Image
+      - WBySQQvKF6a3ala8D4l5H (Text) Text
+      - 5glFPtamxPx8qm24OMqiq4 (Text) Text

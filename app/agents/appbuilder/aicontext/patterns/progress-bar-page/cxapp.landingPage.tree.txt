@@ -1,0 +1,1308 @@
+- 5oTvhbRx3f6GgnllzEj2bA (Grid) PageGrid
+  - 2sPcMt3P7SjyzywNeg9qjO (Grid) Residential Mobile Grid
+    - 1VbKk2jJwKiPYSAWBCzDBy (Grid) Project info Grid
+      - 4W4ATYgJRsB9l19NofyfvY (Grid) Project Logo and project Grid
+        - 3nNK95paw4vRQP7idbXO1v (Grid) Project Logo Grid
+          - 4Y2MwVRV2n4jUOpRzYBXIi (Grid) Builder Logo Grid
+            - 5WIiDQ2qTOBNE4DnK9Wkaf (Image) Image
+          - 4fBVIi8iBNTAr1HnDLfltq (Grid) Project Logo Grid
+            - 5TK8SnrqVH1EsYBf7z7k5P (Image) Image
+        - 4XMiL1tWxu2F3KhLrBXjZk (Grid) Project name Grid
+          - J4ncCuB0eTINkE7ntwWzQ (Text) Project Name
+          - qynw2jXyYkeFr0Cf81AdP (Grid) Grid
+            - 4Hyfew6PBTuTdLqHBBDWEH (Grid) Rera Certificate Grid
+              - 2gCqo3wPoSCRwldj0tYSrK (Image) Image
+              - pAkrnXWWjIE80mi0kfWbI (Text) Rera Certified
+            - 72K8Fq2cs7xMQOQVdEWX9b (Grid) Locationa Grid
+              - 48wx2PgqeBTDGfczCXo8AM (Image) Image
+              - 5WLQCjQUXT7DKm0OLcvU0z (Text) Rera Certified
+            - 5eauVEmbyVZxB6NHDhoBRO (Grid) Locationa Grid
+              - 2nULacExW7MEDNPFNRTZ6z (Image) Image
+              - 7kR8JLI3PpQ3VPba2CQLOL (Text) Rera Certified
+      - 6k9Zlh5G2suSjc07U9NcCv (Grid) View unique points Grid
+        - 5NHJF1zscQg2N6wXRER096 (Grid) Grid
+          - 7f30lbp7nGbQG5EckW5kUx (Text) Text
+          - 2X6oxX6NuWwaKppZKllRFJ (Grid) Grid
+            - 5Apb9ufkkjayIBg9eVp07y (Icon) Icon
+        - 5wcWKGGIr7NkCpeOfX3FFU (Grid) Key points Grid
+          - rYqoSTIruj7llCwt3o7cy (ArrayRepeater) Repeator
+            - 2h0U1BtBQNnY5BHHd7mmNN (Grid) Grid
+              - 3FYxNSwbpKhGaDSnqnAG62 (Grid) Grid
+                - VSTsgWNNC8C27rJXdiYQi (Text) Text
+    - W2E9f1Uq7NSwTUVCqzZG3 (Grid) Tab Grid
+      - LyPMSp6H902YXcLvzxC4i (Grid) Progress Bar Grid
+        - 1SSVwy38tlSzeuCvbAbzca (Grid) Progress Bar and value Grid
+          - 1hTeiIzD2uEAr5cQj7vrGB (ProgressBar) ProgressBar
+          - V3Au9bkFZTkQG0rNMB87o (Grid) Value Grid
+            - zWdMgFr1eL0xx2MuGvWfn (Grid) completed Grid
+              - 2Tn1Gy7xYB224IXB0ECNU6 (Text) Percentage Text
+              - 1wUCRzEZBohzBKX6UTNy86 (Text) completed Text
+            - 2j0FwIqMY87r9BtV3x8TnJ (Grid) Value crore Grid
+              - 6ssTmPhO2q834oN5ZMvpsz (Text) Text
+      - 24HmF7y8Pq5pTuZtfI9umL (Tabs) Tabs
+        - 1QIP0ufOBRyTZU0XrxyqRb (Grid) main overview grid
+          - 6T4iWO03cqShujAin288Gv (Grid) Overview Grid
+            - 3WFq6jzQseVFg7GDo5UkQB (Grid) Text List Grid
+              - 6tkJkPVUuHGjH8XK8lwllI (Text) Information Text
+            - 4bitkwzbni9YrEEZwVH3ep (Grid) Asset Overview Grid
+              - 7J1nOzDZ7uaDq9G4ztX5VZ (Text) Heading Text
+              - 4u0vIrx314Zd3f0aIkD0T6 (Text) Information Text
+            - 4mmqj5g29GOuUBUOWzh24X (Grid) Location Grid
+              - 1atexHBrJYe1ixISzU04Cu (Text) Text
+              - B5P7ZfSWwf2Tb05MJKZXH (Grid) Location Details Grid
+                - 5AIYCU23wrO0TKKH5X7Y8c (Grid) Location image Grid
+                  - 4Lv4tsGSrx32x7DQQw8uV7 (Iframe) Iframe
+                - 7eHsvcLt5RdssmTwxEP0Y1 (Grid) Location Advantages  Grid
+                  - 5qjLFRkjaYN0g9fK42IZdM (Grid) Grid
+                    - Rh2e2afAKeQKgKpqZ4BlL (ArrayRepeater) nearBy locations repeator
+                      - 69A4rOdSyIsTunLrPx38q5 (Grid) Grid
+                        - 13i1YlrTYdGbn1EyTazhC9 (Icon) Icon
+                        - 2KBG8bON9V1ifAzUTzL3XY (Text) Text
+              - 42c2i2lHG441WR6lQncmwS (Text) Text
+            - 7hIykHzIzFDqCof7zf7FYv (Grid) Amenities Grid
+              - 46iIQ1tTRCi8fV9X2YNrY7 (Text) Text
+              - 1H9a67oDZv41Gd4zXAEkT9 (Grid) Repeator Grid
+                - 224SVxrQz6lT4x1gdmd17M (ArrayRepeater) Repeator
+                  - 45Py940WatFsq4wOfzHSY4 (Grid) Grid
+                    - 5fUJXodQ1VqLToDfWVcOnd (Image) Image
+                    - 4xOHSDCRcwFaAhHE4DiTwi (Text) Text
+          - 6AALjbt3mwW16BkChuFZTH (Grid) Nothing Grid
+            - 5rH9zVm6RHUwJLp7zISvS3 (Text) Text
+        - 1SFhZq2BEkpBPeU1YsDwi1 (Grid) main documents grid
+          - 1oViNp19zihAC1j7fu2yIj (Grid) Documents Grid
+            - 2u1G124rhdS1Da5QXJFdxn (Text) Text
+            - 2Sd5axyZRU9jNUehyRrhIk (Grid) Resources Grid
+              - 7kNYsmYNlvWN7BYvh25Glx (Grid) Floor plan Grid
+                - 3eqASNf4B00i6LEoyIftr1 (Image) image
+                - 5ZEbmkLZU5QhK82aASRKyo (Grid) text Grid
+                  - 3pHtKaVUOnVElrBnuXPwzy (Text) Text
+                  - 3D9Hy6Pdu6uacKWtAXMo4H (Text) Text
+              - 4TOQZWrrN6BAAvOrURWsIr (Grid) Master plan Grid
+                - nQLLeNHDlmOw6nereos7D (Image) image
+                - 5vQnFgDXhlroX9BKPe6gC (Grid) Text Grid
+                  - 2xYffFO1W44C5OrsQMgya2 (Text) Text
+                  - 4sIcbAXB6Nf4SFE6fwuSj0 (Text) Text
+              - 1PM0CylSUgZorySrHc166C (Grid) Investor model Grid
+                - 3UHeQ4tR2rDZUBZ20oq2cQ (Image) image
+                - 5MHxw8oEPKY5JQs0PY1PJF (Grid) text Grid
+                  - 2Li65Wg6Sv5LuLU9CemrNC (Text) Text
+                  - 6UtUme5pi1PaDNyY0Pe7y2 (Text) Text
+          - 7cytiDQE97cmFsn5ZZo4Da (Grid) Nothing Grid
+            - 1qUjWEndSSELmmCEbdBK3b (Text) Text
+        - 1RVUVXFhovJ97HRcp54WUu (Grid) main gallery grid
+          - 3y5DlRmfUD9u1fUviR1m3d (Grid) Gallery Grid
+            - BYd292GMTZTNrZfRBVxsK (Text) Text
+            - 4HGLDG9OCqFnKvQxAsVTRq (ArrayRepeater) Repeator
+              - 1dQkrf1QGLP8Z6x5OENEh2 (Grid) Grid
+                - 79l0vFQ4VhsGmFTIKuTvzx (Image) image
+            - 1XCsuUoCHMoYFJZpLEglLa (Gallery) Gallery
+            - 8F2oZ89YidRwU9JuTV5bD (Grid) Grid
+              - 6JECfgzpi7ipNIPSHCgX4G (Text) Text
+          - 28YA9MdJh7hDhSe9aoSHX7 (Grid) Nothing Grid
+            - 288YQOcrgbJnrmiUmN1yEM (Text) Text
+          - 3COVeIlhGUtcNupOwHs6Cq (Grid) Thumnail Image and video Grid
+            - 2JXH1FzfhF4hoXYbRaFjVN (Text) Text
+            - 6REV8ULJUQeCrNpCf9JADQ (ArrayRepeater) Repeator
+              - 7MIrcD4luMuYBWtjbWQHIP (Grid) Grid
+                - 2PV82YBBCT9s7HV9DxQs4M (Image) image
+                - 41fzdFSt9JcgxWw5gPsKHp (Grid) Play
+                  - NppfLN5nRjfbUVaBnGkzm (Image) Image
+            - 6w7Qxx0XiVltMh1ey8lhkd (Gallery) Gallery video
+            - 4Ls644ilxpkj0rYON26TZv (Grid) Grid
+              - 7hrigIWYXNtgyw3xqKRqgu (Text) Text
+            - 3AsWnmc97WDFessrxIbwQS (Popup) Video Popup
+              - 5jJmGaSngyFChvlVZs69q7 (Grid) Grid
+                - 20dss361QMMDkriALI1Rl8 (Grid) Close Grid
+                  - 4z5p5GZd6d53zWI12olVci (Button) Close
+                - 7AsS71Jc12UllAVqlXyDZC (Iframe) Iframe
+                - 2DCXo8JsROrVqSz0JG8TaL (Video) Video
+        - 2686Y9Oa4aeo7p1NMaZGrb (Grid) Main FAQ's Grid
+          - 39Fasb29azZveoUHOIL9XW (Text) Text
+          - 4UpeWfDiuD84pb6cjngNeV (ArrayRepeater) Repeator
+            - 4Kr07M5rDy9c4wKjDNskik (Grid) Grid
+              - 1lMO5mpHzMKvkmw8E7xLNg (Grid) Grid
+                - 1L2bJwWcDcxwSr37n1hT3V (Text) Text
+                - 4u4T8jpx9qVPOl2zvcfn98 (Text) Text
+              - 3dKdP0CaZWCW4OcU8jOL6G (Button) Plus_Minus_button
+          - 5vCmtVraVkKQU1O4BzojVU (Grid) Nothing Grid
+            - sarT8P444Wxrx9g1qpzWB (Text) Text
+  - 3WWSQrb85v1JZKOeaNMK5t (Grid) Residential Grid
+    - 45G6cnVReEfqUYqc7A4XOE (Grid) Top Grid
+      - 3Q5q9zDTWffSqsmeHt1pTW (Grid) Header Grid
+        - 6uSSI2980gJ4lSNhiAnqZ9 (Grid) Logo Left Grid
+          - 2Op2MCRTZqvyAQQeqMxQq0 (Grid) Project Logo Grid
+            - 5Qh2HOt99qLKIrLuNNssMZ (Image) Image
+          - 3EKg0O2XskMRs7oo9E6VRk (Grid) Developer Grid
+            - 4Lnf6OBN5WMBvH24UCY0Ur (Image) Image
+        - 5Sb3w7jfeqn3GsJWAoK2W7 (Grid) Right Grid
+          - 11Om2RpA3ffK8AfrqjpWPG (Text) ProjectName
+          - 4guX6dtFYxx3GXGcqMScxW (Grid) Bottom  Grid
+            - 3JknCsfqK4NY6o7nxZK2sg (Grid) Rera certificate Grid
+              - 5IjVkImLwOekr9QgGJo9GC (Image) Image
+              - 6Pj1q76sh0EISOOg9LQBVb (Text) Rera Certified
+            - 3mjh2V64rzjx34lA3DUkpY (Grid) Location Grid
+              - 28AhkymGsVfOi1hqVisL7w (Image) Image
+              - 6pVWqBnIZP9VibVVSzo715 (Text) Location
+            - 64QXj86ZfWL8OGC3cv3jlS (Grid) Under construction Grid
+              - 5kv02yLPK9uJDgLmbhPxDc (Image) Image
+              - 5lCR25SyJ5u4DG5ckslhmv (Text) under construction
+      - 7GryizCnTqztKUa6HwEtqr (Grid) Project image grid
+        - 37mgbfRMmyqHAsfhA0WoqP (Grid) KeyPoints Grid
+          - 2KOypp7xdRwlF7NhRjXlir (ArrayRepeater) Repeator
+            - KIC5Wh664gA8bO4ibhpVs (Grid) Grid
+              - 4e5rKyREP0TDOnTDEGb0x2 (Grid) Grid
+                - 2Xz5CX8gpcX88g84YGYp4k (Text) Text
+      - 7BrE57Dle0uFu2ZT473gUE (Grid) Progress Bar Grid
+        - 2Sc2y2RB4x813Tk45436jX (Grid) Progress Bar and value Grid
+          - 5Q1kxrVcQls7EzCvKFgGlb (ProgressBar) ProgressBar
+          - 4BRayolqJSDyJCdScVyorS (Grid) Value Grid
+            - 7KSP27b15nusWlim3CF2TB (Grid) completed Grid
+              - xEwq25C9GFOzlLNudro4k (Text) Percentage Text
+              - 2SW6YON3wVKhiOYmGqwTx0 (Text) completed Text
+            - 64IPqxxMgbtKmqJzN6B4Ps (Grid) Value crore Grid
+              - 1BYqOKN8tqMz3bphHeEBeH (Text) Text
+      - LWgr4Pu665b9uZigDDASf (Grid) ActionsGridClient
+        - 23N7pc9Ed1d67dDNUOjqmj (Button) Configure button
+        - 4dgu1xUl9HMAkeWcENhag (Button) View Customer  button
+        - 3fdFBGGACqMWpYWjDkSRJm (Button) Milestones and demand letter
+      - 1LAsTCEBLMC5KgUg0dXboq (Tabs) Desktop main Tabs
+        - 2Re3Fen3QuuxJuuuetCvVf (Grid) main overview grid
+          - 8jBXI0FRpbODrMzihxIXY (Grid) Overview Grid
+            - 3aD5Tp0tTIF6vh1vTAdlWH (Grid) Text List Grid
+              - 5t1If6o58Lpit6cUZIoFX0 (Text) Information Text
+            - 6AFb59SDzneCGkgI8fvz2Y (Grid) Asset Overview Grid
+              - 76IPY9gaa8KTpqhtG8fWkK (Text) Heading Text
+              - PEagmUwRYsXtHWspb7BdB (Text) Information Text
+            - 8KVuDfop4NJfd8Cj5foo7 (Grid) Location Grid
+              - 5WaBwbSEcB4wjZRJ1XKRfP (Text) Text
+              - 7m8kxIvL7s2ruGGKsUjJAm (Grid) Location Details Grid
+                - 5emDMzrRNkHUERlF9xbTK0 (Grid) Location image Grid
+                  - 72OoVx7i6MV4EIsz7ZchnL (Iframe) Iframe
+                - 25tsyhLTPrOVxVOqZaTjQ5 (Grid) Location Advantages  Grid
+                  - 46trlkIaElg266ZcsMmgJf (Grid) Grid
+                    - 5Yxxzm13FuKeJDRd6DTRkQ (ArrayRepeater) nearBy locations repeator
+                      - 5NnayTaSYZmwCqjfBsyVUf (Grid) Grid
+                        - 3APUbtP1HhMNzlWXpxkUMS (Icon) Icon
+                        - 257inFDsW4o42HiPSkWRmH (Text) Text
+              - 2qb6B918OccjZjw3aWGCzT (Text) Text
+            - 1aa1CoEcTqpBLYMmTA7uae (Grid) Amenities Grid
+              - 6vllxq069ORIPekRqln64j (Text) Text
+              - 4GaCveyu2dwHclCab3fwF (Grid) Repeator Grid
+                - 2Vdo8B1DxEoFw4cUIJiLuv (ArrayRepeater) Repeator
+                  - lTL1eDPSTRtMsrVqwZtux (Grid) Grid
+                    - 2rWSwzlzri4VOcUHk57mtq (Image) Image
+                    - 1KDunjnkTYomeClRkH9rIw (Text) Text
+          - 1binHYcWs2nf1XpRKEmpZJ (Grid) Nothing Grid
+            - 1isL8L7LCA2IzfiRhQOgf6 (Text) Text
+        - 1EFJznxjfEmsz5fN5nyzQ (Grid) main documents grid
+          - 1ZVxA70NMBhxSWvY709DVJ (Grid) Documents Grid
+            - 3GX9dQtj0FbENHgzZKUfOS (Text) Text
+            - VM2nzhnTl5gFuvpxGCrPE (Grid) Resources Grid
+              - 4ik5AOaDVIjUQMWKYUNnLU (Grid) Floor plan Grid
+                - 3beAsVFufL3ERK0N3D3cPY (Image) image
+                - 5IGORHkJ46QXPhruLvPsQm (Grid) text Grid
+                  - 4hp9zRFWusYXub6lukQ5h5 (Text) Text
+                  - 1Bc4r8NaGynCVsN85lEpKY (Text) Text
+              - 43Vg2VL2SeuzsZmKjFbsQJ (Grid) Master plan Grid
+                - 2vHnCQLPcD64xEv0HF9o6u (Image) image
+                - 5xwP1BhgriCsrotP3zNUFI (Grid) Text Grid
+                  - 1o2XD8YneaerHBreg8gr1E (Text) Text
+                  - 1qFwPaQ5UQRTI8KTwN7Xgm (Text) Text
+              - 5Lg6g3VVCUOnLwqB1AM06 (Grid) Investor model Grid
+                - 1DLFuriBmoxLHWqOkqk0Gd (Image) image
+                - 616xXymHsfbhItZXNIf2zV (Grid) text Grid
+                  - 154yr5myhHiWRDeNzaare5 (Text) Text
+                  - 7EFVoITPXQ1KMNxEGykedG (Text) Text
+            - 4b3kD8NQVDoXWAKQlFipTe (Grid) Resources Grid
+          - 6at3kJRc9y3K2v9fuMeXpa (Grid) Nothing Grid
+            - 1xSyJVP6SSdiD1SqwwlJbt (Text) Text
+        - 3blrK3FfZe44fujv7JguXg (Grid) main gallery grid
+          - 49Jr4IHoklkZ8lDpZR1xOF (Grid) Gallery Grid
+            - 51jTyNnESPxzgVS7gRRxXR (Text) Text
+            - 63aNOztH8qCDYhxLn8hOSR (ArrayRepeater) Repeator
+              - 1dlgbmPGfoIgiDpErjUP9V (Grid) Grid
+                - 4Ae8c9GSabXrPE2w78llW1 (Image) image
+            - 2efK2K7rrVzJ9ME1DFn63E (Gallery) Gallery
+            - 7sz1O4aj4Rq1AaNSGgSpW8 (Grid) Grid
+              - 4oFNeB9Sq4sQn1H8FQLqxq (Text) Text
+          - 4cDjhuvOjPl2Tv4i4iiyQo (Grid) Nothing Grid
+            - 2TAKNxO3FR5m2ct7P8ElAS (Text) Text
+          - 2plygFelvegdgem71H6DvC (Grid) Thumnail Image and video Grid
+            - 1qEy8fSqkt08BeJEO7dxRf (Text) Text
+            - 7qEr7xopYYJVes3avSjU6S (ArrayRepeater) Repeator
+              - 3zslTXSMZPxVnIO2Il9kNd (Grid) Grid
+                - 5si6RGjOiRYMrQ4venwOS2 (Image) image
+                - 6LKRd3wPHryudgkYf4VC9P (Grid) Play
+                  - 66dcdjuKqagInwzl7vVFeE (Image) Image
+            - 30NuhLEQvJkOLDsdLwYHIt (Gallery) Gallery video
+            - 39GwsipP5pXu4NqiXB9jpU (Grid) Grid
+              - 3MRKRZZSdol2n0fr0S6iC6 (Text) Text
+            - tJPhfuYJGUzQcuonBMwVz (Popup) Video Popup
+              - luPu5v9ZzSDJcBXMWLU3G (Grid) Grid
+                - 6WLrkJ7q0VOMf35qLRyLH2 (Grid) Close Grid
+                  - LDPtIgzje1DLjfRnQuqQJ (Button) Close
+                - 4tGuMHYMqIgf0l7vCosTG (Iframe) Iframe
+                - 5Zg3r3DJao2mQlWnJO7yGj (Video) Video
+        - 3oWy2s8h9UPB3DAYwdv7Er (Grid) Main FAQ's Grid
+          - 5Yps8bYCpGlLJZxq9z8OsR (Text) Text
+          - 2qBN1cukCyOATdo2HhX5Ar (ArrayRepeater) Repeator
+            - 6Q5V0TmN6WRKCDwMWwLglC (Grid) Grid
+              - 2DBXoprzj7QbQYhyKdc1A1 (Grid) Grid
+                - 7r1QDfkam3qsVuSenoVxJt (Text) Text
+                - HwJjzsDoXfKLO25XrH8yx (Text) Text
+              - 4moxU7JmHpxK00qg6jmw0W (Button) Plus_Minus_button
+          - 4HbNLSDvaiTRGVOH6KOu2E (Grid) Nothing Grid
+            - 5HLIFZtZOlhojULofo6BCs (Text) Text
+  - 1RTDX31Rr18NVPZafGoTER (Grid) main Grid
+    - 7kIjIGWSeuu2NkaqV7a4zV (Grid) left Grid
+      - 7eCzQuczDXD7O3fyBAULST (Grid) Grid
+        - 5s4K1sXBryPj890aRWTghF (Grid) Top left Grid
+          - 3MtaFwOEDEHlZukBpqpedE (Grid) Top Grid
+            - 1vB2avKrhuyFQW5XGqxzSq (Grid) BackgroundImage Grid
+              - 7EQlrd4kCQ7acWfmqgS8UC (Grid) Blur Grid
+                - IMNeTb2G5Kqw4dgF4pB2M (Grid) address and name Grid
+                  - 2f4F1SA3rgWSkhxqaIdmF3 (Text) project name
+                  - 6Uu1iYMYVAHJgABWz6AQUP (Grid) Address Grid
+                    - 7zOu20qFFlNMKOvDvnCWTD (Image) image
+                    - 1cYs46rxDiqBz6VpaR45rU (Text) Text
+                - 7EQ1prG1X52DM5o0PUhNt9 (Grid) Parameters Grid
+                  - m1xqNpMGyiecPDX8eh4g5 (Grid) Parameter Grid 1
+                    - 3qBpWsq8YJuOroaH6qczUy (Grid) parameter name Grid
+                      - 63aOLaK9XAMGXMNNr5x0HY (Grid) Grid
+                      - 6vUuKel3dBEuRI5MI68jSI (Text) Text
+                    - 4Dl8TVBfNVnkPfxzErEsI9 (Grid) value Grid
+                      - 4gLLo6nS5Jyo9nIaHOxTV4 (Text) Text
+                  - 6NYPjLi3TAIojbkjXS6del (Grid) Parameter Grid 2
+                    - 47f8BM2Xhq0Fxs27G75KBu (Grid) parameter name Grid
+                      - le58NJhgifJByjP7p1Tlz (Grid) Grid
+                      - 4xGYl9DWh8lsivZ8zMa0Kz (Text) Text
+                    - 5ewaTvJMEiBNpkXd2ovuB5 (Grid) value Grid
+                      - 4i48S0P9TfIf9uUXqWyuWz (Text) Text
+                - 2I1sHQLvdCPDlreS8lKnkJ (Grid) buttons Grid
+                  - 4xDkNJTHrd1KnoiMAH5ivb (Grid) Income Grid
+                    - 4nxTR7hQyzb6UVzDcUk1pR (Text) Text
+                  - MLAtXPVT5toVGLq9U8meN (Grid) yield Grid
+                    - 7rTZKzyjvFy3YjLTXGFFR6 (Text) Text
+                  - 5K3dVfpKnPMSY5fXNmKKA2 (Grid) Tenant Grid
+                    - 3b7VfSpLSuXehcRTFinRyn (Text) Text
+          - 8UIWQiJ4ktwU10GQoax26 (Grid) Progress Bar Grid
+            - 3I0aDSmUspriUTKjxglUdE (Grid) Progress Bar and value Grid
+              - 4ozYZUeYcaCrXKCS1wCNXL (ProgressBar) ProgressBar
+              - 1g0pdGQUgKy3KfMm9mcVW (Grid) Value Grid
+                - 10Rgx7EsJR0JFEArYyO7OP (Grid) completed Grid
+                  - 4udg6RWu7YdZKBQuSbCahO (Text) completed Text
+                  - 3Hq64sd8iK3HHa3FZ7V5vp (Text) Percentage Text
+                - 6hR5TXduSASIRnl9mIJf5i (Grid) Value crore Grid
+                  - 7vre28DjShb2OCM0AAwBst (Text) Text
+                  - 1MK54jyHcCUTcJp0gSh2pY (Text) Text
+        - 6dAer1jhTeTJwkohofjQNV (Grid) right Grid
+          - 7EIDxR4DAmGOpjCL5mCfww (Grid) Right Grid for customer original
+            - 4qgPmWSDTUqEjpK7PxopjZ (Grid) Inner Grid1
+              - 68ACJ1hz0iwLeyev7pPqKd (Grid) inner Grid2
+                - 4dGMYWNFBBXKeXD6oD3atA (Image) image
+                - 5S8wkw2nt4eyzzlSAdsoDY (Grid) minimum amount Grid
+                  - 3HgxYxCWpPdZlZima9lPsC (Text) Text
+                  - 5Pu7gU5KR3Et5J4kwigxUw (Grid) Amount Grid
+                    - 1pPnMeJisod0XNApP30OUW (Text) Text
+                - 2ivdGZ0ngpn5eTzQNEPUYX (Grid) buttons Grid
+                  - 26LCdLrysN1RxGvvSe2zw0 (Button) button
+                  - aUqM5lIi1iKjLMwxgFkUd (Button) button
+                - 6JkhbaOR6K9z4TA01mtoAO (Grid) Area text box Grid
+                  - 51oPbtMbT5r8CjHbKcp8d0 (Text) Text
+                  - 3GAuNv2wVwapUkuEzir7Bg (TextBox) TextBox
+                  - 7Jar5VZns7Te4f8hTANYuJ (Text) Text
+              - 2yZcCAE3iMXe2ObfTnlAg0 (Button) Invest Now button
+      - 10vUZT7yJVTHzxCJVE3bi2 (Grid) ActionsGridClient
+        - 1F1YQWTm1XOQjUhAAWXA5C (Button) Configure button
+        - 1b70B421AORGCY7GMLPQiH (Button) View Customer  button
+        - 7JI4riDZtlKGlpMnqRWSXo (Button) Add Customer button
+      - 6ytGp0wmOYnIuffLyl6aZ0 (ArrayRepeater) key parameters Repeator
+        - ol5Ou3jvM4z0TdzbX0baY (Grid) Pre Tax IRR Grid
+          - yoymVWixuv3z6BukVjOjS (Grid) Grid
+            - 4ChsGgn7KXTaAFxnJ2bhCp (Image) image
+          - 2Zat5sF8LPnj8EYJdGhPDi (Grid) Grid
+            - 1RLSuXaTM1LDlcOEKbE5LQ (Text) Text
+            - 6Dt5Z6RrguXFpghEfuDuxq (Text) Text
+      - 27WzCQTzZoebnKxe1zh5Yw (Grid) mobile Grid
+        - J7LoOKRGTytdvpnbt6SlG (Grid) Scroll Grid
+          - 3QjQbXBYCyVVWy3KW3aSgt (Grid) overview Grid
+            - 2UmlUlpYdKIyef1Wm9DCBV (Text) Text
+          - 764ZHzRHdJGBABbPosaIL3 (Grid) Tenant Grid
+            - 68RCPDrXB826AzqbKn7YQU (Text) Text
+          - 5kHrBR6LJaOZiWWawvwRHJ (Grid) Calculator Grid
+            - 6TkuBkLR67t8DB2YRWPdEX (Text) Text
+          - 52y83cihJfPH3Tyi43811Z (Grid) Documents Grid
+            - 247fOMkPbZV9DjFpoE8dg2 (Text) Text
+          - 4mktmeKrn2UdjoXYmIkM7F (Grid) Gallery Grid
+            - 40PlDTbDMepzdvtDsVrSi9 (Text) Text
+        - 784AaosE5ajpa3hG7wa8Gn (Grid) Info Grid
+          - 2j4UzjlBGegpfSTchuLRXW (Grid) Main Overview Grid
+            - 6PQx4W15SNINfvtS3uxVIU (Grid) Overview Grid
+              - 5vX2fnTIZlevosSEKq0Frb (Grid) Text List Grid
+                - k41f5QwQS1qNdeo0ug4zo (Text) Information Text
+              - 12fOxAXjIRN2drdmhOu03g (Grid) Asset Overview Grid
+                - 11XyvEkqkPNzGvIxwABpg1 (Text) Heading Text
+                - sESeN0pVHNyPoyp3nlFF3 (Text) Information Text
+              - 4M257wP5YJ3MAZSsGCv34N (Grid) Asset features Grid
+                - 6KlPlBl2kaakcP6fD6gDpC (Text) Text
+                - 4xWFXOyd9W4CZ4Ucqwm1PE (Grid) Grid
+                  - 5Pp52AwTRzCRFZFMkr8hiJ (Text) Text
+                  - 3qXOAiRGAzz9EHLcCap7px (Grid) image Grid
+                    - 3YeHinjcjjP3JWDWzSMVdh (Image) image
+                  - 4JvisD7GHpdprnFFLcCcSc (Text) Description
+                  - 6A6Q2zujTHIx85xx2xv4Ld (Grid) Image Grid
+                    - Q7QKPpIRpaSySFH8X90wH (Image) image
+              - mXXPYmc0dPi1MhsGuhbWc (Grid) Location Grid
+                - 34rbDdTTRF9RpAM1myuky5 (Text) Text
+                - 6ZpymWactMO1BZ5cEPp5qn (Grid) Location Details Grid
+                  - 3276pHCnqp7aTDTQv6sxUq (Grid) Location image Grid
+                    - 7I7T7MtJmwivKILhTWgfuV (Iframe) Iframe
+                  - 3PXhl96YDEztJsqVkLEYQj (Grid) Location Advantages  Grid
+                    - 67xJ0SpqkTUkLk7MMiamUU (Grid) Grid
+                      - WZX9UwubfvV4tVj50h6yk (ArrayRepeater) nearBy locations repeator
+                        - 53R6hEzetNjeHqEZBb9LWQ (Grid) Grid
+                          - 7HJTJM2eXzdkUiXCnAlFUU (Icon) Icon
+                          - 7dUioLeiBnUDOO4MPqCZpr (Text) Text
+                - 5LrRQHScwcP9HpHgbRE6EH (Text) Text
+                - 72GjTcAZNc0a77w0nik68O (Grid) Image Grid
+                  - 3arfYIuEVYwjyj1a3zCFsn (Image) image
+            - 4xuECW9YL9QTfOAl4W7puR (Grid) Nothing Grid
+              - 1jcz9OrzgUXKAeUqqHOLuM (Text) Text
+          - 4B3tkiJtsGLKzuCCSo0B3I (Grid) main Tenant Grid
+            - 5SHZenrDSkfy30dTeaoCxc (Grid) Nothing Grid
+              - 4pl246oiXZSNe3xIUWmwii (Text) Text
+            - 3Y3MwCBUea1fJSFFArtocI (Grid) Tenant Grid
+              - CjhRaxb1Ep3dKaakhyCv2 (Text) Text
+              - 5ve7ynHcNOG2v2a23tZfNd (TextList) TextList
+              - 1EifB5t9151rnlBwGQ3CeX (ArrayRepeater) Repeator
+                - 31YlDClC1ijPP3TwYdoIPZ (Grid) InnerGrid1
+                  - 5X8VKLWac26vQ5D0EQL3aO (Text) Text1
+                  - 7pRgaLMmNweEqkKg5QiaV1 (Text) Text2
+              - 6I332aHzOV4qn1dVkBeqY9 (Grid) Grid 1
+                - 1D6QNGRj3mmJiX6dlfovDk (Text) Heading1
+                - 4eKzr2YJdMnO9DDhrSzGf9 (ArrayRepeater) Repeator
+                  - 24xfJRFWtfV5BJkhCIisPm (Grid) Grid
+                    - 6bQBgJ7cjxBIvAvJeLUKnW (Text) Text
+                    - Ss9GOtMNYXRKGiSGY1Dz1 (Grid) image Grid
+                      - 3J93ojHy88lTrgcHOO2XeQ (Image) image
+                    - 4bjR1G2dcnK4WNv2vpknRH (Text) Description
+              - s82qnZk0IrRWz5tsBIn8g (Grid) Grid 2
+                - hQQ1XVM7VZCFwV0Jta7ih (Text) Heading2
+                - 5M4KdR4BsYoHjMtySloIt3 (ArrayRepeater) Repeator
+                  - 4dfZNqONPQf0LfI52GJyUL (Grid) Grid
+                    - 10K3AtZmf3GbMMUEQUlb59 (Text) Text
+                    - 5dw7L5LLnGxfb9asMtY5DK (Grid) Image Grid
+                      - 7lsoNuxlKkAMWBcYiPOsBr (Image) image
+                    - 2g5GyZNsXfVoNEO69k7ojb (Text) Description
+              - g98AjYnoKgUkglxp1N2zf (Grid) Grid 3
+                - 13ar5xmqREivkt3sCI6C2q (Text) Heading3
+                - 3pU39uLuUvKoPoKaQNX2Rp (ArrayRepeater) Repeator
+                  - 2aRZWNr5DBUCPI2n1k3uJu (Grid) Grid
+                    - 7vvRDfwSeJvynWbs83BTaU (Text) Text
+                    - 2FWFMcG6G8J8JgXrp7X6Ui (Grid) Image Grid
+                      - 6gkuUeZCMFLb4xocres8XH (Image) image
+                    - 1Tlq2TMZoQ6eHZw80DaWbi (Text) Description
+              - 5veawlDtCiB0gUBU88LfqL (Grid) Grid 4
+                - 5VjOtoTLqYyWYz6RYLZ6Zz (Text) Heading1
+                - 4Oh7lTdANgg8rrcE1cuBGC (ArrayRepeater) Repeator
+                  - ShM5dWlia5XKzXHPLRqMT (Grid) Grid
+                    - jaPuuJw4Sd4lwmbBqammM (Text) Text
+                    - 4IgKYvr6BK8C9SKf4ZRCTX (Grid) Image Grid
+                      - R1QixDrKcY8bI5yOkrNsZ (Image) image
+                    - 1cANvvnA3OIh6OrrtjpsCk (Text) Description
+              - 6SvTFM3LhWlNvdGNmBpNYl (Grid) Grid 5
+                - Hs0GVEmVJugoZouz3ZbGC (Text) Heading1
+                - 5dE4grVAbFLUuo7oCXXI4x (ArrayRepeater) Repeator
+                  - 7BZpqe7lcvLeN12x1J7k9f (Grid) Grid
+                    - 6nykTcQvMC1vXwvAPaDClM (Text) Text
+                    - 3HXQriUS77WQcotoaRJJtC (Grid) Image Grid
+                      - 1UrB8s9MtFskTekhLZyS28 (Image) image
+                    - 2DacWB7DJFb4wDeBlFNiYh (Text) Description
+              - 6z4EQcuClKFIYv6GGA3IOO (Grid) Grid 6
+                - UW1pbK2Bb36nHLZTRgRl1 (Text) Heading1
+                - 6UmPPJPADpBMM3LpYpzFC7 (ArrayRepeater) Repeator
+                  - 6Wc6A5ddKUkw36zgnx1alo (Grid) Grid
+                    - 2Y4q9ExnYp8vOkQyUPZIbY (Text) Text
+                    - 2m9bYzxC3SOXunbqZYhaxW (Grid) Image Grid
+                      - 6m5hzawFHuuRf76OEZWa1s (Image) image
+                    - 5snOM8PMoKcevjQ5uNXecd (Text) Description
+          - 25nSWOS1xcngUMrkmqRiTL (Grid) calculator Grid
+            - 47T8ySgy0rMPmqd8cnq2yQ (Grid) No calculator Grid
+              - 2mBpDiuoUDK3z1wTmppVkf (Text) Text
+            - 3stylIz6wb6zLJzffbW0Jw (Grid) Investment calculator
+              - egCaitqBrNkAWOPg9bwvV (Text) Heading
+              - 3Z7zuUh82VThEpq3dxXmMv (Grid) areaPurchase input Grid
+                - 4UxSW2VhSuV1A3KIPk1lFU (TextBox) Area Purchased TextBox
+                - 6k6PCC1ydQIcyYoaErMUis (Button) Calculate button
+              - 6iC2dHCdTMBIik02S9GGmT (Grid) RentalPsf Year2  Input Grid
+                - ZHuedQFycAzAoB7CdyTYA (Grid) RentalPsf year2 text Grid
+                  - 5akGncCT70GPa0NjsWy9qS (Text) RentalPsf Year 2 Text
+                - 2r4prILugtlH8KHFjhemoP (Grid) RentalPsf RangeSlider Grid
+                  - 66xrjquFC1fAUd6c5GUoS6 (RangeSlider) RentalPsf RangeSlider 
+              - 2bjlrPI0Wvbjdrzb6VbHIJ (Grid) Exit Cap Rate Input Grid
+                - 4SPY5uh5fl1fA8sTYVWGNs (Grid) Exit cap Rate RangeSlider Grid
+                  - 6tIXckr0grzWzcQt62tShp (RangeSlider) Exit Cap Rate RangeSlider
+                - 1ORNr66UbnCw9FZPcue13H (Grid) Exit Cap Rate Text Grid
+                  - 38ZkxAfsxf4t1m6RdwF4Bu (Text) Exit Cap Rate Text
+              - 6LugQeu83nFhNsxeZUl5bA (Grid) Profit and Saleproceeds Grid
+                - 4pWXA4TKz8LAPPRrxylzP0 (Grid) IRR Grid
+                  - 4nBBjWQ7MBNBOpTZLz7OjI (Text) Text
+                  - 3alT2MVhoyJcv2gkCucQD0 (Text) Text
+                - 1yYHKGW4mU0ur1GlQ74Q5X (Grid) Grid
+                - 2wDyITpFr7twfKtivCgM5M (Grid) MOIC Grid
+                  - 6seGXuukzCcisRD1HXBbAt (Grid) text and Icon Grid
+                    - 4JqgNeR2dWTYYVy8MFhNFF (Text) Text
+                    - Hn4GIsArtra9F1Kf2ao8j (Grid) Grid
+                      - 646pIq2EexN1U2RgIaYzio (Icon) Icon
+                    - 4v2Qc1pfjGTule1gnHMYNN (Image) desktop image
+                    - 4p4zmGWWFysEJ0fbX0k6UR (Image) mobile image
+                  - 7ju55E5NouPBVZrRiZhA6T (Text) Text
+                - 4KSkytcgRiRHpLSoZQnk7w (Grid) Profit Grid
+                  - 75NzUBacnQmPmFcuixDUFV (Text) Text
+                  - uLJrK9raT1NtkOzGRyWts (Text) Text
+                - jIR1zRi3qoVIG7UjoR8Ty (Grid) SalePrice Grid
+                  - 1KR4RcD7upyZNqtXHX1gPk (Text) Text
+                  - 4oaiB8X5JMwzvtlaQz7i5V (Text) Text
+              - 2AyjmRhn6kxsMcaLmdg8lk (Grid) Calculator table Grid
+                - 9HUZSmux79VjTeBcdDmXY (Grid) Grid Table
+                  - 5tsTD6PoOsLGYRZVycRyiA (Grid) Grid Header
+                    - 5g8VcJ4Eb8e3nPzmCa889G (Grid) Particulars Grid
+                      - 1iCDK2we6m2HBVT7xHvhhQ (Text) Text
+                    - jKG3jL2hvBzofpphMZATG (Grid) MO Grid
+                      - 6I446gA0kjlG4xGyYR0JU4 (Text) Text
+                    - 6Twjw2VVWEQmTuzyZba8yF (Grid) First 6 months Before OC Grid
+                      - 5g8fvudqZqLmHnI9buD5CN (Text) Text
+                      - 6rUmTiG7H5L4uvoMet9oze (Text) Text
+                    - 639R5tsQ4Vy7zmYO08wQqB (Grid) Year1 Grid
+                      - 3R7uFRa0VfYyEfP5muMWOx (Text) Text
+                      - 2FfcoBnTJas6oMVzsXszDL (Text) Text
+                    - 7vxL4FHJzX2kroootBweT8 (Grid) Year2 Grid
+                      - 1hdtCE7D1dxZVtagCKOJ86 (Text) Text
+                    - 3zNddtQOxecAiKfQGTexHU (Grid) Year3 Grid
+                      - 2RMEWEUyxD0k4g88NtpBu8 (Text) Text
+                    - 2bM0jsWAcdgJ7I0GGbYM79 (Grid) Year4 Grid
+                      - 5PKsBMbpkb7PcFEiV9pgBZ (Text) Text
+                    - 6Ycszy3UzIP9aDHcuoKELG (Grid) Year5 Grid
+                      - 6XWFMdIGBI1TBFgEah0RCL (Text) Text
+                    - 3P1HI6hABJwY6FaWda30ON (Grid) Year6 Grid
+                      - 1EAC3lh121wP3oogMBuKnK (Text) Text
+                    - 4CxDAAEc1mssQxF9l1xtCo (Grid) Year7 Grid
+                      - 7JBlc5zPyiWVU02AMaPLNv (Text) Text
+                  - 38WvzSBLVADgtamHr2d0MH (Grid) Rental Psf grid
+                    - 7s66hjkMDKUBFNiYROoUKm (Grid) Particulars Grid
+                      - 3Xqi6wQERzpsCiLA38N7Bi (Text) Text
+                    - 4HsX3Thvdr1Ff9Vwspl9s6 (Grid) MO Grid
+                      - 5C6iRMFk5Q3xPAMakStFxn (Text) Text
+                    - 6nxeAlDam50HUONh7Q6LnH (Grid) first 6 months Before OC Grid
+                      - 5oZsE9s3ZeZxnQT5w241XS (Text) Text
+                    - 6mvxQUy6gBR2L7dc6gF40L (Grid) Year1 Grid
+                      - 1qV5Wr01NS04BIKiMz797L (Text) Text
+                    - 1OM8sEApMbmdAvPAmJ0g2n (Grid) Year2 Grid
+                      - 3dMR5mjGyKxXCF13pFb9ek (Text) Text
+                    - 1nhQlFyAuP8mbQyCIB8MUt (Grid) Year3 Grid
+                      - 6yjmSwinfVhH2oshOBbPlO (Text) Text
+                    - 24V4jyPUWoJLdk5X9Oum7g (Grid) Year4 Grid
+                      - 5FdkAKOSNnZYPN4SWWMsb (Text) Text
+                    - 2FXQm874zarlTIxUQRzoG1 (Grid) Year5 Grid
+                      - 2Oil1tg3rfZEPrxSdTyAgN (Text) Text
+                    - 2RdCcE0DdxRdjKWWa1kReA (Grid) Year6 Grid
+                      - 5ZoxNH83nsznrErg3iVPug (Text) Text
+                    - 3u5mbsPGtqUvkF9pLUteZe (Grid) Year7 Grid
+                      - 6o0v6T0JUTtKUHOTa6IzCD (Text) Text
+                  - 1vuYRDkb8EmVt0cHduMur0 (Grid) Rental escalation % grid
+                    - 5evw6ez8vKG9Y7lVoiQ41b (Grid) Particulars Grid
+                      - 7uvWcbWLJV4CkmbusaZ6Dr (Text) Text
+                    - 3yTJ7OAxpmg7ybhm0rMUx3 (Grid) MO Grid
+                      - 2T64eFW2r0nefEuJYkYutU (Text) Text
+                    - 5hWmp4WkIbRbgMEaTm3dhe (Grid) first 6 months Before OC Grid
+                      - 6EgeRZAE4cNI926E38F4St (Text) Text
+                    - 4pv6ZcGDLaCjwV9Ispde9k (Grid) Year1 Grid
+                      - 48HoML6zAIJ3Gp4yehO4eT (Text) Text
+                    - 4U9QnktI6DOFXLej9Z4seI (Grid) Year2 Grid
+                      - 3jGngM9hXEYUaxy9FhSTFZ (Text) Text
+                    - 6bnxrlKbexKPGrCeFBVaDP (Grid) Year3 Grid
+                      - 6itDEQUrTgS7RgzcHLh9Zb (Text) Text
+                    - 5911QG0pRIdECHrFe0LbZi (Grid) Year4 Grid
+                      - 2GzY2zUu56H1TnKBn7mmEU (Text) Text
+                    - 4iXleaAeEylPxy9Llzjqfm (Grid) Year5 Grid
+                      - 3teRWjppaPKZphGc0sKj1p (Text) Text
+                    - 2LHOvHyXhW7mxVTz5kOKsr (Grid) Year6 Grid
+                      - 5IwJ8UTBbxVKXjfBb31Xdl (Text) Text
+                    - 297QXEsPT4pWri7j9WRsY5 (Grid) Year7 Grid
+                      - 4ZsPWZWcgpm95EFAvALbEN (Text) Text
+                  - 1F0zqZZY33yitW3a45Dhvg (Grid) Amount Invested grid
+                    - HZMRyDqtCkKgZRFLj6FWg (Grid) Particulars Grid
+                      - 6Pg6VdhyWxUhsYAuv6rfOI (Text) Text
+                    - 2Ogwh856BZERV5iJHOMEXq (Grid) MO Grid
+                      - 6fzlmAdJFFchtsnIRzY18S (Text) Text
+                    - LX476gtvjpsLy4qzjhIUN (Grid) first 6 months Before OC Grid
+                      - 5oOAXizhfru3e2SBTtfusS (Text) Text
+                    - 2CVbwVpDoV97g8DI4klhhL (Grid) Year1 Grid
+                      - 6ajkDDvsok34iUWxtlDdgY (Text) Text
+                    - 5D3ppYmV9oeJRwpx7XEZxA (Grid) Year2 Grid
+                      - 3b0AAeJKWPskKMxGr9zxyl (Text) Text
+                    - 6N5xydqyOVxLnkEJ1zpJjt (Grid) Year3 Grid
+                      - 4eAwIdse97zcEBBdMwKmFm (Text) Text
+                    - 5qfa3CBRzvycsKBmVJ0McH (Grid) Year4 Grid
+                      - 5a2N3CTCRtdGOwNtA7i3Bz (Text) Text
+                    - 6yBGa999QRdI2kHFcTFuCi (Grid) Year5 Grid
+                      - 2MLFRgioUqrpJUHpsHSmoc (Text) Text
+                    - 7sXJ2JeCjd61te1hxQfaVF (Grid) Year6 Grid
+                      - 5nPIEQ0iUEUIeYTfbQHTnn (Text) Text
+                    - 4WL4qIAUgKIU6OUzEHZZ34 (Grid) Year7 Grid
+                      - 2CzdDbT9flsSVqo4X6a6Zd (Text) Text
+                  - 1vcXQfSQ5mVm2bCTRLk00W (Grid) Rental Payout grid
+                    - 2XRO95UO4f0A70yE4XranA (Grid) Particulars Grid
+                      - 5MCVcfrY0XRdJTxj77Mt5P (Text) Text
+                    - 50MjBWSXCHFQcy3TrC8wnP (Grid) MO Grid
+                      - 5yjERAziZcr8xqzq2fD02i (Text) Text
+                    - 2ouB6IUDe9ZHVQUyp7KS7z (Grid) first 6 months Before OC Grid
+                      - 6OF4HbyOJ9N4Q3JyrNLf47 (Text) Text
+                    - h4GbcwIMDKpDaXYG5X40X (Grid) Year1 Grid
+                      - 7q9OvOwETlmdBwAMhnpOdJ (Text) Text
+                    - 1HUnonLOOTEm5SujTRzDdH (Grid) Year2 Grid
+                      - 349gnRpgAd3ZOWqxRYTiGJ (Text) Text
+                    - 5j5sDaEl9JBUwxONnJWAPn (Grid) Year3 Grid
+                      - aBHQJXqlfn6quCtWQx0MI (Text) Text
+                    - 58oGHFznn1812mh6Eg152X (Grid) Year4 Grid
+                      - 7MHGEjIrO8brtAo9fUNrim (Text) Text
+                    - 71wX32nb2ZrO1tMGdqk3rz (Grid) Year5 Grid
+                      - 2qMTM0HW86RsWh7S7yspVo (Text) Text
+                    - vjRzL5BlKLt0mRggFVgkF (Grid) Year6 Grid
+                      - J5nM104wzvoni9SzxQaNb (Text) Text
+                    - 76jKqSqMuGniSHwbXRw4gd (Grid) Year7 Grid
+                      - 11t5Qs75ovqV6vvJUxnT9V (Text) Text
+                  - 4d1e15ypfInfZ5XB6F2mJ0 (Grid) Gross receipts grid
+                    - 5HiUPt5qhzPnytGBqmHFAM (Grid) Particulars Grid
+                      - 11e8hvVRUaoRO7GSBbFL3q (Text) Text
+                    - bWXs7sZotI1sT4zqA7rb6 (Grid) MO Grid
+                      - 52JO5frnlNWeSECyuG5sBE (Text) Text
+                    - 4vjVB55qaCrOPXZvkD1nj (Grid) first 6 months Before OC Grid
+                      - 2T6GZFEvrSxKdcEEMW2yym (Text) Text
+                    - 4k8Mup6Z0lwrkvhHmKac38 (Grid) Year1 Grid
+                      - 78DHXdfpuCOkhlrMgGjCtk (Text) Text
+                    - 5iXHcHPz9ycasKVGCsCvda (Grid) Year2 Grid
+                      - 3NgrPOVrUtSxeVt8d9hrlx (Text) Text
+                    - 7MDGbTJKL8zttuvEwy3pzy (Grid) Year3 Grid
+                      - 2LZcb6SqaVfpzx9cZl9Nni (Text) Text
+                    - 6d4g99iEShBVBRRA8kuHb1 (Grid) Year4 Grid
+                      - 3Ey02lFl78RLIrPXVvNOOd (Text) Text
+                    - 4jEqG6DHlCkLTRVN4XdsTP (Grid) Year5 Grid
+                      - gfzQhFXf93EH4gbETDEBs (Text) Text
+                    - 4RBvIUgLvHuxQ5Qcd77twg (Grid) Year6 Grid
+                      - 2qiyo07mn7SoLkBN8DUxpn (Text) Text
+                    - 34TZ8grddO7xQV3eeLmPtG (Grid) Year7 Grid
+                      - 1xZwZGBtfV2RRcxR0T8J8a (Text) Text
+                  - 5QdsdA5CtZe5i59ZrGW1HX (Grid) Asset management fee psf grid
+                    - 2TqlhSI7k4FrnQQxEEcChK (Grid) Particulars Grid
+                      - 4f9vWtGQhvvYHj6L1t5mVm (Text) Text
+                    - 4DULFGKKy9cfWaMBffc8HG (Grid) MO Grid
+                      - PwjkpkHeqkx8y9rcXxh3z (Text) Text
+                    - 3JmfNtfMd7nceNlmCslqui (Grid) first 6 months Before OC Grid
+                      - 6gVS14yxNzKzTkgHVoXmAT (Text) Text
+                    - 4UmTStT237VkSwrrdHYzHT (Grid) Year1 Grid
+                      - 2kpdvLtp1woZFPL1ooCbHj (Text) Text
+                    - 3thFf3x5wEo2rSReBI0P3e (Grid) Year2 Grid
+                      - 3iXA2GdD3xHQIWQkjeBieK (Text) Text
+                    - 7AuvcFJkOHefAUG8uiRD6h (Grid) Year3 Grid
+                      - 32GgBixIw2lo7qxOvvY7Lg (Text) Text
+                    - ythhv9lIMZukED0p8c3iK (Grid) Year4 Grid
+                      - 68ILgxwd8IbmKFxTtDcbf4 (Text) Text
+                    - 4W4Z6lK25sVt5qDWomxRkO (Grid) Year5 Grid
+                      - 4g787eBEFiba1YwGacwgJk (Text) Text
+                    - 3Ycu0XA5V61WYU3O4I0JrZ (Grid) Year6 Grid
+                      - 2O6fM0rUZej6SxVoH3iJOp (Text) Text
+                    - 6WEsdcJ4CiecVl5cDlb2CV (Grid) Year7 Grid
+                      - 1xP36tRR1E3HPcgOyLWWa1 (Text) Text
+                  - 7zDZ7ooL0veiJkffjBCaFj (Grid) Asset management fee grid
+                    - 2rAfTcbOZFpKVIjHqrwjZu (Grid) Particulars Grid
+                      - 10Oy4HqlV3W9XHo1Rl3hgn (Text) Text
+                    - 2TiJ272t9F7Qk514CpGXAN (Grid) MO Grid
+                      - 2NnCEm2PAMQYlSTVeshSw1 (Text) Text
+                    - 2kPN74ftUh6AiOCNOMso6T (Grid) first 6 months Before OC Grid
+                      - 570Q6RMQmTAaBGbWQadG8V (Text) Text
+                    - 5iI6aOjx3Thc3auDnXPTPY (Grid) Year1 Grid
+                      - 4EFru03d6ZfkSF4t0xQRcu (Text) Text
+                    - zpujPvbQNdtrbuV1YWBWq (Grid) Year2 Grid
+                      - 1SOqCslE8C8NSHhPTMLXTM (Text) Text
+                    - 52ItftkwTqRmZ2mj8hAYGD (Grid) Year3 Grid
+                      - 4QL3wgu8XR6cDEKJUUc5Wi (Text) Text
+                    - 4f1fGcvc7idgKRvPmnGFzL (Grid) Year4 Grid
+                      - 1UbFSuFVfORfKFcUFMYeNw (Text) Text
+                    - 2O31ZqI0J1fF2DhDxKVv8A (Grid) Year5 Grid
+                      - 6sFSCmLEEOxzCCBqpvWOm6 (Text) Text
+                    - 5NhYUyjjllfAsTwxlZev8o (Grid) Year6 Grid
+                      - 2d8DusHMcxgBG7XwMU3oLh (Text) Text
+                    - eaoXxXxMwG8ymsDOe08uY (Grid) Year7 Grid
+                      - 7mfLJPw2XjoSD3o9yRW8gg (Text) Text
+                  - 3AlLz6MEXSlzuigh0wuDtv (Grid) Property tax grid
+                    - 7bUnbKLzgBgaSfyXQyK2ZM (Grid) Particulars Grid
+                      - 1FxlBL8rts8dKkBdKLqH2b (Text) Text
+                    - 1r5DnWzZopAWKJrXXvDKtb (Grid) MO Grid
+                      - 4F6fiQ7cC0nB9kgf5gUwy3 (Text) Text
+                    - DXijQalKtvsFnkek6z5ua (Grid) first 6 months Before OC Grid
+                      - 73aFQ97GcVgp9GhDF6ZSuk (Text) Text
+                    - 6ORTt9MqcNLCvIrlmaXJ82 (Grid) Year1 Grid
+                      - 2dcKtqI5IcswEiju49AaKE (Text) Text
+                    - 49tDbJTc5Ef8Nm9pY7i4x2 (Grid) Year2 Grid
+                      - 3Z7cbxqTlgKWJnVbSLMhNE (Text) Text
+                    - 6eu0Mk7tAMwwA2YVaLqvss (Grid) Year3 Grid
+                      - 1MxBPxRINoQXScQ7jPZeFg (Text) Text
+                    - 7u4MictWXIjAd5RawTdJO8 (Grid) Year4 Grid
+                      - 2plEhRKbLIH2rRzzMxNNlI (Text) Text
+                    - oMQ4b5za8AGOWRihBEd5L (Grid) Year5 Grid
+                      - 3lqQm5yRZPrD6xAjOi6XIj (Text) Text
+                    - 3CEdqiaR1qtdvOvmXgyvdI (Grid) Year6 Grid
+                      - 136D2vBFNVZU2EIhiHXxJU (Text) Text
+                    - 7xeChs93gLPqCGNyKO21OI (Grid) Year7 Grid
+                      - 46y8AVup2EvRYLolfBwHaq (Text) Text
+                  - 7KgnUrwhsqANLljQex6XSi (Grid) Total Outflow grid
+                    - 3Qvc4DrpOQEoiFjGy4WGqc (Grid) Particulars Grid
+                      - 7A41d2x8oJLK1oVnybr1im (Text) Text
+                    - 45GwRZvA8i4LS6FYQN6y9R (Grid) MO Grid
+                      - 3zTkNLulmMAgSKbgbHsFok (Text) Text
+                    - 6tFk4vZxiHIDkWcLz3PA3F (Grid) first 6 months Before OC Grid
+                      - 2N4bOAcr0SerdO8gCxKXZo (Text) Text
+                    - 1aci669ktBmRHszPKMXRZn (Grid) Year1 Grid
+                      - 17fLKK8UtaX4tYA1gN8wwe (Text) Text
+                    - 5T5SNzQhCDjl0QA1A0JsmF (Grid) Year2 Grid
+                      - 6DtSflIf2p1v2NVE967iRs (Text) Text
+                    - 29S4wNHlQLvqIRdojKRucp (Grid) Year3 Grid
+                      - 6OjpksTgkUR5LexNvV0aQz (Text) Text
+                    - 3L5b4uXxFnIaOwkEKwsnQ4 (Grid) Year4 Grid
+                      - 1GnnebWCxDZN9Q7iCNmJLk (Text) Text
+                    - 2XMGZ2fuQSFuAI9DBtMNkm (Grid) Year5 Grid
+                      - 1wxxnkcXJvlHZIzA4NQLxw (Text) Text
+                    - 3zpLVAM0MQ7Ym7TIDSFVZT (Grid) Year6 Grid
+                      - 4cCtvibqEzSGnER6fCuI7Y (Text) Text
+                    - c4t8Imx7QFLXyQRWPCl9w (Grid) Year7 Grid
+                      - 4K48ScX4dYXgSqnXMVYGhh (Text) Text
+                  - XovT4lYY9brz3VtgTMD0q (Grid) Exit Cap Rate grid
+                    - Bf406cmcMZKcWPRbcRm4M (Grid) Particulars Grid
+                      - 7DvtZHVlvnr4GKdIy6Gwop (Text) Text
+                    - 6e8657hoAVraUrhyj58WQn (Grid) MO Grid
+                      - 3wOY1n1VbzuJifeulfPwWd (Text) Text
+                    - 4ulsnadAmfJZFPT6A9QjFg (Grid) first 6 months Before OC Grid
+                      - 7zgH4QbyBP13EilTvGHitm (Text) Text
+                    - 68p2mohnhYvisdQVb3LN8i (Grid) Year1 Grid
+                      - 1XbcJPoq5J0xTBQKL7jXly (Text) Text
+                    - 1l2whKLFSSHkvfkPKuDF3z (Grid) Year2 Grid
+                      - 1rtwTRincClxq28vIaKeyk (Text) Text
+                    - 4IlJGkebqJvJeYDPvJZDDT (Grid) Year3 Grid
+                      - 6TvDplaI2WPMlyy3eFPKTz (Text) Text
+                    - 5oy6kx65m7nYNNDhwHL88k (Grid) Year4 Grid
+                      - 2xidArO31DLXa98nHK1mhJ (Text) Text
+                    - 34onOkCOu2j3eXnJEXQLIb (Grid) Year5 Grid
+                      - 5zVoXpJKuzeSALPwhocrI (Text) Text
+                    - 1mKuNYKsI6NSYEN5NJu05S (Grid) Year6 Grid
+                      - 2sGyRphYe3dv1sD8lFoqAt (Text) Text
+                    - 17rMgOWQokvmsOZkzXXaJ6 (Grid) Year7 Grid
+                      - 3QLRx9KAAs8tjuOXpDU57o (Text) Text
+                  - 68YvENvGG6gP0T3XAshcl0 (Grid) Sale proceeds grid
+                    - 1rPTJZ0wGSzkYeOMjjGydU (Grid) Particulars Grid
+                      - hDJVlpiQjhnv4zZVJcAjC (Text) Text
+                    - 55eRsJAjBiYN826jW3TFJ3 (Grid) MO Grid
+                      - 5Ul7M1HL6Coktmt0bYydCF (Text) Text
+                    - 1sDC9clna4wAPUOKCq8EEI (Grid) first 6 months Before OC Grid
+                      - 5IPAChouvRBx1tD72u1is (Text) Text
+                    - 1yB2mVaz7CXBpHYogUMJzU (Grid) Year1 Grid
+                      - 107PqovoDPpxJ18yyLEP9s (Text) Text
+                    - 1sSmsNR0O2qvEhB4Pn7cN7 (Grid) Year2 Grid
+                      - 652KVcaceyWLn23EEaWMjN (Text) Text
+                    - 73YoprvO16RdotUDf7K5uv (Grid) Year3 Grid
+                      - 2kDD6zoBMFUIBKKtWYend4 (Text) Text
+                    - 4B7LQIuwoV4fgxP7NUKIDP (Grid) Year4 Grid
+                      - 1GCPVX4TJwv9ANEzdDdcpn (Text) Text
+                    - 5cYoWLBy4HnyctWaa21GMX (Grid) Year5 Grid
+                      - 5LCumtmtlGjhXUesg67n8j (Text) Text
+                    - 4grhGglva3bgbnIPs4I1wQ (Grid) Year6 Grid
+                      - 6z2BPOl9qBq3qnTpgS0XZd (Text) Text
+                    - 1GHUsEwITFVMQyaAMB64ia (Grid) Year7 Grid
+                      - wLkJI2Qi29wRqbN8Nv9PZ (Text) Text
+                  - 1FkiB3XR0HmU6LyED1yzik (Grid) Net receipts grid
+                    - atCxWLacGKCzllVC92aII (Grid) Particulars Grid
+                      - 5qJhE53SVCveQ47UCifAjt (Text) Text
+                    - 4dmGjQkLIXCJBvj5tcak3Y (Grid) MO Grid
+                      - 5dWE8PY7i3FnMnH7Qwo0i1 (Text) Text
+                    - 77FaMlglhsdClkZdrotp2D (Grid) first 6 months Before OC Grid
+                      - 38ZSzPkCK8P4GZCB72fCkB (Text) Text
+                    - 5j5S21tXLpEHlGj0ewTIKr (Grid) Year1 Grid
+                      - 2kxaRWGjyU02aBCpTnwOra (Text) Text
+                    - 55lnv7LlYs038WpjbUJGRj (Grid) Year2 Grid
+                      - 1G7KJtRceSKoHAfuZdnosQ (Text) Text
+                    - 8mtXFC9M6ebrfcKR1CQdF (Grid) Year3 Grid
+                      - 4xq6aswvfsROk9203eAvQ2 (Text) Text
+                    - 5gr9pg6CnwDLjI7KjiSdYz (Grid) Year4 Grid
+                      - 1wXLC07ayBjLFoUvGy63bF (Text) Text
+                    - 4bS28fSpCO7CpfjcDSjBZ3 (Grid) Year5 Grid
+                      - 49FObwrhgN5fYBR0gDPWb5 (Text) Text
+                    - 5UpPxjcDeAiD48HaaOqoQH (Grid) Year6 Grid
+                      - 2ifMkpfwIzeCXwatA5NbJ6 (Text) Text
+                    - 2Wo9reVzr0m0owiAED962w (Grid) Year7 Grid
+                      - 5t8BXi0tdPqmyHIUyy3vy5 (Text) Text
+                  - 3pjh9AauvLxXcQXaQf03uS (Grid) Gross yield % grid
+                    - 7Imt3PxAabqWr7vmw7GyOK (Grid) Particulars Grid
+                      - 3zPHKGXbK49hiVmjkTOkan (Text) Text
+                    - 3YqoPJUjNGgfib2iRcz0x3 (Grid) MO Grid
+                      - 7cUMmWJlhAts5OZrBbZKm3 (Text) Text
+                    - 1ijo6thq149YqPUzJOO0fp (Grid) first 6 months Before OC Grid
+                      - 2iEHUQrML7ffmt6prOmPXj (Text) Text
+                    - NzsYPTfRgXvDLhdLFe7jQ (Grid) Year1 Grid
+                      - 24wdrWmX8kiN7OoPBPIbXi (Text) Text
+                    - 724FWuJPYIrcSIk51tgnYw (Grid) Year2 Grid
+                      - 5SviwN5cJdzHvS59C7GCCY (Text) Text
+                    - BUG4xVRtA8DzrP3Cal3r4 (Grid) Year3 Grid
+                      - 6FDOXS7yNQD9SU7qWor8NO (Text) Text
+                    - 1mDFNzBXKf96XEM1bgu3mL (Grid) Year4 Grid
+                      - 62VP9BNGgPRh7J9JbswSyW (Text) Text
+                    - 2aNWqBtZjw5ze1bhVjbco6 (Grid) Year5 Grid
+                      - 17U3qNiKBXSCbgJ2r6F8c0 (Text) Text
+                    - icZGKNrl4r1zyEkV7H0Sq (Grid) Year6 Grid
+                      - 4hUZq7RjmKvDDiRgLs27Tc (Text) Text
+                    - 2OMisaePYFMZy1YG2GJTdm (Grid) Year7 Grid
+                      - 3CErWFgIM0rXCWUbfZ5TMC (Text) Text
+                  - 6PxGi608UKQRHJLYDHEIDA (Grid) Net yield % grid
+                    - 4JezJJijUF5YAgg2nIdbAO (Grid) Particulars Grid
+                      - 4HLcZpCXzcqNJVS6tG8bEL (Text) Text
+                    - 3H3NnRGsgVX2JGerbRbSc6 (Grid) MO Grid
+                      - 79YVOb8SEMTEORjTFpQ6qL (Text) Text
+                    - 4h3cM1sbGvbXRHDZ1rkXWg (Grid) first 6 months Before OC Grid
+                      - 3z985zKrLSGlhZEU62BS1k (Text) Text
+                    - 6BklO6zt11qEaW6fFb7ruJ (Grid) Year1 Grid
+                      - 5IUXGZ9jzKf7RgBxxVIaoF (Text) Text
+                    - 3WGVDZWveasIeilx42IdL3 (Grid) Year2 Grid
+                      - aBSxNsqlFhpGQepbmgn2R (Text) Text
+                    - 5xYirqZSFxd49XXsfRVdSH (Grid) Year3 Grid
+                      - 4DY1UqTEQkvNpMdxJ5KwMy (Text) Text
+                    - 4qG2zuj95wZ73zqgXumf1u (Grid) Year4 Grid
+                      - 70n4tG6E3BoaDrLKlNPTXb (Text) Text
+                    - 5fIbwuMJyp8SOkYqTxL0td (Grid) Year5 Grid
+                      - 4bSdQdE7l92tpn8TdLVsdZ (Text) Text
+                    - 2oBNeC1kOMVtjAsbvz5OIv (Grid) Year6 Grid
+                      - 4cECQP9cvukbU2s8SSs1kd (Text) Text
+                    - 4ZmhtP9aKPsTywvik4Ylkj (Grid) Year7 Grid
+                      - 27FVOWc1nMoEBxFVPDc1nx (Text) Text
+                  - 3kT9pUrZP2UyuRovJQJUiL (Grid) Average Gross Yield Grid
+                    - 6tu9nmYckpxDkXgD2CQG2D (Grid) Average Gross Yield Grid
+                      - 355l3zqLqaK7Yjba8diufW (Text) Text
+                    - 7jUds3M9SuTgrcttv2twF8 (Grid) value Grid
+                      - 1e6dQQpumORGybwsFkg9lT (Text) Text
+                  - 1tZhRO8GN75m851e2ie6se (Grid) Average Net Yield Grid
+                    - 3Z5vQFqpGIf9dd7hPgIO2x (Grid) Average Net Yield Grid
+                      - vA8Sp7sy5xjzm7GRftieR (Text) Text
+                    - 5b8JkiWygs4zDDmXXndV35 (Grid) value Grid
+                      - 5ezy1O5GSk0UWM5NCZuM68 (Text) Text
+              - 3NnvWTlSJr8BakhlANMDHm (Text) Text
+          - 3oky6OaLx8fUnUQ25RkbuX (Grid) Main Documents Grid
+            - 1e6rEXMi8OxHVivrvdIlk0 (Grid) Documents Grid
+              - 5viLZL5ghd1hk6Wa5y2D4t (Text) Text
+              - 6ImgTMVGFRVsM2xnGUwU4v (Grid) Resources Grid
+                - 2Pvfvv7uYGhwVnNKiayqoS (Grid) Floor plan Grid
+                  - 1EMeBZWLEy5cJpchGgVz9P (Image) image
+                  - 2ZIcBSvxmNzHPM4p7nWxQy (Grid) text Grid
+                    - 3fzxmlA2391zpDzukWgwTf (Text) Text
+                    - 5E8H9O4LciVycrFxDb1LJy (Text) Text
+                - 3vQDCM109yJYRSI8LUEn9f (Grid) Master plan Grid
+                  - 5inUr9Hu95099k21Bk32bI (Image) image
+                  - 7oIlduVawgPgQK9zPPv1RT (Grid) Text Grid
+                    - 6Lx4cxgJ8mS4zUNOyfgkja (Text) Text
+                    - 6vyTozvpY3g58N5wuVXsqL (Text) Text
+              - 3ad6noUNVWue01JiTwKqiW (Grid) Resources Grid
+                - 4CGAZwfBZkSjwHBmRGLFdu (Grid) Investor model Grid
+                  - 4yXoqAS6LW6Vrps6du2YqH (Image) image
+                  - hLq1sxsgP7mi7CmIitBYt (Grid) text Grid
+                    - 7mMpfAvYP4CY90OyyTpsfg (Text) Text
+                    - 61ADgsOJ7wdjS9oSYrMlWt (Text) Text
+            - 4Q5cEs8OlFCOdnQjsR136a (Grid) Nothing Grid
+              - 4GpUCEx009M7vKNDE8GLn8 (Text) Text
+          - 687xMf3fyg3zjze3s4FVco (Grid) Main Gallery Grid
+            - 4Q7sj4b3U2tFmYjX9dRq6y (Grid) Gallery Grid
+              - 50dybZnjRxd2GX3ro3WeeO (Text) Text
+              - dipMmRwBBisWzrkriqFIo (ArrayRepeater) Repeator
+                - 5CH3E5c5p3dOkZg7GYocrS (Grid) Grid
+                  - 5MMBu680njcBJ5DcWsEKUj (Image) image
+              - 3Oa83DyYn9wz3ww6NSAo9K (Gallery) Gallery
+              - 7iiZYG1OTWGA5ojZmW9nNO (Grid) Grid
+                - 7amGhKE29hdSfFD2cCgvWl (Text) Text
+            - 1fBjhSm7ztkHxxIH4UX6n7 (Grid) Nothing Grid
+              - 5GWlXMviehtEzotQY385WN (Text) Text
+      - 6Hj7oexT9x1zqLW8mfIva2 (Tabs) Desktop main Tabs
+        - 1f7ynQRfQ4BtCuILvVyDQJ (Grid) main overview grid
+          - jU8omVr47Xn42q1bFrtHm (Grid) Overview Grid
+            - 59viKxQH8wCvxnYUDbwVQY (Grid) Text List Grid
+              - 11wMaLnKaEiBKxBx8B8F8J (Text) Information Text
+            - 7oOmgddGH0aIbBV5J68j3B (Grid) Asset Overview Grid
+              - 4DYNLtA7jn6KG47vziXwie (Text) Heading Text
+              - 5Xrfuo2tZnsKYtzZG8zkLm (Text) Information Text
+            - 1TuV4dg4g0YMCAUgwKBGpe (Grid) Asset features Grid
+              - 1NFDR5XlT48Ldx57yVn5wK (Text) Text
+              - 5dbCnImYvEbgU0mm01XjPQ (Grid) Grid
+                - 7IhjxKZ8A5nJl25EjDbUDw (Text) Text
+                - 61b3jazlxBZdP9Zj1WcUJG (Image) image
+                - NWi2JE0vramcr5XTMnN12 (Text) Description
+            - 5sfPrui55IoTMIe6jBiY6y (Grid) Location Grid
+              - 3hnLNacDgWHSN1BJ4D5Ogx (Text) Text
+              - 63Jdjrs6y4lR25l6cuQlMp (Grid) Location Details Grid
+                - FSYODAkknGGaLWQXh9kXg (Grid) Location image Grid
+                  - 4LdsUSRMqs6B217K96xqJf (Iframe) Iframe
+                - 4DaAYFwNXx03Faemv8maoX (Grid) Location Advantages  Grid
+                  - 5IiHfw2XS71il0afaAdX1h (Grid) Grid
+                    - 2LDjsuuFXZd9ssParv5oGD (ArrayRepeater) nearBy locations repeator
+                      - 1rBB8fGulIsfpOk2OQ3gBM (Grid) Grid
+                        - 1xOtAnul9uu228hTrmoNJi (Icon) Icon
+                        - 6xw4dMOn5nHK4JvKVsHR0Z (Text) Text
+              - 6D6iIneS6ohAbzBrCs9eUv (Text) Text
+              - 5GSanTMdd2qhUAvJFFO8Zn (Image) image
+          - 5isZMEP9u65PJS2WOz5jDF (Grid) Nothing Grid
+            - 2sZvK012evp6PbndY3ABNw (Text) Text
+        - 3eY8AM0z4yISfzfnstOw6D (Grid) main Tenant Grid
+          - 1nIBCToldjNF8BFbR9cQir (Grid) Nothing Grid
+            - 2kUIMQpCiO9UCBXoVUJVew (Text) Text
+          - GArPtAIMH7vibmSVTDCjT (Grid) Tenant & leaseTerms Grid
+            - 3jNrR6dgys26NfyD0Kof78 (Grid) Tenant Grid
+              - 66SPE2DynaNHigrZYtXlI5 (Text) Text
+              - 4g8yzi9SvzNIzPRQPC3MhI (TextList) TextList
+              - 7H3hHrbQmTXzgqm2947OzR (ArrayRepeater) Repeator
+                - 5Nvs4ZUAsso0Je6QMk21cJ (Grid) InnerGrid1
+                  - 1zv1Nb1VQA8kxQJiNjQHMP (Text) Text1
+                  - 7uzLqrE8cGZ6vJmw5ZHeZ6 (Text) Text2
+            - 5BNH32tyweGuSreEwRRtn9 (Grid) Grid 1
+              - 5qBULn7B1reMhb2N5vfNZl (Text) Heading1
+              - 480etwzegFa93sojN7v134 (ArrayRepeater) Repeator
+                - 2GW9qZt8ThVoMmgSu42xy5 (Grid) Grid
+                  - 2ABrjioC88xEn1PJpQS97I (Text) Text
+                  - 562k0qM1kxmIyE6AApnv03 (Image) image
+                  - 3yNRl0Vb3Q770UlJ5HJJTH (Text) Description
+            - 2Apq4Ppck3T2QV1gHZNjzK (Grid) Grid 2
+              - 1wVwR0j9Trkwiw6G5eDj29 (Text) Heading2
+              - 1hmMi7uCCivwGSqO4DBhNR (ArrayRepeater) Repeator
+                - 1RQAtPRaaNRIHuTllng2jC (Grid) Grid
+                  - 45MebdmlMGp6YoTieasLDp (Text) Text
+                  - 6Qqk48SH4dTXnTXxSTKDkP (Image) image
+                  - 7ex8Bk2TnS4X4E0jlAeRKZ (Text) Description
+            - 2GHI8RvuYPY76fJte7I2e9 (Grid) Grid 3
+              - 6eH0KhHBN7ZSkWbaG27LcD (Text) Heading3
+              - 33NxeGb5BjhKKAztDCeKi3 (ArrayRepeater) Repeator
+                - 7sMhxbXLWTfhBYPuufVj29 (Grid) Grid
+                  - 13fnGO6WHZlCiZA0VCZSU5 (Text) Text
+                  - 2s09r7lpPzZKOwN71rkjcF (Image) image
+                  - 6eHiOqngBifKBmPF3DWuNe (Text) Description
+            - 17AfEwwWSk8xxQXXAAH6lS (Grid) Grid 4
+              - 2TxvuHGvb3qeGn170Pwenq (Text) Heading1
+              - 28Cf7DaJ0iPlPMmO5lwd8O (ArrayRepeater) Repeator
+                - 31GTxnkLHg6g6mxDISX2kw (Grid) Grid
+                  - 5HHeaWrI0nEp8betHjG89Z (Text) Text
+                  - mValoHZo7LSX1DR8inbRi (Image) image
+                  - 59e3012F8SGhHq7u7RBk0G (Text) Description
+            - 7tZLCrZfPuLDMHp7SPQD5Y (Grid) Grid 5
+              - 2At9IbwwtQw3UMRsEMsrtk (Text) Heading1
+              - 4qPL2xJS2QwEG5wwwzraXz (ArrayRepeater) Repeator
+                - Zfp07cXvoHkElQlIKx0Oh (Grid) Grid
+                  - 52FroxBcNpAcVnNyDclTB7 (Text) Text
+                  - 4EDaYiRNmmQi14gIPSW2DX (Image) image
+                  - 7upJq0Vypmki4sTw1sZng0 (Text) Description
+            - 2YxYQRS0yUbu2j92cFMe0T (Grid) Grid 6
+              - 2en3gwotlnrjcrQBoSh7Wp (Text) Heading1
+              - 3GrvpZcBvPtXMgaIkiSw8q (ArrayRepeater) Repeator
+                - 53b1Bm3bTCW9svs5PxfU2R (Grid) Grid
+                  - 1GGXBhLl9YikOwLvC0iXk3 (Text) Text
+                  - 3l7RnrcOX6mmLs0qesRzxs (Image) image
+                  - 6gn4ilLgYu23qhBcHMoTcL (Text) Description
+        - 4cWfaReLhLtBJ9rf982x7e (Grid) main calculator grid
+          - 1rgPN1eQJEXIlbx5922Jqp (Grid) calculator Grid
+            - sPS3AeMgg70brQ3llB0ER (Grid) Investment calculator
+              - 4GDl4KtCjRjNOuXAdhxRNF (Text) Heading
+              - 4WkBwd7dAb6tdvzvJkKgPe (Grid) areaPurchase input Grid
+                - 3uUetcf86wFFUpXlAeoLT9 (TextBox) Area Purchased TextBox
+                - 6u3rEeIK74Nk0hwHP1xIky (Button) Calculate button
+              - 2EZ5KGyurtd9QxxkNmddlK (Grid) RentalPsf Year2  Input Grid
+                - 7vVZwj3JMk8DHlmWLPlRvj (Grid) RentalPsf RangeSlider Grid
+                  - 7BQpKFPJcpa3FLF8u6i90t (RangeSlider) RentalPsf RangeSlider 
+                - 4a8sjC1sdrWHXnKHDVMbi (Grid) RentalPsf year2 text Grid
+                  - 4uB8WY1ZgWvsrSsJUoWFPg (Text) RentalPsf Year 2 Text
+              - 3IRnnzinaG1dusvt5HRKmz (Grid) Exit Cap Rate Input Grid
+                - oR18tyMU1bYJhvtZOtVMn (Grid) Exit cap Rate RangeSlider Grid
+                  - 1MbTFTOE8Q4abQKlQqk6vZ (RangeSlider) Exit Cap Rate RangeSlider
+                - 36Quh9SmS3FWuLiLKFrp4V (Grid) Exit Cap Rate Text Grid
+                  - Shwp0AE3tb6U6AEz5lN2k (Text) Exit Cap Rate Text
+              - 3Xz7VpvBuglLxXXO575kIK (Grid) Profit and Saleproceeds Grid
+                - 1IcrOCPFsHmqsCcIspNHxd (Grid) IRR Grid
+                  - 2LO1nNct1gqeSVJiSLbJa5 (Text) Text
+                  - 5hfkSS4FqAVZpdLmEawHOh (Text) Text
+                - 6yTlMWvwQeo086sgXPz18X (Grid) Grid
+                - 1qUyuYBDJjP6blnJmOjigN (Grid) MOIC Grid
+                  - 6YXXDH66W4ffMzM9aLo1g5 (Text) Text
+                  - 639Gd5mBfm76CRKq9iQU0s (Grid) text and Icon Grid
+                    - 4118xjGQcw8bGPl2k57MI5 (Text) Text
+                    - 5iyFK3aJzrq2iSgGR6wo47 (Icon) Icon
+                - 55R74bw21D2Qg9qEfuL9aA (Grid) Profit Grid
+                  - 3ga3q2DKupwrhXoMM1RH2j (Text) Text
+                  - bdGBiYNprYv3ZNQqY8Qi3 (Text) Text
+                - A2BiaYdonJJkKFeGs0lVi (Grid) SalePrice Grid
+                  - 4EZmf5vmaT84DD8Kx4amQK (Text) Text
+                  - 5kBmijieDKKFbyHvsOJhYC (Text) Text
+              - 7gunDm4Ky7mJEfqbOyep5y (Grid) Grid Table
+                - 1HF4UNykrITPyWNZmV4F5l (Grid) Grid Header
+                  - 3qmtbnrpAXfEQqk13E5QWy (Grid) Particulars Grid
+                    - PfH1rDFbJgvf2e0DMRJc2 (Text) Text
+                  - BTTxsHm42qHZP7cJEbzk1 (Grid) MO Grid
+                    - 5imD1FyePJF64EB0gZ5515 (Text) Text
+                  - HGewd1OoHdXfEWECVhFPd (Grid) First 6 months Before OC Grid
+                    - 4ftSHawxyQ7w8D4wZdFDK7 (Text) Text
+                    - 2DHZLQjSdhaY1L7f1UhabS (Text) Text
+                  - 14kLlxPHX7aHiidefwsgUl (Grid) Year1 Grid
+                    - 7zHNFOgaelXjnmPW7qgRl5 (Text) Text
+                    - 5W4FzQri7DvNLhk8cAvjw5 (Text) Text
+                  - 7vAAtvWUDiL14NJfjP0whp (Grid) Year2 Grid
+                    - FWkvHj4L7gTe2Hiv3l6bV (Text) Text
+                  - 2o29TyjyHMy8p951Q3Vl6o (Grid) Year3 Grid
+                    - HR9AuMCtDnGN4RjIiCohv (Text) Text
+                  - 2Ruv7kpujKlsSQ18u5gv8W (Grid) Year4 Grid
+                    - 30r6PhGYfNrm6XKzTHFtdW (Text) Text
+                  - 5adA0yKZ5XpPxKfkR7Eqw8 (Grid) Year5 Grid
+                    - 7oYkQ87o1BuQASS3aA6eLN (Text) Text
+                  - 3hi63AZpaxA61ECT7iujsO (Grid) Year6 Grid
+                    - 4A54iWa3sr26RzIQGYVW43 (Text) Text
+                  - 65XMlZsi5ZMwrfyKLpk38T (Grid) Year7 Grid
+                    - 3ezCeHVGHlIeLYOoeDTpxB (Text) Text
+                - 1MBGud8YIeF9dRSfGmnEEv (Grid) Rental Psf grid
+                  - 15nSQCgbG0jY3Bwz9TshTk (Grid) Particulars Grid
+                    - 7ClKKGdAQI5pSGb87Ey8vG (Text) Text
+                  - 5jisU9ptAIadJcqRsTkEqw (Grid) MO Grid
+                    - 6j7nWhZzrDw52T6VzjwfoN (Text) Text
+                  - 2UXhO93yvkd5oMEEjsEHyg (Grid) first 6 months Before OC Grid
+                    - 5FXWGrOjuTUGN5doYfcCA2 (Text) Text
+                  - 6ArqeBdKWX1i64dFw6lIdC (Grid) Year1 Grid
+                    - M6CX4L3DhzK8EMAw0ICaX (Text) Text
+                  - 3xMgTN3UloXxR3Th6nwZDR (Grid) Year2 Grid
+                    - 296Wfgl7h0eY8DEqV1XuV2 (Text) Text
+                  - 6Ot3wvCkoETQ8KgrZyI4MS (Grid) Year3 Grid
+                    - 6ema7YsDqg9slleGHKYPHL (Text) Text
+                  - 6ZR9Zw1kG3mibi2seHe8ea (Grid) Year4 Grid
+                    - md78Npl8Fm4we8cVWPkRc (Text) Text
+                  - 7lt7OPXonmRR2LeImQPB4N (Grid) Year5 Grid
+                    - 3JsHAYXp03w1FDTh6wQrh8 (Text) Text
+                  - RgYEHEIFwyhLNVawAw9hR (Grid) Year6 Grid
+                    - 5tICzcOYO3mDr3TZTFp5Nd (Text) Text
+                  - 1vuTtkV7CLAkcRNQHFZXYR (Grid) Year7 Grid
+                    - 3Vf5roTo9SEiM1kVgl6n5w (Text) Text
+                - 3A6N52pSxUTFSlrzaBBk3B (Grid) Rental escalation % grid
+                  - 16LjwpebvmmbJve0PcQhSf (Grid) Particulars Grid
+                    - 31zYMV5Xnv2AsZSSWgCgjJ (Text) Text
+                  - 7arzSvrxNe3U7eEeQiCkQK (Grid) MO Grid
+                    - 2K4Rxbb8eNg5LzoZ76q58k (Text) Text
+                  - 3GRZRNRqP9aijvsRdeN10K (Grid) first 6 months Before OC Grid
+                    - 3JIuSWGrrqpP0ZhQHHpv40 (Text) Text
+                  - 7hDTHTHhMOwGxQCJK43Z2V (Grid) Year1 Grid
+                    - 3A6KFECBlkNFfcubOjWkkm (Text) Text
+                  - 1xaH2TKYLyfPFv2ZyotuXS (Grid) Year2 Grid
+                    - 2pLAhV8EUo0DxNYoEYgjzl (Text) Text
+                  - 7upccf1KNloaStRlDthsSq (Grid) Year3 Grid
+                    - 4M4a3h455rqwLKhlInEnQo (Text) Text
+                  - uMKidlSw4CyvjeiOuyVw9 (Grid) Year4 Grid
+                    - 5F8o2n6Us9gQJZY4FtS3mB (Text) Text
+                  - 1rMJepSH36kwhArBMmKl6M (Grid) Year5 Grid
+                    - 4hFXfEtwVuxtLIaNuQ7jk8 (Text) Text
+                  - 7vrtZzonC7Oqv26uHAdEnB (Grid) Year6 Grid
+                    - 6tNVUZqCOpNqdf7nzU35Ji (Text) Text
+                  - 5WvTRmAmCBY6YSBPHAWdei (Grid) Year7 Grid
+                    - 3l73RcUIxgWzSIugKBj2re (Text) Text
+                - 2GiTJQcGKPj1vf73cUgG9E (Grid) Amount Invested grid
+                  - 5JSrt4MHHexIcIuiWlETRz (Grid) Particulars Grid
+                    - 2xIujS48vuszWDnoQeb42U (Text) Text
+                  - 6W6DZGzkIqTJisav7ptFb0 (Grid) MO Grid
+                    - 62qzsieG43V8gcN4j9oWcw (Text) Text
+                  - 7I88xrfW0TMIMNq4lrb5r7 (Grid) first 6 months Before OC Grid
+                    - 7bVfddzaUBMwUnlFT3fZza (Text) Text
+                  - 5JyUHHaqDn2rWpp1je2mcP (Grid) Year1 Grid
+                    - 6WQNbDznaJaWFj6EnUh3EE (Text) Text
+                  - LwOmnlsyAlp4FGi5kHk1 (Grid) Year2 Grid
+                    - 6qWnMw80EikR8pz6CpPvfz (Text) Text
+                  - ac8snUcoNl9ICKiHQRadw (Grid) Year3 Grid
+                    - 1DVIbJsViT7RkwUuHbNpAc (Text) Text
+                  - 69dRRETVev4jkfWcNR0muP (Grid) Year4 Grid
+                    - 5FML8SdQIG1a0XizWdWKr9 (Text) Text
+                  - 1O0mOkZpk50DacwkOaKJR2 (Grid) Year5 Grid
+                    - 5ah3L5X3dUOi1AtJ8mXDEg (Text) Text
+                  - 1tmW4mAU6kkfEESEbKRHwY (Grid) Year6 Grid
+                    - 3pBxfeq2wjtJHWHkp0zll3 (Text) Text
+                  - 2DTCw3xeULKHj4Z1l1g7a2 (Grid) Year7 Grid
+                    - 799rc2cDbTItxsbetC1mEd (Text) Text
+                - 3F5YAj3EABg4Z9YeTTv2EU (Grid) Rental Payout grid
+                  - 2eXrSkpJuEvpZRVgwD4SFr (Grid) Particulars Grid
+                    - 6yJfiHTlDiyanuHnWCVA8x (Text) Text
+                  - 2TK1VqyCWtCkZ4R7E4uqS0 (Grid) MO Grid
+                    - 1FCquabyKem19HeOf0ctEW (Text) Text
+                  - 7o7dqt1eJN131Pv6TgTWLy (Grid) first 6 months Before OC Grid
+                    - z8KjnOVkNZfz03U8VXRug (Text) Text
+                  - 2CvF58qAf0nvVce11BZRV (Grid) Year1 Grid
+                    - 4qXfuY0LmqcKB85qiBUKH7 (Text) Text
+                  - 2UZhjBSV3hZ4ncpZ4li6Q5 (Grid) Year2 Grid
+                    - 6Z8REiznVR8SAA9mV10aMw (Text) Text
+                  - TPTHbVs4jYuZq5R4UH3GJ (Grid) Year3 Grid
+                    - 2bcthB3FqXHLVC8usZn6aL (Text) Text
+                  - r1cjrPNetU1Y2hbdmveRY (Grid) Year4 Grid
+                    - 3SFbKhkPJ8tE1T20mCBalb (Text) Text
+                  - 5x1E8gDfs0xJP25RmBAZuU (Grid) Year5 Grid
+                    - 1C6bFHjsj360Fmjlfug9D8 (Text) Text
+                  - 3R9Dd4UkQe3ABRRZvhO5ds (Grid) Year6 Grid
+                    - VTAXofTMb2yDqh82SlKVe (Text) Text
+                  - 6GMDAnOtwIZ32EYPk6hXzl (Grid) Year7 Grid
+                    - 4FPyBJHp1klpvnR6QiVXVe (Text) Text
+                - 4M9p1dqTK2eMqiWtnB9tvh (Grid) Gross receipts grid
+                  - 7lis1YOEd69VdNYGzH6vLE (Grid) Particulars Grid
+                    - 4Np6SB5L5vfRcJlTw9z4s3 (Text) Text
+                  - 2AUiKML1kBv5j5cUtABlIL (Grid) MO Grid
+                    - 3AwOxj4nGlUBHnDaBYG68Z (Text) Text
+                  - 78nXX8d6oy6GaHTgb4JuGk (Grid) first 6 months Before OC Grid
+                    - 4as8KKNpEgztfzCnniRvDn (Text) Text
+                  - 5i0MWgfhD3N8J9PammlCvJ (Grid) Year1 Grid
+                    - 7lA5JRmV35J0Yf86L4xB2p (Text) Text
+                  - 1IHOiuZktPt9arsCPeBS7R (Grid) Year2 Grid
+                    - 63rJD5qAmNeTld0WDat6BA (Text) Text
+                  - 17nKJRiKgCXuDObaJ2AH5b (Grid) Year3 Grid
+                    - 7kHpc3f4jtEjg8d6DMAvRA (Text) Text
+                  - 6kcoV7E63nOhIB9jNZkByW (Grid) Year4 Grid
+                    - 5ghMWfGThS8JcDeXMzL38D (Text) Text
+                  - 4mrlCAsLi9IAXZVHomDDLJ (Grid) Year5 Grid
+                    - 4Ced2VDJtGzF0n3CUv5HZq (Text) Text
+                  - 1l5WGN7jSdU4wf3hOhf7wk (Grid) Year6 Grid
+                    - 4HlSb8Es80mLwgM4z5laC3 (Text) Text
+                  - 1cHoPZmDRwhEKBvCpsW4KQ (Grid) Year7 Grid
+                    - 7qskkKQEnHHYItB0VbCfHB (Text) Text
+                - 5jwvUt3vua29TimOngbSXV (Grid) Asset management fee psf grid
+                  - 4uYOwYLlssmpWBveOJalav (Grid) Particulars Grid
+                    - 7IYhHdk48nED1pe0TWcFMJ (Text) Text
+                  - 5VGIpdPPctTGgich2oQh8z (Grid) MO Grid
+                    - 71TPC2hDYseCFZ2PdX27eI (Text) Text
+                  - 5fK9WpByQcP0iQOFRS8ZOS (Grid) first 6 months Before OC Grid
+                    - 1JBDc89I0oP22QVxoz2ZTG (Text) Text
+                  - 7icOQRbO62e4g8FqqBctm7 (Grid) Year1 Grid
+                    - zAQayrs7dwHm9SpdJWMVq (Text) Text
+                  - 2r6FOGElAUr9vyPkWkWoxM (Grid) Year2 Grid
+                    - 5YRGEYCs93CELTcfg2CbpT (Text) Text
+                  - 6dCpPoXhKEhbSydUoyoG79 (Grid) Year3 Grid
+                    - 5QO9BeOPJlxn44f0O0mh9G (Text) Text
+                  - 28bcmezMLqGz2ZEzEX90Bf (Grid) Year4 Grid
+                    - 6OkbTkL0NNo6BqrUjRpDdK (Text) Text
+                  - 4s3ar9YBL2mCIGOpXvm0Fq (Grid) Year5 Grid
+                    - 1YbjrklWPyMnZcYH69CtO2 (Text) Text
+                  - 7IoORL1JnFHUNXkPdkSf2z (Grid) Year6 Grid
+                    - OWxGuIuMTqH5ZLkh2CamQ (Text) Text
+                  - 567X9Z46t9R64U8n9iIE0O (Grid) Year7 Grid
+                    - 3u5ukZOCg4TQAMrorQ0wQB (Text) Text
+                - 6XK52fARo2lryPQGH31iCB (Grid) Asset management fee grid
+                  - 4AgDStXcQSbY7orWpeKotw (Grid) Particulars Grid
+                    - YieMjZDPu6iQnILVq0h4J (Text) Text
+                  - 4zLg0um4sJBXN8LACak5d1 (Grid) MO Grid
+                    - 2KZK8YGlMdVd1aMz1QqlB2 (Text) Text
+                  - RP1NMnQmlOaSD685YsLWz (Grid) first 6 months Before OC Grid
+                    - 352DFLzn5MZH8EC58G3daT (Text) Text
+                  - 7GNyOt7mdHADzNVD5oW9uL (Grid) Year1 Grid
+                    - 3M3rZTywwA0ye1KQ2seliY (Text) Text
+                  - 1uMTky5PdzqMd8Vz8xg9bu (Grid) Year2 Grid
+                    - 5ZxKJbb5dMzsXk2enpKlgK (Text) Text
+                  - 4qVIgREE85upuIPypcIELV (Grid) Year3 Grid
+                    - 2owaf3jF21BkB7qTTr9wpr (Text) Text
+                  - 2Qbq76tKvKYsCuRJVpcIVI (Grid) Year4 Grid
+                    - 6rVgAQAX0usfnn9cELJ0Ku (Text) Text
+                  - 6GzpyUJHjuWAVZ175N1BlE (Grid) Year5 Grid
+                    - 1YfzLFqrsBwkXLTzw7uPeb (Text) Text
+                  - 1pBkZ3shoNiaIzk8rolvLA (Grid) Year6 Grid
+                    - 21f6vlAcTxWye8dq74zyrK (Text) Text
+                  - 4hzJ583J3Svbu4HrQQjG6P (Grid) Year7 Grid
+                    - 1Q3R9jFaKzddicoBm0vDHc (Text) Text
+                - 4ykz6hX7iNSJzW3PXIsya (Grid) Property tax grid
+                  - 7ek7DZjNfuaxHPeI5UHz8F (Grid) Particulars Grid
+                    - 1RFXHcmgxIZ78Rd7N6BNvm (Text) Text
+                  - 1HtP6NQJmk0QarvhH2poDV (Grid) MO Grid
+                    - 3cWbG3OyYaAzT4KKd1K1w5 (Text) Text
+                  - 6uuRoEWNK3UqKVj7e2OxLC (Grid) first 6 months Before OC Grid
+                    - 45iziyODX30vY5YehpyN8Y (Text) Text
+                  - 3acXtvJCLw0WDpjyeTbMVQ (Grid) Year1 Grid
+                    - 6aesn0gQfyGzIkTnd3fXQE (Text) Text
+                  - ufDqYFsUGm1XQG617aasK (Grid) Year2 Grid
+                    - 36Y3ahhqe2IOENIXEHtTDR (Text) Text
+                  - 1vkR3hWPqxwt7h3GkjvY03 (Grid) Year3 Grid
+                    - JmOi4zdYHKUBDW6z8TjDj (Text) Text
+                  - NclyOAoxn4iAWCnjInCpj (Grid) Year4 Grid
+                    - xvYEHUVRHoodJChJXLwrp (Text) Text
+                  - 5nxt84xGXqJZAGU1YvWVdu (Grid) Year5 Grid
+                    - 4jMOhMMFqcAzkaFyGRQ7pM (Text) Text
+                  - mRQ7Zj5TvzyLxXIQOm2GM (Grid) Year6 Grid
+                    - LFBYbjpjWyNFGxK0TPA3O (Text) Text
+                  - 5iv7ABa3CL0zpSfY088zXP (Grid) Year7 Grid
+                    - 3hX0pU46xWobEFSUK02HEe (Text) Text
+                - 4NnGaEtVE5BYkOlTe5OAUK (Grid) Total Outflow grid
+                  - 5iX9PfilZGwzliGnukP1o5 (Grid) Particulars Grid
+                    - 3JQZJ7Aa9PlLjM4oFMjLvv (Text) Text
+                  - eKXhEqVl4AphRQcSlTs8q (Grid) MO Grid
+                    - Lcn8fHob56bTxPJOITzXE (Text) Text
+                  - 3b8L7TvLIr6D80OCJAeVNg (Grid) first 6 months Before OC Grid
+                    - 7MX0Ly1cWb8PaqaLJIdwbP (Text) Text
+                  - 2D6njqZWLjmzZFahltbmdX (Grid) Year1 Grid
+                    - 4BKCztGqZAtqnCb02GTCA7 (Text) Text
+                  - 7vbtAcgSoHgTw2bC1v1W9W (Grid) Year2 Grid
+                    - 4aIDHh8wv1OmTR1OLvEWTb (Text) Text
+                  - 4G3kMJ9sap8sj0b0W862Mk (Grid) Year3 Grid
+                    - 2sk03fJ21JSiU38HgweH9Y (Text) Text
+                  - 5sUR8vfkxdq1DCadiZPW3 (Grid) Year4 Grid
+                    - 2ESoXe311HVcyn12mTYw19 (Text) Text
+                  - 3JBVruoPMd2roEx6Z1tG4z (Grid) Year5 Grid
+                    - 6XhhTt32NPy6UcDnoPllZp (Text) Text
+                  - JkdfSv31YMdB2MLvGcmIz (Grid) Year6 Grid
+                    - oVLeFpjCKR5YUScJo8xMJ (Text) Text
+                  - 5ANkWmYMMJcAkgtPKKGo5B (Grid) Year7 Grid
+                    - 37FuRnXglq3Qwxj9Ngulzc (Text) Text
+                - 1Ahr707nRXMbwECmQjiLIe (Grid) Exit Cap Rate grid
+                  - 46BlHgp8wXGQNBAhbSGTRZ (Grid) Particulars Grid
+                    - 2Q0UbJ0f4v820H7gDgHL9j (Text) Text
+                  - 5FYYp5ZGXLUoi22RGonrgv (Grid) MO Grid
+                    - 2uqVttFtz58eqjQrj5UnY0 (Text) Text
+                  - 4b1e8LzRRWR5dLZUsYWBTz (Grid) first 6 months Before OC Grid
+                    - 5JTldlo1LPbAQy9nWp7RhI (Text) Text
+                  - 7l2kkNxr7BXheem8pza0CL (Grid) Year1 Grid
+                    - 4NCte3sXt8sBJgQXETKr0E (Text) Text
+                  - 16Ov3UM3HE7cuXMV3qSl0t (Grid) Year2 Grid
+                    - 7Im9jS51J3TGOF175JXfgr (Text) Text
+                  - 690v3P6iKwMxNiK8rcOtit (Grid) Year3 Grid
+                    - rONu78YzIttBn3j1O2u1G (Text) Text
+                  - 30oAdPNPP1TrL5qMrxGytI (Grid) Year4 Grid
+                    - 3patiFUj0DnheRFf6QtZNq (Text) Text
+                  - 49q3LueAFb6a7eVReD3Oi0 (Grid) Year5 Grid
+                    - 6VLaBAHJCRguSMUdDmnTZV (Text) Text
+                  - 12L4Z3Fb2HNaxcL0PLv2iu (Grid) Year6 Grid
+                    - 52zfs9O7oVL8QwBAznb1Xv (Text) Text
+                  - 7CdM7fVeMYXuxTse5ydCle (Grid) Year7 Grid
+                    - x1ETKXAtk7VIBssXwDp11 (Text) Text
+                - KSJLS4ssh743HcZjRA3Er (Grid) Sale proceeds grid
+                  - 7iNg9cUnnsq9GfsLvxTmJN (Grid) Particulars Grid
+                    - 5YQjBmzPfZZSBC4jgjHyIf (Text) Text
+                  - 7FJW04wayLw4ng1R1vy6cl (Grid) MO Grid
+                    - 1ZvxXUGUg9H7JfZTN0E7DW (Text) Text
+                  - 7H7vdmBWoxmhJBi8zYQpqY (Grid) first 6 months Before OC Grid
+                    - 359drjdotdEF66OPtwYBAh (Text) Text
+                  - 6xhX8l6Zn2hcD5d4tlX1M5 (Grid) Year1 Grid
+                    - 78jQTpbpQbWg48id3ko4U6 (Text) Text
+                  - bAdkKf5XClX4u3r9oU8Kr (Grid) Year2 Grid
+                    - 2Fb65c6OcVUfT9gt6iWT9w (Text) Text
+                  - 2HK5oqex19QMF6yrQUFJCG (Grid) Year3 Grid
+                    - 4uCQKmyFu80GTqSSzkadTp (Text) Text
+                  - 7m3LsnrSSQFWPjK3xqtPyV (Grid) Year4 Grid
+                    - 4PjlyMAnrhXgzrAMj0ICzi (Text) Text
+                  - 56jsRSazj21uFIqT9eeL6y (Grid) Year5 Grid
+                    - 4VAX8ANCrpDOfjgLrxcUvV (Text) Text
+                  - 2okOHUVBBzFHshUILEupHO (Grid) Year6 Grid
+                    - 60sE7c8sKBaQm3MgRCwvBv (Text) Text
+                  - 7vFulJVd93NfTGzoM713fj (Grid) Year7 Grid
+                    - 4zg3UIQVymM1qZ2llyKDae (Text) Text
+                - 5fBfxFcQ9FW3w8seAfZJro (Grid) Net receipts grid
+                  - 284HrqwY5aAQ6drZghUigP (Grid) Particulars Grid
+                    - 6VqczRTMOF2qpKxOIFeM9n (Text) Text
+                  - 2QoN6FqzEdF7han3nzIwZV (Grid) MO Grid
+                    - 5Udym2ByJIECM1M0jwZjCx (Text) Text
+                  - oy7idTiBwVhqM3sgi4IG0 (Grid) first 6 months Before OC Grid
+                    - 1zhKlV6IMddz9WDBJT2PYO (Text) Text
+                  - 712GaXAFe3O8neD0doHCgS (Grid) Year1 Grid
+                    - CmC7f9fXKFeTDv6u617t4 (Text) Text
+                  - L3l7Z566qApUtL642XBhF (Grid) Year2 Grid
+                    - 6mEbe6GeBUolPGmbOJpyuZ (Text) Text
+                  - 37SNeYKtmbJtj3orhE1vrl (Grid) Year3 Grid
+                    - 5TZHZvykVUCqVTJ9w4NNVt (Text) Text
+                  - 7ax7OPKga1qn0KzvNfow0d (Grid) Year4 Grid
+                    - 3TPM5eOG0TRHuNXaUceEQy (Text) Text
+                  - 5oo9E5QXQN8YqGTwNcdZNj (Grid) Year5 Grid
+                    - OA51MIYm78wGkJ3KUUSvm (Text) Text
+                  - 1kdB63jMIfgdSebllSDxXJ (Grid) Year6 Grid
+                    - 4FPRNnjgqiwe5tzyFXKCmn (Text) Text
+                  - 5Hzi9Wo8Z45iiuVIsGjboG (Grid) Year7 Grid
+                    - 6IWGgkoTXB3ua2Bp2l0KwF (Text) Text
+                - 1qai1YIR7WL2JSjrvOUt (Grid) Gross yield % grid
+                  - 2L9dzeyAeEI97Ac8HR9454 (Grid) Particulars Grid
+                    - 5LgO8UiTVWrcq7zN6UrVgb (Text) Text
+                  - 38EYcXTmMviCemoVTnDvHP (Grid) MO Grid
+                    - 3n9WX18gGNsyizLCuyJr9S (Text) Text
+                  - 2HgKdGBpC1TOsY1z86gdkm (Grid) first 6 months Before OC Grid
+                    - 4NMfL2Wt4rFWLftY2xY2o (Text) Text
+                  - 6hRMR0kkYLWmdzR7X7HeNo (Grid) Year1 Grid
+                    - 4FXroOlYQ2xDVuFwRyX3On (Text) Text
+                  - 1QQLwmeJifvjdVYuvxlDau (Grid) Year2 Grid
+                    - 6fERoIxMP8kJpacv7DI52L (Text) Text
+                  - 1axD82hDz2pDlgaamxZKbU (Grid) Year3 Grid
+                    - 2OOqiyV5FzVZrZITSRxWKz (Text) Text
+                  - 6G7jHhO1VqQa5klVVzGlwO (Grid) Year4 Grid
+                    - 4zjbwSNMewDV9O5h2W3x9g (Text) Text
+                  - 4L2clCTKGxGCK09JTUgzN (Grid) Year5 Grid
+                    - 6UCYppJbIr3H2wJzucHIje (Text) Text
+                  - c25JeFJsPobxfJRA22xKT (Grid) Year6 Grid
+                    - 4AXaAa5gCAoLWogFOgLO8t (Text) Text
+                  - 34PXw4lTKIdWVIw7AzPwtd (Grid) Year7 Grid
+                    - 47S5YVDOo8rtbbVjEnQJvE (Text) Text
+                - 7lcb22xeFAsCZEMYrc92bv (Grid) Net yield % grid
+                  - lIXHp0n3l3WCIDR6XBz14 (Grid) Particulars Grid
+                    - 2UoEwLbSMCfQ0aSHqXgDTa (Text) Text
+                  - 1728R8P0K4qvji2wecxDna (Grid) MO Grid
+                    - 5L8NwTQfzlfDHo0wHx8eIk (Text) Text
+                  - 1Hpen1Yk0BhcSIvZQsw5Sq (Grid) first 6 months Before OC Grid
+                    - 24KVCLBgJ6w5Y4G4pkNc1c (Text) Text
+                  - 3N3kkTyGLVit2RfcsHXgbZ (Grid) Year1 Grid
+                    - 7MkrJOSWmYcnKkf9Q2Jf6b (Text) Text
+                  - 1mlvq8pDaOKw6azuxQtAIC (Grid) Year2 Grid
+                    - 2WCeWM6f3izwiuSdmiOUAD (Text) Text
+                  - 2pRROfPcldBg12OQafK6hg (Grid) Year3 Grid
+                    - 4gbLrAn71VsxEMgzeaxSUY (Text) Text
+                  - F87KiGg4wz4YlzlMJzPMm (Grid) Year4 Grid
+                    - 2eXjVuORwgk9QajTz2SUiH (Text) Text
+                  - 2SypV5HTjb5fQT8DoFaxhK (Grid) Year5 Grid
+                    - 7ql0BGxatN4BtSUE7kovT (Text) Text
+                  - mGND8jhU4xcTDLzG7ymDf (Grid) Year6 Grid
+                    - 4QeP0uVLyEEzNbEPgYPpLs (Text) Text
+                  - 1e4bTFE7uwTDx3EbZf3rQi (Grid) Year7 Grid
+                    - 1iKrrl7jPh1pgXqDFFx6JF (Text) Text
+                - 94q5iZ7DySXmVEUjfpDsx (Grid) Average Gross Yield Grid
+                  - 4I6iSCmd25d1jHVr6gEDz (Grid) Average Gross Yield Grid
+                    - 2TBXjBSsuL7eIafJTq4fb2 (Text) Text
+                  - 4J48BU7QNWPu8Zvk4GQYgr (Grid) value Grid
+                    - 532jdfj2blu0IxmEOHKieg (Text) Text
+                - 5o7fVvFhqD5z6LEiprOpzL (Grid) Average Net Yield Grid
+                  - 16Wqq436oQ19dvg3iUWfWN (Grid) Average Net Yield Grid
+                    - 5Q1rLqvIuEZ1nR6oj71HRe (Text) Text
+                  - 3d38ZtlC3Zeh5lJvU5sQTB (Grid) value Grid
+                    - 75ec9BR4P53dYEZrGxjQTn (Text) Text
+              - 7iCkrhC6GYTMwLwkgSacak (Text) Text
+          - 3PHM3hetH5UQ8r5s0N43pN (Grid) No calculator Grid
+            - 6Vl5nKEKRCS2toa1ibfF9U (Text) Text
+        - 5NUjLcF10AFo9xxcEe3LS0 (Grid) main documents grid
+          - tAcucOCb5fhVxXEmKFMXV (Grid) Documents Grid
+            - 7xG9WFvTrhwEostwA5IWqR (Text) Text
+            - 2LUl0GoIOgsyWslgW6C5ea (Grid) Resources Grid
+              - 4Dpp4UiWiuXHFer5RuY0HK (Grid) Floor plan Grid
+                - 6MQOEHnuw7l9MWjdMkHGnP (Image) image
+                - 1vN3ErwVnWMNPS49Pqmy8H (Grid) text Grid
+                  - 7ry5IfRp00KFIbM0VJwPy9 (Text) Text
+                  - 5ySKkQY1RC5k2bvrzuN1gI (Text) Text
+              - 5z02fJYvPry4kb3DBJilkT (Grid) Master plan Grid
+                - 5CAtLEdNkbVMtdtWyLn0Wn (Image) image
+                - xsAXRTTUUHOflc5QDtUOE (Grid) Text Grid
+                  - 2XwdYuoRXJokzpjUDa0vTs (Text) Text
+                  - 3Km7odxgzxbg1MTgSeRqa4 (Text) Text
+            - 3B9lVjUOj8KZWeDdf5C65t (Grid) Resources Grid
+              - 3BmM54qTHAJk8QJEZ3Mpz7 (Grid) Investor model Grid
+                - 47R5Qa5jhArDcGs3mghevN (Image) image
+                - 14h5TdxtfOPCiw0FtPZiih (Grid) text Grid
+                  - 2QtB2935OLgQi9loY5EBxL (Text) Text
+                  - 5pxeLJiCV6EDXTip580x4i (Text) Text
+          - 6gunu8PRfNNltMJym1jHQ9 (Grid) Nothing Grid
+            - 6i0bAs5FMDSS4FdYl8grZN (Text) Text
+        - L2A5zMTA5OjmzU08kOWaY (Grid) main gallery grid
+          - 3pMQjN9bet5FRBOuzA59Cz (Grid) Gallery Grid
+            - 58u40WO8sFYbuBXqhSh3UO (Text) Text
+            - IxvAcYEGXQF6eEfHi7Zfb (ArrayRepeater) Repeator
+              - 71uRDy2xS94cvep2AeQSwh (Grid) Grid
+                - 6YfMKaeJiV3uYaOb3ozzsP (Image) image
+            - 2cLYmrr2ekzchoc5pmquWc (Gallery) Gallery
+            - 6LRq0MS6n32pKd0coFo3ED (Grid) Grid
+              - 183DWyWX67s2Z5JJwIEY1C (Text) Text
+          - Tvr8IN5YVQuDvpCat7fvq (Grid) Nothing Grid
+            - 4Ubf1gj5thE8dwwajpRO31 (Text) Text
+  - 6zSYvEBC7jNGt6NPwLZATd (Grid) GridLodingProcess

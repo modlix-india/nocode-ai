@@ -1,0 +1,918 @@
+- 5ygXvl9CX6KRj25ODrfCnZ (Grid) PageGrid
+  - 6YfnxLlQOQ7phq9T0UmlWw (Grid) Update campaign Grid
+    - 23vBIKmmnd3VxI0cGvhNSl (Grid) AI suggest Grid
+      - 6fcSMEieLvEM33KK4j5Qd2 (Grid) manual update campaign
+        - ynsZjfXsBT9AaCx2juqmb (Button) button
+      - 5MGAnEpMgx8hluYoQXoXEi (Grid) topLevel1Grid
+        - 5JsnzXsof2erdwaBjPzTPH (Grid) durationGrid
+          - 4vAVBtCWYCjYelN0IKvWvx (Popover) Popover
+            - 1MP1Ghvhg3e8EYZQ2yKHdA (Grid) ParentGrid
+              - 6kreC8H1SXCJkygA2nMJcB (Icon) Icon
+              - 2FII99byWEYpn9gH8QJJBY (Grid) Grid
+                - 46J4xcba9NveZzvsaAF0nY (Text) Text
+              - 5MTHpzNFdq2zJC7bBeHFRh (Grid) Grid
+                - 6OX7pJQ7rdpANm5EipxExz (Text) Text
+                - 37xb3Dt1ORf3KuSC0bK4b0 (Text) Text
+            - 1EUYphBS2AepDIXwYdJ0BU (Grid) ChildGrid
+              - 52fT5gkbXviqacTSJimSoA (Grid) Grid
+                - xp6dKoKyPoBTapm1G0V6D (Grid) Grid
+                  - 4LQf1hupYamyYwwnF99BgL (Text) Text
+                  - XRcg2GTUaKCxU9x1GZwBx (ArrayRepeater) Repeator
+                    - 3m8u4I7KGtcaQwz1eLoBr5 (Grid) Grid
+                      - 1iuaoiNfXfXHT5hpVl9N42 (Grid) Grid
+                        - 4rshXEg3IMi4CH1I2aeoAH (Text) Text
+                - 11BNEHsLr0snHnBexkalD1 (Grid) Grid
+                  - 1dVspqIMWL83CrnkvmtfHp (Text) Text
+                  - 1JFULNp0qN0g6CndImxeBI (Grid) Grid
+                    - 1qTH7pT7uYQmTWmR1df4Rx (Calendar) End Date Calendar
+                    - jq98kTNL80oBhSCaXyh0b (Calendar) Start Date Calendar
+                  - 3lOIrIF4uBWbucdXRP3Exk (Grid) Grid
+                    - 33hhGJ6XUIz8kMITEBdl9T (Text) Text
+                    - 75YD0iNiOxRmYjfURGh6UX (Text) Text
+        - 4eM3y2NmV3MM7bA5mg3QoI (Grid) CampaignDetails
+          - 6C8dky3i4Y3rLMNrnob6m (Text) Text
+          - 4JTk2ZpksZMbLFfubnrWy5 (Grid) status
+            - 7gjyQvDruWqoDoiKW8ZlXs (Text) Text
+            - 4ohcaHBs51fuVLPOGAMeeE (Image) Image
+            - 1js7MWObF7VfxAOH7nUMrv (Text) Text
+      - 4tmGtsQRh5HXkBPLSVM2Q (Grid) Campaign Grid
+        - 2Y1FqDcGMDR62DxjyntNbu (Grid) Previous data grid
+          - 3vAc5e4kF0TxJy2OJTJHAn (Text) Headlines text
+          - 6UOgiQm6VrqsUB6qFcBuc3 (Grid) Campaign name Grid
+            - 2yYK6RwjhIKLYIA9foPMLu (Text) Headlines text
+            - 5Jq4eyPXIERMtPiYYrdmlf (TextBox) TextBox
+          - 6P8UKKV8zG2O5iVvj4cFnR (Grid) budget Grid
+            - FwR3XsCxOVsd1SNQfjqX0 (TextBox) TextBox
+            - 5RLqOV71MuZMQTqmwK2nJd (Text) Headlines text
+          - 3Ra79Ic9VEbyoyVbLSerfx (Grid) Headlines Grid
+            - OiZLrr7msut7DgorndPkW (Text) Headlines text
+            - 1lR3kvpcYdAduvMSOrMvE6 (Grid) Grid
+              - 1GqRlrP0ovSd3dBZ5lISWb (ArrayRepeater) Repeator
+                - 4Ikjs4uDYf5xOnfaPvJZ0s (Grid) Grid
+                  - 49yB0sIKJ0uaXCHdpGQVZR (TextBox) TextBox
+          - 1jZnZnLJFFn62qvoOEZYAY (Grid) Descriptions Grid
+            - pdz0cUnUBhLYptQSicPOB (Text) Headlines text
+            - 4XPDTtdvhsxr755BK1d2R3 (Grid) Grid
+              - 1kJw92uimksHt0OB3fKtR1 (ArrayRepeater) Repeator
+                - 4hQIM9nG4wmNchiYpkYHMw (Grid) Grid
+                  - 7qpJErTOULiBRuOXVrsa4Z (TextBox) TextBox
+          - 1fu6SjQwQhqFk93BwVChZ6 (Grid) Budget and Age Grid
+            - 5VWk0lWWl2CnvBOsYLbWtj (Text) Headlines text
+            - 2JNBiETGv6Hz2b6r09OIFD (Grid) Grid
+              - 47KPJsf7zsTjmdOj8MpZWt (Text) Text
+              - 6lKnjNhzT0cbJhOWMrkPpj (ArrayRepeater) Repeator
+                - 41fo5u9khigfMqIAmikkOf (Grid) Age Grid
+                  - 7FlRlsjqzsrrZ50x6sGjGE (Text) Text
+                  - 4sy8rtuCQ9ZnOD5IeAGPP4 (Grid) Grid
+                    - aFCUFEH6iyTdbUhmut1v (Text) Text
+            - 24TQ7uIJddjeibut8d86rv (Grid) Genders Grid
+              - 1MaGdPuBVgiJRgmePZO7rW (Text) Text
+              - 1jatMziUKWXTMqtXCcsi5l (ArrayRepeater) Repeator
+                - 7E8aJpf9yFKaM3srPLAzgL (Grid) Grid
+                  - 4oOQNLLsw4q143Bnc1KoZB (Text) Text
+          - 7q2HE5tV7FVDxxVgAQeIqm (Grid) Locations Grid
+            - 1zPoPu9gZoAth97Q07jy0D (Text) Text
+            - 6gU0GogREOEBTyy758Ru00 (ArrayRepeater) user added locations Repeator
+              - 1SuuWhNOqA1Hf8U207O6RT (Grid) Grid
+                - Jqb1wkYb7jMD5LkpYGbg5 (Grid) added location grid
+                  - 1sd7CikPzgoMEiRUHDuWwb (Grid) Name and icon Grid
+                    - 4EctZ7Bd3pA2e6BfRqFa1M (Icon) Icon
+                    - 7BxW8kDqkYrsdqw474fgYF (Text) Text
+            - 307Yc3Ir3y8biPDJFY7L7S (Grid) map Grid
+              - 3gwDncuKKQHAjGeVLJBcNj (Iframe) Iframe
+          - mDkYuMiUd5giS3kuYHrZE (Grid) Exiting campaign Preview Grid
+            - 6iOVBj824xFsf2BcTlKY82 (Grid) Preview Heading Grid
+              - 1eclDcxSuR4vY3J2iERSyZ (Text) Text
+              - 5pfEecWpbQ0DZwlDHuGQw5 (Icon) Icon
+            - 4kKxqQ7yB7ZexpfPqTCBNL (Grid) Grid
+              - 6S2nvieM4mGEWLMHcI0g9v (Grid) Grid
+                - u4cpkgwfdKmulOi34OzsI (Text) Sponsored
+                - 5x0O7JGGPo03jDjwKyhg8n (Grid) Grid
+                  - 6SLS6xqE5CqbgzD4o0GxNF (Icon) Icon
+                  - 69vmiLPQS0IkEcvrZ8ieWw (Image) Image
+                  - 22qraFjfc7QqPmzyIFUR2d (Text) url
+                - 6FWjfcYWTzaRc5VWCx1Qay (Text) Text
+                - 3WyLC5amEQuld9VhDlO8M (Text) Text
+              - 3T7RjPWazKgCpYzcWx0KEb (Grid) Grid
+                - C6n6SDCp9L5GyA2HyMgp9 (Text) Sponsored
+                - 4vCUPiRdNrH0cM5b62ISh3 (Grid) Grid
+                  - 1qPgoEDLHluwl5kYRNbe4e (Icon) Icon
+                  - 6TBLnOTB1KgdT5oRBwksYe (Image) Image
+                  - 3v1mJPvE8mutyI8UAh9ffJ (Text) url
+                - 2BMRdztHTMWNmLVyr5gN7T (Text) Text
+                - 6olGRyTyHHT0sLxBF99J5V (Text) Text
+        - 2Wgxm2XpBdKn3QI7fZCE2J (Grid) AI data grid
+          - 1VIhceOvb7QHLk81dHXb0t (Grid) Ai sugesstion heading Grid
+            - 6wA0tbhx0OR7tuAjbjotVu (Image) image
+            - 6AvYXzCiXMM7NIsHT1TMFE (Text) Text
+          - 585uR8m31HnE6wLLlsT3VX (Grid) Campaign name Grid
+            - GHUeMwjkEF8gUaSuyLK5C (Text) Headlines text
+            - 4a1FqFyvxl33pod7vnmWRV (TextBox) TextBox
+          - 4Mpgee88F0YIdtf0s07aQA (Grid) AI budget Grid
+            - 3PUPn9RBTeNmzG4beiDA2a (Text) Ai budget static text
+            - 6Q0C4w8yeulWXPaPxG7euy (Grid) Ai generated budget Grid
+              - 5kwQ1WgPonjebC11X9kQTG (TextBox) TextBox
+              - edGe6Mk6Y1UkLJWtb2Mnq (Icon) Icon
+              - 3kccRXnV5JTt1VOvVDKaSE (Icon) Icon
+            - 2G3V57NV1vYXu41LByDqIv (Grid) not genrated budget Grid
+              - 4a1pQvXCwX0HOOUMIM2eV3 (Text) Text
+            - RGjKWyUgC6O2W7seS5vix (Text) Daily Budget reason
+          - 2xQWOfW3GHOjrD7yy9TMX1 (Grid) AI Headlines Grid
+            - 5uVVVTyVybtMKxl34IxuXQ (Text) Headlines text
+            - 5CuYMWsR4JpxEjFzmFybih (Grid) AI suggestions Grid
+              - 2IMVu6ZWOWXrJ8KUgSgqBI (Grid) Ai sugesstion heading Grid
+                - 4Luqk63EdX861Nw4PHxYvt (Image) image
+                - 1jW5aOvhmVkDNE1k5seN4s (Text) Text
+              - 2c2i6DQmZtj6hYcVzOHyiF (Grid) Ai suggested text Grid
+                - 1j3t7iv4czkse17rX77k7D (Text) Text
+            - 550j8m25ssbKQRF7wj7AEz (Grid) Grid
+              - 7afyfdCcc31mxm63V26e2c (ArrayRepeater) Repeator
+                - 2AngHT9xBKIpRHkJFSbkzs (Grid) Grid
+                  - 3A5tGu12Y7iSR2gdM5WHDN (TextBox) TextBox
+          - jq1umIeujwXNrTSSHC4CY (Grid) AI Descriptions Grid
+            - 1r6Zk6V6qW5gKcJRESsGKh (Text) Headlines text
+            - 3ppzn8RXnXUlMSjacley8K (Grid) AI suggestions Grid
+              - 4vu5hLusDq2qXu2NutYXyj (Grid) Ai sugesstion heading Grid
+                - 13OaxLGx45sVkpaLr0I523 (Image) image
+                - 2FfVnsVKU2rGV3djcX0W1Q (Text) Text
+              - 6w22VsskDyrkW4kRY437UH (Grid) Ai suggested text Grid
+                - Jr3Fu0ZP7BWp2awvMUfhv (Text) Text
+            - 3FhxB4IO0aZEQkEO3dQrAK (Grid) Grid
+              - 7Fj4T2GenaPP2eKCZufEFV (ArrayRepeater) Repeator
+                - 5Tc8WuSTIk61mRz8DajS7v (Grid) Grid
+                  - 5GciUkvHWYDweBbgwigAVn (TextBox) TextBox
+          - Ch1ifYBy7BI7EYM2e1pxL (Grid) AI target Grid
+            - 2E7LpRNiS8BpTKm2JZgn6k (Text) Headlines text
+            - 5aPNajy8427Tdhaf4vECKO (Grid) AI suggestions Grid
+              - 5TrfKCkK8oV9wjaJlxJdIO (Grid) Ai sugesstion heading Grid
+                - 68sXwqrNrpoqOjAuR8ZNsC (Image) image
+                - 23vk3iWQZ6bHnV3NF7jj3w (Text) Text
+              - 2uiUjxxz5cU4azHlWSqGWn (Grid) Ai suggested text Grid
+                - 14NS2bzGVbqh9T2m1WWdCu (Text) Text
+            - 5uVlrb4NfO5IfjbZiwgCyI (Grid) Age range Grid
+              - 3A7BGJLLauadRjGubHKVlP (Text) Text
+              - 6UwqNUmi9Jz9Zh4wxd3OFr (ArrayRepeater) Repeator
+                - 77T4Wpk21nduzRPuwiBNbl (Grid) Age Grid
+                  - 4JVXYnLAGkmDZ2AQHg1EDx (Text) Text
+                  - 38eC9eFJl5CIKJcQwfPGSQ (Grid) Grid
+                    - 4VP2gi5HVwPojWY6Snv3Db (Text) Text
+            - 7y57cgKRbRlhZXRccMvWBl (Grid) Genders Grid
+              - 6qIMIrmNNnjGww7XDaWc4A (Text) Text
+              - 1bUG8izkccBRtudfcO3p8W (ArrayRepeater) Repeator
+                - uiXE8OaMitkwWiNnQuPd7 (Grid) Grid
+                  - 7wvQfnyv7YqDIhdRywQkeU (Text) Text
+          - 8YLpaEBP0jFWzTDQnvbP8 (Grid) Locations Grid
+            - 57ROZvFXkhG4VR5uzm7NS6 (Text) Text
+            - 4mGukgNRXIhHrVcQR9GMz3 (ArrayRepeater) user added locations Repeator
+              - RkLmcswt6n4wnYdyB4gyO (Grid) Grid
+                - 1SRXmMMLIRIoojQdinZy0g (Grid) added location grid
+                  - 3OcohbVREKwkIk6a5kKmho (Grid) Name and icon Grid
+                    - 30UrXY4UNBdo52yem4rZ9Z (Icon) Icon
+                    - 5kdkmHKsfmv2gXfCQcJZT3 (Text) Text
+                  - 4O77woBphlpTlhbsh7zTgB (Grid) Delete icon Grid
+                    - 6VykLMDFFgHRhHrwvQ4ZKV (Icon) Icon
+            - 3p7UlAb1JTGHgT5nnZqg6i (TextBox) TextBox
+            - 1VDDZmrcvWgxTmtLhlNgLk (Grid) Locations suggestions Grid
+              - 7jgMgXvALpNe6kH0gJmb1z (ArrayRepeater) locations_Repeator
+                - 6hJDlCELfcC5IPnIU3VL30 (Grid) location Grid
+                  - 5M8e2Mfw4J0p2o0qNyH6qv (Icon) Icon
+                  - 4hcsAOXHEMbdQO6padWPUR (Grid) Grid
+                    - 7lcDyZGkoVIP16CQ98mQiF (Text) location name Text
+                    - 6EuH6jy3FU6828bUcjBYBP (Text) location type Text
+              - 3Oybaw3Nm7mktZ9mYjFMem (Grid) Error Grid
+                - 3Mlf8byyXooOVyphmJQkCt (Text) Text
+            - 6QVXPvaq3S9cp3QfEUzzor (Grid) map Grid
+              - 3PvTmplqVxJSrmxGZfIyx8 (Iframe) Iframe
+          - 1BGQbjC9UDCqUFsduQNONY (Grid) AI campaign Preview Grid
+            - 5aiUbc4pjKr7sjBA8uN5Nz (Grid) Preview Heading Grid
+              - 7sHxz5jcnqtVjBaTEorfUV (Text) Text
+              - 5sRoqya6VEPJAFNns0kgNW (Icon) Icon
+            - 44XLxTJdJ1vsHQlEjZ3YHz (Grid) Grid
+              - 6C8Q3eR82NuGGZDB8KyOCT (Grid) Grid
+                - 4EhqZfWldYlYFxwW7SllFv (Text) Sponsored
+                - 67MpazLYbKHIKIFNIFSPuG (Grid) Grid
+                  - 5qJRIvw6nK8vqQFvs3o1wW (Icon) Icon
+                  - 6LAO0yIId2RrHyCdycM4W7 (Image) Image
+                  - 4h6zhkKhVTcJ7rcrpJguDQ (Text) url
+                - 1x7MkFHKOlWnIkOeDgQTI7 (Text) Text
+                - G9DEYKzYJHUtex6ad3GYq (Text) Text
+              - 4yMRtKnGq2nuG1t1Q3DIud (Grid) Grid
+                - 5Zovd9JQYYfwDCgFwjdc6c (Text) Sponsored
+                - 6rgC17SJGH2uVQbCTl8i0H (Grid) Grid
+                  - 2FHnJdXNl4yUsQOcq4k1H5 (Icon) Icon
+                  - 5XnJydmLk0Q2keFA3aUVis (Image) Image
+                  - 1cdgyX3TaZQ2mjDZNxHx89 (Text) url
+                - 5HUC83OBU26FCnsOY3p35a (Text) Text
+                - 4sZ4eU44dM9dgyGgOrFaTK (Text) Text
+      - 2P8yDySN8SJlro0zt19npo (Grid) visibility Chart Grid
+        - 5feKbaKB5MUHGtB7lh2v97 (Chart) Chart
+      - 1e2CaoqNGYJZUGvY1tJH3c (Grid) Ask AI Grid
+        - 56ukc4NUTLnaJIcrvkQ1i (Button) button
+      - 6LRq44kVD5EgRUitJUA4xw (Grid) Update Ad Grid
+        - 1UXatyoBKXde1rT8P0vfAg (Button) Optimize Ad
+        - 11h0kVPCQc330eNLjmk2hf (Grid) Grid
+          - 3LwdLOIlsW7mdy5fG7wv1C (CheckBox) CheckBox
+      - 4Do0XWjhHgU5cKNcpRXc7s (Grid) AI budget Grid
+        - 4r0VBEMIi8Cj95yPSUBDem (Grid) Budget Grid
+          - 2Sx5ifwFHUHzSlsrqgiq3z (Grid) Ai Budget sugesstion Grid
+            - 44A9kUieeyVB4ktyz7cFB3 (Image) image
+            - 4KFiOAG2k5N5BOxcqwPeql (Text) Text
+          - 1jAEwnZmQKwF21EuKBbOAM (Grid) Update or cancel Grid
+            - 7hMggPnFIqhlm1QoUxYhoO (Grid) Cancel
+              - 2MfDZ8mTTvJxlruNpL8keS (Icon) Icon
+              - 6SmaKvWjYGY5JOQT2LJX1q (Text) Text
+            - mhmUZ52ka8BSzdI05axhu (Grid) Update budget
+              - tj0GMywsLQvhgO9pQiAcx (Icon) Icon
+              - 24BYtF6TwVjlw497GizDAb (Text) Text
+          - 3RzNlzsnafQZrPCcCf2vPc (Grid) Current & AI Grid
+            - 3UWXW6wVlGdurYEmUYjNxt (Grid) Current budget Grid
+              - 4UdsnqEIx54ijb1Y5zU0JJ (Text) Current Daily Budget text
+              - 6e925n3tKTzRWAgeuKuLiH (Text) Current Daily Budget
+              - 6hjk26aLIq7vZmSFFyV7pl (Text) Daily Budget reason
+            - 3MgOVD3Q6Y4cd3YVekKJPy (Grid) AI budget Grid
+              - 6GiSzy0Xa8s2GzjSVMN8xz (Text) AI Daily Budget text
+              - 46TyUnmrBwlooJ0k5WhwKc (Text) AI Daily Budget
+              - 1uzVBnlXDfLFsgcgCUGZtB (Grid) AI suggestions Grid
+                - 6L5TD319a957mJ2CfYnweD (Text) Daily Budget reason
+      - 3hmbZ2DykMQdIpb2Gpr0n6 (Grid) searchTermGrid
+        - 6evzpMRgpswg9lSiDCJ2qZ (Grid) HeadingGrid
+          - 2yrL4KIHqQsksR5BN0kPjH (Text) Text
+          - 39y4lsgvL97SuqHGhVPzLA (Text) Text
+        - 7cBSZOwWyeycroMSbNKK9m (Grid) visibility duration
+          - 3RebZmPAKQU9lmM8hFlEl8 (Grid) Grid
+            - 3Qq1r5eFnR6pWqHdLzw4n2 (CheckBox) CheckBox
+            - 62NuYRx7dOI1lj6zVca6mi (Grid) customGrid
+              - 2Aw1y6Qokg23djmq98IAB4 (Calendar) Start Date Calendar
+            - 5Cy2psxmPWmO9Jw5oBtEFl (Grid) relativeGrid
+              - 6UBjvvsQ3vefzfltByxd0r (Dropdown) Dropdown
+            - qVGoDdFGplcNTrOf3n9Bz (Grid) durationGrid
+              - 22gezre46bm3oLsHuM4PrN (Text) Text
+              - 6PRAvjBEOxEvtQcx7quiCV (Text) Text
+          - 4WawaETsqPekHrQnUjqIoT (Button) FetchTerms
+        - 6353yfqkCppcv8zG37TEE4 (Grid) Terms
+          - YFCYrk2F9hw0SxzNZy4vR (Grid) terms recommendation
+            - 1S8VmLh4YYLPuG6RJvr9gf (ArrayRepeater) Repeator
+              - 1IkglOKu3ben43cnWXYBQt (Grid) mainGrid
+                - 765gPV2ZJUbWdydoIuKwj5 (Grid) layer1
+                  - 1tJfc4PRFcselz85YiHD89 (Grid) reasonGrid
+                    - uWXvTvnxjlYp2rdNMANbp (Grid) recommandation
+                      - 7ytH2WAXWyHgB2icVxv42V (Text) Text
+                      - 4X9xVz6OSHJoXXUggMjg7B (Text) Text
+                    - 3oWaJk7Nrsj29xsz5JnS2P (Grid) statusGrid
+                      - 13yot4OzynlOSmRJlcIqh8 (Grid) status
+                        - 6ETssA3K1gaTSO8P4revAr (Text) Text
+                      - 5i7Fyw9XPjpaINoYXOkfng (Grid) recommand
+                        - 5JAGyzmwP3tFTwD4SRUxHG (Text) Text
+                - 7EPv2F28WaaiqBWfaAcCgm (Grid) layer2
+                  - 3vojUfV5A4x3S4i2Nw9ew2 (Grid) analyse
+                    - pk1sDBSmMrbjVlTCo6bJK (Text) Text
+                    - 4n9jjMTHsAGOI3zFcOmfnL (Grid) status
+                      - 4dxHknhmYKglnSmVbMvPnU (Text) Text
+                    - g1HlGr0AGmTUHDNx7Y4HP (Grid) recommand
+                      - 2BEgJGLxw2zedACrLC1826 (Text) Text
+                  - xWcmuAlb6TfnbSpjQodeb (Grid) reason
+                    - 4wMUGxORWiZ2sdEsFX6tkM (Text) Text
+                  - 5ec8zZxbBQeOpq0nYZcmZy (Grid) relevancy
+                    - 5cDjHbN4aNxF6vk2BSAEDw (Grid) brand
+                      - 6B0QS9hDbsIkkmAd36lOwH (Icon) Icon
+                      - 4bvRhTD1CGhNQq6ONCllqz (Text) Text
+                      - 3c0vWKoyY52AWiVVzZhzJc (Text) Text
+                    - 7rvY1RqhZwGTkeOQfhiTOB (Grid) loca
+                      - 5NhwgmzR2RdtWRStrJsRWn (Icon) Icon
+                      - q05ZhOooDo49JtFV0yEO9 (Text) Text
+                      - 6w99dy5DNrbWx91m3WtjpR (Text) Text
+                    - 67IFkt245VStqoAGqOU1yE (Grid) config
+                      - 2n2ochW30OXZYGzOK8I1t1 (Icon) Icon
+                      - 1187V6zAd78CK4QtofCPcE (Text) Text
+                      - 5yEsKgyosbz2yZiIMQS1yz (Text) Text
+                - 2gBy8L1vPmEdTZSTuYTapE (Grid) layer3
+                  - 3G0gCRs88m9SGVJhRJ6B3d (Text) Text
+                  - 3D25qscIrzqMEBJsnXAfVy (Grid) Grid
+                    - Kc5OdHozTx70kkWsC2Pyc (Text) Text
+                    - XEOUHLxXAQujDMVSSh36x (Text) Text
+                - 6ZQG4vuNf57K94qPd79XuN (Grid) layer2 metrics visibiltiy
+                  - 2Et7E44oJx9X5WdLBwxsqT (Text) Text
+                  - 59KaUkqrrW1C5H8UT0Y1YP (Grid) Grid
+                    - 1XLO433HnTl30OkCqPcQVD (Grid) Impressions
+                      - 3FlFyAVSzwm97aB2FecJV3 (Text) Text
+                      - 228OVkDPVgGsCsSUY9wWi5 (Text) Text
+                    - 1Rd9FxVLLp68pkWHO0WHuq (Grid) clicks
+                      - 4aT7zvhM2bbxPcenZpqoz6 (Text) Text
+                      - 7Ji3kyyQuKTQifrYgRDm6I (Text) Text
+                    - 3uDpyJQ7HLbY200552dNUW (Grid) ctr
+                      - eDNrWsh2EmBsYNENv7kZw (Text) Text
+                      - 42f2TmEpRNFkox8rF2NTIw (Text) Text
+                    - 4i1wRwirhZWm2ud5t4f6LE (Grid) Conversions
+                      - 2lv7qvi3N7L9B7iaPftk6k (Text) Text
+                      - 48ryKsiFp7bzL18pspVo1L (Text) Text
+                    - 7asUCA0OZfCberwgtfWIN7 (Grid) cost
+                      - 1znnpG32rWfrjbEofq8OAz (Text) Text
+                      - 3aTngH5IkbNpStrrM3jfRY (Text) Text
+                    - 2aGT9AfK2zu8Dtkq0c4eiJ (Grid) cpc
+                      - 36QoJ4Gxkpm8l3OpVvWmzB (Text) Text
+                      - 7EdItTfXHVMeTBIrEkPwZW (Text) Text
+                    - 5uz7cEXbwHRR2QB2C5BLLy (Grid) avgCpc
+                      - 5FHPl5V8pSBGnuJfEuQp64 (Text) Text
+                      - 70VaaZhme7e9sM0vsi6Kwj (Text) Text
+                - 16owayq4pcPEFiXN5wnSsR (Grid) layer4
+                  - 2ndbQMWYTMWv7b672p14JS (Text) Text
+                  - 5d8ltso8ztaJfYQZQFRcS7 (Grid) Grid
+                    - 6fzsMJD2a3zxaDKtD7OxJ3 (Button) postiveButton
+                    - 6ZDXG1648491grEfghKgEK (Button) negativeButton
+                    - 2iyD7yD7Z06l72RQn0MXdF (Button) discardButton
+        - 2aaZ79YjTTyZw57AYcPCS9 (Grid) NoSearchTerm
+          - 1P6AZq7VUEPHAdJARTUixl (Text) Text
+      - QYHqYHOfqz9xF0nTeySqR (Grid) Age Grid
+        - 3Qwd4RXZQrWNe8oVPGRXUx (Grid) Age Optimization Grid
+          - 5DL37JQ4EfU3zShCchsmX (Grid) Top Grid
+            - 2Oz8KxEEejuxApCqUyWSME (Grid) Age Heading Grid
+              - 5jdEhrBFhvIjHx9nt3giKw (Grid) Text Grid
+                - 40JEgyMSPD3dwh5hGPbPpV (Text) Age opt Text
+                - 5q9d2bqsMyy0ByPoPYFBzx (Text) Age Des Text
+              - 1JLbw8DEdBo3JmboAVByor (Grid) Update or cancel Grid
+                - 4tyJPrgthjY5kn8ByQMb23 (Grid) Discard age
+                  - 8YPEW91P6uey1SacXkHQn (Button) button
+                - 5j1mW6JsZqWlGQOcpMpid (Grid) Update Age
+                  - 4XRv4tA7j6DAwgzgMsjTBl (Button) button
+            - 27ZsDWBSduytQuhV9tpfqt (Grid) AI suggestions Grid
+              - 21pPyc4zbfyyTeWvJoPWPT (Grid) Ai sugesstion heading Grid
+                - 5iH1wArVZUpkkcGyf8uIsc (Image) image
+                - 57hSfubB6dCD4Wi0Q3TJHl (Text) Text
+              - 1nUhuR8GBoNesKgxJJ8WZc (Grid) Ai suggested text Grid
+                - 48xsbJb0lTiulqZyuL5Bi3 (Text) Text
+          - fsq2AElv52A8bGVzNzJQF (Grid) Select date Grid
+            - 1odwrmXINNq4zwvYNtMbiH (Grid) Start & End date Grid
+              - 44wl75TQCZRsrWleUJcXwp (Grid) Start date Grid
+                - 6DfRQaExm4gaVWAJgSck48 (Calendar) Start Date Calendar
+              - rRdAbf1O0VlveAZidci6g (Grid) End date Grid
+                - 3uKwlkynqV7kA34LLfSFWk (Calendar) End Date Calendar
+            - 4WBj2EOru11M2KNTeiQsG6 (Grid) durationGrid
+              - SAr2JghSr05h1idW6iU5L (Text) Duration Text
+              - 6cj4LwQdwV6BIdAhQCDhEf (Grid) Start date & end date text Grid
+                - 68prOtnJlHsGeOsbJT3tF8 (Text) Start date text
+                - 6qkPtOIrV0t0Wik8uxjxP2 (Text) End date Text
+          - 7fVSyNxDW67fFt2QRQHo66 (Grid) Terms
+            - 7bqcnhidcWdCG4x5GyM91x (Grid) terms recommendation
+              - 5MZSIlBwEHzs8lH27XpsUF (ArrayRepeater) Repeator
+                - 5xe0dRlQNI4vRTmqopGaoO (Grid) mainGrid
+                  - 2wQzPXlI8qpYuUq2GgkKuq (Grid) layer1
+                    - 3dUOgcqYXnmlqWgtrAAANd (Grid) searchTermName
+                      - 4EwJvLDYX6AzsPHxXfKX3E (Text) Text
+                      - 7bAYU1l2fADXv3eAf31j3Z (Grid) statusGrid
+                        - 5GdnEcjqTDVgcXjMlBJ5BI (Grid) Grid
+                          - 24sRG0os4VtmihxoQJLbfd (Text) Text
+                          - 56HIw47ITqatEEI7ZcXMQs (Grid) status
+                            - 3eQqeOS5e2PAi66dY37c7Q (Text) Text
+                        - 4qJY82LQNzSEkuqRfv3jU1 (Grid) Grid
+                          - yxnRtPXPmgkUICRadDbwz (Grid) recommand
+                            - 7AGkAdtg361jj6ZZ61wp2r (Text) Text
+                          - 6q8to2Vnoku5RoPWw7Urvq (Text) Text
+                    - 55ZO8V8D4eeRqAIoNxjvAt (Grid) reasonGrid
+                      - 66qcu1aC4meAnwlrmHNb5u (Grid) reason hidden
+                        - 7K7SqEOu1o42aclnmWyTb7 (Text) Text
+                        - 5bUnQlZRQNcnmCRniihyHu (Text) Text
+                      - pfJMxABQ79mAaoV6M0s5u (Grid) recommandation
+                        - 778P8qtYKoj6Ywm3EFZoP6 (Text) Text
+                        - 6nEYtdPQ14JTAtqCxgXOL9 (Text) Text
+                  - 5xlFkzA48jz0TbTw4UrsZ5 (Grid) layer2
+                    - 7gOJcTDxwWzewnslU7zGXA (Text) Text
+                    - 43k1uEK2ptmqYyM2VvPceq (Grid) Grid
+                      - 3r3nkv6ZRBhZAd2n0Y0Qoq (Grid) Impressions
+                        - 2w6yGCyyQgyoCaTLykT8CU (Text) Text
+                        - 2YbRbiFdh1EVLbObp4VpmP (Text) Text
+                      - 61IyzJK5ujP6t0OUNMWYpH (Grid) clicks
+                        - 71GIyf50m8rEwJcFA2Q33j (Text) Text
+                        - 505UPscqHi67WpEWKZuQ7O (Text) Text
+                      - 2qAhciMIMgPBxnh8W2TcTr (Grid) ctr
+                        - 4szxiJTE5130UvV3w352qN (Text) Text
+                        - 5ZImYwSjFgEWx79ujb0rGQ (Text) Text
+                      - jtee9y4bUf944hGYX17Gf (Grid) Conversions
+                        - 37oReaROWttmJII3FGDUyi (Text) Text
+                        - 1mEhXmQ56muCMJoF4syKPz (Text) Text
+                      - 69MqbdxXoL8fk9Cp0EJzxO (Grid) cost
+                        - 6QlYGMcwBElV677ZmQtz6Z (Text) Text
+                        - 6sW51TxjX6MitPRYtxwBrt (Text) Text
+                      - 3AcwX1Lbi8tkBQwg1aKWBB (Grid) cpc
+                        - 46x6P2XZUqoJOuQ8PEed08 (Text) Text
+                        - 3UKRR3qy3Ig9Pb2kaTjtEv (Text) Text
+                      - 10H7fFra5TBVtjajh6FFHs (Grid) avgCpc
+                        - 2GgBj7iqvc9sVIkhMdJiT9 (Text) Text
+                        - 6JuqTOsYB6BTpbyOsiWXFk (Text) Text
+                  - 6TJm5V9jxNq3DyJoWQ7Wp (Grid) layer3
+                    - eNKhXvNyQvHByLSKUBgSP (Text) Text
+                    - 6eIAquxEfHCI1jKOuULIgP (Grid) Grid
+                      - 7r5UcZayl4CJhIUv0nq2hS (Button) postiveButton
+                      - 30tQyVs1ETQNcR2T3tCxJd (Button) negativeButton
+                      - W4HyigORzikMy8EGAQkfm (Button) discardButton
+        - 3LoFb5PxXAFVjnoL52JLHX (Grid) Age Suggested Grid
+          - 3SLrqK0GuuSwlsck5ykIBu (Grid) Age Sub Grid
+            - 3UsnUfRMxfENgX4lLjshmR (Grid) Age suggest Grid
+              - 2ndFZewPfOX8X1lkP6Cp77 (Text) Age Recommendation Text
+              - 5VpKhPdyJaAN8DRCcNUH64 (Text) Current Daily Budget text
+            - mYZPZXPs78eSMM9udPXSn (Grid) Line Grid
+            - 3OIGwkvhcHtdileZwBvr1I (Grid) Age Metrics Grid
+              - 4lV1Sidj9sYh1LPh8DbGoF (Text) Metrics Text
+              - 48nxZrNWRvevCtbzbweGpE (Grid) Metrics Insights Grid
+                - 3Uh4USg7BryC6wmoyJrjeJ (Grid) CTR Grid
+                  - 3Ee3ou9vlYvxaoQ3QLJ3q2 (Text) Data Text
+                  - 2lulYsHy5sKtk7kf6jj8F9 (Text) CTR Text
+                - 6wAUWz8HczKT5MWsYEH3xB (Grid) CPC Grid
+                  - 1BE97cnzfzS6WYmv5iYAL8 (Text) Data Text
+                  - F5u4Dcrx33vYs2ZkR2mol (Text) CPC Text
+                - 18ZstT6Q5TNcT6OR887ASp (Grid) CPA Grid
+                  - 5CiN0kQO2izSxeqUNUbglD (Text) CPA Text
+                  - 3G4SXHJVnvn73UEDu04QNy (Text) Data Text
+      - 4UCwWAgX0vZJLTZJP2CVLt (Grid) Gender Optimization Grid
+        - 6XldOKaCspJu5j1I2Wrm2Y (Grid) Top Grid
+          - 600FNlBUnCf3FdA67VePRK (Grid) Gender Heading Grid
+            - 6EDInJcAsXzJw5sNQKQeLJ (Grid) Text Grid
+              - 6JRRQMY3L98CJJK7xZirSY (Text) Gender opt Text
+              - 5a7QZKGRuQUFBTQz4PLlJD (Text) Gender Des Text
+            - 37Uf36NTCbDxyvOudD6M7z (Grid) Update or cancel Grid
+              - 2aXTv2odWTGIWyzPAcngNf (Grid) Discard Gender
+                - 5oUcBCG2oSKaNjLyxK8sNq (Button) button
+              - 6YstaSi21wRFVVEwm5nXco (Grid) Update gender
+                - 1U35hDX6aVjmH4SKkm8aNd (Button) button
+          - 2jvv3aChzkbRjz80Ld6DBo (Grid) AI suggestions Grid
+            - 5R7BSmnYhB1W9UltO6Q9N2 (Grid) Ai sugesstion heading Grid
+              - 4Vxc38G5WYdqTstIhJNr01 (Image) image
+              - 2b9DQoMjYoWGEaBfIqywrg (Text) Text
+            - 7DH1XLrcqoqsOlG9av8Sjp (Grid) Ai suggested text Grid
+              - 7JWC1LaJexOhUcuqns3gjb (Text) Text
+        - 4DZERSdSZWNkxXPPMNBoG9 (Grid) Gender Suggested Grid
+          - 4w5fR8wjOqcgyWkwWaBOd (Grid) Gender Sub Grid
+            - kp0FlXjcJam51461jOfgJ (Grid) Gender suggest Grid
+              - 3RHNmaNi6QhEhSat2OzDKX (Text) Gender Recommendation Text
+              - 4blRQ0Fifdv4quadyszKOg (Text) Current Daily Budget text
+            - 1ivOoSu2yYNjFSY9Uz8IYE (Grid) Line Grid
+            - 2RGBJSs0jXkfOF8xabpOom (Grid) Gender Metrics Grid
+              - 7j5Ros7ORkubtw0AfQoBae (Text) Metrics Text
+              - 2wNjDBjrPExRirH2AMyyfw (Grid) Metrics Insights Grid
+                - Vt3SqSm63VqCHUIIAobju (Grid) CTR Grid
+                  - WUxSppmrwNCXYAgkREdqN (Text) Data Text
+                  - 4ApoKRLZKWd16m1JVkMSyr (Text) CTR Text
+                - 5dn2UH08EYMOFQYaDQAZdU (Grid) CPC Grid
+                  - 4FkFVzXQ5U8oNc14lOnIFO (Text) CPC Text
+                  - 2w39fhtgH5HlWfADKT1IDX (Text) Data Text
+                - 3KyfKiBDs8Lo1UhrUD0DOf (Grid) CPA Grid
+                  - 64egcn1Nl9JYEgR9J1QeOD (Text) CPA Text
+                  - WOscXp8BCDzhKdgbjgHtx (Text) Data Text
+    - 5OJkZVFedpEqCRV54TCBso (Grid) Grid
+      - MyXvs3m4ddSNun5vwgGaQ (Grid) Ad Group Details
+        - 6M45HU7Mdoar87xSR6nZ5A (Grid) Grid
+          - y2OISeALBQTsFhkrpf7TE (Text) Text
+        - 68CLou58Vu7WeZ1HXQ72DV (ArrayRepeater) Repeator
+          - 11KvGFOdjZRNgDWryCqYTk (Grid) Grid
+            - 3i1DefMJPlBgkNjjZIyqvO (Grid) Grid
+              - 1KS1t6ZJullIUsw10vNDrm (Text) Serial number
+              - 4BFr04qWzTBZWzBbrRX69R (Text) Ad group names
+            - Q0upDrThMBJI7wqTbazeo (Grid) Grid
+              - 1fgABjRo9wAhdFul03Hkf1 (Text) Ad group id's
+              - 2BNoieyMNdAQsWsouWItT (Text) Ad group id's
+      - 69OMglbjFK2lBxvP2TgZiD (Grid) Ad Group Details
+        - 2EtUUE9bhEhPhOlxCJFJz0 (Grid) Grid
+          - 572YimzKNDhxhnWszZI0E9 (Text) Text
+        - 6hRwZlPSWvMcnXxFQUASev (ArrayRepeater) Repeator
+          - 6JFZO3HNfZ8XNbVaZFr5C4 (Grid) Grid
+            - nWtrdzlPGEy1oFDCDt5BE (Grid) Grid
+              - 3tfU55BbG8xrinO2CLklRF (Grid) Grid
+                - 5v9GbHoVummX7Qx3guPrfB (Text) Ad group id's
+                - 6kq6erbNF1U8BMDnKY9MP6 (Text) Ad group id's
+              - 4KtOiwkz9sTYMyva0MYD8R (Grid) Grid
+                - 3l1f237Fkc5IPW81UcSgys (Text) Text
+  - JO1aph5vguTgtGtKTET1l (Grid) Campaign Grid
+    - 2VrOX6VmQYfkf102CSteRQ (Grid) Previous data grid
+      - 5I1xWu6v2apJTBBraaVSMQ (Text) Headlines text
+      - 6RVmc6ATxvDmNrHmBWYkBz (Grid) Campaign name Grid
+        - WG2HNgJ8J3zwUHQFNzHHq (Text) Headlines text
+        - 1UZ9nCrDYmEyTb94D1YFjF (TextBox) TextBox
+      - 3FoY7px9nlToV4SyyCV27n (Grid) budget Grid
+        - oB65f9jKPmcd6Clw7FsW (TextBox) TextBox
+        - 3nRPmNM1oC5HxGdU7s2eYq (Text) Headlines text
+      - 2a8CcImNdgRsHbbzVCkVik (Grid) Headlines Grid
+        - pBpndFKxMQ5L2ZHsnTHYc (Text) Headlines text
+        - RDnWzqoHygOyeAhihAVSw (Grid) Grid
+          - 4X1TucMk6W5oOS0NPpI5OH (ArrayRepeater) Repeator
+            - 130DiUYd13tJ7ukVNNZPUo (Grid) Grid
+              - 30aZ1lVskkwd9I38DcheGy (TextBox) TextBox
+      - 6iHdhKVm7r7PjOgaNF0aN5 (Grid) Descriptions Grid
+        - AbQGEjQIPSEdTwpLobBea (Text) Headlines text
+        - 3KVui5IkAnTqCcQqYRoKlF (Grid) Grid
+          - 1NBFcoC6Ayt4AkollTcQ4o (ArrayRepeater) Repeator
+            - 5JLIk16V3BGblHIX4jYAcY (Grid) Grid
+              - N3gbm4UbcpcXgsEB71RAj (TextBox) TextBox
+      - oD2SOUMj3WB7FwaMr3JZe (Grid) Budget and Age Grid
+        - 4Agcgiqnf1AfqqV4rYNmcB (Text) Headlines text
+        - 7D7v63D5OfMZfoA3IbwFtO (Grid) Grid
+          - 5bVunQU2bo2VM76W4o9dzC (Text) Text
+          - 5Yy6nAFhh6zk5IhQpsaz7U (ArrayRepeater) Repeator
+            - 1noixB2pXJj2S2fyBaWcpQ (Grid) Age Grid
+              - 5K51zoFgUjAkod7OPYv3eN (Text) Text
+              - 4YaXLkijK0mqIawZ4W6aDr (Grid) Grid
+                - BGM3UzW0AtvhFRVPeEZuj (Text) Text
+        - d3BuN8N4wRvhwPBd1Rjxz (Grid) Genders Grid
+          - RzCf2XtdknqVftPu6xifk (Text) Text
+          - 4Eckkjg0wVj6gst6sqFlIk (ArrayRepeater) Repeator
+            - 3bgHMewvlCQYi6k3ApnUOf (Grid) Grid
+              - 4uwtfV1aQrO3QKlfuX94Ko (Text) Text
+      - 1GZ35F3BEHZ9Lzb4QdPlBm (Grid) Locations Grid
+        - 2Xg3mJ0dJWID7P82gLxpfn (Text) Text
+        - 2py7DwXOVDHbX5KFa0xVHW (ArrayRepeater) user added locations Repeator
+          - 21iYgN4yjieYyjASnsjy4H (Grid) Grid
+            - KiAPb3kLCVh4LMkleVTSE (Grid) added location grid
+              - 3ZgEz9A99jFNFaNy877lzt (Grid) Name and icon Grid
+                - 50qFUiwUwXSoYrQeP6nkRT (Icon) Icon
+                - 7MzmhZJSZmW38QFjPqzJBR (Text) Text
+        - 1XwMNBycfIIEjk7pqhGt4I (Grid) map Grid
+          - 5eShCEDfJUZ2hkfuVuHTVh (Iframe) Iframe
+      - 3NgRVenPdKINPe7VDotgeg (Grid) Exiting campaign Preview Grid
+        - nRi9Um19amkV0VWly7f8K (Grid) Preview Heading Grid
+          - 5GrTWeYWmF5lYZvGZGq9ko (Text) Text
+          - 4tK2MyOpA55bS8Qv0Yvt6b (Icon) Icon
+        - 2DpubfTx6LwookfqhoixRP (Grid) Grid
+          - 2tZnPVZlRJNh3259JW6FbQ (Grid) Grid
+            - 3cmQN70kd16a8pczzoNz93 (Text) Sponsored
+            - 38BMzK0ZDx16wGs6UMYQrr (Grid) Grid
+              - 5FvHAxwPQhyZmrS7hOHo2F (Icon) Icon
+              - 66btbyUElLiQ7gIHG6koXb (Image) Image
+              - 6DJYC8nQCRMpdhC0GLoFYB (Text) url
+            - 4he85meIgFFC4hRxD0nPnW (Text) Text
+            - 5GUIQJisHsAGPt4GUtken (Text) Text
+          - 5lUu2tk6bzsVsi4f1Gbd4A (Grid) Grid
+            - 5mIYUwk1Hyc2BJ0LmFjYhW (Text) Sponsored
+            - 7gmnVNHtpNwtagSjce1N5K (Grid) Grid
+              - 7mwC9LePL0EDFteoIChPhF (Icon) Icon
+              - 18PTkgDrFJ7Kx8En5HhRJZ (Image) Image
+              - 5d46ugtnhx8d2aVQk73GKG (Text) url
+            - 3GdPSLg7rOGlXkXHbvRjtn (Text) Text
+            - 171Wielv7pmIdxABgONugD (Text) Text
+    - KtaVWSvfk9sL9xF2VC2x6 (Grid) AI data grid
+      - 6DGGjx7vGwmjpnzYecEkJ1 (Grid) Ai sugesstion heading Grid
+        - 1iMwfCsqHtnlvnp40cnLUA (Image) image
+        - 4b3aa5vW4n2ja9Vr4tkX1X (Text) Text
+      - RWRpQHthn3gALsZWXvQd4 (Grid) Campaign name Grid
+        - 2Cfln0CTWTIZFfngk0FE9v (Text) Headlines text
+        - 7kUSH1dXL5YpHUH6mJwwM3 (TextBox) TextBox
+      - 53sd9OvfPdLVYdDKglZprE (Grid) AI budget Grid
+        - qLnPiL8Jzau6SlEmyDuTC (Text) Ai budget static text
+        - 1CK2PNoE0qZFb6zVKjDCvG (Grid) Ai generated budget Grid
+          - 3SYanNksJuflToRpdWfydC (TextBox) TextBox
+          - 2c1JXNy2QINhgujUlUP8ms (Icon) Icon
+          - 5cuzpKekVYnwHAYmI62eZs (Icon) Icon
+        - jVEIMXROc6OLaEmA5ufUN (Grid) not genrated budget Grid
+          - 5djqSbi5869iBgIxTBSF7s (Text) Text
+        - 64U44psgteNG9uXrqdwj0M (Text) Daily Budget reason
+      - OK4dnmCyyXpc2GtaJslMx (Grid) AI Headlines Grid
+        - 5CiJJDBFKbyVXH41qA5vYv (Text) Headlines text
+        - 4R14w1gBDQvKKWQbyHUSq4 (Grid) AI suggestions Grid
+          - 6K4OrNCYGhAQ39zGgqw6h5 (Grid) Ai sugesstion heading Grid
+            - QROEvi3TwsqAvv0ted9FV (Image) image
+            - 2sRUffwdjwOtbQ9P2WmUN6 (Text) Text
+          - 6EiGeSZqTUoWV6RnGDXrY1 (Grid) Ai suggested text Grid
+            - 1IZ6uuVvtDaypJS9vmWAlJ (Text) Text
+        - 4t1rVveyRE7bMgizwjqYzE (Grid) Grid
+          - 3d9k52M0R7Q5JYtTpnQdMF (ArrayRepeater) Repeator
+            - 3LRaS1uLBVveHvOnB9pDDb (Grid) Grid
+              - txDdISOGmDtb9lK7zmnvT (TextBox) TextBox
+      - 4ijlYmV7J7UtKx0pFGncqX (Grid) AI Descriptions Grid
+        - 4uly6RruWI3fyXfWu5jY7S (Text) Headlines text
+        - 2r5Q5ayvksYAgrzulqicvL (Grid) AI suggestions Grid
+          - 7HAZv7MvphJULQtekPfaJI (Grid) Ai sugesstion heading Grid
+            - 3CRhsqSbeDMojWwSVQNYeG (Image) image
+            - 2KuJi7R2CF7S46KZT1uKsH (Text) Text
+          - AHE2OG6clLYXBe4g0uNeR (Grid) Ai suggested text Grid
+            - 2kEYXUeTaGCTUWHPP6UaXA (Text) Text
+        - 2JCqXLnpbv8p4MfUcDs4bQ (Grid) Grid
+          - 571M7C7KmJ1r59nFa6Fs2t (ArrayRepeater) Repeator
+            - DkH7iqEZtiKk4VcLmkchX (Grid) Grid
+              - 55tEgkHO2gcLDA6YjslyUl (TextBox) TextBox
+      - 2dfTSkoILRb2BwyJmErUmH (Grid) AI target Grid
+        - 3U97k1p6VFEMeFloJA95M3 (Text) Headlines text
+        - 3zASxgOYBo3dNSnjPtnuij (Grid) AI suggestions Grid
+          - mkYYcG0ipyHwdok2YIZdm (Grid) Ai sugesstion heading Grid
+            - 4us7lEhKJwzOsk3QsbqhYK (Image) image
+            - 10TlhcpUUpfU1hkwDKRpOL (Text) Text
+          - pzWv2rC9EJhTeMzaz3IPP (Grid) Ai suggested text Grid
+            - 1pKqkGbn5mQIGlauKXbVYx (Text) Text
+        - 7ey5fMB6EdiL134TLndrXt (Grid) Age range Grid
+          - 6HYMHkDPODqvp7RWBBiKSR (Text) Text
+          - 7q7b7NOZAnjydcQhP4AwTe (ArrayRepeater) Repeator
+            - 5389EYZ36veHF7lmyYFhWV (Grid) Age Grid
+              - 2QXuVHZ44rl2uQ5b8wRrUs (Text) Text
+              - 1ICTsMR23f4JZVbFyXMyba (Grid) Grid
+                - 3u7v83TbFycBZtGAURhXWU (Text) Text
+        - RFkzMBHJBUfc3xrX0GNep (Grid) Genders Grid
+          - GFJUBafvLb9SAUpWuftSo (Text) Text
+          - 17EizgnTXbiRXzFwaq1cCb (ArrayRepeater) Repeator
+            - 1svx1P8NIJ0R8ONATdCMi3 (Grid) Grid
+              - 1rWCoUxGd9pbOS32ViQ6D (Text) Text
+      - 6bO0WMy8TZxrSyjUreVvBv (Grid) Locations Grid
+        - 63fz9EEem8HgJm8Auup63w (Text) Text
+        - tmLGNtosQWcosd4vZKQwZ (ArrayRepeater) user added locations Repeator
+          - 5gpFO5V94mMi2EVIYVK4bu (Grid) Grid
+            - 2YoGetFxihX8H3kWP3P7Ip (Grid) added location grid
+              - 4W6VSqRB9PYPmm1YSSd8oz (Grid) Name and icon Grid
+                - 2kzktn8tj0J8PDwpBKCARN (Icon) Icon
+                - 4Ijkoh5djx8qEA7beGSKvo (Text) Text
+              - 6wsiwOgN5xOIRYy1HdeFJY (Grid) Delete icon Grid
+                - 6rY4WObuA8ai30xYf8hYRR (Icon) Icon
+        - 2V9RvEU5shVszvgVwpoX0W (TextBox) TextBox
+        - 4RYZDUOQ8F0teqfOoTIGkT (Grid) Locations suggestions Grid
+          - 1jH7fm9cO6sPcYvLTrq9lA (ArrayRepeater) locations_Repeator
+            - i7RWrrzRq3EsniK6LDhl5 (Grid) location Grid
+              - 3z92EW6JcZU577dpyRGxfy (Icon) Icon
+              - 3h3nLdzFHcoDkpSwxu57GM (Grid) Grid
+                - 748OEW4HrC9olFHfsOM4SZ (Text) location name Text
+                - 1X8jKVvgx7DPvEpnHyynnG (Text) location type Text
+          - ZrTa9VnfqKZRUJH17MZsR (Grid) Error Grid
+            - 6kpZ096fR3mGTHOd7ZJFTw (Text) Text
+        - scEWcoPUsQdb1Amp6o289 (Grid) map Grid
+          - 1oMjcT8ZmGan6VEc5bpxNI (Iframe) Iframe
+      - 2GTpROkGlMRnd7pqBFsmeZ (Grid) AI campaign Preview Grid
+        - 78jFgAu5ZJ2cDt330mNZCk (Grid) Preview Heading Grid
+          - 3ImDROzkv8No1o9fkgNKVs (Text) Text
+          - 4vXLIDD61cSc72I4BIfqym (Icon) Icon
+        - 3Mgn3r7QOmTmF9PLrNQPmP (Grid) Grid
+          - 2HnT0ISSChcgtoi6wg39gl (Grid) Grid
+            - 5nTSBrCNvM6Da5QmVGh4So (Text) Sponsored
+            - 3W6sn8p5SGD9LVBanhOQEm (Grid) Grid
+              - 3wYFJ03qbAtJsTlif7sHnG (Icon) Icon
+              - 4tkKA5CNBnep2rEFDZRkbJ (Image) Image
+              - 3TinGk2A8ABfF4pHPCLHh0 (Text) url
+            - 2Eo6YHHOgoqWxs7o37Ywzu (Text) Text
+            - q6EStLarMTvEfOcYBsCvk (Text) Text
+          - 2NyV3bJQotc3T86hoO4iws (Grid) Grid
+            - 2phlbA05FXFy59CIEToZeH (Text) Sponsored
+            - KpA2RYdcdduxP0vxlbhHa (Grid) Grid
+              - 2BtadYVVZBTaYFmGFZF2G1 (Icon) Icon
+              - 3YlL2rJEufBpMCw0ynfFyL (Image) Image
+              - 1VSQkVcYE594rv0zthzKRq (Text) url
+            - 4Y697ZVvPAa2VVwlRts7Ab (Text) Text
+            - 45Sq5pr3huRVKvAppruUgE (Text) Text
+  - 7EVMz9INcPfXG6XSHDAkMG (Grid) topLevel1Grid
+    - 71FxTKY7ZZOtMuLlTifLG9 (Grid) durationGrid
+      - 3zV2R60bjkUqbPmXxZ2pH7 (Popover) Popover
+        - auCH4udihW1fUx7SHUDM1 (Grid) ParentGrid
+          - 1dgxAlNScfibZqmAVpXhJ (Icon) Icon
+          - 4Oy63R7W4EkDAQJidEiWOW (Grid) Grid
+            - 54osIbzrNNw1heFz2Hy3qv (Text) Text
+          - 6YZY389pxGBUpnA3FHvOkf (Grid) Grid
+            - 2Wr7T2a4i2VR1qrzJMxY7c (Text) Text
+            - 5QdwMZDUb1p7VXeNnx9geb (Text) Text
+        - 3c0vm8aMzSQmi8q6Qz9V8Z (Grid) ChildGrid
+          - 6l5gaeJl3wPps2PtI3ozNM (Grid) Grid
+            - 5UC58F69vClWCYsEFchXTT (Grid) Grid
+              - 7C4lMOC1FWRXKi19Q9MIyf (Text) Text
+              - 6GQZd2AEY2mmtaZlVSRlC6 (ArrayRepeater) Repeator
+                - 7OWk4egbcWFIK1iMk2UZR (Grid) Grid
+                  - 5T3CJ31Cvt9W9ovsvBajRS (Grid) Grid
+                    - 2R9Y1ogE7z8VnI7dtPicKx (Text) Text
+            - 5SXBbrs22JowLM26gTcL4J (Grid) Grid
+              - 3PvhAbgQjo76ctEUIDEAy3 (Text) Text
+              - 6nIFojiUMBI9JWvmKHX3mt (Grid) Grid
+                - 7GGk7VL9h2baJlEQIVAiKS (Calendar) End Date Calendar
+                - 5X1ZC5BSewmoJ5SXNs3uhT (Calendar) Start Date Calendar
+              - 1HuQbV8xgxUyoqsv1RqToM (Grid) Grid
+                - rw4ydZOIt30oBqL4B29qk (Text) Text
+                - 7eBd7tm1JAHjM7qGjL0biU (Text) Text
+    - 5h78Hi1JDDXqSjisN7Wyoa (Grid) CampaignDetails
+      - 5Q6b2Y7NTJJj2MQ07HCh11 (Grid) status
+        - 4pcXRu192aJuK3emky1oju (Text) Text
+        - 3g6EgWnA8aT4KJNT8AoB4Q (Image) Image
+        - 4Enlarr5Evrj4jX6alkSuq (Text) Text
+      - 32sz0BP2kngNqQe1Inco56 (Text) Text
+  - 5UJJiGe3gzjwbedj7fELFY (Grid) visibility Chart Grid
+    - 4I83Hp97Ga9oLAWF2CJrrr (Chart) Chart
+  - 4G9laN1pg0duu42wpA7w7 (Grid) Ask AI Grid
+    - 2XIVmjzvxwgrbv5Avv9dO2 (Button) button
+  - 5D5R99tdyoZDtezWn4nY8L (Grid) Update Ad Grid
+    - 3JffuhH3fJ2dAT9pZWFjZP (Button) Optimize Ad
+    - 2380ky4rXZxxPqu02sU17P (Grid) Grid
+      - 2nDEPdPuqffL2jxZwNI9K4 (CheckBox) CheckBox
+  - 2OoHhIQ07PIlP7cXZ2p2EX (Grid) AI budget Grid
+    - 5eEdSlr45SJhBdw1Utj5D2 (Grid) Budget Grid
+      - 3uxhH9enaJnjyr053OJoBC (Grid) Ai Budget sugesstion Grid
+        - 3EnJd9LUHYdTwpRndq0khO (Image) image
+        - 4n1iaeGIyUWXxnVikHodYZ (Text) Text
+      - 6lZ5wgnCryvK0dmRPftGRw (Grid) Update or cancel Grid
+        - 1fGTzCWr29Gp5JmOJazp28 (Grid) Cancel
+          - 2MIKJMO1cWkOcgJvdJvCU8 (Icon) Icon
+          - 15SG6tiLxAUV4x0TBcBzVc (Text) Text
+        - 7MWDScu0HgDFezlG2AL9Ob (Grid) Update budget
+          - 759cQJAY6Apllge3xCsD7n (Icon) Icon
+          - HVfXu1Z1dVBNhydzCGNZU (Text) Text
+      - 2fkED0Sl0uzP4MXOPcpIu8 (Grid) Current & AI Grid
+        - 68CMhfe0Lj0s2iZWaWDFk8 (Grid) Current budget Grid
+          - 4IyreowqeZVMXR8O8nEGz6 (Text) Current Daily Budget text
+          - 5XLZjN6Yvq0Ob4FtYfKA0F (Text) Current Daily Budget
+          - 2Zbm5r1EYO68JLlM9K6Zgj (Text) Daily Budget reason
+        - 3ExF66tAIGGeWbJleb3N6E (Grid) AI budget Grid
+          - 44cUPI2D10fqbiZL9hr7Gi (Text) AI Daily Budget text
+          - j4uaNyDJguD5LOyGL9dhX (Text) AI Daily Budget
+          - 5RoTO39qaKG279zteL9byC (Grid) AI suggestions Grid
+            - 7Lsi23puNFG1zJfaryKMWr (Text) Daily Budget reason
+  - 4S9wCrOnckszKDMi8erars (Grid) searchTermGrid
+    - 3xfkOt5GW3JxfBk3qyIJud (Grid) HeadingGrid
+      - 1SCbgqK8uofZXwU8Zqc5tx (Text) Text
+      - 64BYiXv381V6Y1tpSeLqZT (Text) Text
+    - 1q7jIM0r0lKKZyIzoruZvx (Grid) visibility duration
+      - fSkSchHVn6bcRS0yWi69k (Grid) Grid
+        - 1wAiypldOgTXlOvuVjmS8v (CheckBox) CheckBox
+        - 4ddKxOjsZPUrPFX5iikftU (Grid) customGrid
+          - 4y7yOvNSc9jZ7yff2LsV1L (Calendar) Start Date Calendar
+        - 70YBczdFgy5K283czlV0j0 (Grid) relativeGrid
+          - 2AaxKLSKy6J08RVvnbw8I0 (Dropdown) Dropdown
+        - 3iXlvXObel63cWE7yj5mT0 (Grid) durationGrid
+          - FTkXLqggVuV0Rn3wz1dM7 (Text) Text
+          - 3rVIxQLwj0E7pgjVho5cNU (Text) Text
+      - 4nEhvofkDxUPTbd1otXlJZ (Button) FetchTerms
+    - 3p6sva9l3kn6m8n8y8dSZI (Grid) Terms
+      - 7wngKJGsevaiSfUJd1WRG2 (Grid) terms recommendation
+        - 5Zmpy2bALker8ToFQALgt5 (ArrayRepeater) Repeator
+          - psBzUPiYNLMxJGyYilfM0 (Grid) mainGrid
+            - 6stSsCIwIK1sam7rlUaVwm (Grid) layer1
+              - 4EmWhLAuQZ6AkcJEPtEzah (Grid) searchTermName
+                - 6ZemaH9cYamJeDLqRszg1x (Text) Text
+                - 4YnVemG7f1U642SpAygMIs (Grid) statusGrid
+                  - QsFErNR2thvUDoyurNNro (Grid) Grid
+                    - 5IWMs83T73B8rIxS0Jb8ZB (Text) Text
+                    - 2hAqyJ0dNov9OWcyptY6kb (Grid) status
+                      - 4aTY8s7GCzNFoFgGOCEfgN (Text) Text
+                  - 4irtgum2qdsdaDFNBTpcQW (Grid) Grid
+                    - bK2y8BqIYpwfKBRVMj1T6 (Grid) recommand
+                      - 10CuaiX0OSjqAt6IU3USXg (Text) Text
+                    - 3R3JS3ArOoBjiKjUKHb2fh (Text) Text
+              - 23X5gPReie1kqz0DmZ8JHv (Grid) reasonGrid
+                - 1iUaaEMvHJY3TszpAgwjEn (Grid) reason hidden
+                  - K2L0y6KLSJWx6eDhbnFyZ (Text) Text
+                  - 5c8V669bciZaA1HFr0pfrW (Text) Text
+                - fIOMSxtWtME9abSxgFbVM (Grid) recommandation
+                  - V2N1TOXQboXo0tQDjrBvy (Text) Text
+                  - 3MRTo2n0saLL0Rx3orzZ3k (Text) Text
+            - mqjQUGLkjG1pgwABiOFp1 (Grid) layer2
+              - 13fN9HpnM5EJCQ9V1HmQ9R (Text) Text
+              - 4uDATbVA6yiqs9QhmchUM9 (Grid) Grid
+                - 3IRKH3MzJDLwqMO9OwiJMv (Grid) Impressions
+                  - 3MTaHzc9C29V4II9KpE6y0 (Text) Text
+                  - 5JsWvz6jfZnCcyoInnWBgm (Text) Text
+                - 3DxQgegj6hmq42ya4y2bkt (Grid) clicks
+                  - 2RKZEFREwhcKXKAudxDji2 (Text) Text
+                  - 4N11zz5WvLTFmNZmCzaS2u (Text) Text
+                - 409tCF0ipqvZNqYlnIkwKD (Grid) ctr
+                  - 7wHvRpSfATECEefOs5DwlJ (Text) Text
+                  - vzxWnnY5CRSMhOAzA50LY (Text) Text
+                - 5PGdsjUlPnui8GGa90iyqb (Grid) Conversions
+                  - 1RdIu4vKPcQ69bt4wgcQBB (Text) Text
+                  - 4nxuYoY9DkEOBdi8Tjf0Of (Text) Text
+                - 1LvIRedKbEbVMtji9XMiVb (Grid) cost
+                  - 2qMPhGThS483JC4pe2pViS (Text) Text
+                  - 1bZqNDgMXU3qCaJXvqealR (Text) Text
+                - MZawQpEpmxYeoTmbrsBNo (Grid) cpc
+                  - qOYso3400mE8tcEml7u8H (Text) Text
+                  - moGlGozUs5EPkLoiAuJpZ (Text) Text
+                - 7dHxJjtRXtsd4iC9XiHICv (Grid) avgCpc
+                  - 5x111Jgs0IbVw98jioQze3 (Text) Text
+                  - 3qhG9LoNWLy1St6ga4Amqv (Text) Text
+            - 4xilYF0rodfuxzaiHerR3k (Grid) layer3
+              - 6mnKm2gDUZkHhMqDxQ8PRP (Text) Text
+              - 61Ms0z42VYkJZ2njiVbjpb (Grid) Grid
+                - 6h6EUPMW34L7eDlQ9Ey49b (Button) postiveButton
+                - 7atJPcv1E2uWj0SWwEHDfL (Button) negativeButton
+                - 4zH11rvyKqiz5TW66kq2DY (Button) discardButton
+    - 2RyWgQ0cz1TjaWGNgiZTcD (Grid) NoSearchTerm
+      - 1JN152JYPYevOXMbJRwvuh (Text) Text
+  - 2gglwpm0EkrOpy9aQeugq1 (Grid) Age Grid
+    - 4WZLeCEn4qVOsCwJU0BoPd (Grid) Age Optimization Grid
+      - 239ISnoDbsj8SoshUYGdZE (Grid) Top Grid
+        - 1bpmB0ntP9ctpYRf12Jlni (Grid) Age Heading Grid
+          - 257YYDB6mjnNqgb09ICWB2 (Grid) Text Grid
+            - 33FMMcH5wacJYw23CcCerV (Text) Age opt Text
+            - 3vUPLBsWuF1cQ9ImrkLKdK (Text) Age Des Text
+          - 7GVKU8VcwgUAuV54cbLM7W (Grid) Update or cancel Grid
+            - 2oXDrlYvZ72HUzewgYcJmr (Grid) Discard age
+              - o4xIri5wbOgkXPnvkFqlL (Button) button
+            - 11VVcnIGV1OM7s5S1Tk2dB (Grid) Update Age
+              - 6tu9HtV3WZ1sf8fXbGoiQj (Button) button
+        - 2iYa6PaXeqzqDDxXMToZ95 (Grid) AI suggestions Grid
+          - 4CC29BPs4MSFWg1TOXBxRB (Grid) Ai sugesstion heading Grid
+            - 6QC2BJtzO1bhu84rx3h02y (Image) image
+            - 6PfN2MpVVAK9YMcMytop7f (Text) Text
+          - 5JUkZE2kBh4ZP5q3Wm7mqI (Grid) Ai suggested text Grid
+            - 2fEnFdhLVf7oKjjfYhdTjc (Text) Text
+      - 64dWZOaPszxuhRsbbyrPbY (Grid) Select date Grid
+        - 1NZcaaCz0jdlGk4aUvSBj (Grid) Start & End date Grid
+          - X7SyWth97NQHNOW4ROxic (Grid) Start date Grid
+            - 4pchRXo42ujXgzwhUe7WWU (Calendar) Start Date Calendar
+          - 6dI6YklMO2MI4Qz7b96MBi (Grid) End date Grid
+            - 3oNyqXxHaaXPhMhtUOArOd (Calendar) End Date Calendar
+        - 6ymhDGrC5cT6e0FvDex18Z (Grid) durationGrid
+          - 4j2aJCDBlRJy9sQpQq88pu (Text) Duration Text
+          - 4ZXAd5afuafIsPJEGTfEMk (Grid) Start date & end date text Grid
+            - 27wac5IYUItrg1jnI3Un9N (Text) Start date text
+            - 1PH8iJnRaz0UXQE4hoeUrr (Text) End date Text
+      - 4GtAmWqDKLc5ufXG4uMOpT (Grid) Terms
+        - 73x66I35rfeneXnDfBgeeo (Grid) terms recommendation
+          - 2OBGA5wcVcram3p6ur59jy (ArrayRepeater) Repeator
+            - 1R8Z6bhSQB06hDjEfHFOXL (Grid) mainGrid
+              - 26gBSNMg3hHTfGt9xMUpOx (Grid) layer1
+                - 1JTFUfr7c7Mn5gWVL4fFsz (Grid) searchTermName
+                  - kSyk31XtyAo2hh00Vpfxp (Text) Text
+                  - 3bFCdF1ktsGRefUwLUyybs (Grid) statusGrid
+                    - 4NlcY4CdRCQ9v6eviPC24i (Grid) Grid
+                      - 6sKOpz4iVTIJJQ2sncWiNv (Text) Text
+                      - 4wIEbrnu5feXfU3WD2VO21 (Grid) status
+                        - 6pm63IpvZssUnLPkcJSH7Z (Text) Text
+                    - 35k2dQ0IptyFkT8PWwNPV5 (Grid) Grid
+                      - kc2sJELbjbCQrqXJs4win (Grid) recommand
+                        - 2gzdQ3mZbyN4utHTV5L9sz (Text) Text
+                      - 51PgF8dBnZ6b3NTxJVYxnG (Text) Text
+                - 3vd7WwwOTh3TEj6V6UGnwp (Grid) reasonGrid
+                  - RAzsPeE3t1Sly0DdeDnAj (Grid) reason hidden
+                    - DV1GJqC6LijrlnrcqMhae (Text) Text
+                    - 3aXbMMoDBBpLN9uJoaMZBe (Text) Text
+                  - 7hoj4uy0ULSsjytTTkbRBm (Grid) recommandation
+                    - 6Boie3HY1L5MiRRzbqHQGw (Text) Text
+                    - 3YMYPi49kOUUW8v02BptCS (Text) Text
+              - 3grBjBEQWdDas1yeDc7SZC (Grid) layer2
+                - 2TAZbgzkkBC7zZS5MAP5Q0 (Text) Text
+                - 5JYXDIQWOSzKjWCy5OBcUn (Grid) Grid
+                  - 1PBJLLz1RNvfD4fnDjIqgz (Grid) Impressions
+                    - 4mkQTPhBNg9e5qpMHltLYC (Text) Text
+                    - 3ilRFyorBwuuu4PLgMhXxw (Text) Text
+                  - KlKVJahGyeZo13xKMoSu9 (Grid) clicks
+                    - 4bKbGlk9Y7MgBmH6kuRuOp (Text) Text
+                    - 5l5dLre9IJD2xz43frD9kz (Text) Text
+                  - 4a9A6r55IVS1l4rw6TmDmB (Grid) ctr
+                    - 1gmgfITaBfvQae0JALFAUG (Text) Text
+                    - vniG0oNgOdcHyw7p0fDRx (Text) Text
+                  - 2xVCeJboZJ535rryENHLZq (Grid) Conversions
+                    - 1UshJkRjEJzkQOd0GCmcyX (Text) Text
+                    - 6gUCJxBmLE1Q20F49HUrBI (Text) Text
+                  - 3aoyrG0HhEnnYLnG7nCWrr (Grid) cost
+                    - 2ORBfJtyndSPQerXY3maDc (Text) Text
+                    - 7sWzinJazGI21kroL0Tt7t (Text) Text
+                  - 2LRke8ROLwdAU97QsfaW9l (Grid) cpc
+                    - 5JGvHjfkXVgmEoLKLy6MKG (Text) Text
+                    - 4L9eth3NgoyK8P4elqwnBk (Text) Text
+                  - 77b36XxPSSSoEgDF2hE6S2 (Grid) avgCpc
+                    - 6gZL0mdlMwuY5dQRyyShRF (Text) Text
+                    - 2Iv3p8ttnwuxIm44akhdjW (Text) Text
+              - 3tJcFozaKsgwXr9FfXk9Dp (Grid) layer3
+                - 2kGC9NDwmemw2BaJb1OFal (Text) Text
+                - 7HyJsPz6iAyVhZ0SK8KbXx (Grid) Grid
+                  - bm6wMcDC1yiAxSl6dI864 (Button) postiveButton
+                  - 3V80yDlmSxK1ez8tiwewok (Button) negativeButton
+                  - 7mPsjIJc5GpeInVXcbCspr (Button) discardButton
+    - 6SLQgJbqVrVKulkbxf9GmH (Grid) Age Suggested Grid
+      - 4RUSkU6ZF50SioD24eysaQ (Grid) Age Sub Grid
+        - 3sMEpVaIkkfaLoAxHKA54p (Grid) Age suggest Grid
+          - zx3YWbSCvqdpGXmwjPegQ (Text) Age Recommendation Text
+          - 38RLrUWKembYPBCS7j13W7 (Text) Current Daily Budget text
+        - 1XqIvHJ4rhvtcQaf97k4og (Grid) Line Grid
+        - 6h9aJZ6z6IeqU5tRVvBy0F (Grid) Age Metrics Grid
+          - 1EOr1zpkosLaVdi91PUQSR (Text) Metrics Text
+          - 4ryTk7BWTQfhcG7A3XhGym (Grid) Metrics Insights Grid
+            - 2eyJEB9GX9haqgR4BZpGpw (Grid) CTR Grid
+              - 7IQxAwqqZufmQ7IXx917ZF (Text) Data Text
+              - 67mevHpyn1KVtVgskYMva3 (Text) CTR Text
+            - 4ppxMzQ21liFHM4hlDLRdn (Grid) CPC Grid
+              - zOjYfsNlsdPfxYIPl6Jkf (Text) Data Text
+              - 9XPdLKYJaorrntvPHRYJL (Text) CPC Text
+            - 6ofGXa9nXGYV7be2RYeS7Q (Grid) CPA Grid
+              - 2xLwuy8YGU5CCtLvvodmLG (Text) CPA Text
+              - 10xzCX9ecpXfZH1Yt7lR1e (Text) Data Text
+  - 2PqZPMXU6GxaP43EmLRmkm (Grid) Gender Optimization Grid
+    - 1bn3jbn86QAqKbbgWvQNsC (Grid) Top Grid
+      - 3Y5K5dHNZuRU3ABD61dK1c (Grid) Gender Heading Grid
+        - 3oBdG2ONU4u1TU2mc3Bwmw (Grid) Text Grid
+          - 58HVDUD0DVznFzNAWmMHDA (Text) Gender opt Text
+          - 3omhScgTtcOi8nH39rzHoT (Text) Gender Des Text
+        - 2zxL0b2dlutIiqfjWK8Mq5 (Grid) Update or cancel Grid
+          - 5CqbUP1UBssTVHYJvVkMBq (Grid) Discard Gender
+            - vkMsqIryhC4v7ghmN3aJM (Button) button
+          - 7EqrEpMm15qHz52bpSTFk0 (Grid) Update gender
+            - 3JgnzVLwbppmWuXOhpCFul (Button) button
+      - 1ol4KFZY68CTPkGeD2JOVN (Grid) AI suggestions Grid
+        - 6k2vZXgxWTDZGLaeyxCx5q (Grid) Ai sugesstion heading Grid
+          - 2rhX8BqubFtIZoviIeuMks (Image) image
+          - maDJSWueKtojHd7F4gT0T (Text) Text
+        - 4D2iKzfAT1EK1AbwR0NEAE (Grid) Ai suggested text Grid
+          - 56mtLka9155nydNSC8mtBJ (Text) Text
+    - 3IqgKPa3PO2s5alA14SPB1 (Grid) Gender Suggested Grid
+      - 3sI5IcUBJaSyxAFkxCAZPN (Grid) Gender Sub Grid
+        - 4UQmSH87t8KtKUaOuX2Lvk (Grid) Gender suggest Grid
+          - 77nNQgd6cMjU4c5HR9cWIo (Text) Gender Recommendation Text
+          - 55khhJkHJLSljGvugDMz1 (Text) Current Daily Budget text
+        - 3QDCRkn4leldb1WorpF440 (Grid) Line Grid
+        - 6F72vOMmQxND9vsGKv9hZt (Grid) Gender Metrics Grid
+          - 2K96IVYQxOVTJdW1BZ2231 (Text) Metrics Text
+          - 4kqrExVU1xFZAhMSUGtGpG (Grid) Metrics Insights Grid
+            - 6LKEstlblYHtiSi2lkKWSB (Grid) CTR Grid
+              - 6ull9YjUnSnumeGAthw1WS (Text) Data Text
+              - 1WsfMFuqJoFd30bSkLsv95 (Text) CTR Text
+            - 7epxNuJrRQWnLgC1B9mF1t (Grid) CPC Grid
+              - 7ERDeEI5daN98SYD1XTOlQ (Text) CPC Text
+              - 1WFoslNBKKVmMulylAebBw (Text) Data Text
+            - TC71BJO9rrOBF2LQ8zlT9 (Grid) CPA Grid
+              - tybwzmKXbquSrULCTM1GX (Text) CPA Text
+              - 6gHb6nx0o2FrBZJi9Q3P7 (Text) Data Text

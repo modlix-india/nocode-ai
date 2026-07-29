@@ -56,19 +56,21 @@ class MapMetaTypeTests(unittest.TestCase):
         )
         self.assertEqual(out["meta"]["type"], "region")
 
-    def test_type_present_when_lookup_returns_empty(self):
-        # No match → typed handle with no key (downstream radial fallback).
+    def test_no_handle_when_lookup_returns_empty(self):
+        # No match → no handle (keyless Meta entries are invalid).
         out = self._map({"name": "400050", "pincode": "400050"}, _meta_get([]))
-        self.assertEqual(out["meta"]["type"], "zip")
-        self.assertNotIn("key", out["meta"])
+        self.assertNotIn("meta", out)
 
-    def test_type_present_when_lookup_raises(self):
+    def test_no_handle_when_lookup_raises(self):
         out = self._map({"name": "400050", "pincode": "400050"}, _meta_raises())
-        self.assertEqual(out["meta"]["type"], "zip")
-        self.assertNotIn("key", out["meta"])
+        self.assertNotIn("meta", out)
 
     def test_name_only_area_defaults_to_city_type(self):
-        out = self._map({"name": "Some Neighborhood"}, _meta_get([]))
+        # Name-only area searches as city; typeless Meta match keeps that type.
+        out = self._map(
+            {"name": "Some Neighborhood"},
+            _meta_get([{"key": "999", "name": "Some Neighborhood"}]),
+        )
         self.assertEqual(out["meta"]["type"], "city")
 
     def test_no_duplicated_flat_type_in_output(self):

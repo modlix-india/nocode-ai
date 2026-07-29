@@ -189,7 +189,7 @@ manage_targeting_locations(user_message="set up geo targeting for Bengaluru")
    ▼
 LocationAgent.handle(user_message, context)
    │  Preamble: guards, resolve + geocode business pin (deterministic, no LLM)
-   │  Sub-session with shared context refs (product_data, _location_meta, etc.)
+   │  Sub-session with shared context refs (product_data, campaign_spec, etc.)
    │  BaseAgent loop runs ONCE on build_run_prompt(profile, list, request)
    │
    │  ┌─ LLM reasoning ──────────────────────────────────────────┐
@@ -286,7 +286,7 @@ The pre-refactor code called `provider.create_completion(...)` directly from a s
 ### One run, every action
 
 0. **Preamble** (deterministic, no LLM): guards (empty message, auth), resolve + geocode the business pin so the radial-scan tool has coordinates.
-1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `_location_meta`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
+1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
 2. **Wrapped event stream** - `_LocationPassthroughEventStream` forwards `tool_*` / `craft` / `data` / `agent_*` / `thinking`, drops `text` / `done` / `error`.
 3. **Run** - `self.run(build_run_prompt(...), sub_session, wrapped_stream)`; the model picks ONE of the four tools.
 4. **Verify + extract** - success is judged by the `_geo_finalized` marker `finalize_targets` stamps on the sub-context. A run where no mutation landed returns a structured error (carrying the model's final text), not success.
@@ -347,8 +347,8 @@ Every mapped location is a `TargetArea` - generic "where" + nested platform hand
 ```
 
 Invariants:
-- **`meta.type` is required and non-empty** - Meta adset creation buckets every target by type.
-- `google.resourceName` is normalized to `geoTargetConstants/{id}` form.
+- **`meta.type` and `meta.key` are required and non-empty** - Meta rejects an entry lacking either; a failed key lookup attaches NO handle.
+- **`google.resourceName` is required**, normalized to `geoTargetConstants/{id}` form; no constant → no handle.
 - Field names are platform-native (`type`/`key` = Meta, `resourceName` = Google).
 
 ---
@@ -445,7 +445,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
    - On Meta, "Bengaluru" maps to something like `meta.key = "23424848"` with `meta.type = "city"`.
    - On Google Ads, "Bengaluru" maps to `google.resourceName = "geoTargetConstants/1026181"`.
 
-   Those IDs are saved alongside the friendly name in `AISuggestedData` (`product.google_mapped_locations` / `product.meta_mapped_locations`). On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`app/agents/adzump/agent.py:183`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
+   Those IDs ride nested on each `product_data.target_areas` entry (`area.meta` / `area.google`) and are projected into the stored record as `campaign.googleMappedLocations` / `metaMappedLocations`. On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`next_action.py`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
 
    **The risk.** Meta and Google periodically reorganise their geo catalogs. They merge cities, split districts, drop legacy IDs, renumber regions. When they do:
    - An ID that used to mean "Bengaluru" might now point to "Mysuru" (silent mis-targeting).

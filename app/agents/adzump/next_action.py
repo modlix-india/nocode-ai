@@ -220,8 +220,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     has_platform = bool(cctx.spec.get("platform"))
     has_location = bool(cctx.spec.get("location"))
     # Coordinates restored from storage count as a valid anchor for discovery -
-    # manage_targeting_locations falls back to _location_meta lat/lng when no location
-    # string is provided, so we can prescribe it without requiring a fresh confirm.
+    # manage_targeting_locations falls back to product_data.place lat/lng when no
+    # location string is provided, so we can prescribe it without a fresh confirm.
     _place = cctx.product.get("place") or {}
     has_geo_anchor = has_location or _place.get("lat") is not None
     if has_platform and has_geo_anchor and not cctx.has_mapped_geo_targets:

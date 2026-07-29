@@ -1,0 +1,69 @@
+- 18EXfYqzrzeVVEPoLdHgci (Grid) PageGrid
+  - 4Q44nipD7gctmqmbAsDX9o (Button) Back button
+  - 45gFJyM1t3acHS1oOI6J7F (Grid) contactManagerGrid
+    - 6kiYnxOf9AljymSXWpH2cz (Grid) managerProfile
+      - 7hTEU1tqW3X7B2CpD143PS (Grid) Grid
+        - 10oeVZuqHbN0CZs7GMxG9d (Image) image
+      - 3fLeVyljCYRdP6ORR1RMv2 (Grid) NameGrid
+        - 50OdAGXfFrWOef5wwzk0bE (Text) designation
+        - 4xvbWT8yInK2qbowyzz2D8 (Text) name
+      - 18dwgk8och9ahgMcu3sFtT (Grid) mailGrid
+        - 2TTHIG4wFLeduSm4jrjyoC (Grid) Grid
+          - 44XcPHzQdfnGKmqVo0Yi3R (Icon) Icon
+          - 3hK4f0tapK2sXiKCajv7tg (Image) image
+        - 20DF67g8c3eQaI7HQ1vbbd (Grid) Grid
+          - 111p4v9m0uQLymbBLGcxUK (Text) Text
+          - gsAnHakAqTcC72jdZDGSJ (Text) desktopText
+          - 7qZb77N9PTm3f82pIpBjfL (Text) mobileText
+      - 49SJVbZ6sYwLNGmEhNWkel (Grid) phoneNumberGrid
+        - 3i43kbY3XjZsI96fVbhrxc (Grid) Grid
+          - ZuslzcGtQjeNITSGXqH57 (Icon) Icon
+          - 5qCWs6nl3DTx3DW1RM3e7m (Image) image
+        - 5gkGiGHXZMf3fmjH8JuoEd (Grid) Grid
+          - 6fit21in6psNs1hhb8JJlE (Text) Text
+          - 6RfjSrJ7Xr6BsqMF5sG1sy (Text) desktopText
+    - 8JuXvNS4Sntptn6f3GtV9 (Grid) Grid
+      - 3junTRsxyMdhP2WsA6UpGy (Grid) upcomingCalls
+        - 3Pikdykt0J8JKsYs6z7PuE (Text) Text
+        - 3dK3TyfkWERXFFeILqQDwx (Grid) Grid
+          - 4JJ4xjcbPgSrc8HdC0zz0u (Text) Text
+          - 6mwNw7rvhNt84CzyjAEwSx (Button) button
+      - 52DZ1gXtVnhLwmcrHcQ9Pv (Grid) callList
+        - 7M6CQiifQ9jhwNhAa09quW (Grid) buttonsGrid
+          - 2uC6wi7vt2B0FvSSy6qv6u (Grid) upcomingCallsGrid
+            - 3qk9XaQ2XAOD2B1EHJyiPx (Text) upcomingText
+            - 2K4rBMdFeamEAQLGoFmZg6 (Button) button
+            - 1tNn2aVqWe8RFbC7oHQFBe (Text) count
+          - 1SZcn0jg8OaIeTkrjBoIfN (Grid) past calls grid
+            - RETBlqJrGTqhxt3suJPai (Text) pastcallsText
+            - 3hxbX3gr4lPzPXmoi1xJNs (Text) Text
+        - 27jEj7R5NGPA6xlwIyETM6 (Grid) callsList
+          - 3nRfS1BpUoGkoQJVl9Owfv (Table) Table
+            - 6i7fUoCqcLGnZ5Q61V9mXN (TableColumns) TableColumns
+              - 1h3zKrtASJbVL6kFUSVLvP (TableColumn) TableColumn
+                - 6LpNj32jghd6MCi8JgZMjW (Text) Text
+              - 5pzzATcNFYQx4Hy4V6wulN (TableColumn) TableColumn
+                - 2hYKtu4I94Spwz6uP1cJwh (Text) Text
+              - 298JeKCOz2dP3LnqcNz9oe (TableColumn) TableColumn
+                - 18t4n8yP2pawjPOfTOY0co (Text) Text
+              - 7iCVG6H8t6AxiwjxAdBNI0 (TableColumn) TableColumn
+                - 1GQJSgAkQWvbse2wNRt3CV (Grid) Grid
+                  - 7gHusge89b6gPGcL8ApeD2 (Grid) Grid
+                    - 2KTizT0EPqXbi7nxJjiDZn (Icon) Icon
+                  - 3UaoukCoXf8XDpr0eLotqU (Grid) Grid
+                    - 33Qu5ua7OuMY6RSiRieJl8 (Grid) Grid
+                      - 6fFDctrI0WqCkFlJbVQ6XN (Text) Cancel call
+                    - 2Hf6rRdoLW3Wdwn65kkvs7 (Grid) Grid
+                      - iaXsX8wAOTE1S878P078q (Text) Text
+        - 2Vcg8VhDvwYdDom9Y1rsXT (Grid) desktop card
+          - 2nc4jXSDR2Tii3jK3Bumfy (Text) Text
+          - 3bdRvbGMHB1WWyE8RsOVxa (Grid) Grid
+            - 5IT3USyPjouDkjIBn5NZrQ (Text) Text
+            - xsn26eRpANnfmzsgyT3hY (Text) Text
+          - 7yL4ebjOc2ojhJ8ex0k4Ka (Button) button
+        - RZOg9lt8anEgogMaIAaob (Grid) mobile card
+          - 5tR6zSRS0DiWguHx5G8mam (Text) Text
+          - 7sWkWoLZ0bZfVBCEKuVJFZ (Text) Text
+          - 1Oi43Gm8O2klGfYIkXHO4I (Button) button
+      - 1VRP0yjYOr5Ks0odG3ZGZA (Grid) Grid
+        - 448FE1ilDqjoyUqmbga1SS (Text) Text

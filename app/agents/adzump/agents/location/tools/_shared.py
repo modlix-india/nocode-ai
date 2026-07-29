@@ -43,8 +43,8 @@ async def finalize_targets(
     product = session_ctx.setdefault("product_data", {})
     spec = session_ctx.get("campaign_spec") or {}
     platform = (spec.get("platform") or "Google Ads").strip()
-    loc_meta = session_ctx.setdefault("_location_meta", {})
-    country_code = loc_meta.get("country_code") or "IN"
+    place = product.get("place") or {}
+    country_code = place.get("country_code") or "IN"
 
     mapped = resolved
     try:
@@ -73,7 +73,7 @@ async def finalize_targets(
                     "locations": [a["name"] for a in mapped if a.get("name")],
                     "targeting_type": product.get("business_scale", "national"),
                     "location": (
-                        loc_meta.get("address") or spec.get("location") or ""
+                        place.get("address") or spec.get("location") or ""
                     ),
                 },
             )

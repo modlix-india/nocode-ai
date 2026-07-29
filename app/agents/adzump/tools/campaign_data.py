@@ -506,34 +506,27 @@ async def _set_campaign_spec(
     )
 
 
-def _store_location_meta(
+def _store_confirmed_location(
     session_ctx: dict, location_value: Any, last_user: str
 ) -> None:
-    """Location side-effect: clear the map-confirm marker + stash lat/lng for save.
-    Plain "confirm" / typed-city paths store the address with null coordinates."""
+    """Write the confirmed location onto product_data.place + clear the confirm
+    marker. Map-pin carries coords; typed-city clears them → next run re-geocodes."""
     session_ctx.pop("_pending_location_confirm", None)
     from app.agents.adzump.services.business_storage import parse_location_update
 
+    product = session_ctx.setdefault("product_data", {})
+    place = product.setdefault("place", {})
     loc_payload = parse_location_update(last_user)
     if loc_payload:
-        display_name = ""
-        product = session_ctx.get("product_data") or {}
-        address = (product.get("place") or {}).get("address") or ""
-        if product.get("product_name") and address:
-            display_name = f"{product['product_name']}, {address}"
-        session_ctx["_location_meta"] = {
-            "address": loc_payload["address"] or str(location_value),
-            "lat": loc_payload["lat"],
-            "lng": loc_payload["lng"],
-            "displayName": display_name,
-        }
+        place["address"] = loc_payload["address"] or str(location_value)
+        place["lat"] = loc_payload["lat"]
+        place["lng"] = loc_payload["lng"]
     else:
-        session_ctx["_location_meta"] = {
-            "address": str(location_value),
-            "lat": None,
-            "lng": None,
-            "displayName": "",
-        }
+        place["address"] = str(location_value)
+        place["lat"] = None
+        place["lng"] = None
+    name = product.get("product_name") or ""
+    place["display_name"] = f"{name}, {place['address']}" if name and place["address"] else ""
 
 
 def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
@@ -643,7 +636,7 @@ def _apply_field(
     # forever while the every-turn autosave silently updates the "live" record.
     spec.pop("campaign_status", None)
     if field == "location":
-        _store_location_meta(session_ctx, value, last_user)
+        _store_confirmed_location(session_ctx, value, last_user)
     # v3 · F2 - cascade ONLY on a genuine change (overwrite), never on first-set
     # or an idempotent re-send (prior empty / equal → no clear). This is what
     # makes a Google→Meta switch drop the stale Google ids while a re-fire of

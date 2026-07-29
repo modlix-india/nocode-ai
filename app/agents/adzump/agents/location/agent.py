@@ -32,11 +32,13 @@ from app.agents.adzump.agents.location.context import build_location_context
 from app.agents.adzump.agents.location.subagent_event_stream import (
     LocationPassthroughEventStream,
 )
+from app.agents.adzump._shared import build_ds_headers
 from app.agents.adzump.agents.location.targeting_run import (
     build_run_prompt,
     build_run_result,
     build_sub_session,
     resolve_coordinates,
+    resolve_country_geo_constant,
     resolve_location_name,
     validate_run_context,
 )
@@ -84,21 +86,24 @@ class LocationAgent(BaseAgent):
         parent_ctx = context["session_context"]
         product = parent_ctx.setdefault("product_data", {})
         spec = parent_ctx.setdefault("campaign_spec", {})
-        loc_meta = parent_ctx.setdefault("_location_meta", {})
+        place = product.setdefault("place", {})
 
         stream = context.get("event_stream")
         tool_use_id = context.get("tool_use_id", "")
         auth = context.get("auth")
 
-        location_name = resolve_location_name(loc_meta, spec, product)
-        coordinates = await resolve_coordinates(location_name, loc_meta)
-        if coordinates:
-            product.setdefault("place", {}).update(coordinates)
+        # Geocodes on cache miss; stamps coords + country_code onto place.
+        location_name = resolve_location_name(product, spec)
+        coords = await resolve_coordinates(location_name, place)
+        await resolve_country_geo_constant(
+            place, (coords or {}).get("country") or "",
+            context.get("client_code", ""), build_ds_headers(context),
+        )
 
         sub_session = await build_sub_session(
             parent_ctx, auth, chat_session_id=context.get("session_id", ""),
         )
-        country_code = loc_meta.get("country_code") or "IN"
+        country_code = place.get("country_code") or "IN"
 
         # Launcher owns both AgentCard ends: agent_started here, finished below.
         if stream is not None:

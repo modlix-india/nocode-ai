@@ -1,0 +1,619 @@
+{
+  "_id": "694a89a0b1276d3c2842337b",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "faq"
+      }
+    },
+    "wrapShell": true
+  },
+  "eventFunctions": {
+    "38OuOnFvSRgXl9YUGRgcfC": {
+      "name": "clickedFaq",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 434.4000015258789,
+            "top": 188.6750030517578
+          },
+          "parameterMap": {
+            "path": {
+              "17Hs5jgpmCR6ywTrhvUyiv": {
+                "key": "17Hs5jgpmCR6ywTrhvUyiv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.clickedFaq"
+              }
+            },
+            "value": {
+              "aDVuGpG8ZwW81Ns6IIzNf": {
+                "key": "aDVuGpG8ZwW81Ns6IIzNf",
+                "type": "EXPRESSION",
+                "expression": "Page.clickedFaq = Parent.id ? 'null' : Parent.id",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "5tDC4cILe6TQuavZzhfVgf",
+  "componentDefinition": {
+    "5tDC4cILe6TQuavZzhfVgf": {
+      "key": "5tDC4cILe6TQuavZzhfVgf",
+      "name": "Page Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5lGtgGHsLsBd81VMMuQIBt": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6I0vH0g9uclj5HeVqRpO6G": true,
+        "76dd41ukwgsEZPeP05lOZI": true
+      }
+    },
+    "6I0vH0g9uclj5HeVqRpO6G": {
+      "key": "6I0vH0g9uclj5HeVqRpO6G",
+      "name": "Our",
+      "type": "Grid",
+      "styleProperties": {
+        "1DCYZWzO6SS16W30Jel28u": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "34.1vw"
+              },
+              "backgroundImage": {
+                "value": "url(\"api/files/static/file/NAVIN2/Safario/KxPNPdwKar1kk1a9dY44Uv30Y.avif\")"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "backgroundPosition": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "95.9vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5r3r2dPdRH7pz74AgnPx2u": true
+      },
+      "displayOrder": 1
+    },
+    "5r3r2dPdRH7pz74AgnPx2u": {
+      "key": "5r3r2dPdRH7pz74AgnPx2u",
+      "name": "overlay",
+      "type": "Grid",
+      "styleProperties": {
+        "2Yjuh1zRANT9dYw6bpb6h1": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "backgroundColor": {
+                "value": "#4B3621CC"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "5.13vw"
+              },
+              "paddingRight": {
+                "value": "5.13vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5JAiCV3ry54dBIJBrtYJhO": true
+      }
+    },
+    "5JAiCV3ry54dBIJBrtYJhO": {
+      "key": "5JAiCV3ry54dBIJBrtYJhO",
+      "name": "The",
+      "type": "Grid",
+      "styleProperties": {
+        "5SKrg3T5rUTNB7urM14e1j": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3STZacqR789L2yMlebkqsP": true,
+        "4U8141cTv9Bw50lpZVJswx": true
+      },
+      "displayOrder": 0
+    },
+    "3STZacqR789L2yMlebkqsP": {
+      "key": "3STZacqR789L2yMlebkqsP",
+      "name": "Safari",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Your Safari Hub: News, Tips,  \nand Inspiration"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "67aEF1Ha9bBOUbd9KQiQhu": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "4.44vw"
+              },
+              "lineHeight": {
+                "value": "4.44vw"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "fontFamily": {
+                "value": "Bricolage Grotesque"
+              },
+              "color": {
+                "value": "#ffffff"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "10.77vw"
+              },
+              "lineHeight": {
+                "value": "10.77vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4U8141cTv9Bw50lpZVJswx": {
+      "key": "4U8141cTv9Bw50lpZVJswx",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "If you can't find what you're looking for, feel free to Contact us directly,\nwe're always happy to assist you!"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "2R05vREQChmrIxzVqAY8sx": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.25vw"
+              },
+              "color": {
+                "value": "#edebe9"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "lineHeight": {
+                "value": "1.8em"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7qjm4NxDCk9m5wsS5sedvI": {
+      "key": "7qjm4NxDCk9m5wsS5sedvI",
+      "name": "Your",
+      "type": "Grid",
+      "styleProperties": {
+        "43OkRTxLeDLFtJF6WSRzhu": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "3.47vw"
+              },
+              "width": {
+                "value": "63.64vw"
+              },
+              "backgroundColor": {
+                "value": "#"
+              },
+              "paddingTop": {
+                "value": "5vw"
+              },
+              "paddingBottom": {
+                "value": "5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "DuwOAh5wuAtCpqoIviSU9": true
+      },
+      "displayOrder": 0
+    },
+    "DuwOAh5wuAtCpqoIviSU9": {
+      "key": "DuwOAh5wuAtCpqoIviSU9",
+      "name": "Repeator",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3J8Ai9vBIhyELUwVCaeMav": true
+      }
+    },
+    "3J8Ai9vBIhyELUwVCaeMav": {
+      "key": "3J8Ai9vBIhyELUwVCaeMav",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "id": "faq_1",
+              "question": "What makes Safario different from other safari tour agencies?",
+              "answer": "They focus on curated safari experiences designed around each traveler. They work with expert guides, offer access to top wildlife reserves, and build personalized itineraries."
+            },
+            {
+              "id": "faq_2",
+              "question": "How do I book a safari trip with Safario?",
+              "answer": "You can browse available tours online, submit an inquiry form, or speak directly with a travel specialist who helps finalize the itinerary."
+            },
+            {
+              "id": "faq_3",
+              "question": "What is included in a typical safari package?",
+              "answer": "Packages usually include lodging, guided game drives, park fees, meals, airport transfers, and wildlife activities. Some include cultural visits or optional upgrades like balloon rides."
+            },
+            {
+              "id": "faq_4",
+              "question": "Which African destinations do you offer safari tours to?",
+              "answer": "They operate in Tanzania, Kenya, South Africa, Botswana, Namibia, and Zimbabwe, covering places like the Serengeti, Maasai Mara, and Victoria Falls."
+            },
+            {
+              "id": "faq_5",
+              "question": "Are your safari tours suitable for families and children?",
+              "answer": "Yes. They provide family-friendly options with activities for kids, suitable stays, and guides who know how to keep children engaged and safe."
+            }
+          ]
+        }
+      },
+      "styleProperties": {
+        "4gWuKWU0ZVseTSte7b7mRm": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "21.5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Yx0N9QiCbrpD4ZLY09I2e": true
+      },
+      "displayOrder": 0
+    },
+    "1Yx0N9QiCbrpD4ZLY09I2e": {
+      "key": "1Yx0N9QiCbrpD4ZLY09I2e",
+      "name": "container",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "38OuOnFvSRgXl9YUGRgcfC"
+        }
+      },
+      "styleProperties": {
+        "1zobehqB8jqTxMtkwp15Vo": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6ixyg54bzXvxPmEgPrPkof": true,
+        "73D6zwojbjkpu14yYXQIc1": true,
+        "4XQWKJR2RPdAxkc9BUf5Cz": true
+      },
+      "displayOrder": 0
+    },
+    "6ixyg54bzXvxPmEgPrPkof": {
+      "key": "6ixyg54bzXvxPmEgPrPkof",
+      "name": "question",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "7rGBxWjjS2rtb2I0674EZr": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7C0D9cLixOQqav1ULHQIs2": true,
+        "4EGtJSBQ6qSfJ1IRV5xeYu": true
+      },
+      "displayOrder": 1
+    },
+    "73D6zwojbjkpu14yYXQIc1": {
+      "key": "73D6zwojbjkpu14yYXQIc1",
+      "name": "answer",
+      "type": "Grid",
+      "styleProperties": {
+        "65SnfQgv0IdfOU5ZwxCPB8": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.clickedFaq = Parent.id ? '250px' : '0px'"
+                }
+              },
+              "maxHeight": {
+                "value": "fit-content"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "paddingLeft": {
+                "value": "2.2vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "7vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2fhGc9uRQD9IoJLHlnMIFK": true
+      },
+      "displayOrder": 2
+    },
+    "4XQWKJR2RPdAxkc9BUf5Cz": {
+      "key": "4XQWKJR2RPdAxkc9BUf5Cz",
+      "name": "line",
+      "type": "Grid",
+      "styleProperties": {
+        "60PXhwLcR1jAyYjUEQqoNT": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "1px"
+              },
+              "backgroundColor": {
+                "value": "#c9c3bc"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7C0D9cLixOQqav1ULHQIs2": {
+      "key": "7C0D9cLixOQqav1ULHQIs2",
+      "name": "question",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.question"
+          }
+        }
+      },
+      "styleProperties": {
+        "Uv7LFDP5XYINX9aZtgkq3": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.67vw"
+              },
+              "color": {
+                "value": "#4b3621"
+              },
+              "fontFamily": {
+                "value": "Bricolage Grotesque"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "1.4em"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4EGtJSBQ6qSfJ1IRV5xeYu": {
+      "key": "4EGtJSBQ6qSfJ1IRV5xeYu",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-arrow-right"
+        }
+      },
+      "styleProperties": {
+        "75qTilSBuwf45LsbLRV6yQ": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2fhGc9uRQD9IoJLHlnMIFK": {
+      "key": "2fhGc9uRQD9IoJLHlnMIFK",
+      "name": "answer",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.answer"
+          }
+        }
+      },
+      "styleProperties": {
+        "40MIFLwQcoObghznhXk7e7": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#5d4a37"
+              },
+              "fontSize": {
+                "value": "4.13.59"
+              },
+              "lineHeight": {
+                "value": "1.8em"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "76dd41ukwgsEZPeP05lOZI": {
+      "key": "76dd41ukwgsEZPeP05lOZI",
+      "name": "Faq",
+      "type": "Grid",
+      "styleProperties": {
+        "3GINXrZ7ICwDWZurkwEate": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#fff7e5"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "8vw"
+              },
+              "paddingRight": {
+                "value": "8vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "alignItems": {
+                "value": "start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7qjm4NxDCk9m5wsS5sedvI": true
+      },
+      "displayOrder": 1
+    }
+  },
+  "name": "faq",
+  "clientCode": "NAVIN2",
+  "appCode": "scfarioibjsndbntyhgtzj",
+  "title": "faq",
+  "version": 18,
+  "updatedAt": "2025-12-24 06:38:50.780000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-12-23 12:22:56.561000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,3616 @@
+{
+  "_id": "66a3b34991063c1493ee2ecd",
+  "properties": {
+    "wrapShell": false
+  },
+  "eventFunctions": {
+    "4CI2zihQDRb3jb5E9oC300": {
+      "name": "goto_landingPage_event",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 669.8125004768372,
+            "top": 228.62500190734863
+          },
+          "parameterMap": {
+            "linkPath": {
+              "3A45K5r4lTnCoXMUvingQc": {
+                "key": "3A45K5r4lTnCoXMUvingQc",
+                "type": "EXPRESSION",
+                "expression": "'/projectLandingPage/{{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2PME5SkcKafyTnDVgNZpg7": {
+      "name": "Stepper_event",
+      "steps": {
+        "setStore8_c": {
+          "statementName": "setStore8_c",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1111.8500003814697,
+            "top": 75.9000015258789
+          },
+          "parameterMap": {
+            "path": {
+              "3rYprwx96I8RKo6t6mxQGB": {
+                "key": "3rYprwx96I8RKo6t6mxQGB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.project.specifications"
+              }
+            },
+            "value": {
+              "S30jXGOdQoj3WqRObHlFL": {
+                "key": "S30jXGOdQoj3WqRObHlFL",
+                "type": "VALUE",
+                "order": 1,
+                "value": [
+                  {
+                    "name": "",
+                    "description": "",
+                    "image": ""
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 418.8000030517576,
+            "top": 68.47500610351557
+          },
+          "parameterMap": {
+            "condition": {
+              "7elRlCwmWQInS6lG2wUHxU": {
+                "key": "7elRlCwmWQInS6lG2wUHxU",
+                "type": "EXPRESSION",
+                "expression": "Page.project.specifications = undefined and Page.count = 1",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 431.8000030517577,
+            "top": 320.8749999999999
+          },
+          "parameterMap": {
+            "condition": {
+              "3kzjUGfSy0dUoITFIuR4MP": {
+                "key": "3kzjUGfSy0dUoITFIuR4MP",
+                "type": "EXPRESSION",
+                "expression": "Page.project.amenities = undefined and Page.count =1",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1080.8000030517576,
+            "top": 344.8749999999999
+          },
+          "parameterMap": {
+            "path": {
+              "1795vXlFxsUV5dQgBpsf4z": {
+                "key": "1795vXlFxsUV5dQgBpsf4z",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.project.amenities"
+              }
+            },
+            "value": {
+              "3shhMm7M5z6hG5DUPr2HAY": {
+                "key": "3shhMm7M5z6hG5DUPr2HAY",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "name": "",
+                    "description": "",
+                    "image": ""
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "if2": {
+          "statementName": "if2",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 419.70000076293934,
+            "top": 583.2499999999999
+          },
+          "parameterMap": {
+            "condition": {
+              "2VZn85AGNyqyUAbVPcjuHK": {
+                "key": "2VZn85AGNyqyUAbVPcjuHK",
+                "type": "EXPRESSION",
+                "expression": "Page.project.projectHighlights.highlights = undefined and Page.count = 1",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1001.7000007629392,
+            "top": 602.2499999999999
+          },
+          "parameterMap": {
+            "path": {
+              "2LXcliPCmsSGIornAZ2n": {
+                "key": "2LXcliPCmsSGIornAZ2n",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.project.projectHighlights.highlights"
+              }
+            },
+            "value": {
+              "4pILGzCLidAWBeXMA8J0AR": {
+                "key": "4pILGzCLidAWBeXMA8J0AR",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "name": "",
+                    "description": "",
+                    "image": ""
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if2__d-o-t__true": true
+          }
+        },
+        "if3": {
+          "statementName": "if3",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1747.6250009536736,
+            "top": 201.06249999999991
+          },
+          "parameterMap": {
+            "condition": {
+              "5l6YWle2TBwyJSWvNPBKvU": {
+                "key": "5l6YWle2TBwyJSWvNPBKvU",
+                "type": "EXPRESSION",
+                "expression": "Page.project.gallery.images = undefined and Page.count =2",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2378.6250009536734,
+            "top": 248.0624999999999
+          },
+          "parameterMap": {
+            "path": {
+              "33KWP6yU40ZZ0td91BWDcw": {
+                "key": "33KWP6yU40ZZ0td91BWDcw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.project.gallery.images"
+              }
+            },
+            "value": {
+              "6qkr2lfYD30PU3GJ94Z6sL": {
+                "key": "6qkr2lfYD30PU3GJ94Z6sL",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if3__d-o-t__true": true
+          }
+        },
+        "if4": {
+          "statementName": "if4",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1827.6250009536736,
+            "top": 582.0624999999998
+          },
+          "parameterMap": {
+            "condition": {
+              "3W2k3gPEkZARL5uGs2Eyeo": {
+                "key": "3W2k3gPEkZARL5uGs2Eyeo",
+                "type": "EXPRESSION",
+                "expression": "Page.project.location.nearByLocations = undefined and Page.count = 4 ",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2343.6250009536734,
+            "top": 611.5624999999998
+          },
+          "parameterMap": {
+            "path": {
+              "5JO8zkDWCF3WDbXurZDzXG": {
+                "key": "5JO8zkDWCF3WDbXurZDzXG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.project.location.nearByLocations"
+              }
+            },
+            "value": {
+              "3dGkuNB8Ynjt59CULStBV0": {
+                "key": "3dGkuNB8Ynjt59CULStBV0",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": [
+                  {
+                    "name": "",
+                    "description": "",
+                    "image": ""
+                  }
+                ]
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if4__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "266PHctz1SkuIpyE18u5r7": {
+      "name": "Save",
+      "steps": {
+        "update": {
+          "statementName": "update",
+          "name": "Update",
+          "namespace": "CoreServices.Storage",
+          "position": {
+            "left": 632.4000015258789,
+            "top": 122.67500305175781
+          },
+          "parameterMap": {
+            "dataObjectId": {
+              "2uCtCKsAjMASKb40UcyjWy": {
+                "key": "2uCtCKsAjMASKb40UcyjWy",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[1]",
+                "order": 1
+              }
+            },
+            "storageName": {
+              "6zqVOSnZiyPr4CcIrS14hN": {
+                "key": "6zqVOSnZiyPr4CcIrS14hN",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Project"
+              }
+            },
+            "appCode": {
+              "5Tlb4qVBKcmYNeKt7SX1KB": {
+                "key": "5Tlb4qVBKcmYNeKt7SX1KB",
+                "type": "VALUE",
+                "expression": "",
+                "value": "rim"
+              }
+            },
+            "dataObject": {
+              "3FFmMM6yXAe8VseSWIzBba": {
+                "key": "3FFmMM6yXAe8VseSWIzBba",
+                "type": "EXPRESSION",
+                "expression": "Page.project",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1092.1999998092651,
+            "top": 463.6750030517578
+          },
+          "parameterMap": {
+            "msg": {
+              "2VPDQddUHYXjONLUvJOS0d": {
+                "key": "2VPDQddUHYXjONLUvJOS0d",
+                "type": "EXPRESSION",
+                "expression": "Steps.update.error.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message_Copy_1": {
+          "statementName": "message_Copy_1",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1114.1999998092651,
+            "top": 157.6750030517578
+          },
+          "parameterMap": {
+            "msg": {
+              "2VPDQddUHYXjONLUvJOS0d": {
+                "key": "2VPDQddUHYXjONLUvJOS0d",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Inventory Management details Updated"
+              }
+            },
+            "type": {
+              "2mkMQXEqNczazYckFe0Ul8": {
+                "key": "2mkMQXEqNczazYckFe0Ul8",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SUCCESS"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__update__d-o-t__output__d-o-t__result": true
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1512.083339691162,
+            "top": 297.69097328186035
+          },
+          "parameterMap": {
+            "linkPath": {
+              "69uzqLUHn5Pq3v5WLgXHsS": {
+                "key": "69uzqLUHn5Pq3v5WLgXHsS",
+                "type": "EXPRESSION",
+                "expression": "'/configure/{{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__message_Copy_1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "52CLaQUZDmPj2EyeQgNt1l"
+    },
+    "1PcaV3m9cQ6hCpr98aETUB": {
+      "name": "New_Function",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 476.4000015258789,
+            "top": 116.23750305175781
+          },
+          "parameterMap": {
+            "path": {
+              "4iMxDoEKo5OaTyLITUcxtW": {
+                "key": "4iMxDoEKo5OaTyLITUcxtW",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showGrid"
+              }
+            },
+            "value": {
+              "4KLebvWVIb5QwkQRnzoVOw": {
+                "key": "4KLebvWVIb5QwkQRnzoVOw",
+                "type": "EXPRESSION",
+                "expression": "not Page.showGrid",
+                "order": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "rootComponent": "5FC2mafBCatMlAUWmZUd4h",
+  "componentDefinition": {
+    "5FC2mafBCatMlAUWmZUd4h": {
+      "key": "5FC2mafBCatMlAUWmZUd4h",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1spI3GMIqtG4GSoxjHLkAU": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "overflowX": {
+                "value": "hidden"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5JBh4zaTgV93q87LLHR42z": true,
+        "6CNviIuAFmK2BViHKiOX9L": true
+      }
+    },
+    "5JBh4zaTgV93q87LLHR42z": {
+      "key": "5JBh4zaTgV93q87LLHR42z",
+      "name": "Header Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_OCTONARYBG"
+        }
+      },
+      "styleProperties": {
+        "4kgBNNKUzH6akfQAuWo0KC": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "13px"
+              },
+              "paddingBottom": {
+                "value": "13px"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "zIndex": {
+                "value": "6"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "top": {
+                "value": "0px"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4tZTyzWBvOYf53TNZ3Pf7E": true
+      },
+      "displayOrder": 1
+    },
+    "4tZTyzWBvOYf53TNZ3Pf7E": {
+      "key": "4tZTyzWBvOYf53TNZ3Pf7E",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "linkPath": {
+          "value": "/dashboard"
+        }
+      },
+      "override": false,
+      "children": {
+        "Kl34Ylp07OCGndeMHMqet": true
+      },
+      "displayOrder": 0
+    },
+    "Kl34Ylp07OCGndeMHMqet": {
+      "key": "Kl34Ylp07OCGndeMHMqet",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Store.pageData._global.clientOnboarding.applicationLogo"
+          }
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Store.pageData._global.clientOnboarding.applicationLogo"
+          }
+        }
+      },
+      "styleProperties": {
+        "7jxvP9YN7HU288EeWsXU7R": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6CNviIuAFmK2BViHKiOX9L": {
+      "key": "6CNviIuAFmK2BViHKiOX9L",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "M6Uci6mRbAr5cVaPANY8s": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "minHeight": {
+                "value": "100vh"
+              },
+              "marginTop": {
+                "value": "50px"
+              },
+              "width": {
+                "value": "100%",
+                "location": {
+                  "type": "EXPRESSION"
+                }
+              },
+              "overflowX": {
+                "value": "hidden"
+              },
+              "hideScrollBar": {
+                "value": "hide"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "column"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4sVLF1R12gJcsrNi4OpFZ9": true,
+        "3QGUC5iLu8yOsfRiMfwj6E": true,
+        "2xtdHHbCaRkmUrICs61TOt": true
+      },
+      "displayOrder": 2
+    },
+    "4sVLF1R12gJcsrNi4OpFZ9": {
+      "key": "4sVLF1R12gJcsrNi4OpFZ9",
+      "name": "Main Page",
+      "type": "Grid",
+      "styleProperties": {
+        "17gT1HSv8YrPMxjB79CkWT": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "80%"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "paddingBottom": {
+                "value": "90px"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "hideScrollBar": {
+                "value": "hide"
+              },
+              "overflow": {
+                "value": "scroll"
+              },
+              "overflowX": {
+                "value": "hidden"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "overflow": {
+                "value": "scroll"
+              },
+              "height": {
+                "value": "auto"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5uf5Ry61QUe4vB2AE05ld7": true,
+        "lz5P9n7w7HL4F8HdLkGGq": true,
+        "4gwYFVsyzB0kXiKqOKJXvv": true,
+        "68t8qs7vXQq6tcfbkkJEF": true,
+        "2ZhSZKV1l6M7eAvFupR2m3": true,
+        "41QlfhT6Y1Sqrh4JyxnbS1": true
+      },
+      "displayOrder": 3
+    },
+    "3QGUC5iLu8yOsfRiMfwj6E": {
+      "key": "3QGUC5iLu8yOsfRiMfwj6E",
+      "name": "Side Bar",
+      "type": "Grid",
+      "styleProperties": {
+        "3vpoF5c45RN0CCNBsf4HFe": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "20%"
+              },
+              "borderRightColor": {
+                "value": "#EBEBEB"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "height": {
+                "value": "100vh"
+              },
+              "position": {
+                "value": "relative"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "30vw"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3EhQdR607vHdMDvQgXXYAC": true,
+        "7aGm84sD8g2F6nyldDppT8": true
+      },
+      "displayOrder": 2
+    },
+    "2xtdHHbCaRkmUrICs61TOt": {
+      "key": "2xtdHHbCaRkmUrICs61TOt",
+      "name": "save and continue grid",
+      "type": "Grid",
+      "properties": {
+        "border": {
+          "value": "_LIGHT"
+        },
+        "boxShadow": {
+          "value": "_LIGHTLOW"
+        }
+      },
+      "styleProperties": {
+        "1GFVIZd5dsnCZR0MJywvNM": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "flex-end"
+              },
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "bottom": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "left": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6QJPQoFhgSR5Cn9rKqrVOJ": true
+      },
+      "displayOrder": 4
+    },
+    "5uf5Ry61QUe4vB2AE05ld7": {
+      "key": "5uf5Ry61QUe4vB2AE05ld7",
+      "name": "Back button Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "7rDG4jZK00G1JeaQPqBLfN": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "paddingTop": {
+                "value": "24px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "justifyContent": {
+                "value": "flex-end"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2wpAhEzyemkCXw7wLLliF0": true
+      },
+      "displayOrder": 2
+    },
+    "3EhQdR607vHdMDvQgXXYAC": {
+      "key": "3EhQdR607vHdMDvQgXXYAC",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "cwkwbGJPD6b9cijuf7rmE": true,
+        "7CjLr9lqZxEUqf7dH5WEut": true
+      },
+      "displayOrder": 1
+    },
+    "7aGm84sD8g2F6nyldDppT8": {
+      "key": "7aGm84sD8g2F6nyldDppT8",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "503l1MkMwAQLjIiWsNNQBF": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "bottom": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "120px"
+              },
+              "marginLeft": {
+                "value": "4.201vw"
+              },
+              "marginRight": {
+                "value": "4.201vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "77MkRr8Is6R0xdQcAOOoAO": true
+      },
+      "displayOrder": 4
+    },
+    "6QJPQoFhgSR5Cn9rKqrVOJ": {
+      "key": "6QJPQoFhgSR5Cn9rKqrVOJ",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save & Continue"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "onClick": {
+          "value": "266PHctz1SkuIpyE18u5r7"
+        }
+      },
+      "styleProperties": {
+        "2jmFqyICAxCKPYl45PRZyC": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "25px"
+              },
+              "height": {
+                "value": "45px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "45vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_ONLY": {
+              "rightIcon-width": {
+                "value": "45vw"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "25vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2wpAhEzyemkCXw7wLLliF0": {
+      "key": "2wpAhEzyemkCXw7wLLliF0",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Back to Configure"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'/configure/{{Store.urlDetails.pathParts[1]}}'"
+          }
+        }
+      },
+      "styleProperties": {
+        "Gdl6ejAsrGTb3C4VSA8at": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "25px"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "height": {
+                "value": "40px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "20vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5qJjVsLVzjvK8AqsaSlvgh": {
+      "key": "5qJjVsLVzjvK8AqsaSlvgh",
+      "name": "receipt header",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Receipt Header"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "42HTFj35OPLODf5QgTxZXh": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "cwkwbGJPD6b9cijuf7rmE": {
+      "key": "cwkwbGJPD6b9cijuf7rmE",
+      "name": "Inventory management grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1adFPeeEy82DXbSurKSR6R": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "marginTop": {
+                "value": "30px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "d3TpkR1GOwYS0eXycGCOB": true
+      },
+      "displayOrder": 1
+    },
+    "7CjLr9lqZxEUqf7dH5WEut": {
+      "key": "7CjLr9lqZxEUqf7dH5WEut",
+      "name": "Specification Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_QUATERNARYBG"
+        }
+      },
+      "styleProperties": {
+        "5i6Uxvw1LBXc18IMQxaV3C": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "30px"
+              },
+              "marginBottom": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "marginRight": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1oZM68i5jYbNXVKFoO1V3x": true
+      },
+      "displayOrder": 2
+    },
+    "77MkRr8Is6R0xdQcAOOoAO": {
+      "key": "77MkRr8Is6R0xdQcAOOoAO",
+      "name": "Go to Landing Page",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to Landing Page"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "target": {
+          "value": "_self"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'/projectLandingPage/{{Store.urlDetails.pathParts[1]}}'"
+          }
+        }
+      },
+      "styleProperties": {
+        "2ojp06L5b4MCOQukRnoMLB": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "45px"
+              },
+              "paddingLeft": {
+                "value": "1.042vw"
+              },
+              "paddingRight": {
+                "value": "1.042vw"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "20vw"
+              },
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "d3TpkR1GOwYS0eXycGCOB": {
+      "key": "d3TpkR1GOwYS0eXycGCOB",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Receipt Setup"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1oZM68i5jYbNXVKFoO1V3x": {
+      "key": "1oZM68i5jYbNXVKFoO1V3x",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Specifications"
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "1Y4bkIt05SkBiAUQhamArV": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "13px"
+              },
+              "paddingBottom": {
+                "value": "13px"
+              },
+              "paddingLeft": {
+                "value": "35px"
+              },
+              "paddingRight": {
+                "value": "35px"
+              },
+              "text-textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "lz5P9n7w7HL4F8HdLkGGq": {
+      "key": "lz5P9n7w7HL4F8HdLkGGq",
+      "name": "Receipt Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "2jjlotKmCk1ucWYHGoRxKU": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "52CLaQUZDmPj2EyeQgNt1l": true,
+        "5qJjVsLVzjvK8AqsaSlvgh": true
+      },
+      "displayOrder": 3
+    },
+    "52CLaQUZDmPj2EyeQgNt1l": {
+      "key": "52CLaQUZDmPj2EyeQgNt1l",
+      "name": "information grid",
+      "type": "Grid",
+      "styleProperties": {
+        "r447tHjrFBniXoKJ7HR3W": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "28cZ2qM0wUcuhKqJYbLi4t": true,
+        "6AXalaFEmN5gkuBteagBXx": true,
+        "3Z23k3F1GX2DrZzhHpP3KB": true,
+        "25OLYH18jWCaSXtsaIHmws": true,
+        "58cGx76Un5VqffqN1CuGIU": true,
+        "7GPQI6MBkE5POvsgTrYe8J": true
+      },
+      "displayOrder": 1
+    },
+    "28cZ2qM0wUcuhKqJYbLi4t": {
+      "key": "28cZ2qM0wUcuhKqJYbLi4t",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "2HJQ4Axu1fyGYA0BRp4vCG": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "6AXalaFEmN5gkuBteagBXx": {
+      "key": "6AXalaFEmN5gkuBteagBXx",
+      "name": "Name 1",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Name 1"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "3UjmSccHzFnx9swZjP2WDx": {
+            "key": "3UjmSccHzFnx9swZjP2WDx",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Please Enter Amount Per sqft "
+                },
+                "condition": {
+                  "value": false
+                }
+              }
+            }
+          },
+          "2wixrje5MdK9SfskQGOzmO": {
+            "key": "2wixrje5MdK9SfskQGOzmO",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "maxValue": {},
+                "minValue": {
+                  "value": 0
+                },
+                "message": {
+                  "value": "Please Enter Positive Value"
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "numberType": {
+          "value": "INTEGER",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "37NtXi7DbCsujpf3DUoTY1": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.amountPerSqft"
+      }
+    },
+    "3Z23k3F1GX2DrZzhHpP3KB": {
+      "key": "3Z23k3F1GX2DrZzhHpP3KB",
+      "name": "Name 2 ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Name 2 "
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "54sqTbdguaf0avMkc1ZhrF": {
+            "key": "54sqTbdguaf0avMkc1ZhrF",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Please Enter Minimum Amount"
+                },
+                "condition": {
+                  "value": false
+                }
+              }
+            }
+          },
+          "wDK9lzkcmz6teigj4VQ7U": {
+            "key": "wDK9lzkcmz6teigj4VQ7U",
+            "order": 2,
+            "property": {
+              "value": {
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive values"
+                },
+                "type": "NUMBER_VALUE",
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "numberType": {
+          "value": "INTEGER"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "4QJ6Syo1Wa2aLdKK53iW2j": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.minimumAmount"
+      }
+    },
+    "25OLYH18jWCaSXtsaIHmws": {
+      "key": "25OLYH18jWCaSXtsaIHmws",
+      "name": "Minimum Amount",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "totalSqftBookedByCustomers"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "emptyValue": {
+          "value": "ZERO"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "3KmWQ5ueWwrJa9wSju0ENI": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "57px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "47vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalSqftBookedByCustomers"
+      }
+    },
+    "58cGx76Un5VqffqN1CuGIU": {
+      "key": "58cGx76Un5VqffqN1CuGIU",
+      "name": "logo upload Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6COAYQqZ4yXZH0uHWDSqJu": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "gap": {
+                "value": "0"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1luufcpnDADo3L4rKVxXax": true,
+        "69PCfj32HzCG5HY6Gk3VSB": true
+      },
+      "displayOrder": 1
+    },
+    "7GPQI6MBkE5POvsgTrYe8J": {
+      "key": "7GPQI6MBkE5POvsgTrYe8J",
+      "name": "Calendar",
+      "type": "Calendar",
+      "properties": {
+        "label": {
+          "value": "Date of birth"
+        },
+        "noFloat": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3rsTTSjiAsH951DL6ufIXV": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              },
+              "height": {
+                "value": "3.3vw"
+              },
+              "boxShadow": {
+                "value": "0px 1px 2px 0px #0000001A"
+              },
+              "borderTopColor": {
+                "value": "#E2E2E2"
+              },
+              "borderRightColor": {
+                "value": "#E2E2E2"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftColor": {
+                "value": "#E2E2E2"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderBottomColor": {
+                "value": "#E2E2E2"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "label-marginLeft": {
+                "value": "0px"
+              },
+              "height": {
+                "value": "12vw"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "1luufcpnDADo3L4rKVxXax": {
+      "key": "1luufcpnDADo3L4rKVxXax",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Logo"
+        },
+        "textContainer": {
+          "value": "PRE"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.project.projectInfo.projectLogo = undefined"
+          }
+        }
+      },
+      "styleProperties": {
+        "1EGvYqoezO5b7rGCNDlr0r": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "69PCfj32HzCG5HY6Gk3VSB": {
+      "key": "69PCfj32HzCG5HY6Gk3VSB",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "359aEqed9XlGdWbVhrzpSd": true,
+        "4aVsvmHzjPkr3VbZ5Virsy": true
+      },
+      "displayOrder": 4
+    },
+    "359aEqed9XlGdWbVhrzpSd": {
+      "key": "359aEqed9XlGdWbVhrzpSd",
+      "name": "upload Grid container",
+      "type": "Grid",
+      "styleProperties": {
+        "5CZ7JjEARP4mopFtQoPXpr": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "150px"
+              },
+              "height": {
+                "value": "81px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "borderTopColor": {
+                "value": "#DEE3E7"
+              },
+              "borderRightColor": {
+                "value": "#DEE3E7"
+              },
+              "borderBottomColor": {
+                "value": "#DEE3E7"
+              },
+              "borderLeftColor": {
+                "value": "#DEE3E7"
+              },
+              "borderTopStyle": {
+                "value": "dashed"
+              },
+              "borderBottomStyle": {
+                "value": "dashed"
+              },
+              "borderLeftStyle": {
+                "value": "dashed"
+              },
+              "borderRightStyle": {
+                "value": "dashed"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "JbOrY1MGoulJEb27WuHie": true
+      },
+      "displayOrder": 1
+    },
+    "4aVsvmHzjPkr3VbZ5Virsy": {
+      "key": "4aVsvmHzjPkr3VbZ5Virsy",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Logo.jpg"
+        }
+      },
+      "styleProperties": {
+        "2w5LiFA3iWyrqBBT45rL2P": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "auto"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#333333CC"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "marginLeft": {
+                "value": "22px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "JbOrY1MGoulJEb27WuHie": {
+      "key": "JbOrY1MGoulJEb27WuHie",
+      "name": "File Selector",
+      "type": "FileSelector",
+      "properties": {
+        "fileCategory": {
+          "1hc7H9Msc9kbiJWtfuBSJT": {
+            "key": "1hc7H9Msc9kbiJWtfuBSJT",
+            "order": 1,
+            "property": {
+              "value": "DIRECTORIES"
+            }
+          },
+          "1vjpDEDak2beDau0UYq6Za": {
+            "key": "1vjpDEDak2beDau0UYq6Za",
+            "order": 2,
+            "property": {
+              "value": "IMAGES"
+            }
+          }
+        },
+        "uploadImage": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Icons/Group<PHONE>.svg"
+        }
+      },
+      "styleProperties": {
+        "1fmBLPhNkEJLKmC9ua4nXf": {
+          "resolutions": {
+            "ALL": {
+              "image-width": {
+                "value": "100px"
+              },
+              "image-height": {
+                "value": "100px"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "image-borderTopRightRadius": {
+                "value": "10px"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "marginTop": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.projectInfo.projectLogo"
+      }
+    },
+    "4gwYFVsyzB0kXiKqOKJXvv": {
+      "key": "4gwYFVsyzB0kXiKqOKJXvv",
+      "name": "E-Receipt Details Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5F5QqhUuLFuNWRSyugFgaR": {
+          "resolutions": {
+            "ALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "paddingTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "357sw3v75A1yldAfLMQXd2": true,
+        "6qJymJltLndWyiYG8J1rsp": true,
+        "7oozmuqY359x6SfZ3dQei": true
+      },
+      "displayOrder": 4
+    },
+    "357sw3v75A1yldAfLMQXd2": {
+      "key": "357sw3v75A1yldAfLMQXd2",
+      "name": "E-Receipt Details Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "E-Receipt Details"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "1sadgVWpQ6hAk3BVbWeG1j": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "marginLeft": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6qJymJltLndWyiYG8J1rsp": {
+      "key": "6qJymJltLndWyiYG8J1rsp",
+      "name": "fields Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      },
+      "styleProperties": {
+        "4GBzXwQiqyzUMIbDTI2Nu7": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Ip4ycypvU7ss7gL25j7Zr": true
+      },
+      "displayOrder": 3
+    },
+    "3Ip4ycypvU7ss7gL25j7Zr": {
+      "key": "3Ip4ycypvU7ss7gL25j7Zr",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "4A9tAq2Kk8Pxr69gbduhoA": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "7oozmuqY359x6SfZ3dQei": {
+      "key": "7oozmuqY359x6SfZ3dQei",
+      "name": "Add receipt block",
+      "type": "Grid",
+      "styleProperties": {
+        "6NsjO8BcQl6uL6yqEBURw3": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "12vw"
+              },
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "marginTop": {
+                "value": "25px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "borderTopColor": {
+                "value": "#E2E2E2"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightColor": {
+                "value": "#E2E2E2"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomColor": {
+                "value": "#E2E2E2"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftColor": {
+                "value": "#E2E2E2"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 2px 0px #0000001A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5P4GrGiEcXcce9M7X0LH4r": true
+      },
+      "displayOrder": 3
+    },
+    "5P4GrGiEcXcce9M7X0LH4r": {
+      "key": "5P4GrGiEcXcce9M7X0LH4r",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Icons/Group<PHONE>.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "7Ax9cYm8EHVsNQ9Ij3PTlU": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "auto"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "px"
+              },
+              "marginBottom": {
+                "value": "px"
+              },
+              "marginLeft": {
+                "value": "px"
+              },
+              "marginRight": {
+                "value": "px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "68t8qs7vXQq6tcfbkkJEF": {
+      "key": "68t8qs7vXQq6tcfbkkJEF",
+      "name": "Payment Details Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5sUXtLfAnLsIdEzFFz6wgR": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Uwh46rQVyED1WtLafCNSk": true,
+        "7m3UAUsUT56HFD9tqEo3PK": true,
+        "2QPom9baPLGOGnMvQ7Unsz": true
+      },
+      "displayOrder": 5
+    },
+    "1Uwh46rQVyED1WtLafCNSk": {
+      "key": "1Uwh46rQVyED1WtLafCNSk",
+      "name": "Payment Details Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Payment Details"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "42HTFj35OPLODf5QgTxZXh": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "marginLeft": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7m3UAUsUT56HFD9tqEo3PK": {
+      "key": "7m3UAUsUT56HFD9tqEo3PK",
+      "name": "fields Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            1,
+            2
+          ]
+        }
+      },
+      "override": false,
+      "children": {
+        "2ZtJ1EVr5ytohGqOUeBGPg": true
+      },
+      "displayOrder": 2
+    },
+    "7M7OWB0wEmV1eJUQs9zYb8": {
+      "key": "7M7OWB0wEmV1eJUQs9zYb8",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "77nzD8tI8FlHwDDhkv6sIO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "3xZ1u211wZNCCO8gHTbvo7": {
+      "key": "3xZ1u211wZNCCO8gHTbvo7",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Icons/Group<PHONE>.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "7Ax9cYm8EHVsNQ9Ij3PTlU": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "auto"
+              },
+              "marginBottom": {
+                "value": "auto"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2QPom9baPLGOGnMvQ7Unsz": {
+      "key": "2QPom9baPLGOGnMvQ7Unsz",
+      "name": "Add receipt block",
+      "type": "Grid",
+      "styleProperties": {
+        "5DEAjz94WByfWSiq9q5Ch5": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "12vw"
+              },
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "marginTop": {
+                "value": "25px"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "borderTopColor": {
+                "value": "#E2E2E2"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightColor": {
+                "value": "#E2E2E2"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomColor": {
+                "value": "#E2E2E2"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftColor": {
+                "value": "#E2E2E2"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "boxShadow": {
+                "value": "0px 1px 2px 0px #0000001A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3xZ1u211wZNCCO8gHTbvo7": true
+      },
+      "displayOrder": 4
+    },
+    "2ZtJ1EVr5ytohGqOUeBGPg": {
+      "key": "2ZtJ1EVr5ytohGqOUeBGPg",
+      "name": "Payment details count Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3NdSrKRpYy7TQwSqKOsRrG": {
+          "resolutions": {
+            "ALL": {
+              "paddingBottom": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7M7OWB0wEmV1eJUQs9zYb8": true,
+        "BXCNsSAsmZ6QXiqZ63cRY": true,
+        "1NQGuz6sOvIsvDr4pNVC3l": true,
+        "kCdHAIeBSkUeFT1uJoFcQ": true,
+        "1VdMqyFsoaRlPUMbVa2RWc": true,
+        "63XM4Hkc5REqo72IYdOJVE": true
+      },
+      "displayOrder": 0
+    },
+    "BXCNsSAsmZ6QXiqZ63cRY": {
+      "key": "BXCNsSAsmZ6QXiqZ63cRY",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "2RkmQFTkGUH3fmR4BRpTeO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "1NQGuz6sOvIsvDr4pNVC3l": {
+      "key": "1NQGuz6sOvIsvDr4pNVC3l",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "6NK9Y5NM79Wf28sYtRVVnS": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "kCdHAIeBSkUeFT1uJoFcQ": {
+      "key": "kCdHAIeBSkUeFT1uJoFcQ",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "6Onktg7iMi4xlF6ZbUSyF8": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "1VdMqyFsoaRlPUMbVa2RWc": {
+      "key": "1VdMqyFsoaRlPUMbVa2RWc",
+      "name": "Company Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Company Name"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "1fc8KpOcYTJDO74m5dwvxU": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "63XM4Hkc5REqo72IYdOJVE": {
+      "key": "63XM4Hkc5REqo72IYdOJVE",
+      "name": "E-Receipt Details Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Payment 1"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "2YuariordsBViINL9kjnMY": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "marginLeft": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2ZhSZKV1l6M7eAvFupR2m3": {
+      "key": "2ZhSZKV1l6M7eAvFupR2m3",
+      "name": "Receipt footer Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5l0hJLAXEtV86b44Ykmb96": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              },
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1UYgS7NaHh59dTqvR546qX": true,
+        "1dGahl4SjMJoT1xZ1Bkas9": true,
+        "34IeN5PNU5x7i3eysNrPU7": true
+      },
+      "displayOrder": 6
+    },
+    "1UYgS7NaHh59dTqvR546qX": {
+      "key": "1UYgS7NaHh59dTqvR546qX",
+      "name": "Payment Details Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Receipt Footer"
+        },
+        "textContainer": {
+          "value": "H5"
+        }
+      },
+      "styleProperties": {
+        "42HTFj35OPLODf5QgTxZXh": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "marginLeft": {
+                "value": "30px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "0px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1dGahl4SjMJoT1xZ1Bkas9": {
+      "key": "1dGahl4SjMJoT1xZ1Bkas9",
+      "name": "Acknowledgement box",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Acknowledgement box"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "1qHCLdRpgp4PwuasJ3KRJE": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "height": {
+                "value": "200px"
+              },
+              "overflow": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "34IeN5PNU5x7i3eysNrPU7": {
+      "key": "34IeN5PNU5x7i3eysNrPU7",
+      "name": "Note",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Note"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6PHeEKbtSKNwhKcXQvOyTW": {
+            "key": "6PHeEKbtSKNwhKcXQvOyTW",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "NUMBER_VALUE",
+                "condition": {
+                  "value": true
+                },
+                "message": {
+                  "value": "Please Enter positive value"
+                },
+                "minValue": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        "valueType": {
+          "value": "number"
+        },
+        "showNumberSpinners": "<REDACTED>"
+      },
+      "styleProperties": {
+        "6P6WK7VKFHZEFxqSPjArbu": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "54px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "38.611vw"
+              },
+              "label-marginLeft": {
+                "value": "-18px"
+              },
+              "label-marginBottom": {
+                "value": "5px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-fontWeight": {
+                "value": "500"
+              },
+              "label-fontSize": {
+                "value": "0.972vw"
+              },
+              "label-lineHeight": {
+                "value": "0.972vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "90%"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "label-fontSize": {
+                "value": "3vw"
+              },
+              "label-marginBottom": {
+                "value": "10px"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "height": {
+                "value": "150px"
+              },
+              "marginTop": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.project.inventoryManagement.totalAvailableArea"
+      }
+    },
+    "41QlfhT6Y1Sqrh4JyxnbS1": {
+      "key": "41QlfhT6Y1Sqrh4JyxnbS1",
+      "name": "Booking Form Setup Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "66M5VRYY3u8bv4SwOpGnS3": {
+          "resolutions": {
+            "ALL": {
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7LU3A5Qmu1IEpB1shPPf7I": true,
+        "6ix3ZDYHdJc7xSmWgsejg8": true,
+        "6uzsJ6BQNx7QfDbwV46fX2": true
+      },
+      "displayOrder": 1
+    },
+    "7LU3A5Qmu1IEpB1shPPf7I": {
+      "key": "7LU3A5Qmu1IEpB1shPPf7I",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Booking Form Setup"
+        },
+        "textContainer": {
+          "value": "B"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6ix3ZDYHdJc7xSmWgsejg8": {
+      "key": "6ix3ZDYHdJc7xSmWgsejg8",
+      "name": "Caret down Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "1PcaV3m9cQ6hCpr98aETUB"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "not Page.showGrid "
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6RTHgWT1FOI5zxAwXGsiqq": true
+      },
+      "displayOrder": 2
+    },
+    "6uzsJ6BQNx7QfDbwV46fX2": {
+      "key": "6uzsJ6BQNx7QfDbwV46fX2",
+      "name": "Caret up Icon Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "1PcaV3m9cQ6hCpr98aETUB"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showGrid "
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1fKMJJ0mam6lCQYHTXY2qW": true
+      },
+      "displayOrder": 3
+    },
+    "6RTHgWT1FOI5zxAwXGsiqq": {
+      "key": "6RTHgWT1FOI5zxAwXGsiqq",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-caret-down"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1fKMJJ0mam6lCQYHTXY2qW": {
+      "key": "1fKMJJ0mam6lCQYHTXY2qW",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-caret-up"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    }
+  },
+  "name": "receiptDataGenerator",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN",
+  "appCode": "cxapp",
+  "version": 90,
+  "updatedAt": "2026-04-09 04:27:54.819000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-07-26 14:31:37.968000",
+  "createdBy": "<USER>"
+}

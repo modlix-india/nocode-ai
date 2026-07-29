@@ -81,8 +81,8 @@ class Settings(BaseSettings):
     # DeepSeek Settings
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
-    DEEPSEEK_MODEL_FAST: str = "deepseek-chat"       # DeepSeek V3.2 (non-thinking)
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-chat"   # DeepSeek V3.2 (with thinking)
+    DEEPSEEK_MODEL_FAST: str = "deepseek-v4-flash"   # DeepSeek V4 Flash (cheap tier)
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-pro" # DeepSeek V4 Pro (higher correctness on Kirun DSL per bench 2026-06-10)
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
@@ -98,6 +98,30 @@ class Settings(BaseSettings):
     # and lower cost.
     MINIMAX_MODEL_FAST: str = "MiniMax-M2.7-highspeed"  # Fast/cheap tier
     MINIMAX_MODEL_BALANCED: str = "MiniMax-M3"           # Flagship - tool use + reasoning
+
+    # Gemini Settings
+    # Chosen as the CFA default after the Phase 8 bench: 1M context window,
+    # native vision, ~13× cheaper than Claude Haiku on input — fits the
+    # iterate-heavy generate-screenshot-fix loop.
+    # API key lives in GOOGLE_API_KEY below (shared with all other Google
+    # services — image gen, maps, etc.).
+    GEMINI_MODEL_FAST: str = "gemini-2.5-flash-lite"   # Cheapest tier
+    GEMINI_MODEL_BALANCED: str = "gemini-2.5-flash"    # CFA default
+
+    # Admin token for the cross-env /api/ai/admin/* endpoints (per-app KB
+    # export/import etc.). Must be set per env; if empty the admin routes
+    # return 503 — safer than allowing unauthenticated access.
+    ADMIN_TOKEN: str = ""
+
+    # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
+    # nocode-kirun live for code-reading tools. Per-instance mounted volume
+    # in prod (/var/cfa/workspace); local dev falls back to siblings of
+    # nocode-ai.
+    CFA_WORKSPACE_DIR: str = "/var/cfa/workspace"
+
+    # Optional override for service log directory used by tail_service_logs.
+    # When empty the tool tries ../nocode-saas/logs relative to nocode-ai.
+    MODLIX_LOG_DIR: str = ""
 
     # Google Settings
     # Can be overridden by config server: ai.secrets.googleAPIKey
@@ -150,11 +174,11 @@ class Settings(BaseSettings):
 
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
-    MAX_AGENT_TURNS: int = 100  # Max tool-use loop iterations per request
-    AGENT_MAX_TOKENS: int = 8192  # Max tokens per LLM response (DeepSeek limit)
+    MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
+    AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "openai"  # AppBuilder LLM provider
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
@@ -205,6 +229,7 @@ class Settings(BaseSettings):
             ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
+            ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
             ("secrets", "googleMapID"): "GOOGLE_MAP_ID",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",

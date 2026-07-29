@@ -1,0 +1,163 @@
+{
+  "_id": "67ebefca3bac9071fbc842b5",
+  "definition": {
+    "namespace": "crmai",
+    "name": "sendMessages",
+    "parameters": {
+      "message": {
+        "parameterName": "message",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "messageType": {
+        "parameterName": "messageType",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      },
+      "phoneNumberId": {
+        "parameterName": "phoneNumberId",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1336.33332824707,
+          "top": 552.9999898274739
+        },
+        "parameterMap": {
+          "results": {
+            "SMb57Eg8dB6Nd9tVuw0A0": {
+              "key": "SMb57Eg8dB6Nd9tVuw0A0",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.output.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1377.33332824707,
+          "top": 259.9999898274739
+        },
+        "parameterMap": {
+          "results": {
+            "7BnEzANPrmjk48rS0tSRoS": {
+              "key": "7BnEzANPrmjk48rS0tSRoS",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.postRequest.error.data"
+                }
+              }
+            }
+          }
+        }
+      },
+      "postRequest": {
+        "statementName": "postRequest",
+        "name": "PostRequest",
+        "namespace": "CoreServices.REST",
+        "position": {
+          "left": 815.6666615804036,
+          "top": 176.6666768391927
+        },
+        "parameterMap": {
+          "headers": {
+            "6iZCd0xUjkLJA3zd6HUDob": {
+              "key": "6iZCd0xUjkLJA3zd6HUDob",
+              "type": "VALUE",
+              "expression": ""
+            }
+          },
+          "appCode": {
+            "62msS9nB7bht5n4X8HgUhf": {
+              "key": "62msS9nB7bht5n4X8HgUhf",
+              "type": "VALUE",
+              "expression": "",
+              "value": "crmai"
+            }
+          },
+          "url": {
+            "5HMwtfzmy8GwfqeS6bGRI2": {
+              "key": "5HMwtfzmy8GwfqeS6bGRI2",
+              "type": "EXPRESSION",
+              "order": 1,
+              "expression": "'{{Arguments.phoneNumberId}}/{{Arguments.messageType}}'"
+            }
+          },
+          "payload": {
+            "1AbRzUQ7camVdCAfhqwiAR": {
+              "key": "1AbRzUQ7camVdCAfhqwiAR",
+              "type": "EXPRESSION",
+              "expression": "Arguments.message",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "1jGeM6YuiRrcqc5R67xP8b": {
+              "key": "1jGeM6YuiRrcqc5R67xP8b",
+              "type": "VALUE",
+              "order": 1,
+              "value": "meta_Connection"
+            }
+          }
+        },
+        "dependentStatements": {}
+      }
+    },
+    "events": {
+      "output": {
+        "name": "output",
+        "parameters": {
+          "message": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "crmai.sendMessages",
+  "message": "From transport : 0bbcTLjPprd7Iaah3oYroY",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:19:09.082000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:53:14.152000",
+  "createdBy": "<USER>"
+}

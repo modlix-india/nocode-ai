@@ -1,0 +1,3877 @@
+{
+  "_id": "679b6516538a3867ff07de40",
+  "properties": {
+    "wrapShell": false,
+    "onLoadEvent": "7FjbxLNXlvD3tiuhNeX7J1",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "7FjbxLNXlvD3tiuhNeX7J1": {
+      "name": "onLoad",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 59.0000025431315,
+            "top": 50.72916666666666
+          },
+          "parameterMap": {
+            "path": {
+              "4umJyzU42gKU25aJBC76QS": {
+                "key": "4umJyzU42gKU25aJBC76QS",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.getOTP"
+              }
+            },
+            "value": {
+              "7J1LWV19UD8zHgX34Fvmb5": {
+                "key": "7J1LWV19UD8zHgX34Fvmb5",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 314.6666692097981,
+            "top": 56.062499999999986
+          },
+          "parameterMap": {
+            "path": {
+              "6Tl88Qm0KVpQbb7gch3hf5": {
+                "key": "6Tl88Qm0KVpQbb7gch3hf5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "wD2w7no4oGwe2APtFLdgX": {
+                "key": "wD2w7no4oGwe2APtFLdgX",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 593.6666692097981,
+            "top": 52.062499999999986
+          },
+          "parameterMap": {
+            "path": {
+              "idfaix6k9FBtMOYoeMJGu": {
+                "key": "idfaix6k9FBtMOYoeMJGu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.PIN"
+              }
+            },
+            "value": {
+              "3AYhmqaUMLQQCfjY4YHyaj": {
+                "key": "3AYhmqaUMLQQCfjY4YHyaj",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1117.0000025431314,
+            "top": 63.72916666666664
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "6IbxVy40kPZZkUrrHdSHst": {
+                "key": "6IbxVy40kPZZkUrrHdSHst",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "1yyt4IJP6mMrwym6BhIKZ0": {
+                "key": "1yyt4IJP6mMrwym6BhIKZ0",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2_Copy_1": {
+          "statementName": "setStore2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1623.888888888889,
+            "top": 163.99305555555554
+          },
+          "parameterMap": {
+            "path": {
+              "A5Id3qjkAAGad6Y3MWEdZ": {
+                "key": "A5Id3qjkAAGad6Y3MWEdZ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.resendButton"
+              }
+            },
+            "value": {
+              "4ZKF8yHPjElYSEcInnixWh": {
+                "key": "4ZKF8yHPjElYSEcInnixWh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1356.111111111111,
+            "top": 216.54861111111111
+          },
+          "parameterMap": {
+            "path": {
+              "6wckKRO0ZwZHtvtk6AuzH4": {
+                "key": "6wckKRO0ZwZHtvtk6AuzH4",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.secondsLeft"
+              }
+            },
+            "value": {
+              "5Wvr3SV1mYxEkZdNx2AZAc": {
+                "key": "5Wvr3SV1mYxEkZdNx2AZAc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": 15
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 853.0000025431314,
+            "top": 63.72916666666666
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "2FExYGn97kyzTSU1VQRB1c": {
+                "key": "2FExYGn97kyzTSU1VQRB1c",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "5K2jabag7uTuTEiwLwcov6": {
+                "key": "5K2jabag7uTuTEiwLwcov6",
+                "type": "EXPRESSION",
+                "expression": "15",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4emGyjJNF8SAOSt9jrDEv5": {
+      "name": "onClickGetOTP",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 268.6666692097981,
+            "top": 55.06249999999997
+          },
+          "parameterMap": {
+            "path": {
+              "44iOJGrJ8UCKJLMAhukqAl": {
+                "key": "44iOJGrJ8UCKJLMAhukqAl",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "hTgpqIRMyty8bvqk696fK": {
+                "key": "hTgpqIRMyty8bvqk696fK",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 546.3333358764647,
+            "top": 56.062499999999986
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "2J7NatQKmQXQbmieCE8pOx": {
+                "key": "2J7NatQKmQXQbmieCE8pOx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.getOTP"
+              }
+            },
+            "value": {
+              "5gB1CO1PdN1XNr6GjKJm4i": {
+                "key": "5gB1CO1PdN1XNr6GjKJm4i",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 811.0000025431314,
+            "top": 65.06249999999999
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "6Omn6fz3XdA4e7DdujRxVu": {
+                "key": "6Omn6fz3XdA4e7DdujRxVu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "4hSmiDTEl5Q9M034AUEpK3": {
+                "key": "4hSmiDTEl5Q9M034AUEpK3",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1bcckotJjDhrHlJVEtsO3A": {
+      "name": "onClickSubmitOTP",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 495.0000025431315,
+            "top": 89.39583333333331
+          },
+          "parameterMap": {
+            "path": {
+              "5GRgjaNVhwirF4E7QXWhgv": {
+                "key": "5GRgjaNVhwirF4E7QXWhgv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "4Nix37iuRwxFTI0tMAyru": {
+                "key": "4Nix37iuRwxFTI0tMAyru",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 751.6666692097981,
+            "top": 97.39583333333333
+          },
+          "parameterMap": {
+            "path": {
+              "35qw4QMWurrw2WTte7YShF": {
+                "key": "35qw4QMWurrw2WTte7YShF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.PIN"
+              }
+            },
+            "value": {
+              "n3e8KC5AtQTnncW0AuWC1": {
+                "key": "n3e8KC5AtQTnncW0AuWC1",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2gyFlY8d3Gf2kIolVOjSEJ": {
+      "name": "onClickBack3",
+      "namespace": "",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 350.6666692097981,
+            "top": 43.39583333333333
+          },
+          "parameterMap": {
+            "path": {
+              "35qw4QMWurrw2WTte7YShF": {
+                "key": "35qw4QMWurrw2WTte7YShF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.PIN"
+              }
+            },
+            "value": {
+              "n3e8KC5AtQTnncW0AuWC1": {
+                "key": "n3e8KC5AtQTnncW0AuWC1",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 94.00000254313147,
+            "top": 35.395833333333314
+          },
+          "parameterMap": {
+            "path": {
+              "5GRgjaNVhwirF4E7QXWhgv": {
+                "key": "5GRgjaNVhwirF4E7QXWhgv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "4Nix37iuRwxFTI0tMAyru": {
+                "key": "4Nix37iuRwxFTI0tMAyru",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 604.6666692097981,
+            "top": 46.72916666666666
+          },
+          "parameterMap": {
+            "path": {
+              "4ENMVrLiVsKLcTe34K0ScU": {
+                "key": "4ENMVrLiVsKLcTe34K0ScU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.getOTP"
+              }
+            },
+            "value": {
+              "6YO4uAyxTuRfq9z6TT9XGf": {
+                "key": "6YO4uAyxTuRfq9z6TT9XGf",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 872.666669209798,
+            "top": 50.72916666666666
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "3VfC80JsGmTANRjmEJziow": {
+                "key": "3VfC80JsGmTANRjmEJziow",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "2Uhod0EVHDn4TlI9Zf5Vya": {
+                "key": "2Uhod0EVHDn4TlI9Zf5Vya",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1136.666669209798,
+            "top": 53.06249999999999
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "7lCoMfih3IHOwvR42DtnV6": {
+                "key": "7lCoMfih3IHOwvR42DtnV6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "4Tk1mgMz4YPRePpbHBzjIN": {
+                "key": "4Tk1mgMz4YPRePpbHBzjIN",
+                "type": "EXPRESSION",
+                "expression": "15",
+                "order": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "159OlKCqJbEqrEKni1kUTl": {
+      "name": "onClickBack2",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 94.00000254313147,
+            "top": 35.395833333333314
+          },
+          "parameterMap": {
+            "path": {
+              "5GRgjaNVhwirF4E7QXWhgv": {
+                "key": "5GRgjaNVhwirF4E7QXWhgv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "4Nix37iuRwxFTI0tMAyru": {
+                "key": "4Nix37iuRwxFTI0tMAyru",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 350.6666692097981,
+            "top": 43.39583333333333
+          },
+          "parameterMap": {
+            "path": {
+              "35qw4QMWurrw2WTte7YShF": {
+                "key": "35qw4QMWurrw2WTte7YShF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.getOTP"
+              }
+            },
+            "value": {
+              "n3e8KC5AtQTnncW0AuWC1": {
+                "key": "n3e8KC5AtQTnncW0AuWC1",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 616.6666692097981,
+            "top": 47.72916666666664
+          },
+          "parameterMap": {
+            "path": {
+              "2DiKHu1LNK2KM6wfNVxn8j": {
+                "key": "2DiKHu1LNK2KM6wfNVxn8j",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "3ZcIAnNr9bsrTR66jW1xBM": {
+                "key": "3ZcIAnNr9bsrTR66jW1xBM",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 856.3333358764646,
+            "top": 50.062499999999986
+          },
+          "parameterMap": {
+            "path": {
+              "6kna2R9iWiHWj3EJmHRxlY": {
+                "key": "6kna2R9iWiHWj3EJmHRxlY",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "m3almimRvX0x2exWsjr8K": {
+                "key": "m3almimRvX0x2exWsjr8K",
+                "type": "EXPRESSION",
+                "expression": "15",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "clearing": {
+          "statementName": "clearing",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1124.6666819254554,
+            "top": 46.39583333333326
+          },
+          "parameterMap": {
+            "path": {
+              "492Z0u1TX7yM99x35HFXfA": {
+                "key": "492Z0u1TX7yM99x35HFXfA",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.resetPin.otp"
+              }
+            },
+            "value": {
+              "1NASlNFs1mmyp0SvRBU7PG": {
+                "key": "1NASlNFs1mmyp0SvRBU7PG",
+                "type": "EXPRESSION",
+                "expression": "''",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2g49O8vsYl0LPenAqzB0Ky": {
+      "name": "timerFunction",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 528.6666692097981,
+            "top": 71.72916666666666
+          },
+          "parameterMap": {
+            "path": {
+              "5o6ZNd9A83tjxzCzEShZOs": {
+                "key": "5o6ZNd9A83tjxzCzEShZOs",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "2OsqalZQpv11ws2zZT7rPF": {
+                "key": "2OsqalZQpv11ws2zZT7rPF",
+                "type": "EXPRESSION",
+                "expression": "Page.count - 1",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 812.6666692097981,
+            "top": 93.93749491373697
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "condition": {
+              "S3etgQEgRlaBdkr9CpnbA": {
+                "key": "S3etgQEgRlaBdkr9CpnbA",
+                "type": "EXPRESSION",
+                "expression": "Page.count = 0",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1111.666669209798,
+            "top": 104.27082824707028
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "parameterMap": {
+            "path": {
+              "5BrRiQVoQePP74H2NOQFJk": {
+                "key": "5BrRiQVoQePP74H2NOQFJk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "2iQyGolOFXdTiAC0ZH5Ohi": {
+                "key": "2iQyGolOFXdTiAC0ZH5Ohi",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2FsgWn0SoOxI5qLPKYyKQ2": {
+      "name": "onClickBack1",
+      "steps": {
+        "navigateBack": {
+          "statementName": "navigateBack",
+          "name": "NavigateBack",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 709.0000025431314,
+            "top": 235.72916666666663
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "nsGogR8cq1iWYTvaKoaGD": {
+      "name": "reset_pin",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 328.1041669845581,
+            "top": 141.8749974568684
+          },
+          "parameterMap": {
+            "path": {
+              "4zI9we6lP5ZEXT3Ou153Dn": {
+                "key": "4zI9we6lP5ZEXT3Ou153Dn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.reset.authRequest.identifierType"
+              }
+            },
+            "value": {
+              "43F0b9NkZ7dXGBYFkt092T": {
+                "key": "43F0b9NkZ7dXGBYFkt092T",
+                "type": "VALUE",
+                "order": 1,
+                "value": "PHONE_NUMBER"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 747.7708336512246,
+            "top": 213.5416641235351
+          },
+          "parameterMap": {
+            "path": {
+              "1okUwfCMkr2NjZDjCFdcfB": {
+                "key": "1okUwfCMkr2NjZDjCFdcfB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.reset.authRequest.userName"
+              }
+            },
+            "value": {
+              "48TR0Lhc37hk1hKSW95btV": {
+                "key": "48TR0Lhc37hk1hKSW95btV",
+                "type": "EXPRESSION",
+                "expression": "Page.form.userName",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 775.4375003178914,
+            "top": 618.541664123535
+          },
+          "parameterMap": {
+            "path": {
+              "2KuusSSTCdl4qQCLT87Leg": {
+                "key": "2KuusSSTCdl4qQCLT87Leg",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.reset.passType"
+              }
+            },
+            "value": {
+              "3Ump44IYOlfGZyFYTlbqiF": {
+                "key": "3Ump44IYOlfGZyFYTlbqiF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PIN"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 438.43750031789136,
+            "top": 507.20833079020167
+          },
+          "parameterMap": {
+            "path": {
+              "39uMzTT7FbujX3W1FvqUYG": {
+                "key": "39uMzTT7FbujX3W1FvqUYG",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.reset.authRequest.otp"
+              }
+            },
+            "value": {
+              "4IgtcahkMHbrEPh61xFWPK": {
+                "key": "4IgtcahkMHbrEPh61xFWPK",
+                "type": "EXPRESSION",
+                "expression": "Page.resetPin.otp",
+                "order": 1,
+                "value": 458795
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1428.6666717529295,
+            "top": 174.39583333333331
+          },
+          "parameterMap": {
+            "msg": {
+              "4Oj2LLeq405lgpybvU5g44": {
+                "key": "4Oj2LLeq405lgpybvU5g44",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PIN changed successfully"
+              }
+            },
+            "type": {
+              "a3A3leo6zDbtLDsKEjYGj": {
+                "key": "a3A3leo6zDbtLDsKEjYGj",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SUCCESS"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output": true
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1754.333338419596,
+            "top": 181.06249999999997
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__message__d-o-t__output": true
+          },
+          "parameterMap": {
+            "linkPath": {
+              "17QVQmT8ICAiYkok0TblIB": {
+                "key": "17QVQmT8ICAiYkok0TblIB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/login"
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 6.666669209798172,
+            "top": 425.06249999999994
+          },
+          "parameterMap": {
+            "condition": {
+              "3GJhv7bNqxWParkSRe4yqy": {
+                "key": "3GJhv7bNqxWParkSRe4yqy",
+                "type": "EXPRESSION",
+                "expression": "Page.reset.newPassword != ''",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message1": {
+          "statementName": "message1",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 182.00000254313147,
+            "top": 784.3958333333333
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "msg": {
+              "7e3KngwluSzfl95CpYAXBv": {
+                "key": "7e3KngwluSzfl95CpYAXBv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Please Enter Your PIN"
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1076.104166984558,
+            "top": 238.20833079020179
+          },
+          "parameterMap": {
+            "url": {
+              "1BgxXcIVjhT2VTyqUVeN0O": {
+                "key": "1BgxXcIVjhT2VTyqUVeN0O",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users/reset/password"
+              }
+            },
+            "method": {
+              "36d1CaBgogHkyXqWoDu9UP": {
+                "key": "36d1CaBgogHkyXqWoDu9UP",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "1QXNAi1zIKwhldHLe4UWrN": {
+                "key": "1QXNAi1zIKwhldHLe4UWrN",
+                "type": "EXPRESSION",
+                "expression": "Page.reset",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore4__d-o-t__output": true
+          }
+        },
+        "message2": {
+          "statementName": "message2",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1499.1458384195962,
+            "top": 501.2083307902017
+          },
+          "parameterMap": {
+            "msg": {
+              "1A5kZ3gktBmBj5L2WtLYAN": {
+                "key": "1A5kZ3gktBmBj5L2WtLYAN",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "rjNRBQpxZr4F9iywG6J7z": {
+      "name": "reset_otp_verify",
+      "steps": {
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 740.6458323796589,
+            "top": 169.20833079020179
+          },
+          "parameterMap": {
+            "url": {
+              "6CR9fat1Ig5wNxR1J6xAIz": {
+                "key": "6CR9fat1Ig5wNxR1J6xAIz",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users/reset/password/otp/verify"
+              }
+            },
+            "method": {
+              "1eBgdaXOLQVewK9RJmUfKR": {
+                "key": "1eBgdaXOLQVewK9RJmUfKR",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "2REXW7GHRUjm7gmnvyHyca": {
+                "key": "2REXW7GHRUjm7gmnvyHyca",
+                "type": "EXPRESSION",
+                "expression": "Page.resetPin",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__identifier_type__d-o-t__output": true
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1346.875010172526,
+            "top": 318.99998982747394
+          },
+          "parameterMap": {
+            "path": {
+              "5PRELv4MfYsf9zxUqpQOuD": {
+                "key": "5PRELv4MfYsf9zxUqpQOuD",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.getOTP"
+              }
+            },
+            "value": {
+              "1A77kEVLA0BWbWXInQHZHR": {
+                "key": "1A77kEVLA0BWbWXInQHZHR",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore2_Copy_1": {
+          "statementName": "setStore2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1588.5417277018228,
+            "top": 320.33332316080725
+          },
+          "parameterMap": {
+            "path": {
+              "7jKZk4PG0AWQkmWEaaBBHg": {
+                "key": "7jKZk4PG0AWQkmWEaaBBHg",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.PIN"
+              }
+            },
+            "value": {
+              "5AVZ9YM1IzcWqP2hp6b07k": {
+                "key": "5AVZ9YM1IzcWqP2hp6b07k",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1108.2083384195962,
+            "top": 315.66665649414057
+          },
+          "parameterMap": {
+            "path": {
+              "1z7GJd5Ns0kZMWzmtlQWHt": {
+                "key": "1z7GJd5Ns0kZMWzmtlQWHt",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "1ioyTWpS1bZXvQeaS8T9jr": {
+                "key": "1ioyTWpS1bZXvQeaS8T9jr",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output": false,
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 135.6666692097981,
+            "top": 365.72916666666663
+          },
+          "parameterMap": {
+            "condition": {
+              "5mmLpKzypJtZt8azeeDkzP": {
+                "key": "5mmLpKzypJtZt8azeeDkzP",
+                "type": "EXPRESSION",
+                "expression": "Page.resetPin.otp != ''",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1067.0000025431314,
+            "top": 104.39583333333331
+          },
+          "parameterMap": {
+            "condition": {
+              "4XsS493347FKS9sPUe7PlB": {
+                "key": "4XsS493347FKS9sPUe7PlB",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1419.0000025431314,
+            "top": 56.395833333333314
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__false": true
+          },
+          "parameterMap": {
+            "msg": {
+              "1xtbUFJdpHT5FK51OZLnmv": {
+                "key": "1xtbUFJdpHT5FK51OZLnmv",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Please Enter Valid OTP"
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 419.64583237965894,
+            "top": 557.8749974568684
+          },
+          "parameterMap": {
+            "path": {
+              "3v7yYWsEqWE96C5g3aEMHF": {
+                "key": "3v7yYWsEqWE96C5g3aEMHF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.resetPin.userName"
+              }
+            },
+            "value": {
+              "4rvdBV4H0RAKLivXO4jbL5": {
+                "key": "4rvdBV4H0RAKLivXO4jbL5",
+                "type": "EXPRESSION",
+                "expression": "Page.form.userName",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "identifier_type": {
+          "statementName": "identifier_type",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 762.7083333333333,
+            "top": 682.8749974568684
+          },
+          "parameterMap": {
+            "path": {
+              "VHwHSVNjIQHN4vV7GAOy": {
+                "key": "VHwHSVNjIQHN4vV7GAOy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.resetPin.identifierType"
+              }
+            },
+            "value": {
+              "1Ew2EphhsNxtV7s7UQusdH": {
+                "key": "1Ew2EphhsNxtV7s7UQusdH",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PHONE_NUMBER"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "message1": {
+          "statementName": "message1",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 426.41666730244947,
+            "top": 227.70832824707028
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "msg": {
+              "7KsVeHpL0Bj26zi46k7mtL": {
+                "key": "7KsVeHpL0Bj26zi46k7mtL",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Please Enter OTP"
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "7dL9YLxVnfk035fQOMCUQK"
+    },
+    "3va9IEPey3M76wHwIAWzLU": {
+      "name": "reset_pin_otp_generate",
+      "steps": {
+        "identifierType": {
+          "statementName": "identifierType",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 394.27083301544184,
+            "top": 252.87499745686847
+          },
+          "parameterMap": {
+            "path": {
+              "5h80BFAQEGBZwFGbMNyqkn": {
+                "key": "5h80BFAQEGBZwFGbMNyqkn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.form.identifierType"
+              }
+            },
+            "value": {
+              "XT20vL61ZSevmYQlMbyIf": {
+                "key": "XT20vL61ZSevmYQlMbyIf",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "PHONE_NUMBER"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 708.6041663487752,
+            "top": 252.5416641235351
+          },
+          "parameterMap": {
+            "method": {
+              "7IDji1jgTiRVPGRNSEnILd": {
+                "key": "7IDji1jgTiRVPGRNSEnILd",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "An1LLWJCmxOchkttErpbo": {
+                "key": "An1LLWJCmxOchkttErpbo",
+                "type": "EXPRESSION",
+                "expression": "Page.form",
+                "order": 1
+              }
+            },
+            "url": {
+              "4ghz2A526codINQP7gkfv3": {
+                "key": "4ghz2A526codINQP7gkfv3",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users/reset/password/otp/generate"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__identifierType__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1068.2083384195962,
+            "top": 275.66665649414057
+          },
+          "parameterMap": {
+            "path": {
+              "1z7GJd5Ns0kZMWzmtlQWHt": {
+                "key": "1z7GJd5Ns0kZMWzmtlQWHt",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.OTP"
+              }
+            },
+            "value": {
+              "1ioyTWpS1bZXvQeaS8T9jr": {
+                "key": "1ioyTWpS1bZXvQeaS8T9jr",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1306.875010172526,
+            "top": 278.99998982747394
+          },
+          "parameterMap": {
+            "path": {
+              "5PRELv4MfYsf9zxUqpQOuD": {
+                "key": "5PRELv4MfYsf9zxUqpQOuD",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.getOTP"
+              }
+            },
+            "value": {
+              "1A77kEVLA0BWbWXInQHZHR": {
+                "key": "1A77kEVLA0BWbWXInQHZHR",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1548.5417277018228,
+            "top": 280.33332316080725
+          },
+          "parameterMap": {
+            "path": {
+              "7jKZk4PG0AWQkmWEaaBBHg": {
+                "key": "7jKZk4PG0AWQkmWEaaBBHg",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.PIN"
+              }
+            },
+            "value": {
+              "5AVZ9YM1IzcWqP2hp6b07k": {
+                "key": "5AVZ9YM1IzcWqP2hp6b07k",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1814.1111111111113,
+            "top": 270.77083333333337
+          },
+          "parameterMap": {
+            "path": {
+              "13mVGUtziQ0EcvHI4ofksM": {
+                "key": "13mVGUtziQ0EcvHI4ofksM",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "6Py3uKorlJpzzwPqhOF2bW": {
+                "key": "6Py3uKorlJpzzwPqhOF2bW",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1134.750010172526,
+            "top": 610.3333282470702
+          },
+          "parameterMap": {
+            "msg": {
+              "3gSXlxrQnqLQ5pek7plxpB": {
+                "key": "3gSXlxrQnqLQ5pek7plxpB",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 76.0000025431315,
+            "top": 262.3958333333333
+          },
+          "parameterMap": {
+            "condition": {
+              "4EbZBbtnaJNaM9BP5ZjhLH": {
+                "key": "4EbZBbtnaJNaM9BP5ZjhLH",
+                "type": "EXPRESSION",
+                "expression": "Page.form.userName != ''",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2078.9999999999995,
+            "top": 279.7291641235351
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "6oKAaHTIzhkN68PEtqfTKK": {
+                "key": "6oKAaHTIzhkN68PEtqfTKK",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "7lYR8jGizRqo5EEKQnDZsb": {
+                "key": "7lYR8jGizRqo5EEKQnDZsb",
+                "type": "EXPRESSION",
+                "expression": "15",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "40fHwoS72AnnowGXDa4MMl": {
+      "name": "onclick_resend_otp",
+      "steps": {
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 886.953125,
+            "top": 476.7421875
+          },
+          "parameterMap": {
+            "url": {
+              "2vct9McLZJlumN9zsT5Efp": {
+                "key": "2vct9McLZJlumN9zsT5Efp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/clients/register/otp/generate"
+              }
+            },
+            "method": {
+              "2fSz4uJHSWikJXAOyT92Cn": {
+                "key": "2fSz4uJHSWikJXAOyT92Cn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "6BWLClW085W6VhRsowH5Zw": {
+                "key": "6BWLClW085W6VhRsowH5Zw",
+                "type": "EXPRESSION",
+                "expression": "Page.query",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__isResend__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1248.3541615804036,
+            "top": 874.541664123535
+          },
+          "parameterMap": {
+            "msg": {
+              "18MOB08HpTtVU6MvDMC1kM": {
+                "key": "18MOB08HpTtVU6MvDMC1kM",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "isResend": {
+          "statementName": "isResend",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 640.4166666666665,
+            "top": 827.8749974568684
+          },
+          "parameterMap": {
+            "path": {
+              "20QquSYBMcyBhbIvZs8XJA": {
+                "key": "20QquSYBMcyBhbIvZs8XJA",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.query.isResend"
+              }
+            },
+            "value": {
+              "4smZWdvwyzrsVTmZ1aHTnz": {
+                "key": "4smZWdvwyzrsVTmZ1aHTnz",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 265.66666920979816,
+            "top": 500.7291666666666
+          },
+          "parameterMap": {
+            "condition": {
+              "1R2zIkAbqGVoadn3NdRlzS": {
+                "key": "1R2zIkAbqGVoadn3NdRlzS",
+                "type": "EXPRESSION",
+                "expression": "Page.form.userName != \"\"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 583.203125,
+            "top": 495.1171875
+          },
+          "parameterMap": {
+            "path": {
+              "6SBxKjSO4KPc2ZCTPfVpF2": {
+                "key": "6SBxKjSO4KPc2ZCTPfVpF2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.query.phoneNumber"
+              }
+            },
+            "value": {
+              "3ZV8FUjPBjZ9YbJb02zpUx": {
+                "key": "3ZV8FUjPBjZ9YbJb02zpUx",
+                "type": "EXPRESSION",
+                "expression": "Page.form.userName",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1210.4166666666665,
+            "top": 478.8749974568684
+          },
+          "parameterMap": {
+            "path": {
+              "5g8unZKyG6uzuqsOemJrAi": {
+                "key": "5g8unZKyG6uzuqsOemJrAi",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "5CJMD7uSq7dVqMyAvPZWdq": {
+                "key": "5CJMD7uSq7dVqMyAvPZWdq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": 15
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__sendData__d-o-t__output": true
+          }
+        },
+        "timer": {
+          "statementName": "timer",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1496.1111111111113,
+            "top": 479.77083333333337
+          },
+          "parameterMap": {
+            "path": {
+              "13mVGUtziQ0EcvHI4ofksM": {
+                "key": "13mVGUtziQ0EcvHI4ofksM",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "6Py3uKorlJpzzwPqhOF2bW": {
+                "key": "6Py3uKorlJpzzwPqhOF2bW",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1NiqUGv0WJwp0QmBj3Pj64": {
+      "name": "TIMER",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 590.4791666666665,
+            "top": 80.33332316080725
+          },
+          "parameterMap": {
+            "path": {
+              "26Wrqq0yEyLPyHigx4XB6T": {
+                "key": "26Wrqq0yEyLPyHigx4XB6T",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.timer"
+              }
+            },
+            "value": {
+              "zRjT2IZSi4Ntg64zjawGq": {
+                "key": "zRjT2IZSi4Ntg64zjawGq",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 847.4999996821084,
+            "top": 129.2083307902018
+          },
+          "parameterMap": {
+            "path": {
+              "540tMGLJq7foVC6Qm8H78": {
+                "key": "540tMGLJq7foVC6Qm8H78",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.resendButton"
+              }
+            },
+            "value": {
+              "4B9eD0aMxycmOfMBdgd5Fl": {
+                "key": "4B9eD0aMxycmOfMBdgd5Fl",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 588.4791666666666,
+            "top": 417.6666564941405
+          },
+          "parameterMap": {
+            "path": {
+              "4f5GMpZTTV2eEnBVn7T8Y9": {
+                "key": "4f5GMpZTTV2eEnBVn7T8Y9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.count"
+              }
+            },
+            "value": {
+              "FouJfoukJfy61FIObSHOS": {
+                "key": "FouJfoukJfy61FIObSHOS",
+                "type": "EXPRESSION",
+                "expression": "{{Page.count}} - 1",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 289.47916666666663,
+            "top": 207.33332316080725
+          },
+          "parameterMap": {
+            "condition": {
+              "1uXNqdMtkEMJDSfpIXL7fm": {
+                "key": "1uXNqdMtkEMJDSfpIXL7fm",
+                "type": "EXPRESSION",
+                "expression": "Page.count > 1",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "4ffzHkGzWrMWxQ20F6Nl3o",
+  "componentDefinition": {
+    "4ffzHkGzWrMWxQ20F6Nl3o": {
+      "key": "4ffzHkGzWrMWxQ20F6Nl3o",
+      "name": "PageGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "51zVLmEVBXrlq7OeB9TIjc": true
+      }
+    },
+    "51zVLmEVBXrlq7OeB9TIjc": {
+      "key": "51zVLmEVBXrlq7OeB9TIjc",
+      "name": "Main Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1aB52NGME7Mn8jxEv0JiQv": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0px"
+              },
+              "height": {
+                "value": "100vh"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              },
+              "gap": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4QiFaW0w8eYPwA34qnhJoI": true,
+        "5wAJNjBEBktbM92ixZu5vk": true
+      },
+      "displayOrder": 0
+    },
+    "4QiFaW0w8eYPwA34qnhJoI": {
+      "key": "4QiFaW0w8eYPwA34qnhJoI",
+      "name": "Top Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "661L6PQJkvanbTMvKXHJBp": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "6.25vw"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFFFC"
+              },
+              "boxShadow": {
+                "value": "0px 2px 15px 0px #0000000F"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "5vw"
+              },
+              "position": {
+                "value": "sticky"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5NmrY9I6bK3Nv5cjGNoHT8": true
+      },
+      "displayOrder": 0
+    },
+    "5wAJNjBEBktbM92ixZu5vk": {
+      "key": "5wAJNjBEBktbM92ixZu5vk",
+      "name": "Bottom Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5tNogbXGPzRC3yDwTwwXSV": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "flexGrow": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1XtGCQG6yjFz9lg3NNXAek": true,
+        "4gkQQJUP7GBsTK9MZ0MMwc": true
+      }
+    },
+    "5NmrY9I6bK3Nv5cjGNoHT8": {
+      "key": "5NmrY9I6bK3Nv5cjGNoHT8",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/newLogin/fincity.svg"
+        }
+      },
+      "styleProperties": {
+        "3lsMJdYFlzyQUe7F0bQwbQ": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "2.976vw"
+              },
+              "width": {
+                "value": "10.347vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1XtGCQG6yjFz9lg3NNXAek": {
+      "key": "1XtGCQG6yjFz9lg3NNXAek",
+      "name": "Side Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1bYxc58gF0q1I4PAYuFcl2": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "41.667vw"
+              },
+              "backgroundColor": {
+                "value": "#E6F0FF"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4ARTix0eUvYIQhBTwiWnPV": true,
+        "1KOMIfAUr51FgCDWG3q6Yi": true,
+        "1lAj4TFCNcayFM0ECkVROs": true
+      }
+    },
+    "4gkQQJUP7GBsTK9MZ0MMwc": {
+      "key": "4gkQQJUP7GBsTK9MZ0MMwc",
+      "name": "right grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3OUY9bI5F5X4UuZtlGByA": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "width": {
+                "value": "58.333vw"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "backgroundColor": {
+                "value": "#FFFFFF"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "13GnBQkUeXofi7IMO7XD3a": true,
+        "5TCEkopQFdUjON7CLkcs2i": true,
+        "3P351bu9ICOXWcPvoWFwi": true,
+        "5WVeIQIgDXTak2ywm3sBic": true,
+        "7aL2HXsSnEjDGjbXiQxnXS": true,
+        "1J5Cs99cXZOO45mm0tWTsN": true
+      }
+    },
+    "4ARTix0eUvYIQhBTwiWnPV": {
+      "key": "4ARTix0eUvYIQhBTwiWnPV",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/newLogin/login+pic.svg"
+        }
+      },
+      "styleProperties": {
+        "2n2orGAuvFIGVNW1SLLyYW": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "26.688vw"
+              },
+              "width": {
+                "value": "27.778vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1KOMIfAUr51FgCDWG3q6Yi": {
+      "key": "1KOMIfAUr51FgCDWG3q6Yi",
+      "name": "Text1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "100% repayments on time"
+        }
+      },
+      "styleProperties": {
+        "5WyyXkqhbrh5AesoAaYJt0": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#293050"
+              },
+              "fontSize": {
+                "value": "1.667vw"
+              },
+              "textDecorationThickness": {
+                "value": "1.667vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "Playfair Display"
+              },
+              "marginBottom": {
+                "value": "0.694vw"
+              },
+              "marginTop": {
+                "value": "2.083vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1lAj4TFCNcayFM0ECkVROs": {
+      "key": "1lAj4TFCNcayFM0ECkVROs",
+      "name": "Text2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\u20b91,200 crores has been successfully repaid, always on time!"
+        }
+      },
+      "styleProperties": {
+        "41jsKCwKUHbaPNPj3edxVj": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "textDecorationThickness": {
+                "value": "0.972vw"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "13GnBQkUeXofi7IMO7XD3a": {
+      "key": "13GnBQkUeXofi7IMO7XD3a",
+      "name": "getOTP grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.getOTP"
+          }
+        }
+      },
+      "styleProperties": {
+        "6IEEIrep0nXlILZnd5qFSN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6K34FT1xwfPlOtd1330AUr": true
+      },
+      "displayOrder": 4
+    },
+    "5TCEkopQFdUjON7CLkcs2i": {
+      "key": "5TCEkopQFdUjON7CLkcs2i",
+      "name": "Back3",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": false
+        },
+        "onClick": {
+          "value": "2gyFlY8d3Gf2kIolVOjSEJ"
+        }
+      },
+      "styleProperties": {
+        "3CB6F0DIIzjH9935zqoLhk": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "3.472vw"
+              },
+              "alignSelf": {
+                "value": "flex-end"
+              },
+              "marginRight": {
+                "value": "3.472vw"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4QPswpJSYJdMrHTXLThqw7": true,
+        "3bmUFFJy1VRhoFpM23r6WE": true
+      },
+      "displayOrder": 3
+    },
+    "3P351bu9ICOXWcPvoWFwi": {
+      "key": "3P351bu9ICOXWcPvoWFwi",
+      "name": "OTP Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.OTP "
+          }
+        }
+      },
+      "styleProperties": {
+        "LfqSq1EX9bKAohzZ8sTC7": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "100%"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3ae1yA83fLvcgXeYeiA4LJ": true
+      },
+      "displayOrder": 5
+    },
+    "5WVeIQIgDXTak2ywm3sBic": {
+      "key": "5WVeIQIgDXTak2ywm3sBic",
+      "name": "PIN",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.PIN"
+          }
+        }
+      },
+      "styleProperties": {
+        "1oj8QmW8hKO17M0lSW2U7B": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "11.889vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5Ft0AccNVWeOqRrfd7Py4N": true,
+        "7eTE2pRXp4yB6YJvLAYJWi": true,
+        "531NNHjWkbNngRgzBe8mma": true
+      },
+      "displayOrder": 6
+    },
+    "7aL2HXsSnEjDGjbXiQxnXS": {
+      "key": "7aL2HXsSnEjDGjbXiQxnXS",
+      "name": "Back2",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.OTP"
+          }
+        },
+        "onClick": {
+          "value": "159OlKCqJbEqrEKni1kUTl"
+        }
+      },
+      "styleProperties": {
+        "3CB6F0DIIzjH9935zqoLhk": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "0.972vw"
+              },
+              "alignSelf": {
+                "value": "flex-end"
+              },
+              "marginRight": {
+                "value": "3.472vw"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5UzbyZu1hqc9cmE85VZNne": true,
+        "7sSXrVloF7m9BiiprDFkat": true
+      },
+      "displayOrder": 2
+    },
+    "1J5Cs99cXZOO45mm0tWTsN": {
+      "key": "1J5Cs99cXZOO45mm0tWTsN",
+      "name": "Back1",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.getOTP"
+          }
+        },
+        "onClick": {
+          "value": "2FsgWn0SoOxI5qLPKYyKQ2"
+        }
+      },
+      "styleProperties": {
+        "3CB6F0DIIzjH9935zqoLhk": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "0.972vw"
+              },
+              "alignSelf": {
+                "value": "flex-end"
+              },
+              "marginRight": {
+                "value": "3.472vw"
+              },
+              "gap": {
+                "value": "0px"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "mvQf5arnE9YlBVFQOlfcg": true,
+        "7hNETIOo6aABq9d2Zz3SGe": true
+      },
+      "displayOrder": 1
+    },
+    "2jEO6c7OWRfZQsAYRp6nbW": {
+      "key": "2jEO6c7OWRfZQsAYRp6nbW",
+      "name": "Get OTP Button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Get OTP"
+        },
+        "onClick": {
+          "value": "3va9IEPey3M76wHwIAWzLU"
+        }
+      },
+      "styleProperties": {
+        "ZGqq5xIdxVQLU0GoickSa": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#293050"
+              },
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.417vw"
+              },
+              "paddingTop": {
+                "value": "1.042vw"
+              },
+              "paddingBottom": {
+                "value": "1.042vw"
+              },
+              "height": {
+                "value": "3.194vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "4QPswpJSYJdMrHTXLThqw7": {
+      "key": "4QPswpJSYJdMrHTXLThqw7",
+      "name": "Back arrow Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-chevron-left"
+        }
+      },
+      "styleProperties": {
+        "2oUJQ7ylrvEopgdS8Ytoxl": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#000000"
+              },
+              "lineHeight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3bmUFFJy1VRhoFpM23r6WE": {
+      "key": "3bmUFFJy1VRhoFpM23r6WE",
+      "name": "Back",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Back"
+        }
+      },
+      "styleProperties": {
+        "55ooegKNsDw9GELYGYpD3B": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "textDecorationThickness": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "800"
+              },
+              "width": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "uKd4oipg2maxzhkN7dvXM": {
+      "key": "uKd4oipg2maxzhkN7dvXM",
+      "name": "SUBMIT",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Submit"
+        },
+        "onClick": {
+          "value": "rjNRBQpxZr4F9iywG6J7z"
+        }
+      },
+      "styleProperties": {
+        "33XA7UOMRExMy0jfejlyeb": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#293050"
+              },
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.417vw"
+              },
+              "paddingTop": {
+                "value": "1.042vw"
+              },
+              "paddingBottom": {
+                "value": "1.042vw"
+              },
+              "height": {
+                "value": "3.194vw"
+              },
+              "marginBottom": {
+                "value": "2.778vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "5Ft0AccNVWeOqRrfd7Py4N": {
+      "key": "5Ft0AccNVWeOqRrfd7Py4N",
+      "name": "Otp2",
+      "type": "Otp",
+      "properties": {
+        "label": {
+          "value": "Otp"
+        },
+        "otpLength": {
+          "value": 6
+        }
+      },
+      "styleProperties": {
+        "6vWM14ZrA1dgAt1QqjnNvD": {
+          "resolutions": {
+            "ALL": {
+              "inputBox-width": {
+                "value": "3.472vw"
+              },
+              "inputBox-height": {
+                "value": "3.472vw"
+              },
+              "marginTop": {
+                "value": "1.389vw"
+              },
+              "inputBox-borderTopWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderRightWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderBottomWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderLeftWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderTopStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderRightStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderBottomStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderLeftStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderTopColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-borderRightColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-borderBottomColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-borderLeftColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-boxShadow": {
+                "value": "0px 1px 2px 0px #0000001A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reset.newPassword"
+      }
+    },
+    "7eTE2pRXp4yB6YJvLAYJWi": {
+      "key": "7eTE2pRXp4yB6YJvLAYJWi",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "kwwxjJBQMUAYiruqqq5Xt": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "8px"
+              },
+              "marginBottom": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "51A8mbZAQ8DAMr7tt9Dgnc": true,
+        "2D9Tvoyyqyp3KNUeMkJSq1": true
+      },
+      "displayOrder": 1
+    },
+    "531NNHjWkbNngRgzBe8mma": {
+      "key": "531NNHjWkbNngRgzBe8mma",
+      "name": "Get OTP Button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Submit"
+        },
+        "onClick": {
+          "value": "nsGogR8cq1iWYTvaKoaGD"
+        }
+      },
+      "styleProperties": {
+        "2wUl9rBitOAy7xWrHyPclK": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#293050"
+              },
+              "marginTop": {
+                "value": "2.778vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderTopRightRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "0.417vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "0.417vw"
+              },
+              "paddingTop": {
+                "value": "1.042vw"
+              },
+              "paddingBottom": {
+                "value": "1.042vw"
+              },
+              "height": {
+                "value": "3.194vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5UzbyZu1hqc9cmE85VZNne": {
+      "key": "5UzbyZu1hqc9cmE85VZNne",
+      "name": "Back arrow Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-chevron-left"
+        }
+      },
+      "styleProperties": {
+        "2oUJQ7ylrvEopgdS8Ytoxl": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#000000"
+              },
+              "lineHeight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7sSXrVloF7m9BiiprDFkat": {
+      "key": "7sSXrVloF7m9BiiprDFkat",
+      "name": "Back",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Back"
+        }
+      },
+      "styleProperties": {
+        "55ooegKNsDw9GELYGYpD3B": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "textDecorationThickness": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "800"
+              },
+              "width": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "mvQf5arnE9YlBVFQOlfcg": {
+      "key": "mvQf5arnE9YlBVFQOlfcg",
+      "name": "Back arrow Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-chevron-left"
+        }
+      },
+      "styleProperties": {
+        "2oUJQ7ylrvEopgdS8Ytoxl": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#000000"
+              },
+              "lineHeight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7hNETIOo6aABq9d2Zz3SGe": {
+      "key": "7hNETIOo6aABq9d2Zz3SGe",
+      "name": "Back",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Back"
+        }
+      },
+      "styleProperties": {
+        "55ooegKNsDw9GELYGYpD3B": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "textDecorationThickness": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "800"
+              },
+              "width": {
+                "value": "32px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "51A8mbZAQ8DAMr7tt9Dgnc": {
+      "key": "51A8mbZAQ8DAMr7tt9Dgnc",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Enter your secure "
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "7m33QpmLtvca0MtzjuWDH7": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#00000080"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "textDecorationThickness": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2D9Tvoyyqyp3KNUeMkJSq1": {
+      "key": "2D9Tvoyyqyp3KNUeMkJSq1",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "PIN"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "7m33QpmLtvca0MtzjuWDH7": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#000000"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "textDecorationThickness": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6K34FT1xwfPlOtd1330AUr": {
+      "key": "6K34FT1xwfPlOtd1330AUr",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "2jEO6c7OWRfZQsAYRp6nbW": true,
+        "5o7yYWJrHyWFm3RpoKovim": true,
+        "48An0guksGuYSqlLR9Ooer": true,
+        "5hl7D1RzMroIWsVFyfuK1b": true
+      },
+      "displayOrder": 4
+    },
+    "5o7yYWJrHyWFm3RpoKovim": {
+      "key": "5o7yYWJrHyWFm3RpoKovim",
+      "name": "PhoneNumber",
+      "type": "PhoneNumber",
+      "properties": {
+        "noFloat": {
+          "value": true
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "topCountries": {
+          "4X2J1aFvz7C8Lzc7Bs7QyA": {
+            "key": "4X2J1aFvz7C8Lzc7Bs7QyA",
+            "order": 1,
+            "property": {
+              "value": "IN"
+            }
+          }
+        },
+        "validation": {
+          "6aUnZQsas8o4ikj6jsfxPj": {
+            "key": "6aUnZQsas8o4ikj6jsfxPj",
+            "order": 1,
+            "property": {
+              "value": {
+                "type": "REGEX",
+                "maxValue": {},
+                "minValue": {},
+                "message": {
+                  "value": "Phone Number Should be 10 Digit"
+                },
+                "maxLength": {
+                  "value": 1000000000
+                },
+                "minLength": {
+                  "value": 6666666666
+                },
+                "pattern": {
+                  "value": "^[0-9]{10,20}$"
+                },
+                "condition": {
+                  "value": false
+                }
+              }
+            }
+          },
+          "zAFVZjUihI8iT65fgb3sJ": {
+            "key": "zAFVZjUihI8iT65fgb3sJ",
+            "order": 2,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Please Enter Phone Number"
+                },
+                "condition": {
+                  "value": true
+                }
+              }
+            }
+          }
+        },
+        "hideClearButton": {
+          "value": true
+        },
+        "maxChars": {
+          "value": 15
+        },
+        "placeholder": {
+          "value": "Aadhar Linked Phone number"
+        }
+      },
+      "styleProperties": {
+        "7DRRtmoIDaf5JfFxG0NlJs": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "44px"
+              },
+              "label-paddingLeft": {
+                "value": "0px"
+              },
+              "label-marginLeft": {
+                "value": "-6px"
+              },
+              "errorText-marginTop": {
+                "value": "5px"
+              },
+              "rightIcon-display": {
+                "value": "none"
+              },
+              "marginTop": {
+                "value": "1.389vw"
+              },
+              "boxShadow": {
+                "value": "0px 1px 2px 0px #0000001A"
+              },
+              "width": {
+                "value": "27.778vw"
+              },
+              "errorTextContainer-backgroundColor": {
+                "value": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.form.userName"
+      }
+    },
+    "48An0guksGuYSqlLR9Ooer": {
+      "key": "48An0guksGuYSqlLR9Ooer",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Forgot your PIN?"
+        }
+      },
+      "styleProperties": {
+        "5yXdP0BhrvjSNun1UVVVgj": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "lineHeight": {
+                "value": "0.972vw"
+              },
+              "color": {
+                "value": "#000000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5hl7D1RzMroIWsVFyfuK1b": {
+      "key": "5hl7D1RzMroIWsVFyfuK1b",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "No worries! Let\u2019s get started."
+        }
+      },
+      "styleProperties": {
+        "6S7as7kEmyy7MPSK2Y5P60": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#00000080"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "0.972vw"
+              },
+              "marginTop": {
+                "value": "0.694vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3ae1yA83fLvcgXeYeiA4LJ": {
+      "key": "3ae1yA83fLvcgXeYeiA4LJ",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "uKd4oipg2maxzhkN7dvXM": true,
+        "NRKyC5z3MImf9dgFLVEa9": true,
+        "2E1x2RV8OMHYiN4OGGORwo": true,
+        "ilwpK8WddUPNAnvZpP2Id": true,
+        "1LMdbehTfEvQrS5CMICTD9": true,
+        "6jkxDWrI3V82VgMJAa8oye": true,
+        "4yltM49x82atfkbhh5gfMt": true,
+        "3cfvC7ggNxw74scGBcGHDK": true
+      },
+      "displayOrder": 1
+    },
+    "NRKyC5z3MImf9dgFLVEa9": {
+      "key": "NRKyC5z3MImf9dgFLVEa9",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "kwwxjJBQMUAYiruqqq5Xt": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "8px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4WmJ1OzMT0PUwjA2KqeUUv": true,
+        "2eYzP3l8I6LgLqpgTupyuw": true,
+        "3fWHNhxv27uAzrCarvZngJ": true
+      },
+      "displayOrder": 1
+    },
+    "4WmJ1OzMT0PUwjA2KqeUUv": {
+      "key": "4WmJ1OzMT0PUwjA2KqeUUv",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "-",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.form.userName"
+          }
+        }
+      },
+      "styleProperties": {
+        "1ocRBBICS4rc5PqXxBCnwv": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2eYzP3l8I6LgLqpgTupyuw": {
+      "key": "2eYzP3l8I6LgLqpgTupyuw",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "We have sent an OTP on "
+        }
+      },
+      "styleProperties": {
+        "7m33QpmLtvca0MtzjuWDH7": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#00000080"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "textDecorationThickness": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3fWHNhxv27uAzrCarvZngJ": {
+      "key": "3fWHNhxv27uAzrCarvZngJ",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "159OlKCqJbEqrEKni1kUTl"
+        }
+      },
+      "override": false,
+      "children": {
+        "Hp7FGBwQA2ZhzZyEfB2PS": true
+      },
+      "displayOrder": 3
+    },
+    "Hp7FGBwQA2ZhzZyEfB2PS": {
+      "key": "Hp7FGBwQA2ZhzZyEfB2PS",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-pen"
+        }
+      },
+      "styleProperties": {
+        "WuKWepDDkjyRbTypE0ggI": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#00000033"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2E1x2RV8OMHYiN4OGGORwo": {
+      "key": "2E1x2RV8OMHYiN4OGGORwo",
+      "name": "Otp1",
+      "type": "Otp",
+      "properties": {
+        "label": {
+          "value": "Otp"
+        },
+        "otpLength": {
+          "value": 6
+        },
+        "autoFocus": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "51N1WF2q5yNPN9Ww4VnSkt": {
+          "resolutions": {
+            "ALL": {
+              "inputBox-width": {
+                "value": "3.472vw"
+              },
+              "inputBox-height": {
+                "value": "3.472vw"
+              },
+              "marginTop": {
+                "value": "1.389vw"
+              },
+              "inputBox-borderTopWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderRightWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderBottomWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderLeftWidth": {
+                "value": "0.069vw"
+              },
+              "inputBox-borderTopStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderRightStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderBottomStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderLeftStyle": {
+                "value": "solid"
+              },
+              "inputBox-borderTopColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-borderRightColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-borderBottomColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-borderLeftColor": {
+                "value": "#e2e2e2"
+              },
+              "inputBox-boxShadow": {
+                "value": "0px 1px 2px 0px #0000001A"
+              },
+              "errorTextContainer-backgroundColor": {
+                "value": "transparent"
+              },
+              "errorText-marginTop": {
+                "value": "-0.625vw"
+              },
+              "errorText-marginLeft": {
+                "value": "0.556vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.resetPin.otp"
+      }
+    },
+    "ilwpK8WddUPNAnvZpP2Id": {
+      "key": "ilwpK8WddUPNAnvZpP2Id",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1iEMD88iyHXdrGQMj1Raib": {
+          "resolutions": {
+            "ALL": {
+              "marginLeft": {
+                "value": "8px"
+              },
+              "marginTop": {
+                "value": "1.042vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1XJz8xhHmmNledm751UNLh": true,
+        "4f42bypCjRettL2wXBurbf": true
+      },
+      "displayOrder": 3
+    },
+    "1XJz8xhHmmNledm751UNLh": {
+      "key": "1XJz8xhHmmNledm751UNLh",
+      "name": "CheckBox",
+      "type": "CheckBox",
+      "styleProperties": {
+        "5HXq1Q0t4cHGtrLQcCB41a": {
+          "resolutions": {
+            "ALL": {
+              "checkbox-backgroundColor": {
+                "value": "#293050"
+              },
+              "marginRight": {
+                "value": "6px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.checkbox"
+      }
+    },
+    "4f42bypCjRettL2wXBurbf": {
+      "key": "4f42bypCjRettL2wXBurbf",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Get important **Whatsapp** and **SMS Alerts**"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "7KGM3uB7ZzrDIX8E8DOlGp": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#000000CC"
+              },
+              "height": {
+                "value": "0.972vw"
+              },
+              "markdownContainer-display": {
+                "value": "flex"
+              },
+              "markdownContainer-alignItems": {
+                "value": "center"
+              },
+              "display": {
+                "value": "flex"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1LMdbehTfEvQrS5CMICTD9": {
+      "key": "1LMdbehTfEvQrS5CMICTD9",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'Resend OTP in {{Page.count}} seconds'"
+          }
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.count != 0 and false"
+          }
+        }
+      },
+      "styleProperties": {
+        "3CvnwREvLWpxAG3P7GBkLT": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#00000080"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "6jkxDWrI3V82VgMJAa8oye": {
+      "key": "6jkxDWrI3V82VgMJAa8oye",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Resend OTP"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.count = 0 and false"
+          }
+        }
+      },
+      "styleProperties": {
+        "44VsutZQTbeImHChQhb9ez": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "marginTop": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "4yltM49x82atfkbhh5gfMt": {
+      "key": "4yltM49x82atfkbhh5gfMt",
+      "name": "Timer",
+      "type": "Timer",
+      "properties": {
+        "repeatCount": {
+          "value": 15
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.timer"
+          }
+        },
+        "onTimerEventFunction": {
+          "value": "2g49O8vsYl0LPenAqzB0Ky"
+        },
+        "timerType": {
+          "value": "Repeating"
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "3cfvC7ggNxw74scGBcGHDK": {
+      "key": "3cfvC7ggNxw74scGBcGHDK",
+      "name": "Resend otp Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": ""
+        }
+      },
+      "override": false,
+      "children": {
+        "KeVdc7DmiMBvo8xkyCRJb": true,
+        "6v67Pm6CNsKHW4wzmo55WM": true
+      },
+      "displayOrder": 8
+    },
+    "KeVdc7DmiMBvo8xkyCRJb": {
+      "key": "KeVdc7DmiMBvo8xkyCRJb",
+      "name": "Resend otp text Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "40fHwoS72AnnowGXDa4MMl"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.count < 1"
+          }
+        }
+      },
+      "styleProperties": {
+        "5zcGLPGFEpNmgUNkeYnaAY": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7xjmfLV1uFYiyjmZdYiL0C": true
+      },
+      "displayOrder": 1
+    },
+    "6v67Pm6CNsKHW4wzmo55WM": {
+      "key": "6v67Pm6CNsKHW4wzmo55WM",
+      "name": "Resend Text seconds count",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'Resend OTP in {{Page.count}} seconds'"
+          }
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.count > 0"
+          }
+        }
+      },
+      "styleProperties": {
+        "4nPpTkee1xcyuK8sbSfhpH": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "lineHeight": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "#00000080"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7xjmfLV1uFYiyjmZdYiL0C": {
+      "key": "7xjmfLV1uFYiyjmZdYiL0C",
+      "name": "Resend OTP",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Resend OTP"
+        }
+      },
+      "styleProperties": {
+        "65kEawaIK9NTx8vs8oB2Ai": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "0.972vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    }
+  },
+  "name": "forgotPin",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 38,
+  "updatedAt": "2026-04-09 04:27:54.398000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-01-30 11:40:06.202000",
+  "createdBy": "<USER>"
+}

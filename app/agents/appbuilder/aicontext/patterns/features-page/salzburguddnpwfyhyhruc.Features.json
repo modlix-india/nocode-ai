@@ -1,0 +1,3456 @@
+{
+  "_id": "6954f014c9df31296051d629",
+  "properties": {
+    "title": {
+      "name": {
+        "value": "Features"
+      }
+    }
+  },
+  "eventFunctions": {},
+  "rootComponent": "5tDC4cILe6TQuavZzhfVgf",
+  "componentDefinition": {
+    "5tDC4cILe6TQuavZzhfVgf": {
+      "key": "5tDC4cILe6TQuavZzhfVgf",
+      "name": "Page Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4UdEza2QpWGy2crsFgVNPT": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#f3f4f6"
+              },
+              "gap": {
+                "value": "3.472vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "12.821vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5P4LSMIjpg4AtcvkZZL5XT": true,
+        "4MZ2mY6rcSQuEY4fyQwmQM": true,
+        "4kSySKXlhVt7fON2WdGkmZ": true,
+        "5TOj0pvJ4DTwKirSjk6QDq": true,
+        "57CgOu8qzL3MjBunZyCbPe": true,
+        "k6baMKB2Kxbr89oHgwEpc": true
+      }
+    },
+    "5P4LSMIjpg4AtcvkZZL5XT": {
+      "key": "5P4LSMIjpg4AtcvkZZL5XT",
+      "name": "tittle card & img div",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3pZvnsKZdhTtBO8tFq2F41": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "gap": {
+                "value": "2.222vw"
+              },
+              "paddingTop": {
+                "value": "6.25vw"
+              },
+              "paddingBottom": {
+                "value": "6.25vw"
+              },
+              "paddingLeft": {
+                "value": "3.472vw"
+              },
+              "paddingRight": {
+                "value": "3.472vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              },
+              "paddingTop": {
+                "value": "4.103vw"
+              },
+              "paddingBottom": {
+                "value": "4.103vw"
+              },
+              "paddingLeft": {
+                "value": "4.103vw"
+              },
+              "paddingRight": {
+                "value": "4.103vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "38EdLYkIXcvsnL0rSZ0UvD": true,
+        "6B7oliKVPWwtMXK0rELCQn": true
+      },
+      "displayOrder": 4
+    },
+    "38EdLYkIXcvsnL0rSZ0UvD": {
+      "key": "38EdLYkIXcvsnL0rSZ0UvD",
+      "name": "payment soln",
+      "type": "Grid",
+      "styleProperties": {
+        "2Gpw8ftgJ74sspBCyODEt1": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.694vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "2.564vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "F3xuEQPw5pHb5X9WUynkA": true,
+        "3GFgiErI976UyuN9ncHPGV": true,
+        "2dqA9Pb9nbCk5iGQwlgZ2D": true
+      },
+      "displayOrder": 1
+    },
+    "6B7oliKVPWwtMXK0rELCQn": {
+      "key": "6B7oliKVPWwtMXK0rELCQn",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/touchscreen_interaction.png"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "2Viy3hkIT99Bv7i4c72kKN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "height": {
+                "value": "36.806vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.389vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.389vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.389vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "71.795vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "5.128vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "5.128vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "5.128vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "F3xuEQPw5pHb5X9WUynkA": {
+      "key": "F3xuEQPw5pHb5X9WUynkA",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Transform your payment experience with our user-friendly \nPOS app that adapts to your workflow and business needs."
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1OzfpvpYBPuaV3BoNBP9J9": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3GFgiErI976UyuN9ncHPGV": {
+      "key": "3GFgiErI976UyuN9ncHPGV",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Key Features"
+        }
+      },
+      "styleProperties": {
+        "68EwjOSwMkoCWHFD4d6rTi": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "4.103vw"
+              },
+              "fontSize": {
+                "value": "3.59vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2dqA9Pb9nbCk5iGQwlgZ2D": {
+      "key": "2dqA9Pb9nbCk5iGQwlgZ2D",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Innovative Payment Solutions"
+        }
+      },
+      "styleProperties": {
+        "2zlqDFzPzzjA6mWQTIj74y": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "2.292vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "2.778vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.641vw"
+              },
+              "lineHeight": {
+                "value": "6.667vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4MZ2mY6rcSQuEY4fyQwmQM": {
+      "key": "4MZ2mY6rcSQuEY4fyQwmQM",
+      "name": "tittle card & img div",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3pZvnsKZdhTtBO8tFq2F41": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "gap": {
+                "value": "2.222vw"
+              },
+              "paddingTop": {
+                "value": "6.25vw"
+              },
+              "paddingBottom": {
+                "value": "6.25vw"
+              },
+              "paddingLeft": {
+                "value": "3.472vw"
+              },
+              "paddingRight": {
+                "value": "3.472vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              },
+              "paddingTop": {
+                "value": "4.103vw"
+              },
+              "paddingBottom": {
+                "value": "4.103vw"
+              },
+              "paddingLeft": {
+                "value": "4.103vw"
+              },
+              "paddingRight": {
+                "value": "4.103vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "24sqBcQMNTJELuYZYEepoF": true,
+        "13EM82CghvJYmj56DC4FjO": true
+      },
+      "displayOrder": 5
+    },
+    "24sqBcQMNTJELuYZYEepoF": {
+      "key": "24sqBcQMNTJELuYZYEepoF",
+      "name": "payment soln",
+      "type": "Grid",
+      "styleProperties": {
+        "2Gpw8ftgJ74sspBCyODEt1": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.694vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5VSySgN3UtjNI4RDNcWLpm": true,
+        "3btpjrbm1xkl1bqooqyD1i": true,
+        "2R1j8l0crR6BNrb3dBQVWy": true
+      },
+      "displayOrder": 1
+    },
+    "13EM82CghvJYmj56DC4FjO": {
+      "key": "13EM82CghvJYmj56DC4FjO",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/trustworty%28img%29.jpg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "2Viy3hkIT99Bv7i4c72kKN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "height": {
+                "value": "36.806vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.389vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.389vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.389vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "71.795vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "5.128vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "5.128vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "5.128vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5VSySgN3UtjNI4RDNcWLpm": {
+      "key": "5VSySgN3UtjNI4RDNcWLpm",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Transform your payment experience with our user-friendly \nPOS app that adapts to your workflow and business needs."
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3wrzrykNdtrl8I1hTzNAcv": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3btpjrbm1xkl1bqooqyD1i": {
+      "key": "3btpjrbm1xkl1bqooqyD1i",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Key Features"
+        }
+      },
+      "styleProperties": {
+        "77lhGrc3gIcIG7XlFQR5aw": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "4.103vw"
+              },
+              "fontSize": {
+                "value": "3.59vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2R1j8l0crR6BNrb3dBQVWy": {
+      "key": "2R1j8l0crR6BNrb3dBQVWy",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Innovative Payment Solutions"
+        }
+      },
+      "styleProperties": {
+        "3msypHdSBjzU8l8Tr2sbqi": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "2.292vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "2.778vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.641vw"
+              },
+              "lineHeight": {
+                "value": "6.667vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4kSySKXlhVt7fON2WdGkmZ": {
+      "key": "4kSySKXlhVt7fON2WdGkmZ",
+      "name": "about",
+      "type": "Grid",
+      "styleProperties": {
+        "1Ca67FNEHw7gtYwXZN6N2a": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "paddingLeft": {
+                "value": "3.472vw"
+              },
+              "paddingRight": {
+                "value": "3.472vw"
+              },
+              "paddingTop": {
+                "value": "6.25vw"
+              },
+              "paddingBottom": {
+                "value": "6.25vw"
+              },
+              "gap": {
+                "value": "2.222vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "7.692vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              },
+              "paddingTop": {
+                "value": "4.103vw"
+              },
+              "paddingBottom": {
+                "value": "4.103vw"
+              },
+              "paddingLeft": {
+                "value": "4.103vw"
+              },
+              "paddingRight": {
+                "value": "4.103vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "44ovhV42eGYoGkEMcUYGg1": true,
+        "2R3gkLteIdtwvM15YoUNTG": true
+      },
+      "displayOrder": 2
+    },
+    "44ovhV42eGYoGkEMcUYGg1": {
+      "key": "44ovhV42eGYoGkEMcUYGg1",
+      "name": "unlock your sales",
+      "type": "Grid",
+      "styleProperties": {
+        "2QbMC1V32kccNFt2PdmVEF": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.694vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "2.564vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "23PYA3k4sCwkQmZSTZHwGi": true,
+        "7D9R7pecQIp6kW86n6hYGT": true,
+        "2GWmbHOFQQAwnijDF8WJkt": true
+      },
+      "displayOrder": 1
+    },
+    "23PYA3k4sCwkQmZSTZHwGi": {
+      "key": "23PYA3k4sCwkQmZSTZHwGi",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Key Metrics Summary"
+        }
+      },
+      "styleProperties": {
+        "5Mnq4dsmc2R6yOabG2UHCb": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "600"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "lineHeight": {
+                "value": "4.103vw"
+              },
+              "fontSize": {
+                "value": "3.59vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7D9R7pecQIp6kW86n6hYGT": {
+      "key": "7D9R7pecQIp6kW86n6hYGT",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Boost your business success through smart analytics and real-time data."
+        }
+      },
+      "styleProperties": {
+        "1YETeA9Pc3pMq8FPnTlqbX": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2GWmbHOFQQAwnijDF8WJkt": {
+      "key": "2GWmbHOFQQAwnijDF8WJkt",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Unlock Your Sales Potential with Our App"
+        }
+      },
+      "styleProperties": {
+        "4H3KpRCSmPG2j1GsBvQTHC": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "2.292vw"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "2.778vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.692vw"
+              },
+              "lineHeight": {
+                "value": "9.231vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2R3gkLteIdtwvM15YoUNTG": {
+      "key": "2R3gkLteIdtwvM15YoUNTG",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            {
+              "id": 1,
+              "title": "Quick Insights",
+              "value": "$500",
+              "description": "The average daily sale is $500."
+            },
+            {
+              "id": 2,
+              "title": "Sales Growth",
+              "value": "15%",
+              "description": "Yearly sales growth reached 15% in 2023."
+            },
+            {
+              "id": 3,
+              "title": "User Engagement",
+              "value": "85%",
+              "description": "85% of users prefer our intuitive design and features."
+            },
+            {
+              "id": 4,
+              "title": "Customer Satisfaction",
+              "value": "90%",
+              "description": "90% of customers report high satisfaction with our app."
+            }
+          ]
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "6ye0AnJp77g8r2U49JbU73": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "8.205vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2MeEFv7l8dBoZ6VTPSmHpp": true
+      },
+      "displayOrder": 2
+    },
+    "2MeEFv7l8dBoZ6VTPSmHpp": {
+      "key": "2MeEFv7l8dBoZ6VTPSmHpp",
+      "name": "desc",
+      "type": "Grid",
+      "styleProperties": {
+        "6zA0wovE8lHC3My95W6lkp": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.694vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "vfaKMGQEYGmtog8BiU2oi": true,
+        "1nQct0r9JtBXMnNkmVjpdY": true,
+        "1kLeKajfJYQBOtPAsToM0a": true
+      },
+      "displayOrder": 0
+    },
+    "vfaKMGQEYGmtog8BiU2oi": {
+      "key": "vfaKMGQEYGmtog8BiU2oi",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.description"
+          }
+        }
+      },
+      "styleProperties": {
+        "6CFhRFS2cBK0wbdwCFI8dO": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1nQct0r9JtBXMnNkmVjpdY": {
+      "key": "1nQct0r9JtBXMnNkmVjpdY",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.title"
+          }
+        }
+      },
+      "styleProperties": {
+        "3Om7dfeFidi50tEie2ml3Z": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontFamily": {
+                "value": "suse"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1kLeKajfJYQBOtPAsToM0a": {
+      "key": "1kLeKajfJYQBOtPAsToM0a",
+      "name": "prices",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.value"
+          }
+        }
+      },
+      "styleProperties": {
+        "4gyxcpRc93LNIBCC0mxiB9": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "2.778vw"
+              },
+              "lineHeight": {
+                "value": "3.333vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.692vw"
+              },
+              "lineHeight": {
+                "value": "9.231vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3jZ69mRXbtViEyn7B4ui3y": {
+      "key": "3jZ69mRXbtViEyn7B4ui3y",
+      "name": "seperator",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4t59ADWMbIdSNCNIBeMTyo": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2nScQ6fylmE1u5kaG8nZq1": true,
+        "5jKV6nqrcn4mI1bMSz9vcb": true,
+        "1fsmpj4KhlO491ePOewUsn": true,
+        "3oIshpEuDzmZ1XuNSTBdB3": true,
+        "5Ds2MOjVstTihuxTaXAeSg": true,
+        "1BbiaAsllaXQErD0gIej3Q": true,
+        "17hMuLLREa15pTjF2ITlze": true
+      },
+      "displayOrder": 1
+    },
+    "5Ryu2plkt7sKrI09zrt9YI": {
+      "key": "5Ryu2plkt7sKrI09zrt9YI",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "3oIshpEuDzmZ1XuNSTBdB3": true,
+        "5Ds2MOjVstTihuxTaXAeSg": true
+      },
+      "displayOrder": 3
+    },
+    "3yBv2jBX3tfiJmNp7kAN8N": {
+      "key": "3yBv2jBX3tfiJmNp7kAN8N",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "62FmcyCBLbWe3IbAWuU8KS": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2nScQ6fylmE1u5kaG8nZq1": true,
+        "5jKV6nqrcn4mI1bMSz9vcb": true,
+        "1fsmpj4KhlO491ePOewUsn": true
+      },
+      "displayOrder": 1
+    },
+    "55sHM5DZv325VnRs5EbJc4": {
+      "key": "55sHM5DZv325VnRs5EbJc4",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "17hMuLLREa15pTjF2ITlze": true
+      },
+      "displayOrder": 2
+    },
+    "2nScQ6fylmE1u5kaG8nZq1": {
+      "key": "2nScQ6fylmE1u5kaG8nZq1",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/blog%28author+img%29.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "4sx2OXRrbe777OVgKNKDcz": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1E3KHUyIVSOWerzuaDlUhB": {
+      "key": "1E3KHUyIVSOWerzuaDlUhB",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/meeting.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "3UKsLm99NRYlMjgZpjBYEI": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5jKV6nqrcn4mI1bMSz9vcb": {
+      "key": "5jKV6nqrcn4mI1bMSz9vcb",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/specs_man.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "PuhB8OpNEmeGrrHb9OZDU": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1GQL5cmsXt88TXViEZJdHu": {
+      "key": "1GQL5cmsXt88TXViEZJdHu",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/scarf_women.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "ZDxidJgLZM3IGXoCAq9dC": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3oIshpEuDzmZ1XuNSTBdB3": {
+      "key": "3oIshpEuDzmZ1XuNSTBdB3",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/serene.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "4WnI5IGbmWttdIUG53yzQz": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "5Ds2MOjVstTihuxTaXAeSg": {
+      "key": "5Ds2MOjVstTihuxTaXAeSg",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/casual_man.avif"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "375923jl4QTh3hEHHxk5zS": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "5X6KlwOVf6VJA9HV94l4Ug": {
+      "key": "5X6KlwOVf6VJA9HV94l4Ug",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "1fsmpj4KhlO491ePOewUsn": true
+      },
+      "displayOrder": 1
+    },
+    "1fsmpj4KhlO491ePOewUsn": {
+      "key": "1fsmpj4KhlO491ePOewUsn",
+      "name": "innovative soln",
+      "type": "Grid",
+      "styleProperties": {
+        "5Ct3pTFQPKx32pmKZRSoiA": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1E3KHUyIVSOWerzuaDlUhB": true,
+        "7eIFOlA2B4EFMZygBQKMaq": true
+      },
+      "displayOrder": 1
+    },
+    "7eIFOlA2B4EFMZygBQKMaq": {
+      "key": "7eIFOlA2B4EFMZygBQKMaq",
+      "name": "title card",
+      "type": "Grid",
+      "styleProperties": {
+        "2AkhSpp0QX0b8G4Qe2mbpU": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.111vw"
+              },
+              "paddingBottom": {
+                "value": "1.111vw"
+              },
+              "paddingLeft": {
+                "value": "1.111vw"
+              },
+              "paddingRight": {
+                "value": "1.111vw"
+              },
+              "gap": {
+                "value": "0.694vw"
+              },
+              "backgroundColor": {
+                "value": "#f3f4f6"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "yuTeqTIlp2fy9IpmiTz3k": true,
+        "znZyzDWFnPFXRF44L7KQT": true
+      },
+      "displayOrder": 1
+    },
+    "yuTeqTIlp2fy9IpmiTz3k": {
+      "key": "yuTeqTIlp2fy9IpmiTz3k",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Innovative\n Solution"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "Ckou7Xc0UNcbulnMM1Kdf": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "znZyzDWFnPFXRF44L7KQT": {
+      "key": "znZyzDWFnPFXRF44L7KQT",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "A powerful POS\n application\n designed for\n ease of use."
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "2pXJ6pdjsaUjgdF5dH1DbV": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "HQAy8tevFAKU9XDTEc7av": {
+      "key": "HQAy8tevFAKU9XDTEc7av",
+      "name": "title card",
+      "type": "Grid",
+      "styleProperties": {
+        "2AkhSpp0QX0b8G4Qe2mbpU": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.111vw"
+              },
+              "paddingBottom": {
+                "value": "1.111vw"
+              },
+              "paddingLeft": {
+                "value": "1.111vw"
+              },
+              "paddingRight": {
+                "value": "1.111vw"
+              },
+              "gap": {
+                "value": "0.694vw"
+              },
+              "backgroundColor": {
+                "value": "#f3f4f6"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6Reogqcul4uCrAl6NTFpTL": true,
+        "w7BhjuIgaTWQllUcgGANy": true
+      },
+      "displayOrder": 1
+    },
+    "6Reogqcul4uCrAl6NTFpTL": {
+      "key": "6Reogqcul4uCrAl6NTFpTL",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Smart\n Payments"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "Ckou7Xc0UNcbulnMM1Kdf": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "w7BhjuIgaTWQllUcgGANy": {
+      "key": "w7BhjuIgaTWQllUcgGANy",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Transforming\n your checkout\n experience\n seamlessly."
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "2pXJ6pdjsaUjgdF5dH1DbV": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "black"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1BbiaAsllaXQErD0gIej3Q": {
+      "key": "1BbiaAsllaXQErD0gIej3Q",
+      "name": "smart payments",
+      "type": "Grid",
+      "styleProperties": {
+        "3olZcpgkcfidkcnGBbnjPb": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2.222vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "HQAy8tevFAKU9XDTEc7av": true,
+        "F8vAAouZkxBVTMqwzwOrN": true
+      },
+      "displayOrder": 7
+    },
+    "F8vAAouZkxBVTMqwzwOrN": {
+      "key": "F8vAAouZkxBVTMqwzwOrN",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SHASH3/salzburg/women_with_laptop.png"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "5W4T0SGTR7YUS0vlZtWriP": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "9.653vw"
+              },
+              "height": {
+                "value": "14.514vw"
+              },
+              "image-objectFit": {
+                "value": "cover"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "1.667vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "1.667vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "73.59vw"
+              },
+              "height": {
+                "value": "110.256vw"
+              },
+              "image-borderTopLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderTopRightRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomLeftRadius": {
+                "value": "6.154vw"
+              },
+              "image-borderBottomRightRadius": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4Feblb3ejBTAsLHc7ctW1H": {
+      "key": "4Feblb3ejBTAsLHc7ctW1H",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "17hMuLLREa15pTjF2ITlze": true
+      },
+      "displayOrder": 4
+    },
+    "17hMuLLREa15pTjF2ITlze": {
+      "key": "17hMuLLREa15pTjF2ITlze",
+      "name": "fast & efficient",
+      "type": "Grid",
+      "styleProperties": {
+        "3NOmcYSC5NmkvTINax2Vhx": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2.222vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1GQL5cmsXt88TXViEZJdHu": true,
+        "5Q1UNblUHjzV3gGQbTL7d7": true
+      },
+      "displayOrder": 4
+    },
+    "5Q1UNblUHjzV3gGQbTL7d7": {
+      "key": "5Q1UNblUHjzV3gGQbTL7d7",
+      "name": "text div",
+      "type": "Grid",
+      "styleProperties": {
+        "4wQiVhDTxJ4mVRlmL9nvZn": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#f3f4f6"
+              },
+              "paddingTop": {
+                "value": "0.694vw"
+              },
+              "paddingBottom": {
+                "value": "0.694vw"
+              },
+              "paddingLeft": {
+                "value": "0.694vw"
+              },
+              "paddingRight": {
+                "value": "0.694vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "6.944vw"
+              },
+              "borderTopRightRadius": {
+                "value": "6.944vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "6.944vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "6.944vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1znrget93tavXe22GmasJP": true
+      },
+      "displayOrder": 1
+    },
+    "1znrget93tavXe22GmasJP": {
+      "key": "1znrget93tavXe22GmasJP",
+      "name": "title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Fast and Efficient\n"
+        }
+      },
+      "styleProperties": {
+        "14rNStOPbUeSg62dD2Dz6z": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "0.972vw"
+              },
+              "lineHeight": {
+                "value": "1.111vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5TOj0pvJ4DTwKirSjk6QDq": {
+      "key": "5TOj0pvJ4DTwKirSjk6QDq",
+      "name": "sales with pos",
+      "type": "Grid",
+      "styleProperties": {
+        "3ESxJUNBotVpy68M6ye4AO": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "paddingTop": {
+                "value": "6.25vw"
+              },
+              "paddingBottom": {
+                "value": "6.25vw"
+              },
+              "paddingLeft": {
+                "value": "3.472vw"
+              },
+              "paddingRight": {
+                "value": "3.472vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              },
+              "gap": {
+                "value": "12.821vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3jZ69mRXbtViEyn7B4ui3y": true,
+        "688ry4MtBlYIKWjfjVvoHB": true
+      },
+      "displayOrder": 1
+    },
+    "688ry4MtBlYIKWjfjVvoHB": {
+      "key": "688ry4MtBlYIKWjfjVvoHB",
+      "name": "title card",
+      "type": "Grid",
+      "styleProperties": {
+        "2CE8FVLvQBoSs7DxBW7KLG": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "gap": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "pbkSVyDsdybg9q450d1Kp": true,
+        "69fv0SG3Wed3AYZq9KhOd4": true
+      },
+      "displayOrder": 1
+    },
+    "pbkSVyDsdybg9q450d1Kp": {
+      "key": "pbkSVyDsdybg9q450d1Kp",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Our POS app simplifies transactions, enhancing customer satisfaction \nwhile increasing your sales efficiency. Enjoy features that cater \nto both mobile users and dedicated terminals for a seamless experience.\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4K78vTJwMPGmRL1ayrzbqo": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.389vw"
+              },
+              "lineHeight": {
+                "value": "1.806vw"
+              },
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "color": {
+                "value": "black"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.615vw"
+              },
+              "lineHeight": {
+                "value": "5.641vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "69fv0SG3Wed3AYZq9KhOd4": {
+      "key": "69fv0SG3Wed3AYZq9KhOd4",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Revolutionize Sales with Our POS"
+        }
+      },
+      "styleProperties": {
+        "4KMXVp1y9gs9M82vE5NdhS": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "2.778vw"
+              },
+              "lineHeight": {
+                "value": "3.333vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.692vw"
+              },
+              "lineHeight": {
+                "value": "9.231vw"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "57CgOu8qzL3MjBunZyCbPe": {
+      "key": "57CgOu8qzL3MjBunZyCbPe",
+      "name": "powerful soln",
+      "type": "Grid",
+      "styleProperties": {
+        "7Dr9AMQcrl2jl8oQ3QbbM": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#ffffff"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              },
+              "paddingTop": {
+                "value": "6.25vw"
+              },
+              "paddingBottom": {
+                "value": "6.25vw"
+              },
+              "paddingLeft": {
+                "value": "3.472vw"
+              },
+              "paddingRight": {
+                "value": "3.472vw"
+              },
+              "gap": {
+                "value": "3.472vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              },
+              "gap": {
+                "value": "12.821vw"
+              },
+              "paddingTop": {
+                "value": "4.103vw"
+              },
+              "paddingBottom": {
+                "value": "4.103vw"
+              },
+              "paddingLeft": {
+                "value": "4.103vw"
+              },
+              "paddingRight": {
+                "value": "4.103vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ZRQ44oXRuGxkPrwjukk6q": true,
+        "3sH9roU6BLLdVEbmshI5Dl": true
+      },
+      "displayOrder": 3
+    },
+    "2Pa2A6LG7usLtB6N2bwxGS": {
+      "key": "2Pa2A6LG7usLtB6N2bwxGS",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Powerful POS Solution"
+        }
+      },
+      "styleProperties": {
+        "7blmm1gISeUO0Ajjg1fJQu": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "2.778vw"
+              },
+              "lineHeight": {
+                "value": "3.333vw"
+              },
+              "color": {
+                "value": "black"
+              },
+              "fontWeight": {
+                "value": "500"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.692vw"
+              },
+              "lineHeight": {
+                "value": "9.231vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "ZRQ44oXRuGxkPrwjukk6q": {
+      "key": "ZRQ44oXRuGxkPrwjukk6q",
+      "name": "title card",
+      "type": "Grid",
+      "styleProperties": {
+        "4CWWYgCKVWSynB9ZT2Xn7h": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "gap": {
+                "value": "2.564vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Pa2A6LG7usLtB6N2bwxGS": true,
+        "5eQXQ2yK133jsHHkjLDPHn": true
+      },
+      "displayOrder": 1
+    },
+    "5eQXQ2yK133jsHHkjLDPHn": {
+      "key": "5eQXQ2yK133jsHHkjLDPHn",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Experience a seamless payment processing experience that\n connects directly to your mobile device or dedicated terminals, \nperfect for businesses of any size. Enhance your operations with\n our flexible POS capabilities."
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "4KpTOZFL3jbC6U6fBWo2az": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.389vw"
+              },
+              "lineHeight": {
+                "value": "1.806vw"
+              },
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "color": {
+                "value": "black"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3sH9roU6BLLdVEbmshI5Dl": {
+      "key": "3sH9roU6BLLdVEbmshI5Dl",
+      "name": "seperator",
+      "type": "Grid",
+      "styleProperties": {
+        "6RGtqmcuVz6xDpgiST7kHV": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "3.472vw"
+              },
+              "paddingBottom": {
+                "value": "3.472vw"
+              },
+              "paddingLeft": {
+                "value": "2.222vw"
+              },
+              "paddingRight": {
+                "value": "2.222vw"
+              },
+              "backgroundColor": {
+                "value": "#f3f4f6"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              },
+              "paddingTop": {
+                "value": "12.821vw"
+              },
+              "paddingBottom": {
+                "value": "12.821vw"
+              },
+              "paddingLeft": {
+                "value": "8.205vw"
+              },
+              "paddingRight": {
+                "value": "8.205vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "710ewVNwIlnJxMnhpYOYdj": true
+      },
+      "displayOrder": 2
+    },
+    "710ewVNwIlnJxMnhpYOYdj": {
+      "key": "710ewVNwIlnJxMnhpYOYdj",
+      "name": "Small Carousel",
+      "type": "Small Carousel",
+      "properties": {
+        "showIndicators": {
+          "value": false
+        },
+        "showArrowButtons": {
+          "value": false
+        },
+        "showIndicatorArrows": {
+          "value": false
+        }
+      },
+      "override": false,
+      "children": {
+        "4yw8bMK6thEemrlc6uZRD5": true,
+        "5ASoyKhr9GftkFIEgfqQNy": true,
+        "2IgPEjRO5tXre4eZUIWwr1": true,
+        "5P1wAyZBRG1dMqjuLkCUut": true
+      },
+      "displayOrder": 4
+    },
+    "4yw8bMK6thEemrlc6uZRD5": {
+      "key": "4yw8bMK6thEemrlc6uZRD5",
+      "name": "bg-img",
+      "type": "Grid",
+      "styleProperties": {
+        "3Y1H3w4QVI4W7HmUqR9dm8": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url('api/files/static/file/SHASH3/salzburg/mobile_terminals.png')"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "22.361vw"
+              },
+              "height": {
+                "value": "33.542vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              },
+              "backgroundPosition": {
+                "value": "center "
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "justifyContent": {
+                "value": "end"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "0.694vw"
+              },
+              "paddingBottom": {
+                "value": "0.694vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "75.385vw"
+              },
+              "height": {
+                "value": "113.333vw"
+              },
+              "paddingTop": {
+                "value": "2.564vw"
+              },
+              "paddingBottom": {
+                "value": "2.564vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2IPU5taY93c24T12al33Hh": true,
+        "1HLFnZRCwVzwLcuFcah4Q5": true
+      },
+      "displayOrder": 1
+    },
+    "2IPU5taY93c24T12al33Hh": {
+      "key": "2IPU5taY93c24T12al33Hh",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Our solution allows you to manage transactions directly"
+        }
+      },
+      "styleProperties": {
+        "dSjEzCKpzXSuJb5lFVTpB": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1HLFnZRCwVzwLcuFcah4Q5": {
+      "key": "1HLFnZRCwVzwLcuFcah4Q5",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Mobile & Terminal"
+        }
+      },
+      "styleProperties": {
+        "6MzRgCQE4ikiKqgfLYNwuJ": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "1.667vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5ASoyKhr9GftkFIEgfqQNy": {
+      "key": "5ASoyKhr9GftkFIEgfqQNy",
+      "name": "bg-img",
+      "type": "Grid",
+      "styleProperties": {
+        "HZK3cEaD9qeW7K0UXXtEE": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url('api/files/static/file/SHASH3/salzburg/secure_payments.png')"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "22.361vw"
+              },
+              "height": {
+                "value": "33.542vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              },
+              "backgroundPosition": {
+                "value": "center "
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "justifyContent": {
+                "value": "end"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "0.694vw"
+              },
+              "paddingBottom": {
+                "value": "0.694vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "75.385vw"
+              },
+              "height": {
+                "value": "113.333vw"
+              },
+              "paddingTop": {
+                "value": "2.564vw"
+              },
+              "paddingBottom": {
+                "value": "2.564vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5yj5rJAXC6Smx4GYPmKCY3": true,
+        "4ByODV4GMYD0pFCcmuTffI": true
+      },
+      "displayOrder": 3
+    },
+    "5yj5rJAXC6Smx4GYPmKCY3": {
+      "key": "5yj5rJAXC6Smx4GYPmKCY3",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "With industry-leading security features, your customer"
+        }
+      },
+      "styleProperties": {
+        "4uBQ80yAhuC2HrjBXVJxrT": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4ByODV4GMYD0pFCcmuTffI": {
+      "key": "4ByODV4GMYD0pFCcmuTffI",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Secure Payments\n"
+        }
+      },
+      "styleProperties": {
+        "1pWa8e7HMZhSJGyUVr5sOu": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "1.667vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2IgPEjRO5tXre4eZUIWwr1": {
+      "key": "2IgPEjRO5tXre4eZUIWwr1",
+      "name": "bg-img",
+      "type": "Grid",
+      "styleProperties": {
+        "7DynW4Ujm3SgpbDsfJ3cLK": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url('api/files/static/file/SHASH3/salzburg/touchscreen_interaction.png')"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "22.361vw"
+              },
+              "height": {
+                "value": "33.542vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              },
+              "backgroundPosition": {
+                "value": "center "
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "justifyContent": {
+                "value": "end"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "0.694vw"
+              },
+              "paddingBottom": {
+                "value": "0.694vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "75.385vw"
+              },
+              "height": {
+                "value": "113.333vw"
+              },
+              "paddingTop": {
+                "value": "2.564vw"
+              },
+              "paddingBottom": {
+                "value": "2.564vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "sYz0d2CdiWvZZLcVmROE2": true,
+        "5xLrldoYIyW3K6MjG46DBX": true
+      },
+      "displayOrder": 2
+    },
+    "sYz0d2CdiWvZZLcVmROE2": {
+      "key": "sYz0d2CdiWvZZLcVmROE2",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Easily integrate with existing systems to enhance your POS"
+        }
+      },
+      "styleProperties": {
+        "67wIgSx9K9UJP4wU2lvoxd": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5xLrldoYIyW3K6MjG46DBX": {
+      "key": "5xLrldoYIyW3K6MjG46DBX",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Custom Integrations"
+        }
+      },
+      "styleProperties": {
+        "3riHNU1HKMaKeh3Av3qXRF": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "1.667vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5P1wAyZBRG1dMqjuLkCUut": {
+      "key": "5P1wAyZBRG1dMqjuLkCUut",
+      "name": "bg-img",
+      "type": "Grid",
+      "styleProperties": {
+        "3TNEDTIvYCApqVfRSeWOOz": {
+          "resolutions": {
+            "ALL": {
+              "backgroundImage": {
+                "value": "url('api/files/static/file/SHASH3/salzburg/women_with_laptop.png')"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "width": {
+                "value": "22.361vw"
+              },
+              "height": {
+                "value": "33.542vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.222vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.222vw"
+              },
+              "backgroundPosition": {
+                "value": "center "
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "justifyContent": {
+                "value": "end"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "paddingTop": {
+                "value": "0.694vw"
+              },
+              "paddingBottom": {
+                "value": "0.694vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "75.385vw"
+              },
+              "height": {
+                "value": "113.333vw"
+              },
+              "paddingTop": {
+                "value": "2.564vw"
+              },
+              "paddingBottom": {
+                "value": "2.564vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderTopRightRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8.205vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "8.205vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7wy3KM3EsZSqNHNnaFKh6C": true,
+        "1d2UKkWl7axJtaOJa4mnfP": true
+      },
+      "displayOrder": 3
+    },
+    "7wy3KM3EsZSqNHNnaFKh6C": {
+      "key": "7wy3KM3EsZSqNHNnaFKh6C",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Intuitive design ensures that both staff and customers can navigate system effortlessly"
+        }
+      },
+      "styleProperties": {
+        "33A77iDGV45DG5de8JH4Bf": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "color": {
+                "value": "white"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1d2UKkWl7axJtaOJa4mnfP": {
+      "key": "1d2UKkWl7axJtaOJa4mnfP",
+      "name": "h1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "User-Friendly Design"
+        }
+      },
+      "styleProperties": {
+        "3uvOOr6YrODQXCAqS4roT": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "suse"
+              },
+              "fontSize": {
+                "value": "1.667vw"
+              },
+              "lineHeight": {
+                "value": "1.944vw"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "5.128vw"
+              },
+              "lineHeight": {
+                "value": "6.154vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "k6baMKB2Kxbr89oHgwEpc": {
+      "key": "k6baMKB2Kxbr89oHgwEpc",
+      "name": "seamless soln",
+      "type": "Grid",
+      "styleProperties": {
+        "37ORR3HVbMGH8V82hZucNl": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "backgroundImage": {
+                "value": "url('api/files/static/file/SHASH3/salzburg/CTA.avif')"
+              },
+              "backgroundSize": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "31.25vw"
+              },
+              "objectFit": {
+                "value": "cover"
+              },
+              "borderTopLeftRadius": {
+                "value": "2.083vw"
+              },
+              "borderTopRightRadius": {
+                "value": "2.083vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "2.083vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "2.083vw"
+              },
+              "backgroundRepeat": {
+                "value": "no-repeat"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "paddingLeft": {
+                "value": "50px"
+              },
+              "paddingRight": {
+                "value": "50px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "height": {
+                "value": "76.923vw"
+              },
+              "backgroundPosition": {
+                "value": "center center"
+              },
+              "backgroundSize": {
+                "value": "cover"
+              },
+              "paddingLeft": {
+                "value": "4.103vw"
+              },
+              "paddingRight": {
+                "value": "4.103vw"
+              },
+              "paddingTop": {
+                "value": "4.103vw"
+              },
+              "paddingBottom": {
+                "value": "4.103vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "7.692vw"
+              },
+              "borderTopRightRadius": {
+                "value": "7.692vw"
+              },
+              "borderBottomLeftRadius": {
+                "value": "7.692vw"
+              },
+              "borderBottomRightRadius": {
+                "value": "7.692vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6BRZRlhw1pDvc7R1FaKFyk": true,
+        "19jUkZuSCZz40GmxQCJJnt": true,
+        "5X3FKpvTVzavaKbWj7vOQT": true
+      },
+      "displayOrder": 6
+    },
+    "6BRZRlhw1pDvc7R1FaKFyk": {
+      "key": "6BRZRlhw1pDvc7R1FaKFyk",
+      "name": "p",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Our innovative POS app empowers you with flexibility and efficiency, whether\nused on mobile devices or dedicated terminals, enabling seamless transactions.\u200e \u200e \u200e"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "Ca7POHskvJml4RMChkvEl": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "4.103vw"
+              },
+              "lineHeight": {
+                "value": "5.128vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "19jUkZuSCZz40GmxQCJJnt": {
+      "key": "19jUkZuSCZz40GmxQCJJnt",
+      "name": "Title",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Discover Seamless Solutions"
+        }
+      },
+      "styleProperties": {
+        "6ffXF9G5lhuNlXpPvsvDKH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.111vw"
+              },
+              "fontFamily": {
+                "value": "Rubik"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "color": {
+                "value": "white"
+              },
+              "lineHeight": {
+                "value": "1.389vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "3.59vw"
+              },
+              "lineHeight": {
+                "value": "4.103vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5X3FKpvTVzavaKbWj7vOQT": {
+      "key": "5X3FKpvTVzavaKbWj7vOQT",
+      "name": "description",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Elevate Your Payment\nExperience Today\n"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "3O1ccN4NRZJJ10epxaKTT2": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "2.778vw"
+              },
+              "lineHeight": {
+                "value": "3.333vw"
+              },
+              "fontFamily": {
+                "value": "suse"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "color": {
+                "value": "white"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "7.692vw"
+              },
+              "lineHeight": {
+                "value": "9.231vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "name": "Features",
+  "clientCode": "SHASH3",
+  "appCode": "salzburguddnpwfyhyhruc",
+  "title": "Features",
+  "version": 33,
+  "updatedAt": "2025-12-31 13:04:20.828000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-12-31 09:42:44.338000",
+  "createdBy": "<USER>"
+}
