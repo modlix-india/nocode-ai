@@ -229,6 +229,30 @@ def wants_competitor_creatives(text: str) -> bool:
     return is_clear_affirmative_reply(lu) or bool(_CREATIVE_VERBS_RE.search(lu))
 
 
+def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
+    """Model-only line appended to analyze_competitors results when a consented
+    creative fetch is still owed THIS turn. Live 2026-07-29: the model burned
+    the user's Yes on a pre-analysis fetch attempt (refused: no competitors),
+    ran the analysis as told, then skipped ahead to the duration question -
+    the fetch never happened. The analysis result itself now carries the
+    reminder, so the chain can't be dropped between tools."""
+    session_ctx = context.get("session_context") or {}
+    spec = session_ctx.get("campaign_spec") or {}
+    if Platform.from_value(spec.get("platform")) is not Platform.META:
+        return ""
+    if not session_ctx.get("_competitor_creatives_offered"):
+        return ""
+    if competitor_creatives_offer_resolved(spec, session_ctx):
+        return ""
+    if not wants_competitor_creatives(_last_user_text(context)):
+        return ""
+    return (
+        " The user already said YES to seeing competitor ads - call "
+        "`fetch_competitor_creatives` NOW, in this same turn, before asking "
+        "anything else."
+    )
+
+
 def _last_user_text(context: dict[str, Any]) -> str:
     """Most recent user message as a flat string (handles Anthropic list-content)."""
     session = context.get("_session")

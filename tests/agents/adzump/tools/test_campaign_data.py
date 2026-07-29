@@ -392,6 +392,39 @@ class WantsCompetitorCreativesTests(unittest.TestCase):
                 self.assertEqual(wants_competitor_creatives(text), expected)
 
 
+class PendingCreativesFetchSteerTests(unittest.TestCase):
+    """analyze_competitors results carry the fetch reminder while a consented
+    creative fetch is still owed - live 2026-07-29: the model burned the Yes
+    on a pre-analysis fetch attempt, then never fetched after analyzing."""
+
+    def test_table(self):
+        from types import SimpleNamespace
+        from app.agents.adzump.tools.campaign_data import pending_creatives_fetch_steer
+
+        def ctx(*, platform="Meta", offered=True, fetched=False, last_user="Yes"):
+            session_ctx = {
+                "campaign_spec": {"platform": platform},
+                "_competitor_creatives_offered": offered,
+                "_competitor_creatives_fetched": fetched,
+            }
+            session = SimpleNamespace(messages=[{"role": "user", "content": last_user}])
+            return {"session_context": session_ctx, "_session": session}
+
+        cases = [
+            ("owed: offered + yes + unfetched", ctx(), True),
+            ("google flow", ctx(platform="Google Ads"), False),
+            ("never offered", ctx(offered=False), False),
+            ("already fetched (resolved)", ctx(fetched=True), False),
+            ("reply is not consent", ctx(last_user="30 days"), False),
+        ]
+        for name, context, owed in cases:
+            with self.subTest(case=name):
+                steer = pending_creatives_fetch_steer(context)
+                self.assertEqual(bool(steer), owed)
+                if owed:
+                    self.assertIn("fetch_competitor_creatives", steer)
+
+
 class ClearHelperTests(unittest.TestCase):
     def test_pops_flag_and_provenance(self):
         sc = {"campaign_spec": {"platform": "Google Ads",
