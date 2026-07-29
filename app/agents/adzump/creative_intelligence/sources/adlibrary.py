@@ -34,6 +34,12 @@ logger = logging.getLogger(__name__)
 
 APP_TYPE_BRANDS = "3"  # Gaming="1", Apps="2", E-commerce/Brands="3"
 DEFAULT_PAGE_SIZE = 60
+# Lookback window for /search. The vendor's crawl of regional pages lags badly
+# (measured 2026-07-27: "Purva Sparkling Springs" had 35 indexed ads, ALL seen
+# 100+ days ago - daysBack=90 returned 0 of them while Meta showed the page
+# live). A year-wide window surfaces what the vendor actually has; recency is
+# judged downstream (is_active, winner_signal) from the per-ad timestamps.
+DAYS_BACK = 365
 # adlibrary.com ads_type -> our media_type
 _MEDIA_TYPE = {1: "image", 2: "video", 3: "carousel", 4: "collection"}
 # An ad whose last_seen is within this many days is treated as still running;
@@ -92,7 +98,7 @@ class AdLibrarySource:
         body: dict[str, Any] = {
             "appType": APP_TYPE_BRANDS,
             "sortField": "-impression",
-            "daysBack": 90,
+            "daysBack": DAYS_BACK,
             "page": page,
             "pageSize": page_size,
         }
@@ -105,7 +111,9 @@ class AdLibrarySource:
             "accept": "application/json",
         }
         base = settings.ADLIBRARY_BASE_URL.rstrip("/")
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Live /search latency is routinely ~35s (measured 2026-07-27), so 30s
+        # timed out every real call; give it generous headroom.
+        async with httpx.AsyncClient(timeout=90.0) as client:
             resp = await client.post(f"{base}/search", headers=headers, json=body)
 
         if resp.status_code == 401:
