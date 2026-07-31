@@ -1,0 +1,3146 @@
+{
+  "_id": "68e3c51754201875180b5839",
+  "properties": {
+    "onLoadEvent": "70aU9tKGnCseQZPl0Dy5D8",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "7fHBdJ90YsxA4foZdO1Dat": {
+      "name": "createBudget",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1201,
+            "top": 471.83072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "3tC1QHJM4FPlWnzL5Nxwrr": {
+                "key": "3tC1QHJM4FPlWnzL5Nxwrr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adBudgetError"
+              }
+            },
+            "value": {
+              "6FNHhyhLesQ2bDxTRQzKQA": {
+                "key": "6FNHhyhLesQ2bDxTRQzKQA",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.error.message",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1211,
+            "top": 150.83072916666666
+          },
+          "parameterMap": {
+            "path": {
+              "36DaAtZKpFoBaB1xysKiNm": {
+                "key": "36DaAtZKpFoBaB1xysKiNm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adBudgetResponse"
+              }
+            },
+            "value": {
+              "1xyMdrwm5DZf8QNqwv2e5H": {
+                "key": "1xyMdrwm5DZf8QNqwv2e5H",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1612.6666666666665,
+            "top": 173.16406249999997
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "comment": "budget_resource_id",
+          "parameterMap": {
+            "path": {
+              "4z8FqDtj4t6BYwb8a7KU3u": {
+                "key": "4z8FqDtj4t6BYwb8a7KU3u",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.budgetResourceId"
+              }
+            },
+            "value": {
+              "7FbsHs1z98zmqv5DG9zKK0": {
+                "key": "7FbsHs1z98zmqv5DG9zKK0",
+                "type": "EXPRESSION",
+                "expression": "Page.adBudgetResponse.results[0].resourceName",
+                "order": 1
+              }
+            }
+          }
+        },
+        "adsOperation": {
+          "statementName": "adsOperation",
+          "name": "AdsOperation",
+          "namespace": "Google",
+          "position": {
+            "left": 741.3333333333333,
+            "top": 311.83072916666663
+          },
+          "parameterMap": {
+            "CustomerID": {
+              "4gI5zYLlxITfT2KdbYa62N": {
+                "key": "4gI5zYLlxITfT2KdbYa62N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            },
+            "OperationKey": {
+              "4ZDANqdeU9XpREU9JkHtrB": {
+                "key": "4ZDANqdeU9XpREU9JkHtrB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "campaignBudgets"
+              }
+            },
+            "Payload": {
+              "5POqu8YuJxAS99s6Bg9rl9": {
+                "key": "5POqu8YuJxAS99s6Bg9rl9",
+                "type": "EXPRESSION",
+                "expression": "Page.budgetPayload",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "4bZPYNMObgIyy4ywo3OEob": {
+                "key": "4bZPYNMObgIyy4ywo3OEob",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            }
+          },
+          "comment": "creating_no_shared_budget",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "jSONParse": {
+          "statementName": "jSONParse",
+          "name": "JSONParse",
+          "namespace": "System.JSON",
+          "position": {
+            "left": 61.20832570393878,
+            "top": 417.2708282470702
+          },
+          "parameterMap": {
+            "source": {
+              "6t5QRKuJIh9gLaQg87OJqb": {
+                "key": "6t5QRKuJIh9gLaQg87OJqb",
+                "type": "EXPRESSION",
+                "expression": "Page.Budget",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 353.99999999999994,
+            "top": 412.49739583333326
+          },
+          "parameterMap": {
+            "path": {
+              "1d6VMf7seM3b6E0cko5LBS": {
+                "key": "1d6VMf7seM3b6E0cko5LBS",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.budgetPayload"
+              }
+            },
+            "value": {
+              "1iZLJmfI9rXdfg3ay9rspV": {
+                "key": "1iZLJmfI9rXdfg3ay9rspV",
+                "type": "EXPRESSION",
+                "expression": "Steps.jSONParse.output.value",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "name": "cityVille camapign budget",
+                        "deliveryMethod": "STANDARD",
+                        "amountMicros": 60000000000,
+                        "explicitlyShared": false
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3qLrS7kMQOM00UBDvJ0ZPy": {
+      "name": "searchCampaignCreation",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1089,
+            "top": 425.83072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "3tC1QHJM4FPlWnzL5Nxwrr": {
+                "key": "3tC1QHJM4FPlWnzL5Nxwrr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adBudgetError"
+              }
+            },
+            "value": {
+              "6FNHhyhLesQ2bDxTRQzKQA": {
+                "key": "6FNHhyhLesQ2bDxTRQzKQA",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.error.message",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1458.6666666666665,
+            "top": 111.49739583333331
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "4U7aMbnXk6weBiBpQCp0Wy": {
+                "key": "4U7aMbnXk6weBiBpQCp0Wy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.campaignResourceId"
+              }
+            },
+            "value": {
+              "7MhvIKKPuKVRf9SoCCrcE3": {
+                "key": "7MhvIKKPuKVRf9SoCCrcE3",
+                "type": "EXPRESSION",
+                "expression": "Page.campaignResponse.results[0].resourceName",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1081,
+            "top": 112.83072916666666
+          },
+          "parameterMap": {
+            "path": {
+              "36DaAtZKpFoBaB1xysKiNm": {
+                "key": "36DaAtZKpFoBaB1xysKiNm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.campaignResponse"
+              }
+            },
+            "value": {
+              "1xyMdrwm5DZf8QNqwv2e5H": {
+                "key": "1xyMdrwm5DZf8QNqwv2e5H",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "adsOperation": {
+          "statementName": "adsOperation",
+          "name": "AdsOperation",
+          "namespace": "Google",
+          "position": {
+            "left": 616.3333333333333,
+            "top": 299.83072916666663
+          },
+          "parameterMap": {
+            "CustomerID": {
+              "4gI5zYLlxITfT2KdbYa62N": {
+                "key": "4gI5zYLlxITfT2KdbYa62N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            },
+            "OperationKey": {
+              "4ZDANqdeU9XpREU9JkHtrB": {
+                "key": "4ZDANqdeU9XpREU9JkHtrB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "campaigns"
+              }
+            },
+            "Payload": {
+              "5POqu8YuJxAS99s6Bg9rl9": {
+                "key": "5POqu8YuJxAS99s6Bg9rl9",
+                "type": "EXPRESSION",
+                "expression": "Page.campaignPayload",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "4bZPYNMObgIyy4ywo3OEob": {
+                "key": "4bZPYNMObgIyy4ywo3OEob",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            }
+          },
+          "comment": "creating_search_campaign",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 298.3333333333333,
+            "top": 349.4973958333333
+          },
+          "parameterMap": {
+            "path": {
+              "3SqkVSzAWiH1hY285U2iHl": {
+                "key": "3SqkVSzAWiH1hY285U2iHl",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.campaignPayload"
+              }
+            },
+            "value": {
+              "7I0z21AbM7gw0V5w5dWhWS": {
+                "key": "7I0z21AbM7gw0V5w5dWhWS",
+                "type": "EXPRESSION",
+                "expression": "Steps.jSONParse.output.value",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "name": "CityVille Campaign",
+                        "status": "ENABLED",
+                        "campaignBudget": "customers/<PHONE>/campaignBudgets/<PHONE>",
+                        "advertisingChannelType": "SEARCH",
+                        "maximizeConversions": {}
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "jSONParse": {
+          "statementName": "jSONParse",
+          "name": "JSONParse",
+          "namespace": "System.JSON",
+          "position": {
+            "left": 49.20832570393878,
+            "top": 373.2708282470702
+          },
+          "parameterMap": {
+            "source": {
+              "6t5QRKuJIh9gLaQg87OJqb": {
+                "key": "6t5QRKuJIh9gLaQg87OJqb",
+                "type": "EXPRESSION",
+                "expression": "Page.Campaign",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "69Dtxib2QwPorIpaqWHJyr": {
+      "name": "searchCampaignCriterion",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1343,
+            "top": 473.83072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "3tC1QHJM4FPlWnzL5Nxwrr": {
+                "key": "3tC1QHJM4FPlWnzL5Nxwrr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.campaignCriterionError"
+              }
+            },
+            "value": {
+              "6FNHhyhLesQ2bDxTRQzKQA": {
+                "key": "6FNHhyhLesQ2bDxTRQzKQA",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.error.message",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1335,
+            "top": 160.83072916666666
+          },
+          "parameterMap": {
+            "path": {
+              "36DaAtZKpFoBaB1xysKiNm": {
+                "key": "36DaAtZKpFoBaB1xysKiNm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.campaignCriterionPayload"
+              }
+            },
+            "value": {
+              "1xyMdrwm5DZf8QNqwv2e5H": {
+                "key": "1xyMdrwm5DZf8QNqwv2e5H",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "adsOperation": {
+          "statementName": "adsOperation",
+          "name": "AdsOperation",
+          "namespace": "Google",
+          "position": {
+            "left": 900.3333333333333,
+            "top": 336.83072916666663
+          },
+          "parameterMap": {
+            "CustomerID": {
+              "4gI5zYLlxITfT2KdbYa62N": {
+                "key": "4gI5zYLlxITfT2KdbYa62N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            },
+            "OperationKey": {
+              "4ZDANqdeU9XpREU9JkHtrB": {
+                "key": "4ZDANqdeU9XpREU9JkHtrB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "campaignCriteria"
+              }
+            },
+            "Payload": {
+              "5POqu8YuJxAS99s6Bg9rl9": {
+                "key": "5POqu8YuJxAS99s6Bg9rl9",
+                "type": "EXPRESSION",
+                "expression": "Page.campaignCriterionPayload",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "4bZPYNMObgIyy4ywo3OEob": {
+                "key": "4bZPYNMObgIyy4ywo3OEob",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            }
+          },
+          "comment": "creating_search_campaign",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "jSONParse": {
+          "statementName": "jSONParse",
+          "name": "JSONParse",
+          "namespace": "System.JSON",
+          "position": {
+            "left": 109.99999999999997,
+            "top": 408.1640625
+          },
+          "parameterMap": {
+            "source": {
+              "5oHWnHiuhUAJSRb0NWTjJA": {
+                "key": "5oHWnHiuhUAJSRb0NWTjJA",
+                "type": "EXPRESSION",
+                "expression": "Page.campaignCriterion",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 456.66666666666663,
+            "top": 379.6614583333333
+          },
+          "parameterMap": {
+            "path": {
+              "6oQGKMxGX3KdVJEfHU7Mq5": {
+                "key": "6oQGKMxGX3KdVJEfHU7Mq5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.campaignCriterionPayload"
+              }
+            },
+            "value": {
+              "6yFimqm4iErU5MlQBS1Y3Z": {
+                "key": "6yFimqm4iErU5MlQBS1Y3Z",
+                "type": "EXPRESSION",
+                "expression": "Steps.jSONParse.output.value",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5OJuQ24WgfCgL0vFEyskuI": {
+      "name": "searchAdGroupCreation",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1104,
+            "top": 438.83072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "3tC1QHJM4FPlWnzL5Nxwrr": {
+                "key": "3tC1QHJM4FPlWnzL5Nxwrr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupError"
+              }
+            },
+            "value": {
+              "6FNHhyhLesQ2bDxTRQzKQA": {
+                "key": "6FNHhyhLesQ2bDxTRQzKQA",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.error.message",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1473.6666666666665,
+            "top": 124.49739583333331
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "4U7aMbnXk6weBiBpQCp0Wy": {
+                "key": "4U7aMbnXk6weBiBpQCp0Wy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupResourceId"
+              }
+            },
+            "value": {
+              "7MhvIKKPuKVRf9SoCCrcE3": {
+                "key": "7MhvIKKPuKVRf9SoCCrcE3",
+                "type": "EXPRESSION",
+                "expression": "Page.adGroupResponse.results[0].resourceName",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1096,
+            "top": 125.83072916666666
+          },
+          "parameterMap": {
+            "path": {
+              "36DaAtZKpFoBaB1xysKiNm": {
+                "key": "36DaAtZKpFoBaB1xysKiNm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupResponse"
+              }
+            },
+            "value": {
+              "1xyMdrwm5DZf8QNqwv2e5H": {
+                "key": "1xyMdrwm5DZf8QNqwv2e5H",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "adsOperation": {
+          "statementName": "adsOperation",
+          "name": "AdsOperation",
+          "namespace": "Google",
+          "position": {
+            "left": 661.3333333333333,
+            "top": 301.83072916666663
+          },
+          "parameterMap": {
+            "CustomerID": {
+              "4gI5zYLlxITfT2KdbYa62N": {
+                "key": "4gI5zYLlxITfT2KdbYa62N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            },
+            "OperationKey": {
+              "4ZDANqdeU9XpREU9JkHtrB": {
+                "key": "4ZDANqdeU9XpREU9JkHtrB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "adGroups"
+              }
+            },
+            "Payload": {
+              "5POqu8YuJxAS99s6Bg9rl9": {
+                "key": "5POqu8YuJxAS99s6Bg9rl9",
+                "type": "EXPRESSION",
+                "expression": "Page.adGroupPayload",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "4bZPYNMObgIyy4ywo3OEob": {
+                "key": "4bZPYNMObgIyy4ywo3OEob",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            }
+          },
+          "comment": "creating_search_campaign",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "jSONParse": {
+          "statementName": "jSONParse",
+          "name": "JSONParse",
+          "namespace": "System.JSON",
+          "position": {
+            "left": 70.99999999999997,
+            "top": 91.83072916666666
+          },
+          "parameterMap": {
+            "source": {
+              "4H85ua7xNh5oVENATqzrMK": {
+                "key": "4H85ua7xNh5oVENATqzrMK",
+                "type": "EXPRESSION",
+                "expression": "Page.adGroup",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 314.3333333333333,
+            "top": 287.8359375
+          },
+          "parameterMap": {
+            "path": {
+              "742TNHtPAcjr9BEyIPxgE4": {
+                "key": "742TNHtPAcjr9BEyIPxgE4",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.adGroupPayload"
+              }
+            },
+            "value": {
+              "5o6O9DqtRU32d4XvCpPX1s": {
+                "key": "5o6O9DqtRU32d4XvCpPX1s",
+                "type": "EXPRESSION",
+                "expression": "Steps.jSONParse.output.value",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "campaign": "customers/<PHONE>/campaigns/<PHONE>",
+                        "name": "CityVille AdGroup",
+                        "status": "ENABLED",
+                        "type": "SEARCH_STANDARD"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "Vz2QhBU7PUOtKS2STySlc": {
+      "name": "searchAdGroupCriterion",
+      "steps": {
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1433.6666666666665,
+            "top": 166.49739583333331
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "4U7aMbnXk6weBiBpQCp0Wy": {
+                "key": "4U7aMbnXk6weBiBpQCp0Wy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupResourceId"
+              }
+            },
+            "value": {
+              "7MhvIKKPuKVRf9SoCCrcE3": {
+                "key": "7MhvIKKPuKVRf9SoCCrcE3",
+                "type": "EXPRESSION",
+                "expression": "Page.adGroupCriterionResponse.results[0].resourceName",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1123,
+            "top": 468.83072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "3tC1QHJM4FPlWnzL5Nxwrr": {
+                "key": "3tC1QHJM4FPlWnzL5Nxwrr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupCriterionError"
+              }
+            },
+            "value": {
+              "6FNHhyhLesQ2bDxTRQzKQA": {
+                "key": "6FNHhyhLesQ2bDxTRQzKQA",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.error.message",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1115,
+            "top": 155.83072916666666
+          },
+          "parameterMap": {
+            "path": {
+              "36DaAtZKpFoBaB1xysKiNm": {
+                "key": "36DaAtZKpFoBaB1xysKiNm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupCriterionResponse"
+              }
+            },
+            "value": {
+              "1xyMdrwm5DZf8QNqwv2e5H": {
+                "key": "1xyMdrwm5DZf8QNqwv2e5H",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "adsOperation": {
+          "statementName": "adsOperation",
+          "name": "AdsOperation",
+          "namespace": "Google",
+          "position": {
+            "left": 680.3333333333333,
+            "top": 331.83072916666663
+          },
+          "parameterMap": {
+            "CustomerID": {
+              "4gI5zYLlxITfT2KdbYa62N": {
+                "key": "4gI5zYLlxITfT2KdbYa62N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            },
+            "OperationKey": {
+              "4ZDANqdeU9XpREU9JkHtrB": {
+                "key": "4ZDANqdeU9XpREU9JkHtrB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "adGroupCriteria"
+              }
+            },
+            "Payload": {
+              "5POqu8YuJxAS99s6Bg9rl9": {
+                "key": "5POqu8YuJxAS99s6Bg9rl9",
+                "type": "EXPRESSION",
+                "expression": "Page.adGroupCriterionPayload",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "4bZPYNMObgIyy4ywo3OEob": {
+                "key": "4bZPYNMObgIyy4ywo3OEob",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            }
+          },
+          "comment": "creating_search_campaign",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "jSONParse": {
+          "statementName": "jSONParse",
+          "name": "JSONParse",
+          "namespace": "System.JSON",
+          "position": {
+            "left": 74.33333333333331,
+            "top": 91.16406249999997
+          },
+          "parameterMap": {
+            "source": {
+              "4m8EWUXiSneDGQEw2W2TqW": {
+                "key": "4m8EWUXiSneDGQEw2W2TqW",
+                "type": "EXPRESSION",
+                "expression": "Page.adGroupCriterion",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 298.66666666666663,
+            "top": 303.6640625
+          },
+          "parameterMap": {
+            "path": {
+              "1CCFXzbOQaaznnlsvCyDUa": {
+                "key": "1CCFXzbOQaaznnlsvCyDUa",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adGroupCriterionPayload"
+              }
+            },
+            "value": {
+              "3SJ7cLF2LB8A9JyhG7unb7": {
+                "key": "3SJ7cLF2LB8A9JyhG7unb7",
+                "type": "EXPRESSION",
+                "expression": "Steps.jSONParse.output.value",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "status": "ENABLED",
+                        "keyword": {
+                          "text": "apartments in bangalore",
+                          "matchType": "PHRASE"
+                        }
+                      }
+                    },
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "status": "ENABLED",
+                        "keyword": {
+                          "text": "3bhk villas",
+                          "matchType": "BROAD"
+                        }
+                      }
+                    },
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "status": "ENABLED",
+                        "keyword": {
+                          "text": "2bhk villas",
+                          "matchType": "PHRASE"
+                        }
+                      }
+                    },
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "status": "ENABLED",
+                        "keyword": {
+                          "text": "houses for sale near me",
+                          "matchType": "PHRASE"
+                        }
+                      }
+                    },
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "ageRange": {
+                          "type": "AGE_RANGE_25_34"
+                        }
+                      }
+                    },
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "ageRange": {
+                          "type": "AGE_RANGE_35_44"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "B9jwzM3NkqyMzN4l1aUF4": {
+      "name": "AdCreation",
+      "steps": {
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1257.6666666666665,
+            "top": 98.49739583333331
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          },
+          "parameterMap": {
+            "path": {
+              "4U7aMbnXk6weBiBpQCp0Wy": {
+                "key": "4U7aMbnXk6weBiBpQCp0Wy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adResourceId"
+              }
+            },
+            "value": {
+              "7MhvIKKPuKVRf9SoCCrcE3": {
+                "key": "7MhvIKKPuKVRf9SoCCrcE3",
+                "type": "EXPRESSION",
+                "expression": "Page.adResponse.results[0].resourceName",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 881,
+            "top": 405.83072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "3tC1QHJM4FPlWnzL5Nxwrr": {
+                "key": "3tC1QHJM4FPlWnzL5Nxwrr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adError"
+              }
+            },
+            "value": {
+              "6FNHhyhLesQ2bDxTRQzKQA": {
+                "key": "6FNHhyhLesQ2bDxTRQzKQA",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.error.message",
+                "order": 1
+              }
+            }
+          }
+        },
+        "adsOperation": {
+          "statementName": "adsOperation",
+          "name": "AdsOperation",
+          "namespace": "Google",
+          "position": {
+            "left": 438.33333333333326,
+            "top": 268.83072916666663
+          },
+          "parameterMap": {
+            "CustomerID": {
+              "4gI5zYLlxITfT2KdbYa62N": {
+                "key": "4gI5zYLlxITfT2KdbYa62N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            },
+            "OperationKey": {
+              "4ZDANqdeU9XpREU9JkHtrB": {
+                "key": "4ZDANqdeU9XpREU9JkHtrB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "adGroupAds"
+              }
+            },
+            "Payload": {
+              "5POqu8YuJxAS99s6Bg9rl9": {
+                "key": "5POqu8YuJxAS99s6Bg9rl9",
+                "type": "EXPRESSION",
+                "expression": "Page.adCreationPayload",
+                "order": 1
+              }
+            },
+            "LoginCustomerID": {
+              "4bZPYNMObgIyy4ywo3OEob": {
+                "key": "4bZPYNMObgIyy4ywo3OEob",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "<PHONE>"
+              }
+            }
+          },
+          "comment": "creating_search_campaign",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 873,
+            "top": 92.83072916666666
+          },
+          "parameterMap": {
+            "path": {
+              "36DaAtZKpFoBaB1xysKiNm": {
+                "key": "36DaAtZKpFoBaB1xysKiNm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adResponse"
+              }
+            },
+            "value": {
+              "1xyMdrwm5DZf8QNqwv2e5H": {
+                "key": "1xyMdrwm5DZf8QNqwv2e5H",
+                "type": "EXPRESSION",
+                "expression": "Steps.adsOperation.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "jSONParse": {
+          "statementName": "jSONParse",
+          "name": "JSONParse",
+          "namespace": "System.JSON",
+          "position": {
+            "left": 86.66666666666664,
+            "top": 77.49739583333331
+          },
+          "parameterMap": {
+            "source": {
+              "kTTFLV3SCevoaokQlze6O": {
+                "key": "kTTFLV3SCevoaokQlze6O",
+                "type": "EXPRESSION",
+                "expression": "Page.ad",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 79.66666666666663,
+            "top": 307.33072916666663
+          },
+          "parameterMap": {
+            "path": {
+              "2S191D9tEXwLAlGUK6Lfev": {
+                "key": "2S191D9tEXwLAlGUK6Lfev",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.adCreationPayload"
+              }
+            },
+            "value": {
+              "31W1MQlkKd6FKtPnJv1dKa": {
+                "key": "31W1MQlkKd6FKtPnJv1dKa",
+                "type": "EXPRESSION",
+                "expression": "Steps.jSONParse.output.value",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "adGroup": "customers/<PHONE>/adGroups/<PHONE>",
+                        "status": "ENABLED",
+                        "ad": {
+                          "name": "RealEstate_LeadGen_Ad",
+                          "responsiveSearchAd": {
+                            "headlines": [
+                              {
+                                "text": "Find Your Dream Home",
+                                "pinnedField": "<REDACTED>"
+                              },
+                              {
+                                "text": "2 & 3 BHK Villas in Bangalore"
+                              },
+                              {
+                                "text": "Spacious Apartments for Sale"
+                              },
+                              {
+                                "text": "Luxury Homes Near You"
+                              },
+                              {
+                                "text": "Best Real Estate Deals"
+                              },
+                              {
+                                "text": "Affordable Villas Bangalore"
+                              },
+                              {
+                                "text": "Secure Your New Home Today"
+                              },
+                              {
+                                "text": "Trusted Builders in Bangalore"
+                              },
+                              {
+                                "text": "Modern Homes for Families"
+                              },
+                              {
+                                "text": "Book Site Visit Now"
+                              }
+                            ],
+                            "descriptions": [
+                              {
+                                "text": "Explore premium 2 & 3 BHK villas and apartments in Bangalore. Book today!",
+                                "pinnedField": "<REDACTED>"
+                              },
+                              {
+                                "text": "Limited-time offers on luxury homes. Secure your dream home now."
+                              },
+                              {
+                                "text": "Affordable housing with top-class amenities. Enquire today!"
+                              },
+                              {
+                                "text": "Book a site visit & get exclusive offers on villas in prime locations."
+                              }
+                            ],
+                            "path1": "villas",
+                            "path2": "bangalore"
+                          },
+                          "finalUrls": [
+                            "https://cityville.in/"
+                          ],
+                          "finalMobileUrls": [
+                            "https://cityville.in/"
+                          ],
+                          "trackingUrlTemplate": "{lpurl}?device={device}&matchtype={matchtype}",
+                          "urlCustomParameters": [
+                            {
+                              "key": "promo",
+                              "value": "lead_gen"
+                            },
+                            {
+                              "key": "source",
+                              "value": "google_ads"
+                            }
+                          ],
+                          "finalUrlSuffix": "utm_source=google&utm_medium=cpc&utm_campaign=real_estate"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "70aU9tKGnCseQZPl0Dy5D8": {
+      "name": "Onload",
+      "steps": {
+        "Budget": {
+          "statementName": "Budget",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 194.87499237060544,
+            "top": 166.27082824707028
+          },
+          "parameterMap": {
+            "path": {
+              "3qGVuqgrhF1dTpzIsqykPp": {
+                "key": "3qGVuqgrhF1dTpzIsqykPp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sampleBudget"
+              }
+            },
+            "value": {
+              "76qvkZcTMqbwUbX5fuboSu": {
+                "key": "76qvkZcTMqbwUbX5fuboSu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "name": "lifeByTheLake camapign budget",
+                        "deliveryMethod": "STANDARD",
+                        "amountMicros": 70000000000,
+                        "explicitlyShared": false
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "campaign": {
+          "statementName": "campaign",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 534.8749923706055,
+            "top": 172.27082824707028
+          },
+          "parameterMap": {
+            "path": {
+              "3qGVuqgrhF1dTpzIsqykPp": {
+                "key": "3qGVuqgrhF1dTpzIsqykPp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sampleCampaign"
+              }
+            },
+            "value": {
+              "76qvkZcTMqbwUbX5fuboSu": {
+                "key": "76qvkZcTMqbwUbX5fuboSu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "operations": [
+                    {
+                      "create": {
+                        "name": "LifeByTheLake Ville Campaign",
+                        "status": "ENABLED",
+                        "campaignBudget": "customers/<PHONE>/campaignBudgets/<PHONE>",
+                        "advertisingChannelType": "SEARCH",
+                        "maximizeConversions": {}
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__Budget__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "3d2ZnBwDiPKcxehusECeXq",
+  "componentDefinition": {
+    "3d2ZnBwDiPKcxehusECeXq": {
+      "key": "3d2ZnBwDiPKcxehusECeXq",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2g1bmU1eVjAHkfS3s56pGx": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "1.042vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6qtzA7TR0hTcUDvvFgByiR": true,
+        "3rRFD9JYNnd61UVUPqZZxm": true,
+        "2tuM6obbxnLwDpL9sGxcaP": true,
+        "5y8irAAIFNqFO7CNwLlUIn": true,
+        "7fZWEutytNU7YBx7DZgGw2": true
+      }
+    },
+    "5ap2RYbwtihGZFrnJaOkeY": {
+      "key": "5ap2RYbwtihGZFrnJaOkeY",
+      "name": "Budget Creation Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "background": {
+          "value": "_NONARYBG"
+        }
+      },
+      "styleProperties": {
+        "766GNNUVqz375J77X6MNfA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "500px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "nbLZHbJbZS6YBkMDOoapK": true,
+        "3WRfnqPqVgnElAkstITPKw": true,
+        "OUoEqUC4oMTw9UPUbop2": true,
+        "1gYwQIX9eM6p8G4pxECZBh": true,
+        "4ETUy3V5zIhn56DxvlOJgJ": true,
+        "2Qx9aXbGULEIhq31xHNgkk": true,
+        "qfyfym4U9eLg2Dujvigry": true
+      },
+      "displayOrder": 1
+    },
+    "nbLZHbJbZS6YBkMDOoapK": {
+      "key": "nbLZHbJbZS6YBkMDOoapK",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Budget Creation"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "dFEJ0NcCAJZmzmhugBJG7": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3WRfnqPqVgnElAkstITPKw": {
+      "key": "3WRfnqPqVgnElAkstITPKw",
+      "name": "Budget creation payload ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Add Payload to create Budget"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "placeholder": {
+          "value": "Add Budget Payload"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6aKqV0qYGjRX6hbqpoJiKO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.budgetPayload"
+      }
+    },
+    "OUoEqUC4oMTw9UPUbop2": {
+      "key": "OUoEqUC4oMTw9UPUbop2",
+      "name": "Create Budget",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Create Budget"
+        },
+        "onClick": {
+          "value": "7fHBdJ90YsxA4foZdO1Dat"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "1gYwQIX9eM6p8G4pxECZBh": {
+      "key": "1gYwQIX9eM6p8G4pxECZBh",
+      "name": "Response text heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Response After Creating A Budget"
+        }
+      },
+      "styleProperties": {
+        "1s5AupfihcQjQCjouIbozH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "4ETUy3V5zIhn56DxvlOJgJ": {
+      "key": "4ETUy3V5zIhn56DxvlOJgJ",
+      "name": "Budget Response",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.adBudgetResponse"
+          }
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "3C0OuncuTiTvfjHjn48CjZ": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#BFE2F3"
+              },
+              "paddingTop": {
+                "value": "5px"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              },
+              "borderTopLeftRadius": {
+                "value": "5px"
+              },
+              "borderTopRightRadius": {
+                "value": "5px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "5px"
+              },
+              "borderBottomRightRadius": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#E4080A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "SQICMYRa0UGtVTJgq6RC2": {
+      "key": "SQICMYRa0UGtVTJgq6RC2",
+      "name": "AdGroup  Criterion Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "background": {
+          "value": "_NONARYBG"
+        }
+      },
+      "styleProperties": {
+        "766GNNUVqz375J77X6MNfA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "500px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4GmWkvCcOozTLhdFthK8h4": true,
+        "42SSiZWFsAjFPMAyRiE9Zr": true,
+        "67I6terdrN3RrVCX7WDCZL": true,
+        "2BTcINakm0gsESSMifzpCW": true,
+        "4BTB1LvKxu5yJJ3LYmTtsf": true,
+        "7ySugwgiu1bllJWQsElQYn": true,
+        "nB1kgGix4C3U4NfW1zTea": true
+      },
+      "displayOrder": 1
+    },
+    "4GmWkvCcOozTLhdFthK8h4": {
+      "key": "4GmWkvCcOozTLhdFthK8h4",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "AdGroup Criterion\n\n"
+        }
+      },
+      "styleProperties": {
+        "dFEJ0NcCAJZmzmhugBJG7": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "42SSiZWFsAjFPMAyRiE9Zr": {
+      "key": "42SSiZWFsAjFPMAyRiE9Zr",
+      "name": "Adgroup creation payload ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Add Payload to create AdGroup Criterion"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "placeholder": {
+          "value": "Add AdGroup Criterion Payload"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6aKqV0qYGjRX6hbqpoJiKO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.adGroupCriterionPayload"
+      }
+    },
+    "67I6terdrN3RrVCX7WDCZL": {
+      "key": "67I6terdrN3RrVCX7WDCZL",
+      "name": "Create Adgroup",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Create Adgroup Criterion"
+        },
+        "onClick": {
+          "value": "Vz2QhBU7PUOtKS2STySlc"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "2BTcINakm0gsESSMifzpCW": {
+      "key": "2BTcINakm0gsESSMifzpCW",
+      "name": "Response text heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Response After Creating Campaign\n"
+        }
+      },
+      "styleProperties": {
+        "1s5AupfihcQjQCjouIbozH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "4BTB1LvKxu5yJJ3LYmTtsf": {
+      "key": "4BTB1LvKxu5yJJ3LYmTtsf",
+      "name": "AdGroup Criterion Response",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.adGroupCriterionResponse"
+          }
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "3m5u3hrqwQQW3lxTpTroXj": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#BFE2F3"
+              },
+              "borderTopLeftRadius": {
+                "value": "5px"
+              },
+              "borderTopRightRadius": {
+                "value": "5px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "5px"
+              },
+              "borderBottomRightRadius": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#E4080A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "6qtzA7TR0hTcUDvvFgByiR": {
+      "key": "6qtzA7TR0hTcUDvvFgByiR",
+      "name": "Adgroup Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWCOLUMNLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3djGi4F8VP1moMOP0cw1CN": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.042vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "SQICMYRa0UGtVTJgq6RC2": true,
+        "4JSluTDtMKOe9gC2bvqDjl": true
+      },
+      "displayOrder": 4
+    },
+    "4JSluTDtMKOe9gC2bvqDjl": {
+      "key": "4JSluTDtMKOe9gC2bvqDjl",
+      "name": "AdGroup Creation Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "background": {
+          "value": "_NONARYBG"
+        }
+      },
+      "styleProperties": {
+        "766GNNUVqz375J77X6MNfA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "500px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2bGzq7LMQETdMyJEl6YNiH": true,
+        "1zYN2HOXnimVFJJPTmw0pG": true,
+        "2YstlMNY5R5g1u7qxzvu8L": true,
+        "67Quexf3pEahzSNzFHcCip": true,
+        "2zecMgtgW2vASlv5SCEAeM": true,
+        "1LnTDaZufA2nNArhxzePDH": true,
+        "1098nlyfoqLKolVJK9RIOx": true
+      },
+      "displayOrder": 1
+    },
+    "2bGzq7LMQETdMyJEl6YNiH": {
+      "key": "2bGzq7LMQETdMyJEl6YNiH",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "AdGroup \nCreation"
+        }
+      },
+      "styleProperties": {
+        "dFEJ0NcCAJZmzmhugBJG7": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "1zYN2HOXnimVFJJPTmw0pG": {
+      "key": "1zYN2HOXnimVFJJPTmw0pG",
+      "name": "AdGroup creation payload ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Add Payload to create AdGroup "
+        },
+        "noFloat": {
+          "value": true
+        },
+        "placeholder": {
+          "value": "Add AdGroup Payload"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6aKqV0qYGjRX6hbqpoJiKO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.adGroupPayload"
+      }
+    },
+    "2YstlMNY5R5g1u7qxzvu8L": {
+      "key": "2YstlMNY5R5g1u7qxzvu8L",
+      "name": "Create Adgroup",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Create Adgroup"
+        },
+        "onClick": {
+          "value": "5OJuQ24WgfCgL0vFEyskuI"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "67Quexf3pEahzSNzFHcCip": {
+      "key": "67Quexf3pEahzSNzFHcCip",
+      "name": "Response text heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Response After Creating Campaign\n"
+        }
+      },
+      "styleProperties": {
+        "1s5AupfihcQjQCjouIbozH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "2zecMgtgW2vASlv5SCEAeM": {
+      "key": "2zecMgtgW2vASlv5SCEAeM",
+      "name": "Adgroup Response",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.adGroupResponse"
+          }
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "5H5do2M1tJvCBiTOZezpYp": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#BFE2F3"
+              },
+              "borderTopLeftRadius": {
+                "value": "5px"
+              },
+              "borderTopRightRadius": {
+                "value": "5px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "5px"
+              },
+              "borderBottomRightRadius": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#E4080A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "3rRFD9JYNnd61UVUPqZZxm": {
+      "key": "3rRFD9JYNnd61UVUPqZZxm",
+      "name": "Campaign Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWCOLUMNLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3djGi4F8VP1moMOP0cw1CN": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.042vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2KLF6PkONtG41DwzAnryCB": true,
+        "7HyWJmSE6HVTcAlxPB0B0T": true
+      },
+      "displayOrder": 3
+    },
+    "2KLF6PkONtG41DwzAnryCB": {
+      "key": "2KLF6PkONtG41DwzAnryCB",
+      "name": "Campaign Criterion Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "background": {
+          "value": "_NONARYBG"
+        }
+      },
+      "styleProperties": {
+        "766GNNUVqz375J77X6MNfA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "500px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4xIXRkHWf8Z8b2YeiVR6ko": true,
+        "3B8ImiWJhhG46dXsw806N2": true,
+        "7twQ9ShfyMG42MiSXiyy9R": true,
+        "O5o1YjPPDzdtGYD99c6vo": true,
+        "5MFD7CxyxQmpGstOu0hzEZ": true,
+        "6OOX64pVtDRhhP3lBQ4luV": true,
+        "2wAXEZCJD8okMbXG60WIsy": true
+      },
+      "displayOrder": 1
+    },
+    "7HyWJmSE6HVTcAlxPB0B0T": {
+      "key": "7HyWJmSE6HVTcAlxPB0B0T",
+      "name": "Campaign Creation Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "background": {
+          "value": "_NONARYBG"
+        }
+      },
+      "styleProperties": {
+        "766GNNUVqz375J77X6MNfA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "500px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5yMSMg4TUl8HfJInGVQsAy": true,
+        "185UhbXBMDaQTcqTlQhL5N": true,
+        "7AdmBuI4IMefWnpijA1VrH": true,
+        "2h7Dv416VQume68wUki9NW": true,
+        "3Lh9fmTj5SafxhdpU0Z6C": true,
+        "1NOzQBbOBbTYFMmtzapZt6": true,
+        "74vF3oqtP4rN4RoJQ8vHyX": true
+      },
+      "displayOrder": 1
+    },
+    "4xIXRkHWf8Z8b2YeiVR6ko": {
+      "key": "4xIXRkHWf8Z8b2YeiVR6ko",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Campaign Creation"
+        }
+      },
+      "styleProperties": {
+        "dFEJ0NcCAJZmzmhugBJG7": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3B8ImiWJhhG46dXsw806N2": {
+      "key": "3B8ImiWJhhG46dXsw806N2",
+      "name": "Campaign creation payload ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Add Payload to create Campaign"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "placeholder": {
+          "value": "Add Campaign Payload"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6aKqV0qYGjRX6hbqpoJiKO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.campaignPayload"
+      }
+    },
+    "7twQ9ShfyMG42MiSXiyy9R": {
+      "key": "7twQ9ShfyMG42MiSXiyy9R",
+      "name": "Create Budget",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Create Campaign"
+        },
+        "onClick": {
+          "value": "3qLrS7kMQOM00UBDvJ0ZPy"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "O5o1YjPPDzdtGYD99c6vo": {
+      "key": "O5o1YjPPDzdtGYD99c6vo",
+      "name": "Response text heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Response After Creating Campaign\n"
+        }
+      },
+      "styleProperties": {
+        "1s5AupfihcQjQCjouIbozH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "5MFD7CxyxQmpGstOu0hzEZ": {
+      "key": "5MFD7CxyxQmpGstOu0hzEZ",
+      "name": "Campaign Response",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.campaignResponse"
+          }
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "1n64mCoulhFXL8D4pzTDF0": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#BFE2F3"
+              },
+              "borderTopLeftRadius": {
+                "value": "5px"
+              },
+              "borderTopRightRadius": {
+                "value": "5px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "5px"
+              },
+              "borderBottomRightRadius": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#E4080A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "5yMSMg4TUl8HfJInGVQsAy": {
+      "key": "5yMSMg4TUl8HfJInGVQsAy",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Campaign Criterion\n\n"
+        }
+      },
+      "styleProperties": {
+        "dFEJ0NcCAJZmzmhugBJG7": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "185UhbXBMDaQTcqTlQhL5N": {
+      "key": "185UhbXBMDaQTcqTlQhL5N",
+      "name": "Campaign Criterion payload ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Add Payload to create Campaign"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "placeholder": {
+          "value": "Add Campaign Criterion Payload"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6aKqV0qYGjRX6hbqpoJiKO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.campaignCriterionPayload"
+      }
+    },
+    "7AdmBuI4IMefWnpijA1VrH": {
+      "key": "7AdmBuI4IMefWnpijA1VrH",
+      "name": "Create Campaign Criterion",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Create Campaign Criterion "
+        },
+        "onClick": {
+          "value": "69Dtxib2QwPorIpaqWHJyr"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "2h7Dv416VQume68wUki9NW": {
+      "key": "2h7Dv416VQume68wUki9NW",
+      "name": "Response text heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Response After Creating Campaign\n"
+        }
+      },
+      "styleProperties": {
+        "1s5AupfihcQjQCjouIbozH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "3Lh9fmTj5SafxhdpU0Z6C": {
+      "key": "3Lh9fmTj5SafxhdpU0Z6C",
+      "name": "Campaign Criterion Response",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.campaignCriterionPayload"
+          }
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "3ItgKpqsyUnjDTyOLfHVrt": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#BFE2F3"
+              },
+              "borderTopLeftRadius": {
+                "value": "5px"
+              },
+              "borderTopRightRadius": {
+                "value": "5px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "5px"
+              },
+              "borderBottomRightRadius": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#E4080A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "2tuM6obbxnLwDpL9sGxcaP": {
+      "key": "2tuM6obbxnLwDpL9sGxcaP",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "SEARCH CAMPAIGN\n"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "2t2to0pcd5eplERSNkGRhC": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5y8irAAIFNqFO7CNwLlUIn": {
+      "key": "5y8irAAIFNqFO7CNwLlUIn",
+      "name": "Search Ad Creation Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "background": {
+          "value": "_NONARYBG"
+        }
+      },
+      "styleProperties": {
+        "766GNNUVqz375J77X6MNfA": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "10px"
+              },
+              "width": {
+                "value": "500px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5frnrBxLTFCaZhrS4nroOb": true,
+        "3RCxzXsNp5XwUOJMMW9qkT": true,
+        "6mec6gOiiK0xFlTHuVlJqq": true,
+        "1FtmNGh9BEwF4hVRHPSHcz": true,
+        "3SNqFibPPjRrwiQvTDMAHx": true,
+        "7aliJnqtSIcl6PlFPjzG4q": true,
+        "300medEkKBp00xzVomOcvB": true
+      },
+      "displayOrder": 5
+    },
+    "5frnrBxLTFCaZhrS4nroOb": {
+      "key": "5frnrBxLTFCaZhrS4nroOb",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Search Ad\n Creation"
+        },
+        "textContainer": {
+          "value": "H1"
+        }
+      },
+      "styleProperties": {
+        "dFEJ0NcCAJZmzmhugBJG7": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "20px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3RCxzXsNp5XwUOJMMW9qkT": {
+      "key": "3RCxzXsNp5XwUOJMMW9qkT",
+      "name": "Ad creation payload ",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Add Payload to create Ad"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "placeholder": {
+          "value": "Add Ad Payload"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6aKqV0qYGjRX6hbqpoJiKO": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "25px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.adCreationPayload"
+      }
+    },
+    "6mec6gOiiK0xFlTHuVlJqq": {
+      "key": "6mec6gOiiK0xFlTHuVlJqq",
+      "name": "Create Ad",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Create Ad"
+        },
+        "onClick": {
+          "value": "B9jwzM3NkqyMzN4l1aUF4"
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "1FtmNGh9BEwF4hVRHPSHcz": {
+      "key": "1FtmNGh9BEwF4hVRHPSHcz",
+      "name": "Response text heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Response After Creating A Budget"
+        }
+      },
+      "styleProperties": {
+        "1s5AupfihcQjQCjouIbozH": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "10px"
+              },
+              "color": {
+                "value": "#000"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "3SNqFibPPjRrwiQvTDMAHx": {
+      "key": "3SNqFibPPjRrwiQvTDMAHx",
+      "name": "Ad Response",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.adResponse"
+          }
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "3C0OuncuTiTvfjHjn48CjZ": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "value": "#BFE2F3"
+              },
+              "paddingTop": {
+                "value": "5px"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              },
+              "borderTopLeftRadius": {
+                "value": "5px"
+              },
+              "borderTopRightRadius": {
+                "value": "5px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "5px"
+              },
+              "borderBottomRightRadius": {
+                "value": "5px"
+              },
+              "color": {
+                "value": "#E4080A"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 7
+    },
+    "2Qx9aXbGULEIhq31xHNgkk": {
+      "key": "2Qx9aXbGULEIhq31xHNgkk",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "{\n  \"operations\": [\n    {\n      \"create\": {\n        \"name\": \"InspiraTropicalGarden Campaign budget\",\n        \"deliveryMethod\": \"STANDARD\",\n        \"amountMicros\": <PHONE>,\n        \"explicitlyShared\": false\n      }\n    }\n  ]\n}"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6OOX64pVtDRhhP3lBQ4luV": {
+      "key": "6OOX64pVtDRhhP3lBQ4luV",
+      "name": "Campaign Creation Payload",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "{\n  \"operations\": [\n    {\n      \"create\": {\n        \"name\": \"InspiraTropicalGarden Campaign\",\n        \"status\": \"ENABLED\",\n        \"campaignBudget\": \"customers/<PHONE>/campaignBudgets/<PHONE>\",\n        \"advertisingChannelType\": \"SEARCH\",\n        \"maximizeConversions\": {}\n      }\n    }\n  ]\n}"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "54qjYG4hTUeD9zXvzGh8GO": {
+          "resolutions": {
+            "ALL": {
+              "maxHeight": {
+                "value": "300px"
+              },
+              "overflow": {
+                "value": "scroll"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1NOzQBbOBbTYFMmtzapZt6": {
+      "key": "1NOzQBbOBbTYFMmtzapZt6",
+      "name": "Campaign Criterion Payload",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "{\n  \"operations\": [\n    {\n      \"create\": {\n        \"campaign\": \"customers/<PHONE>/campaigns/<PHONE>\",\n        \"location\": {\n          \"geoTargetConstant\": \"geoTargetConstants/9152810\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"campaign\": \"customers/<PHONE>/campaigns/<PHONE>\",\n        \"location\": {\n          \"geoTargetConstant\": \"geoTargetConstants/9062037\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"campaign\": \"customers/<PHONE>/campaigns/<PHONE>\",\n        \"location\": {\n          \"geoTargetConstant\": \"geoTargetConstants/9062082\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"campaign\": \"customers/<PHONE>/campaigns/<PHONE>\",\n        \"location\": {\n          \"geoTargetConstant\": \"geoTargetConstants/9062026\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"campaign\": \"customers/<PHONE>/campaigns/<PHONE>\",\n        \"location\": {\n          \"geoTargetConstant\": \"geoTargetConstants/1007768\"\n        }\n      }\n    }\n  ]\n}"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "14xipGEj00dmNgRtFEw1uI": {
+          "resolutions": {
+            "ALL": {
+              "overflow": {
+                "value": "scroll"
+              },
+              "maxHeight": {
+                "value": "300px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "1LnTDaZufA2nNArhxzePDH": {
+      "key": "1LnTDaZufA2nNArhxzePDH",
+      "name": "AdGroup Creation Payload",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "{\n  \"operations\": [\n    {\n      \"create\": {\n        \"campaign\": \"customers/<PHONE>/campaigns/<PHONE>\",\n        \"name\": \"InspiraTropicalGarden Adgroup\",\n        \"status\": \"ENABLED\",\n        \"type\": \"SEARCH_STANDARD\"\n        \n      }\n    }\n  ]\n}"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "2fBD7cmOh9R7ddSrfxXvMm": {
+          "resolutions": {
+            "ALL": {
+              "maxHeight": {
+                "value": "300px"
+              },
+              "overflow": {
+                "value": "scroll"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7ySugwgiu1bllJWQsElQYn": {
+      "key": "7ySugwgiu1bllJWQsElQYn",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "{\n  \"operations\": [\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"status\": \"ENABLED\",\n        \"keyword\": {\n          \"text\": \"apartments in bangalore\",\n          \"matchType\": \"PHRASE\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"status\": \"ENABLED\",\n        \"keyword\": {\n          \"text\": \"3bhk villas\",\n          \"matchType\": \"BROAD\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"status\": \"ENABLED\",\n        \"keyword\": {\n          \"text\": \"2bhk villas\",\n          \"matchType\": \"PHRASE\"\n        }\n      }\n    },\n     {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"status\": \"ENABLED\",\n        \"keyword\": {\n          \"text\": \"houses for sale near me\",\n          \"matchType\": \"PHRASE\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"negative\":true,\n        \"ageRange\": {\n          \"type\": \"AGE_RANGE_25_34\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"ageRange\": {\n          \"type\": \"AGE_RANGE_35_44\"\n        }\n      }\n    },\n      {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"ageRange\": {\n          \"type\": \"AGE_RANGE_45_54\"\n        }\n      }\n    },\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"ageRange\": {\n          \"type\": \"AGE_RANGE_55_64\"\n        }\n      }\n    }\n  ]\n}\n"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "2jLr23fqf7iGyJL85YbdyD": {
+          "resolutions": {
+            "ALL": {
+              "maxHeight": {
+                "value": "300px"
+              },
+              "overflow": {
+                "value": "scroll"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7aliJnqtSIcl6PlFPjzG4q": {
+      "key": "7aliJnqtSIcl6PlFPjzG4q",
+      "name": "Ad Payload",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "{\n  \"operations\": [\n    {\n      \"create\": {\n        \"adGroup\": \"customers/<PHONE>/adGroups/<PHONE>\",\n        \"status\": \"ENABLED\",\n        \"ad\": {\n          \"name\": \"RealEstate_LifeByTheLake_Ad\",\n          \"responsiveSearchAd\": {\n            \"headlines\": [\n              { \"text\": \"Luxury Homes in Jakkur Lake\", \"pinnedField\": \"HEADLINE_1\" },\n              { \"text\": \"Boutique 4 & 5 BHK Penthouses\" },\n              { \"text\": \"Life by the Lake Residences\" },\n              { \"text\": \"4 BHK Duplexes with Gardens\" },\n              { \"text\": \"Premium Low-Rise Lake Homes\" },\n              { \"text\": \"2.6 Acre Boutique Community\" },\n              { \"text\": \"Club Verde Lifestyle Amenities\" },\n              { \"text\": \"Spacious 4000+ Sq Ft Homes\" },\n              { \"text\": \"Near Airport & CBD in 20 Mins\" },\n              { \"text\": \"Golf Course & Lake View Homes\" },\n              { \"text\": \"Elegant Lake View Residences\" },\n              { \"text\": \"Exclusive Boutique Homes\" },\n              { \"text\": \"Homes with Private Terraces\" },\n              { \"text\": \"Luxury Living in Jakkur\" },\n              { \"text\": \"Your Life by the Lake Awaits\" }\n            ],\n            \"descriptions\": [\n              { \"text\": \"Discover boutique 4 & 5 BHK lake-view homes with private gardens in Jakkur.\", \"pinnedField\": \"DESCRIPTION_1\" },\n              { \"text\": \"Low-rise luxury with Club Verde: gym, theatre, golf simulator & more.\" },\n              { \"text\": \"Spacious duplexes & penthouses, 4000+ sq ft, 6 mins from Jakkur Airport Road.\" },\n              { \"text\": \"Luxury living at Jakkur Lake\u2014serene views, modern amenities, unmatched comfort.\" }\n            ],\n            \"path1\": \"jakkur\",\n            \"path2\": \"luxury-homes\"\n          },\n          \"finalUrls\": [\n            \"https://lifebythelake.in/\"\n          ],\n          \"finalMobileUrls\": [\n            \"https://lifebythelake.in/\"\n          ],\n          \"trackingUrlTemplate\": \"{lpurl}?device={device}&matchtype={matchtype}\",\n          \"urlCustomParameters\": [\n            { \"key\": \"promo\", \"value\": \"life_by_the_lake\" },\n            { \"key\": \"source\", \"value\": \"google_ads\" }\n          ],\n          \"finalUrlSuffix\": \"utm_source=google&utm_medium=cpc&utm_campaign=life_by_the_lake\"\n        }\n      }\n    }\n  ]\n}\n"
+        },
+        "textType": {
+          "value": "MD"
+        }
+      },
+      "styleProperties": {
+        "5UEWLpdAaZNddQ9FZQA7p7": {
+          "resolutions": {
+            "ALL": {
+              "maxHeight": {
+                "value": "300px"
+              },
+              "overflow": {
+                "value": "scroll"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "qfyfym4U9eLg2Dujvigry": {
+      "key": "qfyfym4U9eLg2Dujvigry",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Budget Creation"
+        },
+        "rows": {
+          "value": 10
+        },
+        "updateStoreImmediately": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.Budget",
+        "expression": "Page.sampleBudget"
+      }
+    },
+    "2wAXEZCJD8okMbXG60WIsy": {
+      "key": "2wAXEZCJD8okMbXG60WIsy",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Campaign"
+        },
+        "rows": {
+          "value": 10
+        },
+        "updateStoreImmediately": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.Campaign"
+      }
+    },
+    "74vF3oqtP4rN4RoJQ8vHyX": {
+      "key": "74vF3oqtP4rN4RoJQ8vHyX",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Campaign Criterion"
+        },
+        "rows": {
+          "value": 10
+        },
+        "updateStoreImmediately": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.campaignCriterion"
+      }
+    },
+    "1098nlyfoqLKolVJK9RIOx": {
+      "key": "1098nlyfoqLKolVJK9RIOx",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "AdGroup"
+        },
+        "rows": {
+          "value": 10
+        },
+        "updateStoreImmediately": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.adGroup"
+      }
+    },
+    "nB1kgGix4C3U4NfW1zTea": {
+      "key": "nB1kgGix4C3U4NfW1zTea",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "AdGroup Criterion"
+        },
+        "rows": {
+          "value": 10
+        },
+        "updateStoreImmediately": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.adGroupCriterion"
+      }
+    },
+    "300medEkKBp00xzVomOcvB": {
+      "key": "300medEkKBp00xzVomOcvB",
+      "name": "TextArea",
+      "type": "TextArea",
+      "properties": {
+        "label": {
+          "value": "Ad"
+        },
+        "rows": {
+          "value": 10
+        },
+        "updateStoreImmediately": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 4,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.ad"
+      }
+    },
+    "7fZWEutytNU7YBx7DZgGw2": {
+      "key": "7fZWEutytNU7YBx7DZgGw2",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "5ap2RYbwtihGZFrnJaOkeY": true,
+        "4Wn5Fk6jZHVtUQbV2byIPb": true
+      },
+      "displayOrder": 2
+    },
+    "4Wn5Fk6jZHVtUQbV2byIPb": {
+      "key": "4Wn5Fk6jZHVtUQbV2byIPb",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "displayOrder": 2
+    }
+  },
+  "componentVersions": {
+    "185UhbXBMDaQTcqTlQhL5N": 3,
+    "67I6terdrN3RrVCX7WDCZL": 3,
+    "300medEkKBp00xzVomOcvB": 3,
+    "4Wn5Fk6jZHVtUQbV2byIPb": 3,
+    "4ETUy3V5zIhn56DxvlOJgJ": 3,
+    "4JSluTDtMKOe9gC2bvqDjl": 3,
+    "3WRfnqPqVgnElAkstITPKw": 3,
+    "4GmWkvCcOozTLhdFthK8h4": 3,
+    "2zecMgtgW2vASlv5SCEAeM": 3,
+    "6mec6gOiiK0xFlTHuVlJqq": 3,
+    "1LnTDaZufA2nNArhxzePDH": 3,
+    "3B8ImiWJhhG46dXsw806N2": 3,
+    "7twQ9ShfyMG42MiSXiyy9R": 3,
+    "3d2ZnBwDiPKcxehusECeXq": 3,
+    "3RCxzXsNp5XwUOJMMW9qkT": 3,
+    "nbLZHbJbZS6YBkMDOoapK": 3,
+    "2h7Dv416VQume68wUki9NW": 3,
+    "7AdmBuI4IMefWnpijA1VrH": 3,
+    "6OOX64pVtDRhhP3lBQ4luV": 3,
+    "67Quexf3pEahzSNzFHcCip": 3,
+    "1NOzQBbOBbTYFMmtzapZt6": 3,
+    "1098nlyfoqLKolVJK9RIOx": 3,
+    "6qtzA7TR0hTcUDvvFgByiR": 3,
+    "5y8irAAIFNqFO7CNwLlUIn": 3,
+    "1zYN2HOXnimVFJJPTmw0pG": 3,
+    "OUoEqUC4oMTw9UPUbop2": 3,
+    "5MFD7CxyxQmpGstOu0hzEZ": 3,
+    "7aliJnqtSIcl6PlFPjzG4q": 3,
+    "4xIXRkHWf8Z8b2YeiVR6ko": 3,
+    "5frnrBxLTFCaZhrS4nroOb": 3,
+    "2wAXEZCJD8okMbXG60WIsy": 3,
+    "5yMSMg4TUl8HfJInGVQsAy": 3,
+    "1gYwQIX9eM6p8G4pxECZBh": 3,
+    "7fZWEutytNU7YBx7DZgGw2": 3,
+    "3rRFD9JYNnd61UVUPqZZxm": 3,
+    "42SSiZWFsAjFPMAyRiE9Zr": 3,
+    "2BTcINakm0gsESSMifzpCW": 3,
+    "3Lh9fmTj5SafxhdpU0Z6C": 3,
+    "2YstlMNY5R5g1u7qxzvu8L": 3,
+    "74vF3oqtP4rN4RoJQ8vHyX": 3,
+    "2bGzq7LMQETdMyJEl6YNiH": 3,
+    "7ySugwgiu1bllJWQsElQYn": 3,
+    "5ap2RYbwtihGZFrnJaOkeY": 3,
+    "SQICMYRa0UGtVTJgq6RC2": 3,
+    "3SNqFibPPjRrwiQvTDMAHx": 3,
+    "2Qx9aXbGULEIhq31xHNgkk": 3,
+    "O5o1YjPPDzdtGYD99c6vo": 3,
+    "1FtmNGh9BEwF4hVRHPSHcz": 3,
+    "2tuM6obbxnLwDpL9sGxcaP": 3,
+    "qfyfym4U9eLg2Dujvigry": 3,
+    "nB1kgGix4C3U4NfW1zTea": 3,
+    "4BTB1LvKxu5yJJ3LYmTtsf": 3,
+    "7HyWJmSE6HVTcAlxPB0B0T": 3,
+    "2KLF6PkONtG41DwzAnryCB": 3
+  },
+  "eventFunctionVersions": {
+    "3qLrS7kMQOM00UBDvJ0ZPy": 3,
+    "5OJuQ24WgfCgL0vFEyskuI": 3,
+    "70aU9tKGnCseQZPl0Dy5D8": 3,
+    "Vz2QhBU7PUOtKS2STySlc": 3,
+    "69Dtxib2QwPorIpaqWHJyr": 3,
+    "B9jwzM3NkqyMzN4l1aUF4": 3,
+    "7fHBdJ90YsxA4foZdO1Dat": 3
+  },
+  "name": "searchCampaignCreation",
+  "message": "From transport : Z4VvG62iO5LYnnKwzHbT8g",
+  "clientCode": "SYSTEM",
+  "appCode": "marketingai",
+  "version": 24,
+  "updatedAt": "2026-05-12 10:27:58.022000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-10-06 13:33:11.875000",
+  "createdBy": "<USER>"
+}

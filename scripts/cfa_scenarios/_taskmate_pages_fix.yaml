@@ -1,0 +1,18 @@
+name: _taskmate_pages_fix
+description: One-turn fix — set taskmate's defaultPage + loginPage so the React shell routes correctly.
+
+client_code: SYSTEM
+app_code: taskmate
+
+turns:
+  - |-
+    Taskmate's UI override doc currently only has `defaultTheme` in properties. It needs `defaultPage`
+    AND `loginPage` for the React shell to route correctly when visiting /taskmate/SYSTEM/page/.
+
+    Look up taskmate via `list_apps(app_code="taskmate")` to get the UI doc id, then call
+    `update_app(app_id=<mongo id>, properties={"defaultPage":"home","loginPage":"login"})`.
+
+    Verify by reading `get_app(app_code="taskmate")` — properties.defaultPage and properties.loginPage
+    should both be set.
+
+    Stop after the verify. No other authoring.

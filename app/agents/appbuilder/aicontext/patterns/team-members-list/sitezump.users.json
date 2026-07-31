@@ -1,0 +1,5643 @@
+{
+  "_id": "688cdc51fd2a82050197ab37",
+  "properties": {
+    "onLoadEvent": "1RRgnJHnhs0iXffHa1S96e",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "1RRgnJHnhs0iXffHa1S96e": {
+      "name": "onLoad",
+      "steps": {
+        "onClickUsersToggle": {
+          "statementName": "onClickUsersToggle",
+          "name": "onClickUsersToggle",
+          "namespace": "_",
+          "position": {
+            "left": 652.8571450369698,
+            "top": 95.94643293108257
+          }
+        },
+        "fetchInvitedUsers": {
+          "statementName": "fetchInvitedUsers",
+          "name": "fetchInvitedUsers",
+          "namespace": "_",
+          "position": {
+            "left": 166.71428789411266,
+            "top": 127.80357578822537
+          }
+        },
+        "fetchUsers": {
+          "statementName": "fetchUsers",
+          "name": "fetchUsers",
+          "namespace": "_",
+          "position": {
+            "left": 125.42857360839838,
+            "top": 286.375004359654
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 652.7142878941127,
+            "top": 723.6785714328289
+          },
+          "parameterMap": {
+            "path": {
+              "5HfqBH0p0QkGU8Z3R0fx3C": {
+                "key": "5HfqBH0p0QkGU8Z3R0fx3C",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userRequestPopup"
+              }
+            },
+            "value": {
+              "6akh98Q3zjfAtyTUJnWUXs": {
+                "key": "6akh98Q3zjfAtyTUJnWUXs",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "loadProfiles": {
+          "statementName": "loadProfiles",
+          "name": "loadProfiles",
+          "namespace": "_",
+          "position": {
+            "left": 920.7142878941127,
+            "top": 483.82143293108254
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 290.85714503696977,
+            "top": 536.25
+          },
+          "parameterMap": {
+            "condition": {
+              "nH6EBO1p36h4XL70Vs58s": {
+                "key": "nH6EBO1p36h4XL70Vs58s",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.queryParameters.userRequest = \"true\"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1516.000017438616,
+            "top": 845.8035779680524
+          },
+          "parameterMap": {
+            "path": {
+              "4H44E5QExKum9NJJy2crhF": {
+                "key": "4H44E5QExKum9NJJy2crhF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.requestUserData"
+              }
+            },
+            "value": {
+              "yx591Uu7QrTLdUKXQTLJP": {
+                "key": "yx591Uu7QrTLdUKXQTLJP",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 997.2857148306709,
+            "top": 685.0892859186445
+          },
+          "parameterMap": {
+            "url": {
+              "2NIrys4M4vZGn1PS2ynthb": {
+                "key": "2NIrys4M4vZGn1PS2ynthb",
+                "type": "EXPRESSION",
+                "expression": "'/api/security/users/requestUser/{{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "PiKKnTeTDUUgyGiRIdTXj": {
+      "name": "onClickUsersToggle",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 430,
+            "top": 186.203125
+          },
+          "parameterMap": {
+            "path": {
+              "1fiu6xiaPUPo0zVLIGCbQF": {
+                "key": "1fiu6xiaPUPo0zVLIGCbQF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeTab"
+              }
+            },
+            "value": {
+              "79G7mviMZ9HU3dGlYK6dPK": {
+                "key": "79G7mviMZ9HU3dGlYK6dPK",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Users"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "65ZSUAuLIKd9mhrNlY4NR8": {
+      "name": "onClickInvitedUsersToggle",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 291,
+            "top": 156.203125
+          },
+          "parameterMap": {
+            "path": {
+              "1fiu6xiaPUPo0zVLIGCbQF": {
+                "key": "1fiu6xiaPUPo0zVLIGCbQF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeTab"
+              }
+            },
+            "value": {
+              "79G7mviMZ9HU3dGlYK6dPK": {
+                "key": "79G7mviMZ9HU3dGlYK6dPK",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "InvitedUsers"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "403nk7fAj9xjSBXHCkxoRx": {
+      "name": "onClickInvitePopup",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 782.4285736083984,
+            "top": 496.80357578822543
+          },
+          "parameterMap": {
+            "path": {
+              "2EBha5LrFdbTRsUn47RRYQ": {
+                "key": "2EBha5LrFdbTRsUn47RRYQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.invitePopup"
+              }
+            },
+            "value": {
+              "66QVilsENh907jtKW9PYrL": {
+                "key": "66QVilsENh907jtKW9PYrL",
+                "type": "EXPRESSION",
+                "expression": "not Page.invitePopup",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__cleanUp__d-o-t__output": true
+          }
+        },
+        "loadProfiles": {
+          "statementName": "loadProfiles",
+          "name": "loadProfiles",
+          "namespace": "_",
+          "position": {
+            "left": 1077.5714307512555,
+            "top": 304.2321472167968
+          }
+        },
+        "eventStatus": {
+          "statementName": "eventStatus",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 251.66665649414062,
+            "top": 500.56249237060547
+          },
+          "parameterMap": {
+            "path": {
+              "1CPYYcWBQ922gPWKyYPMAD": {
+                "key": "1CPYYcWBQ922gPWKyYPMAD",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.eventStatus"
+              }
+            },
+            "value": {
+              "5Xr58KIIOdvrNoqVx4Ts3E": {
+                "key": "5Xr58KIIOdvrNoqVx4Ts3E",
+                "type": "EXPRESSION",
+                "expression": "\"Invite\"",
+                "order": 1
+              }
+            }
+          },
+          "comment": "This is for your knowing edit or invite"
+        },
+        "cleanUp": {
+          "statementName": "cleanUp",
+          "name": "cleanUp",
+          "namespace": "_",
+          "position": {
+            "left": 510.000002179827,
+            "top": 501.76785687037875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__eventStatus__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3RVD1Y5pKdnaEm7vZkjcKM": {
+      "name": "fetchInvitedUsers",
+      "steps": {
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1339.5714296613419,
+            "top": 460.6607186453682
+          },
+          "parameterMap": {
+            "path": {
+              "18oX0Eoi5x5J8U1Qck3wa6": {
+                "key": "18oX0Eoi5x5J8U1Qck3wa6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showInvitedUsersTable"
+              }
+            },
+            "value": {
+              "6CZfR6i5StCooY6bYmXixG": {
+                "key": "6CZfR6i5StCooY6bYmXixG",
+                "type": "EXPRESSION",
+                "expression": "\"showEmpty\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if__d-o-t__false": false,
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 543.7142868041991,
+            "top": 174.51786150251115
+          },
+          "parameterMap": {
+            "condition": {
+              "6iHQH9GIxQ9DfNtyzoLj2c": {
+                "key": "6iHQH9GIxQ9DfNtyzoLj2c",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchInvitedUsersData.output.data.content",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 943.7142878941127,
+            "top": 460.94643293108254
+          },
+          "parameterMap": {
+            "path": {
+              "Kihkj007br5roL5fR0L8w": {
+                "key": "Kihkj007br5roL5fR0L8w",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allInvitedUsers.content"
+              }
+            },
+            "value": {
+              "6Pk6P7c3wxzwFpQIp6cLq0": {
+                "key": "6Pk6P7c3wxzwFpQIp6cLq0",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "fetchInvitedUsersData": {
+          "statementName": "fetchInvitedUsersData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 90.50000054495675,
+            "top": 174.16071210588723
+          },
+          "parameterMap": {
+            "url": {
+              "2CotwLbY7eGTkyXl3kAqNR": {
+                "key": "2CotwLbY7eGTkyXl3kAqNR",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users/invites"
+              }
+            },
+            "queryParams": {
+              "4BfOZbHPkQXgMYNEhzErqL": {
+                "key": "4BfOZbHPkQXgMYNEhzErqL",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "page": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.allInvitedUsers.number ?? 0"
+                    }
+                  },
+                  "size": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.allInvitedUsers.size ?? 10"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 792,
+            "top": 783.9583320617676
+          },
+          "parameterMap": {
+            "condition": {
+              "7w4QqapE8joPfrkfOlGTrH": {
+                "key": "7w4QqapE8joPfrkfOlGTrH",
+                "type": "EXPRESSION",
+                "expression": "Page.allInvitedUsers.totalElements  > 10 ",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "showPagination": {
+          "statementName": "showPagination",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1138.888916015625,
+            "top": 778.9583320617676
+          },
+          "parameterMap": {
+            "path": {
+              "5JfaPUOLviXCfnnvFsfPB2": {
+                "key": "5JfaPUOLviXCfnnvFsfPB2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteUserpaginationBox"
+              }
+            },
+            "value": {
+              "1cr8XH4gB5jmbI5Kro1kV5": {
+                "key": "1cr8XH4gB5jmbI5Kro1kV5",
+                "type": "EXPRESSION",
+                "expression": "\"show\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true,
+            "Steps__d-o-t__if1__d-o-t__false": false
+          }
+        },
+        "pagination": {
+          "statementName": "pagination",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1477.888916015625,
+            "top": 776.9583320617676
+          },
+          "parameterMap": {
+            "path": {
+              "5JfaPUOLviXCfnnvFsfPB2": {
+                "key": "5JfaPUOLviXCfnnvFsfPB2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteUserpaginationBox"
+              }
+            },
+            "value": {
+              "1cr8XH4gB5jmbI5Kro1kV5": {
+                "key": "1cr8XH4gB5jmbI5Kro1kV5",
+                "type": "EXPRESSION",
+                "expression": "\"hide\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": false,
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 433.71428789411266,
+            "top": 682.9464329310825
+          },
+          "parameterMap": {
+            "path": {
+              "Kihkj007br5roL5fR0L8w": {
+                "key": "Kihkj007br5roL5fR0L8w",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allInvitedUsers"
+              }
+            },
+            "value": {
+              "6Pk6P7c3wxzwFpQIp6cLq0": {
+                "key": "6Pk6P7c3wxzwFpQIp6cLq0",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchInvitedUsersData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1113.285716465541,
+            "top": 121.80357578822543
+          },
+          "parameterMap": {
+            "path": {
+              "wnidtrFCN6SEldC6OT042": {
+                "key": "wnidtrFCN6SEldC6OT042",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showInvitedUsersTable"
+              }
+            },
+            "value": {
+              "5OjhVuCUre65wQDaAI7nSc": {
+                "key": "5OjhVuCUre65wQDaAI7nSc",
+                "type": "EXPRESSION",
+                "expression": "\"showTable\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5lanvwm0bxtzgCBBzpEqIE": {
+      "name": "fetchUsers",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 775.7142868041992,
+            "top": 314.51786150251115
+          },
+          "parameterMap": {
+            "condition": {
+              "6iHQH9GIxQ9DfNtyzoLj2c": {
+                "key": "6iHQH9GIxQ9DfNtyzoLj2c",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchUsersData.output.data.content.length = 0",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false
+          }
+        },
+        "showPagination": {
+          "statementName": "showPagination",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1457.888916015625,
+            "top": 556.9583320617676
+          },
+          "parameterMap": {
+            "path": {
+              "5JfaPUOLviXCfnnvFsfPB2": {
+                "key": "5JfaPUOLviXCfnnvFsfPB2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.paginationBox"
+              }
+            },
+            "value": {
+              "1cr8XH4gB5jmbI5Kro1kV5": {
+                "key": "1cr8XH4gB5jmbI5Kro1kV5",
+                "type": "EXPRESSION",
+                "expression": "\"show\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true,
+            "Steps__d-o-t__if1__d-o-t__false": false
+          }
+        },
+        "pagination": {
+          "statementName": "pagination",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1740.888916015625,
+            "top": 559.9583320617676
+          },
+          "parameterMap": {
+            "path": {
+              "5JfaPUOLviXCfnnvFsfPB2": {
+                "key": "5JfaPUOLviXCfnnvFsfPB2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.paginationBox"
+              }
+            },
+            "value": {
+              "1cr8XH4gB5jmbI5Kro1kV5": {
+                "key": "1cr8XH4gB5jmbI5Kro1kV5",
+                "type": "EXPRESSION",
+                "expression": "\"hide\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": false,
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1106,
+            "top": 557.9583320617676
+          },
+          "parameterMap": {
+            "condition": {
+              "7w4QqapE8joPfrkfOlGTrH": {
+                "key": "7w4QqapE8joPfrkfOlGTrH",
+                "type": "EXPRESSION",
+                "expression": "Page.allUsers.totalElements  > 10 ",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 775.7142878941127,
+            "top": 548.375004359654
+          },
+          "parameterMap": {
+            "path": {
+              "3U5KKTBA9ApafRoGFcvcry": {
+                "key": "3U5KKTBA9ApafRoGFcvcry",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allUsers"
+              }
+            },
+            "value": {
+              "3JVs7kN7Tyda6ns30BkDux": {
+                "key": "3JVs7kN7Tyda6ns30BkDux",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchUsersData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1379.285716465541,
+            "top": 316.80357578822543
+          },
+          "parameterMap": {
+            "path": {
+              "wnidtrFCN6SEldC6OT042": {
+                "key": "wnidtrFCN6SEldC6OT042",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showUsersTable"
+              }
+            },
+            "value": {
+              "5OjhVuCUre65wQDaAI7nSc": {
+                "key": "5OjhVuCUre65wQDaAI7nSc",
+                "type": "EXPRESSION",
+                "expression": "\"showTable\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1107.5714296613419,
+            "top": 163.66071864536826
+          },
+          "parameterMap": {
+            "path": {
+              "18oX0Eoi5x5J8U1Qck3wa6": {
+                "key": "18oX0Eoi5x5J8U1Qck3wa6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showUsersTable"
+              }
+            },
+            "value": {
+              "6CZfR6i5StCooY6bYmXixG": {
+                "key": "6CZfR6i5StCooY6bYmXixG",
+                "type": "EXPRESSION",
+                "expression": "\"showEmpty\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "fetchUsersData": {
+          "statementName": "fetchUsersData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 306.78571483067105,
+            "top": 264.87499782017295
+          },
+          "parameterMap": {
+            "url": {
+              "1o2qew5EhQf7Hbw6FefA1e": {
+                "key": "1o2qew5EhQf7Hbw6FefA1e",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users"
+              }
+            },
+            "queryParams": {
+              "17z9e3t4zERPHy3JSPlzCL": {
+                "key": "17z9e3t4zERPHy3JSPlzCL",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "page": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.allUsers.number ?? 0"
+                    }
+                  },
+                  "size": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.allUsers.size ?? 10"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "4L5A3AwAwwsdU1t7J6sspE": {
+                "key": "4L5A3AwAwwsdU1t7J6sspE",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "Authorization": {
+                    "location": {
+                      "expression": "LocalStore.AuthToken",
+                      "type": "EXPRESSION"
+                    }
+                  },
+                  "clientCode": {
+                    "location": {
+                      "expression": "Store.auth.loggedInClientCode",
+                      "type": "EXPRESSION"
+                    }
+                  },
+                  "appCode": {
+                    "location": {
+                      "expression": "sitezump",
+                      "type": "VALUE"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "734R57JZ5y4UqxOimZQLb5": {
+      "name": "loadProfiles",
+      "steps": {
+        "messageFetchStep": {
+          "statementName": "messageFetchStep",
+          "namespace": "UIEngine",
+          "name": "Message",
+          "parameterMap": {
+            "msg": {
+              "value1": {
+                "key": "value1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetch.error.data"
+              }
+            }
+          },
+          "position": {
+            "left": 1398,
+            "top": 486
+          }
+        },
+        "fetch": {
+          "statementName": "fetch",
+          "namespace": "UIEngine",
+          "name": "FetchData",
+          "parameterMap": {
+            "url": {
+              "one": {
+                "key": "one",
+                "type": "EXPRESSION",
+                "value": "",
+                "expression": "'api/security/app/{{Page.appId}}/profiles'"
+              }
+            },
+            "queryParams": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": {
+                  "page": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.profiles.number ?? 0"
+                    }
+                  },
+                  "size": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.profiles.size ?? 10"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "left": 859,
+            "top": 183
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 92.1428593226841,
+            "top": 212.96427263532365
+          },
+          "parameterMap": {
+            "url": {
+              "5a4MdrlRAzfpIf92V7bRQh": {
+                "key": "5a4MdrlRAzfpIf92V7bRQh",
+                "type": "EXPRESSION",
+                "expression": "'/api/security/applications/appCode/{{Store.application.appCode}}'",
+                "order": 1,
+                "value": ""
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 523.1428593226842,
+            "top": 430.71427263532365
+          },
+          "parameterMap": {
+            "path": {
+              "3TJluOd6SCixZZzccUXwqU": {
+                "key": "3TJluOd6SCixZZzccUXwqU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.appId"
+              }
+            },
+            "value": {
+              "1VD0zgfOa5AM5tS7m8UxtI": {
+                "key": "1VD0zgfOa5AM5tS7m8UxtI",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data.id",
+                "order": 1
+              }
+            }
+          }
+        },
+        "store": {
+          "statementName": "store",
+          "namespace": "UIEngine",
+          "name": "SetStore",
+          "parameterMap": {
+            "path": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": "Page.profiles"
+              }
+            },
+            "value": {
+              "one": {
+                "key": "one",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetch.output.data"
+              }
+            }
+          },
+          "position": {
+            "left": 1417,
+            "top": 108
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5gOMVGxG4ubvvqCQDKxemy": {
+      "name": "sendInvite",
+      "steps": {
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 457.7142878941127,
+            "top": 73.0892857142857
+          },
+          "parameterMap": {
+            "url": {
+              "2pBDA4RV4wZLe16Wckvvvg": {
+                "key": "2pBDA4RV4wZLe16Wckvvvg",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users/invite"
+              }
+            },
+            "method": {
+              "fOcTRGDQgNDtUvWxWiWJg": {
+                "key": "fOcTRGDQgNDtUvWxWiWJg",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "4SePQbY1N9kZ1XT0VEd7Gf": {
+                "key": "4SePQbY1N9kZ1XT0VEd7Gf",
+                "type": "EXPRESSION",
+                "expression": "Page.inviteUserData",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 846.7142878941127,
+            "top": 306.375
+          },
+          "parameterMap": {
+            "condition": {
+              "6IE8RQtwA1ReV61a243lSm": {
+                "key": "6IE8RQtwA1ReV61a243lSm",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "onClickInvitePopup": {
+          "statementName": "onClickInvitePopup",
+          "name": "onClickInvitePopup",
+          "namespace": "_",
+          "position": {
+            "left": 2296.4286237444194,
+            "top": 300.4821341378348
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": false,
+            "Steps__d-o-t__userInviteEmail__d-o-t__output": true
+          }
+        },
+        "getAppUrl": {
+          "statementName": "getAppUrl",
+          "name": "GetAppUrl",
+          "namespace": "CoreServices.Security",
+          "position": {
+            "left": 1382.142892020089,
+            "top": 342.76784406389515
+          },
+          "parameterMap": {
+            "clientCode": {
+              "Zm1lgr3ws7zr2exGD0kim": {
+                "key": "Zm1lgr3ws7zr2exGD0kim",
+                "type": "EXPRESSION",
+                "expression": "Store.application.clientCode",
+                "value": ""
+              }
+            },
+            "appCode": {
+              "154VoAC5eeQ5z3RnANDUM8": {
+                "key": "154VoAC5eeQ5z3RnANDUM8",
+                "type": "VALUE",
+                "order": 1,
+                "value": "sitezump"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1686.0000348772319,
+            "top": 133.3392726353236
+          },
+          "parameterMap": {
+            "path": {
+              "nLVbhlY6Mcu5b6B9nbReQ": {
+                "key": "nLVbhlY6Mcu5b6B9nbReQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailUserData.urlPrefix"
+              }
+            },
+            "value": {
+              "21E5vvCOjIKBQEaclqzfYo": {
+                "key": "21E5vvCOjIKBQEaclqzfYo",
+                "type": "EXPRESSION",
+                "expression": "Steps.getAppUrl.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "userInviteEmail": {
+          "statementName": "userInviteEmail",
+          "name": "userInviteEmail",
+          "namespace": "sitezump",
+          "position": {
+            "left": 2016.0000523158478,
+            "top": 301.96428571428567
+          },
+          "parameterMap": {
+            "user": {
+              "9bwFdZM2r83ixEQDAOolZ": {
+                "key": "9bwFdZM2r83ixEQDAOolZ",
+                "type": "EXPRESSION",
+                "expression": "Page.emailUserData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "fetchInvitedUsers": {
+          "statementName": "fetchInvitedUsers",
+          "name": "fetchInvitedUsers",
+          "namespace": "_",
+          "position": {
+            "left": 1259.285705566406,
+            "top": 607.9642889840262
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2954.5833740234375,
+            "top": 297.81249237060547
+          },
+          "parameterMap": {
+            "path": {
+              "5yFNRxzGJvwRGv4G3MV2NQ": {
+                "key": "5yFNRxzGJvwRGv4G3MV2NQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteSuccess"
+              }
+            },
+            "value": {
+              "1vyML7xcxjJpDU6firpZUb": {
+                "key": "1vyML7xcxjJpDU6firpZUb",
+                "type": "VALUE",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__onClickInvitePopup__d-o-t__output": false,
+            "Steps__d-o-t__if1__d-o-t__true": true,
+            "Steps__d-o-t__if1__d-o-t__false": false
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 2593.916748046875,
+            "top": 298.06249237060547
+          },
+          "parameterMap": {
+            "condition": {
+              "57SiDgwlN0CJybyu1wU4Fn": {
+                "key": "57SiDgwlN0CJybyu1wU4Fn",
+                "type": "EXPRESSION",
+                "expression": "Page.eventStatus = \"Invite\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__onClickInvitePopup__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1212.9285730634415,
+            "top": 101.07440246854503
+          },
+          "parameterMap": {
+            "path": {
+              "6sBwdfNKpFh9f9RqdPWVKW": {
+                "key": "6sBwdfNKpFh9f9RqdPWVKW",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailUserData"
+              }
+            },
+            "value": {
+              "6sv20GoWtK6qBTjWxf0I8B": {
+                "key": "6sv20GoWtK6qBTjWxf0I8B",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data.userRequest",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5tU9RSYLLhmfw2cyTezVy5": {
+      "name": "doActiveInactiveUser",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 133.71428789411272,
+            "top": 186.1071341378348
+          },
+          "parameterMap": {
+            "condition": {
+              "5a8BrZXnjWXuMjhOp4vYcj": {
+                "key": "5a8BrZXnjWXuMjhOp4vYcj",
+                "type": "EXPRESSION",
+                "expression": "Page.userStatus = \"ACTIVE\"",
+                "order": 1
+              }
+            }
+          }
+        },
+        "makeUserInActive": {
+          "statementName": "makeUserInActive",
+          "name": "makeUserInActive",
+          "namespace": "_",
+          "position": {
+            "left": 578.4285736083983,
+            "top": 118.53570556640622
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "makeUserActive": {
+          "statementName": "makeUserActive",
+          "name": "makeUserActive",
+          "namespace": "_",
+          "position": {
+            "left": 537.000002179827,
+            "top": 401.8214198521205
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5Z6WriXrDMHwJkRmuvReMs": {
+      "name": "onClickActiveInActivePopupClose",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 456.71428789411266,
+            "top": 166.23214721679688
+          },
+          "parameterMap": {
+            "path": {
+              "24ezYjPAL0OaN5oV8bu90N": {
+                "key": "24ezYjPAL0OaN5oV8bu90N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeInActivePopup"
+              }
+            },
+            "value": {
+              "2MafUaLW6sQOOpWWK1bRRm": {
+                "key": "2MafUaLW6sQOOpWWK1bRRm",
+                "type": "EXPRESSION",
+                "expression": "not Page.activeInActivePopup",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "lSQWSmUVYCSWBZVVqM735": {
+      "name": "onClickActiveInActivePopup",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 830.7142878941127,
+            "top": 131.23214721679688
+          },
+          "parameterMap": {
+            "path": {
+              "24ezYjPAL0OaN5oV8bu90N": {
+                "key": "24ezYjPAL0OaN5oV8bu90N",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeInActivePopup"
+              }
+            },
+            "value": {
+              "2MafUaLW6sQOOpWWK1bRRm": {
+                "key": "2MafUaLW6sQOOpWWK1bRRm",
+                "type": "EXPRESSION",
+                "expression": "not Page.activeInActivePopup",
+                "order": 1
+              }
+            }
+          }
+        },
+        "userStatus": {
+          "statementName": "userStatus",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 491.57142421177446,
+            "top": 403.80357578822543
+          },
+          "parameterMap": {
+            "path": {
+              "4tDO80bwZ8hTgZUGIXNpGx": {
+                "key": "4tDO80bwZ8hTgZUGIXNpGx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userStatus"
+              }
+            },
+            "value": {
+              "F1cNw2QUTFE71GL8peKAa": {
+                "key": "F1cNw2QUTFE71GL8peKAa",
+                "type": "EXPRESSION",
+                "expression": "Parent.statusCode",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 195.57142748151506,
+            "top": 404.1071417672293
+          },
+          "parameterMap": {
+            "path": {
+              "5O9jIAITQINauyx84N5O3d": {
+                "key": "5O9jIAITQINauyx84N5O3d",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userId"
+              }
+            },
+            "value": {
+              "aTmEWTCKK3f4oaQHvZic2": {
+                "key": "aTmEWTCKK3f4oaQHvZic2",
+                "type": "EXPRESSION",
+                "expression": "Parent.id",
+                "order": 1
+              }
+            }
+          }
+        },
+        "paragrapgh": {
+          "statementName": "paragrapgh",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1042.6666564941406,
+            "top": 596.3124923706055
+          },
+          "parameterMap": {
+            "path": {
+              "6rOCPmxGcoUxHQ9wEajapk": {
+                "key": "6rOCPmxGcoUxHQ9wEajapk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.paragraph"
+              }
+            },
+            "value": {
+              "1drUA446BBLX0LphKRXarH": {
+                "key": "1drUA446BBLX0LphKRXarH",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Are you sure you want to activate this user? They will regain access to the platform and its features immediately."
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 778.1666564941406,
+            "top": 398.06249237060547
+          },
+          "parameterMap": {
+            "condition": {
+              "5KAmRy7NR0rw61Kb9QDYwM": {
+                "key": "5KAmRy7NR0rw61Kb9QDYwM",
+                "type": "EXPRESSION",
+                "expression": "Page.userStatus = \"ACTIVE\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__userStatus__d-o-t__output": true
+          }
+        },
+        "paragrapgH": {
+          "statementName": "paragrapgH",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1350.6666564941406,
+            "top": 403.31249237060547
+          },
+          "parameterMap": {
+            "path": {
+              "6rOCPmxGcoUxHQ9wEajapk": {
+                "key": "6rOCPmxGcoUxHQ9wEajapk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.paragraph"
+              }
+            },
+            "value": {
+              "1drUA446BBLX0LphKRXarH": {
+                "key": "1drUA446BBLX0LphKRXarH",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "This will disable their account and access and cannot be\n recovered. Are you sure you want to continue?"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true,
+            "Steps__d-o-t__if__d-o-t__false": false
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "37piTORDUgg37ODA3c8gcD": {
+      "name": "makeUserInActive",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 691.8571450369698,
+            "top": 409.94643293108254
+          },
+          "parameterMap": {
+            "condition": {
+              "7ipCuLZmJS28BonPAOmSe1": {
+                "key": "7ipCuLZmJS28BonPAOmSe1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1125.714285850525,
+            "top": 216.37500435965399
+          },
+          "parameterMap": {
+            "path": {
+              "4d4x0wxQsrqm8w3TbyNtPF": {
+                "key": "4d4x0wxQsrqm8w3TbyNtPF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userInactiveSuccess"
+              }
+            },
+            "value": {
+              "3FYJMuV9QT3aduynkzpHGJ": {
+                "key": "3FYJMuV9QT3aduynkzpHGJ",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1076.714285850525,
+            "top": 591.375004359654
+          },
+          "parameterMap": {
+            "path": {
+              "4d4x0wxQsrqm8w3TbyNtPF": {
+                "key": "4d4x0wxQsrqm8w3TbyNtPF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userInactiveSuccess"
+              }
+            },
+            "value": {
+              "3FYJMuV9QT3aduynkzpHGJ": {
+                "key": "3FYJMuV9QT3aduynkzpHGJ",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "onClickActiveInActivePopupClose": {
+          "statementName": "onClickActiveInActivePopupClose",
+          "name": "onClickActiveInActivePopupClose",
+          "namespace": "_",
+          "position": {
+            "left": 1536.000013078962,
+            "top": 241.53570992606024
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 231.85714503696983,
+            "top": 194.51786150251115
+          },
+          "parameterMap": {
+            "url": {
+              "5e9piEfV9MGPflTUQlzDnW": {
+                "key": "5e9piEfV9MGPflTUQlzDnW",
+                "type": "EXPRESSION",
+                "expression": "'api/security/users/makeUserInActive?userId={{Page.userId}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchUsers": {
+          "statementName": "fetchUsers",
+          "name": "fetchUsers",
+          "namespace": "_",
+          "position": {
+            "left": 1506.5714547293526,
+            "top": 412.6607142857142
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6JNy6JI4fw36GdXJCzQIE": {
+      "name": "makeUserActive",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 691.8571450369698,
+            "top": 409.94643293108254
+          },
+          "parameterMap": {
+            "condition": {
+              "7ipCuLZmJS28BonPAOmSe1": {
+                "key": "7ipCuLZmJS28BonPAOmSe1",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1125.714285850525,
+            "top": 216.37500435965399
+          },
+          "parameterMap": {
+            "path": {
+              "4d4x0wxQsrqm8w3TbyNtPF": {
+                "key": "4d4x0wxQsrqm8w3TbyNtPF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userActiveSuccess"
+              }
+            },
+            "value": {
+              "3FYJMuV9QT3aduynkzpHGJ": {
+                "key": "3FYJMuV9QT3aduynkzpHGJ",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1076.714285850525,
+            "top": 591.375004359654
+          },
+          "parameterMap": {
+            "path": {
+              "4d4x0wxQsrqm8w3TbyNtPF": {
+                "key": "4d4x0wxQsrqm8w3TbyNtPF",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userActiveSuccess"
+              }
+            },
+            "value": {
+              "3FYJMuV9QT3aduynkzpHGJ": {
+                "key": "3FYJMuV9QT3aduynkzpHGJ",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "onClickActiveInActivePopupClose": {
+          "statementName": "onClickActiveInActivePopupClose",
+          "name": "onClickActiveInActivePopupClose",
+          "namespace": "_",
+          "position": {
+            "left": 1499.7142987932475,
+            "top": 229.6785670689174
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 236.85714503696983,
+            "top": 188.51786150251115
+          },
+          "parameterMap": {
+            "url": {
+              "5e9piEfV9MGPflTUQlzDnW": {
+                "key": "5e9piEfV9MGPflTUQlzDnW",
+                "type": "EXPRESSION",
+                "expression": "'api/security/users/makeUserActive?userId={{Page.userId}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchUsers": {
+          "statementName": "fetchUsers",
+          "name": "fetchUsers",
+          "namespace": "_",
+          "position": {
+            "left": 1518.7143118722097,
+            "top": 412.94642857142856
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3Dl5V2W7zqRtQLHRjlZb2H": {
+      "name": "onClickEditUser",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 401.1428593226841,
+            "top": 126.05356270926336
+          },
+          "parameterMap": {
+            "path": {
+              "2EBha5LrFdbTRsUn47RRYQ": {
+                "key": "2EBha5LrFdbTRsUn47RRYQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.invitePopup"
+              }
+            },
+            "value": {
+              "66QVilsENh907jtKW9PYrL": {
+                "key": "66QVilsENh907jtKW9PYrL",
+                "type": "EXPRESSION",
+                "expression": "not Page.invitePopup",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 693.8571450369698,
+            "top": 418.05356270926336
+          },
+          "parameterMap": {
+            "path": {
+              "4tuaPFa4dugPmIqCAy1vue": {
+                "key": "4tuaPFa4dugPmIqCAy1vue",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteUserData"
+              }
+            },
+            "value": {
+              "3yDjn2yzsaP7WzX97nJleC": {
+                "key": "3yDjn2yzsaP7WzX97nJleC",
+                "type": "EXPRESSION",
+                "expression": "Parent",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__eventStatus__d-o-t__output": true
+          }
+        },
+        "eventStatus": {
+          "statementName": "eventStatus",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 385.6666564941406,
+            "top": 414.56249237060547
+          },
+          "parameterMap": {
+            "path": {
+              "1CPYYcWBQ922gPWKyYPMAD": {
+                "key": "1CPYYcWBQ922gPWKyYPMAD",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.eventStatus"
+              }
+            },
+            "value": {
+              "5Xr58KIIOdvrNoqVx4Ts3E": {
+                "key": "5Xr58KIIOdvrNoqVx4Ts3E",
+                "type": "EXPRESSION",
+                "expression": "\"Edit\"",
+                "order": 1
+              }
+            }
+          },
+          "comment": "This is for knowing edit or invite"
+        },
+        "loadProfiles": {
+          "statementName": "loadProfiles",
+          "name": "loadProfiles",
+          "namespace": "_",
+          "position": {
+            "left": 98.42857360839842,
+            "top": 656.7142922537666
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3YaF9Ms1ueRHU5WKgx87s1": {
+      "name": "cleanUp",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 451.000002179827,
+            "top": 357.6249997275216
+          },
+          "parameterMap": {
+            "path": {
+              "29KNbb4yR94PQwaiRiGAMS": {
+                "key": "29KNbb4yR94PQwaiRiGAMS",
+                "type": "EXPRESSION",
+                "expression": "'Store.validations'",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "zmKccOYmWICDqnZe7Ef6J": {
+                "key": "zmKccOYmWICDqnZe7Ef6J",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 842.5714307512554,
+            "top": 429.053571156093
+          },
+          "parameterMap": {
+            "path": {
+              "15s4mFOilY2dXZUKaTdqAB": {
+                "key": "15s4mFOilY2dXZUKaTdqAB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteUserData"
+              }
+            },
+            "deleteKey": {
+              "k1KsPmdAgAuUYLe4ojPPY": {
+                "key": "k1KsPmdAgAuUYLe4ojPPY",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "DiMHON0F5h8FairjDAvj0": {
+      "name": "rejectInvite",
+      "steps": {
+        "fetchInvitedUsers": {
+          "statementName": "fetchInvitedUsers",
+          "name": "fetchInvitedUsers",
+          "namespace": "_",
+          "position": {
+            "left": 986.2857164655412,
+            "top": 206.6607186453683
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 619.4285736083983,
+            "top": 357.375004359654
+          },
+          "parameterMap": {
+            "condition": {
+              "5mN5KFE4OVhO4LGpSln3ts": {
+                "key": "5mN5KFE4OVhO4LGpSln3ts",
+                "type": "EXPRESSION",
+                "expression": "Steps.deleteData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "deleteData": {
+          "statementName": "deleteData",
+          "name": "DeleteData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 241.85714503696983,
+            "top": 159.37500435965399
+          },
+          "parameterMap": {
+            "url": {
+              "1PXgVBrGz1dhlYxSalcjaJ": {
+                "key": "1PXgVBrGz1dhlYxSalcjaJ",
+                "type": "EXPRESSION",
+                "expression": "'api/security/users/invite/{{Page.inviteCode}}'",
+                "order": 1
+              }
+            }
+          }
+        },
+        "onclickRejectInvitePopupClose": {
+          "statementName": "onclickRejectInvitePopupClose",
+          "name": "onclickRejectInvitePopupClose",
+          "namespace": "_",
+          "position": {
+            "left": 1379.8571341378347,
+            "top": 204.0892900739397
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__fetchInvitedUsers__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1216.1428593226842,
+            "top": 353.6607186453682
+          },
+          "parameterMap": {
+            "path": {
+              "5srcJMDenT8kYs75dWqDpc": {
+                "key": "5srcJMDenT8kYs75dWqDpc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteCode"
+              }
+            },
+            "value": {
+              "ecTkPWIxQijtjCtRTub41": {
+                "key": "ecTkPWIxQijtjCtRTub41",
+                "type": "VALUE",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "6RMgQuo8PuOTNVJCvLW0GQ": {
+                "key": "6RMgQuo8PuOTNVJCvLW0GQ",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "52wR4MTd80fPkVew6RIvg4": {
+      "name": "onclickRejectInvitePopupClose",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 411.71428789411266,
+            "top": 176.80357578822543
+          },
+          "parameterMap": {
+            "path": {
+              "433ZNOhUgeFWwYDvFIn21L": {
+                "key": "433ZNOhUgeFWwYDvFIn21L",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.rejectInvitePopup"
+              }
+            },
+            "value": {
+              "C2ptd64s2ouA7zFlTiWJ9": {
+                "key": "C2ptd64s2ouA7zFlTiWJ9",
+                "type": "EXPRESSION",
+                "expression": "not Page.rejectInvitePopup",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 848.1428593226842,
+            "top": 292.6607186453682
+          },
+          "parameterMap": {
+            "path": {
+              "5srcJMDenT8kYs75dWqDpc": {
+                "key": "5srcJMDenT8kYs75dWqDpc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteCode"
+              }
+            },
+            "value": {
+              "ecTkPWIxQijtjCtRTub41": {
+                "key": "ecTkPWIxQijtjCtRTub41",
+                "type": "VALUE",
+                "order": 1
+              }
+            },
+            "deleteKey": {
+              "6RMgQuo8PuOTNVJCvLW0GQ": {
+                "key": "6RMgQuo8PuOTNVJCvLW0GQ",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4xlvwJuX70Pfc8LYXYyhtM": {
+      "name": "onclickRejectInvitePopup",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 556.7142878941127,
+            "top": 250.80357578822543
+          },
+          "parameterMap": {
+            "path": {
+              "433ZNOhUgeFWwYDvFIn21L": {
+                "key": "433ZNOhUgeFWwYDvFIn21L",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.rejectInvitePopup"
+              }
+            },
+            "value": {
+              "C2ptd64s2ouA7zFlTiWJ9": {
+                "key": "C2ptd64s2ouA7zFlTiWJ9",
+                "type": "EXPRESSION",
+                "expression": "not Page.rejectInvitePopup",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 192.1428593226841,
+            "top": 370.6607186453682
+          },
+          "parameterMap": {
+            "path": {
+              "5srcJMDenT8kYs75dWqDpc": {
+                "key": "5srcJMDenT8kYs75dWqDpc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.inviteCode"
+              }
+            },
+            "value": {
+              "ecTkPWIxQijtjCtRTub41": {
+                "key": "ecTkPWIxQijtjCtRTub41",
+                "type": "EXPRESSION",
+                "expression": "Parent.inviteCode",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        }
+      },
+      "namespace": ""
+    },
+    "1BVqDoAYmCUqSXOrNg15VV": {
+      "name": "acceptRequest",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1085.0000032697403,
+            "top": 130.53570992606024
+          },
+          "parameterMap": {
+            "condition": {
+              "6aAaKqEl9pYZEigfAuAd9N": {
+                "key": "6aAaKqEl9pYZEigfAuAd9N",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2482.5714198521205,
+            "top": 400.6607186453683
+          },
+          "parameterMap": {
+            "path": {
+              "1WJ7gXXJLGmUM1YKkavkYc": {
+                "key": "1WJ7gXXJLGmUM1YKkavkYc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userRequestPopup"
+              }
+            },
+            "value": {
+              "2WYfdb8RIdOdkql5eYONaY": {
+                "key": "2WYfdb8RIdOdkql5eYONaY",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__requestStatusEmailFn__d-o-t__output": true
+          }
+        },
+        "getAppUrl": {
+          "statementName": "getAppUrl",
+          "name": "GetAppUrl",
+          "namespace": "CoreServices.Security",
+          "position": {
+            "left": 1519.0000348772319,
+            "top": 281.6607186453682
+          },
+          "parameterMap": {
+            "appCode": {
+              "4VxA6FXEpi5egrXzx5DiFJ": {
+                "key": "4VxA6FXEpi5egrXzx5DiFJ",
+                "type": "EXPRESSION",
+                "expression": "\"sitezump\"",
+                "order": 1
+              }
+            },
+            "clientCode": {
+              "6FQVxvvdeQHdp1qnglbQc7": {
+                "key": "6FQVxvvdeQHdp1qnglbQc7",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SYSTEM"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "requestStatusEmailFn": {
+          "statementName": "requestStatusEmailFn",
+          "name": "requestStatusEmailFn",
+          "namespace": "sitezump",
+          "position": {
+            "left": 2199.5714808872763,
+            "top": 210.0892900739397
+          },
+          "parameterMap": {
+            "userObj": {
+              "51aKr47NOHfLwwurpnsrP4": {
+                "key": "51aKr47NOHfLwwurpnsrP4",
+                "type": "EXPRESSION",
+                "expression": "Page.requestUserData",
+                "order": 1
+              }
+            },
+            "status": {
+              "2C4TFgjuDKVuvzAmlLDN6j": {
+                "key": "2C4TFgjuDKVuvzAmlLDN6j",
+                "type": "EXPRESSION",
+                "expression": "\"Accepted\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": false,
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1872.7143031529017,
+            "top": 424.0892726353236
+          },
+          "parameterMap": {
+            "path": {
+              "3IWQpobuZeOlnAy3w2xUjx": {
+                "key": "3IWQpobuZeOlnAy3w2xUjx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.requestUserData.urlPrefix"
+              }
+            },
+            "value": {
+              "7iRYu0BdRBAaPvok9Bw8em": {
+                "key": "7iRYu0BdRBAaPvok9Bw8em",
+                "type": "EXPRESSION",
+                "expression": "Steps.getAppUrl.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 182.71428789411272,
+            "top": 531.2321472167969
+          },
+          "parameterMap": {
+            "path": {
+              "4GCZ2b7xWqYMyQxwNGjvKo": {
+                "key": "4GCZ2b7xWqYMyQxwNGjvKo",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userRequest.requestId"
+              }
+            },
+            "value": {
+              "7e0Uwn1HHjMETx1SCzBVf6": {
+                "key": "7e0Uwn1HHjMETx1SCzBVf6",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[1]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2787.5714983258927,
+            "top": 228.66071864536826
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__requestStatusEmailFn__d-o-t__output": true
+          },
+          "parameterMap": {
+            "linkPath": {
+              "1z2zMcMNfsQfr5hy7o2SJ6": {
+                "key": "1z2zMcMNfsQfr5hy7o2SJ6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/users"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 146.42857360839844,
+            "top": 199.10713849748882
+          },
+          "parameterMap": {
+            "path": {
+              "1bK7Ohjwqcyc4FncxZRW3l": {
+                "key": "1bK7Ohjwqcyc4FncxZRW3l",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userRequest.appCode"
+              }
+            },
+            "value": {
+              "7ilTjIOvFweabsdzCsfnJR": {
+                "key": "7ilTjIOvFweabsdzCsfnJR",
+                "type": "EXPRESSION",
+                "expression": "Store.application.code",
+                "order": 1
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 617.8571450369698,
+            "top": 77.10713849748882
+          },
+          "parameterMap": {
+            "url": {
+              "6GbCT3ASXFRmxUPzA2pPDG": {
+                "key": "6GbCT3ASXFRmxUPzA2pPDG",
+                "type": "EXPRESSION",
+                "expression": "'api/security/users/acceptRequest'",
+                "order": 1
+              }
+            },
+            "method": {
+              "2HI9BTggSBdnUnro87sYN4": {
+                "key": "2HI9BTggSBdnUnro87sYN4",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "1srj11DmrlGeqnk1sapQZy": {
+                "key": "1srj11DmrlGeqnk1sapQZy",
+                "type": "EXPRESSION",
+                "expression": "Page.userRequest",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "51VpbUuILzsL8R9lVShSJy": {
+      "name": "rejectRequest",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 696.1428593226841,
+            "top": 258.375004359654
+          },
+          "parameterMap": {
+            "condition": {
+              "5LRMqSVH9kX4tutsN2KnwA": {
+                "key": "5LRMqSVH9kX4tutsN2KnwA",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "getAppUrl": {
+          "statementName": "getAppUrl",
+          "name": "GetAppUrl",
+          "namespace": "CoreServices.Security",
+          "position": {
+            "left": 1023.2857404436384,
+            "top": 486.6607186453682
+          },
+          "parameterMap": {
+            "appCode": {
+              "4VxA6FXEpi5egrXzx5DiFJ": {
+                "key": "4VxA6FXEpi5egrXzx5DiFJ",
+                "type": "EXPRESSION",
+                "expression": "\"sitezump\"",
+                "order": 1
+              }
+            },
+            "clientCode": {
+              "6FQVxvvdeQHdp1qnglbQc7": {
+                "key": "6FQVxvvdeQHdp1qnglbQc7",
+                "type": "VALUE",
+                "expression": "",
+                "value": "SYSTEM"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1537.0000087193082,
+            "top": 311.0892726353236
+          },
+          "parameterMap": {
+            "path": {
+              "3IWQpobuZeOlnAy3w2xUjx": {
+                "key": "3IWQpobuZeOlnAy3w2xUjx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.requestUserData.urlPrefix"
+              }
+            },
+            "value": {
+              "7iRYu0BdRBAaPvok9Bw8em": {
+                "key": "7iRYu0BdRBAaPvok9Bw8em",
+                "type": "EXPRESSION",
+                "expression": "Steps.getAppUrl.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore2_Copy_1": {
+          "statementName": "setStore2_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2461.857125418527,
+            "top": 629.6607186453683
+          },
+          "parameterMap": {
+            "path": {
+              "1WJ7gXXJLGmUM1YKkavkYc": {
+                "key": "1WJ7gXXJLGmUM1YKkavkYc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.userRequestPopup"
+              }
+            },
+            "value": {
+              "2WYfdb8RIdOdkql5eYONaY": {
+                "key": "2WYfdb8RIdOdkql5eYONaY",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__requestStatusEmailFn__d-o-t__output": true
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 297.4285736083984,
+            "top": 198.82142421177454
+          },
+          "parameterMap": {
+            "url": {
+              "61tRyFoO9sSxIsghFRmyFr": {
+                "key": "61tRyFoO9sSxIsghFRmyFr",
+                "type": "EXPRESSION",
+                "expression": "'api/security/users/rejectRequest/{{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            },
+            "method": {
+              "2Ilpc1dmBvX7emrU2CilwI": {
+                "key": "2Ilpc1dmBvX7emrU2CilwI",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            }
+          }
+        },
+        "requestStatusEmailFn": {
+          "statementName": "requestStatusEmailFn",
+          "name": "requestStatusEmailFn",
+          "namespace": "sitezump",
+          "position": {
+            "left": 2178.8571864536825,
+            "top": 439.0892900739397
+          },
+          "parameterMap": {
+            "userObj": {
+              "51aKr47NOHfLwwurpnsrP4": {
+                "key": "51aKr47NOHfLwwurpnsrP4",
+                "type": "EXPRESSION",
+                "expression": "Page.requestUserData",
+                "order": 1
+              }
+            },
+            "status": {
+              "2C4TFgjuDKVuvzAmlLDN6j": {
+                "key": "2C4TFgjuDKVuvzAmlLDN6j",
+                "type": "EXPRESSION",
+                "expression": "\"Reject\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2_Copy_1__d-o-t__output": false,
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2903.4286063058034,
+            "top": 479.0892900739397
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__requestStatusEmailFn__d-o-t__output": true
+          },
+          "parameterMap": {
+            "linkPath": {
+              "1z2zMcMNfsQfr5hy7o2SJ6": {
+                "key": "1z2zMcMNfsQfr5hy7o2SJ6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/users"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "69l3t7Rk6w751xjsXEdAC1",
+  "componentDefinition": {
+    "69l3t7Rk6w751xjsXEdAC1": {
+      "key": "69l3t7Rk6w751xjsXEdAC1",
+      "name": "PageGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3dBKplIpkSYaiuMghkWZx9": true,
+        "2fy1VzmdmUpAmJnxbunuTm": true,
+        "x6klWv3QtCuwpzzlwJPWg": true,
+        "31FV5HeQ4XZvnVePo4WY4u": true,
+        "6qLLZ3EP6IJRlst62ARHxG": true,
+        "6kLqrNBAvjnWx5Z2ZnUdha": true,
+        "6IrGuUktx30f0ISinxSbUF": true
+      }
+    },
+    "3dBKplIpkSYaiuMghkWZx9": {
+      "key": "3dBKplIpkSYaiuMghkWZx9",
+      "name": "NavigationGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3KBoyh78bwmL7Y0Rw7naOE": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "zIndex": {
+                "value": "1"
+              },
+              "top": {
+                "value": "-1px"
+              },
+              "paddingTop": {
+                "value": "2vw"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "borderBottomWidth": {
+                "value": "0.069vw"
+              },
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7rp0qIo0ADb8Dpxhmt3Bl3": true,
+        "2DAIApnDjaln9o4t55kd9o": true
+      },
+      "displayOrder": 1
+    },
+    "7rp0qIo0ADb8Dpxhmt3Bl3": {
+      "key": "7rp0qIo0ADb8Dpxhmt3Bl3",
+      "name": "button 1",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "User management"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "rightIcon": {
+          "value": " fa fa-solid fa-angle-right"
+        },
+        "linkPath": {
+          "value": "/userManagement"
+        }
+      },
+      "styleProperties": {
+        "NBLcurLzajSt2iZe6kSEW": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2DAIApnDjaln9o4t55kd9o": {
+      "key": "2DAIApnDjaln9o4t55kd9o",
+      "name": "button 2",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.activeTab = \"Users\" ? 'Users' : 'Invite user'"
+          }
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "readOnly": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "7FNFQYIVxVs0I7VyuxAvDV": {
+          "resolutions": {
+            "ALL": {
+              "leftIcon-width": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2fy1VzmdmUpAmJnxbunuTm": {
+      "key": "2fy1VzmdmUpAmJnxbunuTm",
+      "name": "Main Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "6CypTJGuCPp5kUDNnDTlEh": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "mEUKxpaqvTEgWNplwiu6U": true,
+        "4TqdP02t9NzUxlcWR6KgBB": true,
+        "2JVDuMfun60JpypZpB0tBX": true
+      },
+      "displayOrder": 2
+    },
+    "mEUKxpaqvTEgWNplwiu6U": {
+      "key": "mEUKxpaqvTEgWNplwiu6U",
+      "name": "Top Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWCOLUMNLAYOUT"
+        },
+        "padding": {
+          "value": "_PADDINGONE"
+        }
+      },
+      "styleProperties": {
+        "3xgsxsQjspADOp7ls3Hr9i": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "space-between"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "50MCJpfRtMIHgxTnAIlubg": true,
+        "4Fh2SabB5h9IY65hHFO0Qo": true
+      },
+      "displayOrder": 1
+    },
+    "50MCJpfRtMIHgxTnAIlubg": {
+      "key": "50MCJpfRtMIHgxTnAIlubg",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.activeTab = \"Users\" ? 'Users' : 'Invite user'"
+          }
+        },
+        "textContainer": {
+          "value": "H1"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "OMQuTN4qvvxeWqFaXzad1": {
+      "key": "OMQuTN4qvvxeWqFaXzad1",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Invite user"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-plus"
+        },
+        "onClick": {
+          "value": "403nk7fAj9xjSBXHCkxoRx"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "not Authorities.ROLE_User_CREATE"
+          }
+        },
+        "rightIcon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "not Authorities.User_CREATE ? 'fa fa-solid fa-lock' : ''"
+          }
+        }
+      },
+      "styleProperties": {
+        "64r8ItnSX2WjyVP6ypSVI": {
+          "resolutions": {
+            "ALL": {
+              "rightIcon-display": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "not Authorities.User_CREATE ? \"flex\" : \"none\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4TqdP02t9NzUxlcWR6KgBB": {
+      "key": "4TqdP02t9NzUxlcWR6KgBB",
+      "name": "Users Table Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.activeTab = \"Users\""
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "pdG4n7TsM06AjR2tAW9ig": true
+      },
+      "displayOrder": 2
+    },
+    "pdG4n7TsM06AjR2tAW9ig": {
+      "key": "pdG4n7TsM06AjR2tAW9ig",
+      "name": "Table",
+      "type": "Table",
+      "properties": {
+        "tableDesign": {
+          "value": "_design7"
+        },
+        "showPagination": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.paginationBox = \"show\""
+          }
+        },
+        "totalPages": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allUsers.totalPages"
+          }
+        },
+        "leftArrowLabel": {
+          "value": "Previous"
+        },
+        "rightArrowLabel": {
+          "value": "Next"
+        },
+        "perPageNumbers": {
+          "1UZZX659zugG9e4EdVNs5g": {
+            "key": "1UZZX659zugG9e4EdVNs5g",
+            "order": 1,
+            "property": {
+              "value": 10
+            }
+          },
+          "4o6abiDauBGyiG7DCHkkU0": {
+            "key": "4o6abiDauBGyiG7DCHkkU0",
+            "order": 2,
+            "property": {
+              "value": 20
+            }
+          },
+          "4yVRjqUUSfkoOTyxumifzD": {
+            "key": "4yVRjqUUSfkoOTyxumifzD",
+            "order": 3,
+            "property": {
+              "value": 30
+            }
+          }
+        },
+        "onPagination": {
+          "value": "5lanvwm0bxtzgCBBzpEqIE"
+        }
+      },
+      "override": false,
+      "children": {
+        "3HDO7PIjHBU63Vtmv212Qt": true,
+        "LnenjJVmXz16mGbC1apyE": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.allUsers.content"
+      },
+      "bindingPath3": {
+        "type": "VALUE",
+        "value": "Page.allUsers.number"
+      },
+      "bindingPath4": {
+        "type": "VALUE",
+        "value": "Page.allUsers.size"
+      }
+    },
+    "3HDO7PIjHBU63Vtmv212Qt": {
+      "key": "3HDO7PIjHBU63Vtmv212Qt",
+      "name": "TableColumns",
+      "type": "TableColumns",
+      "properties": {
+        "showEmptyRows": {
+          "value": false
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showUsersTable = \"showTable\""
+          }
+        }
+      },
+      "styleProperties": {
+        "2dBsgQMMTakDLqxlCDZujL": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3tTeuUijHNL9fhINDYT0i0": true,
+        "1fREasrzXfF8qXhXDiWPDG": true,
+        "5nYGB8M5DKs1TyTD0GQ94O": true,
+        "7vkeUBpOtuI7IbKh1zePDl": true,
+        "6OfX0L0cUvzuimMXUOJdhQ": true,
+        "2XwdunL4PDXQk3XAefg7Zn": true,
+        "2oVUFKBVWlToouHRASReKS": true
+      },
+      "displayOrder": 1
+    },
+    "LnenjJVmXz16mGbC1apyE": {
+      "key": "LnenjJVmXz16mGbC1apyE",
+      "name": "TableEmptyGrid",
+      "type": "TableEmptyGrid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showUsersTable = \"showEmpty\""
+          }
+        }
+      },
+      "styleProperties": {
+        "3Gv2ZMGUDEPoPF4WyZJxvV": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ZpfrSUTHLI4NNPLIysmNL": true
+      },
+      "displayOrder": 1
+    },
+    "ZpfrSUTHLI4NNPLIysmNL": {
+      "key": "ZpfrSUTHLI4NNPLIysmNL",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        }
+      },
+      "styleProperties": {
+        "5UMJ4ffi4fpwAIsl7htUr": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "500px"
+              },
+              "borderTopColor": {
+                "value": "#0000000D"
+              },
+              "borderRightColor": {
+                "value": "#0000000D"
+              },
+              "borderBottomColor": {
+                "value": "#0000000D"
+              },
+              "borderLeftColor": {
+                "value": "#0000000D"
+              },
+              "overflow": {
+                "value": "hidden"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1e2WTncHlKHyyOaqcm99nY": true,
+        "BSRp0MaLSnJMjNbsrPJ3D": true
+      },
+      "displayOrder": 0
+    },
+    "1e2WTncHlKHyyOaqcm99nY": {
+      "key": "1e2WTncHlKHyyOaqcm99nY",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            "S No.",
+            "Name",
+            "Email ID",
+            "Profile",
+            "Status",
+            "Action"
+          ]
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1CKDIpQK210cBFDLskuwfr": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3vJbmykZMJRpRxcuE87waf": true
+      },
+      "displayOrder": 0
+    },
+    "3vJbmykZMJRpRxcuE87waf": {
+      "key": "3vJbmykZMJRpRxcuE87waf",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "padding": {
+          "value": "_PADDINGONE"
+        }
+      },
+      "styleProperties": {
+        "4b0Oh9JU0lm1iEWNGxBNpO": {
+          "resolutions": {
+            "ALL": {
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderRightColor": {
+                "value": "#0000000D"
+              },
+              "width": {
+                "value": "13.19vw"
+              },
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1Y8zTXOShzwhIYo0l166OT": true
+      },
+      "displayOrder": 0
+    },
+    "1Y8zTXOShzwhIYo0l166OT": {
+      "key": "1Y8zTXOShzwhIYo0l166OT",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent"
+          }
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "BSRp0MaLSnJMjNbsrPJ3D": {
+      "key": "BSRp0MaLSnJMjNbsrPJ3D",
+      "name": "Image Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5xouU3jacIapMVmoWFW1Pa": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "uyYSEAmchaS4xUzCcNX7i": true,
+        "57y2VGDcdBUsMNudPYju8m": true
+      }
+    },
+    "uyYSEAmchaS4xUzCcNX7i": {
+      "key": "uyYSEAmchaS4xUzCcNX7i",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/sitezump/dashboardnosites.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "57y2VGDcdBUsMNudPYju8m": {
+      "key": "57y2VGDcdBUsMNudPYju8m",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "No Users"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "4JTG9TxjWA1wJVjp1uN13i": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4Fh2SabB5h9IY65hHFO0Qo": {
+      "key": "4Fh2SabB5h9IY65hHFO0Qo",
+      "name": "Button Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWCOLUMNLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "OMQuTN4qvvxeWqFaXzad1": true,
+        "17anoHzBqhlGdqg0jL4Gyv": true
+      },
+      "displayOrder": 2
+    },
+    "17anoHzBqhlGdqg0jL4Gyv": {
+      "key": "17anoHzBqhlGdqg0jL4Gyv",
+      "name": "Main Toggle",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "layout": {
+          "value": "ROWCOLUMNLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3owwAmvmUHA5xNreNt6IBM": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.30vw"
+              },
+              "paddingBottom": {
+                "value": "0.30vw"
+              },
+              "paddingLeft": {
+                "value": "0.42vw"
+              },
+              "paddingRight": {
+                "value": "0.42vw"
+              },
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "563hlJvi9avx2q2dCy16ee": true,
+        "75SLlnQ8rfTZiw9hgxXERp": true
+      },
+      "displayOrder": 1
+    },
+    "563hlJvi9avx2q2dCy16ee": {
+      "key": "563hlJvi9avx2q2dCy16ee",
+      "name": "Users",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "PiKKnTeTDUUgyGiRIdTXj"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "borderRadius": {
+          "value": "_SLIGHTROUND"
+        }
+      },
+      "styleProperties": {
+        "WTJKwCm4k1RyOzdvyLbTa": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeTab = 'Users' ? '#FFFFFF' : ''"
+                }
+              },
+              "paddingLeft": {
+                "value": "0.9vw"
+              },
+              "paddingRight": {
+                "value": "0.9vw"
+              },
+              "boxShadow": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeTab = 'Users' ? '0px 1px 2px 0px #00000014' : ''"
+                }
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "paddingTop": {
+                "value": "0.7px"
+              },
+              "paddingBottom": {
+                "value": "0.7px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "47JtBsqKxF3pVnMImfYIjB": true,
+        "7gUpbgMihPMLWrhyQeqKPC": true
+      },
+      "displayOrder": 1
+    },
+    "75SLlnQ8rfTZiw9hgxXERp": {
+      "key": "75SLlnQ8rfTZiw9hgxXERp",
+      "name": "InvitedUsers",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "65ZSUAuLIKd9mhrNlY4NR8"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "borderRadius": {
+          "value": "_SLIGHTROUND"
+        }
+      },
+      "styleProperties": {
+        "3CLqtxckYEfJHo9GsElVwz": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeTab = 'InvitedUsers' ? '#FFFFFF' : ''"
+                }
+              },
+              "boxShadow": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeTab = 'InvitedUsers' ? '0px 1px 2px 0px #00000014' : ''"
+                }
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "paddingTop": {
+                "value": "0.7vw"
+              },
+              "paddingBottom": {
+                "value": "0.7vw"
+              },
+              "paddingLeft": {
+                "value": "0.9vw"
+              },
+              "paddingRight": {
+                "value": "0.9vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "Aa9p3efvNfZynzASFwPp4": true,
+        "2XCCdPGWHm7Do1GranCXdk": true
+      },
+      "displayOrder": 2
+    },
+    "47JtBsqKxF3pVnMImfYIjB": {
+      "key": "47JtBsqKxF3pVnMImfYIjB",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.activeTab = 'Users' ? 'api/files/static/file/SYSTEM/sitezump/activeusers.svg' : 'api/files/static/file/SYSTEM/sitezump/defaultusers.svg'"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "2ZPQT0sAVPSHVVjOtQYuSJ": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "0.931vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7gUpbgMihPMLWrhyQeqKPC": {
+      "key": "7gUpbgMihPMLWrhyQeqKPC",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Users"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "styleProperties": {
+        "5Ub2xJl5fGLdVVHJlfZi76": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeTab='Users' ? '#000000':'#00000080'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "Aa9p3efvNfZynzASFwPp4": {
+      "key": "Aa9p3efvNfZynzASFwPp4",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.activeTab = 'InvitedUsers' ? 'api/files/static/file/SYSTEM/sitezump/activeusers.svg' : 'api/files/static/file/SYSTEM/sitezump/defaultusers.svg'"
+          }
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "25nhLm7sc8hQY6Gt0EwAD3": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "0.931vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2XCCdPGWHm7Do1GranCXdk": {
+      "key": "2XCCdPGWHm7Do1GranCXdk",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Invited Users"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "styleProperties": {
+        "5s222zS0irHuLP7USxJBuC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeTab='InvitedUsers' ? '#000000':'#00000080'"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2JVDuMfun60JpypZpB0tBX": {
+      "key": "2JVDuMfun60JpypZpB0tBX",
+      "name": "Invited Users Table Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.activeTab  = \"InvitedUsers\""
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "55Tgfk5wNrrRsBcfgGWC1E": true
+      },
+      "displayOrder": 3
+    },
+    "55Tgfk5wNrrRsBcfgGWC1E": {
+      "key": "55Tgfk5wNrrRsBcfgGWC1E",
+      "name": "Table",
+      "type": "Table",
+      "properties": {
+        "tableDesign": {
+          "value": "_design7"
+        },
+        "showPagination": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.inviteUserpaginationBox = \"show\""
+          }
+        },
+        "totalPages": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allInvitedUsers.totalPages"
+          }
+        },
+        "onPagination": {
+          "value": "3RVD1Y5pKdnaEm7vZkjcKM"
+        }
+      },
+      "override": false,
+      "children": {
+        "12R0BdapQlGgvgJpvvz2IF": true,
+        "70w0uFxQlF1gW3TPy4TyP9": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.allInvitedUsers.content"
+      },
+      "bindingPath3": {
+        "type": "VALUE",
+        "value": "Page.allInvitedUsers.number"
+      },
+      "bindingPath4": {
+        "type": "VALUE",
+        "value": "Page.allInvitedUsers.size"
+      }
+    },
+    "12R0BdapQlGgvgJpvvz2IF": {
+      "key": "12R0BdapQlGgvgJpvvz2IF",
+      "name": "TableColumns",
+      "type": "TableColumns",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showInvitedUsersTable = \"showTable\""
+          }
+        },
+        "showEmptyRows": {
+          "value": false
+        }
+      },
+      "override": false,
+      "children": {
+        "2pmAxUPMgIXdU59R0euEGG": true,
+        "3GNs1xXJ8JiLVqghKBI9aj": true,
+        "1fpagKkPQEDNMFfVPszrWm": true,
+        "3EY3DM4TS8qVdqsTZF70tZ": true,
+        "5OAlt6TN78i0v0OUw9bYqX": true,
+        "OL0sWuYA9ajc1VXzjoj1D": true
+      },
+      "displayOrder": 1
+    },
+    "70w0uFxQlF1gW3TPy4TyP9": {
+      "key": "70w0uFxQlF1gW3TPy4TyP9",
+      "name": "TableEmptyGrid",
+      "type": "TableEmptyGrid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showInvitedUsersTable = \"showEmpty\""
+          }
+        }
+      },
+      "styleProperties": {
+        "3Gv2ZMGUDEPoPF4WyZJxvV": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4mXL8u3NwJID9FCroUern6": true
+      },
+      "displayOrder": 1
+    },
+    "4mXL8u3NwJID9FCroUern6": {
+      "key": "4mXL8u3NwJID9FCroUern6",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        }
+      },
+      "styleProperties": {
+        "5UMJ4ffi4fpwAIsl7htUr": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "500px"
+              },
+              "borderTopColor": {
+                "value": "#0000000D"
+              },
+              "borderRightColor": {
+                "value": "#0000000D"
+              },
+              "borderBottomColor": {
+                "value": "#0000000D"
+              },
+              "borderLeftColor": {
+                "value": "#0000000D"
+              },
+              "overflow": {
+                "value": "hidden"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3PpHSDVApvQaCZVwqKelSo": true,
+        "2XdiePJUFzhJyBfgNj15KX": true
+      },
+      "displayOrder": 0
+    },
+    "3PpHSDVApvQaCZVwqKelSo": {
+      "key": "3PpHSDVApvQaCZVwqKelSo",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "defaultData": {
+          "value": [
+            "S No.",
+            "Name",
+            "Email ID",
+            "Profile",
+            "Status",
+            "Action"
+          ]
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1CKDIpQK210cBFDLskuwfr": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5toYyCkNGAkGNkv25XUdXA": true
+      },
+      "displayOrder": 1
+    },
+    "2XdiePJUFzhJyBfgNj15KX": {
+      "key": "2XdiePJUFzhJyBfgNj15KX",
+      "name": "Image Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "5xouU3jacIapMVmoWFW1Pa": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3xarvxQua6ZTZXWLbe8rEk": true,
+        "4lMg2Ul5shQoOS7AWwq36n": true
+      },
+      "displayOrder": 2
+    },
+    "5toYyCkNGAkGNkv25XUdXA": {
+      "key": "5toYyCkNGAkGNkv25XUdXA",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "padding": {
+          "value": "_PADDINGONE"
+        }
+      },
+      "styleProperties": {
+        "4b0Oh9JU0lm1iEWNGxBNpO": {
+          "resolutions": {
+            "ALL": {
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderRightColor": {
+                "value": "#0000000D"
+              },
+              "width": {
+                "value": "13.19vw"
+              },
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5sV9QxjKfFjgCp7ITT4AwH": true
+      },
+      "displayOrder": 0
+    },
+    "3xarvxQua6ZTZXWLbe8rEk": {
+      "key": "3xarvxQua6ZTZXWLbe8rEk",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/sitezump/dashboardnosites.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4lMg2Ul5shQoOS7AWwq36n": {
+      "key": "4lMg2Ul5shQoOS7AWwq36n",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "No Invite user"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "4JTG9TxjWA1wJVjp1uN13i": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "value": "600"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5sV9QxjKfFjgCp7ITT4AwH": {
+      "key": "5sV9QxjKfFjgCp7ITT4AwH",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent"
+          }
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "x6klWv3QtCuwpzzlwJPWg": {
+      "key": "x6klWv3QtCuwpzzlwJPWg",
+      "name": "Popup",
+      "type": "Popup",
+      "properties": {
+        "modelTitle": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'{{Page.eventStatus}} user'"
+          }
+        },
+        "modalPosition": {
+          "value": "_center_top"
+        },
+        "closeOnOutsideClick": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "BDwFWmnKR3FPLoUOi12Ty": {
+          "resolutions": {
+            "ALL": {
+              "modal-paddingTop": {
+                "value": "35px"
+              },
+              "modal-paddingBottom": {
+                "value": "35px"
+              },
+              "modal-paddingLeft": {
+                "value": "35px"
+              },
+              "modal-paddingRight": {
+                "value": "35px"
+              },
+              "modal-width": {
+                "value": "38.19vw"
+              },
+              "modal-animationName": {
+                "value": "_zoomIn"
+              },
+              "modal-animationDuration": {
+                "value": "0.5s"
+              },
+              "modal-animationIterationCount": {
+                "value": "1"
+              },
+              "modalTitle-fontWeight": {
+                "value": "600"
+              },
+              "closeButtonContainer-cursor": {
+                "value": "pointer"
+              },
+              "closeButtonContainer-position": {
+                "value": "absolute"
+              },
+              "closeButtonContainer-top": {
+                "value": "-1.39vw"
+              },
+              "closeButtonContainer-right": {
+                "value": "-1.39vw"
+              },
+              "closeButton-fontWeight": {
+                "value": "bolder"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3qGO3PqmmYC8vQukcRmrMN": true,
+        "27zDiYgYGU10QsZzGNhrqg": true
+      },
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.invitePopup"
+      }
+    },
+    "3qGO3PqmmYC8vQukcRmrMN": {
+      "key": "3qGO3PqmmYC8vQukcRmrMN",
+      "name": "Main Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1iSQr9QbI2Jo4bT3Ey6Tq2": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "45px"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2OZOxfAwQZk9aa9X8y4NJS": true,
+        "1rkycvJhgMULd6DwJwyXjo": true,
+        "3C9Ml9mFRSA6XIqKwEQ8I8": true,
+        "s9yJU4Wuq0WlNLOI1avGZ": true
+      },
+      "displayOrder": 1
+    },
+    "2OZOxfAwQZk9aa9X8y4NJS": {
+      "key": "2OZOxfAwQZk9aa9X8y4NJS",
+      "name": "last name TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Last Name"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "1RrMLseYpwYYE79xGdG0uK": {
+            "key": "1RrMLseYpwYYE79xGdG0uK",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {}
+              }
+            }
+          }
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.eventStatus = \"Edit\""
+          }
+        }
+      },
+      "styleProperties": {
+        "3VkUj9Ht4mj9ySNcueHZuj": {
+          "resolutions": {
+            "ALL": {
+              "rightIcon-display": {
+                "value": "none"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"#F9FAFB\" : \"\""
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"#00000099\" : \"\""
+                }
+              },
+              "borderTopStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderRightStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderBottomStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderLeftStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.inviteUserData.lastName"
+      }
+    },
+    "1rkycvJhgMULd6DwJwyXjo": {
+      "key": "1rkycvJhgMULd6DwJwyXjo",
+      "name": "First name TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "First name"
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "6sLLb1sMNDZDuceZ9b6jYA": {
+            "key": "6sLLb1sMNDZDuceZ9b6jYA",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Please enter first name"
+                }
+              }
+            }
+          }
+        },
+        "readOnly": {
+          "value": true,
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.eventStatus = \"Edit\""
+          }
+        }
+      },
+      "styleProperties": {
+        "5poKx4dTc4qJLIav0TUnKg": {
+          "resolutions": {
+            "ALL": {
+              "rightIcon-display": {
+                "value": "none"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"#F9FAFB\" : \"\""
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"#00000099\" : \"\""
+                }
+              },
+              "borderRightStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderBottomStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderTopStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderLeftStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.inviteUserData.firstName"
+      }
+    },
+    "3C9Ml9mFRSA6XIqKwEQ8I8": {
+      "key": "3C9Ml9mFRSA6XIqKwEQ8I8",
+      "name": "email TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Email Id"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "validation": {
+          "6TXkkCnmlPdNTeIwOcJ7xc": {
+            "key": "6TXkkCnmlPdNTeIwOcJ7xc",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "Please enter emailId"
+                }
+              }
+            }
+          },
+          "4aA1zf01lSWxtHlw6Ujqh8": {
+            "key": "4aA1zf01lSWxtHlw6Ujqh8",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "REGEX",
+                "pattern": {
+                  "value": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                },
+                "message": {
+                  "value": "Please enter valid emailId"
+                }
+              }
+            }
+          }
+        },
+        "showMandatoryAsterisk": {
+          "value": true
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.eventStatus = \"Edit\""
+          }
+        }
+      },
+      "styleProperties": {
+        "7zXqqV0RDwrJmMVNHsnTmW": {
+          "resolutions": {
+            "ALL": {
+              "rightIcon-display": {
+                "value": "none"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"#F9FAFB\" : \"\""
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"#00000099\" : \"\""
+                }
+              },
+              "borderTopStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderBottomStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderLeftStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              },
+              "borderRightStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eventStatus = \"Edit\" ? \"none\" : \"\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.inviteUserData.emailId"
+      }
+    },
+    "s9yJU4Wuq0WlNLOI1avGZ": {
+      "key": "s9yJU4Wuq0WlNLOI1avGZ",
+      "name": "Profiles Dropdown",
+      "type": "Dropdown",
+      "properties": {
+        "label": {
+          "value": "Profile"
+        },
+        "noFloat": {
+          "value": true
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "data": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.profiles.content"
+          }
+        },
+        "datatype": {
+          "value": "LIST_OF_OBJECTS"
+        },
+        "uniqueKeyType": {
+          "value": "OBJECT"
+        },
+        "selectionType": {
+          "value": "KEY"
+        },
+        "labelKeyType": {
+          "value": "KEY"
+        },
+        "__truncated__": "... 5 more props"
+      },
+      "override": false,
+      "displayOrder": 5,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.inviteUserData.profileId"
+      }
+    },
+    "27zDiYgYGU10QsZzGNhrqg": {
+      "key": "27zDiYgYGU10QsZzGNhrqg",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'{{Page.eventStatus}} user'"
+          }
+        },
+        "onClick": {
+          "value": "5gOMVGxG4ubvvqCQDKxemy"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3tTeuUijHNL9fhINDYT0i0": {
+      "key": "3tTeuUijHNL9fhINDYT0i0",
+      "name": "SerialNo",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "S No."
+        }
+      },
+      "styleProperties": {
+        "6tEGVFiH0olLBioKjk2uEo": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "2vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3vSGMl9slgq07PpLuig5wx": true
+      },
+      "displayOrder": 1
+    },
+    "3vSGMl9slgq07PpLuig5wx": {
+      "key": "3vSGMl9slgq07PpLuig5wx",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "{{Page.allUsers.number * Page.allUsers.size}} + Parent.__index + 1"
+          }
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "styleProperties": {
+        "25m6TRQoG8OVp0wTn0qtYS": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1fREasrzXfF8qXhXDiWPDG": {
+      "key": "1fREasrzXfF8qXhXDiWPDG",
+      "name": "UserName",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "User name"
+        }
+      },
+      "styleProperties": {
+        "CyVJCTSINjRI4WuVmu3e2": {
+          "resolutions": {
+            "ALL": {
+              "headerContainer-justifyContent": {
+                "value": "start"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "Hf0r8R05IExgGveFCyhxM": true
+      },
+      "displayOrder": 2
+    },
+    "5nYGB8M5DKs1TyTD0GQ94O": {
+      "key": "5nYGB8M5DKs1TyTD0GQ94O",
+      "name": "EmailID",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Email id"
+        }
+      },
+      "styleProperties": {
+        "4C7IGO5FCyjbaORgj2wrUR": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-justifyContent": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1D6vn2C8kSOnF9Hxzag7kv": true
+      },
+      "displayOrder": 3
+    },
+    "7vkeUBpOtuI7IbKh1zePDl": {
+      "key": "7vkeUBpOtuI7IbKh1zePDl",
+      "name": "Phone number",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Phone number"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "5sVz5Z8EOI4hAzvsfpaTd3": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-justifyContent": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3yzusQuPsZqgqb9i9ez0IF": true
+      },
+      "displayOrder": 4
+    },
+    "3yzusQuPsZqgqb9i9ez0IF": {
+      "key": "3yzusQuPsZqgqb9i9ez0IF",
+      "name": "phoneNumber",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.phoneNumber"
+          }
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textLength": {
+          "value": 19
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "3NHpR83MAy0t6rFl1VvCgG": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6OfX0L0cUvzuimMXUOJdhQ": {
+      "key": "6OfX0L0cUvzuimMXUOJdhQ",
+      "name": "Profile",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Profile"
+        }
+      },
+      "styleProperties": {
+        "7htqOYK2uWgK37zbY2hw75": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-justifyContent": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2l3zRH3IymRfhxCcWOWJmY": true
+      },
+      "displayOrder": 5
+    },
+    "2l3zRH3IymRfhxCcWOWJmY": {
+      "key": "2l3zRH3IymRfhxCcWOWJmY",
+      "name": "Profile",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.profileId"
+          }
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textLength": {
+          "value": 10
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "7gcyr67qipdMKOaXgf3ZsS": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2XwdunL4PDXQk3XAefg7Zn": {
+      "key": "2XwdunL4PDXQk3XAefg7Zn",
+      "name": "Status",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Status"
+        }
+      },
+      "styleProperties": {
+        "CTju5EuPRvLP1GF1q2SFs": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-justifyContent": {
+                "value": "flex-start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "81KQzIj8eSA79fyoLeS18": true
+      },
+      "displayOrder": 6
+    },
+    "81KQzIj8eSA79fyoLeS18": {
+      "key": "81KQzIj8eSA79fyoLeS18",
+      "name": "StatusGrid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_SLIGHTROUND"
+        }
+      },
+      "styleProperties": {
+        "5ylnVHHGiAOa209eTVxpk7": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "1.04vw"
+              },
+              "paddingRight": {
+                "value": "1.04vw"
+              },
+              "paddingTop": {
+                "value": "0.76vw"
+              },
+              "paddingBottom": {
+                "value": "0.76vw"
+              },
+              "width": {
+                "value": "max-content"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Parent.statusCode = \"ACTIVE\" ? Theme.customColor4 + \"66\": Theme.customColor3 + \"66\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "cuhddgHVL0C6M8hj5pbST": true
+      },
+      "displayOrder": 0
+    },
+    "cuhddgHVL0C6M8hj5pbST": {
+      "key": "cuhddgHVL0C6M8hj5pbST",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.statusCode"
+          }
+        },
+        "textLength": {
+          "value": 15
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "7iiMa5xoroC8SHsssodVk1": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2oVUFKBVWlToouHRASReKS": {
+      "key": "2oVUFKBVWlToouHRASReKS",
+      "name": "Actions",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Actions"
+        }
+      },
+      "styleProperties": {
+        "5ld17oQcxjazYpyvkClzJI": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "2vw"
+              },
+              "paddingRight": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "2vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "2vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5bVuqtoWCrVj7EJXS0JMnf": true
+      },
+      "displayOrder": 7
+    },
+    "5bVuqtoWCrVj7EJXS0JMnf": {
+      "key": "5bVuqtoWCrVj7EJXS0JMnf",
+      "name": "Popover",
+      "type": "Popover",
+      "properties": {
+        "closeOnLeave": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "7ubywGyisA6yUgFAXdqI9v": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "au83SphoUEtsdxP0h0PH2": true,
+        "4aG7mZALLaoLcW0oDj6b7R": true
+      },
+      "displayOrder": 0
+    },
+    "au83SphoUEtsdxP0h0PH2": {
+      "key": "au83SphoUEtsdxP0h0PH2",
+      "name": "OuterGrid",
+      "type": "Grid",
+      "properties": {
+        "border": {
+          "value": "_MEDIUM"
+        }
+      },
+      "styleProperties": {
+        "57g3n89BxnPK5Qcg9UjOCr": {
+          "resolutions": {
+            "ALL": {
+              "left": {
+                "value": "-0.6vw"
+              },
+              "bottom": {
+                "value": "0.4vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5ZRZITdMjNRDl0sTFBLtnd": true
+      },
+      "displayOrder": 2
+    },
+    "4aG7mZALLaoLcW0oDj6b7R": {
+      "key": "4aG7mZALLaoLcW0oDj6b7R",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Store.auth.client.name != Parent.emailId"
+          }
+        }
+      },
+      "styleProperties": {
+        "20hCWY4dz1NUV23lJOMLRN": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "1.54vw"
+              },
+              "height": {
+                "value": "1.5vw"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "Fz9y3PnFU9Y7RJrVNwSQj": true
+      },
+      "displayOrder": 1
+    },
+    "5ZRZITdMjNRDl0sTFBLtnd": {
+      "key": "5ZRZITdMjNRDl0sTFBLtnd",
+      "name": "PopoverGrid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SEPTENARYBG"
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        }
+      },
+      "styleProperties": {
+        "3il4WHYkxjL1NSuLQW4y5v": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              },
+              "paddingLeft": {
+                "value": "0.69vw"
+              },
+              "paddingRight": {
+                "value": "0.69vw"
+              },
+              "borderTopColor": {
+                "value": "#0000001A"
+              },
+              "borderRightColor": {
+                "value": "#0000001A"
+              },
+              "borderBottomColor": {
+                "value": "#0000001A"
+              },
+              "borderLeftColor": {
+                "value": "#0000001A"
+              },
+              "gap": {
+                "value": "0vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ZnOZuZuMZ53F1S0Eg1URG": true,
+        "3fq71MblaN9Psgp7SZAE7i": true
+      },
+      "displayOrder": 0
+    },
+    "Fz9y3PnFU9Y7RJrVNwSQj": {
+      "key": "Fz9y3PnFU9Y7RJrVNwSQj",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/sitezump/Primary.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "1dZdKRspOw1I75cXJpoDen": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "ZnOZuZuMZ53F1S0Eg1URG": {
+      "key": "ZnOZuZuMZ53F1S0Eg1URG",
+      "name": "makeInActive",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.statusCode = \"ACTIVE\" ? 'Deactivate User' : 'Activate User'"
+          }
+        },
+        "onClick": {
+          "value": "lSQWSmUVYCSWBZVVqM735"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "not Authorities.User_UPDATE"
+          }
+        },
+        "leftImage": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.statusCode = \"ACTIVE\" ? 'api/files/static/file/SYSTEM/sitezump/users/deActivateUser.svg' : 'api/files/static/file/SYSTEM/sitezump/users/acticeImageGray.svg'"
+          }
+        },
+        "activeLeftImage": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.statusCode = \"ACTIVE\" ? 'api/files/static/file/SYSTEM/sitezump/users/deActiveUser.svg' : 'api/files/static/file/SYSTEM/sitezump/users/activeConvert.svg'"
+          }
+        },
+        "rightIcon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Authorities.User_UPDATE ? '' : 'fa fa-solid fa-lock'"
+          },
+          "value": "fa fa-solid fa-lock"
+        },
+        "colorScheme": {
+          "value": "_tertiary"
+        }
+      },
+      "styleProperties": {
+        "3YstSaehdLcfHu1QIX6amn": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "Hf0r8R05IExgGveFCyhxM": {
+      "key": "Hf0r8R05IExgGveFCyhxM",
+      "name": "UserNameGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5QYdqC4ZmmRvnvNAIsVqjP": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5KL34BnDYdspDZU4EoFS4M": true,
+        "7qZ5pm24hSZp5f9n4806e2": true
+      },
+      "displayOrder": 0
+    },
+    "5KL34BnDYdspDZU4EoFS4M": {
+      "key": "5KL34BnDYdspDZU4EoFS4M",
+      "name": "UserName",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.firstName +\" \" + Parent.lastName"
+          }
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textLength": {
+          "value": 15
+        }
+      },
+      "styleProperties": {
+        "3iqqTkYz3wy9vnKmR7AAgb": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7qZ5pm24hSZp5f9n4806e2": {
+      "key": "7qZ5pm24hSZp5f9n4806e2",
+      "name": "InitialGrid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_FULLROUND"
+        },
+        "background": {
+          "value": "_PRIMARYBG"
+        }
+      },
+      "styleProperties": {
+        "29tKaUAbsfvyiz23TEgDTH": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "1.67vw"
+              },
+              "height": {
+                "value": "1.67vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorT{{Parent.__index % 5}}"
+                }
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4SJhIYnd1KSKZ5ZcDnZWQ8": true
+      },
+      "displayOrder": 1
+    },
+    "4SJhIYnd1KSKZ5ZcDnZWQ8": {
+      "key": "4SJhIYnd1KSKZ5ZcDnZWQ8",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.firstName[0]"
+          }
+        },
+        "textContainer": {
+          "value": "PRE"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "1ZSpwQYwksyUDAVqJgICNq": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSeven"
+                }
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2pmAxUPMgIXdU59R0euEGG": {
+      "key": "2pmAxUPMgIXdU59R0euEGG",
+      "name": "SlNo",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "S No."
+        }
+      },
+      "styleProperties": {
+        "mJTtgkNZr89t6gBe7t01c": {
+          "resolutions": {
+            "ALL": {
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "42EdFKTlq0OTotU1MpGpJu": true
+      },
+      "displayOrder": 1
+    },
+    "42EdFKTlq0OTotU1MpGpJu": {
+      "key": "42EdFKTlq0OTotU1MpGpJu",
+      "name": "SlNo",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "{{Page.allInvitedUsers.number * Page.allInvitedUsers.size}} + Parent.__index + 1"
+          }
+        },
+        "textContainer": {
+          "value": "H4"
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3GNs1xXJ8JiLVqghKBI9aj": {
+      "key": "3GNs1xXJ8JiLVqghKBI9aj",
+      "name": "UserName",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "User name"
+        }
+      },
+      "styleProperties": {
+        "1TzQ8mTdj1Neaz7pYD8vm6": {
+          "resolutions": {
+            "ALL": {
+              "headerContainer-justifyContent": {
+                "value": "start"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "79Q21h1TpzV51drVnwjyoR": true
+      },
+      "displayOrder": 2
+    },
+    "79Q21h1TpzV51drVnwjyoR": {
+      "key": "79Q21h1TpzV51drVnwjyoR",
+      "name": "UserNameGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5QYdqC4ZmmRvnvNAIsVqjP": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3DEK0Bpisq7IuTUeAd1BUt": true,
+        "5rv2QI0PnWbtMmAOhQ5OgW": true
+      },
+      "displayOrder": 0
+    },
+    "3DEK0Bpisq7IuTUeAd1BUt": {
+      "key": "3DEK0Bpisq7IuTUeAd1BUt",
+      "name": "UserName",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.firstName + Parent.lastName"
+          }
+        },
+        "textContainer": {
+          "value": "P"
+        },
+        "textLength": {
+          "value": 18
+        }
+      },
+      "styleProperties": {
+        "3iqqTkYz3wy9vnKmR7AAgb": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "5rv2QI0PnWbtMmAOhQ5OgW": {
+      "key": "5rv2QI0PnWbtMmAOhQ5OgW",
+      "name": "InitialGrid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_FULLROUND"
+        },
+        "background": {
+          "value": "_PRIMARYBG"
+        }
+      },
+      "styleProperties": {
+        "29tKaUAbsfvyiz23TEgDTH": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "1.67vw"
+              },
+              "height": {
+                "value": "1.67vw"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorT{{Parent.__index}}"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "lRfaKXWx5bBGAiAD82N5Y": true
+      },
+      "displayOrder": 1
+    },
+    "lRfaKXWx5bBGAiAD82N5Y": {
+      "key": "lRfaKXWx5bBGAiAD82N5Y",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Text",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.firstName[0]"
+          }
+        },
+        "textContainer": {
+          "value": "PRE"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "5dcGQffWfLTeS1SEgGkaoK": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.backgroundColorSeven"
+                }
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "textTransform": {
+                "value": "capitalize"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1fpagKkPQEDNMFfVPszrWm": {
+      "key": "1fpagKkPQEDNMFfVPszrWm",
+      "name": "EmailID",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Email id"
+        }
+      },
+      "styleProperties": {
+        "5b6G4BvN077ZqHkRimPKmi": {
+          "resolutions": {
+            "ALL": {
+              "headerContainer-justifyContent": {
+                "value": "start"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3AgFNJihkDo6gK9j6FWrbM": true
+      },
+      "displayOrder": 3
+    },
+    "3AgFNJihkDo6gK9j6FWrbM": {
+      "key": "3AgFNJihkDo6gK9j6FWrbM",
+      "name": "EmailId",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.emailId"
+          }
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textLength": {
+          "value": 26
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "3wlzzVSkhTkSakElitxFqn": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3EY3DM4TS8qVdqsTZF70tZ": {
+      "key": "3EY3DM4TS8qVdqsTZF70tZ",
+      "name": "Phone number",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Phone number"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "2nEN9C6b8dRJ8KpxPzVgs7": {
+          "resolutions": {
+            "ALL": {
+              "headerContainer-justifyContent": {
+                "value": "start"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "36nBkHYVyzizlYzCOgcMnJ": true
+      },
+      "displayOrder": 4
+    },
+    "36nBkHYVyzizlYzCOgcMnJ": {
+      "key": "36nBkHYVyzizlYzCOgcMnJ",
+      "name": "phonenumber",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.phoneNumber"
+          }
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textLength": {
+          "value": 19
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "3NHpR83MAy0t6rFl1VvCgG": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "5OAlt6TN78i0v0OUw9bYqX": {
+      "key": "5OAlt6TN78i0v0OUw9bYqX",
+      "name": "Profile",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "Profile"
+        }
+      },
+      "styleProperties": {
+        "2J8X4YkgTRZdroc3aErkZK": {
+          "resolutions": {
+            "ALL": {
+              "headerContainer-justifyContent": {
+                "value": "start"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "paddingRight": {
+                "value": "1.39vw"
+              },
+              "headerContainer-paddingRight": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1fiaip9Wv1lflidZI85Ijb": true
+      },
+      "displayOrder": 5
+    },
+    "1fiaip9Wv1lflidZI85Ijb": {
+      "key": "1fiaip9Wv1lflidZI85Ijb",
+      "name": "Profile",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "--",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.profileId"
+          }
+        },
+        "textColor": {
+          "value": "_paragraphText"
+        },
+        "textLength": {
+          "value": 20
+        },
+        "textContainer": {
+          "value": "H4"
+        }
+      },
+      "styleProperties": {
+        "7gcyr67qipdMKOaXgf3ZsS": {
+          "resolutions": {
+            "ALL": {
+              "textAlign": {
+                "value": "left"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "__truncated__": "... 42 more components omitted for corpus"
+  },
+  "name": "users",
+  "message": "redused spacing",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN and Authorities.ROLE_User_READ",
+  "appCode": "sitezump",
+  "version": 27,
+  "updatedAt": "2026-02-17 13:23:33.686000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-08-01 15:25:05.851000",
+  "createdBy": "<USER>"
+}

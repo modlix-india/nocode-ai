@@ -1,0 +1,387 @@
+{
+  "_id": "67ebefca3bac9071fbc842c0",
+  "definition": {
+    "namespace": "crmai",
+    "name": "saveUserRoles",
+    "parameters": {
+      "userRoles": {
+        "parameterName": "userRoles",
+        "schema": {
+          "version": 1,
+          "type": [
+            "OBJECT"
+          ],
+          "ref": "crmai.UserRoles"
+        }
+      },
+      "clientCode": {
+        "parameterName": "clientCode",
+        "schema": {
+          "type": [
+            "STRING"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 74.1851908365885,
+          "top": 98.25923665364581
+        },
+        "parameterMap": {
+          "name": {
+            "5RPXdYELbJMNXt59tx6hxI": {
+              "key": "5RPXdYELbJMNXt59tx6hxI",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "readObject"
+            }
+          },
+          "schema": {
+            "1S0GT6sP45Ap0oK5Urb8Vf": {
+              "key": "1S0GT6sP45Ap0oK5Urb8Vf",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "ref": "crmai.UserRoles"
+              }
+            }
+          }
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 564.1851908365884,
+          "top": 229.25923665364581
+        },
+        "parameterMap": {
+          "condition": {
+            "4Bz3f5v2qppmHKHHlnMH3s": {
+              "key": "4Bz3f5v2qppmHKHHlnMH3s",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userRoles._id",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1059.5185241699216,
+          "top": 139.07404581705725
+        },
+        "parameterMap": {
+          "name": {
+            "r00gwMyvAixcebjszdjqn": {
+              "key": "r00gwMyvAixcebjszdjqn",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "newRoles"
+            }
+          },
+          "schema": {
+            "1hsmk0ZldU8fILWh4lN2CN": {
+              "key": "1hsmk0ZldU8fILWh4lN2CN",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "ref": "crmai.UserRoles"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        }
+      },
+      "create2": {
+        "statementName": "create2",
+        "name": "Create",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 1810.5185241699216,
+          "top": 117.74071248372388
+        },
+        "parameterMap": {
+          "appCode": {
+            "67JbZzAfEZxNaYZetCpN4m": {
+              "key": "67JbZzAfEZxNaYZetCpN4m",
+              "type": "VALUE",
+              "expression": "",
+              "value": "crmai"
+            }
+          },
+          "storageName": {
+            "4yaaMYZC6qOHtDXIRhzaXS": {
+              "key": "4yaaMYZC6qOHtDXIRhzaXS",
+              "type": "VALUE",
+              "order": 1,
+              "value": "UserRoles"
+            }
+          },
+          "dataObject": {
+            "5jRixdbtZWwJ0HAOqqzjrH": {
+              "key": "5jRixdbtZWwJ0HAOqqzjrH",
+              "type": "EXPRESSION",
+              "expression": "Context.newRoles",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2202.51851940155,
+          "top": 378.2962849934895
+        },
+        "parameterMap": {
+          "results": {
+            "6fdysOtL6t1kGpfVo4nife": {
+              "key": "6fdysOtL6t1kGpfVo4nife",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "userRoles",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.create2.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent1": {
+        "statementName": "generateEvent1",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2407.5185241699214,
+          "top": 162.77776082356763
+        },
+        "parameterMap": {
+          "results": {
+            "4pTAxnGBzfXw545b10wKbG": {
+              "key": "4pTAxnGBzfXw545b10wKbG",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.create2.error.result"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "1TDKmNHKRup0V3nxYc8ebC": {
+              "key": "1TDKmNHKRup0V3nxYc8ebC",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1440.851857503255,
+          "top": 338.07404581705725
+        },
+        "parameterMap": {
+          "name": {
+            "4Sudsn0eIamr5cUF4zxs9B": {
+              "key": "4Sudsn0eIamr5cUF4zxs9B",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.newRoles"
+            }
+          },
+          "value": {
+            "5qJwaeSUWQwsvm41FdHCnZ": {
+              "key": "5qJwaeSUWQwsvm41FdHCnZ",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userRoles",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      },
+      "generateEvent2": {
+        "statementName": "generateEvent2",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1261.7777862548826,
+          "top": 895.6666666666665
+        },
+        "parameterMap": {
+          "results": {
+            "6CIKn6Aj0ekakuNm3OP3rM": {
+              "key": "6CIKn6Aj0ekakuNm3OP3rM",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "userRoles",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.output.result"
+                }
+              }
+            }
+          }
+        }
+      },
+      "generateEvent3": {
+        "statementName": "generateEvent3",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1323.7777862548826,
+          "top": 644.6666666666666
+        },
+        "parameterMap": {
+          "results": {
+            "2i3AIazfCghgh4hpGes58F": {
+              "key": "2i3AIazfCghgh4hpGes58F",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "message",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.update.error.result"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "1qaMgeVebPMDg8KpWuyXio": {
+              "key": "1qaMgeVebPMDg8KpWuyXio",
+              "type": "VALUE",
+              "expression": "",
+              "value": "error"
+            }
+          }
+        }
+      },
+      "update": {
+        "statementName": "update",
+        "name": "Update",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 810.1851908365884,
+          "top": 544.4444274902343
+        },
+        "parameterMap": {
+          "dataObjectId": {
+            "wN27wViFj3ZHNZsmjr6yW": {
+              "key": "wN27wViFj3ZHNZsmjr6yW",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userRoles._id",
+              "order": 1
+            }
+          },
+          "dataObject": {
+            "9aPDUz2rV3EDFIQnTxY6L": {
+              "key": "9aPDUz2rV3EDFIQnTxY6L",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userRoles",
+              "order": 1
+            }
+          },
+          "storageName": {
+            "6vmo4GFkn6hZ0zU3vJ4IUW": {
+              "key": "6vmo4GFkn6hZ0zU3vJ4IUW",
+              "type": "VALUE",
+              "expression": "UserRoles",
+              "order": 1,
+              "value": "UserRoles"
+            }
+          },
+          "clientCode": {
+            "3M4tuzpAGjLkjsFyTgYZKE": {
+              "key": "3M4tuzpAGjLkjsFyTgYZKE",
+              "type": "EXPRESSION",
+              "expression": "Arguments.clientCode",
+              "value": ""
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "output": {
+        "name": "output",
+        "parameters": {
+          "userRoles": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1,
+            "ref": "crmai.UserRoles"
+          }
+        }
+      }
+    }
+  },
+  "name": "crmai.saveUserRoles",
+  "message": "From transport : 0bbcTLjPprd7Iaah3oYroY",
+  "clientCode": "SYSTEM",
+  "appCode": "crmai",
+  "version": 2,
+  "updatedAt": "2025-04-02 05:19:09.086000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-04-01 13:53:14.165000",
+  "createdBy": "<USER>"
+}

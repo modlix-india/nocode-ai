@@ -1,0 +1,4143 @@
+{
+  "_id": "6621371c7284ef62dfa51b3e",
+  "properties": {
+    "onLoadEvent": "43pLsUx5a5ncVtiVS7xAl5",
+    "classes": {
+      "6Ot9AQHoSVU7cNMDJ60fJT": {
+        "key": "6Ot9AQHoSVU7cNMDJ60fJT",
+        "selector": ".table",
+        "style": "tableLayout: fixed;"
+      }
+    }
+  },
+  "eventFunctions": {
+    "43pLsUx5a5ncVtiVS7xAl5": {
+      "name": "table_data_on_load",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 753.4000015258789,
+            "top": 360.9624938964844
+          },
+          "parameterMap": {
+            "path": {
+              "2R0Ms4vCPz0UKRTuArAZCl": {
+                "key": "2R0Ms4vCPz0UKRTuArAZCl",
+                "type": "EXPRESSION",
+                "expression": "'Page.isOpen'",
+                "order": 1
+              }
+            },
+            "value": {
+              "3exzA7ePY8HCfHwPm67zcq": {
+                "key": "3exzA7ePY8HCfHwPm67zcq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__readProjectByNameAndClientId__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1106.2500019073486,
+            "top": 278.20311737060547
+          },
+          "parameterMap": {
+            "path": {
+              "6w57IVl8i82zRfm9KE2BDt": {
+                "key": "6w57IVl8i82zRfm9KE2BDt",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeButton"
+              }
+            },
+            "value": {
+              "6kSagQYovE6UTNNYtKKOvc": {
+                "key": "6kSagQYovE6UTNNYtKKOvc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "upcoming"
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 222.49999945504322,
+            "top": 51.678571428571416
+          },
+          "parameterMap": {
+            "path": {
+              "3ZYO34O02B74IHUBvDzxjM": {
+                "key": "3ZYO34O02B74IHUBvDzxjM",
+                "type": "EXPRESSION",
+                "expression": "'Page.showPage'",
+                "order": 1
+              }
+            },
+            "value": {
+              "7tnbxQXhL6nNGHUcGYhuUJ": {
+                "key": "7tnbxQXhL6nNGHUcGYhuUJ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore5": {
+          "statementName": "setStore5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1103.499999455043,
+            "top": 1024.9642682756694
+          },
+          "parameterMap": {
+            "path": {
+              "4dLqa6ATySvZqVLy6URmnd": {
+                "key": "4dLqa6ATySvZqVLy6URmnd",
+                "type": "EXPRESSION",
+                "expression": "'Page.showPage'",
+                "order": 1
+              }
+            },
+            "value": {
+              "7ndgybeXJUdpnrmpYiXKYC": {
+                "key": "7ndgybeXJUdpnrmpYiXKYC",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 753.5714277539935,
+            "top": 946.1071428571428
+          },
+          "parameterMap": {
+            "path": {
+              "ZgUOEkBcT0WREoa3pa91s": {
+                "key": "ZgUOEkBcT0WREoa3pa91s",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.table"
+              }
+            },
+            "value": {
+              "47zhqAESVwxSgfb005BWWm": {
+                "key": "47zhqAESVwxSgfb005BWWm",
+                "type": "EXPRESSION",
+                "expression": "Steps.getCallDetails.output.scheduleCallDetails",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 13.888880411783845,
+            "top": 917.7812499999999
+          },
+          "parameterMap": {
+            "condition": {
+              "1Y2jcJNC1WWSeW45PkZmY7": {
+                "key": "1Y2jcJNC1WWSeW45PkZmY7",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[1] = undefined",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__readProjectByNameAndClientId__d-o-t__output": true
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 362.55554707845045,
+            "top": 831.892369588216
+          },
+          "parameterMap": {
+            "condition": {
+              "1DLftzKQI87YrEEpNJRJFV": {
+                "key": "1DLftzKQI87YrEEpNJRJFV",
+                "type": "EXPRESSION",
+                "expression": "Store.auth.user.id = undefined",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "setStore6": {
+          "statementName": "setStore6",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 838.0000019073486,
+            "top": 656.5937514305115
+          },
+          "parameterMap": {
+            "path": {
+              "6eJp3zy2jpzL8oXfxwR3GI": {
+                "key": "6eJp3zy2jpzL8oXfxwR3GI",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.scheduleAcall"
+              }
+            },
+            "value": {
+              "1NnxBdoxRy9TUCAb8udhn4": {
+                "key": "1NnxBdoxRy9TUCAb8udhn4",
+                "type": "EXPRESSION",
+                "expression": "Page.allDetails.scheduleAcall",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__readProjectByNameAndClientId__d-o-t__output": true
+          }
+        },
+        "setStore7_Copy_1": {
+          "statementName": "setStore7_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1580.5000228881836,
+            "top": 916.0937538146973
+          },
+          "parameterMap": {
+            "path": {
+              "2Fupa6siCU6S52NnegCPPS": {
+                "key": "2Fupa6siCU6S52NnegCPPS",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showGrid"
+              }
+            },
+            "value": {
+              "6nB6yqFj9HZrfzMhlFv12P": {
+                "key": "6nB6yqFj9HZrfzMhlFv12P",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if2__d-o-t__true": false,
+            "Steps__d-o-t__if2__d-o-t__false": true
+          }
+        },
+        "setStore7": {
+          "statementName": "setStore7",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1621.5000228881836,
+            "top": 604.0937538146973
+          },
+          "parameterMap": {
+            "path": {
+              "2Fupa6siCU6S52NnegCPPS": {
+                "key": "2Fupa6siCU6S52NnegCPPS",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showGrid"
+              }
+            },
+            "value": {
+              "6nB6yqFj9HZrfzMhlFv12P": {
+                "key": "6nB6yqFj9HZrfzMhlFv12P",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if2__d-o-t__true": true
+          }
+        },
+        "readProjectByNameAndClientId": {
+          "statementName": "readProjectByNameAndClientId",
+          "name": "readProjectByNameAndClientId",
+          "namespace": "_",
+          "position": {
+            "left": 67.8828125,
+            "top": 294.8984375
+          }
+        },
+        "if2": {
+          "statementName": "if2",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1224.0000228881836,
+            "top": 749.8437538146973
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore6__d-o-t__output": true
+          },
+          "parameterMap": {
+            "condition": {
+              "5Pwc4WJTaF5e2lDMnlAH2G": {
+                "key": "5Pwc4WJTaF5e2lDMnlAH2G",
+                "type": "EXPRESSION",
+                "expression": "Page.scheduleAcall = undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "getCallDetails": {
+          "statementName": "getCallDetails",
+          "name": "getCallDetails",
+          "namespace": "hrms",
+          "position": {
+            "left": 361.66665649414057,
+            "top": 1135.2708740234373
+          },
+          "parameterMap": {
+            "projectId": {
+              "3G6KmWhMPpX3MyDyf7iO2T": {
+                "key": "3G6KmWhMPpX3MyDyf7iO2T",
+                "type": "EXPRESSION",
+                "expression": "Page.allDetails._id",
+                "order": 1
+              }
+            },
+            "userId": {
+              "bDVTjKbowNgJixrEHUQSU": {
+                "key": "bDVTjKbowNgJixrEHUQSU",
+                "type": "EXPRESSION",
+                "expression": "Store.auth.user.id",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": false,
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "2Nq5tWx8YXreJ02AxV2FjZ": {
+      "name": "call_grid",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 647.2000045776367,
+            "top": 301.9624938964844
+          },
+          "parameterMap": {
+            "path": {
+              "7FBXjLQIOZeUVwztvoZxRM": {
+                "key": "7FBXjLQIOZeUVwztvoZxRM",
+                "type": "EXPRESSION",
+                "expression": "'Page.isOpen'",
+                "order": 1
+              }
+            },
+            "value": {
+              "1FMbpRhZRGofbgj2EQnAF5": {
+                "key": "1FMbpRhZRGofbgj2EQnAF5",
+                "type": "VALUE",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 312.4000015258789,
+            "top": 153.96249389648438
+          },
+          "parameterMap": {
+            "path": {
+              "3Wl4zF0aNEE4ujCFHluwui": {
+                "key": "3Wl4zF0aNEE4ujCFHluwui",
+                "type": "EXPRESSION",
+                "expression": "'Page.currentid'",
+                "order": 1
+              }
+            },
+            "value": {
+              "lAD412rVLEdhazt3F0v3m": {
+                "key": "lAD412rVLEdhazt3F0v3m",
+                "type": "EXPRESSION",
+                "expression": "Parent._id",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6DyxtNLh74hWnOF01yTFic": {
+      "name": "isOpen_function",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 440.4000015258789,
+            "top": 187.96249389648438
+          },
+          "parameterMap": {
+            "path": {
+              "1K1TjVi0pPPe39PeE3neyy": {
+                "key": "1K1TjVi0pPPe39PeE3neyy",
+                "type": "EXPRESSION",
+                "expression": "'Page.isOpen'",
+                "order": 1
+              }
+            },
+            "value": {
+              "WmzxHepT3ZIXRxFJAc8CP": {
+                "key": "WmzxHepT3ZIXRxFJAc8CP",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "24AxH4kXfV0tK9jLUFJILo": {
+      "name": "onCancelCall",
+      "steps": {
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 232.4000015258789,
+            "top": 107.96249389648438
+          },
+          "parameterMap": {
+            "source": {
+              "2xZOy2OOIWYdg0ZaiOL94C": {
+                "key": "2xZOy2OOIWYdg0ZaiOL94C",
+                "type": "EXPRESSION",
+                "expression": "Page.table.content",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1114.8500003814697,
+            "top": 457.375
+          },
+          "parameterMap": {
+            "path": {
+              "3yKmTdYBvAoByXKAyVF8SA": {
+                "key": "3yKmTdYBvAoByXKAyVF8SA",
+                "type": "EXPRESSION",
+                "expression": "'Page.table.content'",
+                "order": 1
+              }
+            },
+            "value": {
+              "76sbjxQjr0uSBRfo0Pc7Lz": {
+                "key": "76sbjxQjr0uSBRfo0Pc7Lz",
+                "type": "EXPRESSION",
+                "expression": "Steps.delete.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "delete": {
+          "statementName": "delete",
+          "name": "Delete",
+          "namespace": "System.Array",
+          "position": {
+            "left": 1094.8500003814697,
+            "top": 166.375
+          },
+          "parameterMap": {
+            "source": {
+              "54x6asIETPJAtMv0jEeMH2": {
+                "key": "54x6asIETPJAtMv0jEeMH2",
+                "type": "EXPRESSION",
+                "expression": "Page.table.content",
+                "order": 1
+              }
+            },
+            "element": {
+              "1CPkHbHU1biXty8iY3i4P2": {
+                "key": "1CPkHbHU1biXty8iY3i4P2",
+                "type": "EXPRESSION",
+                "expression": "Page.table.content[Steps.forEachLoop.iteration.index]",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 644.8500003814697,
+            "top": 141.375
+          },
+          "parameterMap": {
+            "condition": {
+              "7LtL96ZiRHd7ZkFkUaQiMg": {
+                "key": "7LtL96ZiRHd7ZkFkUaQiMg",
+                "type": "EXPRESSION",
+                "expression": "Page.table.content[Steps.forEachLoop.iteration.index]._id = Parent._id",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1ztGte1XjjWVzxFhAxTfRA": {
+      "name": "upcoming_btn",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 561.7500019073486,
+            "top": 79.95311737060547
+          },
+          "parameterMap": {
+            "path": {
+              "3EKvoFFqwTRbhoVtqdA5lX": {
+                "key": "3EKvoFFqwTRbhoVtqdA5lX",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeButton"
+              }
+            },
+            "value": {
+              "7l6HtjMyPSQXGpuUCvd3sz": {
+                "key": "7l6HtjMyPSQXGpuUCvd3sz",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "upcoming"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7d8XX0Af55RLr13vPTrnhn": {
+      "name": "past_calls",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 405.50000190734863,
+            "top": 193.70311737060547
+          },
+          "parameterMap": {
+            "path": {
+              "3Y5Rmu2cL7Aqk9fSrlVvGB": {
+                "key": "3Y5Rmu2cL7Aqk9fSrlVvGB",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeButton"
+              }
+            },
+            "value": {
+              "15PJsSzAMZ5HRfRPTC0Rba": {
+                "key": "15PJsSzAMZ5HRfRPTC0Rba",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "pastcalls"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3oM7mLDTzWABr1ercTkbOI": {
+      "name": "New_Function_2",
+      "steps": {
+        "readPage": {
+          "statementName": "readPage",
+          "name": "ReadPage",
+          "namespace": "CoreServices.Storage",
+          "position": {
+            "left": 194.44444656372065,
+            "top": 334.8923616409301
+          },
+          "parameterMap": {
+            "storageName": {
+              "4ZUVFHGJaaAiG78pPbnvvo": {
+                "key": "4ZUVFHGJaaAiG78pPbnvvo",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "ScheduleCallDetails"
+              }
+            },
+            "appCode": {
+              "7BVomoKVaqpLxRgg5cHm4n": {
+                "key": "7BVomoKVaqpLxRgg5cHm4n",
+                "type": "VALUE",
+                "expression": "",
+                "value": "hrms"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 679.000002179827,
+            "top": 409.94643075125555
+          },
+          "parameterMap": {
+            "path": {
+              "2G82G0dRloPwMOlxcVKH1b": {
+                "key": "2G82G0dRloPwMOlxcVKH1b",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.scheduleCallDetails"
+              }
+            },
+            "value": {
+              "3TL82QFBB6okHkiW8D8GZ2": {
+                "key": "3TL82QFBB6okHkiW8D8GZ2",
+                "type": "EXPRESSION",
+                "expression": "Steps.readPage.output.result",
+                "order": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "1wPIa3kVgS5XbThEdV13AR": {
+      "name": "navigateToSheduleAcal",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 439.6666564941405,
+            "top": 177.27081298828122
+          },
+          "parameterMap": {
+            "linkPath": {
+              "4xThYZSxC3E30CIbUC6lG1": {
+                "key": "4xThYZSxC3E30CIbUC6lG1",
+                "type": "EXPRESSION",
+                "expression": "'/scheduleAcall/{{Store.urlDetails.pathParts[1]}}'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7JQTsirsmhap7ybjTmLVRk": {
+      "name": "onClickReschedule",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 343.6666564941405,
+            "top": 143.27081298828122
+          },
+          "parameterMap": {
+            "linkPath": {
+              "1sv2AbWwRPCNJP1ordd4DC": {
+                "key": "1sv2AbWwRPCNJP1ordd4DC",
+                "type": "EXPRESSION",
+                "expression": "'/scheduleAcall/{{Store.urlDetails.pathParts[1]}}/{{Parent._id}}'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6UZEowBHwOgAkgPHFqL2x": {
+      "name": "onClickBack",
+      "steps": {
+        "navigate1": {
+          "statementName": "navigate1",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 803.000001695421,
+            "top": 50.19444783528644
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "parameterMap": {
+            "linkPath": {
+              "6lynm6gOtIlEHQy2RhYcGT": {
+                "key": "6lynm6gOtIlEHQy2RhYcGT",
+                "type": "EXPRESSION",
+                "expression": "'/projectLandingPage/{{Store.urlDetails.pathParts[1]}}'",
+                "order": 1,
+                "value": ""
+              }
+            }
+          }
+        },
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 599.4444461398655,
+            "top": 304.75000339084204
+          },
+          "parameterMap": {
+            "linkPath": {
+              "3Dbk6sbfEkNbFN0z1Pd5Vu": {
+                "key": "3Dbk6sbfEkNbFN0z1Pd5Vu",
+                "type": "EXPRESSION",
+                "order": 1,
+                "value": "",
+                "expression": "'/dashboard'"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 294.66666836208765,
+            "top": 104.41667005750868
+          },
+          "parameterMap": {
+            "condition": {
+              "2F3UI2u2A3oJ6nY2VHDgLH": {
+                "key": "2F3UI2u2A3oJ6nY2VHDgLH",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[2] != 'a'",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "k2zw7i7cdFbEgXngSo1gW": {
+      "name": "readProjectByNameAndClientId",
+      "steps": {
+        "setProjectName": {
+          "statementName": "setProjectName",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 760.853515625,
+            "top": 100.123046875
+          },
+          "parameterMap": {
+            "path": {
+              "h0s7CzQbVOwCKz6QWyPSW": {
+                "key": "h0s7CzQbVOwCKz6QWyPSW",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.projectName.value"
+              }
+            },
+            "value": {
+              "1QFWQpIHqDfqKppJRaHYh4": {
+                "key": "1QFWQpIHqDfqKppJRaHYh4",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.pathParts[1]",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__updateFilterWithName__d-o-t__output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 576.103515625,
+            "top": 539.123046875
+          },
+          "parameterMap": {
+            "condition": {
+              "4Zjv4Cestd7nTK06rX44RP": {
+                "key": "4Zjv4Cestd7nTK06rX44RP",
+                "type": "EXPRESSION",
+                "expression": "Store.clientType.isClient",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setClientId__d-o-t__output": true
+          }
+        },
+        "ifCustomer": {
+          "statementName": "ifCustomer",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 957.853515625,
+            "top": 918.873046875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "condition": {
+              "5PKnMIiDW7kAQXf0W1fMLw": {
+                "key": "5PKnMIiDW7kAQXf0W1fMLw",
+                "type": "EXPRESSION",
+                "expression": "Store.clientType.isCustomer",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setIfClient": {
+          "statementName": "setIfClient",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1297.353515625,
+            "top": 760.123046875
+          },
+          "parameterMap": {
+            "path": {
+              "7GLJknxYVa82yOQ1kHntXb": {
+                "key": "7GLJknxYVa82yOQ1kHntXb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.clientId.value"
+              }
+            },
+            "value": {
+              "728Oh2lYOnMTeVSsrWcivb": {
+                "key": "728Oh2lYOnMTeVSsrWcivb",
+                "type": "EXPRESSION",
+                "expression": "{{Store.auth.user.clientId}}",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "insertLast1": {
+          "statementName": "insertLast1",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 966.103515625,
+            "top": 396.623046875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__output": true
+          },
+          "parameterMap": {
+            "source": {
+              "6431fqFGlth2UM9edrnYnk": {
+                "key": "6431fqFGlth2UM9edrnYnk",
+                "type": "EXPRESSION",
+                "expression": "Page.query.conditions",
+                "order": 1
+              }
+            },
+            "element": {
+              "112kpjlta9eBNSXWwTqgzX": {
+                "key": "112kpjlta9eBNSXWwTqgzX",
+                "type": "EXPRESSION",
+                "expression": "Page.clientId",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1425.603515625,
+            "top": 72.873046875
+          },
+          "parameterMap": {
+            "path": {
+              "3WOoUsegEjbqfoJZMLQuzJ": {
+                "key": "3WOoUsegEjbqfoJZMLQuzJ",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.query.conditions"
+              }
+            },
+            "value": {
+              "1UA25GWrE2J8Gch6IUUCG": {
+                "key": "1UA25GWrE2J8Gch6IUUCG",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1281.853515625,
+            "top": 368.873046875
+          },
+          "parameterMap": {
+            "value": {
+              "1BcHhe3Q40rIA6PhBIZ4cK": {
+                "key": "1BcHhe3Q40rIA6PhBIZ4cK",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast1.output.result",
+                "order": 1
+              }
+            },
+            "path": {
+              "4UkhI4OVHnAFVWj5wJZWqc": {
+                "key": "4UkhI4OVHnAFVWj5wJZWqc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.query.conditions"
+              }
+            }
+          }
+        },
+        "setFilter": {
+          "statementName": "setFilter",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 49.853515625,
+            "top": 109.873046875
+          },
+          "parameterMap": {
+            "path": {
+              "57QgTS8ZvRXV7df2zEngTq": {
+                "key": "57QgTS8ZvRXV7df2zEngTq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.query"
+              }
+            },
+            "value": {
+              "2ZAcbWWYEXPbSAcwXWqJ73": {
+                "key": "2ZAcbWWYEXPbSAcwXWqJ73",
+                "type": "VALUE",
+                "order": 1,
+                "value": {
+                  "operator": "AND",
+                  "conditions": []
+                }
+              }
+            }
+          }
+        },
+        "updateFilterWithName": {
+          "statementName": "updateFilterWithName",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 445.853515625,
+            "top": 104.873046875
+          },
+          "parameterMap": {
+            "path": {
+              "7KSqEaytSWM0AXvsxDor3H": {
+                "key": "7KSqEaytSWM0AXvsxDor3H",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.projectName"
+              }
+            },
+            "value": {
+              "52zJ4Kl3oM6A9P2kzCbMw9": {
+                "key": "52zJ4Kl3oM6A9P2kzCbMw9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "field": "projectFullName",
+                  "operator": "EQUALS"
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setFilter__d-o-t__output": true
+          }
+        },
+        "setClientId": {
+          "statementName": "setClientId",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 246.103515625,
+            "top": 503.373046875
+          },
+          "parameterMap": {
+            "path": {
+              "3C3aiUdgYaWneTinbLFhGx": {
+                "key": "3C3aiUdgYaWneTinbLFhGx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.clientId"
+              }
+            },
+            "value": {
+              "72SJE41qikRtH9HKi24v11": {
+                "key": "72SJE41qikRtH9HKi24v11",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "field": "createdClientId",
+                  "operator": "EQUALS"
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setFilter__d-o-t__output": false,
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1991.853515625,
+            "top": 757.373046875
+          },
+          "parameterMap": {
+            "msg": {
+              "1Z4ECBdGwIkXiwhSm6TWUd": {
+                "key": "1Z4ECBdGwIkXiwhSm6TWUd",
+                "type": "EXPRESSION",
+                "expression": "Steps.readPage.error.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "readPage": {
+          "statementName": "readPage",
+          "name": "ReadPage",
+          "namespace": "CoreServices.Storage",
+          "position": {
+            "left": 1711.353515625,
+            "top": 400.623046875
+          },
+          "parameterMap": {
+            "appCode": {
+              "5yn8zj2gWx3UZ9nZ1qp7yk": {
+                "key": "5yn8zj2gWx3UZ9nZ1qp7yk",
+                "type": "VALUE",
+                "expression": "",
+                "value": "rim"
+              }
+            },
+            "storageName": {
+              "6CiklMIFmADH5A8QWhK8YQ": {
+                "key": "6CiklMIFmADH5A8QWhK8YQ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Project"
+              }
+            },
+            "filter": {
+              "34lRzbJN8rKQ2mZ6XR0qum": {
+                "key": "34lRzbJN8rKQ2mZ6XR0qum",
+                "type": "EXPRESSION",
+                "expression": "Page.query",
+                "value": {
+                  "conditions": [
+                    {
+                      "field": "projectFullName"
+                    }
+                  ]
+                }
+              }
+            },
+            "count": {
+              "3UwMWkfyZNWqNtR9qdQadK": {
+                "key": "3UwMWkfyZNWqNtR9qdQadK",
+                "type": "VALUE",
+                "expression": "",
+                "value": false
+              }
+            },
+            "size": {
+              "5PfeVUTjZbfljdLACO1COg": {
+                "key": "5PfeVUTjZbfljdLACO1COg",
+                "type": "VALUE",
+                "expression": "",
+                "value": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true,
+            "Steps__d-o-t__setStore__d-o-t__output": false
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2023.603515625,
+            "top": 331.623046875
+          },
+          "parameterMap": {
+            "path": {
+              "2Jk4PifjQo3pJwSOuNQvZS": {
+                "key": "2Jk4PifjQo3pJwSOuNQvZS",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allDetails"
+              }
+            },
+            "value": {
+              "36DWSwMnXRoKviBbOMVr6f": {
+                "key": "36DWSwMnXRoKviBbOMVr6f",
+                "type": "EXPRESSION",
+                "expression": "Steps.readPage.output.result.content[0]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 1094.603515625,
+            "top": 88.123046875
+          },
+          "parameterMap": {
+            "source": {
+              "4N7iLPKBDBIPUcGTUEU3bi": {
+                "key": "4N7iLPKBDBIPUcGTUEU3bi",
+                "type": "EXPRESSION",
+                "expression": "Page.query.conditions",
+                "order": 1
+              }
+            },
+            "element": {
+              "2pXFb0fpplOpkIYDtUSnrC": {
+                "key": "2pXFb0fpplOpkIYDtUSnrC",
+                "type": "EXPRESSION",
+                "expression": "Page.projectName",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setProjectName__d-o-t__output": true
+          }
+        },
+        "setIfCustomer": {
+          "statementName": "setIfCustomer",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1341.353515625,
+            "top": 1033.373046875
+          },
+          "parameterMap": {
+            "path": {
+              "7ohGXQLroVMbfTkoAxMD0T": {
+                "key": "7ohGXQLroVMbfTkoAxMD0T",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.clientId.value"
+              }
+            },
+            "value": {
+              "3ESPNVzfW5NRij0NiJWzKo": {
+                "key": "3ESPNVzfW5NRij0NiJWzKo",
+                "type": "EXPRESSION",
+                "expression": "{{Store.auth.loggedInClientId}}",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__ifCustomer__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "18EXfYqzrzeVVEPoLdHgci",
+  "componentDefinition": {
+    "18EXfYqzrzeVVEPoLdHgci": {
+      "key": "18EXfYqzrzeVVEPoLdHgci",
+      "name": "PageGrid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "6DyxtNLh74hWnOF01yTFic"
+        }
+      },
+      "styleProperties": {
+        "6f3Hey9l7CFJPPTsH5tb4k": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            },
+            "ALL": {
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingLeft": {
+                "value": "40px"
+              },
+              "paddingRight": {
+                "value": "40px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "flex": {
+                "value": "1"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "45gFJyM1t3acHS1oOI6J7F": true,
+        "4Q44nipD7gctmqmbAsDX9o": true
+      }
+    },
+    "45gFJyM1t3acHS1oOI6J7F": {
+      "key": "45gFJyM1t3acHS1oOI6J7F",
+      "name": "contactManagerGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3EswaJqrISddyMiCYNU6s": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "paddingBottom": {
+                "value": "3vw"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "column"
+              },
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6kiYnxOf9AljymSXWpH2cz": true,
+        "8JuXvNS4Sntptn6f3GtV9": true
+      },
+      "displayOrder": 2
+    },
+    "6kiYnxOf9AljymSXWpH2cz": {
+      "key": "6kiYnxOf9AljymSXWpH2cz",
+      "name": "managerProfile",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SEPTENARYBG"
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        }
+      },
+      "styleProperties": {
+        "60f13a7F7t9rJxuRqAZyMk": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "436px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "marginRight": {
+                "value": "5px"
+              },
+              "width": {
+                "value": "275px"
+              },
+              "paddingTop": {
+                "value": "40px"
+              },
+              "paddingBottom": {
+                "value": "50px"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "borderTopColor": {
+                "value": "#3333331A"
+              },
+              "borderTopStyle": {
+                "value": "solid"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightColor": {
+                "value": "#3333331A"
+              },
+              "borderBottomColor": {
+                "value": "#3333331A"
+              },
+              "borderLeftColor": {
+                "value": "#3333331A"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "border": {
+                "value": "1px solid #3333331A"
+              },
+              "height": {
+                "value": "400px"
+              },
+              "width": {
+                "value": "250px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "70%"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginLeft": {
+                "value": "5px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_ONLY": {},
+            "TABLET_POTRAIT_SCREEN_ONLY": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3fLeVyljCYRdP6ORR1RMv2": true,
+        "18dwgk8och9ahgMcu3sFtT": true,
+        "49SJVbZ6sYwLNGmEhNWkel": true,
+        "7hTEU1tqW3X7B2CpD143PS": true
+      },
+      "displayOrder": 1
+    },
+    "3fLeVyljCYRdP6ORR1RMv2": {
+      "key": "3fLeVyljCYRdP6ORR1RMv2",
+      "name": "NameGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "HU3ZEwdwyxWWdpKunIop4": {
+          "resolutions": {
+            "ALL": {
+              "alignSelf": {
+                "value": "center"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "50OdAGXfFrWOef5wwzk0bE": true,
+        "4xvbWT8yInK2qbowyzz2D8": true
+      },
+      "displayOrder": 3
+    },
+    "50OdAGXfFrWOef5wwzk0bE": {
+      "key": "50OdAGXfFrWOef5wwzk0bE",
+      "name": "designation",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Contact Manager"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        }
+      },
+      "styleProperties": {
+        "6L9Ei0bD5EjNLGAucyagqC": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "roboto"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "14px"
+              },
+              "color": {
+                "value": "#333333"
+              },
+              "opacity": {
+                "value": "0.5"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4xvbWT8yInK2qbowyzz2D8": {
+      "key": "4xvbWT8yInK2qbowyzz2D8",
+      "name": "name",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allDetails.contactManager.name"
+          }
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "styleProperties": {
+        "1E9EmPgjwQNHZVO0dXWum1": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "roboto"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "fontSize": {
+                "value": "24px"
+              },
+              "lineHeight": {
+                "value": "24px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "18dwgk8och9ahgMcu3sFtT": {
+      "key": "18dwgk8och9ahgMcu3sFtT",
+      "name": "mailGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5psjdXDpqge7uwJKpqBj9S": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "marginBottom": {
+                "value": "30px"
+              },
+              "alignSelf": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "95%"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "marginRight": {
+                "value": "30px"
+              },
+              "paddingLeft": {
+                "value": "18px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "5px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "width": {
+                "value": "80%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "20DF67g8c3eQaI7HQ1vbbd": true,
+        "2TTHIG4wFLeduSm4jrjyoC": true
+      },
+      "displayOrder": 4
+    },
+    "44XcPHzQdfnGKmqVo0Yi3R": {
+      "key": "44XcPHzQdfnGKmqVo0Yi3R",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-envelope"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "1G8gij2CX0uH4zBSzSHHe5": {
+          "resolutions": {
+            "ALL": {
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "20DF67g8c3eQaI7HQ1vbbd": {
+      "key": "20DF67g8c3eQaI7HQ1vbbd",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "675QTHDTcJ2BAqKlwMVoMM": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70%"
+              },
+              "paddingTop": {
+                "value": "6px"
+              },
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "111p4v9m0uQLymbBLGcxUK": true,
+        "gsAnHakAqTcC72jdZDGSJ": true,
+        "7qZb77N9PTm3f82pIpBjfL": true
+      },
+      "displayOrder": 2
+    },
+    "111p4v9m0uQLymbBLGcxUK": {
+      "key": "111p4v9m0uQLymbBLGcxUK",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Email"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        }
+      },
+      "styleProperties": {
+        "L7gLJnTGyZLKa5Nvfqe4c": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "12px"
+              },
+              "color": {
+                "value": "#333333"
+              },
+              "opacity": {
+                "value": "0.5"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "gsAnHakAqTcC72jdZDGSJ": {
+      "key": "gsAnHakAqTcC72jdZDGSJ",
+      "name": "desktopText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allDetails.contactManager.emailId ?? 'xxxxxxxxx' "
+          }
+        },
+        "textContainer": {
+          "value": "B"
+        }
+      },
+      "styleProperties": {
+        "3EAYAGG5DwNoK0GJ3A5zD2": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "19px"
+              },
+              "text-overflow": {
+                "value": "hidden"
+              },
+              "text-whiteSpace": {
+                "value": "nowrap"
+              },
+              "text-textOverflow": {
+                "value": "ellipsis"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "49SJVbZ6sYwLNGmEhNWkel": {
+      "key": "49SJVbZ6sYwLNGmEhNWkel",
+      "name": "phoneNumberGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "1YXWJotnAojtRLDyTQxagA": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignSelf": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "95%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "paddingLeft": {
+                "value": "5px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "width": {
+                "value": "80%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5gkGiGHXZMf3fmjH8JuoEd": true,
+        "3i43kbY3XjZsI96fVbhrxc": true
+      },
+      "displayOrder": 5
+    },
+    "ZuslzcGtQjeNITSGXqH57": {
+      "key": "ZuslzcGtQjeNITSGXqH57",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " fa fa-solid fa-phone"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "37DLKbUi5iEpz4FNnoA6Q1": {
+          "resolutions": {
+            "ALL": {
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5gkGiGHXZMf3fmjH8JuoEd": {
+      "key": "5gkGiGHXZMf3fmjH8JuoEd",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "fsxVK8XQwkTq3mN4ZjvaM": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70%"
+              },
+              "paddingTop": {
+                "value": "4px"
+              },
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6fit21in6psNs1hhb8JJlE": true,
+        "6RfjSrJ7Xr6BsqMF5sG1sy": true
+      },
+      "displayOrder": 2
+    },
+    "6fit21in6psNs1hhb8JJlE": {
+      "key": "6fit21in6psNs1hhb8JJlE",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Contact number"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        }
+      },
+      "styleProperties": {
+        "2vRp4oYKGtI32kEPU7a0P": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "12px"
+              },
+              "color": {
+                "value": "#333333"
+              },
+              "opacity": {
+                "value": "0.5"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6RfjSrJ7Xr6BsqMF5sG1sy": {
+      "key": "6RfjSrJ7Xr6BsqMF5sG1sy",
+      "name": "desktopText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allDetails.contactManager.phoneNumber ? 'xxxxxxxxxx' : 'xxxxxxxxxx'"
+          }
+        },
+        "textContainer": {
+          "value": "B"
+        }
+      },
+      "styleProperties": {
+        "4S9beqtXSA3zF7Cqq7XyzL": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "16px"
+              },
+              "text-overflow": {
+                "value": "hidden"
+              },
+              "text-whiteSpace": {
+                "value": "nowrap"
+              },
+              "text-textOverflow": {
+                "value": "ellipsis"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontWeight": {
+                "value": "400"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2TTHIG4wFLeduSm4jrjyoC": {
+      "key": "2TTHIG4wFLeduSm4jrjyoC",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_QUATERNARYBG"
+        }
+      },
+      "styleProperties": {
+        "6GxRipl5nxkniIJVzABraO": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "width": {
+                "value": "36px"
+              },
+              "height": {
+                "value": "36px"
+              },
+              "marginRight": {
+                "value": "10px"
+              },
+              "borderTopLeftRadius": {
+                "value": "40px"
+              },
+              "borderTopRightRadius": {
+                "value": "40px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "40px"
+              },
+              "borderBottomRightRadius": {
+                "value": "40px"
+              },
+              "backgroundColor": {
+                "value": "#7868E60D"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "marginRight": {
+                "value": "5px"
+              },
+              "width": {
+                "value": "40px"
+              },
+              "height": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "44XcPHzQdfnGKmqVo0Yi3R": true,
+        "3hK4f0tapK2sXiKCajv7tg": true
+      },
+      "displayOrder": 1
+    },
+    "3i43kbY3XjZsI96fVbhrxc": {
+      "key": "3i43kbY3XjZsI96fVbhrxc",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_QUATERNARYBG"
+        }
+      },
+      "styleProperties": {
+        "5mJcoqTlImuforSpcoZhZ6": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "width": {
+                "value": "36px"
+              },
+              "height": {
+                "value": "36px"
+              },
+              "marginRight": {
+                "value": "10px"
+              },
+              "borderTopLeftRadius": {
+                "value": "40px"
+              },
+              "borderTopRightRadius": {
+                "value": "40px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "40px"
+              },
+              "borderBottomRightRadius": {
+                "value": "40px"
+              },
+              "backgroundColor": {
+                "value": "#F054540D"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "40px"
+              },
+              "height": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "ZuslzcGtQjeNITSGXqH57": true,
+        "5qCWs6nl3DTx3DW1RM3e7m": true
+      },
+      "displayOrder": 1
+    },
+    "7qZb77N9PTm3f82pIpBjfL": {
+      "key": "7qZb77N9PTm3f82pIpBjfL",
+      "name": "mobileText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "<EMAIL>"
+        },
+        "textContainer": {
+          "value": "PRE"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "7M6CQiifQ9jhwNhAa09quW": {
+      "key": "7M6CQiifQ9jhwNhAa09quW",
+      "name": "buttonsGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "PT8cFValW4Thz5VXTOdxW": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2uC6wi7vt2B0FvSSy6qv6u": true,
+        "1SZcn0jg8OaIeTkrjBoIfN": true
+      },
+      "displayOrder": 1
+    },
+    "27jEj7R5NGPA6xlwIyETM6": {
+      "key": "27jEj7R5NGPA6xlwIyETM6",
+      "name": "callsList",
+      "type": "Grid",
+      "styleProperties": {
+        "7ioB6gyN5Jyvdrzt1F2riN": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3nRfS1BpUoGkoQJVl9Owfv": true
+      },
+      "displayOrder": 2
+    },
+    "2uC6wi7vt2B0FvSSy6qv6u": {
+      "key": "2uC6wi7vt2B0FvSSy6qv6u",
+      "name": "upcomingCallsGrid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "1ztGte1XjjWVzxFhAxTfRA"
+        }
+      },
+      "styleProperties": {
+        "2Q1q5k0PEl1LLWjJuEwEBy": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "borderBottomStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"upcoming\"?\"solid\":\"\""
+                }
+              },
+              "borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"upcoming\"?\"#21263C\":\"\""
+                }
+              },
+              "borderBottomWidth": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton=\"upcoming\"?\"3px\":\"\""
+                }
+              },
+              "marginRight": {
+                "value": "15px"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2K4rBMdFeamEAQLGoFmZg6": true,
+        "1tNn2aVqWe8RFbC7oHQFBe": true,
+        "3qk9XaQ2XAOD2B1EHJyiPx": true
+      },
+      "displayOrder": 1
+    },
+    "1SZcn0jg8OaIeTkrjBoIfN": {
+      "key": "1SZcn0jg8OaIeTkrjBoIfN",
+      "name": "past calls grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "7d8XX0Af55RLr13vPTrnhn"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "6qejpuBSOfLs9nW6eGc1i9": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"pastcalls\"?\"#21263C\":\"\""
+                }
+              },
+              "borderBottomStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"pastcalls\"?\"solid\":\"\""
+                }
+              },
+              "borderBottomWidth": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"pastcalls\"?\"3px\":\"\""
+                }
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3hxbX3gr4lPzPXmoi1xJNs": true,
+        "RETBlqJrGTqhxt3suJPai": true
+      },
+      "displayOrder": 2
+    },
+    "3nRfS1BpUoGkoQJVl9Owfv": {
+      "key": "3nRfS1BpUoGkoQJVl9Owfv",
+      "name": "Table",
+      "type": "Table",
+      "properties": {
+        "defaultSize": {
+          "value": 1,
+          "backupExpression": "Page.table.length"
+        },
+        "showPagination": {
+          "value": false
+        },
+        "tableDesign": {
+          "value": "_design5"
+        }
+      },
+      "styleProperties": {
+        "4w2NmFBDSXIHpUmSA5xeEY": {
+          "resolutions": {
+            "ALL": {
+              "selectorName": {
+                "value": ".table"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6i7fUoCqcLGnZ5Q61V9mXN": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.table"
+      }
+    },
+    "2K4rBMdFeamEAQLGoFmZg6": {
+      "key": "2K4rBMdFeamEAQLGoFmZg6",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Upcoming"
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1tNn2aVqWe8RFbC7oHQFBe": {
+      "key": "1tNn2aVqWe8RFbC7oHQFBe",
+      "name": "count",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "0",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.table.length"
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3hxbX3gr4lPzPXmoi1xJNs": {
+      "key": "3hxbX3gr4lPzPXmoi1xJNs",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "21"
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6i7fUoCqcLGnZ5Q61V9mXN": {
+      "key": "6i7fUoCqcLGnZ5Q61V9mXN",
+      "name": "TableColumns",
+      "type": "TableColumns",
+      "styleProperties": {
+        "2HVn1ZQxF9TbMy46GEzE1N": {
+          "resolutions": {
+            "ALL": {
+              "header-backgroundColor": {
+                "value": "#21263C"
+              },
+              "header-borderTopLeftRadius": {
+                "value": "20px"
+              },
+              "header-borderTopRightRadius": {
+                "value": "20px"
+              },
+              "header-borderBottomLeftRadius": {
+                "value": "20px"
+              },
+              "header-borderBottomRightRadius": {
+                "value": "20px"
+              },
+              "header-height": {
+                "value": "36px"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "borderTopLeftRadius": {
+                "value": "8px"
+              },
+              "borderTopRightRadius": {
+                "value": "8px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "8px"
+              },
+              "borderBottomRightRadius": {
+                "value": "8px"
+              },
+              "borderRightColor": {
+                "value": "#3333331A"
+              },
+              "borderRightStyle": {
+                "value": "solid"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomColor": {
+                "value": "#3333331A"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftColor": {
+                "value": "#3333331A"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "row-height": {
+                "value": "45px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1h3zKrtASJbVL6kFUSVLvP": true,
+        "5pzzATcNFYQx4Hy4V6wulN": true,
+        "7iCVG6H8t6AxiwjxAdBNI0": true,
+        "298JeKCOz2dP3LnqcNz9oe": true
+      },
+      "displayOrder": 0
+    },
+    "1h3zKrtASJbVL6kFUSVLvP": {
+      "key": "1h3zKrtASJbVL6kFUSVLvP",
+      "name": "TableColumn",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "EMAIL ID"
+        }
+      },
+      "styleProperties": {
+        "1cTs8se4dmDVdGk3uEFDf5": {
+          "resolutions": {
+            "ALL": {
+              "overflowX": {
+                "value": "hidden"
+              },
+              "width": {
+                "value": "30%"
+              },
+              "selectorName": {
+                "value": ".table"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "700"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "30%"
+              },
+              "overflowX": {
+                "value": "auto"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_POTRAIT_SCREEN_ONLY": {
+              "width": {
+                "value": "30%"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_ONLY": {
+              "width": {
+                "value": "30%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6LpNj32jghd6MCi8JgZMjW": true
+      },
+      "displayOrder": 1
+    },
+    "5pzzATcNFYQx4Hy4V6wulN": {
+      "key": "5pzzATcNFYQx4Hy4V6wulN",
+      "name": "TableColumn",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "SCHEDULED DATE & TIME"
+        }
+      },
+      "styleProperties": {
+        "2MVcQYlNYCQLlDm8pYNFDY": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "30%"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "lineHeight": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "700"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2hYKtu4I94Spwz6uP1cJwh": true
+      },
+      "displayOrder": 2
+    },
+    "7iCVG6H8t6AxiwjxAdBNI0": {
+      "key": "7iCVG6H8t6AxiwjxAdBNI0",
+      "name": "TableColumn",
+      "type": "TableColumn",
+      "properties": {
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "1RC3nkZYW7oZC0GYbv7y1B": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "10%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1GQJSgAkQWvbse2wNRt3CV": true
+      },
+      "displayOrder": 4
+    },
+    "6LpNj32jghd6MCi8JgZMjW": {
+      "key": "6LpNj32jghd6MCi8JgZMjW",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.emailId"
+          }
+        }
+      },
+      "styleProperties": {
+        "DfQgGjFxfBz99Hd3xtv8f": {
+          "resolutions": {
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "wordWrap": {
+                "value": "wrap"
+              }
+            },
+            "ALL": {
+              "text-textOverflow": {
+                "value": "ellipsis "
+              },
+              "text-whiteSpace": {
+                "value": "nowrap"
+              },
+              "text-overflow": {
+                "value": "hidden"
+              },
+              "text-width": {
+                "value": "100%"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "text-textOverflow": {
+                "value": "ellipsis "
+              },
+              "text-whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2hYKtu4I94Spwz6uP1cJwh": {
+      "key": "2hYKtu4I94Spwz6uP1cJwh",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'{{Parent.bookingDate}}' + ', ' + '{{Parent.bookingTime.slotStartTime}}'"
+          }
+        },
+        "textContainer": {
+          "value": "B"
+        }
+      },
+      "styleProperties": {
+        "sm2JbD9b8ycbMHdxr9EO9": {
+          "resolutions": {
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "wordWrap": {
+                "value": "wrap"
+              }
+            },
+            "ALL": {
+              "text-textOverflow": {
+                "value": "ellipsis "
+              },
+              "text-whiteSpace": {
+                "value": "nowrap"
+              },
+              "text-overflow": {
+                "value": "hidden"
+              },
+              "text-width": {
+                "value": "100%"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "iaXsX8wAOTE1S878P078q": {
+      "key": "iaXsX8wAOTE1S878P078q",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Reschedule call"
+        },
+        "textContainer": {
+          "value": "B"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        }
+      },
+      "styleProperties": {
+        "1K18mtiqRGi3zgDP6Jfl04": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "static"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "52DZ1gXtVnhLwmcrHcQ9Pv": {
+      "key": "52DZ1gXtVnhLwmcrHcQ9Pv",
+      "name": "callList",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showPage and Page.table.length != 0"
+          }
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        }
+      },
+      "styleProperties": {
+        "5ZPO0oGW5AbNkdCKXNvYLK": {
+          "resolutions": {
+            "ALL": {
+              "border": {
+                "value": "1px solid #3333331A"
+              },
+              "minHeight": {
+                "value": "436px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "19px"
+              },
+              "paddingTop": {
+                "value": "30px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "minHeight": {
+                "value": "400px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7M6CQiifQ9jhwNhAa09quW": true,
+        "27jEj7R5NGPA6xlwIyETM6": true,
+        "2Vcg8VhDvwYdDom9Y1rsXT": true,
+        "RZOg9lt8anEgogMaIAaob": true
+      },
+      "displayOrder": 2
+    },
+    "2Vcg8VhDvwYdDom9Y1rsXT": {
+      "key": "2Vcg8VhDvwYdDom9Y1rsXT",
+      "name": "desktop card",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_QUATERNARYGRADBG"
+        }
+      },
+      "styleProperties": {
+        "3K0vSLYgP614YkTHelTTgQ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70%"
+              },
+              "height": {
+                "value": "178px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "background": {
+                "value": "#D9D9D933"
+              },
+              "marginTop": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "36px"
+              },
+              "backgroundColor": {
+                "value": "#d9d9d933"
+              },
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "95%"
+              },
+              "marginBottom": {
+                "value": "36px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3bdRvbGMHB1WWyE8RsOVxa": true,
+        "2nc4jXSDR2Tii3jK3Bumfy": true,
+        "7yL4ebjOc2ojhJ8ex0k4Ka": true
+      },
+      "displayOrder": 3
+    },
+    "xsn26eRpANnfmzsgyT3hY": {
+      "key": "xsn26eRpANnfmzsgyT3hY",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'{{Page.table[0].bookingDate}}' + ', ' + '{{Page.table[0].bookingTime.slotStartTime}}'"
+          }
+        },
+        "textContainer": {
+          "value": "B"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3bdRvbGMHB1WWyE8RsOVxa": {
+      "key": "3bdRvbGMHB1WWyE8RsOVxa",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "nbzPhOKIWBlAwMbPu5LX8": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "row"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "xsn26eRpANnfmzsgyT3hY": true,
+        "5IT3USyPjouDkjIBn5NZrQ": true
+      },
+      "displayOrder": 2
+    },
+    "5IT3USyPjouDkjIBn5NZrQ": {
+      "key": "5IT3USyPjouDkjIBn5NZrQ",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "on"
+        }
+      },
+      "styleProperties": {
+        "gb3f6KFrlnU1ndqcfV4wd": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "16px"
+              },
+              "opacity": {
+                "value": "0.8"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2nc4jXSDR2Tii3jK3Bumfy": {
+      "key": "2nc4jXSDR2Tii3jK3Bumfy",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "You have upcoming calls scheduled with your contact manager "
+        }
+      },
+      "styleProperties": {
+        "31yNdkQhqcoZt7gAt4k7Pj": {
+          "resolutions": {
+            "ALL": {
+              "paddingBottom": {
+                "value": "7px"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "16px"
+              },
+              "opacity": {
+                "value": "0.8"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7yL4ebjOc2ojhJ8ex0k4Ka": {
+      "key": "7yL4ebjOc2ojhJ8ex0k4Ka",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Schedule another call"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "onClick": {
+          "value": "1wPIa3kVgS5XbThEdV13AR"
+        }
+      },
+      "styleProperties": {
+        "54tqiTsWu6bTpybBSze3fI": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "40px"
+              },
+              "color:hover": {
+                "value": "#ffffff"
+              },
+              "backgroundColor:hover": {
+                "value": "#219C90"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "298JeKCOz2dP3LnqcNz9oe": {
+      "key": "298JeKCOz2dP3LnqcNz9oe",
+      "name": "TableColumn",
+      "type": "TableColumn",
+      "properties": {
+        "label": {
+          "value": "CALL TYPE"
+        }
+      },
+      "styleProperties": {
+        "5vmhAiGBpKUbkVoyooX8am": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "30%"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "12px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "18t4n8yP2pawjPOfTOY0co": true
+      },
+      "displayOrder": 3
+    },
+    "18t4n8yP2pawjPOfTOY0co": {
+      "key": "18t4n8yP2pawjPOfTOY0co",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Telephonic Call",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.callType ? Parent.callType : 'Telephonic Call'"
+          }
+        }
+      },
+      "styleProperties": {
+        "4yvQs2HvoFoxaigLOxF7O9": {
+          "resolutions": {
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "wordWrap": {
+                "value": "wrap"
+              }
+            },
+            "ALL": {
+              "text-textOverflow": {
+                "value": "ellipsis "
+              },
+              "text-whiteSpace": {
+                "value": "nowrap"
+              },
+              "text-overflow": {
+                "value": "hidden"
+              },
+              "text-width": {
+                "value": "100%"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1GQJSgAkQWvbse2wNRt3CV": {
+      "key": "1GQJSgAkQWvbse2wNRt3CV",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "2jxbgtI4vhUMvEhZ1KTsIP": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "relative"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7gHusge89b6gPGcL8ApeD2": true,
+        "3UaoukCoXf8XDpr0eLotqU": true
+      },
+      "displayOrder": 0
+    },
+    "2KTizT0EPqXbi7nxJjiDZn": {
+      "key": "2KTizT0EPqXbi7nxJjiDZn",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " ms material-symbols-outlined mso-more_vert"
+        },
+        "colorScheme": {
+          "value": "_quaternary"
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6fFDctrI0WqCkFlJbVQ6XN": {
+      "key": "6fFDctrI0WqCkFlJbVQ6XN",
+      "name": "Cancel call",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Cancel call"
+        },
+        "textColor": {
+          "value": "_lightLabelText"
+        },
+        "textContainer": {
+          "value": "B"
+        }
+      },
+      "styleProperties": {
+        "2noUwPErkwXSSOs40Bul2e": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "5px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "7gHusge89b6gPGcL8ApeD2": {
+      "key": "7gHusge89b6gPGcL8ApeD2",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "2Nq5tWx8YXreJ02AxV2FjZ"
+        }
+      },
+      "styleProperties": {
+        "57eRabMwJJcBgYiqLUwKIC": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2KTizT0EPqXbi7nxJjiDZn": true
+      },
+      "displayOrder": 1
+    },
+    "3UaoukCoXf8XDpr0eLotqU": {
+      "key": "3UaoukCoXf8XDpr0eLotqU",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SEPTENARYBG"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": " Page.isOpen and Page.currentid = Parent._id "
+          }
+        }
+      },
+      "styleProperties": {
+        "6cEanPI5nYzSiJiWmQWgZR": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "10px"
+              },
+              "paddingBottom": {
+                "value": "10px"
+              },
+              "paddingLeft": {
+                "value": "10px"
+              },
+              "paddingRight": {
+                "value": "10px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "right": {
+                "value": "10px"
+              },
+              "top": {
+                "value": "22px"
+              },
+              "width": {
+                "value": "150px"
+              },
+              "zIndex": {
+                "value": "15"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "33Qu5ua7OuMY6RSiRieJl8": true,
+        "2Hf6rRdoLW3Wdwn65kkvs7": true
+      },
+      "displayOrder": 3
+    },
+    "33Qu5ua7OuMY6RSiRieJl8": {
+      "key": "33Qu5ua7OuMY6RSiRieJl8",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "24AxH4kXfV0tK9jLUFJILo"
+        }
+      },
+      "styleProperties": {
+        "4WCB5FvASEYPsWpxgnuqoS": {
+          "resolutions": {
+            "ALL": {
+              "cursor:hover": {
+                "value": "pointer"
+              },
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6fFDctrI0WqCkFlJbVQ6XN": true
+      },
+      "displayOrder": 1
+    },
+    "2Hf6rRdoLW3Wdwn65kkvs7": {
+      "key": "2Hf6rRdoLW3Wdwn65kkvs7",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "3gfmFDni97mFJTtwSUEzbe": {
+          "resolutions": {
+            "ALL": {
+              "cursor": {
+                "value": "pointer"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "iaXsX8wAOTE1S878P078q": true
+      },
+      "displayOrder": 2
+    },
+    "3qk9XaQ2XAOD2B1EHJyiPx": {
+      "key": "3qk9XaQ2XAOD2B1EHJyiPx",
+      "name": "upcomingText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "All Calls"
+        }
+      },
+      "styleProperties": {
+        "59rB2zVNQuh4UlgfeAd3Hi": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"upcoming\"?\"bold\":\"\""
+                }
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "lineHeight": {
+                "value": "16px"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "RZOg9lt8anEgogMaIAaob": {
+      "key": "RZOg9lt8anEgogMaIAaob",
+      "name": "mobile card",
+      "type": "Grid",
+      "styleProperties": {
+        "3K0vSLYgP614YkTHelTTgQ": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70%"
+              },
+              "height": {
+                "value": "188px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginLeft": {
+                "value": "auto"
+              },
+              "marginRight": {
+                "value": "auto"
+              },
+              "paddingTop": {
+                "value": "20px"
+              },
+              "paddingBottom": {
+                "value": "20px"
+              },
+              "paddingLeft": {
+                "value": "20px"
+              },
+              "paddingRight": {
+                "value": "20px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              },
+              "background": {
+                "value": "#D9D9D933"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "95%"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginBottom": {
+                "value": "36px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5tR6zSRS0DiWguHx5G8mam": true,
+        "7sWkWoLZ0bZfVBCEKuVJFZ": true,
+        "1Oi43Gm8O2klGfYIkXHO4I": true
+      },
+      "displayOrder": 4
+    },
+    "5tR6zSRS0DiWguHx5G8mam": {
+      "key": "5tR6zSRS0DiWguHx5G8mam",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "You have upcoming calls scheduled with your contact manager on"
+        }
+      },
+      "styleProperties": {
+        "1ul2Ow3Olqu703uvqS1tij": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7sWkWoLZ0bZfVBCEKuVJFZ": {
+      "key": "7sWkWoLZ0bZfVBCEKuVJFZ",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "04/04/2024, 9:30AM"
+        },
+        "textContainer": {
+          "value": "B"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1Oi43Gm8O2klGfYIkXHO4I": {
+      "key": "1Oi43Gm8O2klGfYIkXHO4I",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Schedule another call"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "54tqiTsWu6bTpybBSze3fI": {
+          "resolutions": {
+            "ALL": {},
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {},
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "height": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "RETBlqJrGTqhxt3suJPai": {
+      "key": "RETBlqJrGTqhxt3suJPai",
+      "name": "pastcallsText",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Past calls"
+        }
+      },
+      "styleProperties": {
+        "59rB2zVNQuh4UlgfeAd3Hi": {
+          "resolutions": {
+            "ALL": {
+              "fontWeight": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.activeButton = \"pastcalls\"?\"bold\":\"\""
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "8JuXvNS4Sntptn6f3GtV9": {
+      "key": "8JuXvNS4Sntptn6f3GtV9",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SEPTENARYBG"
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        }
+      },
+      "styleProperties": {
+        "6q5bEwT9IQZ7Q8ErCjzg3Y": {
+          "resolutions": {
+            "ALL": {
+              "minHeight": {
+                "value": "436px"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "overflowY": {
+                "value": "hidden"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "745px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "70%"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_ONLY": {
+              "marginRight": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "52DZ1gXtVnhLwmcrHcQ9Pv": true,
+        "3junTRsxyMdhP2WsA6UpGy": true,
+        "1VRP0yjYOr5Ks0odG3ZGZA": true
+      },
+      "displayOrder": 3
+    },
+    "3junTRsxyMdhP2WsA6UpGy": {
+      "key": "3junTRsxyMdhP2WsA6UpGy",
+      "name": "upcomingCalls",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showPage and Page.table.length = 0"
+          }
+        }
+      },
+      "styleProperties": {
+        "5JRjKumlc6ciEdlLy5MJkJ": {
+          "resolutions": {
+            "ALL": {
+              "borderTopLeftRadius": {
+                "value": "10px"
+              },
+              "borderTopRightRadius": {
+                "value": "10px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "10px"
+              },
+              "borderBottomRightRadius": {
+                "value": "10px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "TABLET_LANDSCAPE_SCREEN_SMALL": {
+              "border": {
+                "value": "1px solid #3333331A"
+              },
+              "width": {
+                "value": "67%"
+              },
+              "height": {
+                "value": "400px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3Pikdykt0J8JKsYs6z7PuE": true,
+        "3dK3TyfkWERXFFeILqQDwx": true
+      },
+      "displayOrder": 1
+    },
+    "3Pikdykt0J8JKsYs6z7PuE": {
+      "key": "3Pikdykt0J8JKsYs6z7PuE",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "No Upcoming Calls"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "3dK3TyfkWERXFFeILqQDwx": {
+      "key": "3dK3TyfkWERXFFeILqQDwx",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_NONARYBG"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showGrid = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "7moeY9zBukb2SAuWeVn5lr": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "70%"
+              },
+              "height": {
+                "value": "188px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4JJ4xjcbPgSrc8HdC0zz0u": true,
+        "6mwNw7rvhNt84CzyjAEwSx": true
+      },
+      "displayOrder": 2
+    },
+    "4JJ4xjcbPgSrc8HdC0zz0u": {
+      "key": "4JJ4xjcbPgSrc8HdC0zz0u",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Schedule a call to contact the manager"
+        },
+        "textContainer": {
+          "value": "H6"
+        }
+      },
+      "styleProperties": {
+        "1T0x5yREjcUb3Q6ohNlByK": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "20px"
+              },
+              "textAlign": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6mwNw7rvhNt84CzyjAEwSx": {
+      "key": "6mwNw7rvhNt84CzyjAEwSx",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Schedule a call"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "onClick": {
+          "value": "1wPIa3kVgS5XbThEdV13AR"
+        },
+        "linkPath": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "'/scheduleAcall/{{Store.urlDetails.pathParts[1]}}'"
+          }
+        }
+      },
+      "styleProperties": {
+        "2rguHfCgjjxWWTs9GMhkf5": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "167px"
+              },
+              "rightIcon-height": {
+                "value": "30px"
+              },
+              "height": {
+                "value": "40px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7hTEU1tqW3X7B2CpD143PS": {
+      "key": "7hTEU1tqW3X7B2CpD143PS",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "boxShadow": {
+          "value": "_LIGHTLOW"
+        }
+      },
+      "styleProperties": {
+        "7c5INNmgKARcCk4H5wfVFe": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "140px"
+              },
+              "height": {
+                "value": "140px"
+              },
+              "borderTopRightRadius": {
+                "value": "140px"
+              },
+              "borderBottomLeftRadius": {
+                "value": "140px"
+              },
+              "borderBottomRightRadius": {
+                "value": "140px"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "borderTopWidth": {
+                "value": "1px"
+              },
+              "borderRightWidth": {
+                "value": "1px"
+              },
+              "borderBottomWidth": {
+                "value": "1px"
+              },
+              "borderLeftWidth": {
+                "value": "1px"
+              },
+              "alignSelf": {
+                "value": "center"
+              },
+              "borderTopLeftRadius": {
+                "value": "140px"
+              },
+              "boxShadow": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "10oeVZuqHbN0CZs7GMxG9d": true
+      },
+      "displayOrder": 1
+    },
+    "10oeVZuqHbN0CZs7GMxG9d": {
+      "key": "10oeVZuqHbN0CZs7GMxG9d",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.allDetails.contactManager.profileImage"
+          },
+          "value": "api/files/static/file/SYSTEM/cxapp/image+21.png"
+        }
+      },
+      "styleProperties": {
+        "1SG9ONDju31irTGUIL3j0H": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "140px"
+              },
+              "height": {
+                "value": "140px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "4Q44nipD7gctmqmbAsDX9o": {
+      "key": "4Q44nipD7gctmqmbAsDX9o",
+      "name": "Back button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "BACK"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-circle-chevron-left"
+        },
+        "onClick": {
+          "value": ""
+        },
+        "designType": {
+          "value": "_text"
+        },
+        "linkPath": {
+          "value": "/contactManagerSelectProject"
+        }
+      },
+      "styleProperties": {
+        "5EMUbYlUEqlPegCRJDn5So": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "0px"
+              },
+              "marginLeft": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "448FE1ilDqjoyUqmbga1SS": {
+      "key": "448FE1ilDqjoyUqmbga1SS",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Schedule a Call Configuration is not yet done by the Client"
+        }
+      },
+      "styleProperties": {
+        "4OMRTqOyBbGlgPOTrmUFTJ": {
+          "resolutions": {
+            "ALL": {
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "24px"
+              },
+              "textAlign": {
+                "value": "center"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1VRP0yjYOr5Ks0odG3ZGZA": {
+      "key": "1VRP0yjYOr5Ks0odG3ZGZA",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.showGrid = true"
+          }
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "background": {
+          "value": "_SEPTENARYBG"
+        }
+      },
+      "styleProperties": {
+        "6SQurRv6Qox3OpMWFD7FDy": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "400px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "448FE1ilDqjoyUqmbga1SS": true
+      },
+      "displayOrder": 3
+    },
+    "3hK4f0tapK2sXiKCajv7tg": {
+      "key": "3hK4f0tapK2sXiKCajv7tg",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/mail.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "69rJnCKjFKJ8U6X52M4IGB": {
+          "resolutions": {
+            "ALL": {
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "5qCWs6nl3DTx3DW1RM3e7m": {
+      "key": "5qCWs6nl3DTx3DW1RM3e7m",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/phone.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "69rJnCKjFKJ8U6X52M4IGB": {
+          "resolutions": {
+            "ALL": {
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    }
+  },
+  "name": "contactManager",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN",
+  "appCode": "cxapp",
+  "version": 103,
+  "updatedAt": "2026-04-09 04:27:54.732000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-04-18 15:07:08.095000",
+  "createdBy": "<USER>"
+}

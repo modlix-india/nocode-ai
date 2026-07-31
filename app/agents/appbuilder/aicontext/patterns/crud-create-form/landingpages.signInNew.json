@@ -1,0 +1,5307 @@
+{
+  "_id": "652ea81ec5b899138220db70",
+  "properties": {
+    "wrapShell": false,
+    "onLoadEvent": "1c17uNwA6IZiqJKyURzE8S",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "6GQaBx9TEcsM4ZA50rV0Fr": {
+      "name": "loginFunction",
+      "namespace": "",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "dependentStatements": {
+            "Steps__d-o-t__login__d-o-t__error": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          },
+          "position": {
+            "top": 90.24739583333326,
+            "left": 1008.671875
+          },
+          "parameterMap": {
+            "path": {
+              "3nGnaIxNOm2yKfpLImqf5z": {
+                "key": "3nGnaIxNOm2yKfpLImqf5z",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signInError"
+              }
+            },
+            "value": {
+              "1DXJJjLIrUeWGxhsx4pHk0": {
+                "key": "1DXJJjLIrUeWGxhsx4pHk0",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "top": 103.9296875,
+            "left": 604.8828125
+          },
+          "parameterMap": {
+            "condition": {
+              "2DC00qVypION25oFf8UUpN": {
+                "key": "2DC00qVypION25oFf8UUpN",
+                "type": "EXPRESSION",
+                "expression": "Steps.login.error.status >= 400",
+                "order": 1
+              }
+            }
+          }
+        },
+        "login": {
+          "statementName": "login",
+          "name": "Login",
+          "namespace": "UIEngine",
+          "position": {
+            "top": 67.203125,
+            "left": 227.8828125
+          },
+          "parameterMap": {
+            "userName": {
+              "3nLdXDPQhAJEGUwy0pXcoR": {
+                "key": "3nLdXDPQhAJEGUwy0pXcoR",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.userName",
+                "order": 1
+              }
+            },
+            "password": "<REDACTED>",
+            "rememberMe": {
+              "61ahk35vJwNtFn1NR3sp1T": {
+                "key": "61ahk35vJwNtFn1NR3sp1T",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.rememberMe",
+                "value": false
+              }
+            },
+            "identifierType": {
+              "7iI85T2mGVTe4Cro81yFhx": {
+                "key": "7iI85T2mGVTe4Cro81yFhx",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.identifierType",
+                "value": "EMAIL_ID"
+              }
+            },
+            "userId": {
+              "7HnDxLuOVPrmDEE7IWuhKl": {
+                "key": "7HnDxLuOVPrmDEE7IWuhKl",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.userId",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "validationCheck": "3ET0ejQ9asdOTc72MD4Cj1"
+    },
+    "5V5p1l0nPVc5L6amNW5fcr": {
+      "name": "navigateToEarlyAccess",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 506.853515625,
+            "top": 95.259765625
+          },
+          "parameterMap": {
+            "linkPath": {
+              "6gFD7P1X6bjepexFxE1QOf": {
+                "key": "6gFD7P1X6bjepexFxE1QOf",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/earlyaccesssignup"
+              }
+            },
+            "target": {
+              "wjTSTBe8LBye7vH4Vyw1x": {
+                "key": "wjTSTBe8LBye7vH4Vyw1x",
+                "type": "VALUE",
+                "expression": "",
+                "value": "_self"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "KQ0z5iwqYRZzU8B4tjklj": {
+      "name": "login",
+      "steps": {
+        "login": {
+          "statementName": "login",
+          "name": "Login",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 178.8828125,
+            "top": 114.203125
+          },
+          "parameterMap": {
+            "userName": {
+              "3nLdXDPQhAJEGUwy0pXcoR": {
+                "key": "3nLdXDPQhAJEGUwy0pXcoR",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.userName",
+                "order": 1
+              }
+            },
+            "password": "<REDACTED>",
+            "rememberMe": {
+              "61ahk35vJwNtFn1NR3sp1T": {
+                "key": "61ahk35vJwNtFn1NR3sp1T",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.rememberMe",
+                "value": false
+              }
+            },
+            "identifierType": {
+              "7iI85T2mGVTe4Cro81yFhx": {
+                "key": "7iI85T2mGVTe4Cro81yFhx",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.identifierType",
+                "value": "EMAIL_ID"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 894.671875,
+            "top": 274.24739583333326
+          },
+          "parameterMap": {
+            "path": {
+              "3nGnaIxNOm2yKfpLImqf5z": {
+                "key": "3nGnaIxNOm2yKfpLImqf5z",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signInError"
+              }
+            },
+            "value": {
+              "1DXJJjLIrUeWGxhsx4pHk0": {
+                "key": "1DXJJjLIrUeWGxhsx4pHk0",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__login__d-o-t__error": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 574.8828125,
+            "top": 84.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "2DC00qVypION25oFf8UUpN": {
+                "key": "2DC00qVypION25oFf8UUpN",
+                "type": "EXPRESSION",
+                "expression": "Steps.login.error.status >= 400",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "6w3OIHNj2W8rQZ3v1LMH8m"
+    },
+    "eMYpnywsJYvZ00PjPOIqq": {
+      "name": "navigateToResetPassword",
+      "steps": {
+        "navigate": {
+          "statementName": "navigate",
+          "name": "Navigate",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 506.853515625,
+            "top": 95.259765625
+          },
+          "parameterMap": {
+            "linkPath": {
+              "6gFD7P1X6bjepexFxE1QOf": {
+                "key": "6gFD7P1X6bjepexFxE1QOf",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "/forgotPassword"
+              }
+            },
+            "target": {
+              "wjTSTBe8LBye7vH4Vyw1x": {
+                "key": "wjTSTBe8LBye7vH4Vyw1x",
+                "type": "VALUE",
+                "expression": "",
+                "value": "_self"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4VuXSlkmxaABRQgT9H9fvq": {
+      "name": "oneDigitCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 113.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.oneDigit"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[\\d]"
+              }
+            },
+            "regex": {
+              "3iF3p0pc2QQ4WW9zYrIish": {
+                "key": "3iF3p0pc2QQ4WW9zYrIish",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[\\d]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "21M0dER4TOSDZxEudsWLyT": {
+      "name": "eightCharactersMin",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 597.8828125,
+            "top": 91.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.eightCharacters"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 115.8828125,
+            "top": 79.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".{8,}"
+              }
+            },
+            "regex": {
+              "1b9Wb7M7bosqwTVrCKLflj": {
+                "key": "1b9Wb7M7bosqwTVrCKLflj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".{8,}"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7LNQIKnN48U0adDlD7ImAk": {
+      "name": "oneSpecialCharacterCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 113.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.specialCharacter"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[\\W]"
+              }
+            },
+            "regex": {
+              "49A21kHAM0KmOmNLxCCBwp": {
+                "key": "49A21kHAM0KmOmNLxCCBwp",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[\\W]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1Gyrlpu5zXraPalWQGeaKh": {
+      "name": "signupEvent",
+      "steps": {
+        "signUp": {
+          "statementName": "signUp",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 794.40625,
+            "top": 365
+          },
+          "parameterMap": {
+            "url": {
+              "39wbYIuWpvV79WLdmcTqHE": {
+                "key": "39wbYIuWpvV79WLdmcTqHE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/clients/register"
+              }
+            },
+            "method": {
+              "4XMbnTpSG0uHl5Gf1Fb7J7": {
+                "key": "4XMbnTpSG0uHl5Gf1Fb7J7",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "747osNhesbFckguTCKdbn": {
+                "key": "747osNhesbFckguTCKdbn",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1540,
+            "top": 255.90625
+          },
+          "parameterMap": {
+            "path": {
+              "2bprVmQF297AFqHQjODRjf": {
+                "key": "2bprVmQF297AFqHQjODRjf",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailSent"
+              }
+            },
+            "value": {
+              "3rF8JLiXPId5XoZyaA5GqV": {
+                "key": "3rF8JLiXPId5XoZyaA5GqV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 448.23567708333326,
+            "top": 330.77473958333326
+          },
+          "parameterMap": {
+            "path": {
+              "SSTUdJb4rce7XsOmVaGYr": {
+                "key": "SSTUdJb4rce7XsOmVaGYr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpEmailPasswordCheck"
+              }
+            },
+            "value": {
+              "5znTldurxMYr0DHUTUj6OV": {
+                "key": "5znTldurxMYr0DHUTUj6OV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1268.6015625,
+            "top": 112
+          },
+          "parameterMap": {
+            "condition": {
+              "4vallPcbSnHf3aidX67E0m": {
+                "key": "4vallPcbSnHf3aidX67E0m",
+                "type": "EXPRESSION",
+                "expression": "Steps.signUp.output.data != undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 829.7356770833333,
+            "top": 42.60807291666666
+          },
+          "parameterMap": {
+            "path": {
+              "3Cb46hcGGOJ2qLz4Rxltg5": {
+                "key": "3Cb46hcGGOJ2qLz4Rxltg5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpEmailPasswordCheck"
+              }
+            },
+            "value": {
+              "5DfZDm414MkkvnSuiCsoyi": {
+                "key": "5DfZDm414MkkvnSuiCsoyi",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 239.23567708333331,
+            "top": 97.60807291666663
+          },
+          "parameterMap": {
+            "condition": {
+              "1hQbpwxOgDTd6url4o6t5M": {
+                "key": "1hQbpwxOgDTd6url4o6t5M",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password != Page.signUpForm.emailId",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1254.40625,
+            "top": 505.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__signUp__d-o-t__error": true
+          },
+          "parameterMap": {
+            "path": {
+              "6T1haDy5wQX6z8RsH9FSjI": {
+                "key": "6T1haDy5wQX6z8RsH9FSjI",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.cannotRegisterUser"
+              }
+            },
+            "value": {
+              "2HueKS7adOBILfokcDShhw": {
+                "key": "2HueKS7adOBILfokcDShhw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1685.40625,
+            "top": 505.296875
+          },
+          "parameterMap": {
+            "path": {
+              "42YuU1Q8WomSuejMZxyYxu": {
+                "key": "42YuU1Q8WomSuejMZxyYxu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailSent"
+              }
+            },
+            "value": {
+              "5N1qhwc4q4IrXUVByReabL": {
+                "key": "5N1qhwc4q4IrXUVByReabL",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore5": {
+          "statementName": "setStore5",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1864.40625,
+            "top": 310.296875
+          },
+          "parameterMap": {
+            "path": {
+              "68SSwNsdUucFYji4tnJmkw": {
+                "key": "68SSwNsdUucFYji4tnJmkw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.cannotRegisterUser"
+              }
+            },
+            "value": {
+              "1irh7Brkwz005YAbm8yM13": {
+                "key": "1irh7Brkwz005YAbm8yM13",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "if2": {
+          "statementName": "if2",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1154.3046875,
+            "top": 892.796875
+          },
+          "parameterMap": {
+            "condition": {
+              "5aHuZBk1N9kAEu7Filg5RT": {
+                "key": "5aHuZBk1N9kAEu7Filg5RT",
+                "type": "EXPRESSION",
+                "expression": "Steps.signUp.output.data.authentication.accessToken != undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore6": {
+          "statementName": "setStore6",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1516.3046875,
+            "top": 892.796875
+          },
+          "parameterMap": {
+            "path": {
+              "14BoAACxIbciYxybCJsSDA": {
+                "key": "14BoAACxIbciYxybCJsSDA",
+                "type": "VALUE",
+                "order": 1,
+                "value": "LocalStore.AuthToken"
+              }
+            },
+            "value": {
+              "58wPjy7tYU2gRBjyrMeoWT": {
+                "key": "58wPjy7tYU2gRBjyrMeoWT",
+                "type": "EXPRESSION",
+                "expression": "Steps.signUp.output.data.authentication.accessToken",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if2__d-o-t__true": true
+          }
+        },
+        "wait": {
+          "statementName": "wait",
+          "name": "Wait",
+          "namespace": "System",
+          "position": {
+            "left": 1741.3046875,
+            "top": 1126.796875
+          },
+          "parameterMap": {
+            "millis": {
+              "Lj13bMqeJaDJ9P5qI8gXQ": {
+                "key": "Lj13bMqeJaDJ9P5qI8gXQ",
+                "type": "VALUE",
+                "expression": "",
+                "value": 1000
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__setStore6__d-o-t__output": true
+          }
+        },
+        "refresh": {
+          "statementName": "refresh",
+          "name": "Refresh",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1887.8046875,
+            "top": 1292.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__wait__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "1XDAK4KE6nq8mJxLJ8Y1Yx"
+    },
+    "CJbScePVMgdSKPkpjHqlP": {
+      "name": "ValditionCheckOnSubmit",
+      "steps": {
+        "signupEvent": {
+          "statementName": "signupEvent",
+          "name": "signupEvent",
+          "namespace": "_",
+          "position": {
+            "left": 534.40625,
+            "top": 113.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 62.40625,
+            "top": 117.296875
+          },
+          "parameterMap": {
+            "condition": {
+              "3E8x5TEyShkBba3kDpLbtW": {
+                "key": "3E8x5TEyShkBba3kDpLbtW",
+                "type": "EXPRESSION",
+                "expression": "Page.specialCharacter and Page.oneDigit and  Page.oneLowerCase and Page.oneUpperCase and Page.eightCharacters ",
+                "order": 1,
+                "value": "Page.specialCharacter & Page.oneDigit & Page.oneLowerCase & Page.oneUpperCase & Page.eightCharacters "
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "1XDAK4KE6nq8mJxLJ8Y1Yx"
+    },
+    "4hczTYqmm8mq70cSksU2kZ": {
+      "name": "signUp",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 161.06901041666657,
+            "top": 162.94140624999997
+          },
+          "parameterMap": {
+            "path": {
+              "22BYPQ754VXDWm65Yrt6nh": {
+                "key": "22BYPQ754VXDWm65Yrt6nh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sign"
+              }
+            },
+            "value": {
+              "2ofgqW5mJoWhzYoi4vUTs9": {
+                "key": "2ofgqW5mJoWhzYoi4vUTs9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "signUp"
+              }
+            }
+          }
+        },
+        "back": {
+          "statementName": "back",
+          "name": "back",
+          "namespace": "_",
+          "position": {
+            "left": 961.40625,
+            "top": 158.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": false
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 634.40625,
+            "top": 47.296875
+          },
+          "parameterMap": {
+            "path": {
+              "3DiTvkvhMKz3sWrFD2Tafw": {
+                "key": "3DiTvkvhMKz3sWrFD2Tafw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signInError"
+              }
+            },
+            "value": {
+              "13jM8uzedzxg8SHvTPQ2ak": {
+                "key": "13jM8uzedzxg8SHvTPQ2ak",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1U4Ijw5nNcB7oBkFIRsY4u": {
+      "name": "passwordvalidationGridFalse",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 402.4375,
+            "top": 163.1473214285714
+          },
+          "parameterMap": {
+            "path": {
+              "2pTqYJd3MrOpoXWoqTdCSb": {
+                "key": "2pTqYJd3MrOpoXWoqTdCSb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.passwordValidationGrid"
+              }
+            },
+            "value": {
+              "7IsYby3B8CXE5KyvFoG5Tc": {
+                "key": "7IsYby3B8CXE5KyvFoG5Tc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1c17uNwA6IZiqJKyURzE8S": {
+      "name": "firstLoad",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 302.40625,
+            "top": 128.296875
+          },
+          "parameterMap": {
+            "path": {
+              "4LECBJjgMrcinn9o8inczv": {
+                "key": "4LECBJjgMrcinn9o8inczv",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sign"
+              }
+            },
+            "value": {
+              "3OyBwe1WpXnG7vR5jt9So2": {
+                "key": "3OyBwe1WpXnG7vR5jt9So2",
+                "type": "EXPRESSION",
+                "expression": "Store.urlDetails.queryParameters.signUp = 'true' ? 'signUp' : 'signIn'",
+                "order": 1,
+                "value": "signIn"
+              }
+            }
+          }
+        },
+        "passwordvalidationGridFalse": "<REDACTED>"
+      },
+      "namespace": ""
+    },
+    "7n14RVZvry1iWH0gpuczKC": {
+      "name": "signIn",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 263.06901041666663,
+            "top": 49.44140624999997
+          },
+          "parameterMap": {
+            "path": {
+              "4L5oOjK23mN5lJXp5R6cbs": {
+                "key": "4L5oOjK23mN5lJXp5R6cbs",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.sign"
+              }
+            },
+            "value": {
+              "4eLoJ8takjbjDow9qDtAO8": {
+                "key": "4eLoJ8takjbjDow9qDtAO8",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "signIn"
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 631.7232142857142,
+            "top": 176.4241071428571
+          },
+          "parameterMap": {
+            "path": {
+              "rr6Kgrfk2AL5hrTuNIJrL": {
+                "key": "rr6Kgrfk2AL5hrTuNIJrL",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailSent"
+              }
+            },
+            "value": {
+              "3njfRvJzlg1SO6TDN41pJD": {
+                "key": "3njfRvJzlg1SO6TDN41pJD",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 973.0089285714284,
+            "top": 41.995535714285666
+          },
+          "parameterMap": {
+            "path": {
+              "4OQrXu75ca4y6i2JxCpHlk": {
+                "key": "4OQrXu75ca4y6i2JxCpHlk",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpEmailPasswordCheck"
+              }
+            },
+            "value": {
+              "6UBfqaNwNpgQQOCgljOq9e": {
+                "key": "6UBfqaNwNpgQQOCgljOq9e",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5VWhtbbygokVulJvVJ6Wwg": {
+      "name": "oneUpperCaseCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 70.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.oneUpperCase"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[A-Z]"
+              }
+            },
+            "regex": {
+              "1lTV7PFlrRoLCB04p4rZPu": {
+                "key": "1lTV7PFlrRoLCB04p4rZPu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[A-Z]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3NweJrQyGMAAvon7OWq9bl": {
+      "name": "verifyEmail",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 308.83854166666663,
+            "top": 36.91406249999997
+          },
+          "parameterMap": {
+            "path": {
+              "7n9kTlwws0ANtdULNpVlPY": {
+                "key": "7n9kTlwws0ANtdULNpVlPY",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.loginForm.identifierType"
+              }
+            },
+            "value": {
+              "3H3hTwmTHHUNEr9TRQ1T8": {
+                "key": "3H3hTwmTHHUNEr9TRQ1T8",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "EMAIL_ID"
+              }
+            }
+          }
+        },
+        "sendData": {
+          "statementName": "sendData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 587.8385416666666,
+            "top": 216.74739583333331
+          },
+          "parameterMap": {
+            "url": {
+              "2UYIhUO2CtIGSEQeuhLEek": {
+                "key": "2UYIhUO2CtIGSEQeuhLEek",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/security/users/findUserClients"
+              }
+            },
+            "method": {
+              "3AtIOLt4evA4nPL2W7y5mb": {
+                "key": "3AtIOLt4evA4nPL2W7y5mb",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "queryParams": {
+              "25o4CpbU2xXnRrfoVS3vAT": {
+                "key": "25o4CpbU2xXnRrfoVS3vAT",
+                "type": "VALUE",
+                "expression": "",
+                "value": {}
+              }
+            },
+            "headers": {
+              "6lJpBxTVoWIocjrF0CQv33": {
+                "key": "6lJpBxTVoWIocjrF0CQv33",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "Content-Type": {
+                    "value": "application/json"
+                  }
+                }
+              }
+            },
+            "payload": {
+              "4XD0MkvRtibNCZaCzKNqAU": {
+                "key": "4XD0MkvRtibNCZaCzKNqAU",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "message": {
+          "statementName": "message",
+          "name": "Message",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 913.40234375,
+            "top": 395.4414062499999
+          },
+          "parameterMap": {
+            "msg": {
+              "Qy4tbesUcKJBBAUa2ZA8o": {
+                "key": "Qy4tbesUcKJBBAUa2ZA8o",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 911.7356770833333,
+            "top": 45.94140624999997
+          },
+          "parameterMap": {
+            "condition": {
+              "4yRgMhvP49XP2lWYwXgV4V": {
+                "key": "4yRgMhvP49XP2lWYwXgV4V",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data.length != 1",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1245,
+            "top": 192
+          },
+          "parameterMap": {
+            "path": {
+              "4FD1apjJkxujIClXraqVIw": {
+                "key": "4FD1apjJkxujIClXraqVIw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailVerified"
+              }
+            },
+            "value": {
+              "5y6nwCPubuFUv0dqAFNUby": {
+                "key": "5y6nwCPubuFUv0dqAFNUby",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true,
+            "Steps__d-o-t__if__d-o-t__false": false
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1515.353515625,
+            "top": 49.0703125
+          },
+          "parameterMap": {
+            "path": {
+              "60i9fZUspDCGayBoq1YGnn": {
+                "key": "60i9fZUspDCGayBoq1YGnn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailVerified"
+              }
+            },
+            "value": {
+              "3GuiLqoS9CsIgjghy6rCIt": {
+                "key": "3GuiLqoS9CsIgjghy6rCIt",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 60.603515625,
+            "top": 257.8203125
+          },
+          "parameterMap": {
+            "path": {
+              "7BVRpIbZYdlxE7dCRTDoSP": {
+                "key": "7BVRpIbZYdlxE7dCRTDoSP",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailVerified"
+              }
+            },
+            "value": {
+              "4UL4904Lok5lbxXbuddlIH": {
+                "key": "4UL4904Lok5lbxXbuddlIH",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": null
+              }
+            }
+          }
+        },
+        "print": {
+          "statementName": "print",
+          "name": "Print",
+          "namespace": "System",
+          "position": {
+            "left": 1967.2578125,
+            "top": 246.001953125
+          },
+          "parameterMap": {
+            "values": {
+              "4957PkY9kenIMZFpbT2wo8": {
+                "key": "4957PkY9kenIMZFpbT2wo8",
+                "type": "EXPRESSION",
+                "expression": "Page.emailverified != null and Page.emailVerified ",
+                "order": 1
+              },
+              "5WJbb79pr4z1N3apCm26zf": {
+                "key": "5WJbb79pr4z1N3apCm26zf",
+                "type": "EXPRESSION",
+                "expression": "Page.emailverified != null",
+                "order": 2
+              },
+              "6l39wfKiynDBm0O6BOkjW9": {
+                "key": "6l39wfKiynDBm0O6BOkjW9",
+                "type": "EXPRESSION",
+                "expression": "Page.emailVerified != true",
+                "order": 3
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__output": false,
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "print_Copy_1": {
+          "statementName": "print_Copy_1",
+          "name": "Print",
+          "namespace": "System",
+          "position": {
+            "left": 1880.2578125,
+            "top": 531.001953125
+          },
+          "parameterMap": {
+            "values": {
+              "4957PkY9kenIMZFpbT2wo8": {
+                "key": "4957PkY9kenIMZFpbT2wo8",
+                "type": "EXPRESSION",
+                "expression": "Page.emailverified != null and Page.emailVerified != true",
+                "order": 1
+              },
+              "5WJbb79pr4z1N3apCm26zf": {
+                "key": "5WJbb79pr4z1N3apCm26zf",
+                "type": "EXPRESSION",
+                "expression": "Page.emailverified != null",
+                "order": 2
+              },
+              "6l39wfKiynDBm0O6BOkjW9": {
+                "key": "6l39wfKiynDBm0O6BOkjW9",
+                "type": "EXPRESSION",
+                "expression": "Page.emailVerified != true",
+                "order": 3
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__output": false,
+            "Steps__d-o-t__setStore__d-o-t__output": false,
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1523.0089285714284,
+            "top": 374.99553571428567
+          },
+          "parameterMap": {
+            "path": {
+              "69XlaMtjM06FDrXxOW6pKj": {
+                "key": "69XlaMtjM06FDrXxOW6pKj",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.verificationList"
+              }
+            },
+            "value": {
+              "6wG7zTbbv0hU7yrxM2fFR2": {
+                "key": "6wG7zTbbv0hU7yrxM2fFR2",
+                "type": "EXPRESSION",
+                "expression": "Steps.sendData.output.data",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "30MLf6e8i0CfrFF8CNh74o"
+    },
+    "6LnpjomIwWIamNiQRGRDAt": {
+      "name": "validations",
+      "steps": {
+        "eightCharactersMin": {
+          "statementName": "eightCharactersMin",
+          "name": "eightCharactersMin",
+          "namespace": "_",
+          "position": {
+            "left": 65.40625,
+            "top": 153.296875
+          }
+        },
+        "oneUpperCaseCheck": {
+          "statementName": "oneUpperCaseCheck",
+          "name": "oneUpperCaseCheck",
+          "namespace": "_",
+          "position": {
+            "left": 332.40625,
+            "top": 161.296875
+          }
+        },
+        "oneLowerCaseCheck": {
+          "statementName": "oneLowerCaseCheck",
+          "name": "oneLowerCaseCheck",
+          "namespace": "_",
+          "position": {
+            "left": 72.40625,
+            "top": 296.296875
+          }
+        },
+        "oneDigitCheck": {
+          "statementName": "oneDigitCheck",
+          "name": "oneDigitCheck",
+          "namespace": "_",
+          "position": {
+            "left": 330.40625,
+            "top": 17.296875
+          }
+        },
+        "oneSpecialCharacterCheck": {
+          "statementName": "oneSpecialCharacterCheck",
+          "name": "oneSpecialCharacterCheck",
+          "namespace": "_",
+          "position": {
+            "left": 65.40625,
+            "top": 23.296875
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 659.40625,
+            "top": 129.296875
+          },
+          "parameterMap": {
+            "condition": {
+              "3vI1RbfhHKqIgbqBIVS3YG": {
+                "key": "3vI1RbfhHKqIgbqBIVS3YG",
+                "type": "EXPRESSION",
+                "expression": "Page.specialCharacter and Page.oneDigit and  Page.oneLowerCase and Page.oneUpperCase and Page.eightCharacters ",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__oneSpecialCharacterCheck__d-o-t__output": true,
+            "Steps__d-o-t__oneDigitCheck__d-o-t__output": true,
+            "Steps__d-o-t__eightCharactersMin__d-o-t__output": true,
+            "Steps__d-o-t__oneUpperCaseCheck__d-o-t__output": true,
+            "Steps__d-o-t__oneLowerCaseCheck__d-o-t__output": true,
+            "Steps__d-o-t__passwordValidationGridTrue__d-o-t__output": "<REDACTED>"
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 975.40625,
+            "top": 62.296875
+          },
+          "parameterMap": {
+            "path": {
+              "77FRFZpN5nfltX4FBlZ7d1": {
+                "key": "77FRFZpN5nfltX4FBlZ7d1",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allValidations"
+              }
+            },
+            "value": {
+              "85jgGhQzkazc4hb0x7DTa": {
+                "key": "85jgGhQzkazc4hb0x7DTa",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 953.40625,
+            "top": 466.296875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "path": {
+              "1Am6OfoSfirCoAjNG6LbHE": {
+                "key": "1Am6OfoSfirCoAjNG6LbHE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.allValidations"
+              }
+            },
+            "value": {
+              "1KUatqS8I3bAZl5thtjtfO": {
+                "key": "1KUatqS8I3bAZl5thtjtfO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1117.353515625,
+            "top": 287.224609375
+          },
+          "parameterMap": {
+            "condition": {
+              "1bRDdSBcw9SfrvU5jmHR6l": {
+                "key": "1bRDdSBcw9SfrvU5jmHR6l",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password != Page.signUpForm.emailId",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1553.7356770833333,
+            "top": 222.60807291666666
+          },
+          "parameterMap": {
+            "path": {
+              "3Cb46hcGGOJ2qLz4Rxltg5": {
+                "key": "3Cb46hcGGOJ2qLz4Rxltg5",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpEmailPasswordCheck"
+              }
+            },
+            "value": {
+              "5DfZDm414MkkvnSuiCsoyi": {
+                "key": "5DfZDm414MkkvnSuiCsoyi",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1544.2356770833333,
+            "top": 460.77473958333326
+          },
+          "parameterMap": {
+            "path": {
+              "SSTUdJb4rce7XsOmVaGYr": {
+                "key": "SSTUdJb4rce7XsOmVaGYr",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signUpEmailPasswordCheck"
+              }
+            },
+            "value": {
+              "5znTldurxMYr0DHUTUj6OV": {
+                "key": "5znTldurxMYr0DHUTUj6OV",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "passwordValidationGridTrue": "<REDACTED>"
+      },
+      "namespace": ""
+    },
+    "T249dkFTBfzEccmO4BMCW": {
+      "name": "oneLowerCaseCheck",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 650.8828125,
+            "top": 113.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "3QEgCgTIfzPUcLbnRTGmtT": {
+                "key": "3QEgCgTIfzPUcLbnRTGmtT",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.oneLowerCase"
+              }
+            },
+            "value": {
+              "2UZioqDc3HMq5GB2RXOVks": {
+                "key": "2UZioqDc3HMq5GB2RXOVks",
+                "type": "EXPRESSION",
+                "expression": "Steps.matches.output.result",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "matches": {
+          "statementName": "matches",
+          "name": "Matches",
+          "namespace": "System.String",
+          "position": {
+            "left": 159.8828125,
+            "top": 112.9296875
+          },
+          "parameterMap": {
+            "string": {
+              "5zmJ5dVT4AFOVOzfnj0oxL": {
+                "key": "5zmJ5dVT4AFOVOzfnj0oxL",
+                "type": "EXPRESSION",
+                "expression": "Page.signUpForm.password??''",
+                "order": 1,
+                "value": ".*[a-z]"
+              }
+            },
+            "regex": {
+              "4UHBFrUOInAb6sRxd4vRQM": {
+                "key": "4UHBFrUOInAb6sRxd4vRQM",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": ".*[a-z]"
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5DdnBNVlX2pawB4MWNwveA": {
+      "name": "back",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 189.8828125,
+            "top": 224.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "1SJFfGDEFLiGq8ajJ9JSgh": {
+                "key": "1SJFfGDEFLiGq8ajJ9JSgh",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.emailVerified"
+              }
+            },
+            "value": {
+              "SzmcgcrfuqluueN3RrVXU": {
+                "key": "SzmcgcrfuqluueN3RrVXU",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 598.8828125,
+            "top": 199.9296875
+          },
+          "parameterMap": {
+            "path": {
+              "4Y8hFwWzBZYEG5G6VNS6Wu": {
+                "key": "4Y8hFwWzBZYEG5G6VNS6Wu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signInError"
+              }
+            },
+            "value": {
+              "3Sd4RQbD2lFpFFhG7ZNCj6": {
+                "key": "3Sd4RQbD2lFpFFhG7ZNCj6",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "6xM89E9uCj8frbvvfa1V7E": {
+      "name": "login_copy",
+      "steps": {
+        "login": {
+          "statementName": "login",
+          "name": "Login",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 191.8828125,
+            "top": 76.203125
+          },
+          "parameterMap": {
+            "userName": {
+              "3nLdXDPQhAJEGUwy0pXcoR": {
+                "key": "3nLdXDPQhAJEGUwy0pXcoR",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.userName",
+                "order": 1
+              }
+            },
+            "password": "<REDACTED>",
+            "rememberMe": {
+              "61ahk35vJwNtFn1NR3sp1T": {
+                "key": "61ahk35vJwNtFn1NR3sp1T",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.rememberMe",
+                "value": false
+              }
+            },
+            "identifierType": {
+              "7iI85T2mGVTe4Cro81yFhx": {
+                "key": "7iI85T2mGVTe4Cro81yFhx",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm.identifierType",
+                "value": "EMAIL_ID"
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 918.671875,
+            "top": 105.24739583333326
+          },
+          "parameterMap": {
+            "path": {
+              "3nGnaIxNOm2yKfpLImqf5z": {
+                "key": "3nGnaIxNOm2yKfpLImqf5z",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.signInError"
+              }
+            },
+            "value": {
+              "1DXJJjLIrUeWGxhsx4pHk0": {
+                "key": "1DXJJjLIrUeWGxhsx4pHk0",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__login__d-o-t__error": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 542.8828125,
+            "top": 92.9296875
+          },
+          "parameterMap": {
+            "condition": {
+              "2DC00qVypION25oFf8UUpN": {
+                "key": "2DC00qVypION25oFf8UUpN",
+                "type": "EXPRESSION",
+                "expression": "Steps.login.error.status >= 400",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "6w3OIHNj2W8rQZ3v1LMH8m"
+    },
+    "1SYPPLwurHqftKHHN3LXF7": {
+      "name": "passwordValidationGridTrue",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 329.7232142857142,
+            "top": 143.57589285714283
+          },
+          "parameterMap": {
+            "path": {
+              "6Hc7sSJr1IHCAF5vrBkCn": {
+                "key": "6Hc7sSJr1IHCAF5vrBkCn",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.passwordValidationGrid"
+              }
+            },
+            "value": {
+              "2zC1tsZ0C7yJAusonyG48v": {
+                "key": "2zC1tsZ0C7yJAusonyG48v",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "loginFunction": {
+      "name": "LOGIN_CHECK",
+      "validationCheck": "3ET0ejQ9asdOTc72MD4Cj1",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 912.6015625,
+            "top": 210.796875
+          },
+          "parameterMap": {
+            "condition": {
+              "wFli1w0zFJDQtgVxFmFWi": {
+                "key": "wFli1w0zFJDQtgVxFmFWi",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data.length > 1",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1324.6015625,
+            "top": 125.796875
+          },
+          "parameterMap": {
+            "path": {
+              "aJkpoZ4bkkFppsri1Uedf": {
+                "key": "aJkpoZ4bkkFppsri1Uedf",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.usersList"
+              }
+            },
+            "value": {
+              "6MHsgqzvjRzUXnuxsIjfl9": {
+                "key": "6MHsgqzvjRzUXnuxsIjfl9",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 218.6015625,
+            "top": 87.796875
+          },
+          "parameterMap": {
+            "path": {
+              "45DI7lBXF4WU1dDFFlez1A": {
+                "key": "45DI7lBXF4WU1dDFFlez1A",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.loginForm.identifierType"
+              }
+            },
+            "value": {
+              "1Gcg49mKLMcpKTFkCQ714W": {
+                "key": "1Gcg49mKLMcpKTFkCQ714W",
+                "type": "VALUE",
+                "order": 1,
+                "value": "EMAIL_ID"
+              }
+            }
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 530.6015625,
+            "top": 250.796875
+          },
+          "parameterMap": {
+            "url": {
+              "5LP57ABQZFihp9PNXkBKFY": {
+                "key": "5LP57ABQZFihp9PNXkBKFY",
+                "type": "VALUE",
+                "order": 1,
+                "value": "api/security/users/findUserClients"
+              }
+            },
+            "method": {
+              "2zMYqZmapVN1xFK30Snr9t": {
+                "key": "2zMYqZmapVN1xFK30Snr9t",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            },
+            "payload": {
+              "3pxSSk9PrkKoGqHuXB31V3": {
+                "key": "3pxSSk9PrkKoGqHuXB31V3",
+                "type": "EXPRESSION",
+                "expression": "Page.loginForm",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "lOGIN": {
+          "statementName": "lOGIN",
+          "name": "loginFunction",
+          "namespace": "_",
+          "position": {
+            "left": 1184.6015625,
+            "top": 467.796875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1638.1015625,
+            "top": 338.796875
+          },
+          "parameterMap": {
+            "path": {
+              "25PP8EcrdsqqLmw9jSd5n2": {
+                "key": "25PP8EcrdsqqLmw9jSd5n2",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.showClientsPopup"
+              }
+            },
+            "value": {
+              "3G0TT4QmSli9ztmlEItxfo": {
+                "key": "3G0TT4QmSli9ztmlEItxfo",
+                "type": "EXPRESSION",
+                "expression": "true",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "5JK0tuYrni1r6kBmE9jqPO": {
+      "name": "SELECT_CLIENT",
+      "steps": {
+        "lOGIN": {
+          "statementName": "lOGIN",
+          "name": "loginFunction",
+          "namespace": "_",
+          "position": {
+            "left": 738.6015625,
+            "top": 410.796875
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 492.6015625,
+            "top": 149.796875
+          },
+          "parameterMap": {
+            "path": {
+              "4AT5ZIvZcSUdZQeeLEVaya": {
+                "key": "4AT5ZIvZcSUdZQeeLEVaya",
+                "type": "VALUE",
+                "order": 1,
+                "value": "Page.loginForm.userId"
+              }
+            },
+            "value": {
+              "7zPLn1B9O5ehEP2CR2srMd": {
+                "key": "7zPLn1B9O5ehEP2CR2srMd",
+                "type": "EXPRESSION",
+                "expression": "Parent.userId",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "gzXEchxfil2F9oF0TBwqM",
+  "componentDefinition": {
+    "4uPrtKo7CQABTGBm5Pjlnj": {
+      "key": "4uPrtKo7CQABTGBm5Pjlnj",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3O95HDE4SKfRniW10ayaoL": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_bounceIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6AoE37zXDrmAxijcDykJkq": true,
+        "6gk6Y6B17tOtDcjMXRttqP": true
+      },
+      "displayOrder": 1
+    },
+    "6YkO9IyfcDPgokFiAdVwVz": {
+      "key": "6YkO9IyfcDPgokFiAdVwVz",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "GFokPbi9PFaTRN1p4d36L": true
+      },
+      "displayOrder": 0
+    },
+    "24BPSOSZXtg0NjTheLCda": {
+      "key": "24BPSOSZXtg0NjTheLCda",
+      "name": "CheckBox",
+      "type": "CheckBox",
+      "properties": {
+        "label": {
+          "value": "Keep me signed in"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "1zdynf4EGZKLRle4xvn2ls": {
+          "resolutions": {
+            "ALL": {
+              "checkbox-backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.loginForm.rememberMe ? '' : 'transparent'"
+                }
+              },
+              "checkbox-borderTopLeftRadius": {
+                "value": "2px"
+              },
+              "checkbox-borderTopRightRadius": {
+                "value": "2px"
+              },
+              "checkbox-borderBottomLeftRadius": {
+                "value": "2px"
+              },
+              "checkbox-borderBottomRightRadius": {
+                "value": "2px"
+              },
+              "checkbox-borderTopColor": {
+                "value": "#00000033"
+              },
+              "checkbox-borderTopWidth": {
+                "value": "2px"
+              },
+              "checkbox-borderRightColor": {
+                "value": "#00000033"
+              },
+              "checkbox-borderBottomColor": {
+                "value": "#00000033"
+              },
+              "checkbox-borderLeftColor": {
+                "value": "#00000033"
+              },
+              "checkbox-borderRightWidth": {
+                "value": "2px"
+              },
+              "checkbox-borderBottomWidth": {
+                "value": "2px"
+              },
+              "checkbox-borderLeftWidth": {
+                "value": "2px"
+              },
+              "checkbox-borderTopStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.loginForm.rememberMe ? '' : 'solid'"
+                }
+              },
+              "checkbox-borderRightStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.loginForm.rememberMe ? '' : 'solid'"
+                }
+              },
+              "checkbox-borderBottomStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.loginForm.rememberMe ? '' : 'solid'"
+                }
+              },
+              "checkbox-borderLeftStyle": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.loginForm.rememberMe ? '' : 'solid'"
+                }
+              },
+              "label-fontFamily": {
+                "value": "Inter"
+              },
+              "label-fontSize": {
+                "value": "16px"
+              },
+              "label-fontWeight": {
+                "value": "600"
+              },
+              "label-color": {
+                "value": "#333333"
+              },
+              "label-lineHeight": {
+                "value": "16px"
+              },
+              "label-letterSpacing": {
+                "value": "0.1"
+              },
+              "marginTop": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.loginForm.rememberMe"
+      }
+    },
+    "53zwdLbHacixf30RjKjiNQ": {
+      "key": "53zwdLbHacixf30RjKjiNQ",
+      "name": "errorMessageGridNotVerifiedSignIn",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "(Page.verificationList != undefined) and (Page.verificationList.length != 1)"
+          }
+        }
+      },
+      "styleProperties": {
+        "13PTklqb1NvC9blJENtaxz": {
+          "resolutions": {
+            "ALL": {
+              "bottom": {
+                "value": "0px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "background": {
+                "value": "#F8EFF0"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1jbzwNTkM2XBLAuUNFMzGF": true
+      },
+      "displayOrder": 0
+    },
+    "6Zrd6pHLR95alvoVd9GPbu": {
+      "key": "6Zrd6pHLR95alvoVd9GPbu",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4D2RTmN0G5NTmcH2BFsfj4": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "78%"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3lRcnA6KwYwrGPfqRPGACv": true
+      },
+      "displayOrder": 2
+    },
+    "2ptMJpK0h40jdr1oM1FDG5": {
+      "key": "2ptMJpK0h40jdr1oM1FDG5",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.oneDigit = false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.oneDigit= false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "6498fTWLDDR0yP43xjO9Lw": {
+      "key": "6498fTWLDDR0yP43xjO9Lw",
+      "name": "signInProgressBar",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signUp'"
+          }
+        }
+      },
+      "styleProperties": {
+        "5TI06SCqFEPRcIEnYNAxsq": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1pJlLCvnmjYEVZaWI0htwM": true,
+        "4U0rAC5GTqLkAYitfmaaGB": true
+      },
+      "displayOrder": 1
+    },
+    "1Xj6q3eyGfbRhYrO4g3L1L": {
+      "key": "1Xj6q3eyGfbRhYrO4g3L1L",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2V1xaCIHTkuLmjMsTntX1o": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "30px"
+              },
+              "marginTop": {
+                "value": "35px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "marginLeft": {
+                "value": "0"
+              },
+              "height": {
+                "value": "50px"
+              },
+              "flexDirection": {
+                "value": "column"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5evXaJympYsqMXsZmPsnns": true,
+        "4OcNcQOahgbJVIG45XL9hI": true
+      },
+      "displayOrder": 8
+    },
+    "6oS6SvGvddj9SbA3ub7FRN": {
+      "key": "6oS6SvGvddj9SbA3ub7FRN",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "We sent you our secret link."
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#52BD94"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "39aXvO68rT0q55mRx7qnFM": {
+      "key": "39aXvO68rT0q55mRx7qnFM",
+      "name": "Get early access",
+      "type": "Link",
+      "properties": {
+        "label": {
+          "value": "Forgot password?"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "linkPath": {
+          "value": "/forgotPassword"
+        },
+        "target": {
+          "value": "_self"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6WR24a5Su2cVc9Imhx3HM6": {
+      "key": "6WR24a5Su2cVc9Imhx3HM6",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/Group%20191.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4Nk7vHr5IVcR9orH5mDEa9": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-end"
+              },
+              "left": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "60px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "marginLeft": {
+                "value": "17px"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "displayOrder": 0
+    },
+    "69qrx21LRlVn93eXGxQfJX": {
+      "key": "69qrx21LRlVn93eXGxQfJX",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "flWiA2Tn5FxZKw0F8Np2P": true
+      },
+      "displayOrder": 1
+    },
+    "2xuTvUPDsocRTiSILt2RSH": {
+      "key": "2xuTvUPDsocRTiSILt2RSH",
+      "name": "validationMessageGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.passwordValidationGrid = true"
+          }
+        }
+      },
+      "styleProperties": {
+        "2MnNgwc91oxQCzgsbEDvSQ": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "flex-start"
+              },
+              "animationName": {
+                "value": "_pulse"
+              },
+              "animationDuration": {
+                "value": "1s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "animationDelay": {
+                "value": "0.5s"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "flexDirection": {
+                "value": "column"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2duYMR4L27Rg286oZ69AMy": true,
+        "5gdit342Yw7xxLfLkzHOvg": true
+      },
+      "displayOrder": 5
+    },
+    "5fTNa7tp88ErLV28lO17Qq": {
+      "key": "5fTNa7tp88ErLV28lO17Qq",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2eNTwyjscS0WOIRRcJzsDf": true,
+        "7iNJJBEl7RuIq2bFeJ4YWU": true
+      },
+      "displayOrder": 2
+    },
+    "25HYLiW058KoS5RHL21jr8": {
+      "key": "25HYLiW058KoS5RHL21jr8",
+      "name": "leftBlock.svg",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/mediumLeft.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "6lAlKOYt2EJTVb0munpZeH": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "50px"
+              },
+              "height": {
+                "value": "50px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "top": {
+                "value": "140px"
+              },
+              "right": {
+                "value": "0px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              },
+              "top": {
+                "value": "130px"
+              },
+              "right": {
+                "value": "0px"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "displayOrder": 2
+    },
+    "4kdMvIMVTge3R6ECRP61qc": {
+      "key": "4kdMvIMVTge3R6ECRP61qc",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "5Syng0ATLY7uionKhNB5ab": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_zoomIn"
+              },
+              "animationDuration": {
+                "value": "0.5s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4b1hJueC1g9ni9MQC66Cp0": true,
+        "43tHvf1uqbupGSqluGapfw": true
+      },
+      "displayOrder": 3
+    },
+    "3lRcnA6KwYwrGPfqRPGACv": {
+      "key": "3lRcnA6KwYwrGPfqRPGACv",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/FIN2/relp/illustration-side.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "1D5SjzODzJrVnCvmuJMggo": {
+          "resolutions": {
+            "ALL": {
+              "image-width": {
+                "value": "100%"
+              },
+              "image-height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "19SA0NmNuKdQAr01e6OKA1": {
+      "key": "19SA0NmNuKdQAr01e6OKA1",
+      "name": "ProgressBar",
+      "type": "ProgressBar",
+      "properties": {
+        "progressBarDesign": {
+          "value": "_circular_text_background_outline"
+        },
+        "progressLabel": {
+          "value": "1",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailVerified = true ? 2 : 1"
+          }
+        },
+        "minprogressValue": {
+          "value": 0
+        },
+        "progressLabelAlignment": {
+          "value": "_center"
+        },
+        "circularProgressBarIndicatorWidth": {
+          "value": 4
+        },
+        "progressValue": {
+          "value": 50,
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailVerified = true ? 100 : 50"
+          }
+        },
+        "progressBarColorScheme": {
+          "value": "_secondary"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.signInError = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "Gaow0vLTJnfT7UKZ1qaha": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "52px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "2fZDjlAWL9Esr7s9Y4jKYX": {
+      "key": "2fZDjlAWL9Esr7s9Y4jKYX",
+      "name": "rightGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "myvOfeUgOAr3YK7oH78BG": {
+          "resolutions": {
+            "ALL": {
+              "maxWidth": {
+                "value": "320px"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "2lSQP8Vs9qINOIdazOyGc3": true,
+        "4QQPdelKa7TBjqCeT6TNY0": true,
+        "1XDAK4KE6nq8mJxLJ8Y1Yx": null,
+        "1ssm4AMD5f8iEvkuVcOjZS": null,
+        "4iWAQw7O9yPEdtKzj3TfSV": true,
+        "7vLPNTozp1klZPP9bbOjAq": null,
+        "3ET0ejQ9asdOTc72MD4Cj1": true
+      },
+      "displayOrder": 1
+    },
+    "1JrZKhB3QoUOf13Xyox7AQ": {
+      "key": "1JrZKhB3QoUOf13Xyox7AQ",
+      "name": "Passwordbutton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Sign up"
+        },
+        "onClick": {
+          "value": "CJbScePVMgdSKPkpjHqlP"
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailSent != false or Page.allValidations = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "56ajSkcR3UB60ehelIPBUS": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FFF"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "normal"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "5gdit342Yw7xxLfLkzHOvg": {
+      "key": "5gdit342Yw7xxLfLkzHOvg",
+      "name": "rightGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2evMrUbeLjpFUvre8yIh2N": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5NMfdCVx1qxnQu7vmI6eEz": true,
+        "6C2IsdCMZVMW1OMtIsZRWa": true
+      },
+      "displayOrder": 1
+    },
+    "6TIikntigpBPTlwKEg9Vat": {
+      "key": "6TIikntigpBPTlwKEg9Vat",
+      "name": "Passwordbutton",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "SignIn"
+        },
+        "onClick": {
+          "value": "loginFunction"
+        },
+        "colorScheme": {
+          "value": "_quinary"
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.loginForm.password = null & Page.loginForm.userName = null"
+          }
+        }
+      },
+      "styleProperties": {
+        "73CCqJtbLzuKA200w6PzEq": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FFF"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "normal"
+              },
+              "marginTop": {
+                "value": "52px"
+              },
+              "marginBottom": {
+                "value": "50px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "GFokPbi9PFaTRN1p4d36L": {
+      "key": "GFokPbi9PFaTRN1p4d36L",
+      "name": "signInProgressBar",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signIn'"
+          }
+        }
+      },
+      "styleProperties": {
+        "5TI06SCqFEPRcIEnYNAxsq": {
+          "resolutions": {
+            "ALL": {
+              "marginRight": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Cco3wFf53dT9fIHaLE81o": true,
+        "1aUBLvefBXkLHDVjrgIshs": true
+      },
+      "displayOrder": 1
+    },
+    "7FOTkV3MYsy3KDy4HGy7pJ": {
+      "key": "7FOTkV3MYsy3KDy4HGy7pJ",
+      "name": "signUpGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2c19U1rSZIDK9LRKG4Pv7c": {
+          "resolutions": {
+            "ALL": {
+              "flexGrow": {
+                "value": "1"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "marginTop": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "2fZDjlAWL9Esr7s9Y4jKYX": true
+      },
+      "displayOrder": 3
+    },
+    "6jpQKJeHz2rmXGqKyHIrqO": {
+      "key": "6jpQKJeHz2rmXGqKyHIrqO",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "Jk3GTSglFhQ03bIwjSsY": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "30px"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              },
+              "paddingRight": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7oSfPwr6wtOQQiHdcHleHH": true
+      },
+      "displayOrder": 1
+    },
+    "2duYMR4L27Rg286oZ69AMy": {
+      "key": "2duYMR4L27Rg286oZ69AMy",
+      "name": "leftGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4YtHKLhh59FWyW1GdW9GlO": true,
+        "5fTNa7tp88ErLV28lO17Qq": true,
+        "7iG67tWZcJyILqFrvPoHlj": true
+      },
+      "displayOrder": 1
+    },
+    "3PSZBNqsILZk2CdSyrukiE": {
+      "key": "3PSZBNqsILZk2CdSyrukiE",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-envelope-circle-check"
+        }
+      },
+      "styleProperties": {
+        "p9OhcXOdXX4Gx0v6qA5Aj": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": " #52BD94"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7dKXaw27dUPoK589nDSkJO": {
+      "key": "7dKXaw27dUPoK589nDSkJO",
+      "name": "EmailLabels",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailVerified = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "564crm3OQlcI9cEFg0oRjw": {
+          "resolutions": {
+            "ALL": {
+              "flex": {
+                "value": "1"
+              },
+              "gap": {
+                "value": "0"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "iur9518gN3hvrEIFVIyy1": true
+      },
+      "displayOrder": 1
+    },
+    "1jvgOfSQVsV8k916UqzgPf": {
+      "key": "1jvgOfSQVsV8k916UqzgPf",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "SIGN UP"
+        },
+        "onClick": {
+          "value": "4hczTYqmm8mq70cSksU2kZ"
+        }
+      },
+      "styleProperties": {
+        "24LAI8peBlxkLAmEBfatzY": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.sign ='signUp' ? \"#fff\":\"transparent\""
+                }
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "150%"
+              },
+              "letterSpacing": {
+                "value": "0.28px"
+              },
+              "textTransform": {
+                "value": "uppercase"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.sign ='signUp' ? \"#333\":\"rgba(51, 51, 51, 0.40)\""
+                }
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "50%"
+              },
+              "height": {
+                "value": "80%"
+              },
+              "boxShadow": {
+                "value": "0px 0px 0px 0px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "paddingLeft": {
+                "value": "0"
+              },
+              "paddingRight": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3t1rtdmwlK4a9e2I6IbUhO": {
+      "key": "3t1rtdmwlK4a9e2I6IbUhO",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "SIGN IN"
+        },
+        "onClick": {
+          "value": "7n14RVZvry1iWH0gpuczKC"
+        }
+      },
+      "styleProperties": {
+        "3gAZEkHhWbS0OH9jqfqVuN": {
+          "resolutions": {
+            "ALL": {
+              "backgroundColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.sign !='signUp' ? \"#fff\":\"transparent\""
+                }
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.sign !='signUp' ? \"#333\":\"rgba(51, 51, 51, 0.40)\""
+                }
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "150%"
+              },
+              "letterSpacing": {
+                "value": "0.28px"
+              },
+              "textTransform": {
+                "value": "uppercase"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "width": {
+                "value": "50%"
+              },
+              "height": {
+                "value": "80%"
+              },
+              "boxShadow": {
+                "value": "0px 0px 0px 0px inset"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "whiteSpace": {
+                "value": "nowrap"
+              },
+              "paddingLeft": {
+                "value": "0"
+              },
+              "paddingRight": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6C2IsdCMZVMW1OMtIsZRWa": {
+      "key": "6C2IsdCMZVMW1OMtIsZRWa",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "rDHOJXOg4tOJhtG2nBpgE": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4cQDolg3ADJ1YyCAgEEMIt": true,
+        "6CdCh50biytXfl02jDrU2D": true
+      },
+      "displayOrder": 1
+    },
+    "66CKkSvbaRr1C7a4QxBdq8": {
+      "key": "66CKkSvbaRr1C7a4QxBdq8",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Forgot your password?"
+        }
+      },
+      "styleProperties": {
+        "2Hdb1Rlo7SSjlcbCfdr9Z5": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#333"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "/* 150% */letterSpacing": {
+                "value": "0.16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4soEpaLkGRhLRPtLEMpv3M": {
+      "key": "4soEpaLkGRhLRPtLEMpv3M",
+      "name": "bottomBlock.svg",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/smallBottom.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "6Ps3GcqCaCpFirMK3ddOPN": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "80px"
+              },
+              "height": {
+                "value": "80px"
+              },
+              "left": {
+                "value": "67%"
+              },
+              "top": {
+                "value": "35%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2lSQP8Vs9qINOIdazOyGc3": {
+      "key": "2lSQP8Vs9qINOIdazOyGc3",
+      "name": "progressGridsignIn",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.pathNeverComes"
+          }
+        }
+      },
+      "styleProperties": {
+        "5HvKrr8NDQHl7enFAFl96h": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "right": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2yJH4l5a4szlzWVijLVqw7": true
+      },
+      "displayOrder": 6
+    },
+    "2Cco3wFf53dT9fIHaLE81o": {
+      "key": "2Cco3wFf53dT9fIHaLE81o",
+      "name": "ProgressBar",
+      "type": "ProgressBar",
+      "properties": {
+        "progressBarDesign": {
+          "value": "_circular_text_background_outline"
+        },
+        "progressLabel": {
+          "value": "1",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailSent = true ? 2 : 1"
+          }
+        },
+        "minprogressValue": {
+          "value": 0
+        },
+        "progressLabelAlignment": {
+          "value": "_center"
+        },
+        "circularProgressBarIndicatorWidth": {
+          "value": 4
+        },
+        "progressValue": {
+          "value": 50,
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailSent = true ? 100 : 50"
+          }
+        },
+        "progressBarColorScheme": {
+          "value": "_secondary"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.signUpEmailPasswordCheck = false and Page.cannotRegisterUser = false"
+          }
+        }
+      },
+      "styleProperties": {
+        "Gaow0vLTJnfT7UKZ1qaha": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "52px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6AoE37zXDrmAxijcDykJkq": {
+      "key": "6AoE37zXDrmAxijcDykJkq",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-circle-xmark"
+        }
+      },
+      "styleProperties": {
+        "p9OhcXOdXX4Gx0v6qA5Aj": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": " #FE3939"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2wYOALvj5gkg6hdyIm77uj": {
+      "key": "2wYOALvj5gkg6hdyIm77uj",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "1eWxWd95sJGToavUtcgch": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_bounceIn"
+              },
+              "animationDuration": {
+                "value": "1s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "58tL41iWtqfzanxzWsuPp8": true,
+        "19SzDjBtC3pJMAJ9JkTWrY": true
+      },
+      "displayOrder": 2
+    },
+    "6gk6Y6B17tOtDcjMXRttqP": {
+      "key": "6gk6Y6B17tOtDcjMXRttqP",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "User cannot be registered"
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4jprUZObySfsDkWyoN8A4q": {
+      "key": "4jprUZObySfsDkWyoN8A4q",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "onClick": {
+          "value": "eMYpnywsJYvZ00PjPOIqq"
+        }
+      },
+      "styleProperties": {
+        "1q9CepxmCaU2aw6j43KJ4J": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#0085F2"
+              },
+              "fontFamily": {
+                "value": "inter"
+              },
+              "fontSize": {
+                "value": "16px"
+              },
+              "fontWeight": {
+                "value": "400"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.01em"
+              },
+              "textAlign": {
+                "value": "left"
+              },
+              "cursor": {
+                "value": "pointer"
+              },
+              "backgroundColor": {
+                "value": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3VeavaXHR2frGRTLpjRdyp": true
+      },
+      "displayOrder": 3
+    },
+    "1zUtMOHUTGz7ks5M4uMZXQ": {
+      "key": "1zUtMOHUTGz7ks5M4uMZXQ",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4HwyK6eZfHKPUWqrOMyskd": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "space-between"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "39aXvO68rT0q55mRx7qnFM": true
+      },
+      "displayOrder": 6
+    },
+    "43tHvf1uqbupGSqluGapfw": {
+      "key": "43tHvf1uqbupGSqluGapfw",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Awesome! Looks like you are verified"
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#52BD94"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5BZI1k2Tbd9JgYYQrKBKoi": {
+      "key": "5BZI1k2Tbd9JgYYQrKBKoi",
+      "name": "Grid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "3tVW8hh2lIteBjNNQNXgV5": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_zoomIn"
+              },
+              "animationDuration": {
+                "value": "0.5s"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3PSZBNqsILZk2CdSyrukiE": true,
+        "6oS6SvGvddj9SbA3ub7FRN": true
+      },
+      "displayOrder": 1
+    },
+    "5veGMELEA9uQddhoROyquM": {
+      "key": "5veGMELEA9uQddhoROyquM",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "SignIn"
+        }
+      },
+      "styleProperties": {
+        "7gq6O07tWDsSOdwZA21BQo": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#0085F2"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "18px"
+              },
+              "/* 100% */letterSpacing": {
+                "value": "0.18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "1XDAK4KE6nq8mJxLJ8Y1Yx": {
+      "key": "1XDAK4KE6nq8mJxLJ8Y1Yx",
+      "name": "signUpGridM",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signIn'"
+          }
+        }
+      },
+      "styleProperties": {
+        "7d0sMulfHVwYsCaAM2U1iA": {
+          "resolutions": {
+            "ALL": {
+              "animationName": {
+                "value": "_fadeInRight"
+              },
+              "animationDuration": {
+                "value": "0.3s"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1JrZKhB3QoUOf13Xyox7AQ": true,
+        "1Xj6q3eyGfbRhYrO4g3L1L": true,
+        "2xuTvUPDsocRTiSILt2RSH": true,
+        "4XW14Y73eKoadGJJ35GBbu": true,
+        "5pm3hshtDD1lDDP1dvEdbf": true
+      },
+      "displayOrder": 5
+    },
+    "5vWikAmSR6dygtxOf14Fvn": {
+      "key": "5vWikAmSR6dygtxOf14Fvn",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/account.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "4l5oNADeXzg08GZLw3CUBq": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "flexWrap": {
+                "value": "no-wrap"
+              },
+              "flex": {
+                "value": "1"
+              },
+              "width": {
+                "value": "50px"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "displayOrder": 2
+    },
+    "3dFMeOMaZfqp4zPCvKLeIx": {
+      "key": "3dFMeOMaZfqp4zPCvKLeIx",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.oneLowerCase = false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.oneLowerCase = false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "gzXEchxfil2F9oF0TBwqM": {
+      "key": "gzXEchxfil2F9oF0TBwqM",
+      "name": "PageGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "MdDDUfsSIJObNuAeKmrUi": {
+          "resolutions": {
+            "ALL": {
+              "overflowX": {
+                "value": "hidden"
+              },
+              "overflow": {
+                "value": "hidden"
+              },
+              "overflowY": {
+                "value": "hidden"
+              },
+              "gap": {
+                "value": "0"
+              },
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "73v2IYJGgS4BJkH0Y7VeFc": true,
+        "7vPFNTbdHFeAf8Zl4OGCtl": true,
+        "vy3ULpPAdmExt5VXNUlpe": true
+      }
+    },
+    "3ctzCfGFV49ryFXB2wjzqM": {
+      "key": "3ctzCfGFV49ryFXB2wjzqM",
+      "name": "cannotVerifyMessageGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.cannotRegisterUser"
+          }
+        }
+      },
+      "styleProperties": {
+        "13PTklqb1NvC9blJENtaxz": {
+          "resolutions": {
+            "ALL": {
+              "bottom": {
+                "value": "0px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "background": {
+                "value": "#F8EFF0"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4uPrtKo7CQABTGBm5Pjlnj": true
+      },
+      "displayOrder": 0
+    },
+    "1pJlLCvnmjYEVZaWI0htwM": {
+      "key": "1pJlLCvnmjYEVZaWI0htwM",
+      "name": "ProgressBar",
+      "type": "ProgressBar",
+      "properties": {
+        "progressValue": {
+          "value": 0
+        },
+        "progressBarDesign": {
+          "value": "_circular_text_background_outline"
+        },
+        "progressBarColorScheme": {
+          "value": "_quaternary"
+        },
+        "progressLabel": {
+          "value": "2",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "(Page.verificationList != undefined) and (Page.verificationList.length != 1) ? 1 : 2"
+          }
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.signInError != false or (Page.verificationList != undefined) and (Page.verificationList.length != 1)"
+          }
+        },
+        "circularProgressBarIndicatorWidth": {
+          "value": 4
+        }
+      },
+      "styleProperties": {
+        "6N1jWZuEuWeP49npsg9CCk": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "52px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4QQPdelKa7TBjqCeT6TNY0": {
+      "key": "4QQPdelKa7TBjqCeT6TNY0",
+      "name": "progressGridSignUp",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.pathNeverComes"
+          }
+        }
+      },
+      "styleProperties": {
+        "5HvKrr8NDQHl7enFAFl96h": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "right": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6YkO9IyfcDPgokFiAdVwVz": true
+      },
+      "displayOrder": 9
+    },
+    "7oSfPwr6wtOQQiHdcHleHH": {
+      "key": "7oSfPwr6wtOQQiHdcHleHH",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Get early access"
+        },
+        "designType": {
+          "value": "_outlined"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "linkPath": {
+          "value": "/earlyaccesssignup"
+        }
+      },
+      "styleProperties": {
+        "1XsjSKa1jRSmIUY0MpDujA": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "192px"
+              },
+              "height": {
+                "value": "46px"
+              },
+              "alignSelf": {
+                "value": "end"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "39rWmO396Z9grLTfY4uKmh": {
+      "key": "39rWmO396Z9grLTfY4uKmh",
+      "name": "EmailLabels",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3beA0rqiUOyBartKPUqnS2": true
+      },
+      "displayOrder": 1
+    },
+    "4ifgJUPfYBuSSwuJVzFrfe": {
+      "key": "4ifgJUPfYBuSSwuJVzFrfe",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Opps! Looks like you are not verified. Please sign up"
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4HvGh1guhDnXgu4pbZJHXI": {
+      "key": "4HvGh1guhDnXgu4pbZJHXI",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.eightCharacters =false ? 'fa-solid fa-circle-xmark' : 'fa-regular fa-circle-check' "
+          }
+        }
+      },
+      "styleProperties": {
+        "2wxxPMAAx3QqVPyEZpkYep": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939",
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Page.eightCharacters =false ? '#FE3939' : '#52BD94'"
+                }
+              },
+              "fontSize": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "67pd9K4jljU025BHkpGWwi": {
+      "key": "67pd9K4jljU025BHkpGWwi",
+      "name": "oopsGrid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signUp'"
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "53zwdLbHacixf30RjKjiNQ": true
+      },
+      "displayOrder": 9
+    },
+    "7iG67tWZcJyILqFrvPoHlj": {
+      "key": "7iG67tWZcJyILqFrvPoHlj",
+      "name": "lowerCasegrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "uJEnJ8tpBlfxgeElcFvTx": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "je4EkYIClsKgOaCymKTPH": true,
+        "5XFFv9Z8O300QC9bQ6hsgP": true
+      },
+      "displayOrder": 2
+    },
+    "4Zs8Tu9JVeSndH5CJ1tlnH": {
+      "key": "4Zs8Tu9JVeSndH5CJ1tlnH",
+      "name": "BackgroundsBlocks",
+      "type": "Grid",
+      "styleProperties": {
+        "1kNnV8w2iKktByTuhfWCKS": {
+          "resolutions": {
+            "ALL": {
+              "alignItems": {
+                "value": "center"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "position": {
+                "value": "relative"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "5CkY9hnCNa4TGMAwQ3oGjo": true,
+        "2ibPCHOmqSbmg4Lk5w2Cxv": true
+      },
+      "displayOrder": 1
+    },
+    "4fw7aJ8JzlQZ3cl41qYuzC": {
+      "key": "4fw7aJ8JzlQZ3cl41qYuzC",
+      "name": "weHavesentAlinkGridSignUp",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.emailSent != false "
+          }
+        }
+      },
+      "styleProperties": {
+        "13PTklqb1NvC9blJENtaxz": {
+          "resolutions": {
+            "ALL": {
+              "bottom": {
+                "value": "0px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "background": {
+                "value": "#F0F6F5"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "5BZI1k2Tbd9JgYYQrKBKoi": true
+      },
+      "displayOrder": 8
+    },
+    "Ms9ZiPQbYR1AWG3pGph9P": {
+      "key": "Ms9ZiPQbYR1AWG3pGph9P",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Welcome to"
+        }
+      },
+      "styleProperties": {
+        "562wJIyvZaYTN0pVEkmyFb": {
+          "resolutions": {
+            "ALL": {
+              "Welcome tocolor": {
+                "value": "#333"
+              },
+              "fontFamily": {
+                "value": "Poppins"
+              },
+              "fontSize": {
+                "value": "30px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "600"
+              },
+              "lineHeight": {
+                "value": "30px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7iNJJBEl7RuIq2bFeJ4YWU": {
+      "key": "7iNJJBEl7RuIq2bFeJ4YWU",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "4HvGh1guhDnXgu4pbZJHXI": true
+      },
+      "displayOrder": 1
+    },
+    "1ssm4AMD5f8iEvkuVcOjZS": {
+      "key": "1ssm4AMD5f8iEvkuVcOjZS",
+      "name": "signUpLabelGrid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signIn'"
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "39rWmO396Z9grLTfY4uKmh": true
+      },
+      "displayOrder": 1
+    },
+    "1aUBLvefBXkLHDVjrgIshs": {
+      "key": "1aUBLvefBXkLHDVjrgIshs",
+      "name": "ProgressBar",
+      "type": "ProgressBar",
+      "properties": {
+        "progressValue": {
+          "value": 50
+        },
+        "progressBarDesign": {
+          "value": "_circular_text_background_outline"
+        },
+        "progressBarColorScheme": {
+          "value": "_quaternary"
+        },
+        "progressLabel": {
+          "value": "1"
+        },
+        "circularProgressBarIndicatorWidth": {
+          "value": 4
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.signUpEmailPasswordCheck != false or Page.cannotRegisterUser"
+          }
+        }
+      },
+      "styleProperties": {
+        "6N1jWZuEuWeP49npsg9CCk": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "52px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "2eNTwyjscS0WOIRRcJzsDf": {
+      "key": "2eNTwyjscS0WOIRRcJzsDf",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "8 characters minimum"
+        }
+      },
+      "styleProperties": {
+        "1T7u0WHRzqUth4u3mlwsM8": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "4U0rAC5GTqLkAYitfmaaGB": {
+      "key": "4U0rAC5GTqLkAYitfmaaGB",
+      "name": "progressBarOut",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "(Page.verificationList = undefined) or (Page.verificationList.length = 1)"
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "19SA0NmNuKdQAr01e6OKA1": true
+      },
+      "displayOrder": 1
+    },
+    "2yJH4l5a4szlzWVijLVqw7": {
+      "key": "2yJH4l5a4szlzWVijLVqw7",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "6498fTWLDDR0yP43xjO9Lw": true
+      },
+      "displayOrder": 0
+    },
+    "1rLIXw7bia7NwJdccw1jBM": {
+      "key": "1rLIXw7bia7NwJdccw1jBM",
+      "name": "iconGrid",
+      "type": "Grid",
+      "override": false,
+      "children": {
+        "3dFMeOMaZfqp4zPCvKLeIx": true
+      },
+      "displayOrder": 1
+    },
+    "5RpJZ00vIGEcc1IJuluqoF": {
+      "key": "5RpJZ00vIGEcc1IJuluqoF",
+      "name": "errorMessageGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.signInError != false"
+          }
+        }
+      },
+      "styleProperties": {
+        "13PTklqb1NvC9blJENtaxz": {
+          "resolutions": {
+            "ALL": {
+              "bottom": {
+                "value": "0px"
+              },
+              "position": {
+                "value": "absolute"
+              },
+              "width": {
+                "value": "100%"
+              },
+              "height": {
+                "value": "60px"
+              },
+              "display": {
+                "value": "flex"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "background": {
+                "value": "#F8EFF0"
+              },
+              "boxShadow": {
+                "value": "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+              },
+              "paddingLeft": {
+                "value": "5px"
+              },
+              "paddingRight": {
+                "value": "5px"
+              },
+              "paddingBottom": {
+                "value": "5px"
+              },
+              "paddingTop": {
+                "value": "5px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "paddingLeft": {
+                "value": "15px"
+              },
+              "paddingRight": {
+                "value": "15px"
+              },
+              "paddingTop": {
+                "value": "15px"
+              }
+            }
+          }
+        }
+      },
+      "override": true,
+      "children": {
+        "1i4gxQEjDIPc25zO3R3s1o": true
+      },
+      "displayOrder": 6
+    },
+    "7g1yJ2ENkT45jBPbOow4im": {
+      "key": "7g1yJ2ENkT45jBPbOow4im",
+      "name": "password",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Password"
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-lock",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "validation": {
+          "2n8nb69YH9lho7NAXhfcIg": {
+            "key": "2n8nb69YH9lho7NAXhfcIg",
+            "order": 1,
+            "property": {
+              "value": {
+                "condition": {},
+                "message": {
+                  "value": "Password is mandatory."
+                }
+              }
+            }
+          },
+          "20Gs8JTY3KkMPcKyVl1bLK": {
+            "key": "20Gs8JTY3KkMPcKyVl1bLK",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "STRING_LENGTH",
+                "message": {
+                  "value": "Password should be at least 8 characters."
+                },
+                "minLength": {
+                  "value": 8
+                }
+              }
+            }
+          }
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "isPassword": "<REDACTED>",
+        "onEnter": {
+          "value": "6GQaBx9TEcsM4ZA50rV0Fr"
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "__truncated__": "... 2 more props"
+      },
+      "styleProperties": {
+        "2SCyWHzuo4OKNhA9ATekKd": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.loginForm.password"
+      }
+    },
+    "3kk609CbKDPRMKJHxssJ6u": {
+      "key": "3kk609CbKDPRMKJHxssJ6u",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One uppercase character"
+        }
+      },
+      "styleProperties": {
+        "6cJ6VMllSYwETBc93pF4Z4": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              },
+              "whiteSpace": {
+                "value": "nowrap"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5pm3hshtDD1lDDP1dvEdbf": {
+      "key": "5pm3hshtDD1lDDP1dvEdbf",
+      "name": "Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "7MOyy7tUafvAFuyaxZO8lm": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "18px"
+              },
+              "maxWidth": {
+                "value": "340px"
+              },
+              "marginTop": {
+                "value": "10px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3r1zd4akS0EaZKBXk9Rmkr": true,
+        "3OI4gLCOI2Y1JiraQGIPvT": true,
+        "3Dhn9Wh1kbi4y4NRQsYwzG": true,
+        "3CL36KlMoPtK4grpSaUPL": true
+      },
+      "displayOrder": 1
+    },
+    "4XW14Y73eKoadGJJ35GBbu": {
+      "key": "4XW14Y73eKoadGJJ35GBbu",
+      "name": "Grid",
+      "type": "Grid",
+      "override": false,
+      "displayOrder": 7
+    },
+    "5CkY9hnCNa4TGMAwQ3oGjo": {
+      "key": "5CkY9hnCNa4TGMAwQ3oGjo",
+      "name": "bigblock.svg",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/landingpages/bigBlock.svg"
+        },
+        "alt": {
+          "value": "Placeholder image"
+        }
+      },
+      "styleProperties": {
+        "5SGtrTJiHJTmkbe21CtT2O": {
+          "resolutions": {
+            "ALL": {
+              "position": {
+                "value": "absolute"
+              },
+              "right": {
+                "value": "0"
+              },
+              "top": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "KR5CLKIODMiK0GbcACFOS": {
+      "key": "KR5CLKIODMiK0GbcACFOS",
+      "name": "TextBox",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Email Address",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "leftIcon": {
+          "value": "fa-envelope fa-solid",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "validation": {
+          "2n8nb69YH9lho7NAXhfcIg": {
+            "key": "2n8nb69YH9lho7NAXhfcIg",
+            "order": 1,
+            "property": {
+              "value": {
+                "condition": {},
+                "message": {
+                  "value": "Email is mandatory."
+                }
+              }
+            }
+          },
+          "6WWDhVsDEewynm2xKZLkUc": {
+            "key": "6WWDhVsDEewynm2xKZLkUc",
+            "order": 2,
+            "property": {
+              "value": {
+                "type": "EMAIL",
+                "message": {
+                  "value": "Please enter a valid email."
+                }
+              }
+            }
+          }
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "onEnter": {
+          "value": "6GQaBx9TEcsM4ZA50rV0Fr"
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "__truncated__": "... 1 more props"
+      },
+      "styleProperties": {
+        "4IUA42zaWOKDChIt4RK3EV": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.loginForm.userName"
+      }
+    },
+    "4iWAQw7O9yPEdtKzj3TfSV": {
+      "key": "4iWAQw7O9yPEdtKzj3TfSV",
+      "name": "signInLabelGrid",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.sign != 'signUp'"
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3JPfNcsf1ABOWrBuhgLGf": true
+      },
+      "displayOrder": 2
+    },
+    "5lt0iGOBJqtlAHdhp4644D": {
+      "key": "5lt0iGOBJqtlAHdhp4644D",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": "fa-solid fa-circle-xmark"
+        }
+      },
+      "styleProperties": {
+        "p9OhcXOdXX4Gx0v6qA5Aj": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": " #FE3939"
+              },
+              "fontSize": {
+                "value": "18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "iur9518gN3hvrEIFVIyy1": {
+      "key": "iur9518gN3hvrEIFVIyy1",
+      "name": "bigLabel",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4U9AuVX9ZotIhglsJOQWWo": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              }
+            },
+            "TABLET_POTRAIT_SCREEN_SMALL": {
+              "gap": {
+                "value": "5px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2jUbIJpYv8VH1LVWW2vewV": true,
+        "5vWikAmSR6dygtxOf14Fvn": true
+      },
+      "displayOrder": 1
+    },
+    "3r1zd4akS0EaZKBXk9Rmkr": {
+      "key": "3r1zd4akS0EaZKBXk9Rmkr",
+      "name": "Full Name",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "First Name",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "leftIcon": {
+          "value": "fa-solid fa-user-large",
+          "location": {
+            "type": "EXPRESSION"
+          }
+        },
+        "rightIcon": {
+          "value": " "
+        },
+        "hideClearContentIcon": {
+          "value": true
+        },
+        "validation": {
+          "2sZVrwlR7tKHhJJjEfjxKF": {
+            "key": "2sZVrwlR7tKHhJJjEfjxKF",
+            "order": 1,
+            "property": {
+              "value": {
+                "message": {
+                  "value": "First name is mandatory"
+                }
+              }
+            }
+          }
+        },
+        "designType": {
+          "value": "_bigDesign1"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "hideClearButton": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "1eHo1CCO6eRbLmYfi7rtuB": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "inputBox-paddingTop": {
+                "value": "0px"
+              },
+              "inputBox-paddingBottom": {
+                "value": "0px"
+              },
+              "inputBox-paddingLeft": {
+                "value": "0px"
+              },
+              "inputBox-paddingRight": {
+                "value": "0px"
+              },
+              "marginBottom": {
+                "value": "20px"
+              },
+              "leftIcon-fontSize": {
+                "value": "17px"
+              },
+              "leftIcon-paddingRight": {
+                "value": "26px"
+              },
+              "label-paddingLeft": {
+                "value": "43px"
+              },
+              "label-fontSize": {
+                "value": "12px"
+              },
+              "label-fontFamily": {
+                "value": "inter"
+              },
+              "label-color": {
+                "value": "#b1bbc6"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "fontFamily": {
+                "value": "inter"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.signUpForm.firstName"
+      }
+    },
+    "3VeavaXHR2frGRTLpjRdyp": {
+      "key": "3VeavaXHR2frGRTLpjRdyp",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Click here"
+        }
+      },
+      "styleProperties": {
+        "zntLMEbiC0JDt8JTnjOd6": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#0085F2"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "18px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "700"
+              },
+              "lineHeight": {
+                "value": "18px"
+              },
+              "/* 100% */letterSpacing": {
+                "value": "0.18px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4cQDolg3ADJ1YyCAgEEMIt": {
+      "key": "4cQDolg3ADJ1YyCAgEEMIt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "One number"
+        }
+      },
+      "styleProperties": {
+        "3NOen2RKv0ntrUE63eWITN": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "rgba(51, 51, 51, 0.80)"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "12px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "30%"
+              },
+              "letterSpacing": {
+                "value": "0.24px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "58tL41iWtqfzanxzWsuPp8": {
+      "key": "58tL41iWtqfzanxzWsuPp8",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Password should not be same as Email address. Kindly follow the instruction"
+        }
+      },
+      "styleProperties": {
+        "2kdRw1MYlWMbDxHflj7VpC": {
+          "resolutions": {
+            "ALL": {
+              "color": {
+                "value": "#FE3939"
+              },
+              "fontFamily": {
+                "value": "Inter"
+              },
+              "fontSize": {
+                "value": "14px"
+              },
+              "fontStyle": {
+                "value": "normal"
+              },
+              "fontWeight": {
+                "value": "500"
+              },
+              "lineHeight": {
+                "value": "24px"
+              },
+              "letterSpacing": {
+                "value": "0.14px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "__truncated__": "... 43 more components omitted for corpus"
+  },
+  "name": "signInNew",
+  "message": "From transport : 3y8kUB0mADxyNoL5c2ujsv",
+  "clientCode": "SYSTEM",
+  "appCode": "landingpages",
+  "version": 24,
+  "updatedAt": "2024-06-10 17:53:59.362000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-10-17 15:28:30.754000",
+  "createdBy": "<USER>"
+}

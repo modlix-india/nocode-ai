@@ -1,0 +1,333 @@
+- 4yx5phkxFxMgFMKFe2Egkn (Grid) PageGrid
+  - 7H101CFOavDwzc6Efbima8 (Grid) Top Navbar Grid
+    - 5Mrt7oH4SebzlCbE48DZyO (Grid) GridA
+    - 5Roi33T1oHeeHs9zzi16ZX (Grid) GridB
+      - 4BQw98w9PHUrkXT1A8QBxP (Grid) Grid
+        - 1R5NI84iHV02i99Aogeqvm (Grid) GridA
+          - 4K5HxmWytdJMK5ORPIcdmz (Image) image
+        - 2fzYr0MMfgaKv0UZ4vkXtc (Grid) GridB
+          - 2UOcjUlK27bRaH4NF837pu (Button) buttonA
+          - 7GQBcFFuxyNXPsSsWj2c11 (Button) buttonC
+          - 1vOPuGIrYguwUvS0H3BN1y (Button) buttonB
+        - 6OK8rKKprJUAgBI02YBLdo (Grid) GridC
+          - 2JByMrxkDigZld7WOVyT1Q (Button) button
+          - 7MOF3XtyTfXG1qrxnGCyVL (Button) Login button
+      - 6zq9EqAdV8YbNICCRct8xo (Menu) Menu
+    - 3L8chKlNSNMAWxEb6S4WaF (Grid) Mobile Grid
+      - 4BTHYxn2VLsGAVTmVR5PDh (Link) Link1
+      - 5mHxqTh9jJe1ihjWajXNqU (Link) Link2
+      - 5RBqiEbDMqKdppIOxm6xB2 (Link) Link3
+  - 1tAPk9kKE6NH6DsE1tyoZo (Grid) Grid
+    - 1t9h8W2FVYEmWm6tq5fcrj (Grid) SideNavBar
+      - 2KeayJ656GwobWoPuSlxpX (Grid) logo
+        - 54IqRd7eg06K4NQf3PzkU6 (Image) cx app logo
+      - 6nfTriKADuwtYnSFiiJ3Df (Grid) Developer Menu Grid
+        - 3LhlNgXTsJKCaVshlEp0ha (Menu) Dashboard Menu
+        - 1HC7hyhUJaej3VEfxmYA7p (Menu) Notifications Menu
+        - 3WvKVdPw8vRR0FKBuYnnaw (Menu) My Profile Menu
+        - 1lUp7IeD3D7luvfJzZAglV (Menu) Customer Menu
+      - WR7qyfsrTNyxQKa5yxWHA (Grid) Customer Menu Grid
+        - 7orYlVYRtPHUKu926ahmn4 (Grid) Basic SubMenu Grid
+          - 3H56MCiApAScyVWwlO7Y5A (Menu) Dashboard Menu
+          - 4MmjDUGjFjdpmSCXCrzeOL (Menu) Properties Menu
+            - 2uhPQSS6sboGbES9rAthc4 (Grid) Simple Menu Design 1
+              - 6IiySjlCb0JdOFkO9fWiEn (Menu) Ongoing Purchase Menu
+              - 6g45srRzAniyYOxJ5W7MuU (Menu) Active Menu
+        - bBlU7n7Sio5PpIHlZ5gsD (Grid) Investment SubMenu Grid
+          - 1sTndEdIWjZkUJ2jPfE6EF (Text) Investment Text
+          - 5TtOfPLJ2THsxf6ylYcusm (Menu) Documents Menu
+          - 6I9NlihRLwPVAaRctlwaAC (Menu) Transaction Menu
+          - 5flT3g4yk0OzoAvSVTYfPW (Menu) Manage Accounts Menu
+        - 6fTGc3tBCFZlGLOkJcPit4 (Grid) Others SubMenu Grid
+          - 4xr4FjP6rbH4OryzgxP3F4 (Text) Others Text
+          - 8ysFFMKiw3wbkhxV9KYYa (Menu) Notifications Menu
+          - 3uPA0zJFbXP3S06lQQsXra (Menu) contact manager Menu
+          - 1rZ7QRgljjlGsQGeQ7iSfA (Menu) Referral Program Menu
+          - B9dLwV5TTPjUF8H2aVVcy (Menu) Profile Menu
+          - eImOvBSbKM9Z4bY29U7Qk (Menu) Help and support Menu
+      - Gg9v6wq0Jz2mPvX5W6OFQ (Grid) Logout Grid
+        - 3sR8d6NDqNSa4QcK98yx2p (Menu) Logout Menu
+      - 5qnule4Rq33ULXZIlPND1g (Grid) Toggle button Grid
+        - 4l5lKQUuuF7qrjr2RcXAfv (Icon) Icon
+    - 42sLahASgsr9utOq9lCZvX (Grid) Mobile Nav Grid
+      - 2X26w6K6PMCPiCYdJ3Illv (Image) image
+      - 2FIeHiAyaxZYQLRfoHItos (Grid) Hamburger Grid
+        - 4ha63yUJfDcciJYhwbIC9U (Icon) Icon
+    - 5DDlimzYmmALfzpkOpkma7 (Grid) Mobile Menu Grid
+      - VRYD4U3tRU4mxo8Ps7cX9 (Grid) Developer Menu Grid
+        - 6wjbkYzf0hmNkbpRp3zL4d (Menu) Dashboard Menu
+        - 3TNKxI8WX5Oj37h2kSreWX (Menu) Notifications Menu
+        - 2epKvIkqO2KFMdNWkqy7vY (Menu) Profile Menu
+        - 5Qfy2IQL8frvoD7HrGOe8Q (Menu) Customer Menu
+      - 3dDCDnEpkR5fgZtBdh2NIR (Grid) Customer Menu Grid
+        - 1XklKTjqwpz7bmutLwOQIL (Grid) Basic SubMenu Grid
+          - 6pyiA1TFlT5ZRdYU7SuIh1 (Menu) Dashboard Menu
+          - FIHFm39cxXJXs5YThu4Oc (Menu) My Properties Menu
+            - 2eFKSxdBDzntOPM6CquZJL (Grid) Simple Menu Design 1
+              - 4no1c7Z2Bs0s3MQcszYvta (Menu) Ongoing Purchase Menu
+              - 2exvqsdQuNr55FHTxwGkzC (Menu) Active Menu
+        - 7rbMMuBfY9ToVWKGMYgGe0 (Grid) Investment SubMenu Grid
+          - 4DffPzZpFHvoIh5PDmDcdy (Text) Investment Text
+          - 10ba6PxPLszKbzobMosG1p (Menu) Documents Menu
+          - 68cKyy2wRph24LgkVD8LW7 (Menu) Transaction Menu
+          - 5uBZjsm4USOpcq46Tl16GV (Menu) Manage Accounts Menu
+        - 4VRUa87weDYSiJ2kDFw1IQ (Grid) Others SubMenu Grid
+          - 7N1bE9ENx0tMhLTvLuxsy7 (Text) Others Text
+          - 40MvNlEsPmpyHW5toesJ6f (Menu) Notifications Menu
+          - 3H1cdwTPyTE5Lr0xDGAfVV (Menu) contact manager Menu
+          - 2cAKxgaJQPIvNc1iwC5Pa (Menu) Referral Program Menu
+          - 4o5duJSWNxPZwjVNX1DJG3 (Menu) Profile Menu
+          - 4vwzZycbdWCchwUFVBSzsn (Menu) Help and support Menu
+      - 3wtbVoKibaZwz8TZYVWRjv (Menu) Logout Menu
+  - 4JxxlyB6N4l3fzFlglb8YR (Grid) Grid
+    - 1JG2joV2CffEGK4h0adAdL (Grid) Grid
+      - 6NNHP2NOqiFL5dYmquDAYA (Grid) mainGrid
+        - 1PRvdbhQM1ln2Jm0IZnVQy (Grid) top Grid
+          - 4Q44nipD7gctmqmbAsDX9o (Button) Back button
+          - 19Xj0EkWm8jz5Wtpef6p7I (Grid) Section1 Grid
+            - RKQ0A2KYREMmMMxiRJpAX (Grid) project logo and address Grid
+              - er78iCIS79DHSjZAdl54 (Image) project logo
+              - 64KCYZa8hPr6UgP7iXjdBn (Grid) Address Grid
+                - 1vi7CRIMz0rBEW1TDNh1mz (Icon) Icon
+                - AzsIjoDYrQhSZWz1sDlIN (Text) Text
+            - 6txh7qsEnPbRIKNT8YjBs3 (Grid) rera certificate mobile Grid
+              - 163ky9p798Jbe3asjLU4tV (Text) Text
+              - 6s32XTHdKsipnfuhy0mUmc (Grid) Grid
+                - 4m8s1NmCRLcQAXXQ4fl3k4 (Text) Text
+          - RdSNj4pH4J4WxeLLZUom3 (Grid) Section 2 Grid
+            - 5wfsbEbajU1jeOdz9YAM09 (Grid) left Grid
+              - 7yfunxCnsA9Pi7ce8qgH92 (Grid) Grid
+                - 6PbgTs2SucVRJ9XkUBOxwJ (Grid) Background image Grid
+                  - 6FUabjIaBQWdBSdTElIwsJ (Grid) Big Image Grid
+                    - 5fIY0rpSKVvHi0nr308498 (Image) image
+                - 681uPsggMpoPo48smvQ2NI (Grid) Repeators Grid
+                  - 5gMzbpCL7MXY3q5mEeBnnI (ArrayRepeater) images repeator
+                    - 3OBnB172aNHluPWEmtIqpS (Grid) image Grid
+                      - 5U7HT3HuqI5BODvwXSbFCA (Image) image
+                      - 2gEvZG4Kmnej1x9saAzjSC (Text) Text
+                  - tD0lKEBmdxS3TyEF0zFoZ (ArrayRepeater) repeator
+                    - 4vQUDMHH33YsLRX2kc07HN (Grid) Grid
+                      - 3XlfmJkGfCnapH9lxBArip (Video) Video
+                  - 4bdaPa8Hlfea88HaovcGyV (Gallery) Gallery
+            - 5mq0IXZvDGcxR1WFNCu1by (Grid) Right Grid for customer
+              - 706uaexLn71h5fFzBSl2dq (Grid) Grid
+                - 2qk7clTYOl1aV4MacRzSIr (Grid) Grid
+                  - 7mLe5NORegAWNhR6yefHaU (Text) Text
+                  - 2lqsH0YD5SihWmHFulL1aY (Grid) Grid
+                    - 2Nsy43yaQ5ux4uNZKiIFSG (Text) Minimum 
+                    - 5DOO4zso1ArnmA5bTTwByL (Grid) Grid
+                      - 3xYOOa9AlupLwqcUeZaBZs (Icon) Icon
+                      - 30N8G0t11Tg7CYLjXOCxlK (Text) Text
+                  - 2DaM4dNJx2Ul4AvGpYExZn (Grid) Grid
+                    - 54RFzyngWUAkvVtTwfLNYp (Text) Text
+                    - 4NGRx0PjzkwlRQY71atfY (TextBox) TextBox
+                  - 5N6nk0nAbCg9YRV8whODnt (Grid) Grid
+                    - 1AxaCvcko6ApUjV84QNdVO (Button) button
+                    - 1mvc0vkOEAf3lsmnywBEuA (Button) button
+                  - 4sII46U0o0dwAsLd2no6qV (Grid) Grid
+                    - 6r5zqKe5kAgb34scpgB8ci (Text) Text
+                    - U1cJ31sWRDemlVanuJAVJ (TextBox) TextBox
+                    - 4lqaY5kuBvmwvGHVFe8Rnf (Text) Text
+              - 1J89VuMGu8Wrxpp1n9RF3s (Button) Invest now
+            - OoFFHIUeNWVnZIZbUb1Y4 (Grid) Right Grid for client
+              - 7x4gXErUfEWVjIsb2ztcHC (Grid) Key Paraneters Grid
+                - 3IFhQqSdCeBle6p2C0VgJl (Grid) Grid
+                  - 1FMBnIuZEe2YaXgDs9l5XY (Grid) Grid
+                    - 7345aagOHoL0RsI5QvSiFr (Text) Text
+                    - 4K5BzeEtd3aozQlZqzxdPt (Grid) Grid
+                      - 532UvoXn7Sxqv5d7yyUnDR (Text) Text
+                  - 30bjzW6J08i0fwdv0gOeHL (Grid) Grid
+                    - 1QlfG2tmefLq1NHi4TIHMG (Grid) Grid
+                      - 517jitZPLwfOVoeBiCOj5J (Image) image
+                      - peRltDng2yILTxNpay5eX (Text) Text
+                    - j7FSdmFSpH1EbOgPLSUHF (Grid) Grid
+                      - soOnradYtatYzrTrzCU8R (Text) Text
+                  - 7CPhBCReEFwlKpsWk2xQn (Grid) Grid
+                    - RYsXtocDgyj963aT7kLbm (Grid) Grid
+                      - PU8faVenVjlD2WquJUFqL (Image) image
+                      - 48ykaD2QJ1EWLNbDjquG3s (Text) Text
+                    - 2a7ae6BZCMXKKQqVXx6ClA (Grid) Grid
+                      - 1IcQDfZKyAdFLEMbSWbFpF (Text) Text
+                  - qqaM8PtxFP5ApA10UoU8v (Grid) Grid
+                    - 4QITsgk2D2GqUN3DciDujF (Grid) Grid
+                      - 2y1LGAYF7ITP1zlMlX3XeX (Image) image
+                      - 783TcKG2ce127jpcoUdcm0 (Text) Text
+                    - 52ckU9rtCB6ndRSqmxr7ge (Grid) Grid
+                      - 65vooEmlf8avop43HWi7xQ (Text) Text
+                  - 3qcKHKY5ZQ8iPT9RXMP7PW (Grid) Grid
+                    - 4zELs0IsROYTcsZrnInZ0K (Grid) Grid
+                      - 5xOBUwQAlhVEsHuBsXeMFK (Image) image
+                      - CTt2IeEWaKVh9hTXbKgBt (Text) Text
+                    - 3ae7POWcfShVxqV1tUknb9 (Grid) Grid
+                      - 4gCR8t4loJzb6ddGdtVudd (Text) Text
+                  - 41VPtuE7pswJuZH0p88XFj (Grid) Grid
+                    - 50civcgZGCAEbdZqFDZJNa (Grid) Grid
+                      - 67Wv1VMFZSpwisYCpFTUpo (Image) image
+                      - 31MBRbRmzBLS220gZQEJWH (Text) Text
+                    - 4ZTZjf1RggEV8X0lvGA5Lq (Grid) Grid
+                      - 6kxS2bb9WKpWrD1Cld6mGT (Text) Text
+                  - 4rATPuBY0kLKai5BGM6LMg (Button) button
+            - ohThsMijgqSoVEhKjcHxe (Grid) Right Grid for customer
+              - 6Pq4xdpEwzZpyP9lVPtpnf (Grid) Grid
+                - 1VtrwApucvrZBThqe4nkXt (Grid) Grid
+                  - hTFfVeKVpIibIA0MD5PY3 (Text) Text
+                  - 424SisgjArvS6r9HgnK13R (Grid) Grid
+                    - 2UoLC1IPNRo1I5qaiPZMNQ (Text) Minimum 
+                    - 7aehI7CgFSzADFRb3Vgd2 (Grid) Grid
+                      - 58qPKlynNmJqmuUXYZcjoy (Text) Text
+                  - 5r7UTKjGKM527SlqkBZA0f (Grid) Grid
+                    - 6PnH0i6iZfubiSwMPkxC15 (Text) Text
+                    - 6xfMp8bIxIteg8n48QU8KL (TextBox) TextBox
+                  - 1LuS16eeosddgEhqFmJs0A (Grid) Grid
+                    - 6Pj9j5bNzTAEqmmuAdQ5mA (Button) button
+                    - 6S55Ifb19AE52RFePUG1l8 (Button) button
+                  - 4piueqKksjObuOvV0NMJg8 (Grid) Grid
+                    - 1QaykqCwgmk4iGvLut40RD (Text) Text
+                    - 4fsoGkHaTTO2nL6o3V3JSa (TextBox) TextBox
+                    - 75rb9m8bmRYCfu6qrVGskH (Text) Text
+              - 23OkwvulU1Fw7pB6LL3Rv7 (Button) Invest now
+          - 2fmhhM2xqd04vaUor5mB7L (Button) Brocher
+        - 10vUZT7yJVTHzxCJVE3bi2 (Grid) ActionsGridClient
+          - 1F1YQWTm1XOQjUhAAWXA5C (Button) Configure button
+          - 1b70B421AORGCY7GMLPQiH (Button) View Customer  button
+          - 7FokCCOnsN35fX4wNzQ0jw (Button) Manage Team button
+          - 7JI4riDZtlKGlpMnqRWSXo (Button) Add Customer button
+        - 6KEoIpRSstTVDerLoNBSYi (Grid) Key parameters Grid
+          - 6j7ep7GRiy87FeUNIxDdAr (Grid) TargetIRR Grid
+            - 18eXpOylIE9GkCxSh5as9E (Grid) Grid
+              - 6BlgcEB13c3fjolDvOaXzD (Image) image
+            - 3K1honM4gfoC1cgpyCINkK (Grid) Grid
+              - 297nSEuXAqDp25PToFKR0f (Text) Text
+              - 3Kp481X0RpwGo2sLqoBLd3 (Text) Text
+          - 6qwMtYLtNQdUuhpAmuJU7C (Grid) Entry Yield Grid
+            - 1ftkONfsX6WuYUPeX1SmGU (Grid) Grid
+              - 3XZi9RZtMO9uDJGESffRKm (Image) image
+            - 4Qo9HmS1ALuhvY0TGBa79b (Grid) Grid
+              - 3MTn4LTuBuYjHjuVzOPRZS (Text) Text
+              - 3EkiRBuJfwgAnSmtgfTaRu (Text) Text
+          - 3izDgQO5BRCNUrW3PdmXlT (Grid) Entry Gross Yield Grid
+            - 2vgYv6rYILhuzaxVZJ1w7g (Grid) Grid
+              - V1rNf0xhoKfZ8GNySm2I8 (Image) image
+            - CoxHG1Hp5SKXfpmKjcmo8 (Grid) Grid
+              - 3AxBhKMwmGUlyNHWKN4ltD (Text) Entry Gross Yield Text
+              - 35Sof5Xle86ZGl4JSTPv6A (Text) Text
+          - 74JmqdGEsYyxRzMC5675Gj (Grid) Entry Net  Grid
+            - 2AyH9rcIcBEjzxhhDbsBe2 (Grid) Grid
+              - 6wqaYmyaB0oN8AGqKXb8sm (Image) image
+            - Oq7FpEfz4Lur6DoBy8VVo (Grid) Grid
+              - 5dFP4CM3bi9CdpgFcpb44x (Text) Text
+              - 2zws9CfhczlTZckRE4cXUZ (Text) Text
+          - 65UZRmwBfanXFY6vzsRDwA (Grid) Avg Gross Yield Grid
+            - UPf8V5fgzPU77RdOX29y0 (Grid) Grid
+              - 3ZCwNbcqAiJV5LX9YPaXzV (Image) image
+            - 7F3wWMwuhMAmOf0P0gNyHT (Grid) Grid
+              - 67eZoFuX42zMX2mMMPCvyF (Text) Text
+              - 2qEwlEXyEvT9XJFcX9OjGp (Text) Text
+          - 4d2MybAUtWmNWdKIHn2YaL (Grid) Avg Net Yield Grid
+            - 3xo1CMkXrOqFmH7lJNLj9c (Grid) Grid
+              - 6XXl9Oj8bgaKXsmvE3Z4hZ (Image) image
+            - 1wwETwEpakQAkm4hRmDyxb (Grid) Grid
+              - 4u4biaFU8Y7ukeZ2up2N0e (Text) Text
+              - 48s51kyro0750n7FZ4Non8 (Text) Text
+          - 2jgDx4xmccXXZYWI8MGm9M (Grid) Asset Type Grid
+            - 3c0ANuIxvbT9TsF9VqyN9D (Grid) Grid
+              - 3dDMFh5gRfvU1Va971NY2P (Image) image
+            - 1W6IgFRXNFtX8v1ILVaphC (Grid) Grid
+              - 5b61UrJ757MyPGziZW73of (Text) Text
+              - 2czjuYV8jSV7PuzwgrdUhE (Text) Text
+          - 5YtnJrZNZPrxDTDU4dPQ4H (Grid) Asset Value Grid
+            - 2IfYnD4PmFxDRz5YdHIJ3U (Grid) Grid
+              - 4Cbr8X61OVIu6ve3U26jam (Image) image
+            - 3ZkjtVFvFazzsqyzJxE5ik (Grid) Grid
+              - 6ITyqDPJwjkmkUv4Gl9yl8 (Text) Text
+              - 41BQvEJ8tsHcLLHCitoUcq (Text) Text
+          - 3Qgw9KNooDDIzaeMvruVHl (Grid) Sale Price Grid
+            - 3BJmlYGNrZx0LQPqKlT21V (Grid) Grid
+              - 2KwVpe6sOUo9uAakHtlHAl (Image) image
+            - OEZ8FREJcBjpV9EDEpQVP (Grid) Grid
+              - 59kBY2NfDiXygez0O8JwIM (Text) Text
+              - 1zz6p27SPq2qTAF6BdwmrR (Text) Text
+          - 4BKBJmAkzg4oXh8IMwiK6Q (Grid) Minimum Investment Grid
+            - 4SK6fuxcf3dZbcqCaBUwYG (Grid) Grid
+              - 4wRvk5YZiMkJJwv4GSTBwl (Image) image
+            - 56qX54R2CZSKiRwO7waJqC (Grid) Grid
+              - 3ggWfOZFN92Fyean3Avipc (Text) Text
+              - 5DFvPCona1H04gmKAMjpMQ (Text) Text
+          - 4K733Vo1CTVx7qqP6iXP08 (Grid) Performance Fee Grid
+            - 1dOUSF6Sb3FvRK6U3wKRtR (Grid) Grid
+              - 6mftOfCLtAhQSKYvDkifEt (Image) image
+            - cfTnw8k6HRE2zlsyE59gk (Grid) Grid
+              - 4mPdvvuQnzvgOrEiYe3lUc (Text) Text
+              - 7fFAE9ALbmztznbxdZx6es (Text) Text
+          - ZHfGajzbNlNPJP8CihGYa (Grid) Asset Area Grid
+            - 5XoExy907ghThlSdy13Xir (Grid) Grid
+              - 6QMl2qTzJOl6DFYAuw32nF (Image) image
+            - 71mDkSGEPT2n77XO037o1F (Grid) Grid
+              - 6mNHdzK3HLTjZcYlqXdvxA (Text) Text
+              - 77vWpysU2smIcrk7YU3kzf (Text) Text
+          - 4tEE1AJTZB65VFh1RsBu1l (Grid) Managment Fee Grid
+            - 4RV8PFTbNsecbTElaoMIuD (Grid) Grid
+              - 3HbvyZdoEdJXgkoUv5O9gz (Image) image
+            - 3tMqVd8VqRw1Mudg6yCRIp (Grid) Grid
+              - 4J1Ko1rptQwaj5Rdh7MtoB (Text) Text
+              - 1MKSbtyrO6Uzo9yuCAUS9t (Text) Text
+        - 7dVXu998hasTRslLMgiUnB (Grid) Projects highlights Section  Grid
+          - 64XsDAXU0ehl3meeBNLIDm (Grid) image Grid
+            - 1np5pKDxnNb6DOwVYTX2Ne (Image) image
+          - 1lPJ6xKG1LK65E3iVtzNwO (Grid) Hightlights Grid
+            - 2Ow5fLM1X7YCvb8tGmIGk6 (Text) Text
+            - 33oWj9SXwEssrdQCpoAAba (Grid) Grid
+              - 6aiX7d9yFhKXb7uHwrjtit (ArrayRepeater) Highlights repeator
+                - 7qgwnuCQAdWpxUY11DVuLd (Grid) highlight Grid
+                  - 5iVwxDSGhl2eXHT6n2dS1F (Icon) Icon
+                  - 4M4xoDg68zZA8zNdYoO1dd (Text) Text
+        - 5cahUl0EXGJdK2zEXofSci (Grid) Specifications Grid
+          - 4h1GMZYIYoaRXTcomO1ULT (Text) Text
+          - 1jWjGuKYekiwFRBKuBixCp (Grid) repeator Specifications Grid
+            - 2eRAtOrfdMHW0PixsM4ssg (ArrayRepeater) Specifications first half repeator
+              - l0vUGQHSaQaEOY7juuaFe (Grid) Specifications Grid
+                - 5h7mkTLKsTxcmx6bCYRlSS (Grid) Grid
+                  - UasTQno49eRN07VvFxCDc (Text) Text
+                  - 1FvmuojcnRLf9W4jsVHARW (Button) button
+                  - 2X6XVuUH8hNSILQCGGNcFe (Button) button
+                - 2Fbt2ZymE4urEbqf6fqa3p (Text) Text
+            - 7qk8vOgGsIpejiVQ6gnnUM (ArrayRepeater) Specifications second half repeator
+              - 1Wf9GCR5hTjzTAccENkzzN (Grid) Specifications Grid
+                - 13RPe3isuUPWfeCCICfaQQ (Grid) Grid
+                  - rp4nPSCUOiY87xrBzTi70 (Text) Text
+                  - 1exT4hO8obDha7ypUAwSjZ (Button) button
+                  - 1A38JyE7T0qpiTvgLv1u51 (Button) button
+                - 1S2fgxJdsanPaQWeRQOcyi (Text) Text
+        - 7qfGr8VbptX6xVfP6d3kyl (Grid) project resources Grid
+          - 3YkiIBiKvUkLgTqzz5UTsV (Text) Text
+          - 1VgAmeXWkn6F07upTbguEz (Grid) Resources Grid
+            - 2hX6BK6DkLTKupn14g79CN (Grid) Floor plan Grid
+              - 178Flm5gJQA4WtHJfDMVOX (Image) image
+              - 6nwylG9bJmiKpoVgZ0pLTI (Grid) text Grid
+                - Bd6E7Os38PVFxqguwak5Y (Text) Text
+                - 157wQDJBMlecujbJgu3nE (Text) Text
+            - 6IxnCQpdVXzl8hOS6zpbGk (Grid) Master plan Grid
+              - 3kwCzn6zuzTWLpsUkPp3Df (Image) image
+              - 3YwKKuYFQWGBD5oXkmRAIC (Grid) Text Grid
+                - rRVjIvuxqeALOwpIfvcl3 (Text) Text
+                - Je0OWxYKuyZcWQDyFpqeK (Text) Text
+        - 6MwNBLYrwPIsQxaFuKPSFb (Grid) Amenities Grid
+          - 6kG4MTDKvkyEp4MoadWbu7 (Text) Text
+          - 2Kn0qqH9UXJ4dvz6nEy7Ta (Grid) List of Amenities Grid
+            - 7hr9gExFeX96XT7dKyq2un (ArrayRepeater) Amenities repeator
+              - 320DmNbXijG66z7PX59MYo (Grid) Amenity Grid
+                - rUnNjW9DVv37froJ6qiF8 (Image) image
+                - 2Xtr1Mr3edFN2vDBKeGopT (Text) Text
+        - 5sfPrui55IoTMIe6jBiY6y (Grid) Location Grid
+          - 3hnLNacDgWHSN1BJ4D5Ogx (Text) Text
+          - 63Jdjrs6y4lR25l6cuQlMp (Grid) Location Details Grid
+            - FSYODAkknGGaLWQXh9kXg (Grid) Location image Grid
+              - 4LdsUSRMqs6B217K96xqJf (Iframe) Iframe
+            - 4DaAYFwNXx03Faemv8maoX (Grid) Location Advantages  Grid
+              - 4IknC6Li3s4oygfYCxs3c (Text) Text
+              - 5IiHfw2XS71il0afaAdX1h (Grid) Grid
+                - 2LDjsuuFXZd9ssParv5oGD (ArrayRepeater) nearBy locations repeator
+                  - 1rBB8fGulIsfpOk2OQ3gBM (Grid) Grid
+                    - 1xOtAnul9uu228hTrmoNJi (Icon) Icon
+                    - 6xw4dMOn5nHK4JvKVsHR0Z (Text) Text
+                    - 3XTZuEhb3lPI1WNkYlf2Rz (Text) Text

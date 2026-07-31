@@ -1,0 +1,20 @@
+name: _taskmate_signup_fix
+description: One-turn fix — configure taskmate for customer signup so the login page is reachable anonymously.
+
+client_code: SYSTEM
+app_code: taskmate
+
+turns:
+  - |-
+    The existing `taskmate` app's login page is unreachable for anonymous users because the security_app
+    row has appUsageType=S (Standalone) and no REGISTRATION_TYPE / reg_user_profile / reg_file_access /
+    reg_appAccess rows. Anyone visiting /taskmate/SYSTEM/page/login in a browser gets 404 on
+    /api/ui/page/login from the platform's anonymous-read wall.
+
+    Fix it now:
+    1. Look up taskmate's security_app id via `list_security_apps(app_code="taskmate")`.
+    2. Create a "TaskmateMember" profile via `create_profile(name="TaskmateMember", app_id=<id>)`.
+    3. Call `configure_app_for_customer_signup(app_code="taskmate", app_id=<id>, profile_id=<from step 2>)`.
+    4. Verify with `list_app_properties(app_code="taskmate")` showing REGISTRATION_TYPE landed.
+
+    No other authoring needed. Stop after the configuration is confirmed.

@@ -1,0 +1,97 @@
+{
+  "_id": "63d25f4f5bb1160e4a194859",
+  "properties": {
+    "onLoadEvent": "onStartLoad"
+  },
+  "eventFunctions": {
+    "onStartLoad": {
+      "name": "start",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "parameterMap": {
+            "path": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": "Store.someData"
+              }
+            },
+            "value": {
+              "one": {
+                "key": "one",
+                "type": "VALUE",
+                "value": {
+                  "name": "Kiran",
+                  "number": "17",
+                  "class": "first",
+                  "section": "B"
+                }
+              }
+            }
+          }
+        },
+        "genOutput": {
+          "statementName": "genOutput",
+          "namespace": "System",
+          "name": "GenerateEvent",
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      }
+    }
+  },
+  "rootComponent": "a8acebd6-dac0-41bf-9a10-0fb92129442f",
+  "componentDefinition": {
+    "a8acebd6-dac0-41bf-9a10-0fb92129442f": {
+      "key": "a8acebd6-dac0-41bf-9a10-0fb92129442f",
+      "name": "mainGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "5bc3a31f-f4d5-4b44-80e1-c5bf1a4c33be": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "calc(100vw - 8px)"
+              },
+              "height": {
+                "value": "calc(100vh - 8px)"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "overflow": {
+                "value": "hidden"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "e9a88469-743d-4a0d-83b4-e720c79836a4": true
+      }
+    },
+    "e9a88469-743d-4a0d-83b4-e720c79836a4": {
+      "key": "e9a88469-743d-4a0d-83b4-e720c79836a4",
+      "name": "page",
+      "type": "Page",
+      "override": false
+    }
+  },
+  "name": "shell",
+  "message": "Shell Page",
+  "clientCode": "SYSTEM",
+  "appCode": "nothing",
+  "version": 6,
+  "updatedAt": "2023-01-26 11:21:04.406000",
+  "updatedBy": "<USER>",
+  "createdAt": "2023-01-26 11:09:03.253000",
+  "createdBy": "<USER>"
+}

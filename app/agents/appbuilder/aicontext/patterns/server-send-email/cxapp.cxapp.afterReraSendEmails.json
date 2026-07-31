@@ -1,0 +1,144 @@
+{
+  "_id": "692efa76a411e05cb91d572e",
+  "definition": {
+    "name": "afterReraSendEmails",
+    "namespace": "cxapp",
+    "parameters": {
+      "filterObject": {
+        "parameterName": "filterObject",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      },
+      "pageNumber": {
+        "parameterName": "pageNumber",
+        "schema": {
+          "type": [
+            "INTEGER"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "events": {
+      "result": {
+        "name": "result",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 1238.3636169433591,
+          "top": 390.0908966064452
+        },
+        "parameterMap": {
+          "results": {
+            "3YKQJrKu0DC4XJ3R4YIj8B": {
+              "key": "3YKQJrKu0DC4XJ3R4YIj8B",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.readPage.output.result"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "6OF6hrngav5NISNw22QCJy": {
+              "key": "6OF6hrngav5NISNw22QCJy",
+              "type": "VALUE",
+              "expression": "",
+              "value": "result"
+            }
+          }
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 893.5454406738279,
+          "top": 342.99999999999994
+        },
+        "parameterMap": {
+          "eagerFields": {},
+          "storageName": {
+            "6YLZm5DJlVWd1OAa6DE9mE": {
+              "key": "6YLZm5DJlVWd1OAa6DE9mE",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Bookings"
+            }
+          },
+          "filter": {
+            "1qDdKPFJKMIokd8ZLl0lxa": {
+              "key": "1qDdKPFJKMIokd8ZLl0lxa",
+              "type": "EXPRESSION",
+              "expression": "Arguments.filterObject",
+              "value": {
+                "operator": "AND",
+                "conditions": [
+                  {
+                    "field": "phaseId",
+                    "operator": "EQUALS",
+                    "value": "6901bea5d360ee6e67090a7f"
+                  },
+                  {
+                    "field": "projectId",
+                    "operator": "EQUALS",
+                    "value": "6901bc22d360ee6e67090a79"
+                  }
+                ]
+              }
+            }
+          },
+          "appCode": {
+            "2wqjtKuGvtUPLbY811JmF8": {
+              "key": "2wqjtKuGvtUPLbY811JmF8",
+              "type": "VALUE",
+              "expression": "",
+              "value": "rim"
+            }
+          },
+          "page": {
+            "5j3UMpCLPR7DVeU7sGgWAv": {
+              "key": "5j3UMpCLPR7DVeU7sGgWAv",
+              "type": "EXPRESSION",
+              "expression": "Arguments.pageNumber",
+              "value": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "cxapp.afterReraSendEmails",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 14,
+  "updatedAt": "2026-04-09 04:28:28.913000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-12-02 14:40:54.562000",
+  "createdBy": "<USER>"
+}

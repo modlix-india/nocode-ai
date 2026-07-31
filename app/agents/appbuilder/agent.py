@@ -15,7 +15,11 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.core.context import BaseContext
-from app.agents.appbuilder.context import get_relevant_tool_details, extract_last_user_text
+from app.agents.appbuilder.context import (
+    HOT_TOOLS,
+    extract_last_user_text,
+    get_relevant_tool_details,
+)
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -50,8 +54,14 @@ class AppBuilderAgent(BaseAgent):
         self._api_catalog = api_catalog
         self._api_catalog_context = api_catalog.to_prompt_context() if api_catalog else ""
 
-        from app.agents.appbuilder.tools.registry import TOOL_ROUTER
-
+        # Deferred-schema surface (Phase 3): the LLM sees each tool's name +
+        # one-liner description with empty parameters in the API `tools=` field,
+        # and pulls full schemas on demand via `get_tool_schema`. The system
+        # prompt's tool catalog (see TOOL_GROUPS_SUMMARY in
+        # app.agents.appbuilder.context) lists every advertised tool by group.
+        # The legacy tool-of-tools router (TOOL_ROUTER) is retired from this
+        # agent — kept exported by the registry for other potential callers but
+        # not wired here.
         super().__init__(
             name="appbuilder",
             tools=tools or [],
@@ -60,14 +70,57 @@ class AppBuilderAgent(BaseAgent):
             max_turns=settings.MAX_AGENT_TURNS,
             max_tokens=settings.AGENT_MAX_TOKENS,
             provider=provider,
-            router_tool=TOOL_ROUTER,
+            defer_schemas=True,
         )
+
+    def _tool_to_advertised_schema(self, tool: Any) -> dict[str, Any]:
+        """Override BaseAgent's deferred-schema renderer for hot tools.
+
+        Tools in `HOT_TOOLS` ship with their FULL Anthropic-shape schema in the
+        tools[] payload (not the stripped {"type":"object","properties":{}} the
+        deferred pattern uses for the long tail). Reason: the synthetic-retry
+        round-trip on first-time calls was costing 1 extra LLM turn per unique
+        tool used in a conversation. For multi-write tasks touching 5-7 unique
+        tools, that's 5-7 wasted turns per conv.
+
+        Trade-off: ~3-5K extra tokens in the system-prompt prefix per session.
+        DeepSeek's automatic prefix caching makes that a one-time cost.
+
+        For tools NOT in HOT_TOOLS, defer to BaseAgent's stripped form — the
+        long-tail tools still go through search_tools / get_tool_schema.
+        """
+        if tool.name in HOT_TOOLS:
+            return tool.to_anthropic_tool()
+        return super()._tool_to_advertised_schema(tool)
+
+    def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
+        """Extend BaseAgent's context with appbuilder-specific fields.
+
+        ALSO pre-marks every HOT_TOOLS member in `fetched_schemas` so the
+        dispatch gate at `_gate_deferred_dispatch` passes on first call —
+        matching the full-schema advertisement above. The schema is already
+        in the LLM's tools[] payload, so a synthetic retry would be pure
+        overhead.
+        """
+        ctx = super().build_tool_context(session)
+        fetched = ctx.get("fetched_schemas")
+        if isinstance(fetched, list):
+            for name in HOT_TOOLS:
+                if name not in fetched:
+                    fetched.append(name)
+        elif isinstance(fetched, set):
+            fetched.update(HOT_TOOLS)
+        if session.auth:
+            ctx["app_code"] = session.context.get("app_code") or session.auth.app_code
+            ctx["client_code"] = session.auth.client_code
+        ctx["session_context"] = session.context
+        return ctx
 
     async def build_dynamic_context(self, session: BaseSession) -> str:
         """Build per-request dynamic context.
 
-        Includes: auth info, relevant tool group details,
-        component catalog, API catalog, and learned knowledge.
+        Includes: auth info, pre-flight app grounding, relevant tool group
+        details, component catalog, API catalog, and learned knowledge.
         """
         parts: list[str] = []
 
@@ -78,6 +131,13 @@ class AppBuilderAgent(BaseAgent):
                 f"- Client: {session.auth.client_code}\n"
                 f"- App: {app_code}\n"
             )
+
+        # Pre-flight grounding: fetch app definition + top pages once per
+        # session so the agent walks in knowing the structure. Saves 3-10
+        # "list_pages" / "get_app" round-trips on most conversations.
+        grounding = await self._build_preflight_grounding(session)
+        if grounding:
+            parts.append(grounding)
 
         # Progressive tool docs: inject detailed reference for relevant groups
         tool_details = get_relevant_tool_details(session.messages)
@@ -97,6 +157,122 @@ class AppBuilderAgent(BaseAgent):
 
         return "\n\n".join(parts)
 
+    _NAMED_PAGE_REF_KEYS: tuple[str, ...] = (
+        "defaultPage", "loginPage", "shellPage", "forbiddenPage",
+        "notFoundPage", "signUp", "forgotPasswordPage",
+        "termsConditionPage", "privacyPolicyPage",
+    )
+
+    @staticmethod
+    def _extract_named_page_refs(props: dict[str, Any]) -> list[tuple[str, str]]:
+        """Pull (key, pageName) pairs from app properties. Handles both
+        string values and ComponentProperty-shape `{"value": "..."}` dicts."""
+        out: list[tuple[str, str]] = []
+        for key in AppBuilderAgent._NAMED_PAGE_REF_KEYS:
+            v = props.get(key)
+            if isinstance(v, str) and v:
+                out.append((key, v))
+                continue
+            if isinstance(v, dict):
+                inner = v.get("value")
+                if isinstance(inner, str) and inner:
+                    out.append((key, inner))
+        return out
+
+    @staticmethod
+    def _format_grounding(app_code: str, app_obj: dict | None, page_names: list[str]) -> str:
+        """Render the fetched grounding into a Markdown section."""
+        lines = [f"## Pre-flight grounding for app `{app_code}`",
+                 "(fetched once at session start — use directly; don't re-fetch)"]
+        if app_obj:
+            page_refs = AppBuilderAgent._extract_named_page_refs(app_obj.get("properties") or {})
+            if page_refs:
+                lines.append("**Named page references (from application properties):**")
+                lines.extend(f"- `{key}` → page `{name}`" for key, name in page_refs)
+        if page_names:
+            shown = page_names[:25]
+            lines.append(f"**Pages in app ({len(page_names)} total, first {len(shown)}):**")
+            lines.append("  " + ", ".join(f"`{n}`" for n in shown))
+            if len(page_names) > len(shown):
+                lines.append(f"  …and {len(page_names) - len(shown)} more. Use `list_pages` if you need them.")
+        lines.append("")
+        lines.append("Use these names directly. Don't call `list_pages` / `get_app` "
+                     "again unless you need page contents (use `get_page`/`get_page_summary` for those).")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _first_app_from_response(resp: Any) -> dict | None:
+        if not getattr(resp, "success", False) or not resp.data:
+            return None
+        content = (resp.data or {}).get("content") or []
+        return content[0] if content else None
+
+    @staticmethod
+    def _page_names_from_response(resp: Any) -> list[str]:
+        if not getattr(resp, "success", False) or not resp.data:
+            return []
+        return [
+            p.get("name") for p in (resp.data or {}).get("content") or []
+            if isinstance(p.get("name"), str)
+        ]
+
+    async def _fetch_grounding(self, session: BaseSession, app_code: str) -> tuple[dict | None, list[str]]:
+        """Issue the two gateway calls and parse their responses.
+
+        Uses the same singleton SaasClient + auth headers that every tool uses
+        (`get_saas_client()` + `AuthContext.to_headers()`), so the round-trip
+        looks identical to a tool call on the wire.
+
+        Returns (app_obj_or_None, page_names). Empty/failed responses come
+        back as None / []; the caller handles the "nothing to inject" case.
+        """
+        try:
+            from app.agents.appbuilder.tools._shared import get_saas_client
+            client = get_saas_client()
+            headers = session.auth.to_headers()
+            app_r = await client.get("/api/ui/applications", headers=headers,
+                                     params={"appCode": app_code})
+            pages_r = await client.get("/api/ui/pages", headers=headers,
+                                       params={"appCode": app_code, "page": 0, "size": 30})
+        except Exception as e:  # noqa: BLE001
+            logger.debug("Pre-flight grounding fetch failed (%s: %s)", type(e).__name__, e)
+            return None, []
+
+        return self._first_app_from_response(app_r), self._page_names_from_response(pages_r)
+
+    async def _build_preflight_grounding(self, session: BaseSession) -> str:
+        """Fetch app definition + top page names once per session, cache on
+        session.context, and format as a system-prompt section.
+
+        Why: every new conversation otherwise starts with the agent calling
+        `get_app` + `list_pages` + `search_page_components` (3-10 round-trips)
+        before doing any actual work. Injecting this context up-front skips
+        that entire pre-flight phase. Cached because it doesn't change within
+        a conversation (an app's structure is stable; page CRUD invalidates
+        but we accept the staleness for now — agent re-reads only when its
+        action requires fresh data).
+
+        Failure is silent — if the gateway is down or the app doesn't exist,
+        we omit the section rather than blocking the conversation. The agent
+        will fall back to its previous behaviour (call get_app itself).
+        """
+        if not session.auth:
+            return ""
+        app_code = session.context.get("app_code") or session.auth.app_code
+        if not app_code:
+            return ""
+        cached = session.context.get("_preflight_grounding")
+        if isinstance(cached, str):
+            return cached
+
+        app_obj, page_names = await self._fetch_grounding(session, app_code)
+        if not app_obj and not page_names:
+            session.context["_preflight_grounding"] = ""
+            return ""
+        text = self._format_grounding(app_code, app_obj, page_names)
+        session.context["_preflight_grounding"] = text
+        return text
+
     async def _build_learning_enhancement(self, session: BaseSession) -> str:
         """Retrieve and format learned knowledge for prompt injection."""
         try:
@@ -114,65 +290,3 @@ class AppBuilderAgent(BaseAgent):
         except Exception as e:
             logger.debug("Prompt enhancement skipped: %s", e)
             return ""
-
-    def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
-        """Build context dict passed to each tool's execute function.
-
-        Adds appbuilder-specific fields beyond the base context.
-        """
-        ctx = super().build_tool_context(session)
-        if session.auth:
-            ctx["app_code"] = session.context.get("app_code") or session.auth.app_code
-            ctx["client_code"] = session.auth.client_code
-        ctx["session_context"] = session.context
-        return ctx
-
-    def _build_confirmation_message(
-        self, tool_name: str, display_name: str, tool_input: dict[str, Any],
-    ) -> str:
-        """Build a human-readable confirmation message from tool input."""
-        object_type = tool_input.get("object_type", "object")
-        name = tool_input.get("name") or tool_input.get("page_name") or tool_input.get("id") or "?"
-        message = tool_input.get("message", "")
-
-        if tool_name == "create":
-            return f"Create {object_type} '{name}'" + (f" — {message}" if message else "")
-        if tool_name == "update":
-            parts = []
-            if tool_input.get("properties"):
-                parts.append(f"properties: {list(tool_input['properties'].keys())}")
-            if tool_input.get("operations"):
-                ops = tool_input["operations"]
-                op_summary = ", ".join(
-                    f"{op.get('op', '?')} '{op.get('component_key', op.get('parent_key', '?'))}'"
-                    for op in ops[:5]
-                )
-                if len(ops) > 5:
-                    op_summary += f", +{len(ops) - 5} more"
-                parts.append(f"component ops: [{op_summary}]")
-            if tool_input.get("event_function"):
-                fn_name = tool_input["event_function"].get("function_name", "?")
-                parts.append(f"event function: {fn_name}")
-            if tool_input.get("delete_event_function"):
-                parts.append(f"delete event: {tool_input['delete_event_function']}")
-            if tool_input.get("definition"):
-                parts.append("definition update")
-            detail = "; ".join(parts) if parts else message
-            return f"Update {object_type} '{name}'" + (f" — {detail}" if detail else "")
-        if tool_name == "delete":
-            return f"Delete {object_type} '{name}'"
-        if tool_name == "copy":
-            src_name = tool_input.get("source_name", "?")
-            src_app = tool_input.get("source_app_code", "?")
-            tgt_app = tool_input.get("target_app_code", "?")
-            tgt_name = tool_input.get("target_name") or src_name
-            if tool_input.get("source_component_key"):
-                return (
-                    f"Copy subtree '{tool_input['source_component_key']}' from "
-                    f"{object_type} '{src_name}' in app '{src_app}' into page "
-                    f"'{tool_input.get('target_page_name', '?')}' in app '{tgt_app}'"
-                )
-            if object_type == "application":
-                return f"Copy application '{src_app}' to new app '{tgt_app}'"
-            return f"Copy {object_type} '{src_name}' from app '{src_app}' to app '{tgt_app}' as '{tgt_name}'"
-        return f"{display_name} on {object_type} '{name}'"

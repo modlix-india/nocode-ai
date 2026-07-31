@@ -1,0 +1,4189 @@
+{
+  "_id": "68be65b00dd61457799695ff",
+  "properties": {
+    "onLoadEvent": "527S0vdP4yfbxKx74nIjkM",
+    "loadStrategy": "reload"
+  },
+  "eventFunctions": {
+    "527S0vdP4yfbxKx74nIjkM": {
+      "name": "onLoad",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 909.2243626912434,
+            "top": 204.25639343261716
+          },
+          "parameterMap": {
+            "path": {
+              "5MPNMMn8V8ILIyTn74PywT": {
+                "key": "5MPNMMn8V8ILIyTn74PywT",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.dashboardData"
+              }
+            },
+            "value": {
+              "4U1C8CVeESxCRiQVMzvqDp": {
+                "key": "4U1C8CVeESxCRiQVMzvqDp",
+                "type": "VALUE",
+                "order": 1,
+                "value": [
+                  {
+                    "reportName": "Lead bucket report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Call report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Deal bucket report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Funnel report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Lead conversion report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Deal conversion report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Lead bucket report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Call report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Deal bucket report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Funnel report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Lead conversion report",
+                    "isSelected": false
+                  },
+                  {
+                    "reportName": "Deal conversion report",
+                    "isSelected": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "getBpConfigurationDetails": {
+          "statementName": "getBpConfigurationDetails",
+          "name": "getBpConfigurationDetails",
+          "namespace": "_",
+          "position": {
+            "left": 603.8910293579102,
+            "top": 248.20511881510413
+          }
+        },
+        "getProducts": {
+          "statementName": "getProducts",
+          "name": "getProducts",
+          "namespace": "_",
+          "position": {
+            "left": 627.5260543823242,
+            "top": 528.5026025772095
+          }
+        },
+        "onClickToggle": {
+          "statementName": "onClickToggle",
+          "name": "onClickToggle",
+          "namespace": "_",
+          "position": {
+            "left": 915.0052146911621,
+            "top": 527.7526025772095
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__getProducts__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 290.50000190734863,
+            "top": 258.29687881469727
+          },
+          "parameterMap": {
+            "path": {
+              "5VjC7FTYMP6ku2TX1SK4zc": {
+                "key": "5VjC7FTYMP6ku2TX1SK4zc",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.activeTab"
+              }
+            },
+            "value": {
+              "5OcHAvCluWQiMnImbHas5N": {
+                "key": "5OcHAvCluWQiMnImbHas5N",
+                "type": "EXPRESSION",
+                "expression": "\"Deals\"",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "Do2YvXIw6AdrormGqtsPz": {
+      "name": "saveBpConfigurationDetails",
+      "steps": {
+        "getBpConfigurationDetails": {
+          "statementName": "getBpConfigurationDetails",
+          "name": "getBpConfigurationDetails",
+          "namespace": "_",
+          "position": {
+            "left": 758.5064074198403,
+            "top": 162.20512898763013
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__saveBpConfiguration__d-o-t__output": true
+          }
+        },
+        "showStatus": {
+          "statementName": "showStatus",
+          "name": "showStatus",
+          "namespace": "_",
+          "position": {
+            "left": 1852.7499783833819,
+            "top": 352.41667429606105
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1485.749983469645,
+            "top": 353.08333587646473
+          },
+          "parameterMap": {
+            "path": {
+              "75p3AaXjJGMPMZN3sv3B2X": {
+                "key": "75p3AaXjJGMPMZN3sv3B2X",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.status"
+              }
+            },
+            "value": {
+              "2yBSGRiAfSR30tLETjMUiw": {
+                "key": "2yBSGRiAfSR30tLETjMUiw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "message": "Configuration saved successfully.",
+                  "type": "success"
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__saveBpConfiguration__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if1__d-o-t__false": true
+          }
+        },
+        "saveBpConfiguration": {
+          "statementName": "saveBpConfiguration",
+          "name": "saveBpConfiguration",
+          "namespace": "leadzump",
+          "position": {
+            "left": 384.83974075317377,
+            "top": 285.5384623209635
+          },
+          "parameterMap": {
+            "bpConfiguration": {
+              "1ytzgx9Esu04RRC6CjjWI5": {
+                "key": "1ytzgx9Esu04RRC6CjjWI5",
+                "type": "EXPRESSION",
+                "expression": "Page.bpConfiguration",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 723.9999949137368,
+            "top": 367.062505086263
+          },
+          "parameterMap": {
+            "condition": {
+              "7dvc0NbiOZD3A08aXoiDvZ": {
+                "key": "7dvc0NbiOZD3A08aXoiDvZ",
+                "type": "EXPRESSION",
+                "expression": "Steps.saveBpConfiguration.output.bpConfiguration",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1094.3333231608071,
+            "top": 378.06250508626295
+          },
+          "parameterMap": {
+            "condition": {
+              "7N1n0W76njLys244e5vp9L": {
+                "key": "7N1n0W76njLys244e5vp9L",
+                "type": "EXPRESSION",
+                "expression": "Page.activeTab = \"Deals\"",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": "",
+      "validationCheck": "oEOMFWKCM5u4XgGzzSeRd"
+    },
+    "4v5uWiHnLNw3sOebK20CQh": {
+      "name": "getBpConfigurationDetails",
+      "steps": {
+        "getBpConfiguration": {
+          "statementName": "getBpConfiguration",
+          "name": "getBpConfiguration",
+          "namespace": "leadzump",
+          "position": {
+            "left": 378.8910293579101,
+            "top": 387.20512390136713
+          },
+          "parameterMap": {
+            "clientCode": {
+              "5j6vgUB2xMnbiXAsELi2S4": {
+                "key": "5j6vgUB2xMnbiXAsELi2S4",
+                "type": "EXPRESSION",
+                "expression": "Store.auth.client.code",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 751.0961507161458,
+            "top": 560.2051239013672
+          },
+          "parameterMap": {
+            "path": {
+              "nAgWEAsMSm00zUEfLQFJ4": {
+                "key": "nAgWEAsMSm00zUEfLQFJ4",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration"
+              }
+            },
+            "value": {
+              "3xGOWfg7dfgbyaE32rfaxo": {
+                "key": "3xGOWfg7dfgbyaE32rfaxo",
+                "type": "EXPRESSION",
+                "expression": "Steps.getBpConfiguration.output.bpConfiguration.content[0]",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1260.999997820173,
+            "top": 310.57142857142856
+          },
+          "parameterMap": {
+            "path": {
+              "4CfoBJTa1TKjwMQRCSwIKz": {
+                "key": "4CfoBJTa1TKjwMQRCSwIKz",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.appLogoDetails"
+              }
+            },
+            "value": {
+              "2vsqwMJjo6ubh4VX1ReOUc": {
+                "key": "2vsqwMJjo6ubh4VX1ReOUc",
+                "type": "EXPRESSION",
+                "expression": "Page.bpConfiguration.appLogo",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1285.9999980926511,
+            "top": 705.2708384195962
+          },
+          "parameterMap": {
+            "path": {
+              "4CfoBJTa1TKjwMQRCSwIKz": {
+                "key": "4CfoBJTa1TKjwMQRCSwIKz",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.reLogoDetails"
+              }
+            },
+            "value": {
+              "2vsqwMJjo6ubh4VX1ReOUc": {
+                "key": "2vsqwMJjo6ubh4VX1ReOUc",
+                "type": "EXPRESSION",
+                "expression": "Page.bpConfiguration.reLogo",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4lRLofH88bbxmju4phLAez": {
+      "name": "saveProducts",
+      "steps": {
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 558.5,
+            "top": 136.83332061767578
+          },
+          "parameterMap": {
+            "path": {
+              "7zyer7HuqEPXHhY0noPYzY": {
+                "key": "7zyer7HuqEPXHhY0noPYzY",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productDetails.productPartnerActive"
+              }
+            },
+            "value": {
+              "11OD8Q9AUYH5GBeftSuPvc": {
+                "key": "11OD8Q9AUYH5GBeftSuPvc",
+                "type": "EXPRESSION",
+                "expression": "Page.productList",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "saveBpConfigurationDetails": {
+          "statementName": "saveBpConfigurationDetails",
+          "name": "saveBpConfigurationDetails",
+          "namespace": "_",
+          "position": {
+            "left": 1673.8910293579102,
+            "top": 117.92306009928382
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__PostRequest__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "showStatus": {
+          "statementName": "showStatus",
+          "name": "showStatus",
+          "namespace": "_",
+          "position": {
+            "left": 2337.749978383382,
+            "top": 204.41667429606105
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true,
+            "Steps__d-o-t__if__d-o-t__output": false
+          }
+        },
+        "setStore_Copy_1_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2407.749998728434,
+            "top": 496.7500076293943
+          },
+          "parameterMap": {
+            "path": {
+              "75p3AaXjJGMPMZN3sv3B2X": {
+                "key": "75p3AaXjJGMPMZN3sv3B2X",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.status.type"
+              }
+            },
+            "value": {
+              "2yBSGRiAfSR30tLETjMUiw": {
+                "key": "2yBSGRiAfSR30tLETjMUiw",
+                "type": "EXPRESSION",
+                "expression": "\"failed\"",
+                "order": 1,
+                "value": {
+                  "name": "Phone numbers synced successfully.",
+                  "type": "success"
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1_Copy_2__d-o-t__output": true,
+            "Steps__d-o-t__if1_Copy_1__d-o-t__true": false,
+            "Steps__d-o-t__setStore1__d-o-t__output": false
+          }
+        },
+        "showStatus1": {
+          "statementName": "showStatus1",
+          "name": "showStatus",
+          "namespace": "_",
+          "position": {
+            "left": 2701.083332061767,
+            "top": 492.08334096272756
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1_Copy_1__d-o-t__output": true,
+            "Steps__d-o-t__if1_Copy_1__d-o-t__output": false
+          }
+        },
+        "setStore_Copy_1_Copy_2": {
+          "statementName": "setStore_Copy_1_Copy_2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2042.749998728434,
+            "top": 494.4166768391924
+          },
+          "parameterMap": {
+            "path": {
+              "75p3AaXjJGMPMZN3sv3B2X": {
+                "key": "75p3AaXjJGMPMZN3sv3B2X",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.status.message"
+              }
+            },
+            "value": {
+              "2yBSGRiAfSR30tLETjMUiw": {
+                "key": "2yBSGRiAfSR30tLETjMUiw",
+                "type": "EXPRESSION",
+                "expression": "Steps.PostRequest.error.data.message",
+                "order": 1,
+                "value": {
+                  "name": "Phone numbers synced successfully.",
+                  "type": "success"
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1_Copy_1__d-o-t__true": false,
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "if1_Copy_1": {
+          "statementName": "if1_Copy_1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1300.0833320617674,
+            "top": 530.4166768391924
+          },
+          "parameterMap": {
+            "condition": {
+              "5sYuiPlZMlPHrHXgQMZtMK": {
+                "key": "5sYuiPlZMlPHrHXgQMZtMK",
+                "type": "EXPRESSION",
+                "expression": "Steps.PostRequest.error.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "PostRequest": {
+          "statementName": "PostRequest",
+          "name": "SendData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 917.8046875,
+            "top": 133.1015625
+          },
+          "parameterMap": {
+            "url": {
+              "6FJSHl0ZzHzLF9tdmdAzgA": {
+                "key": "6FJSHl0ZzHzLF9tdmdAzgA",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/entity/processor/products/for-partner"
+              }
+            },
+            "payload": {
+              "P9YdB9yrBjzWYVkdatxFY": {
+                "key": "P9YdB9yrBjzWYVkdatxFY",
+                "type": "EXPRESSION",
+                "expression": "Page.productDetails",
+                "order": 1,
+                "value": {
+                  "name": "Ronak",
+                  "description": "Piraka",
+                  "productTemplateId": "1"
+                }
+              }
+            },
+            "method": {
+              "3Z4fF2TW6BjXwXblANxqrE": {
+                "key": "3Z4fF2TW6BjXwXblANxqrE",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "POST"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1334.3333384195962,
+            "top": 201.062505086263
+          },
+          "parameterMap": {
+            "condition": {
+              "3nmFb05iA73yHTv7ruG0eV": {
+                "key": "3nmFb05iA73yHTv7ruG0eV",
+                "type": "EXPRESSION",
+                "expression": "Steps.PostRequest.output.data",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1973.749983469645,
+            "top": 199.08333587646473
+          },
+          "parameterMap": {
+            "path": {
+              "75p3AaXjJGMPMZN3sv3B2X": {
+                "key": "75p3AaXjJGMPMZN3sv3B2X",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.status"
+              }
+            },
+            "value": {
+              "2yBSGRiAfSR30tLETjMUiw": {
+                "key": "2yBSGRiAfSR30tLETjMUiw",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {
+                  "message": "Products saved successfully.",
+                  "type": "success"
+                }
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__saveBpConfigurationDetails__d-o-t__output": false,
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1763.666669209798,
+            "top": 496.3958384195963
+          },
+          "parameterMap": {
+            "path": {
+              "11hcYdGtKjZzWJXG9d0Iqy": {
+                "key": "11hcYdGtKjZzWJXG9d0Iqy",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.status"
+              }
+            },
+            "value": {
+              "6leL23DNt4dvi4Rp0gMvlu": {
+                "key": "6leL23DNt4dvi4Rp0gMvlu",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": {}
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if1_Copy_1__d-o-t__true": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "940DtQwFGG6zIEjsALX7b": {
+      "name": "constructProductPayLoad",
+      "steps": {
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 1315.5052337646484,
+            "top": 621.5833337306976
+          },
+          "parameterMap": {
+            "source": {
+              "4Da54SQSYWXwkozwj3MR7E": {
+                "key": "4Da54SQSYWXwkozwj3MR7E",
+                "type": "EXPRESSION",
+                "expression": "Page.productData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          }
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1058.5052337646484,
+            "top": 608.5885543823242
+          },
+          "parameterMap": {
+            "path": {
+              "RTdlwZZQ9zDX2Ub5Jjsgq": {
+                "key": "RTdlwZZQ9zDX2Ub5Jjsgq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productList"
+              }
+            },
+            "value": {
+              "2jx0Dh1odAohbIOH8NQ1J6": {
+                "key": "2jx0Dh1odAohbIOH8NQ1J6",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1671.9167175292969,
+            "top": 656.166669845581
+          },
+          "parameterMap": {
+            "path": {
+              "2bsBQa1UvtbJh08v9G7g5V": {
+                "key": "2bsBQa1UvtbJh08v9G7g5V",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productPartnerActive.id"
+              }
+            },
+            "value": {
+              "2AU4XsLhkQx6UnkudC8n73": {
+                "key": "2AU4XsLhkQx6UnkudC8n73",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.id",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 2311.4271087646484,
+            "top": 702.0859375
+          },
+          "parameterMap": {
+            "source": {
+              "86eM7LlCIvhwqcqEP81iM": {
+                "key": "86eM7LlCIvhwqcqEP81iM",
+                "type": "EXPRESSION",
+                "expression": "Page.productList",
+                "order": 1
+              }
+            },
+            "element": {
+              "4NeTzIvWfMaCFotE6nivj2": {
+                "key": "4NeTzIvWfMaCFotE6nivj2",
+                "type": "EXPRESSION",
+                "expression": "Page.productPartnerActive",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2645.7552337646484,
+            "top": 675.9166603088379
+          },
+          "parameterMap": {
+            "path": {
+              "5H7WOLQbzNQlg3aPDDLPo9": {
+                "key": "5H7WOLQbzNQlg3aPDDLPo9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productList"
+              }
+            },
+            "value": {
+              "u4tvQqNgcgl48NEn565Zj": {
+                "key": "u4tvQqNgcgl48NEn565Zj",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2005.8334350585938,
+            "top": 669.666669845581
+          },
+          "parameterMap": {
+            "path": {
+              "7lI8WanphS8f1Md7CBanqm": {
+                "key": "7lI8WanphS8f1Md7CBanqm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productPartnerActive.value"
+              }
+            },
+            "value": {
+              "5P30Vd8ttE1qElKHFnGust": {
+                "key": "5P30Vd8ttE1qElKHFnGust",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.forPartner",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "onClickToggle": {
+          "statementName": "onClickToggle",
+          "name": "onClickToggle",
+          "namespace": "_",
+          "position": {
+            "left": 1397.8910725911455,
+            "top": 979.6923166910806
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3KYQmv3ueSKQPW0SrDnigE": {
+      "name": "searchProduct",
+      "steps": {
+        "if1": {
+          "statementName": "if1",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 2109.5,
+            "top": 213.375
+          },
+          "parameterMap": {
+            "condition": {
+              "5RcgO4qDUkn4KoPSUFAkKS": {
+                "key": "5RcgO4qDUkn4KoPSUFAkKS",
+                "type": "EXPRESSION",
+                "expression": "Steps.contains.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "contains": {
+          "statementName": "contains",
+          "name": "Contains",
+          "namespace": "System.String",
+          "position": {
+            "left": 1751.25,
+            "top": 184.1328125
+          },
+          "parameterMap": {
+            "string": {
+              "4BAdazTs64OVqguaUlhMGB": {
+                "key": "4BAdazTs64OVqguaUlhMGB",
+                "type": "EXPRESSION",
+                "expression": "Steps.lowerCase1.output.result",
+                "order": 1
+              }
+            },
+            "searchString": {
+              "1MRbWFw0cOJMBTdIz7RegE": {
+                "key": "1MRbWFw0cOJMBTdIz7RegE",
+                "type": "EXPRESSION",
+                "expression": "Steps.lowerCase.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 77.75,
+            "top": 222.125
+          },
+          "parameterMap": {
+            "condition": {
+              "4CYGzzcpOIP9fy44JTEzzY": {
+                "key": "4CYGzzcpOIP9fy44JTEzzY",
+                "type": "EXPRESSION",
+                "expression": "Page.searchValue != undefined",
+                "order": 1
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 764.75,
+            "top": 192.3828125
+          },
+          "parameterMap": {
+            "source": {
+              "1ei6itMHslAkUrrQzOATvF": {
+                "key": "1ei6itMHslAkUrrQzOATvF",
+                "type": "EXPRESSION",
+                "expression": "Page.productData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__tempObj__d-o-t__output": true
+          }
+        },
+        "lowerCase": {
+          "statementName": "lowerCase",
+          "name": "LowerCase",
+          "namespace": "System.String",
+          "position": {
+            "left": 1476.25,
+            "top": 191.6328125
+          },
+          "parameterMap": {
+            "string": {
+              "k8nOomLL3LxX6li7Jp34O": {
+                "key": "k8nOomLL3LxX6li7Jp34O",
+                "type": "EXPRESSION",
+                "expression": "Page.searchValue",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__iteration__d-o-t__each": false,
+            "Steps__d-o-t__lowerCase1__d-o-t__output": true
+          }
+        },
+        "setStore1_Copy_1": {
+          "statementName": "setStore1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 324.0078124999999,
+            "top": 510.4179687499998
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__false": true
+          },
+          "parameterMap": {
+            "path": {
+              "4xEXooobDKz8LI9dQdx3xx": {
+                "key": "4xEXooobDKz8LI9dQdx3xx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpProducts"
+              }
+            },
+            "value": {
+              "4QzKF0ifdxZoM2uy5LIdon": {
+                "key": "4QzKF0ifdxZoM2uy5LIdon",
+                "type": "EXPRESSION",
+                "expression": "Page.productData",
+                "order": 1
+              }
+            }
+          }
+        },
+        "tempObj": {
+          "statementName": "tempObj",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 471.2727298736572,
+            "top": 192.4914894104004
+          },
+          "parameterMap": {
+            "path": {
+              "3twTNn8vpTTeOZ9QsIPJ2i": {
+                "key": "3twTNn8vpTTeOZ9QsIPJ2i",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.tempObj"
+              }
+            },
+            "value": {
+              "3Vh3KSUK3X5tvcxFIvyTxj": {
+                "key": "3Vh3KSUK3X5tvcxFIvyTxj",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": []
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "lowerCase1": {
+          "statementName": "lowerCase1",
+          "name": "LowerCase",
+          "namespace": "System.String",
+          "position": {
+            "left": 1090.25,
+            "top": 198.12890625
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__forEachLoop__d-o-t__iteration__d-o-t__each": false
+          },
+          "parameterMap": {
+            "string": {
+              "2C0kdDU74qsSFoo2RqgDpP": {
+                "key": "2C0kdDU74qsSFoo2RqgDpP",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.name",
+                "order": 1
+              }
+            }
+          }
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 2454.5,
+            "top": 190.33332061767578
+          },
+          "parameterMap": {
+            "source": {
+              "5DYTEHZTzxAdh1PnbTHNQN": {
+                "key": "5DYTEHZTzxAdh1PnbTHNQN",
+                "type": "EXPRESSION",
+                "expression": "Page.tempObj",
+                "order": 1
+              }
+            },
+            "element": {
+              "n4nrMyEDMj6S5ctWRi24L": {
+                "key": "n4nrMyEDMj6S5ctWRi24L",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if1__d-o-t__true": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2818.916717529297,
+            "top": 162.58332061767578
+          },
+          "parameterMap": {
+            "path": {
+              "NZDQoYZbNgOOhThczQmOd": {
+                "key": "NZDQoYZbNgOOhThczQmOd",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpProducts"
+              }
+            },
+            "value": {
+              "3R0Ooav0scCTItzWOIGmWC": {
+                "key": "3R0Ooav0scCTItzWOIGmWC",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "4nUO7gYUHfKFxD6gkejEn9": {
+      "name": "getProducts",
+      "steps": {
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 439.83335876464844,
+            "top": 306.16666984558105
+          },
+          "parameterMap": {
+            "path": {
+              "6WZYC02Ui8YkgvrLlfH0AH": {
+                "key": "6WZYC02Ui8YkgvrLlfH0AH",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productData"
+              }
+            },
+            "value": {
+              "1VbgXQwQMkDysuiOOjTm2K": {
+                "key": "1VbgXQwQMkDysuiOOjTm2K",
+                "type": "EXPRESSION",
+                "expression": "Steps.fetchData.output.data.content",
+                "order": 1
+              }
+            }
+          }
+        },
+        "fetchData": {
+          "statementName": "fetchData",
+          "name": "FetchData",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 92.65625,
+            "top": 235.1015625
+          },
+          "parameterMap": {
+            "url": {
+              "5RJOSeS06bhjTKN0sOvtWJ": {
+                "key": "5RJOSeS06bhjTKN0sOvtWJ",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "api/entity/processor/products?isActive=1"
+              }
+            },
+            "queryParams": {
+              "r5WV161xSDXPg2utdDLoA": {
+                "key": "r5WV161xSDXPg2utdDLoA",
+                "type": "VALUE",
+                "expression": "",
+                "value": {
+                  "page": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.productData.number ?? 0"
+                    }
+                  },
+                  "size": {
+                    "location": {
+                      "type": "EXPRESSION",
+                      "expression": "Page.productData.size ?? 100"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "dependentStatements": {}
+        }
+      },
+      "namespace": ""
+    },
+    "5VKvvnxEw3Fq6jRJd4gkXT": {
+      "name": "onClickAllToggle",
+      "steps": {
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 580.5052337646484,
+            "top": 620.5885543823242
+          },
+          "parameterMap": {
+            "path": {
+              "RTdlwZZQ9zDX2Ub5Jjsgq": {
+                "key": "RTdlwZZQ9zDX2Ub5Jjsgq",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productList"
+              }
+            },
+            "value": {
+              "2jx0Dh1odAohbIOH8NQ1J6": {
+                "key": "2jx0Dh1odAohbIOH8NQ1J6",
+                "type": "VALUE",
+                "order": 1,
+                "value": []
+              }
+            }
+          }
+        },
+        "setStore2": {
+          "statementName": "setStore2",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1671.9167175292969,
+            "top": 656.166669845581
+          },
+          "parameterMap": {
+            "path": {
+              "2bsBQa1UvtbJh08v9G7g5V": {
+                "key": "2bsBQa1UvtbJh08v9G7g5V",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productPartnerActive.id"
+              }
+            },
+            "value": {
+              "2AU4XsLhkQx6UnkudC8n73": {
+                "key": "2AU4XsLhkQx6UnkudC8n73",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.id",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "insertLast": {
+          "statementName": "insertLast",
+          "name": "InsertLast",
+          "namespace": "System.Array",
+          "position": {
+            "left": 2311.4271087646484,
+            "top": 702.0859375
+          },
+          "parameterMap": {
+            "source": {
+              "86eM7LlCIvhwqcqEP81iM": {
+                "key": "86eM7LlCIvhwqcqEP81iM",
+                "type": "EXPRESSION",
+                "expression": "Page.productList",
+                "order": 1
+              }
+            },
+            "element": {
+              "4NeTzIvWfMaCFotE6nivj2": {
+                "key": "4NeTzIvWfMaCFotE6nivj2",
+                "type": "EXPRESSION",
+                "expression": "Page.productPartnerActive",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore3__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2645.7552337646484,
+            "top": 675.9166603088379
+          },
+          "parameterMap": {
+            "path": {
+              "5H7WOLQbzNQlg3aPDDLPo9": {
+                "key": "5H7WOLQbzNQlg3aPDDLPo9",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productList"
+              }
+            },
+            "value": {
+              "u4tvQqNgcgl48NEn565Zj": {
+                "key": "u4tvQqNgcgl48NEn565Zj",
+                "type": "EXPRESSION",
+                "expression": "Steps.insertLast.output.result",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore3": {
+          "statementName": "setStore3",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 2005.8334350585938,
+            "top": 669.666669845581
+          },
+          "parameterMap": {
+            "path": {
+              "7lI8WanphS8f1Md7CBanqm": {
+                "key": "7lI8WanphS8f1Md7CBanqm",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.productPartnerActive.value"
+              }
+            },
+            "value": {
+              "5P30Vd8ttE1qElKHFnGust": {
+                "key": "5P30Vd8ttE1qElKHFnGust",
+                "type": "EXPRESSION",
+                "expression": "Page.bpConfiguration.showAllProducts",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore2__d-o-t__output": true
+          }
+        },
+        "setStore4": {
+          "statementName": "setStore4",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1598.359375,
+            "top": 952.6692771911621
+          },
+          "parameterMap": {
+            "path": {
+              "1xbF0c6rZVVJ7Hcj40zEYd": {
+                "key": "1xbF0c6rZVVJ7Hcj40zEYd",
+                "type": "EXPRESSION",
+                "expression": "'Page.productData[{{Steps.forEachLoop.iteration.index}}].forPartner'",
+                "order": 1
+              }
+            },
+            "value": {
+              "5VQ5QNWEKvNyIAVsCrVu1C": {
+                "key": "5VQ5QNWEKvNyIAVsCrVu1C",
+                "type": "EXPRESSION",
+                "expression": "Page.bpConfiguration.showAllProducts",
+                "order": 1
+              }
+            }
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 1307.5052337646484,
+            "top": 620.5833337306976
+          },
+          "parameterMap": {
+            "source": {
+              "4Da54SQSYWXwkozwj3MR7E": {
+                "key": "4Da54SQSYWXwkozwj3MR7E",
+                "type": "EXPRESSION",
+                "expression": "Page.productData",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 905.4285757882253,
+            "top": 632.7678571428571
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore1__d-o-t__output": true
+          },
+          "parameterMap": {
+            "condition": {
+              "1pipS5ylx4dnvCNlDAkKyo": {
+                "key": "1pipS5ylx4dnvCNlDAkKyo",
+                "type": "EXPRESSION",
+                "expression": "Page.productData != undefined",
+                "order": 1
+              }
+            }
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "1n32FqpmTRgHdeZm11g7rt": {
+      "name": "onClickToggle",
+      "steps": {
+        "if": {
+          "statementName": "if",
+          "name": "If",
+          "namespace": "System",
+          "position": {
+            "left": 1049.5,
+            "top": 452.3333396911621
+          },
+          "parameterMap": {
+            "condition": {
+              "6pyPN6N6AUhpJQ6ZPztzMC": {
+                "key": "6pyPN6N6AUhpJQ6ZPztzMC",
+                "type": "EXPRESSION",
+                "expression": "Steps.forEachLoop.iteration.each.forPartner = false",
+                "order": 1
+              }
+            }
+          }
+        },
+        "break": {
+          "statementName": "break",
+          "name": "Break",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 1868.5,
+            "top": 583.5833396911621
+          },
+          "parameterMap": {
+            "stepName": {
+              "n68U3Vro8gOLi4GfXQXhi": {
+                "key": "n68U3Vro8gOLi4GfXQXhi",
+                "type": "VALUE",
+                "expression": "forEachLoop",
+                "order": 1,
+                "value": "forEachLoop"
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        },
+        "forEachLoop": {
+          "statementName": "forEachLoop",
+          "name": "ForEachLoop",
+          "namespace": "System.Loop",
+          "position": {
+            "left": 773.671875,
+            "top": 424.75260734558105
+          },
+          "parameterMap": {
+            "source": {
+              "29yWnW9rAAl9j9fUwmIrci": {
+                "key": "29yWnW9rAAl9j9fUwmIrci",
+                "type": "EXPRESSION",
+                "expression": "Page.productData",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1453,
+            "top": 320.8333396911621
+          },
+          "parameterMap": {
+            "path": {
+              "5nltQ1tRIDt34oDEHsS91u": {
+                "key": "5nltQ1tRIDt34oDEHsS91u",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.showAllProducts"
+              }
+            },
+            "value": {
+              "6llYoNARjGStuJU9FcJ8AA": {
+                "key": "6llYoNARjGStuJU9FcJ8AA",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": false
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": true
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 1428,
+            "top": 668.8333396911621
+          },
+          "parameterMap": {
+            "path": {
+              "5nltQ1tRIDt34oDEHsS91u": {
+                "key": "5nltQ1tRIDt34oDEHsS91u",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.showAllProducts"
+              }
+            },
+            "value": {
+              "6llYoNARjGStuJU9FcJ8AA": {
+                "key": "6llYoNARjGStuJU9FcJ8AA",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__if__d-o-t__true": false,
+            "Steps__d-o-t__if__d-o-t__false": true,
+            "Steps__d-o-t__if__d-o-t__output": false
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "7oPUTqqmTHUKshY4zCkTGr": {
+      "name": "appUploadLogo",
+      "steps": {
+        "setStore_Copy_1_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 944.8571439470563,
+            "top": 405.66070774623324
+          },
+          "parameterMap": {
+            "path": {
+              "2fQZWGHYJXSiHou1tfFEJO": {
+                "key": "2fQZWGHYJXSiHou1tfFEJO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.appLogo.directory"
+              }
+            },
+            "value": {
+              "700isEyD4v36lT9JbBE7k7": {
+                "key": "700isEyD4v36lT9JbBE7k7",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "saveBpConfigurationDetails": {
+          "statementName": "saveBpConfigurationDetails",
+          "name": "saveBpConfigurationDetails",
+          "namespace": "_",
+          "position": {
+            "left": 1311.4285670689173,
+            "top": 245.37498692103793
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 248.1428593226841,
+            "top": 417.6607186453683
+          },
+          "parameterMap": {
+            "path": {
+              "2fQZWGHYJXSiHou1tfFEJO": {
+                "key": "2fQZWGHYJXSiHou1tfFEJO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.appLogo.url"
+              }
+            },
+            "value": {
+              "700isEyD4v36lT9JbBE7k7": {
+                "key": "700isEyD4v36lT9JbBE7k7",
+                "type": "EXPRESSION",
+                "expression": "Page.appLogoDetails.url",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 643.4285736083983,
+            "top": 161.37500435965399
+          },
+          "parameterMap": {
+            "path": {
+              "2fQZWGHYJXSiHou1tfFEJO": {
+                "key": "2fQZWGHYJXSiHou1tfFEJO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.appLogo.name"
+              }
+            },
+            "value": {
+              "700isEyD4v36lT9JbBE7k7": {
+                "key": "700isEyD4v36lT9JbBE7k7",
+                "type": "EXPRESSION",
+                "expression": "Page.appLogoDetails.name",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "3oTRcnC7meizZAzkA1VyuR": {
+      "name": "showStatus",
+      "steps": {
+        "wait": {
+          "statementName": "wait",
+          "name": "Wait",
+          "namespace": "System",
+          "position": {
+            "left": 447.6666692097981,
+            "top": 293.2708180745442
+          },
+          "parameterMap": {
+            "millis": {
+              "2lCOP8zgqVKRqCKiiK7gyQ": {
+                "key": "2lCOP8zgqVKRqCKiiK7gyQ",
+                "type": "VALUE",
+                "expression": "",
+                "value": 2000
+              }
+            }
+          },
+          "dependentStatements": {}
+        },
+        "setStore1": {
+          "statementName": "setStore1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 869.3333358764648,
+            "top": 307.2708180745442
+          },
+          "parameterMap": {
+            "path": {
+              "33dyfck7jPlrOTQBs540xx": {
+                "key": "33dyfck7jPlrOTQBs540xx",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.status"
+              }
+            },
+            "deleteKey": {
+              "3HAjqfkvZfaMiDwEP6X5N5": {
+                "key": "3HAjqfkvZfaMiDwEP6X5N5",
+                "type": "VALUE",
+                "expression": "",
+                "value": true
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__wait__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    },
+    "phUCfCaOi0sPgKrDbLUS5": {
+      "name": "LoginUploadLogo",
+      "steps": {
+        "saveBpConfigurationDetails": {
+          "statementName": "saveBpConfigurationDetails",
+          "name": "saveBpConfigurationDetails",
+          "namespace": "_",
+          "position": {
+            "left": 1311.4285670689173,
+            "top": 245.37498692103793
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore_Copy_1_Copy_1": {
+          "statementName": "setStore_Copy_1_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 914.8571439470563,
+            "top": 424.66070774623324
+          },
+          "parameterMap": {
+            "path": {
+              "2fQZWGHYJXSiHou1tfFEJO": {
+                "key": "2fQZWGHYJXSiHou1tfFEJO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.reLogo.directory"
+              }
+            },
+            "value": {
+              "700isEyD4v36lT9JbBE7k7": {
+                "key": "700isEyD4v36lT9JbBE7k7",
+                "type": "EXPRESSION",
+                "expression": "false",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore_Copy_1__d-o-t__output": true
+          }
+        },
+        "setStore": {
+          "statementName": "setStore",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 217.1428593226841,
+            "top": 418.6607186453683
+          },
+          "parameterMap": {
+            "path": {
+              "2fQZWGHYJXSiHou1tfFEJO": {
+                "key": "2fQZWGHYJXSiHou1tfFEJO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.reLogo.url"
+              }
+            },
+            "value": {
+              "700isEyD4v36lT9JbBE7k7": {
+                "key": "700isEyD4v36lT9JbBE7k7",
+                "type": "EXPRESSION",
+                "expression": "Page.reLogoDetails.url",
+                "order": 1
+              }
+            }
+          }
+        },
+        "setStore_Copy_1": {
+          "statementName": "setStore_Copy_1",
+          "name": "SetStore",
+          "namespace": "UIEngine",
+          "position": {
+            "left": 643.4285736083983,
+            "top": 161.37500435965399
+          },
+          "parameterMap": {
+            "path": {
+              "2fQZWGHYJXSiHou1tfFEJO": {
+                "key": "2fQZWGHYJXSiHou1tfFEJO",
+                "type": "VALUE",
+                "expression": "",
+                "order": 1,
+                "value": "Page.bpConfiguration.reLogo.name"
+              }
+            },
+            "value": {
+              "700isEyD4v36lT9JbBE7k7": {
+                "key": "700isEyD4v36lT9JbBE7k7",
+                "type": "EXPRESSION",
+                "expression": "Page.reLogoDetails.name",
+                "order": 1
+              }
+            }
+          },
+          "dependentStatements": {
+            "Steps__d-o-t__setStore__d-o-t__output": true
+          }
+        }
+      },
+      "namespace": ""
+    }
+  },
+  "rootComponent": "1F5jqWNRfZVPbfr1fsdvGC",
+  "componentDefinition": {
+    "1F5jqWNRfZVPbfr1fsdvGC": {
+      "key": "1F5jqWNRfZVPbfr1fsdvGC",
+      "name": "PageGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "3DqOY5vHSsEMQZiTquprWB": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "100vh"
+              },
+              "gap": {
+                "value": "0"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3kkIy2DVYXZ8ZE6QZWBUjE": true,
+        "pEZqPzQ3R0gidGNLZrhpx": true,
+        "3sITmldb3WR1JBSBZSWL5C": true
+      }
+    },
+    "3kkIy2DVYXZ8ZE6QZWBUjE": {
+      "key": "3kkIy2DVYXZ8ZE6QZWBUjE",
+      "name": "NavigationGrid",
+      "type": "Grid",
+      "properties": {
+        "padding": {
+          "value": "_PADDINGTHREE"
+        },
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "background": {
+          "value": "_SEPTENARYBG"
+        }
+      },
+      "styleProperties": {
+        "4INwZsRWVLsUR1B1DDso6o": {
+          "resolutions": {
+            "ALL": {
+              "borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '0F'"
+                }
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              },
+              "height": {
+                "value": "60px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3r8vpafzvh9IEroXkAsxD4": true,
+        "55bWzCJQ3aV654OWCCI3pt": true
+      },
+      "displayOrder": 1
+    },
+    "3r8vpafzvh9IEroXkAsxD4": {
+      "key": "3r8vpafzvh9IEroXkAsxD4",
+      "name": "NavigateSettings",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Settings"
+        },
+        "linkPath": {
+          "value": "/settings"
+        },
+        "rightIcon": {
+          "value": " ms material-symbols-rounded mso-arrow_forward_ios"
+        },
+        "designType": {
+          "value": "_decorative"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "55bWzCJQ3aV654OWCCI3pt": {
+      "key": "55bWzCJQ3aV654OWCCI3pt",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Customize CP App"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText3"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "pEZqPzQ3R0gidGNLZrhpx": {
+      "key": "pEZqPzQ3R0gidGNLZrhpx",
+      "name": "MainGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "238a5DiAZEB1yeowZIYmjg": {
+          "resolutions": {
+            "ALL": {
+              "overflow": {
+                "value": "auto"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6yda7cA45eD1tmqHjZIkNv": true,
+        "mu9JrAfm5V7zhQlixi8oU": true
+      },
+      "displayOrder": 2
+    },
+    "6yda7cA45eD1tmqHjZIkNv": {
+      "key": "6yda7cA45eD1tmqHjZIkNv",
+      "name": "Banner",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_TERTIARYBG"
+        },
+        "borderRadius": {
+          "value": "_ROUND"
+        },
+        "border": {
+          "value": "_LIGHT"
+        },
+        "padding": {
+          "value": "_PADDINGONE"
+        }
+      },
+      "styleProperties": {
+        "19SL5Y7IaLpTxosHFIlVUB": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "2.08vw"
+              },
+              "marginBottom": {
+                "value": "1vw"
+              },
+              "marginLeft": {
+                "value": "2.08vw"
+              },
+              "marginRight": {
+                "value": "2.08vw"
+              },
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3DCe2cxPRayj3cDD662Ar4": true,
+        "50tGHcaMGVOG259uPHXmGy": true
+      },
+      "displayOrder": 1
+    },
+    "mu9JrAfm5V7zhQlixi8oU": {
+      "key": "mu9JrAfm5V7zhQlixi8oU",
+      "name": "TabGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "2CPBdIAytQv9CT5cT40tEP": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "aLBg1Hqd7Y7RU0Iz1nFDX": true
+      },
+      "displayOrder": 1
+    },
+    "3DCe2cxPRayj3cDD662Ar4": {
+      "key": "3DCe2cxPRayj3cDD662Ar4",
+      "name": "Header",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "override": false,
+      "children": {
+        "6Lb7xXNMNJWcMqDyDfYnFz": true,
+        "FP2PDST8OHiENWRdHhkiV": true
+      },
+      "displayOrder": 1
+    },
+    "50tGHcaMGVOG259uPHXmGy": {
+      "key": "50tGHcaMGVOG259uPHXmGy",
+      "name": "Desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "The Deal Field Configuration feature in the CRM allows users to create and manage custom fields specific to their business needs. Users can add, edit, and organize fields to capture relevant deal information that aligns with their sales processes. "
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "aLBg1Hqd7Y7RU0Iz1nFDX": {
+      "key": "aLBg1Hqd7Y7RU0Iz1nFDX",
+      "name": "Tabs",
+      "type": "Tabs",
+      "properties": {
+        "tabs": {
+          "3iFvRBg47fg0Mk7OR7Oshz": {
+            "key": "3iFvRBg47fg0Mk7OR7Oshz",
+            "order": 1,
+            "property": {
+              "value": "Deals"
+            }
+          },
+          "1B2vWUobskNcw9A4iOOL58": {
+            "key": "1B2vWUobskNcw9A4iOOL58",
+            "order": 3,
+            "property": {
+              "value": "Settings"
+            }
+          },
+          "4AynYeEVxhPIbSUteHlLKw": {
+            "key": "4AynYeEVxhPIbSUteHlLKw",
+            "order": 4,
+            "property": {
+              "value": "App URL\u2019s"
+            }
+          }
+        },
+        "defaultActive": {
+          "value": "Deals"
+        },
+        "designType": {
+          "value": "_underLine"
+        },
+        "onTabChange": {
+          "value": "7mkgTlUEjrQ1sIVBetqto"
+        }
+      },
+      "styleProperties": {
+        "1oVF9I39v4d3NL60iANinP": {
+          "resolutions": {
+            "ALL": {
+              "tabHighlighter-borderBottomWidth": {
+                "value": "0.14vw"
+              },
+              "tabHighlighter-borderBottomStyle": {
+                "value": "solid"
+              },
+              "tabHighlighter-borderBottomColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorFour"
+                }
+              },
+              "tabsContainer-paddingLeft": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7f0kMTQM09hHpJdY6aNWpf": true,
+        "2xlg2wj1eOftmZjKIOewBG": true,
+        "6TqLbh3V982CIxviXHADjw": true,
+        "oEOMFWKCM5u4XgGzzSeRd": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.activeTab"
+      }
+    },
+    "6Lb7xXNMNJWcMqDyDfYnFz": {
+      "key": "6Lb7xXNMNJWcMqDyDfYnFz",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/bannerImageLogo.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "1PJKDLtrvvGYN9G95WIV1X": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "1.53vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "FP2PDST8OHiENWRdHhkiV": {
+      "key": "FP2PDST8OHiENWRdHhkiV",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Add terms and condition, Privacy policy"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "7f0kMTQM09hHpJdY6aNWpf": {
+      "key": "7f0kMTQM09hHpJdY6aNWpf",
+      "name": "DealsGrid",
+      "type": "Grid",
+      "properties": {
+        "padding": {
+          "value": "_PADDINGTHREE"
+        }
+      },
+      "styleProperties": {
+        "6rxcdVlE1H6QjrvbjSO82q": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "250mym8TZPa4dvBJfaWXDj": true,
+        "1PkBIOfyuYKzRxblCpE8B0": true
+      },
+      "displayOrder": 1
+    },
+    "250mym8TZPa4dvBJfaWXDj": {
+      "key": "250mym8TZPa4dvBJfaWXDj",
+      "name": "DNC",
+      "type": "Grid",
+      "properties": {
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "2x5wBFlDqwkeI0nTqWTT7v": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Qk0r1dkm64FMPGTZptUnr": true,
+        "4OxLB6Z3ILCOejMoSHQ2Ez": true,
+        "5nhoy4ttMyqHYSFyfZ62cp": true
+      },
+      "displayOrder": 1
+    },
+    "2Qk0r1dkm64FMPGTZptUnr": {
+      "key": "2Qk0r1dkm64FMPGTZptUnr",
+      "name": "DNCHeading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Do not call (DNC)"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4OxLB6Z3ILCOejMoSHQ2Ez": {
+      "key": "4OxLB6Z3ILCOejMoSHQ2Ez",
+      "name": "DNCDesc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Marks a deal so the pre-sales team doesn\u2019t contact the lead when the business is handling it directly"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "styleProperties": {
+        "5zFULuGnH0b3ElzoYZKJSo": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "5nhoy4ttMyqHYSFyfZ62cp": {
+      "key": "5nhoy4ttMyqHYSFyfZ62cp",
+      "name": "SetDNC",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2tpFKhThC6QqSFRI9J5f4g": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              },
+              "paddingBottom": {
+                "value": "2.08vw"
+              },
+              "borderBottomColor": {
+                "value": "#F2F2F2"
+              },
+              "borderBottomStyle": {
+                "value": "solid"
+              },
+              "borderBottomWidth": {
+                "value": "0.07vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5q8vVimIHdn0CyzCgvbGPs": true,
+        "3k2UQ0kmFnXgFmjfWy9Le6": true
+      },
+      "displayOrder": 3
+    },
+    "5q8vVimIHdn0CyzCgvbGPs": {
+      "key": "5q8vVimIHdn0CyzCgvbGPs",
+      "name": "ToggleButton",
+      "type": "ToggleButton",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "offImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOff.svg"
+        },
+        "onImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOn.svg"
+        }
+      },
+      "styleProperties": {
+        "47DeQqNZhIFkJ8mBzNyfhc": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "icon-height": {
+                "value": "0.5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.dnc"
+      }
+    },
+    "3k2UQ0kmFnXgFmjfWy9Le6": {
+      "key": "3k2UQ0kmFnXgFmjfWy9Le6",
+      "name": "InfoGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4zv4Ppl8n8wYaehs1N2j1h": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.97vw"
+              },
+              "paddingBottom": {
+                "value": "0.97vw"
+              },
+              "alignItems": {
+                "value": "start"
+              },
+              "alignSelf": {
+                "value": "center"
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '0D'"
+                }
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "paddingLeft": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6SnIq3ULIcUrMZUsK0CDoy": true,
+        "48y9ZX0PHbfk3Wu6PfhpDI": true
+      },
+      "displayOrder": 2
+    },
+    "6SnIq3ULIcUrMZUsK0CDoy": {
+      "key": "6SnIq3ULIcUrMZUsK0CDoy",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/Business partner app - Customization/Notification+icon.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "6LyZVKGDiVffp2YqUoH7he": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "0.97vw"
+              },
+              "height": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "48y9ZX0PHbfk3Wu6PfhpDI": {
+      "key": "48y9ZX0PHbfk3Wu6PfhpDI",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "If activated, the CRM user will be restricted from calling deal\n marked as Do Not Call (DNC)"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "69Lq3v1ETFdAajGPXsRQQe": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "1.11vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorOne"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "1PkBIOfyuYKzRxblCpE8B0": {
+      "key": "1PkBIOfyuYKzRxblCpE8B0",
+      "name": "Products",
+      "type": "Grid",
+      "styleProperties": {
+        "2x5wBFlDqwkeI0nTqWTT7v": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3xR6AD1kNwk0Y4rz3LwpyL": true,
+        "37dYSeFA1dYRpGdHmp96xe": true,
+        "3Mr2aDcyKBVmqwsJNSmQLe": true,
+        "3BDUX1dDtAut37vM6iIn3T": true
+      },
+      "displayOrder": 4
+    },
+    "3xR6AD1kNwk0Y4rz3LwpyL": {
+      "key": "3xR6AD1kNwk0Y4rz3LwpyL",
+      "name": "ProductsHeading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Products for Channel Partner"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "37dYSeFA1dYRpGdHmp96xe": {
+      "key": "37dYSeFA1dYRpGdHmp96xe",
+      "name": "ProductsDesc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Allows selected products to be visible to the Channel Partner in their app"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "styleProperties": {
+        "5zFULuGnH0b3ElzoYZKJSo": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "3Mr2aDcyKBVmqwsJNSmQLe": {
+      "key": "3Mr2aDcyKBVmqwsJNSmQLe",
+      "name": "SetProducts",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "2tpFKhThC6QqSFRI9J5f4g": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              },
+              "paddingBottom": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1bWYANqlutgCRdQMFZuKVh": true,
+        "3rvcMG0Mjxd0sCdxfMQOot": true
+      },
+      "displayOrder": 3
+    },
+    "1bWYANqlutgCRdQMFZuKVh": {
+      "key": "1bWYANqlutgCRdQMFZuKVh",
+      "name": "ToggleButton",
+      "type": "ToggleButton",
+      "properties": {
+        "label": {
+          "value": ""
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "offImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOff.svg"
+        },
+        "onImage": {
+          "value": "api/files/static/file/SYSTEM/leadzump/global/toggleOn.svg"
+        },
+        "onClick": {
+          "value": "5VKvvnxEw3Fq6jRJd4gkXT"
+        }
+      },
+      "styleProperties": {
+        "47DeQqNZhIFkJ8mBzNyfhc": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "1.2vw"
+              },
+              "icon-height": {
+                "value": "0.5vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.bpConfiguration.showAllProducts"
+      }
+    },
+    "3rvcMG0Mjxd0sCdxfMQOot": {
+      "key": "3rvcMG0Mjxd0sCdxfMQOot",
+      "name": "InfoGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4zv4Ppl8n8wYaehs1N2j1h": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.97vw"
+              },
+              "paddingBottom": {
+                "value": "0.97vw"
+              },
+              "alignItems": {
+                "value": "start"
+              },
+              "alignSelf": {
+                "value": "center"
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '0D'"
+                }
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "paddingLeft": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2Tulb1H1yr53skJ9p2FOXl": true,
+        "6WPWDO6mfs2YD1WhF5vWHz": true
+      },
+      "displayOrder": 2
+    },
+    "2Tulb1H1yr53skJ9p2FOXl": {
+      "key": "2Tulb1H1yr53skJ9p2FOXl",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "If activated, all products will be visible to the Channel Partner\n in their app or portal"
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "69Lq3v1ETFdAajGPXsRQQe": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "16px"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorOne"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "RRzEjeMQJZvffuGiL41n7": {
+      "key": "RRzEjeMQJZvffuGiL41n7",
+      "name": "SearchProducts",
+      "type": "TextBox",
+      "properties": {
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-magnifying-glass"
+        },
+        "placeholder": {
+          "value": "Search for products"
+        },
+        "onChange": {
+          "value": "3KYQmv3ueSKQPW0SrDnigE"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.searchValue"
+      }
+    },
+    "zPGRDKp2nugTwtdIT2kSa": {
+      "key": "zPGRDKp2nugTwtdIT2kSa",
+      "name": "LeftGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "6JrO1dR3XoLYshN9sYNRvc": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "44.72vw"
+              },
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "RRzEjeMQJZvffuGiL41n7": true,
+        "FbEGk4vctZuj6fpU4oclG": true,
+        "4kUwW9PoeX4bEHiLii6xxK": true
+      },
+      "displayOrder": 1
+    },
+    "3BDUX1dDtAut37vM6iIn3T": {
+      "key": "3BDUX1dDtAut37vM6iIn3T",
+      "name": "ProductsGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4KbFe3xD5bJZoyqh19Ajg0": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "zPGRDKp2nugTwtdIT2kSa": true,
+        "4wBucMs1hu9aYCLDduR1pM": true
+      },
+      "displayOrder": 4
+    },
+    "x4Cn6Qlc2nFOhdqSwPSBW": {
+      "key": "x4Cn6Qlc2nFOhdqSwPSBW",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7EgNqtRdVp0fiS0iw6iYZo": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4K8Q1e15dDOWymuqBT1m3F": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.productData"
+      }
+    },
+    "4K8Q1e15dDOWymuqBT1m3F": {
+      "key": "4K8Q1e15dDOWymuqBT1m3F",
+      "name": "Product",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "border": {
+          "value": "_MEDIUM"
+        },
+        "borderRadius": {
+          "value": "_SLIGHTROUND"
+        },
+        "onClick": {
+          "value": ""
+        }
+      },
+      "styleProperties": {
+        "6xHrWnnyB1VC2RoRfN29am": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.04vw"
+              },
+              "paddingBottom": {
+                "value": "1.04vw"
+              },
+              "paddingLeft": {
+                "value": "1.04vw"
+              },
+              "paddingRight": {
+                "value": "1.04vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "EIECf1Jurrcnxb5Sit6wN": true
+      },
+      "displayOrder": 0
+    },
+    "EIECf1Jurrcnxb5Sit6wN": {
+      "key": "EIECf1Jurrcnxb5Sit6wN",
+      "name": "CheckBox",
+      "type": "CheckBox",
+      "properties": {
+        "designType": {
+          "value": "_filled"
+        },
+        "label": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.name"
+          }
+        },
+        "onClick": {
+          "value": "940DtQwFGG6zIEjsALX7b"
+        }
+      },
+      "styleProperties": {
+        "4lSHx8S5j1bYAlUWJmtTjE": {
+          "resolutions": {
+            "ALL": {
+              "checkbox-borderTopLeftRadius": {
+                "value": "0.28vw"
+              },
+              "checkbox-borderTopRightRadius": {
+                "value": "0.28vw"
+              },
+              "checkbox-borderBottomLeftRadius": {
+                "value": "0.28vw"
+              },
+              "checkbox-borderBottomRightRadius": {
+                "value": "0.28vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.forPartner"
+      }
+    },
+    "FbEGk4vctZuj6fpU4oclG": {
+      "key": "FbEGk4vctZuj6fpU4oclG",
+      "name": "RepeatorGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "4SHVvwVuomYyHAnniN2wfs": {
+          "resolutions": {
+            "ALL": {
+              "overflow": {
+                "value": "auto"
+              },
+              "maxHeight": {
+                "value": "20vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "x4Cn6Qlc2nFOhdqSwPSBW": true
+      },
+      "displayOrder": 2
+    },
+    "4wBucMs1hu9aYCLDduR1pM": {
+      "key": "4wBucMs1hu9aYCLDduR1pM",
+      "name": "RightGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "visibility": {
+          "value": false
+        }
+      },
+      "styleProperties": {
+        "4zv4Ppl8n8wYaehs1N2j1h": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "3.75vw"
+              },
+              "paddingBottom": {
+                "value": "3.75vw"
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '0D'"
+                }
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "alignItems": {
+                "value": "start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6dzibaT8mjQfU1JEKg5Haj": true,
+        "15f8r23Wt905tKXzlhhzzg": true
+      },
+      "displayOrder": 2
+    },
+    "6dzibaT8mjQfU1JEKg5Haj": {
+      "key": "6dzibaT8mjQfU1JEKg5Haj",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/Business partner app - Customization/Notification+icon.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "6LyZVKGDiVffp2YqUoH7he": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "0.97vw"
+              },
+              "height": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "15f8r23Wt905tKXzlhhzzg": {
+      "key": "15f8r23Wt905tKXzlhhzzg",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "For existing users once the app is installed, open it and\nenter the domain ID from below."
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "69Lq3v1ETFdAajGPXsRQQe": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "1.11vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorOne"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2xlg2wj1eOftmZjKIOewBG": {
+      "key": "2xlg2wj1eOftmZjKIOewBG",
+      "name": "DashboardGrid",
+      "type": "Grid",
+      "properties": {
+        "padding": {
+          "value": "_PADDINGTHREE"
+        },
+        "visibility": {
+          "value": true
+        }
+      },
+      "override": false,
+      "children": {
+        "4RKrgMfaE6QTngUZjmI9g4": true,
+        "6MkIL2uaNTBT2QoiFIipC8": true,
+        "20r6vRNwDxsaizoNVGHtFc": true
+      },
+      "displayOrder": 4
+    },
+    "4RKrgMfaE6QTngUZjmI9g4": {
+      "key": "4RKrgMfaE6QTngUZjmI9g4",
+      "name": "Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Select what reports to be shown in dashboard"
+        },
+        "textContainer": {
+          "value": "H2"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "6MkIL2uaNTBT2QoiFIipC8": {
+      "key": "6MkIL2uaNTBT2QoiFIipC8",
+      "name": "Desc",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Account\u00a0means a unique account created for You to access our Service or parts of our Service or access our Service"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "styleProperties": {
+        "5yZQHnX0CjxTVuT38hu0X6": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "2.08vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "20r6vRNwDxsaizoNVGHtFc": {
+      "key": "20r6vRNwDxsaizoNVGHtFc",
+      "name": "ProductsGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4KbFe3xD5bJZoyqh19Ajg0": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4jyl5hvJCmzZD3JtLzp9w7": true,
+        "4veqjrMIWa1O4hoMFOsM4g": true
+      },
+      "displayOrder": 3
+    },
+    "4jyl5hvJCmzZD3JtLzp9w7": {
+      "key": "4jyl5hvJCmzZD3JtLzp9w7",
+      "name": "LeftGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "6JrO1dR3XoLYshN9sYNRvc": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "44.72vw"
+              },
+              "gap": {
+                "value": "1.39vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "1S7PFdh15TGDNTXM2kYp3D": true,
+        "4rCUjXnRiFPHR7VITAgQQ": true
+      },
+      "displayOrder": 1
+    },
+    "4veqjrMIWa1O4hoMFOsM4g": {
+      "key": "4veqjrMIWa1O4hoMFOsM4g",
+      "name": "RightGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "4zv4Ppl8n8wYaehs1N2j1h": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "3.75vw"
+              },
+              "paddingBottom": {
+                "value": "3.75vw"
+              },
+              "borderLeftColor": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorTwo + '0D'"
+                }
+              },
+              "borderLeftWidth": {
+                "value": "0.07vw"
+              },
+              "borderLeftStyle": {
+                "value": "solid"
+              },
+              "paddingLeft": {
+                "value": "1.39vw"
+              },
+              "alignItems": {
+                "value": "start"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2MocB5oqLqyBq6CM2jp3m2": true,
+        "4i4cUZk49fzrgufRqUoa2h": true
+      },
+      "displayOrder": 2
+    },
+    "1S7PFdh15TGDNTXM2kYp3D": {
+      "key": "1S7PFdh15TGDNTXM2kYp3D",
+      "name": "SearchProducts",
+      "type": "TextBox",
+      "properties": {
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "leftIcon": {
+          "value": " fa fa-solid fa-magnifying-glass"
+        },
+        "placeholder": {
+          "value": "Search for products"
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4rCUjXnRiFPHR7VITAgQQ": {
+      "key": "4rCUjXnRiFPHR7VITAgQQ",
+      "name": "RepeatorGrid",
+      "type": "Grid",
+      "styleProperties": {
+        "4SHVvwVuomYyHAnniN2wfs": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "25vw"
+              },
+              "overflow": {
+                "value": "auto"
+              },
+              "paddingRight": {
+                "value": "1.04vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "6wKP8MsJHipISD4ttsJ1Dh": true
+      },
+      "displayOrder": 2
+    },
+    "2MocB5oqLqyBq6CM2jp3m2": {
+      "key": "2MocB5oqLqyBq6CM2jp3m2",
+      "name": "Image",
+      "type": "Image",
+      "properties": {
+        "src": {
+          "value": "api/files/static/file/SYSTEM/leadzump/Business partner app - Customization/Notification+icon.svg"
+        },
+        "alt": {
+          "value": "Image"
+        }
+      },
+      "styleProperties": {
+        "6LyZVKGDiVffp2YqUoH7he": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "0.97vw"
+              },
+              "height": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4i4cUZk49fzrgufRqUoa2h": {
+      "key": "4i4cUZk49fzrgufRqUoa2h",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "For existing users once the app is installed, open it and\nenter the domain ID from below."
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText4"
+        },
+        "processNewLine": {
+          "value": true
+        }
+      },
+      "styleProperties": {
+        "69Lq3v1ETFdAajGPXsRQQe": {
+          "resolutions": {
+            "ALL": {
+              "lineHeight": {
+                "value": "1.11vw"
+              },
+              "color": {
+                "location": {
+                  "type": "EXPRESSION",
+                  "expression": "Theme.colorOne"
+                }
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6wKP8MsJHipISD4ttsJ1Dh": {
+      "key": "6wKP8MsJHipISD4ttsJ1Dh",
+      "name": "Repeator",
+      "type": "ArrayRepeater",
+      "properties": {
+        "layout": {
+          "value": "TWOCOLUMNSLAYOUT"
+        }
+      },
+      "styleProperties": {
+        "7EgNqtRdVp0fiS0iw6iYZo": {
+          "resolutions": {
+            "ALL": {
+              "gap": {
+                "value": "0.69vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7sWsF7z92EIebWQoeoTzOR": true
+      },
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.dashboardData"
+      }
+    },
+    "7sWsF7z92EIebWQoeoTzOR": {
+      "key": "7sWsF7z92EIebWQoeoTzOR",
+      "name": "Product",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SECONDARYBG"
+        },
+        "border": {
+          "value": "_MEDIUM"
+        },
+        "borderRadius": {
+          "value": "_SLIGHTROUND"
+        }
+      },
+      "styleProperties": {
+        "6xHrWnnyB1VC2RoRfN29am": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1.04vw"
+              },
+              "paddingBottom": {
+                "value": "1.04vw"
+              },
+              "paddingLeft": {
+                "value": "1.04vw"
+              },
+              "paddingRight": {
+                "value": "1.04vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "52U9ROCuDYXjMeVI6PP9NX": true
+      },
+      "displayOrder": 0
+    },
+    "52U9ROCuDYXjMeVI6PP9NX": {
+      "key": "52U9ROCuDYXjMeVI6PP9NX",
+      "name": "CheckBox",
+      "type": "CheckBox",
+      "properties": {
+        "designType": {
+          "value": "_filled"
+        },
+        "label": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Parent.reportName"
+          }
+        }
+      },
+      "styleProperties": {
+        "4lSHx8S5j1bYAlUWJmtTjE": {
+          "resolutions": {
+            "ALL": {
+              "checkbox-borderTopLeftRadius": {
+                "value": "0.28vw"
+              },
+              "checkbox-borderTopRightRadius": {
+                "value": "0.28vw"
+              },
+              "checkbox-borderBottomLeftRadius": {
+                "value": "0.28vw"
+              },
+              "checkbox-borderBottomRightRadius": {
+                "value": "0.28vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Parent.selected"
+      }
+    },
+    "6TqLbh3V982CIxviXHADjw": {
+      "key": "6TqLbh3V982CIxviXHADjw",
+      "name": "SettingsGrid",
+      "type": "Grid",
+      "properties": {
+        "padding": {
+          "value": "_PADDINGTHREE"
+        }
+      },
+      "styleProperties": {
+        "6mJOd1DLezJLBoA0bmOpc4": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "57.29vw"
+              },
+              "gap": {
+                "value": "1.04vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7Hmi4SsQP3yI5IXKiVfV5k": true,
+        "59juPHYp3WKIJLaeeDXnY3": true,
+        "32Lck3bHJMA94nwIeKZ8rE": true,
+        "70OzdJSHwMiBfbg1bq5Sdp": true,
+        "25Ogb3SRgr5X266SE63rS2": true,
+        "2rlBEBrozZpw16LVIERY1D": true,
+        "6U6YGWafakjFt0qqZCj3dP": true
+      },
+      "displayOrder": 2
+    },
+    "7Hmi4SsQP3yI5IXKiVfV5k": {
+      "key": "7Hmi4SsQP3yI5IXKiVfV5k",
+      "name": "Markdown Editor",
+      "type": "MarkdownEditor",
+      "styleProperties": {
+        "2uNtXBSytJ1hmAdRBHU2XT": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 4px 10px 5px #00000005"
+              },
+              "tabBar-borderTopLeftRadius": {
+                "value": "0.97vw"
+              },
+              "tabBar-borderTopRightRadius": {
+                "value": "0.97vw"
+              },
+              "textArea-minHeight": {
+                "value": "15vw"
+              },
+              "textArea-paddingTop": {
+                "value": "1.39vw"
+              },
+              "textArea-paddingBottom": {
+                "value": "1.39vw"
+              },
+              "textArea-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "textArea-paddingRight": {
+                "value": "1.39vw"
+              },
+              "textArea-borderBottomLeftRadius": {
+                "value": "0.97vw"
+              },
+              "textArea-borderBottomRightRadius": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.bpConfiguration.termsAndCondition"
+      }
+    },
+    "59juPHYp3WKIJLaeeDXnY3": {
+      "key": "59juPHYp3WKIJLaeeDXnY3",
+      "name": "Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Terms and condition"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "styleProperties": {
+        "41GY3M2YGerL8L4kYvC96a": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "32Lck3bHJMA94nwIeKZ8rE": {
+      "key": "32Lck3bHJMA94nwIeKZ8rE",
+      "name": "Heading",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Privacy Policy"
+        },
+        "textContainer": {
+          "value": "H2"
+        },
+        "textColor": {
+          "value": "_subText"
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "70OzdJSHwMiBfbg1bq5Sdp": {
+      "key": "70OzdJSHwMiBfbg1bq5Sdp",
+      "name": "Markdown Editor",
+      "type": "MarkdownEditor",
+      "styleProperties": {
+        "2uNtXBSytJ1hmAdRBHU2XT": {
+          "resolutions": {
+            "ALL": {
+              "boxShadow": {
+                "value": "0px 4px 10px 5px #00000005"
+              },
+              "tabBar-borderTopLeftRadius": {
+                "value": "0.97vw"
+              },
+              "tabBar-borderTopRightRadius": {
+                "value": "0.97vw"
+              },
+              "textArea-minHeight": {
+                "value": "15vw"
+              },
+              "textArea-paddingTop": {
+                "value": "1.39vw"
+              },
+              "textArea-paddingBottom": {
+                "value": "1.39vw"
+              },
+              "textArea-paddingLeft": {
+                "value": "1.39vw"
+              },
+              "textArea-paddingRight": {
+                "value": "1.39vw"
+              },
+              "textArea-borderBottomLeftRadius": {
+                "value": "0.97vw"
+              },
+              "textArea-borderBottomRightRadius": {
+                "value": "0.97vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.bpConfiguration.privacyPolicy"
+      }
+    },
+    "25Ogb3SRgr5X266SE63rS2": {
+      "key": "25Ogb3SRgr5X266SE63rS2",
+      "name": "SaveTC",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save"
+        },
+        "onClick": {
+          "value": "Do2YvXIw6AdrormGqtsPz"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.bpConfiguration.termsAndCondition = undefined"
+          }
+        }
+      },
+      "styleProperties": {
+        "6xY8TJRB8boR95DfVgAZTP": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "alignSelf": {
+                "value": "end"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "2rlBEBrozZpw16LVIERY1D": {
+      "key": "2rlBEBrozZpw16LVIERY1D",
+      "name": "SavePrivacy",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save"
+        },
+        "onClick": {
+          "value": "Do2YvXIw6AdrormGqtsPz"
+        },
+        "readOnly": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.bpConfiguration.privacyPolicy = undefined"
+          }
+        }
+      },
+      "styleProperties": {
+        "6xY8TJRB8boR95DfVgAZTP": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              },
+              "alignSelf": {
+                "value": "end"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 6
+    },
+    "4kUwW9PoeX4bEHiLii6xxK": {
+      "key": "4kUwW9PoeX4bEHiLii6xxK",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save"
+        },
+        "onClick": {
+          "value": "4lRLofH88bbxmju4phLAez"
+        }
+      },
+      "styleProperties": {
+        "4c0CPyifROPFcmmigcsiJn": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "max-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6U6YGWafakjFt0qqZCj3dP": {
+      "key": "6U6YGWafakjFt0qqZCj3dP",
+      "name": "App logo Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "35NZief2bQ6MoGZJqoIect": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "1vw"
+              },
+              "paddingBottom": {
+                "value": "1vw"
+              },
+              "gap": {
+                "value": "17px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4prxxcv1WG3DNS6csFFwBI": true,
+        "dB7PPg3TsceIQNjKT42Me": true
+      }
+    },
+    "4prxxcv1WG3DNS6csFFwBI": {
+      "key": "4prxxcv1WG3DNS6csFFwBI",
+      "name": "App logo File Selector",
+      "type": "FileSelector",
+      "properties": {
+        "designType": {
+          "value": "fileUploadWithProgressBar"
+        },
+        "label": {
+          "value": "App Logo"
+        },
+        "onSelect": {
+          "value": "7oPUTqqmTHUKshY4zCkTGr"
+        },
+        "startLocation": {
+          "value": "/CpLogos"
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.appLogoDetails"
+      }
+    },
+    "oEOMFWKCM5u4XgGzzSeRd": {
+      "key": "oEOMFWKCM5u4XgGzzSeRd",
+      "name": "App URL\u2019s Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "78iCDAtv5O3r7Mzb0cnweT": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "3.5vw"
+              },
+              "paddingLeft": {
+                "value": "2.5vw"
+              },
+              "gap": {
+                "value": "2.5vw"
+              },
+              "width": {
+                "value": "35%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "4M2OjL3BsnVNpafNqU6cDN": true,
+        "5x1UvxBxCwuufK5otPwjn7": true,
+        "2IRwgorHhSSuwGisHSKj7d": true
+      },
+      "displayOrder": 3
+    },
+    "4M2OjL3BsnVNpafNqU6cDN": {
+      "key": "4M2OjL3BsnVNpafNqU6cDN",
+      "name": "Android App Link",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "Android App Link"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "3VgVmBEIaVPw36FPya1YV": {
+            "key": "3VgVmBEIaVPw36FPya1YV",
+            "order": 1,
+            "property": {
+              "value": {
+                "type": "REGEX",
+                "pattern": {
+                  "value": ".*\\S.*"
+                },
+                "message": {
+                  "value": "Enter a valid link"
+                }
+              }
+            }
+          }
+        }
+      },
+      "styleProperties": {
+        "4uC6mvKApTZkfNsjEWT2WB": {
+          "resolutions": {
+            "ALL": {
+              "marginBottom": {
+                "value": "1vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.bpConfiguration.androidAppLink"
+      }
+    },
+    "5x1UvxBxCwuufK5otPwjn7": {
+      "key": "5x1UvxBxCwuufK5otPwjn7",
+      "name": "iOS App Link",
+      "type": "TextBox",
+      "properties": {
+        "label": {
+          "value": "iOS App Link"
+        },
+        "updateStoreImmediately": {
+          "value": true
+        },
+        "noFloat": {
+          "value": true
+        },
+        "validation": {
+          "3DsewhgqFK4RuLgR5Hef6j": {
+            "key": "3DsewhgqFK4RuLgR5Hef6j",
+            "order": 1,
+            "property": {
+              "value": {
+                "type": "REGEX",
+                "pattern": {
+                  "value": ".*\\S.*"
+                },
+                "message": {
+                  "value": "Enter a valid link"
+                }
+              }
+            }
+          }
+        },
+        "visibility": {
+          "value": true
+        }
+      },
+      "override": false,
+      "displayOrder": 2,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.bpConfiguration.iosAppLink"
+      }
+    },
+    "2IRwgorHhSSuwGisHSKj7d": {
+      "key": "2IRwgorHhSSuwGisHSKj7d",
+      "name": "Save ",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Save "
+        },
+        "onClick": {
+          "value": "Do2YvXIw6AdrormGqtsPz"
+        }
+      },
+      "styleProperties": {
+        "7gBO54wP94lBBAKCEyZAEF": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "fit-content"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "3sITmldb3WR1JBSBZSWL5C": {
+      "key": "3sITmldb3WR1JBSBZSWL5C",
+      "name": "statusGrid",
+      "type": "Grid",
+      "properties": {
+        "layout": {
+          "value": "ROWLAYOUT"
+        },
+        "padding": {
+          "value": "_PADDINGONE"
+        },
+        "background": {
+          "value": "_SEPTENARYBG"
+        },
+        "borderRadius": {
+          "value": "_FULLROUND"
+        },
+        "border": {
+          "value": "_HEAVY"
+        },
+        "visibility": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.status != undefined"
+          }
+        }
+      },
+      "styleProperties": {
+        "4CRkd5MTfhtcI8vTVGOZhZ": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "0.69vw"
+              },
+              "paddingBottom": {
+                "value": "0.69vw"
+              },
+              "width": {
+                "value": "max-content"
+              },
+              "position": {
+                "value": "fixed"
+              },
+              "bottom": {
+                "value": "5vw"
+              },
+              "animationName": {
+                "value": "_fadeIn"
+              },
+              "animationDuration": {
+                "value": "0.8s"
+              },
+              "animationIterationCount": {
+                "value": "1"
+              },
+              "alignSelf": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "YUpEnZNjFt5csGxH6n8F": true,
+        "7f8T092lD4ocEWu0axRQEb": true
+      },
+      "displayOrder": 3
+    },
+    "YUpEnZNjFt5csGxH6n8F": {
+      "key": "YUpEnZNjFt5csGxH6n8F",
+      "name": "Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "\n",
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.status.message"
+          }
+        },
+        "textContainer": {
+          "value": "H3"
+        },
+        "textColor": {
+          "value": "_coloredText5"
+        }
+      },
+      "styleProperties": {
+        "1cxrtvUukQBFUdTH30rFks": {
+          "resolutions": {
+            "ALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "7f8T092lD4ocEWu0axRQEb": {
+      "key": "7f8T092lD4ocEWu0axRQEb",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Image"
+        },
+        "src": {
+          "location": {
+            "type": "EXPRESSION",
+            "expression": "Page.status.type = \"success\"  ? \"api/files/static/file/SYSTEM/leadzump/global/successValidation.svg\" : Page.status.type = \"failed\" ? \"api/files/static/file/SYSTEM/leadzump/global/errorValidation.svg\" : \"\""
+          }
+        }
+      },
+      "styleProperties": {
+        "6AwvH3aZezQo54Pynev2Gn": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "1.736vw"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "dB7PPg3TsceIQNjKT42Me": {
+      "key": "dB7PPg3TsceIQNjKT42Me",
+      "name": "login File Selector",
+      "type": "FileSelector",
+      "properties": {
+        "designType": {
+          "value": "fileUploadWithProgressBar"
+        },
+        "label": {
+          "value": "Registration Logo"
+        },
+        "onSelect": {
+          "value": "phUCfCaOi0sPgKrDbLUS5"
+        },
+        "startLocation": {
+          "value": "/CpLogos"
+        }
+      },
+      "override": false,
+      "displayOrder": 1,
+      "bindingPath": {
+        "type": "VALUE",
+        "value": "Page.reLogoDetails"
+      }
+    },
+    "6WPWDO6mfs2YD1WhF5vWHz": {
+      "key": "6WPWDO6mfs2YD1WhF5vWHz",
+      "name": "Icon",
+      "type": "Icon",
+      "properties": {
+        "icon": {
+          "value": " mi material-icons-round mio-info_outline"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        }
+      },
+      "styleProperties": {
+        "bpknf9IvQCBxN1UfT8REj": {
+          "resolutions": {
+            "ALL": {
+              "fontSize": {
+                "value": "14px"
+              },
+              "lineHeight": {
+                "value": "16px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    }
+  },
+  "componentVersions": {
+    "mu9JrAfm5V7zhQlixi8oU": 4,
+    "2xlg2wj1eOftmZjKIOewBG": 4,
+    "4jyl5hvJCmzZD3JtLzp9w7": 4,
+    "6MkIL2uaNTBT2QoiFIipC8": 4,
+    "5q8vVimIHdn0CyzCgvbGPs": 4,
+    "FbEGk4vctZuj6fpU4oclG": 4,
+    "6Lb7xXNMNJWcMqDyDfYnFz": 4,
+    "3r8vpafzvh9IEroXkAsxD4": 4,
+    "RRzEjeMQJZvffuGiL41n7": 4,
+    "48y9ZX0PHbfk3Wu6PfhpDI": 4,
+    "EIECf1Jurrcnxb5Sit6wN": 4,
+    "6TqLbh3V982CIxviXHADjw": 4,
+    "4kUwW9PoeX4bEHiLii6xxK": 4,
+    "4rCUjXnRiFPHR7VITAgQQ": 4,
+    "pEZqPzQ3R0gidGNLZrhpx": 4,
+    "aLBg1Hqd7Y7RU0Iz1nFDX": 4,
+    "6yda7cA45eD1tmqHjZIkNv": 4,
+    "50tGHcaMGVOG259uPHXmGy": 4,
+    "3DCe2cxPRayj3cDD662Ar4": 4,
+    "32Lck3bHJMA94nwIeKZ8rE": 4,
+    "70OzdJSHwMiBfbg1bq5Sdp": 4,
+    "25Ogb3SRgr5X266SE63rS2": 4,
+    "52U9ROCuDYXjMeVI6PP9NX": 4,
+    "7f8T092lD4ocEWu0axRQEb": 4,
+    "1bWYANqlutgCRdQMFZuKVh": 4,
+    "2Tulb1H1yr53skJ9p2FOXl": 4,
+    "3kkIy2DVYXZ8ZE6QZWBUjE": 4,
+    "5nhoy4ttMyqHYSFyfZ62cp": 4,
+    "5x1UvxBxCwuufK5otPwjn7": 4,
+    "FP2PDST8OHiENWRdHhkiV": 4,
+    "4prxxcv1WG3DNS6csFFwBI": 4,
+    "3xR6AD1kNwk0Y4rz3LwpyL": 4,
+    "15f8r23Wt905tKXzlhhzzg": 4,
+    "37dYSeFA1dYRpGdHmp96xe": 4,
+    "4wBucMs1hu9aYCLDduR1pM": 4,
+    "7Hmi4SsQP3yI5IXKiVfV5k": 4,
+    "3k2UQ0kmFnXgFmjfWy9Le6": 4,
+    "4K8Q1e15dDOWymuqBT1m3F": 4,
+    "4M2OjL3BsnVNpafNqU6cDN": 4,
+    "55bWzCJQ3aV654OWCCI3pt": 4,
+    "4OxLB6Z3ILCOejMoSHQ2Ez": 4,
+    "3BDUX1dDtAut37vM6iIn3T": 4,
+    "4veqjrMIWa1O4hoMFOsM4g": 4,
+    "6dzibaT8mjQfU1JEKg5Haj": 4,
+    "4RKrgMfaE6QTngUZjmI9g4": 4,
+    "1PkBIOfyuYKzRxblCpE8B0": 4,
+    "2MocB5oqLqyBq6CM2jp3m2": 4,
+    "zPGRDKp2nugTwtdIT2kSa": 4,
+    "3sITmldb3WR1JBSBZSWL5C": 4,
+    "250mym8TZPa4dvBJfaWXDj": 4,
+    "dB7PPg3TsceIQNjKT42Me": 4,
+    "3rvcMG0Mjxd0sCdxfMQOot": 4,
+    "oEOMFWKCM5u4XgGzzSeRd": 4,
+    "7f0kMTQM09hHpJdY6aNWpf": 4,
+    "1S7PFdh15TGDNTXM2kYp3D": 4,
+    "59juPHYp3WKIJLaeeDXnY3": 4,
+    "4i4cUZk49fzrgufRqUoa2h": 4,
+    "6SnIq3ULIcUrMZUsK0CDoy": 4,
+    "4vYMDo7y0021fFeTqkqHeH": 2,
+    "7sWsF7z92EIebWQoeoTzOR": 4,
+    "6U6YGWafakjFt0qqZCj3dP": 4,
+    "2IRwgorHhSSuwGisHSKj7d": 4,
+    "1F5jqWNRfZVPbfr1fsdvGC": 4,
+    "YUpEnZNjFt5csGxH6n8F": 4,
+    "x4Cn6Qlc2nFOhdqSwPSBW": 4,
+    "2Qk0r1dkm64FMPGTZptUnr": 4,
+    "20r6vRNwDxsaizoNVGHtFc": 4,
+    "6wKP8MsJHipISD4ttsJ1Dh": 4,
+    "3Mr2aDcyKBVmqwsJNSmQLe": 4,
+    "2rlBEBrozZpw16LVIERY1D": 4,
+    "6WPWDO6mfs2YD1WhF5vWHz": 2
+  },
+  "eventFunctionVersions": {
+    "3oTRcnC7meizZAzkA1VyuR": 4,
+    "phUCfCaOi0sPgKrDbLUS5": 4,
+    "5VKvvnxEw3Fq6jRJd4gkXT": 4,
+    "1n32FqpmTRgHdeZm11g7rt": 4,
+    "527S0vdP4yfbxKx74nIjkM": 4,
+    "3KYQmv3ueSKQPW0SrDnigE": 4,
+    "4nUO7gYUHfKFxD6gkejEn9": 4,
+    "4v5uWiHnLNw3sOebK20CQh": 4,
+    "Do2YvXIw6AdrormGqtsPz": 4,
+    "7oPUTqqmTHUKshY4zCkTGr": 4,
+    "4lRLofH88bbxmju4phLAez": 4,
+    "940DtQwFGG6zIEjsALX7b": 4
+  },
+  "name": "bpAppConfiguration",
+  "message": "From transport : 1wQWGRtNepBvqTPqw2neH6",
+  "clientCode": "SYSTEM",
+  "permission": "Authorities.Logged_IN and Authorities.ROLE_Owner",
+  "appCode": "leadzump",
+  "version": 61,
+  "updatedAt": "2026-05-14 13:46:49.662000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-09-08 05:12:16.140000",
+  "createdBy": "<USER>"
+}

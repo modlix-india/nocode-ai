@@ -21,6 +21,17 @@ aiomysql==0.2.0
 # LLM SDKs
 anthropic>=0.40.0
 openai>=1.76.0
+# Gemini — added in Phase 8 of the CFA rewrite. Becomes the default after
+# the bench (scripts/bench_providers.py) confirms tool-use + Kirun-compile
+# parity with Claude Haiku. NOTE: Google deprecated `google-generativeai`
+# in favor of `google-genai` — this still works (last release Aug 2025)
+# but should be swapped before Python 3.10+ migration. See
+# https://github.com/google-gemini/deprecated-generative-ai-python
+google-generativeai>=0.8.0
+
+# Kirun DSL compiler / decompiler — used by the modlix-mcp tool port for
+# function authoring. Provides DSLCompiler.compile/decompile/validate.
+kirun-py>=3.4.0
 
 # Eureka Client
 py-eureka-client==0.11.10
@@ -36,3 +47,13 @@ playwright==1.55.0
 python-dotenv==1.0.1
 pydantic==2.10.4
 pydantic-settings==2.7.1
+
+# Test infrastructure — Tier 1+2 coverage of the modlix port + helpers + KB
+# lifecycle + platform_docs tools. Run with `pytest` from the repo root.
+pytest==8.3.4
+pytest-asyncio==0.25.2
+
+# YAML — used by the provider-bench harness (scripts/bench_providers.py +
+# scripts/bench_corpus.yaml). Already installed transitively but declared
+# explicitly so a clean venv install picks it up.
+PyYAML>=6.0

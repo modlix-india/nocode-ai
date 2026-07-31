@@ -1,0 +1,24 @@
+{
+  "_id": "665f4f8e111ddb4fbf3bbafe",
+  "schema": {
+    "ref": "kyc.Account",
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1
+  },
+  "uniqueName": "kyc_system_account_vbpqu5b2gysy",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": true,
+  "onlyThruKIRun": true,
+  "name": "Account",
+  "message": "From transport : 07wfTy9J9xNSJSU3kuuU2v",
+  "clientCode": "SYSTEM",
+  "appCode": "kyc",
+  "version": 55,
+  "updatedAt": "2026-04-09 04:28:50.976000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:31:58.849000",
+  "createdBy": "<USER>"
+}

@@ -1,0 +1,654 @@
+{
+  "_id": "665f4bb175cb641470f176dc",
+  "properties": {
+    "wrapShell": false
+  },
+  "rootComponent": "1N9sak29mWF4jaIP70OXuW",
+  "componentDefinition": {
+    "1N9sak29mWF4jaIP70OXuW": {
+      "key": "1N9sak29mWF4jaIP70OXuW",
+      "name": "PageGrid",
+      "type": "Grid",
+      "properties": {
+        "background": {
+          "value": "_SEPTENARYBG"
+        }
+      },
+      "styleProperties": {
+        "5yvEm4Lgh3xqlwwAUOtk01": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "100vw"
+              },
+              "height": {
+                "value": "100vh"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "7qBI4D5JRb4U8N9SVB9D8H": true,
+        "3je2FMNusesWwWelnCW4T4": true
+      }
+    },
+    "7qBI4D5JRb4U8N9SVB9D8H": {
+      "key": "7qBI4D5JRb4U8N9SVB9D8H",
+      "name": "Header Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "2vhMtJvUXqN2uus1HvbIla": {
+          "resolutions": {
+            "ALL": {
+              "paddingTop": {
+                "value": "15px"
+              },
+              "paddingBottom": {
+                "value": "15px"
+              },
+              "paddingLeft": {
+                "value": "30px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2STSXISYPshwzQHT8EbSuG": true
+      },
+      "displayOrder": 1
+    },
+    "2STSXISYPshwzQHT8EbSuG": {
+      "key": "2STSXISYPshwzQHT8EbSuG",
+      "name": "image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group<PHONE>.svg"
+        }
+      },
+      "styleProperties": {
+        "203zX6mOQscTCNgjoUmmqU": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "163px"
+              },
+              "height": {
+                "value": "26px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 0
+    },
+    "3je2FMNusesWwWelnCW4T4": {
+      "key": "3je2FMNusesWwWelnCW4T4",
+      "name": "main section Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "3qvRmhfhlGKD5E5FPuK3HW": {
+          "resolutions": {
+            "ALL": {
+              "display": {
+                "value": "flex"
+              },
+              "flexDirection": {
+                "value": "column"
+              },
+              "justifyContent": {
+                "value": "center"
+              },
+              "alignItems": {
+                "value": "center"
+              },
+              "height": {
+                "value": "100%"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "5XcSK36C9oF9bxR4xk7Eic": true,
+        "5xJd92BS6PsAW4pHUiW4rh": true,
+        "738m6f3isUTiuKbWyT4v1v": true
+      },
+      "displayOrder": 2
+    },
+    "5XcSK36C9oF9bxR4xk7Eic": {
+      "key": "5XcSK36C9oF9bxR4xk7Eic",
+      "name": "Images Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "4CfXWvi87ueb7lNaH9ozhx": {
+          "resolutions": {
+            "ALL": {
+              "justifyContent": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "2yrCaZMMWrlL30yijzXef3": true,
+        "2x6ZatMzPYtw5epHUPxIOA": true,
+        "77pFagCZb8R4ILrctfpWSC": true,
+        "6ot10sLVibRRvsPTxXLkS8": true,
+        "4JT6Bh8LrWLoPktrjFQcEY": true
+      },
+      "displayOrder": 1
+    },
+    "5xJd92BS6PsAW4pHUiW4rh": {
+      "key": "5xJd92BS6PsAW4pHUiW4rh",
+      "name": "Access denied text Grid",
+      "type": "Grid",
+      "styleProperties": {
+        "1fgzQ0wyFKzRUAsO54YRZ8": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "30px"
+              },
+              "marginBottom": {
+                "value": "30px"
+              },
+              "alignItems": {
+                "value": "center"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "alignItems": {
+                "value": "center"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "children": {
+        "3nTP792dPTrgkDrDv9DKGN": true,
+        "4Tp1lwe5LTUlArlVWBhzcB": true,
+        "6XiliwxPwzBcJRqhVvOpRU": true,
+        "dvYH15LkCqil6fJf9JYdK": true
+      },
+      "displayOrder": 2
+    },
+    "738m6f3isUTiuKbWyT4v1v": {
+      "key": "738m6f3isUTiuKbWyT4v1v",
+      "name": "button",
+      "type": "Button",
+      "properties": {
+        "label": {
+          "value": "Go to Dashboard"
+        },
+        "colorScheme": {
+          "value": "_secondary"
+        },
+        "linkPath": {
+          "value": "/dashboard"
+        },
+        "target": {
+          "value": "_self"
+        }
+      },
+      "styleProperties": {
+        "2fpy0zWSBMfmpzh9cqXmbn": {
+          "resolutions": {
+            "ALL": {
+              "height": {
+                "value": "45px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2yrCaZMMWrlL30yijzXef3": {
+      "key": "2yrCaZMMWrlL30yijzXef3",
+      "name": "inner ellipse",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Ellipse+26.svg"
+        }
+      },
+      "styleProperties": {
+        "3FOExx12BLegbSJPuADLXt": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "239.9px"
+              },
+              "height": {
+                "value": "239.9px"
+              },
+              "marginTop": {
+                "value": "-280px"
+              },
+              "marginLeft": {
+                "value": "35px"
+              },
+              "animationName": {
+                "value": "_pulse,_zoomInDown,_zoomInLeft,_tada,_wobble"
+              },
+              "animationDuration": {
+                "value": "2s,1s,1s,1s,1s"
+              },
+              "animationIterationCount": {
+                "value": "infinite,1,1,1,1"
+              },
+              "animationTimingFunction": {
+                "value": "ease,ease,ease,ease,ease"
+              },
+              "animationDelay": {
+                "value": ",0s,0s,0s,0s"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "139.9px"
+              },
+              "height": {
+                "value": "139.9px"
+              },
+              "marginTop": {
+                "value": "-180px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "2x6ZatMzPYtw5epHUPxIOA": {
+      "key": "2x6ZatMzPYtw5epHUPxIOA",
+      "name": "outer ellipse",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Ellipse+25.svg"
+        }
+      },
+      "styleProperties": {
+        "4bwLdjlbpxYC7HRpaflWla": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "308.8px"
+              },
+              "height": {
+                "value": "308.8px"
+              },
+              "animationName": {
+                "value": "_pulse"
+              },
+              "animationDuration": {
+                "value": "2s"
+              },
+              "animationIterationCount": {
+                "value": "infinite"
+              },
+              "animationTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "208.8px"
+              },
+              "height": {
+                "value": "208.8px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "77pFagCZb8R4ILrctfpWSC": {
+      "key": "77pFagCZb8R4ILrctfpWSC",
+      "name": "page image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group<PHONE>.svg"
+        }
+      },
+      "styleProperties": {
+        "5mNiPjJOabxSFzJy6mW6aa": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "175px"
+              },
+              "height": {
+                "value": "185px"
+              },
+              "marginTop": {
+                "value": "-220px"
+              },
+              "marginLeft": {
+                "value": "68px"
+              },
+              "animationDuration": {
+                "value": "3s"
+              },
+              "animationIterationCount": {
+                "value": "infinite"
+              },
+              "animationName": {
+                "value": "_rotateOutUpLeft"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "-125px"
+              },
+              "width": {
+                "value": "100px"
+              },
+              "height": {
+                "value": "100px"
+              },
+              "marginLeft": {
+                "value": "55px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "6ot10sLVibRRvsPTxXLkS8": {
+      "key": "6ot10sLVibRRvsPTxXLkS8",
+      "name": "microscope image",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Group<PHONE>.svg"
+        }
+      },
+      "styleProperties": {
+        "2a6egzyJ0dkMCgCPQ4swih": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "198.5px"
+              },
+              "height": {
+                "value": "198.5px"
+              },
+              "marginLeft": {
+                "value": "120px"
+              },
+              "marginTop": {
+                "value": "-130px"
+              },
+              "animationName": {
+                "value": "_shake"
+              },
+              "animationDuration": {
+                "value": "6s"
+              },
+              "animationIterationCount": {
+                "value": "infinite"
+              },
+              "animationTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "width": {
+                "value": "80px"
+              },
+              "height": {
+                "value": "80px"
+              },
+              "marginTop": {
+                "value": "-65px"
+              },
+              "marginLeft": {
+                "value": "90px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 4
+    },
+    "4JT6Bh8LrWLoPktrjFQcEY": {
+      "key": "4JT6Bh8LrWLoPktrjFQcEY",
+      "name": "bottom disc",
+      "type": "Image",
+      "properties": {
+        "alt": {
+          "value": "Placeholder image"
+        },
+        "src": {
+          "value": "api/files/static/file/SYSTEM/cxapp/Vector+%281%29.png"
+        }
+      },
+      "styleProperties": {
+        "Yd2JheEZurRuvEWJ3ytwn": {
+          "resolutions": {
+            "ALL": {
+              "width": {
+                "value": "200px"
+              },
+              "height": {
+                "value": "11.7px"
+              },
+              "marginLeft": {
+                "value": "55px"
+              },
+              "marginTop": {
+                "value": "-20px"
+              },
+              "animationName": {
+                "value": "_bounce"
+              },
+              "animationDuration": {
+                "value": "5s"
+              },
+              "animationIterationCount": {
+                "value": "infinite"
+              },
+              "animationTimingFunction": {
+                "value": "ease"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "marginTop": {
+                "value": "30px"
+              },
+              "marginLeft": {
+                "value": "30px"
+              },
+              "width": {
+                "value": "150px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 5
+    },
+    "3nTP792dPTrgkDrDv9DKGN": {
+      "key": "3nTP792dPTrgkDrDv9DKGN",
+      "name": "heading Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Access Denied"
+        },
+        "textContainer": {
+          "value": "H3"
+        }
+      },
+      "styleProperties": {
+        "3PWm8Oby66P69gUGI9x3MH": {
+          "resolutions": {
+            "ALL": {
+              "marginTop": {
+                "value": "10px"
+              },
+              "marginBottom": {
+                "value": "10px"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {}
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 1
+    },
+    "4Tp1lwe5LTUlArlVWBhzcB": {
+      "key": "4Tp1lwe5LTUlArlVWBhzcB",
+      "name": "desktop Text1",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oops! You've stumbled upon restricted territory. Seek permission or "
+        },
+        "textContainer": {
+          "value": "P"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        }
+      },
+      "styleProperties": {
+        "4fvJIkir0r7UthfbDoVzsE": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "text-whiteSpace": {
+                "value": "nowrap"
+              },
+              "text-paddingLeft": {
+                "value": "20px"
+              },
+              "text-paddingRight": {
+                "value": "20px"
+              },
+              "fontSize": {
+                "value": "11px"
+              },
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 2
+    },
+    "6XiliwxPwzBcJRqhVvOpRU": {
+      "key": "6XiliwxPwzBcJRqhVvOpRU",
+      "name": "desktop Text2",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "continue your journey elsewhere."
+        },
+        "textContainer": {
+          "value": "P"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        }
+      },
+      "styleProperties": {
+        "PgLePvfiKukQbT3wbuBPE": {
+          "resolutions": {
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "fontSize": {
+                "value": "11px"
+              },
+              "display": {
+                "value": "none"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    },
+    "dvYH15LkCqil6fJf9JYdK": {
+      "key": "dvYH15LkCqil6fJf9JYdK",
+      "name": "mobile Text",
+      "type": "Text",
+      "properties": {
+        "text": {
+          "value": "Oops! You've stumbled upon restricted territory. Seek permission or continue your journey elsewhere"
+        },
+        "textColor": {
+          "value": "_lightParagraphText"
+        }
+      },
+      "styleProperties": {
+        "mggjDUclILdLTmyR1yR0f": {
+          "resolutions": {
+            "TABLET_POTRAIT_SCREEN": {
+              "display": {
+                "value": "none"
+              }
+            },
+            "MOBILE_LANDSCAPE_SCREEN_SMALL": {
+              "textAlign": {
+                "value": "center"
+              },
+              "lineHeight": {
+                "value": "20px"
+              }
+            }
+          }
+        }
+      },
+      "override": false,
+      "displayOrder": 3
+    }
+  },
+  "name": "forbiddenPage",
+  "message": "From transport : 2ZpvE04fb7BnVpJoYuOMs3",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 110,
+  "updatedAt": "2026-04-09 04:27:54.557000",
+  "updatedBy": "<USER>",
+  "createdAt": "2024-06-04 17:15:29.925000",
+  "createdBy": "<USER>"
+}

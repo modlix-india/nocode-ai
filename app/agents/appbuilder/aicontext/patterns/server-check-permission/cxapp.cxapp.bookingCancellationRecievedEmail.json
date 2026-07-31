@@ -1,0 +1,538 @@
+{
+  "_id": "688b85b7883bb1559e50d47f",
+  "definition": {
+    "name": "bookingCancellationRecievedEmail",
+    "namespace": "cxapp",
+    "parameters": {
+      "userDetails": {
+        "parameterName": "userDetails",
+        "schema": {
+          "type": [
+            "OBJECT"
+          ],
+          "version": 1
+        }
+      }
+    },
+    "steps": {
+      "sendEmail1": {
+        "statementName": "sendEmail1",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 2426,
+          "top": 126
+        },
+        "parameterMap": {
+          "templateData": {
+            "51f1P21oHbi79jtY6dIEtb": {
+              "key": "51f1P21oHbi79jtY6dIEtb",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userDetails",
+              "value": {}
+            }
+          },
+          "appCode": {
+            "65CFCOPrnSWNy4cvwhR7VF": {
+              "key": "65CFCOPrnSWNy4cvwhR7VF",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "address": {
+            "4JJqJOdsWNj3e0mW0z0KaE": {
+              "key": "4JJqJOdsWNj3e0mW0z0KaE",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userDetails.adminEmail",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "6sTLPqDCAFxf2WTEKhatm3": {
+              "key": "6sTLPqDCAFxf2WTEKhatm3",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "templateName": {
+            "1XLlpnAm7x8W4OIz0vrbAw": {
+              "key": "1XLlpnAm7x8W4OIz0vrbAw",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "bookingCancelNotifToClient"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if3__d-o-t__output": true
+        }
+      },
+      "generateEvent": {
+        "statementName": "generateEvent",
+        "name": "GenerateEvent",
+        "namespace": "System",
+        "position": {
+          "left": 2889,
+          "top": 218
+        },
+        "parameterMap": {
+          "results": {
+            "3PDX3CZQKI4dWeOsKIineW": {
+              "key": "3PDX3CZQKI4dWeOsKIineW",
+              "type": "VALUE",
+              "order": 1,
+              "value": {
+                "name": "response",
+                "value": {
+                  "isExpression": true,
+                  "value": "Steps.sendEmail1.output.sent"
+                }
+              }
+            }
+          },
+          "eventName": {
+            "6ol9dMKWuFrM30ZY6HUksq": {
+              "key": "6ol9dMKWuFrM30ZY6HUksq",
+              "type": "VALUE",
+              "expression": "",
+              "value": "result"
+            }
+          }
+        }
+      },
+      "readPage": {
+        "statementName": "readPage",
+        "name": "ReadPage",
+        "namespace": "CoreServices.Storage",
+        "position": {
+          "left": 810,
+          "top": 50
+        },
+        "parameterMap": {
+          "appCode": {
+            "1tnDKOnEn9CfcwYnoFav0h": {
+              "key": "1tnDKOnEn9CfcwYnoFav0h",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "storageName": {
+            "tpM5nuePg6ZAcAwj223oS": {
+              "key": "tpM5nuePg6ZAcAwj223oS",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "emailAccessControl"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create__d-o-t__output": true
+        }
+      },
+      "create": {
+        "statementName": "create",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 430,
+          "top": 50
+        },
+        "parameterMap": {
+          "name": {
+            "on42FJ2GjrwNT4Url39Ih": {
+              "key": "on42FJ2GjrwNT4Url39Ih",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "emailTemplateData"
+            }
+          },
+          "schema": {
+            "4kpBLP1Ok0YYJciXkmh9eX": {
+              "key": "4kpBLP1Ok0YYJciXkmh9eX",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "Type": "OBJECT"
+              }
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__create1__d-o-t__output": true
+        }
+      },
+      "create1": {
+        "statementName": "create1",
+        "name": "Create",
+        "namespace": "System.Context",
+        "position": {
+          "left": 50,
+          "top": 50
+        },
+        "parameterMap": {
+          "name": {
+            "FLBjwUlqUlD8dSBsfyOhg": {
+              "key": "FLBjwUlqUlD8dSBsfyOhg",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "allowToSendEmail"
+            }
+          },
+          "schema": {
+            "3XBcKWncTXTvOvyWdt62jX": {
+              "key": "3XBcKWncTXTvOvyWdt62jX",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": {
+                "Type": "BOOLEAN"
+              }
+            }
+          }
+        }
+      },
+      "set": {
+        "statementName": "set",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1552,
+          "top": 456
+        },
+        "parameterMap": {
+          "name": {
+            "L2VnuArdpp3kaPrGnIDBz": {
+              "key": "L2VnuArdpp3kaPrGnIDBz",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.emailTemplateData"
+            }
+          },
+          "value": {
+            "59B86ycRTbRnKj1DNmxZyE": {
+              "key": "59B86ycRTbRnKj1DNmxZyE",
+              "type": "EXPRESSION",
+              "expression": "Steps.readPage.output.result.content[0]",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__false": true
+        }
+      },
+      "if1": {
+        "statementName": "if1",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1190,
+          "top": 50
+        },
+        "parameterMap": {
+          "condition": {
+            "2ZxrlmvttzlhccmzzYJNmw": {
+              "key": "2ZxrlmvttzlhccmzzYJNmw",
+              "type": "EXPRESSION",
+              "expression": "Steps.readPage.output.result.content.length = 0",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set2": {
+        "statementName": "set2",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2151,
+          "top": 1524
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__true": true
+        }
+      },
+      "sendEmail": {
+        "statementName": "sendEmail",
+        "name": "SendEmail",
+        "namespace": "CoreServices.Email",
+        "position": {
+          "left": 2068,
+          "top": 317
+        },
+        "parameterMap": {
+          "templateData": {
+            "50awUJ0beYollMaErnS6d9": {
+              "key": "50awUJ0beYollMaErnS6d9",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userDetails",
+              "value": {}
+            }
+          },
+          "address": {
+            "63DUwBbIPSpETbAnVckr5k": {
+              "key": "63DUwBbIPSpETbAnVckr5k",
+              "type": "EXPRESSION",
+              "expression": "Arguments.userDetails.emailId",
+              "order": 1
+            }
+          },
+          "connectionName": {
+            "uW4x0boyThOBl4romSUa0": {
+              "key": "uW4x0boyThOBl4romSUa0",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "mail"
+            }
+          },
+          "appCode": {
+            "7ehV9nCLHOhv6MvoFV1jTq": {
+              "key": "7ehV9nCLHOhv6MvoFV1jTq",
+              "type": "VALUE",
+              "expression": "",
+              "value": "cxapp"
+            }
+          },
+          "templateName": {
+            "6eIReDRIg1AiFZ7ndpghq0": {
+              "key": "6eIReDRIg1AiFZ7ndpghq0",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "cancellationRequestRecievedTemplate"
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if3__d-o-t__true": true
+        }
+      },
+      "if": {
+        "statementName": "if",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1950,
+          "top": 1148
+        },
+        "parameterMap": {
+          "condition": {
+            "7wRiSFBau1rCiAxaJZGJHH": {
+              "key": "7wRiSFBau1rCiAxaJZGJHH",
+              "type": "EXPRESSION",
+              "expression": "Context.emailTemplateData.isAllEmailsEnabled = true",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__set__d-o-t__output": true
+        }
+      },
+      "if2": {
+        "statementName": "if2",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 2330,
+          "top": 1148
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if__d-o-t__false": true
+        },
+        "parameterMap": {
+          "condition": {
+            "6beg5gJWMtKqyFoX9tlAXz": {
+              "key": "6beg5gJWMtKqyFoX9tlAXz",
+              "type": "EXPRESSION",
+              "expression": "Context.emailTemplateData.data.cancellationRequestRecievedTemplate.isEmailEnabled = true",
+              "order": 1
+            }
+          }
+        }
+      },
+      "set3": {
+        "statementName": "set3",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2776,
+          "top": 1186
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if2__d-o-t__true": true
+        }
+      },
+      "set3_Copy_1": {
+        "statementName": "set3_Copy_1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 2584,
+          "top": 1530
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": false
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if2__d-o-t__false": true
+        }
+      },
+      "set1": {
+        "statementName": "set1",
+        "name": "Set",
+        "namespace": "System.Context",
+        "position": {
+          "left": 1286,
+          "top": 819
+        },
+        "parameterMap": {
+          "name": {
+            "4lUTYA5FG398r6QNzNcb9K": {
+              "key": "4lUTYA5FG398r6QNzNcb9K",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": "Context.allowToSendEmail"
+            }
+          },
+          "value": {
+            "51FX5b3rUmdOzMC2cC8wSq": {
+              "key": "51FX5b3rUmdOzMC2cC8wSq",
+              "type": "VALUE",
+              "expression": "",
+              "order": 1,
+              "value": true
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__true": true
+        }
+      },
+      "if3": {
+        "statementName": "if3",
+        "name": "If",
+        "namespace": "System",
+        "position": {
+          "left": 1570,
+          "top": 50
+        },
+        "parameterMap": {
+          "condition": {
+            "tFljBOTzPYilv55XSfGtH": {
+              "key": "tFljBOTzPYilv55XSfGtH",
+              "type": "EXPRESSION",
+              "expression": "Context.allowToSendEmail = true",
+              "order": 1
+            }
+          }
+        },
+        "dependentStatements": {
+          "Steps__d-o-t__if1__d-o-t__output": true
+        }
+      }
+    },
+    "events": {
+      "error": {
+        "name": "error",
+        "parameters": {
+          "message": {
+            "type": [
+              "STRING"
+            ],
+            "version": 1
+          }
+        }
+      },
+      "result": {
+        "name": "result",
+        "parameters": {
+          "response": {
+            "type": [
+              "OBJECT"
+            ],
+            "version": 1
+          }
+        }
+      }
+    }
+  },
+  "name": "cxapp.bookingCancellationRecievedEmail",
+  "message": "From transport : 0T1LRL8YK1i9gys59v7yu9",
+  "clientCode": "SYSTEM",
+  "appCode": "cxapp",
+  "version": 26,
+  "updatedAt": "2026-04-09 04:28:28.919000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-07-31 15:03:19.344000",
+  "createdBy": "<USER>"
+}

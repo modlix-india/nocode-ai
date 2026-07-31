@@ -1,0 +1,18 @@
+- 67tdwyOzxtHTY5sZB8BZbk (Grid) PageGrid
+  - 6r4xmW7jrFI3rt64syJ3B0 (Grid) Recent Activities
+    - bG70Aq2NzWuzm5SeYKwIS (Grid) Top Grid
+      - 1sLPSVTk2NCSvn17GHL5eY (Grid) Header
+        - 4myJ5jm00scz9fR7AlKKDW (Text) Text
+        - 2VNkgixKEOW0EDMmv2yGpS (Text) Recent activity
+      - 108Ve39CjP751cUaIiC4i5 (ArrayRepeater) Repeator
+        - XJV8HS2D8pCTqjKcJLP73 (Grid) Contents Grid
+          - NkOYXlTuCGiN6fMr2o5dm (Grid) Content2
+            - 5ZpqVUiXkamqihfviRgja3 (Image) Image
+            - 2rSz5HwQs34fYn7TVurZYL (Grid) Activity Grid
+              - 4NsODSrpIqcdCLbsBdETiZ (Text) Text
+              - 6oRHLQfa1HCv5d7DEmhH1R (Text) Text
+          - 4KOzaYjBb4wKjGWaZc9SEn (Grid) Content1
+            - 1kBfooKx3FyGPP7hg2wVg2 (Image) Image
+            - 2xqv2DYkbNylDUcwmA5icX (Grid) Activity Grid
+              - 1xLd27kif8Mjiwda7LljOK (Text) Text
+              - yAeDYP53vQlWk0ptV3GJj (Text) Text

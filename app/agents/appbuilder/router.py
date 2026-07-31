@@ -50,12 +50,79 @@ async def require_ai_auth_context(
     return auth
 
 
+class AppUserAuth(BaseModel):
+    """Credentials for the app-user identity (separate from the caller's JWT).
+
+    Used by tools that render or interact with the CUSTOMER'S app as one of
+    its end users — screenshot_page, drive_page, call_as_app_user. The
+    caller's JWT (developer identity) does ALL platform authoring; these
+    credentials only authenticate against the target app's user pool.
+
+    Pass either `token` (pre-obtained) or `username` + `password` (the
+    session will run findUserClients + authenticate once and cache the
+    resolved token for the conversation's lifetime).
+    """
+
+    token: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     app_code: Optional[str] = None
     model: Optional[str] = None
+    # Headless/harness callers set this to pre-approve all mutating tools
+    # (create/update/delete/copy) so the agent runs fully autonomous without
+    # waiting on the interactive confirmation flow. Defaults to the normal
+    # interactive behaviour.
+    auto_confirm: bool = False
     attachments: Optional[List[ChatAttachment]] = None
+    # Optional app-user identity. Required only when a tool that interacts
+    # with the customer's live app (screenshot_page / drive_page /
+    # call_as_app_user) is invoked. Other tools ignore it.
+    app_user: Optional[AppUserAuth] = None
+
+
+class TemplateAiRequest(BaseModel):
+    """Request for the editor AI tab: a prompt plus the current (possibly unsaved) template."""
+
+    prompt: str
+    template: Optional[dict] = None
+    language: Optional[str] = "en"
+    part: Optional[str] = "body"
+    templateType: Optional[str] = "email"
+
+
+@router.post("/template")
+async def author_template(
+    body: TemplateAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Generate/revise template content from a prompt. Returns {subject, html, message}.
+
+    Backs the Template Editor's AI tab (the aiEndpoint property). Stateless — the whole current
+    template is sent so work-in-progress previews without saving.
+    """
+    from app.services.template_ai import generate_template_content
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    tpl = body.template or {}
+    lang = body.language or tpl.get("defaultLanguage") or "en"
+    part = body.part or "body"
+    lang_parts = (tpl.get("templateParts") or {}).get(lang) or {}
+    current_html = lang_parts.get(part, "") if isinstance(lang_parts, dict) else ""
+    current_subject = lang_parts.get("subject", "") if isinstance(lang_parts, dict) else ""
+
+    return await generate_template_content(
+        prompt=body.prompt,
+        template_type=body.templateType or tpl.get("templateType") or "email",
+        current_html=current_html,
+        current_subject=current_subject,
+        language=lang,
+    )
 
 
 @router.post("/chat")
@@ -70,6 +137,14 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
     session = BaseSession(agent_name="appbuilder")
     if body.app_code:
         session.context["app_code"] = body.app_code
+    # Pre-approve mutating tools for headless/harness callers (see agent loop).
+    session.context["auto_confirm"] = body.auto_confirm
+
+    # Stash app-user credentials (token OR username+password) on the session.
+    # Consumed lazily by tools that need an end-user identity (screenshot_page,
+    # drive_page, call_as_app_user) — other tools ignore it entirely.
+    if body.app_user is not None:
+        session.set_app_user(body.app_user.model_dump(exclude_none=True))
 
     await session.get_or_create(body.session_id, auth)
 

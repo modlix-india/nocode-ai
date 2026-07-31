@@ -1,0 +1,209 @@
+{
+  "_id": "68be65bd3b52b204a0ee095f",
+  "schema": {
+    "name": "bpConfiguration",
+    "type": [
+      "OBJECT"
+    ],
+    "version": 1,
+    "properties": {
+      "modeOfBpCreation": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "viaInvitation": {
+            "type": [
+              "BOOLEAN"
+            ],
+            "defaultValue": true
+          }
+        }
+      },
+      "businessPartnerVerification": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "phoneVerification": {
+            "type": [
+              "BOOLEAN"
+            ],
+            "defaultValue": true
+          }
+        }
+      },
+      "loginOptions": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "viaOTP": {
+            "type": [
+              "BOOLEAN"
+            ],
+            "defaultValue": false
+          },
+          "viaPassword": "<REDACTED>"
+        }
+      },
+      "basicDetails": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "addressVerificationRequired": {
+            "type": [
+              "BOOLEAN"
+            ],
+            "defaultValue": false
+          },
+          "addressRequired": {
+            "type": [
+              "BOOLEAN"
+            ],
+            "defaultValue": false
+          }
+        }
+      },
+      "documents": {
+        "type": [
+          "ARRAY"
+        ],
+        "items": {
+          "type": [
+            "OBJECT"
+          ],
+          "properties": {
+            "documentName": {
+              "type": [
+                "STRING"
+              ]
+            },
+            "nameLabel": {
+              "type": [
+                "STRING"
+              ]
+            },
+            "numberLabel": {
+              "type": [
+                "STRING"
+              ]
+            },
+            "nameRequired": {
+              "type": [
+                "BOOLEAN"
+              ],
+              "defaultValue": false
+            },
+            "numberRequired": {
+              "type": [
+                "BOOLEAN"
+              ],
+              "defaultValue": false
+            },
+            "uploadRequired": {
+              "type": [
+                "BOOLEAN"
+              ],
+              "defaultValue": false
+            },
+            "verificationRequired": {
+              "type": [
+                "BOOLEAN"
+              ],
+              "defaultValue": false
+            }
+          }
+        }
+      },
+      "termsAndCondition": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "privacyPolicy": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "appLogo": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "url": {
+            "type": [
+              "STRING"
+            ]
+          },
+          "name": {
+            "type": [
+              "STRING"
+            ]
+          },
+          "directory": {
+            "type": [
+              "BOOLEAN"
+            ]
+          }
+        }
+      },
+      "reLogo": {
+        "type": [
+          "OBJECT"
+        ],
+        "properties": {
+          "url": {
+            "type": [
+              "STRING"
+            ]
+          },
+          "name": {
+            "type": [
+              "STRING"
+            ]
+          },
+          "directory": {
+            "type": [
+              "BOOLEAN"
+            ]
+          }
+        }
+      },
+      "androidAppLink": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "iosAppLink": {
+        "type": [
+          "STRING"
+        ]
+      },
+      "showAllProducts": {
+        "type": [
+          "BOOLEAN"
+        ]
+      }
+    },
+    "additionalProperties": false
+  },
+  "uniqueName": "leadzump_system_bpco_sksv8ui18n5i",
+  "isAudited": false,
+  "isVersioned": false,
+  "isAppLevel": false,
+  "onlyThruKIRun": true,
+  "createAuth": "Authorities.LEADZUMP.PROFILE_LeadZump_Admin",
+  "updateAuth": "Authorities.LEADZUMP.PROFILE_LeadZump_Admin",
+  "deleteAuth": "Authorities.LEADZUMP.PROFILE_LeadZump_Admin",
+  "name": "BpConfiguration",
+  "message": "From transport : 0NLasvcaI96EIUO3Ck7GsQ",
+  "clientCode": "SYSTEM",
+  "appCode": "leadzump",
+  "version": 61,
+  "updatedAt": "2026-05-14 13:47:05.212000",
+  "updatedBy": "<USER>",
+  "createdAt": "2025-09-08 05:12:29.619000",
+  "createdBy": "<USER>"
+}
