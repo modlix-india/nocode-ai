@@ -7,7 +7,7 @@ import logging
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress, primary_screenshot_url
-from app.agents.adzump.models import check_product
+from app.agents.adzump.models.product import check_product
 
 logger = logging.getLogger(__name__)
 

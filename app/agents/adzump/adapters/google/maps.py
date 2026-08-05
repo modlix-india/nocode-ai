@@ -127,7 +127,8 @@ class GoogleMapsClient:
                 pincode = None
                 city = None
                 state = None
-                country_code = "IN"
+                country = None
+                country_code = None  # unknown stays unknown, never assumed
 
                 for comp in components:
                     types = comp.get("types", [])
@@ -138,6 +139,7 @@ class GoogleMapsClient:
                     elif "administrative_area_level_1" in types:
                         state = comp.get("short_name", "").strip()
                     elif "country" in types:
+                        country = comp.get("long_name", "").strip()
                         country_code = comp.get("short_name", "").strip()
 
                 return {
@@ -148,6 +150,7 @@ class GoogleMapsClient:
                     "pincode": pincode,
                     "city": city,
                     "state": state,
+                    "country": country,
                     "country_code": country_code,
                 }
             return None
