@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.adzump.platform import is_google as _is_google, is_meta as _is_meta
 from app.agents.adzump.agents.campaign.google.keyword.models import AdGroupStatus
+from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.platform import is_google as _is_google
+from app.agents.adzump.platform import is_meta as _is_meta
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +129,7 @@ def _google_campaign_blocks(session_ctx: dict) -> list[dict]:
     """
     blocks: list[dict] = []
 
-    dump = session_ctx.get("keyword_research") or {}
+    dump = keyword_research(session_ctx) or {}
     if dump:
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Keyword Suggestions"})

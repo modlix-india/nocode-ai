@@ -5,6 +5,7 @@ Covers the section-aware match-type coercion (positives EXACT/PHRASE, negatives
 PHRASE/BROAD), the add/edit/delete rules and their rejection paths, and the
 brand/generic isolation guard (_check_section_signal).
 """
+
 # regression: an edit that omits match_type must coerce a stale out-of-section
 # value (e.g. a legacy EXACT negative) instead of persisting it verbatim.
 from __future__ import annotations
@@ -12,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 
+from app.agents.adzump.agents.campaign.models import keyword_research
 from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
     _coerce_match_type,
     _check_section_signal,
@@ -40,6 +42,12 @@ def _dump(**overrides) -> dict:
 
 def _rows(dump: dict, theme: str, section: str) -> list[dict]:
     return dump["themes"][theme][section]
+
+
+def _built(ctx: dict) -> dict:
+    """The saved keyword set, read the way production reads it. The fixtures seed the
+    pre-envelope key, so this also covers the one-way migration on first write."""
+    return keyword_research(ctx["session_context"]) or {}
 
 
 def _ctx(dump: dict, product_name: str = "") -> dict:
@@ -74,8 +82,8 @@ class CoerceMatchTypeTests(unittest.TestCase):
         (None, "negatives", "BROAD", "BROAD"),
         (None, "positives", "EXACT", "EXACT"),
         # ...but an out-of-section fallback (the review-fix) is itself coerced
-        (None, "negatives", "EXACT", "PHRASE"),   # legacy EXACT negative, no new value
-        (None, "positives", "BROAD", "PHRASE"),   # impossible-for-positive fallback
+        (None, "negatives", "EXACT", "PHRASE"),  # legacy EXACT negative, no new value
+        (None, "positives", "BROAD", "PHRASE"),  # impossible-for-positive fallback
         ("garbage", "negatives", "garbage", "PHRASE"),  # both invalid -> safe default
     ]
 
@@ -88,39 +96,76 @@ class CoerceMatchTypeTests(unittest.TestCase):
 class AddTests(unittest.TestCase):
     def test_add_positive_keeps_exact(self):
         ctx = _ctx(_dump())
-        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
-                    "keyword": "running shoes", "match_type": "EXACT"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "running shoes",
+                "match_type": "EXACT",
+            },
+            ctx,
+        )
         self.assertTrue(res.success)
-        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "positives")
+        rows = _rows(_built(ctx), "generic", "positives")
         self.assertEqual(rows[0]["keyword"], "running shoes")
         self.assertEqual(rows[0]["match_type"], "EXACT")
 
     def test_add_negative_exact_is_coerced_to_phrase(self):
         ctx = _ctx(_dump())
-        res = _run({"action": "add", "keyword_type": "generic", "section": "negatives",
-                    "keyword": "free shoes", "match_type": "EXACT"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "negatives",
+                "keyword": "free shoes",
+                "match_type": "EXACT",
+            },
+            ctx,
+        )
         self.assertTrue(res.success)
-        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "negatives")
+        rows = _rows(_built(ctx), "generic", "negatives")
         self.assertEqual(rows[0]["match_type"], "PHRASE")  # never EXACT for a negative
 
     def test_add_duplicate_rejected(self):
         ctx = _ctx(_dump(generic={"positives": [_row("running shoes")]}))
-        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
-                    "keyword": "running shoes"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "running shoes",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("already exists", res.error)
 
     def test_add_conflicts_with_opposite_section_rejected(self):
         ctx = _ctx(_dump(generic={"negatives": [_row("cheap shoes")]}))
-        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
-                    "keyword": "cheap shoes"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "cheap shoes",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("can't be in both", res.error)
 
     def test_add_conflicts_with_other_ad_group_positive_rejected(self):
         ctx = _ctx(_dump(brand={"positives": [_row("nike air")]}))
-        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
-                    "keyword": "nike air"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "nike air",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("positive in two ad groups", res.error)
 
@@ -129,25 +174,48 @@ class AddTests(unittest.TestCase):
         # scan them ALL — a third ad group's positive still blocks.
         dump = _dump()
         dump["themes"]["generic_location"] = _theme(
-            "generic_location", "Generic · Location", positives=[_row("shoes bengaluru")]
+            "generic_location",
+            "Generic · Location",
+            positives=[_row("shoes bengaluru")],
         )
         ctx = _ctx(dump)
-        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
-                    "keyword": "shoes bengaluru"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "shoes bengaluru",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("positive in two ad groups", res.error)
 
     def test_unknown_ad_group_rejected_with_what_was_built(self):
-        res = _run({"action": "add", "keyword_type": "nonexistent", "section": "positives",
-                    "keyword": "running shoes"}, _ctx(_dump()))
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "nonexistent",
+                "section": "positives",
+                "keyword": "running shoes",
+            },
+            _ctx(_dump()),
+        )
         self.assertFalse(res.success)
         self.assertIn("No 'nonexistent' ad group", res.error)
         self.assertIn("brand, generic", res.error)  # names what IS built
 
     def test_add_too_short_rejected(self):
         ctx = _ctx(_dump())
-        res = _run({"action": "add", "keyword_type": "generic", "section": "positives",
-                    "keyword": "a"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "a",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("too short", res.error)
 
@@ -156,58 +224,123 @@ class EditTests(unittest.TestCase):
     def test_edit_negative_omitting_match_type_coerces_stale_exact(self):
         # The stored negative carries a legacy EXACT; the edit renames it and sends no
         # match_type. Before the fix the fallback (EXACT) was persisted verbatim.
-        ctx = _ctx(_dump(generic={"negatives": [_row("free trial", match_type="EXACT",
-                                                     reason="freebie")]}))
-        res = _run({"action": "edit", "keyword_type": "generic", "section": "negatives",
-                    "old_keyword": "free trial", "keyword": "free demo"}, ctx)
+        ctx = _ctx(
+            _dump(
+                generic={
+                    "negatives": [
+                        _row("free trial", match_type="EXACT", reason="freebie")
+                    ]
+                }
+            )
+        )
+        res = _run(
+            {
+                "action": "edit",
+                "keyword_type": "generic",
+                "section": "negatives",
+                "old_keyword": "free trial",
+                "keyword": "free demo",
+            },
+            ctx,
+        )
         self.assertTrue(res.success)
-        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "negatives")
+        rows = _rows(_built(ctx), "generic", "negatives")
         self.assertEqual(rows[0]["keyword"], "free demo")
-        self.assertEqual(rows[0]["match_type"], "PHRASE")  # coerced, not the stale EXACT
+        self.assertEqual(
+            rows[0]["match_type"], "PHRASE"
+        )  # coerced, not the stale EXACT
 
     def test_edit_rename_to_existing_rejected(self):
-        ctx = _ctx(_dump(generic={"positives": [_row("running shoes"), _row("trail shoes")]}))
-        res = _run({"action": "edit", "keyword_type": "generic", "section": "positives",
-                    "old_keyword": "trail shoes", "keyword": "running shoes"}, ctx)
+        ctx = _ctx(
+            _dump(generic={"positives": [_row("running shoes"), _row("trail shoes")]})
+        )
+        res = _run(
+            {
+                "action": "edit",
+                "keyword_type": "generic",
+                "section": "positives",
+                "old_keyword": "trail shoes",
+                "keyword": "running shoes",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("already exists", res.error)
 
     def test_edit_missing_target_rejected(self):
         ctx = _ctx(_dump(generic={"positives": [_row("running shoes")]}))
-        res = _run({"action": "edit", "keyword_type": "generic", "section": "positives",
-                    "old_keyword": "ghost", "keyword": "new"}, ctx)
+        res = _run(
+            {
+                "action": "edit",
+                "keyword_type": "generic",
+                "section": "positives",
+                "old_keyword": "ghost",
+                "keyword": "new",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("not found", res.error)
 
 
 class DeleteTests(unittest.TestCase):
     def test_delete_existing(self):
-        ctx = _ctx(_dump(generic={"positives": [_row("running shoes"), _row("trail shoes")]}))
-        res = _run({"action": "delete", "keyword_type": "generic", "section": "positives",
-                    "keyword": "trail shoes"}, ctx)
+        ctx = _ctx(
+            _dump(generic={"positives": [_row("running shoes"), _row("trail shoes")]})
+        )
+        res = _run(
+            {
+                "action": "delete",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "trail shoes",
+            },
+            ctx,
+        )
         self.assertTrue(res.success)
-        rows = _rows(ctx["session_context"]["keyword_research"], "generic", "positives")
+        rows = _rows(_built(ctx), "generic", "positives")
         self.assertEqual([r["keyword"] for r in rows], ["running shoes"])
 
     def test_delete_missing_rejected(self):
         ctx = _ctx(_dump(generic={"positives": [_row("running shoes")]}))
-        res = _run({"action": "delete", "keyword_type": "generic", "section": "positives",
-                    "keyword": "ghost"}, ctx)
+        res = _run(
+            {
+                "action": "delete",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "ghost",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("not found", res.error)
 
 
 class GuardTests(unittest.TestCase):
     def test_invalid_action(self):
-        res = _run({"action": "frobnicate", "keyword_type": "generic",
-                    "section": "positives", "keyword": "x y"}, _ctx(_dump()))
+        res = _run(
+            {
+                "action": "frobnicate",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "x y",
+            },
+            _ctx(_dump()),
+        )
         self.assertFalse(res.success)
         self.assertIn("Invalid action", res.error)
 
     def test_no_research_in_session(self):
         ctx = {"session_context": {}, "event_stream": None}
-        res = _run({"action": "add", "keyword_type": "generic",
-                    "section": "positives", "keyword": "x y"}, ctx)
+        res = _run(
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": "x y",
+            },
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("No keyword research", res.error)
 
@@ -219,23 +352,35 @@ class GuardTests(unittest.TestCase):
 
 class SectionSignalTests(unittest.TestCase):
     def test_generic_containing_full_brand_is_blocked(self):
-        ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
+        ctx = {
+            "product_data": {"product_name": "Duolingo"},
+            "keyword_research": _dump(),
+        }
         err = _check_section_signal("duolingo spanish", "generic", ctx)
         self.assertIsNotNone(err)
         self.assertIn("brand ad group", err)
 
     def test_generic_without_brand_ok(self):
-        ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
+        ctx = {
+            "product_data": {"product_name": "Duolingo"},
+            "keyword_research": _dump(),
+        }
         self.assertIsNone(_check_section_signal("learn spanish", "generic", ctx))
 
     def test_brand_without_brand_terms_is_blocked(self):
-        ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
+        ctx = {
+            "product_data": {"product_name": "Duolingo"},
+            "keyword_research": _dump(),
+        }
         err = _check_section_signal("language learning app", "brand", ctx)
         self.assertIsNotNone(err)
         self.assertIn("generic ad group", err)
 
     def test_brand_with_brand_term_ok(self):
-        ctx = {"product_data": {"product_name": "Duolingo"}, "keyword_research": _dump()}
+        ctx = {
+            "product_data": {"product_name": "Duolingo"},
+            "keyword_research": _dump(),
+        }
         self.assertIsNone(_check_section_signal("duolingo app", "brand", ctx))
 
 

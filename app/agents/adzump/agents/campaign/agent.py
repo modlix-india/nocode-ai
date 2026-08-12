@@ -13,16 +13,16 @@ import logging
 import time
 from typing import Any
 
+from app.agents.adzump.agents._child_stream import ChildAgentStream
+from app.agents.adzump.agents.campaign.context import build_campaign_context
+from app.agents.adzump.agents.campaign.models import Channel, resolve_channel
+from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
+    GOOGLE_CAMPAIGN_TOOLS,
+)
 from app.config import settings
 from app.core.agent import BaseAgent
 from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream
-
-from app.agents.adzump.agents._child_stream import ChildAgentStream
-from app.agents.adzump.agents.campaign.context import build_campaign_context
-from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
-    GOOGLE_CAMPAIGN_TOOLS,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class CampaignAgent(BaseAgent):
     """Deterministic-shell campaign orchestrator (one platform's tools at a time)."""
 
     display_name = "Campaign Creation"
-    _instance: "CampaignAgent | None" = None
+    _instance: CampaignAgent | None = None
 
     def __init__(self) -> None:
         context = build_campaign_context()
@@ -61,15 +61,21 @@ class CampaignAgent(BaseAgent):
         )
 
     @classmethod
-    def get_instance(cls) -> "CampaignAgent":
+    def get_instance(cls) -> CampaignAgent:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     async def build_dynamic_context(self, session: BaseSession) -> str:
         spec = session.context.get("campaign_spec") or {}
+        channel = resolve_channel(spec)
+        note = (
+            "keywords apply"
+            if channel is Channel.SEARCH
+            else "audience-targeted, no keywords"
+        )
         return (
-            f"Platform: {spec.get('platform', '')} · Channel: SEARCH (keywords apply)."
+            f"Platform: {spec.get('platform', '')} · Channel: {channel.value} ({note})."
         )
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
@@ -114,15 +120,21 @@ class CampaignAgent(BaseAgent):
             )
         except Exception as exc:
             await stream._emit_finished(
-                agent_id="campaign", run_start=run_start, session=session,
-                status="error", summary=type(exc).__name__,
+                agent_id="campaign",
+                run_start=run_start,
+                session=session,
+                status="error",
+                summary=type(exc).__name__,
             )
             raise
 
         result = session.context.get("keyword_research")
         await stream._emit_finished(
-            agent_id="campaign", run_start=run_start, session=session,
-            status="success", summary="keyword research complete",
+            agent_id="campaign",
+            run_start=run_start,
+            session=session,
+            status="success",
+            summary="keyword research complete",
         )
         return result
 

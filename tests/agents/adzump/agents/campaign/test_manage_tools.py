@@ -4,6 +4,7 @@
 These are the agent's hands and eyes: lookup_keyword answers from the record, edit_keywords
 mutates through the SAME engine the panel's click path uses.
 """
+
 # regression: an edit must never go through the submit tools (they replace a set wholesale,
 # which fabricates provenance on rows the model never re-derived and clobbers panel clicks).
 from __future__ import annotations
@@ -12,6 +13,7 @@ import asyncio
 import unittest
 
 from app.agents.adzump.agents.campaign.google.keyword import manage_tools, tools
+from app.agents.adzump.agents.campaign.models import keyword_research
 
 
 def _row(keyword: str, **extra) -> dict:
@@ -22,28 +24,58 @@ def _ctx(**over) -> dict:
     dump = {
         "themes": {
             "brand": {
-                "theme": "brand", "label": "Brand",
-                "positives": [_row("nike air", rationale="the brand itself",
-                                   admitted_by="brand name — mandatory",
-                                   source="google", source_seed="nike", volume_at_pick=9000)],
+                "theme": "brand",
+                "label": "Brand",
+                "positives": [
+                    _row(
+                        "nike air",
+                        rationale="the brand itself",
+                        admitted_by="brand name — mandatory",
+                        source="google",
+                        source_seed="nike",
+                        volume_at_pick=9000,
+                    )
+                ],
                 "negatives": [_row("nike air scam", reason="distrust — not a buyer")],
                 "rejections": [
-                    {"keyword": "cheap nike air", "rule": "not_selected",
-                     "volume_at_eval": 4400, "reason": "price-shopper — we sell premium"},
-                    {"keyword": "nike air glue", "rule": "zero_volume",
-                     "volume_at_eval": 0, "reason": ""},
+                    {
+                        "keyword": "cheap nike air",
+                        "rule": "not_selected",
+                        "volume_at_eval": 4400,
+                        "reason": "price-shopper — we sell premium",
+                    },
+                    {
+                        "keyword": "nike air glue",
+                        "rule": "zero_volume",
+                        "volume_at_eval": 0,
+                        "reason": "",
+                    },
                 ],
             },
             "generic": {
-                "theme": "generic", "label": "Generic",
-                "positives": [_row("running shoes")], "negatives": [], "rejections": [],
+                "theme": "generic",
+                "label": "Generic",
+                "positives": [_row("running shoes")],
+                "negatives": [],
+                "rejections": [],
             },
         },
         "meta": {"geo": {}},
     }
-    ctx = {"session_context": {"keyword_research": dump, "product_data": {"product_name": "Nike"}}}
+    ctx = {
+        "session_context": {
+            "keyword_research": dump,
+            "product_data": {"product_name": "Nike"},
+        }
+    }
     ctx["session_context"].update(over)
     return ctx
+
+
+def _built(ctx: dict) -> dict:
+    """The saved keyword set, read the way production reads it. The fixture seeds the
+    pre-envelope key, so this also covers the one-way migration on first write."""
+    return keyword_research(ctx["session_context"]) or {}
 
 
 def _lookup(kw: str, ctx: dict):
@@ -71,10 +103,10 @@ class LookupTests(unittest.TestCase):
         res = _lookup("nike air", _ctx())
         self.assertTrue(res.success)
         self.assertIn("IS in the brand ad group", res.summary)
-        self.assertIn("the brand itself", res.summary)          # rationale
-        self.assertIn("brand name — mandatory", res.summary)    # admitted_by
-        self.assertIn("nike", res.summary)                      # source_seed
-        self.assertIn("9000", res.summary)                      # volume_at_pick
+        self.assertIn("the brand itself", res.summary)  # rationale
+        self.assertIn("brand name — mandatory", res.summary)  # admitted_by
+        self.assertIn("nike", res.summary)  # source_seed
+        self.assertIn("9000", res.summary)  # volume_at_pick
 
     def test_a_negative_says_why_it_is_excluded(self):
         res = _lookup("nike air scam", _ctx())
@@ -85,8 +117,8 @@ class LookupTests(unittest.TestCase):
         res = _lookup("cheap nike air", _ctx())
         self.assertIn("NOT in the brand ad group", res.summary)
         self.assertIn("scored but not selected", res.summary)
-        self.assertIn("4400", res.summary)                       # volume when scored
-        self.assertIn("price-shopper", res.summary)              # the recorded reason
+        self.assertIn("4400", res.summary)  # volume when scored
+        self.assertIn("price-shopper", res.summary)  # the recorded reason
 
     def test_a_zero_volume_drop_explains_itself(self):
         res = _lookup("nike air glue", _ctx())
@@ -98,8 +130,8 @@ class LookupTests(unittest.TestCase):
         self.assertTrue(res.success)
         self.assertIn("No record", res.summary)
         self.assertIn("never a candidate", res.summary)
-        self.assertIn("keyword_metrics", res.summary)   # steers to a fresh check
-        self.assertIn("fresh check", res.summary)       # ...and to say so
+        self.assertIn("keyword_metrics", res.summary)  # steers to a fresh check
+        self.assertIn("fresh check", res.summary)  # ...and to say so
 
 
 class EditTests(unittest.TestCase):
@@ -107,46 +139,100 @@ class EditTests(unittest.TestCase):
 
     def test_add_goes_through_the_shared_engine_and_persists(self):
         ctx = _ctx()
-        res = _edit([{"action": "add", "keyword_type": "generic", "section": "positives",
-                      "keyword": "trail running shoes", "match_type": "PHRASE"}], ctx)
+        res = _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "trail running shoes",
+                    "match_type": "PHRASE",
+                }
+            ],
+            ctx,
+        )
         self.assertTrue(res.success)
-        rows = ctx["session_context"]["keyword_research"]["themes"]["generic"]["positives"]
+        rows = _built(ctx)["themes"]["generic"]["positives"]
         self.assertIn("trail running shoes", [r["keyword"] for r in rows])
 
     def test_batched_edits_apply_in_one_call(self):
         ctx = _ctx()
-        res = _edit([
-            {"action": "add", "keyword_type": "generic", "section": "positives", "keyword": "trail shoes"},
-            {"action": "delete", "keyword_type": "generic", "section": "positives", "keyword": "running shoes"},
-        ], ctx)
+        res = _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "trail shoes",
+                },
+                {
+                    "action": "delete",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "running shoes",
+                },
+            ],
+            ctx,
+        )
         self.assertTrue(res.success)
         self.assertEqual(res.data["applied"], 2)
-        rows = [r["keyword"] for r in
-                ctx["session_context"]["keyword_research"]["themes"]["generic"]["positives"]]
+        rows = [r["keyword"] for r in _built(ctx)["themes"]["generic"]["positives"]]
         self.assertEqual(rows, ["trail shoes"])
 
     def test_the_engines_invariants_still_bind_the_agent(self):
         # A positive can't live in two ad groups — the same rule a panel click hits.
         ctx = _ctx()
-        res = _edit([{"action": "add", "keyword_type": "generic", "section": "positives",
-                      "keyword": "nike air"}], ctx)
+        res = _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "nike air",
+                }
+            ],
+            ctx,
+        )
         self.assertFalse(res.success)
         self.assertIn("two ad groups", res.error)
 
     def test_a_negative_can_never_be_exact_even_from_the_agent(self):
         ctx = _ctx()
-        _edit([{"action": "add", "keyword_type": "generic", "section": "negatives",
-                "keyword": "free shoes", "match_type": "EXACT"}], ctx)
-        rows = ctx["session_context"]["keyword_research"]["themes"]["generic"]["negatives"]
+        _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "negatives",
+                    "keyword": "free shoes",
+                    "match_type": "EXACT",
+                }
+            ],
+            ctx,
+        )
+        rows = _built(ctx)["themes"]["generic"]["negatives"]
         self.assertEqual(rows[0]["match_type"], "PHRASE")
 
     def test_partial_failure_reports_but_still_applies_the_rest(self):
         ctx = _ctx()
-        res = _edit([
-            {"action": "add", "keyword_type": "generic", "section": "positives", "keyword": "trail shoes"},
-            {"action": "delete", "keyword_type": "generic", "section": "positives", "keyword": "ghost"},
-        ], ctx)
-        self.assertTrue(res.success)          # the good one landed
+        res = _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "trail shoes",
+                },
+                {
+                    "action": "delete",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "ghost",
+                },
+            ],
+            ctx,
+        )
+        self.assertTrue(res.success)  # the good one landed
         self.assertEqual(res.data["applied"], 1)
         self.assertIn("rejected", res.summary)
 
@@ -164,6 +250,7 @@ class SubmitToolsAreStructurallyBuildOnlyTests(unittest.TestCase):
             get_keyword_manage_agent,
             get_keyword_research_agent,
         )
+
         manage = set(get_keyword_manage_agent().tools)
         research = set(get_keyword_research_agent().tools)
         # The manage agent can edit but can never wholesale-replace a saved set.
@@ -176,10 +263,16 @@ class SubmitToolsAreStructurallyBuildOnlyTests(unittest.TestCase):
         self.assertNotIn("edit_keywords", research)
 
     def test_submit_still_works_during_a_real_run(self):
-        state = {"kw_type": "generic", "kw_candidates": [{"keyword": "running shoes", "volume": 500}]}
-        res = asyncio.run(tools._submit_positive_keywords(
-            {"keywords": [{"keyword": "running shoes", "match_type": "phrase"}]},
-            {"session_context": state}))
+        state = {
+            "kw_type": "generic",
+            "kw_candidates": [{"keyword": "running shoes", "volume": 500}],
+        }
+        res = asyncio.run(
+            tools._submit_positive_keywords(
+                {"keywords": [{"keyword": "running shoes", "match_type": "phrase"}]},
+                {"session_context": state},
+            )
+        )
         self.assertTrue(res.success)
 
 
@@ -191,23 +284,41 @@ class EditPanelReEmitTests(unittest.TestCase):
         ctx = _ctx()
         ctx["session_context"]["campaign_craft_id"] = "campaign_abc"
         ctx["event_stream"] = stream
-        res = _edit([{"action": "add", "keyword_type": "generic",
-                      "section": "positives", "keyword": "trail shoes"}], ctx)
+        res = _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "trail shoes",
+                }
+            ],
+            ctx,
+        )
         self.assertTrue(res.success)
-        self.assertEqual(len(stream.crafts), 1)              # panel refreshed exactly once
+        self.assertEqual(len(stream.crafts), 1)  # panel refreshed exactly once
         craft = stream.crafts[0]
         self.assertEqual(craft["craft_id"], "campaign_abc")
-        self.assertTrue(craft["append"])                     # keyed upsert (no flash), not a rebuild
+        self.assertTrue(craft["append"])  # keyed upsert (no flash), not a rebuild
         self.assertEqual(craft["blocks"][0]["id"], "keyword_review")
 
     def test_a_rejected_edit_does_not_touch_the_panel(self):
         stream = _CaptureStream()
         ctx = _ctx()
         ctx["event_stream"] = stream
-        res = _edit([{"action": "delete", "keyword_type": "generic",
-                      "section": "positives", "keyword": "ghost"}], ctx)  # not present
+        res = _edit(
+            [
+                {
+                    "action": "delete",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "ghost",
+                }
+            ],
+            ctx,
+        )  # not present
         self.assertFalse(res.success)
-        self.assertEqual(stream.crafts, [])                  # nothing changed → no re-emit
+        self.assertEqual(stream.crafts, [])  # nothing changed → no re-emit
 
     def test_reemit_keys_off_the_crafts_own_meta_not_a_session_key(self):
         # The panel was drawn under the craft_id research recorded in the dump's meta; an
@@ -218,8 +329,17 @@ class EditPanelReEmitTests(unittest.TestCase):
         ctx["session_context"]["keyword_research"]["meta"]["craft_id"] = "campaign_real"
         ctx["session_context"]["campaign_craft_id"] = "campaign_stale"  # must NOT win
         ctx["event_stream"] = stream
-        res = _edit([{"action": "add", "keyword_type": "generic",
-                      "section": "positives", "keyword": "trail shoes"}], ctx)
+        res = _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "trail shoes",
+                }
+            ],
+            ctx,
+        )
         self.assertTrue(res.success)
         self.assertEqual(stream.crafts[0]["craft_id"], "campaign_real")
 
@@ -229,8 +349,12 @@ class EditWrapperTests(unittest.TestCase):
 
     def test_too_many_edits_in_one_call_are_rejected(self):
         edits = [
-            {"action": "add", "keyword_type": "generic", "section": "positives",
-             "keyword": f"trail shoes {i}"}
+            {
+                "action": "add",
+                "keyword_type": "generic",
+                "section": "positives",
+                "keyword": f"trail shoes {i}",
+            }
             for i in range(manage_tools._MAX_EDITS + 1)
         ]
         res = _edit(edits, _ctx())
@@ -239,16 +363,25 @@ class EditWrapperTests(unittest.TestCase):
 
     def test_non_dict_edits_are_skipped_not_fatal(self):
         res = _edit(
-            ["nonsense", None,
-             {"action": "add", "keyword_type": "generic", "section": "positives",
-              "keyword": "trail shoes"}],
+            [
+                "nonsense",
+                None,
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": "trail shoes",
+                },
+            ],
             _ctx(),
         )
-        self.assertTrue(res.success)          # the one valid edit lands; junk is skipped
+        self.assertTrue(res.success)  # the one valid edit lands; junk is skipped
         self.assertEqual(res.data["applied"], 1)
 
     def test_edits_must_be_a_list(self):
-        res = asyncio.run(manage_tools._edit_keywords({"edits": "add trail shoes"}, _ctx()))
+        res = asyncio.run(
+            manage_tools._edit_keywords({"edits": "add trail shoes"}, _ctx())
+        )
         self.assertFalse(res.success)
 
 
@@ -265,8 +398,12 @@ class ManageMemoryTests(unittest.TestCase):
         agent = kw_agent.get_keyword_manage_agent()
         seen: dict = {}
 
-        async def fake_run(user_message, session, event_stream):  # no self — patched on instance
-            seen["seeded"] = list(session.messages)  # what the agent sees before it speaks
+        async def fake_run(
+            user_message, session, event_stream
+        ):  # no self — patched on instance
+            seen["seeded"] = list(
+                session.messages
+            )  # what the agent sees before it speaks
             session.append_user_message(user_message)
             session.append_assistant_message([{"type": "text", "text": reply}])
 
@@ -274,42 +411,74 @@ class ManageMemoryTests(unittest.TestCase):
             self.session_id = "throwaway"
             return "throwaway"
 
-        with mock.patch.object(agent, "run", new=fake_run), \
-                mock.patch.object(BaseSession, "get_or_create", new=fake_goc):
-            ctx = {"session_context": parent_ctx, "auth": mock.MagicMock(), "event_stream": None}
+        with (
+            mock.patch.object(agent, "run", new=fake_run),
+            mock.patch.object(BaseSession, "get_or_create", new=fake_goc),
+        ):
+            ctx = {
+                "session_context": parent_ctx,
+                "auth": mock.MagicMock(),
+                "event_stream": None,
+            }
             res = asyncio.run(agent.handle(user_message, ctx))
         return res, seen
 
     def _parent(self, conversation=None):
         return {
-            "keyword_research": {"themes": {
-                "brand": {"theme": "brand", "label": "Brand", "positives": [], "negatives": []}},
-                "meta": {}},
+            "keyword_research": {
+                "themes": {
+                    "brand": {
+                        "theme": "brand",
+                        "label": "Brand",
+                        "positives": [],
+                        "negatives": [],
+                    }
+                },
+                "meta": {},
+            },
             "product_data": {"product_name": "Kajaria"},
             "kw_conversation": conversation or [],
         }
 
     def test_prior_exchange_is_replayed_into_the_run(self):
-        prior = [{"user": "why no staircase keyword?",
-                  "reply": "It never came up — the one with demand is 'kajaria staircase tiles'."}]
-        _res, seen = self._handle(self._parent(prior), "yes add that one", "Done — added.")
+        prior = [
+            {
+                "user": "why no staircase keyword?",
+                "reply": "It never came up — the one with demand is 'kajaria staircase tiles'.",
+            }
+        ]
+        _res, seen = self._handle(
+            self._parent(prior), "yes add that one", "Done — added."
+        )
         replayed = " ".join(str(m.get("content")) for m in seen["seeded"])
-        self.assertIn("kajaria staircase tiles", replayed)  # the referent is now resolvable
+        self.assertIn(
+            "kajaria staircase tiles", replayed
+        )  # the referent is now resolvable
 
     def test_exchange_is_recorded_and_window_is_bounded(self):
-        from app.agents.adzump.agents.campaign.google.keyword.agent import KW_MANAGE_HISTORY_TURNS
-        prior = [{"user": f"q{i}", "reply": f"a{i}"} for i in range(KW_MANAGE_HISTORY_TURNS + 2)]
+        from app.agents.adzump.agents.campaign.google.keyword.agent import (
+            KW_MANAGE_HISTORY_TURNS,
+        )
+
+        prior = [
+            {"user": f"q{i}", "reply": f"a{i}"}
+            for i in range(KW_MANAGE_HISTORY_TURNS + 2)
+        ]
         parent = self._parent(prior)
         self._handle(parent, "add trail shoes", "Added trail shoes.")
         conv = parent["kw_conversation"]
-        self.assertLessEqual(len(conv), KW_MANAGE_HISTORY_TURNS)          # bounded
-        self.assertEqual(conv[-1], {"user": "add trail shoes", "reply": "Added trail shoes."})  # newest kept
+        self.assertLessEqual(len(conv), KW_MANAGE_HISTORY_TURNS)  # bounded
+        self.assertEqual(
+            conv[-1], {"user": "add trail shoes", "reply": "Added trail shoes."}
+        )  # newest kept
 
     def test_return_tells_the_orchestrator_not_to_narrate(self):
         res, _ = self._handle(self._parent(), "add trail shoes", "Added trail shoes.")
         self.assertTrue(res.success)
         self.assertIn("do not restate", res.summary.lower())
-        self.assertNotIn("trail shoes", res.summary)  # the outcome is NOT handed to the orchestrator
+        self.assertNotIn(
+            "trail shoes", res.summary
+        )  # the outcome is NOT handed to the orchestrator
 
 
 class ManageReminderRendersFullyTests(unittest.TestCase):
@@ -331,8 +500,18 @@ class ManageReminderRendersFullyTests(unittest.TestCase):
             "kw_user_message": "add location keywords",
             "keyword_research": {
                 "themes": {
-                    "brand": {"label": "Brand", "positives": [], "negatives": [], "rejections": []},
-                    "generic": {"label": "Generic", "positives": [], "negatives": [], "rejections": []},
+                    "brand": {
+                        "label": "Brand",
+                        "positives": [],
+                        "negatives": [],
+                        "rejections": [],
+                    },
+                    "generic": {
+                        "label": "Generic",
+                        "positives": [],
+                        "negatives": [],
+                        "rejections": [],
+                    },
                 }
             },
         }
@@ -342,7 +521,9 @@ class ManageReminderRendersFullyTests(unittest.TestCase):
         import re
 
         leftover = re.findall(r"\$\{?[A-Za-z_]\w*", self._reminder())
-        self.assertEqual(leftover, [], f"unresolved template vars in manage prompt: {leftover}")
+        self.assertEqual(
+            leftover, [], f"unresolved template vars in manage prompt: {leftover}"
+        )
 
     def test_carries_both_bars_and_the_verbatim_ask(self):
         rem = self._reminder()

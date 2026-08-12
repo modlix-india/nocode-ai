@@ -36,7 +36,9 @@ MAX_STORED_CANDIDATES = (
 TARGET_POSITIVE_COUNT = 30  # positives selected per type
 MAX_NEGATIVE_COUNT = 40  # negatives kept per type
 MAX_SERVICE_AREAS = 8  # service-area cities carried into the seed prompt
-MAX_REJECTIONS_RECORDED = 50  # 'why not this keyword' ledger, per rule — rides the session
+MAX_REJECTIONS_RECORDED = (
+    50  # 'why not this keyword' ledger, per rule — rides the session
+)
 
 # Display / logging bounds.
 MAX_CANDIDATES_SHOWN = 120  # expansion-pool phrases echoed back from expand_keywords
@@ -68,4 +70,6 @@ SAFETY_PATTERNS: tuple[re.Pattern[str], ...] = (
 # (autosuggest.DEFAULT_SOURCE_NAMES). Names index the autosuggest.SOURCES registry.
 SOURCE_YOUTUBE = "youtube"
 
-INFORMATIONAL_SOURCE_NAMES = (SOURCE_YOUTUBE,)  # buyer's funnel includes how-to/informational
+INFORMATIONAL_SOURCE_NAMES = (
+    SOURCE_YOUTUBE,
+)  # buyer's funnel includes how-to/informational

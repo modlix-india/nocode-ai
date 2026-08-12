@@ -24,9 +24,12 @@ import unicodedata
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.agents.campaign.models import Channel
 from app.agents.adzump.platform import Platform
 from app.agents.adzump.answer_parse import (
-    parse_typed_answer, currency_for, field_candidates,
+    parse_typed_answer,
+    currency_for,
+    field_candidates,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,6 +77,7 @@ def _normalize_id(v: Any) -> Any:
 # Fields that can be set via this tool.
 ALLOWED_FIELDS = {
     "platform",
+    "channel",  # Google only: SEARCH | DEMAND_GEN - decides which build tools run
     "duration",
     "budget",
     "location",
@@ -102,6 +106,7 @@ CONSENT_FIELDS = {"summary_confirmed"}
 # rules (see _field_traceable).
 _USER_TEXT_FIELDS = {
     "platform",
+    "channel",
     "duration",
     "budget",
     "location",
@@ -117,6 +122,7 @@ _USER_TEXT_FIELDS = {
 # field that changed → the fields it invalidates.
 _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "platform": (
+        "channel",
         "parent_account",
         "account",
         "fb_page",
@@ -126,6 +132,9 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     ),
     "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
     "fb_page": ("ig_page", "ig_page_declined"),
+    # Ad groups are keyword themes - a Search-only concept. Switching to Demand Gen
+    # must not carry them into a campaign that has no keywords.
+    "channel": ("ad_groups",),
 }
 
 # v3 · F3 - phrases that mean "skip linking Instagram, run Facebook-only".
@@ -161,9 +170,20 @@ def is_ig_skip(text: str) -> bool:
 # only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
 # decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
 _DECLINE_PHRASES = (
-    "skip competitor", "skip competitors", "skip the competitor", "no competitor",
-    "not now", "maybe later", "do it later", "no need", "no thanks",
-    "don't bother", "dont bother", "skip it", "skip this", "skip that",
+    "skip competitor",
+    "skip competitors",
+    "skip the competitor",
+    "no competitor",
+    "not now",
+    "maybe later",
+    "do it later",
+    "no need",
+    "no thanks",
+    "don't bother",
+    "dont bother",
+    "skip it",
+    "skip this",
+    "skip that",
 )
 
 
@@ -180,8 +200,20 @@ def is_decline(text: str) -> bool:
 # instead). is_decline is substring-based and over-fires on these: "not now, first
 # tell me about the audience" (defer+ask), "no competitors named yet" (informing).
 _DECLINE_AMBIG_MARKERS = (
-    "?", "first", "tell me", "what ", "what'", "how ", "which ", "why ",
-    "named", "instead", "before we", "about the", "explain", " vs ",
+    "?",
+    "first",
+    "tell me",
+    "what ",
+    "what'",
+    "how ",
+    "which ",
+    "why ",
+    "named",
+    "instead",
+    "before we",
+    "about the",
+    "explain",
+    " vs ",
 )
 
 
@@ -267,6 +299,12 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         # "Meta" / "facebook" / "instagram" / "fb" / "ig" → META.
         v_platform = Platform.from_value(v)
         if v_platform is not None and Platform.from_value(lu) is v_platform:
+            return True
+    if field == "channel":
+        # Same shape as platform: the stored value ("DEMAND_GEN") and the user's chip
+        # or typed reply ("Demand Gen", "demand gen") rarely match as substrings.
+        v_channel = Channel.from_value(v)
+        if v_channel is not None and Channel.from_value(lu) is v_channel:
             return True
     if field in ("duration", "budget"):
         # PR2 · Option 2 - normalization-aware: a typed reply and a normalized
@@ -442,7 +480,11 @@ async def _set_campaign_spec(
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
         # User sees only what was actually stored; the rejection steer + kept/
         # review hints are model-only - never leak validator internals to chat.
-        user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
+        user_summary = (
+            f"Campaign spec updated: {', '.join(parts)}."
+            if stored_keys
+            else "No changes stored."
+        )
         return ToolResult(
             success=True,
             summary=user_summary,
@@ -493,7 +535,9 @@ def _store_confirmed_location(
         place["lat"] = None
         place["lng"] = None
     name = product.get("product_name") or ""
-    place["display_name"] = f"{name}, {place['address']}" if name and place["address"] else ""
+    place["display_name"] = (
+        f"{name}, {place['address']}" if name and place["address"] else ""
+    )
 
 
 def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
@@ -681,6 +725,16 @@ set_campaign_spec = ToolDefinition(
             description="Advertising platform: 'Google Ads' or 'Meta'",
             required=False,
             enum=["Google Ads", "Meta"],
+        ),
+        ToolParameter(
+            name="channel",
+            type="string",
+            description=(
+                "Google campaign type. Only for Google - Meta has no channel. "
+                "SEARCH targets keywords; DEMAND_GEN targets audiences."
+            ),
+            required=False,
+            enum=[c.value for c in Channel],
         ),
         ToolParameter(
             name="duration",

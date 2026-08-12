@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from enum import Enum
 
-from app.agents.adzump.agents.campaign.google.keyword.themes import KEYWORD_THEMES, KeywordTheme
-
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    KEYWORD_THEMES,
+    KeywordTheme,
+)
 
 BASE = """\
 You are a Google Ads keyword strategist building ONE keyword set (brand OR generic —

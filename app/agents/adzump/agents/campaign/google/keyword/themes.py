@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # ── Guidance: GENERIC ────────────────────────────────────────────────────────
 
 _SEED_GENERIC = """\
@@ -248,7 +247,9 @@ class KeywordTheme:
     keep_zero_volume: bool  # brand keeps 0-volume terms; generic drops them
     allows_cross_business: bool  # may hold an upsell sibling as a positive
     requires_brand_token: bool  # positives must / must not carry a brand word
-    allows_informational_sources: bool  # may add YouTube when the business has that funnel
+    allows_informational_sources: (
+        bool  # may add YouTube when the business has that funnel
+    )
 
 
 GENERIC = KeywordTheme(
@@ -286,4 +287,6 @@ def get_theme(theme_id: str) -> KeywordTheme:
     try:
         return KEYWORD_THEMES[str(theme_id).strip().lower()]
     except KeyError:
-        raise KeyError(f"unknown theme {theme_id!r}; known: {sorted(KEYWORD_THEMES)}") from None
+        raise KeyError(
+            f"unknown theme {theme_id!r}; known: {sorted(KEYWORD_THEMES)}"
+        ) from None

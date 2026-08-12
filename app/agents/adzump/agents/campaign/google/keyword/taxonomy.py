@@ -14,11 +14,10 @@ from __future__ import annotations
 
 import logging
 
-from app.config import settings
-from app.core.session import record_oneshot_usage
-
 from app.agents.adzump._shared import extract_json
 from app.agents.adzump.agents.campaign.google.keyword.models import OfferingTaxonomy
+from app.config import settings
+from app.core.session import record_oneshot_usage
 
 logger = logging.getLogger(__name__)
 

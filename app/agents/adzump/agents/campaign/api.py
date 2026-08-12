@@ -19,16 +19,16 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.agents.adzump.adapters.google import keyword_planner
+from app.agents.adzump.agents.campaign.google.keyword.models import normalize
+from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
+    update_keywords,
+)
 from app.core.base_auth import require_auth_context
 from app.core.base_router import sse_stream_response
 from app.core.session import AuthContext, BaseSession
 from app.core.streaming import AgentEventStream
-
-from app.agents.adzump.adapters.google import keyword_planner
-from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
-    update_keywords,
-)
-from app.agents.adzump.agents.campaign.google.keyword.models import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ async def keyword_volume(
     by_kw: dict[str, dict] = {}
     if customer_id:
         # Reuse the same geo the run scored with, so added keywords are comparable.
-        geo = ((sctx.get("keyword_research") or {}).get("meta") or {}).get("geo") or {}
+        geo = ((keyword_research(sctx) or {}).get("meta") or {}).get("geo") or {}
         metrics = await keyword_planner.fetch_keyword_historical_metrics(
             keywords,
             **keyword_planner.planner_call_args(

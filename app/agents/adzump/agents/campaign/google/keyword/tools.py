@@ -23,20 +23,18 @@ from typing import cast
 
 from pydantic import ValidationError
 
-from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-
 from app.agents.adzump.adapters import autosuggest
 from app.agents.adzump.adapters.google import keyword_planner
-
 from app.agents.adzump.agents.campaign.google.keyword import constants
-from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.models import (
-    MatchType,
     Intent,
+    MatchType,
     NegativeKeyword,
     OptimizedKeyword,
     normalize,
 )
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
+from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +237,10 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
     # the model (generic: "drop 0-volume terms"; brand: "own these even at zero volume").
     # Research only: a manage run scores for ANY ad group (the target isn't knowable
     # here), so all candidates stay and the per-ad-group bars decide.
-    if state.get("kw_mode") != "manage" and not get_theme(state["kw_type"]).keep_zero_volume:
+    if (
+        state.get("kw_mode") != "manage"
+        and not get_theme(state["kw_type"]).keep_zero_volume
+    ):
         dropped = [i for i in ideas if i.get("volume", 0) <= 0]
         ideas = [i for i in ideas if i.get("volume", 0) > 0]
         # Recorded, not just filtered: "no search volume" is the answer to "why isn't X here?"
@@ -511,7 +512,9 @@ async def _attach_negative_volumes(context: dict, negatives: list[dict]) -> None
         )
     fetched = {m["keyword"]: m["volume"] for m in metrics}
     for neg in negatives:
-        if neg["volume"] == 0:  # pool-hits already have a volume; backfill only the rest
+        if (
+            neg["volume"] == 0
+        ):  # pool-hits already have a volume; backfill only the rest
             neg["volume"] = fetched.get(neg["keyword"], 0)
 
 

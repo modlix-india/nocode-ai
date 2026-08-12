@@ -15,7 +15,6 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from app.agents.adzump.adapters.autosuggest import DEFAULT_SOURCE_NAMES
-from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 from app.agents.adzump.agents.campaign.google.keyword.constants import (
     COMMERCIAL_VALUE_COMPETITION_LEVELS,
     INFORMATIONAL_SOURCE_NAMES,
@@ -23,6 +22,7 @@ from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
 )
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
 
 
 def normalize(value: str) -> str:
@@ -71,8 +71,12 @@ def _coerce_intent(v: object) -> str:
 
 # An LLM label is coerced to a valid enum rather than raising, so a stray value never
 # discards an otherwise-good keyword. Positives and negatives allow different sets.
-CoercedPositiveMatchType = Annotated[MatchType, BeforeValidator(_coerce_positive_match_type)]
-CoercedNegativeMatchType = Annotated[MatchType, BeforeValidator(_coerce_negative_match_type)]
+CoercedPositiveMatchType = Annotated[
+    MatchType, BeforeValidator(_coerce_positive_match_type)
+]
+CoercedNegativeMatchType = Annotated[
+    MatchType, BeforeValidator(_coerce_negative_match_type)
+]
 CoercedIntent = Annotated[Intent, BeforeValidator(_coerce_intent)]
 
 
@@ -132,12 +136,14 @@ class OptimizedKeyword(KeywordSuggestion):
     match_type: CoercedPositiveMatchType = MatchType.PHRASE
     rationale: str = ""  # the agent's one-line why
     admitted_by: str = ""  # the select rule that let it in
-    source_seed: str = ""  # the seed that surfaced it ("" when the Planner generated it)
+    source_seed: str = (
+        ""  # the seed that surfaced it ("" when the Planner generated it)
+    )
     volume_at_pick: int = Field(default=0, ge=0)
     is_cross_business: bool = False
 
     @model_validator(mode="after")
-    def _phrase_for_cross_business(self) -> "OptimizedKeyword":
+    def _phrase_for_cross_business(self) -> OptimizedKeyword:
         if self.is_cross_business and self.match_type is not MatchType.PHRASE:
             self.match_type = MatchType.PHRASE  # exact would over-target a wrong cohort
         return self
@@ -222,9 +228,7 @@ class OfferingTaxonomy(BaseModel):
     is_location_specific: bool = (
         True  # LLM-decided: serves specific areas (local/regional) vs national/online
     )
-    includes_informational_funnel: bool = (
-        False  # buyers research via how-to/educational content → adds YouTube autosuggest
-    )
+    includes_informational_funnel: bool = False  # buyers research via how-to/educational content → adds YouTube autosuggest
     complete: bool = (
         True  # False = transient fail-soft fallback (the caller must not cache it)
     )
@@ -254,6 +258,9 @@ class BusinessProfile:
         primary set; informational surfaces need BOTH the theme to allow them and the
         business to actually have that theme."""
         names = list(DEFAULT_SOURCE_NAMES)
-        if get_theme(theme_id).allows_informational_sources and self.includes_informational_funnel:
+        if (
+            get_theme(theme_id).allows_informational_sources
+            and self.includes_informational_funnel
+        ):
             names += [n for n in INFORMATIONAL_SOURCE_NAMES if n not in names]
         return names

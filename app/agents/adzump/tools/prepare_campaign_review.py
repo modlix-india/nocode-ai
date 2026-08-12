@@ -14,6 +14,7 @@ from app.core.streaming import pre_emit_agent_started
 from app.core.tools.base import ToolDefinition, ToolResult
 
 from app.agents.adzump.agents.campaign.agent import get_campaign_agent
+from app.agents.adzump.agents.campaign.models import set_keyword_research
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,10 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error="No session context available.")
     spec = session_ctx.get("campaign_spec") or {}
     if not spec.get("account"):
-        return ToolResult(success=False, error="Campaign details incomplete — no ad account selected yet.")
+        return ToolResult(
+            success=False,
+            error="Campaign details incomplete — no ad account selected yet.",
+        )
     auth = context.get("auth")
     if auth is None:
         return ToolResult(success=False, error="No auth context for campaign creation.")
@@ -38,8 +42,11 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
     # Launcher owns the agent-card span: pre-emit started here (bound to this tool call);
     # the CampaignAgent emits agent_finished when it's done.
     await pre_emit_agent_started(
-        stream, agent_id="campaign", label="Campaign Creation",
-        parent_tool_use_id=context.get("tool_use_id", ""), context=context,
+        stream,
+        agent_id="campaign",
+        label="Campaign Creation",
+        parent_tool_use_id=context.get("tool_use_id", ""),
+        context=context,
     )
     result = await get_campaign_agent().create(
         campaign_spec=spec,
@@ -53,7 +60,7 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
             success=False,
             error="Campaign creation produced no keyword results — check the ad account and retry.",
         )
-    session_ctx["keyword_research"] = result
+    set_keyword_research(session_ctx, result)
 
     # The elicitation owns its ask (the deferred break skips the follow-up turn).
     await stream.emit_text(

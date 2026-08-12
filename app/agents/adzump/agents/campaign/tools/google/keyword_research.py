@@ -17,26 +17,19 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.core.tools.base import ToolDefinition, ToolResult
-
 from app.agents.adzump._shared import build_ds_headers
 from app.agents.adzump.adapters.google import keyword_planner
-from app.agents.adzump.platform import to_enum_value as platform_enum_value
-from app.agents.adzump.services.business_storage import resolve_url
-
+from app.agents.adzump.agents.campaign.brief import business_text as _business_text
 from app.agents.adzump.agents.campaign.craft import (
     emit_campaign_craft,
     emit_section_update,
     keyword_review_block,
 )
-from app.agents.adzump.agents.campaign.google.keyword.agent import get_keyword_research_agent
-from app.agents.adzump.agents.campaign.google.keyword.brief import (
-    business_text as _business_text,
-    resolve_location as _resolve_location,
+from app.agents.adzump.agents.campaign.google.keyword.agent import (
+    get_keyword_research_agent,
 )
-from app.agents.adzump.agents.campaign.google.keyword.themes import (
-    DEFAULT_THEME_IDS,
-    KEYWORD_THEMES,
+from app.agents.adzump.agents.campaign.google.keyword.brief import (
+    resolve_location as _resolve_location,
 )
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     AdGroupStatus,
@@ -44,12 +37,21 @@ from app.agents.adzump.agents.campaign.google.keyword.models import (
     KeywordResearchResult,
     KeywordSet,
 )
-from app.agents.adzump.agents.campaign.google.keyword.taxonomy import derive_offering_taxonomy
+from app.agents.adzump.agents.campaign.google.keyword.taxonomy import (
+    derive_offering_taxonomy,
+)
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    DEFAULT_THEME_IDS,
+    KEYWORD_THEMES,
+)
 from app.agents.adzump.agents.location.targeting_run import (
     resolve_coordinates,
     resolve_country_geo_constant,
     resolve_location_name,
 )
+from app.agents.adzump.platform import to_enum_value as platform_enum_value
+from app.agents.adzump.services.business_storage import resolve_url
+from app.core.tools.base import ToolDefinition, ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -242,28 +244,30 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     )
     profile = _business_profile(product, taxonomy)
     agent = get_keyword_research_agent()
-    common = dict(
-        ad_account={
+    common = {
+        "ad_account": {
             "customer_id": customer_id,
             "login_customer_id": login_customer_id,
         },
-        geo=geo,
-        parent_event_stream=context.get("event_stream"),
-        auth=context["auth"],
-        category=taxonomy.get("primary_offering") or profile.category,
-        core_terms=taxonomy.get("core_terms") or [],
-        siblings=taxonomy.get("sibling_categories") or [],
-        location=loc_text,
-        service_areas=service_areas,
-        business_url=resolve_url(session_ctx) or "",
-        business_text=_business_text(product),
-    )
+        "geo": geo,
+        "parent_event_stream": context.get("event_stream"),
+        "auth": context["auth"],
+        "category": taxonomy.get("primary_offering") or profile.category,
+        "core_terms": taxonomy.get("core_terms") or [],
+        "siblings": taxonomy.get("sibling_categories") or [],
+        "location": loc_text,
+        "service_areas": service_areas,
+        "business_url": resolve_url(session_ctx) or "",
+        "business_text": _business_text(product),
+    }
 
     # Themes are independent: one failing or timing out still returns the others, and a
     # finished ad group reaches the panel without waiting for the slowest.
     partials: dict[str, KeywordSet] = {}
 
-    async def _run(theme_id: str) -> tuple[str, KeywordSet | None, BaseException | None]:
+    async def _run(
+        theme_id: str,
+    ) -> tuple[str, KeywordSet | None, BaseException | None]:
         try:
             res = await asyncio.wait_for(
                 agent.research(

@@ -7,9 +7,10 @@ The panel sends structured actions as pure JSON:
    "volume": 1200, "intent": "transactional"}   (intent/reason differ by section)
    "old_keyword": "..."  (edit only)
 
-update_keywords() applies the action to session_ctx["keyword_research"] and re-emits only
-the keyword_review block (keyed upsert, no panel flash). The HTTP transport that routes
-these actions to it lives in campaign/api.py.
+update_keywords() applies the action to the campaign's saved keyword set (read and written
+through ``campaign/models.py``, never by session key) and re-emits only the keyword_review
+block (keyed upsert, no panel flash). The HTTP transport that routes these actions to it
+lives in campaign/api.py.
 """
 
 from __future__ import annotations
@@ -17,19 +18,27 @@ from __future__ import annotations
 import difflib
 import logging
 
-from app.core.tools.base import ToolResult
-
-from app.agents.adzump.agents.campaign.craft import emit_section_update, keyword_review_block
+from app.agents.adzump.agents.campaign.craft import (
+    emit_section_update,
+    keyword_review_block,
+)
 from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_LENGTH,
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
 )
-from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
+from app.agents.adzump.agents.campaign.models import (
+    keyword_research,
+    set_keyword_research,
+)
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     AdGroupStatus,
+)
+from app.agents.adzump.agents.campaign.google.keyword.models import (
     normalize as _normalize,
 )
+from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
+from app.core.tools.base import ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +81,9 @@ def _tokens(text: str) -> frozenset[str]:
     return frozenset(_normalize(text).split())
 
 
-_BRAND_FUZZY_RATIO = 0.8  # token similarity that still counts as the brand (catches misspellings)
+_BRAND_FUZZY_RATIO = (
+    0.8  # token similarity that still counts as the brand (catches misspellings)
+)
 
 
 def _is_brandish(token: str, brand_tokens: frozenset[str]) -> bool:
@@ -83,7 +94,9 @@ def _is_brandish(token: str, brand_tokens: frozenset[str]) -> bool:
     )
 
 
-def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) -> str | None:
+def _check_section_signal(
+    keyword: str, keyword_type: str, session_ctx: dict
+) -> str | None:
     """Return an error if the keyword clearly belongs in a different ad group.
 
     Brand affinity is the theme's own declared rule, so a new theme states its stance
@@ -94,19 +107,24 @@ def _check_section_signal(keyword: str, keyword_type: str, session_ctx: dict) ->
         return None
 
     theme = get_theme(keyword_type)
-    dump = session_ctx.get("keyword_research") or {}
+    dump = keyword_research(session_ctx) or {}
     themes = dump.get("themes") or {}
     # The brand the taxonomy named, not the whole company name — "Kajaria Ceramics" carries
     # its industry too. Sets built before it was recorded fall back to the name.
     brand_terms = (dump.get("meta") or {}).get("brand_terms") or []
-    product_name = str((session_ctx.get("product_data") or {}).get("product_name") or "")
-    brand_tokens = _tokens(" ".join(brand_terms)) if brand_terms else _tokens(product_name)
+    product_name = str(
+        (session_ctx.get("product_data") or {}).get("product_name") or ""
+    )
+    brand_tokens = (
+        _tokens(" ".join(brand_terms)) if brand_terms else _tokens(product_name)
+    )
 
     def _positives_where(requires_brand: bool) -> list[dict]:
         return [
             row
             for fid, kset in themes.items()
-            if fid != keyword_type and get_theme(fid).requires_brand_token is requires_brand
+            if fid != keyword_type
+            and get_theme(fid).requires_brand_token is requires_brand
             for row in (kset.get("positives") or [])
         ]
 
@@ -152,7 +170,7 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
     The single mutation path: panel clicks (0 LLM) and the keyword agent both come through
     here, so an edit made in words can't break an invariant a click couldn't.
     """
-    dump = session_ctx.get("keyword_research")
+    dump = keyword_research(session_ctx)
     if not dump:
         return False, "No keyword research in session — run keyword research first."
 
@@ -195,9 +213,15 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
         if any(_row_key(r) == keyword for r in rows):
             return False, f"'{keyword}' already exists in {keyword_type} {section}."
         if any(_row_key(r) == keyword for r in opposite_rows):
-            return False, f"'{keyword}' is already in {keyword_type} {opposite} — a keyword can't be in both lists."
+            return (
+                False,
+                f"'{keyword}' is already in {keyword_type} {opposite} — a keyword can't be in both lists.",
+            )
         if any(_row_key(r) == keyword for r in cross_type_rows):
-            return False, f"'{keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups."
+            return (
+                False,
+                f"'{keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups.",
+            )
         if section == "positives":
             section_err = _check_section_signal(keyword, keyword_type, session_ctx)
             if section_err:
@@ -236,18 +260,31 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
 
         if new_keyword != old_keyword:
             if any(_row_key(r) == new_keyword for r in rows if r is not target):
-                return False, f"'{new_keyword}' already exists in {keyword_type} {section}."
+                return (
+                    False,
+                    f"'{new_keyword}' already exists in {keyword_type} {section}.",
+                )
             if any(_row_key(r) == new_keyword for r in opposite_rows):
-                return False, f"'{new_keyword}' is in {keyword_type} {opposite} — a keyword can't be in both lists."
+                return (
+                    False,
+                    f"'{new_keyword}' is in {keyword_type} {opposite} — a keyword can't be in both lists.",
+                )
             if any(_row_key(r) == new_keyword for r in cross_type_rows):
-                return False, f"'{new_keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups."
+                return (
+                    False,
+                    f"'{new_keyword}' is already a positive in another ad group — a keyword can't be a positive in two ad groups.",
+                )
             if section == "positives":
-                section_err = _check_section_signal(new_keyword, keyword_type, session_ctx)
+                section_err = _check_section_signal(
+                    new_keyword, keyword_type, session_ctx
+                )
                 if section_err:
                     return False, section_err
 
         target["keyword"] = new_keyword
-        target["match_type"] = _coerce_match_type(params.get("match_type"), section, target.get("match_type", "PHRASE"))
+        target["match_type"] = _coerce_match_type(
+            params.get("match_type"), section, target.get("match_type", "PHRASE")
+        )
         target["volume"] = int(params.get("volume", target.get("volume", 0)) or 0)
         if section == "positives":
             target["intent"] = str(params.get("intent", target.get("intent", "")) or "")
@@ -262,11 +299,13 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
         kset["status"] = AdGroupStatus.COMPLETE.value
     themes[keyword_type] = kset
     dump["themes"] = themes
-    session_ctx["keyword_research"] = dump
+    set_keyword_research(session_ctx, dump)
 
     logger.info(
         "kw_update type=%s action=%s section=%s keyword=%r rows=%d",
-        keyword_type, action, section,
+        keyword_type,
+        action,
+        section,
         _normalize(str(params.get("keyword") or params.get("old_keyword") or "")),
         len(rows),
     )
@@ -276,7 +315,7 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
 
 async def _emit_panel(context: dict, session_ctx: dict) -> None:
     """Re-emit only the keyword block (keyed upsert, no panel flash)."""
-    dump = session_ctx.get("keyword_research") or {}
+    dump = keyword_research(session_ctx) or {}
     # Key off the craft_id the panel was ORIGINALLY drawn under — keyword_research records it
     # in the dump's meta. Reading it from the data (not a session key that only coincidentally
     # holds the same value) guarantees an edit upserts into the same craft container.
@@ -285,7 +324,9 @@ async def _emit_panel(context: dict, session_ctx: dict) -> None:
         or session_ctx.get("campaign_craft_id")
         or f"campaign_{context.get('session_id', '')}"
     )
-    await emit_section_update(context.get("event_stream"), craft_id, keyword_review_block(dump))
+    await emit_section_update(
+        context.get("event_stream"), craft_id, keyword_review_block(dump)
+    )
 
 
 async def update_keywords(params: dict, context: dict) -> ToolResult:

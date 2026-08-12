@@ -522,12 +522,14 @@ agents/campaign/google/keyword/
 │                    phase_prompt() reads guidance off the theme; data-level import guard
 ├── tools.py         the 5 generation tools + deterministic gates + the rejections ledger
 ├── manage_tools.py  the 2 manage tools (lookup_keyword, edit_keywords)
-├── brief.py         shared seed builder (business_text / conversation_text / resolve_location)
+├── brief.py         resolve_location — the geo half of the seed (business half: campaign/brief.py)
 ├── taxonomy.py      derive_offering_taxonomy — the business-agnostic context layer
 ├── models.py        KeywordSet(+status) / AdGroupStatus / OptimizedKeyword / NegativeKeyword / Rejection + validators
 └── constants.py     pool/seed/selection/rejection size knobs (see §9)
 
 agents/campaign/                     CampaignAgent shell + keyword_research orchestrator tool
+agents/campaign/brief.py             business_text / conversation_text — channel-neutral, shared
+agents/campaign/models.py            CampaignBuild — agent output, keyed by channel
 agents/campaign/tools/google/keyword_update.py   the shared _apply_edit engine (widget + agent)
 adapters/autosuggest.py              multi-source autosuggest → Suggestion(keyword, source, seed)
 adapters/google/keyword_planner.py   Keyword Planner (generateKeywordIdeas), chunked + breaker

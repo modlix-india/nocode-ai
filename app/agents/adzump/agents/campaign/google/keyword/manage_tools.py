@@ -17,9 +17,8 @@ from __future__ import annotations
 
 import logging
 
-from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-
 from app.agents.adzump.agents.campaign.google.keyword.models import normalize
+from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 logger = logging.getLogger(__name__)
 

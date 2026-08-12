@@ -21,41 +21,42 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.config import settings
-from app.core.agent import BaseAgent
-from app.core.context import BaseContext
-from app.core.session import AuthContext, BaseSession
-from app.core.streaming import AgentEventStream, current_agent_id
-from app.core.tools.base import ToolResult
-
 from app.agents.adzump.agents._child_stream import ChildAgentStream
-from app.agents.adzump.services.business_storage import resolve_url
+from app.agents.adzump.agents.campaign.brief import conversation_text
 from app.agents.adzump.agents.campaign.google.keyword import constants
-from app.agents.adzump.agents.campaign.google.keyword.brief import (
-    conversation_text,
-    resolve_location,
-)
-from app.agents.adzump.agents.campaign.google.keyword.models import (
-    AdGroupStatus,
-    BusinessProfile,
-    KeywordSet,
-    Rejection,
-    NegativeKeyword,
-    OptimizedKeyword,
-)
+from app.agents.adzump.agents.campaign.google.keyword.brief import resolve_location
 from app.agents.adzump.agents.campaign.google.keyword.context import (
     BASE,
     BASE_MANAGE,
     Phase,
     phase_prompt,
 )
-from app.agents.adzump.agents.campaign.google.keyword.themes import KEYWORD_THEMES, get_theme
 from app.agents.adzump.agents.campaign.google.keyword.manage_tools import MANAGE_TOOLS
+from app.agents.adzump.agents.campaign.google.keyword.models import (
+    AdGroupStatus,
+    BusinessProfile,
+    KeywordSet,
+    NegativeKeyword,
+    OptimizedKeyword,
+    Rejection,
+)
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    KEYWORD_THEMES,
+    get_theme,
+)
 from app.agents.adzump.agents.campaign.google.keyword.tools import (
     ALL_TOOLS,
     EXPAND_KEYWORDS,
     KEYWORD_METRICS,
 )
+from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.services.business_storage import resolve_url
+from app.config import settings
+from app.core.agent import BaseAgent
+from app.core.context import BaseContext
+from app.core.session import AuthContext, BaseSession
+from app.core.streaming import AgentEventStream, current_agent_id
+from app.core.tools.base import ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -160,15 +161,17 @@ class KeywordResearchAgent(BaseAgent):
     """
 
     display_name = "Keyword Research"
-    _instance: "KeywordResearchAgent | None" = None
-    _manage_instance: "KeywordResearchAgent | None" = None
+    _instance: KeywordResearchAgent | None = None
+    _manage_instance: KeywordResearchAgent | None = None
 
     def __init__(self, *, manage: bool = False) -> None:
         context = BaseContext(static_prefix=BASE_MANAGE if manage else BASE)
         context.use_static_prefix_only()  # no async docs to load
         super().__init__(
             name="keyword_research",
-            tools=[EXPAND_KEYWORDS, KEYWORD_METRICS, *MANAGE_TOOLS] if manage else ALL_TOOLS,
+            tools=[EXPAND_KEYWORDS, KEYWORD_METRICS, *MANAGE_TOOLS]
+            if manage
+            else ALL_TOOLS,
             context_builder=context,
             model_tier=MODEL_TIER,
             max_turns=MAX_TURNS,
@@ -177,13 +180,13 @@ class KeywordResearchAgent(BaseAgent):
         )
 
     @classmethod
-    def get_instance(cls) -> "KeywordResearchAgent":
+    def get_instance(cls) -> KeywordResearchAgent:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     @classmethod
-    def get_manage_instance(cls) -> "KeywordResearchAgent":
+    def get_manage_instance(cls) -> KeywordResearchAgent:
         if cls._manage_instance is None:
             cls._manage_instance = cls(manage=True)
         return cls._manage_instance
@@ -217,11 +220,11 @@ class KeywordResearchAgent(BaseAgent):
             # across all of them — not one guessed theme, which would misdirect the model.
             built = (ctx.get("keyword_research") or {}).get("themes") or {}
             names = ", ".join((k.get("label") or tid) for tid, k in built.items())
-            campaign_line = f"AD GROUPS (you work across all of these): {names or '(none)'}"
-        else:
             campaign_line = (
-                f"CAMPAIGN: {get_theme(ctx['kw_type']).label} keywords for a Google Search campaign."
+                f"AD GROUPS (you work across all of these): {names or '(none)'}"
             )
+        else:
+            campaign_line = f"CAMPAIGN: {get_theme(ctx['kw_type']).label} keywords for a Google Search campaign."
         return (
             f"{campaign_line}\n"
             f"OFFERING (what they sell): {category}\n"
@@ -420,14 +423,16 @@ class KeywordResearchAgent(BaseAgent):
             return ToolResult(success=False, error="No session context available.")
         auth = context.get("auth")
         if auth is None:
-            return ToolResult(success=False, error="No auth context for the keyword agent.")
-        dump = parent_ctx.get("keyword_research")
-        themes = (dump or {}).get("themes") or {}
-        if not themes:
+            return ToolResult(
+                success=False, error="No auth context for the keyword agent."
+            )
+        dump = keyword_research(parent_ctx)
+        if not dump or not dump.get("themes"):
             return ToolResult(
                 success=False,
                 error="No keywords have been researched yet — build the campaign first.",
             )
+        themes = dump["themes"]
 
         # kw_type anchors the session; the run itself spans every built ad group.
         theme_id = next((t for t in themes if t in KEYWORD_THEMES), None)
@@ -448,7 +453,8 @@ class KeywordResearchAgent(BaseAgent):
         # so adding to (say) a generic ad group can still reach YouTube — matching what a
         # fresh research run for that theme would have queried.
         profile = BusinessProfile(
-            category=taxonomy.get("primary_offering") or product.get("business_type", ""),
+            category=taxonomy.get("primary_offering")
+            or product.get("business_type", ""),
             includes_informational_funnel=bool(
                 taxonomy.get("includes_informational_funnel", False)
             ),
@@ -491,11 +497,15 @@ class KeywordResearchAgent(BaseAgent):
         history: list[dict] = parent_ctx.get("kw_conversation") or []
         for past in history[-KW_MANAGE_HISTORY_TURNS:]:
             session.append_user_message(str(past.get("user", "")))
-            session.append_assistant_message([{"type": "text", "text": str(past.get("reply", ""))}])
+            session.append_assistant_message(
+                [{"type": "text", "text": str(past.get("reply", ""))}]
+            )
         seeded_len = len(session.messages)
 
         parent_stream = context.get("event_stream")
-        agent_id = "keyword_research_manage"  # same machine family as keyword_research_{theme}
+        agent_id = (
+            "keyword_research_manage"  # same machine family as keyword_research_{theme}
+        )
         run_start = time.monotonic()
         if parent_stream is not None:
             await parent_stream.emit_agent_started(
@@ -513,7 +523,7 @@ class KeywordResearchAgent(BaseAgent):
             )
         except Exception as exc:
             status, summary = "error", type(exc).__name__
-            logger.exception("keyword handle failed: %s", exc)
+            logger.exception("keyword handle failed")
             return ToolResult(
                 success=False,
                 error="The keyword agent couldn't complete that — try rephrasing.",
