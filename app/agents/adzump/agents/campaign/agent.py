@@ -15,8 +15,12 @@ from typing import Any
 
 from app.agents.adzump.agents._child_stream import ChildAgentStream
 from app.agents.adzump.agents.campaign.context import build_campaign_context
-from app.agents.adzump.agents.campaign.models import Channel, resolve_channel
-from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    build_dump,
+    resolve_channel,
+)
+from app.agents.adzump.agents.campaign.tools.google.registry import (
     GOOGLE_CAMPAIGN_TOOLS,
 )
 from app.config import settings
@@ -96,12 +100,13 @@ class CampaignAgent(BaseAgent):
         parent_event_stream: AgentEventStream,
         auth: AuthContext,
     ) -> dict | None:
-        """Run campaign creation and return the keyword_research result (or None).
+        """Run campaign creation and return the build it produced (or None).
 
-        Spawned by the main agent's prepare_campaign_review tool. Seeds a sub-session with the
-        collected campaign data; the platform tools read it and write their output
-        (keyword_research) back into that session, which we return for the caller to
-        persist on the main session.
+        Spawned by the main agent's prepare_campaign_review tool. Seeds a throwaway
+        sub-session with the collected campaign data; the platform tools read it and write
+        their output back into that session, which we hand to the caller to keep on the
+        main session. The whole build rather than one channel's slot - this shell does not
+        know which channel's tool ran.
         """
         session = BaseSession(agent_name="campaign")
         await session.get_or_create(None, auth)
@@ -128,13 +133,13 @@ class CampaignAgent(BaseAgent):
             )
             raise
 
-        result = session.context.get("keyword_research")
+        result = build_dump(session.context)
         await stream._emit_finished(
             agent_id="campaign",
             run_start=run_start,
             session=session,
             status="success",
-            summary="keyword research complete",
+            summary="campaign build complete",
         )
         return result
 

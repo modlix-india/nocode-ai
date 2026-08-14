@@ -145,7 +145,7 @@ launch. Edits then flow down **one of two paths**, chosen by what the edit *is*:
 
 | The edit is… | Path | Cost | Why |
 |---|---|---|---|
-| a **mechanical panel click** (delete a row, flip a match type) | `router.py` sniffs the widget JSON → `stream_keyword_widget` (`api.py`) → `update_keywords` (`keyword_update.py`) | **0 LLM** | a plain set mutation; an LLM turn per click would be slow and costly |
+| a **mechanical panel click** (delete a row, flip a match type) | `router.py` sniffs the widget JSON → `parse_widget_message`/`stream_widget` (`api.py`) → `update_keywords` (`keyword_update.py`) | **0 LLM** | a plain set mutation; an LLM turn per click would be slow and costly |
 | **words** ("why is X here?", "add location keywords", "drop the low-volume ones") | main agent Rule 1b → `manage_keywords` → `KeywordResearchAgent.handle()` | 1 agent turn | needs judgement, the record, or new real keywords — the keyword agent owns all three |
 
 Both paths mutate the **same** `session_ctx["keyword_research"]` through the **same**
@@ -399,7 +399,7 @@ flowchart TD
   `emit_text` to the parent.
 
 `handle()` seeds the **business picture, not a keyword-shaped slice** —
-`brief.conversation_text` adds competitors + budget on top of the offering, because a question
+`brief.wider_brief` adds competitors + budget on top of the offering, because a question
 can be "are we covering what competitors bid on?" as easily as "why this keyword?". The seed
 builder (`brief.py`) is **shared** by `research()` and `handle()` so what the agent knows
 can't drift between them.
@@ -461,7 +461,7 @@ tools + the theme's policy*:
 | *"include apartment generic keywords too"* | `apartment` is a recorded **sibling/negative** → surfaces the conflict instead of quietly breaking the campaign |
 | *"remove all the low-volume ones"* | reads the set from the prompt → one batched `edit_keywords` |
 | *"what's my total volume across brand?"* | sums the set already in the prompt — **no tool** |
-| *"are we covering what competitors bid on?"* | competitors are in the seed (`conversation_text`) — answers from context |
+| *"are we covering what competitors bid on?"* | competitors are in the seed (`wider_brief`) — answers from context |
 
 ---
 
@@ -528,7 +528,7 @@ agents/campaign/google/keyword/
 └── constants.py     pool/seed/selection/rejection size knobs (see §9)
 
 agents/campaign/                     CampaignAgent shell + keyword_research orchestrator tool
-agents/campaign/brief.py             business_text / conversation_text — channel-neutral, shared
+agents/campaign/brief.py             business_text / wider_brief — channel-neutral, shared
 agents/campaign/models.py            CampaignBuild — agent output, keyed by channel
 agents/campaign/tools/google/keyword_update.py   the shared _apply_edit engine (widget + agent)
 adapters/autosuggest.py              multi-source autosuggest → Suggestion(keyword, source, seed)

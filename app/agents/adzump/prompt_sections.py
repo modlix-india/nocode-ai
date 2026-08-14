@@ -85,6 +85,7 @@ def _provenance(field_name: str, set_at: dict, current_turn: int) -> str:
         return " - set 1 turn ago"
     return f" - set {delta} turns ago"
 
+
 def _user_said_section(last_user: str) -> str:
     if not last_user:
         return "\n## User just said\n(no user message yet)"
@@ -92,6 +93,7 @@ def _user_said_section(last_user: str) -> str:
     if len(preview) > 500:
         preview = preview[:500] + "…"
     return f'\n## User just said\n"{preview}"'
+
 
 def _missing_section(missing: list[str]) -> str:
     if not missing:
@@ -102,7 +104,7 @@ def _missing_section(missing: list[str]) -> str:
     # platform, call confirm_location for location).
     lines = [
         "\n## What's still missing (in order - do the top item first)",
-        "Example values below (e.g. \"30 days\", \"₹5,000/day\") are OPTIONS to "
+        'Example values below (e.g. "30 days", "₹5,000/day") are OPTIONS to '
         "SHOW the user via present_options - NEVER values to store. Only "
         "`set_campaign_spec` a field after the user actually states it (F12).",
     ]
@@ -110,34 +112,46 @@ def _missing_section(missing: list[str]) -> str:
         lines.append(f"{i}. {item}")
     return "\n".join(lines)
 
+
 def _how_to_respond_section() -> str:
     return (
         "\n## How to respond (first match wins — Rule 1 OVERRIDES everything below, including Next action)\n"
         "1. Targeting-location edit → call `manage_targeting_locations(user_message=<their verbatim "
         "message>)` IMMEDIATELY, BEFORE any other step, even if Next action says "
-        "\"EXACTLY this\" or has multi-step instructions. After it completes, "
+        '"EXACTLY this" or has multi-step instructions. After it completes, '
         "re-check Next action.\n"
-        "   Triggers (any of these): structured widget messages (\"add targeting location …\", "
-        "\"delete targeting location …\"); natural-language requests to add a place "
-        "(\"add Koramangala\", \"include HSR Layout\", \"target Whitefield too\"); "
+        '   Triggers (any of these): structured widget messages ("add targeting location …", '
+        '"delete targeting location …"); natural-language requests to add a place '
+        '("add Koramangala", "include HSR Layout", "target Whitefield too"); '
         "natural-language requests to remove a place "
-        "(\"remove Indiranagar\", \"delete Koramangala\", \"take out Whitefield\", "
-        "\"don't include that area\", \"remove the last one\"); "
-        "requests to clear or replace the whole list (\"clear all locations\", "
-        "\"change targeting to just Bangalore\").\n"
+        '("remove Indiranagar", "delete Koramangala", "take out Whitefield", '
+        '"don\'t include that area", "remove the last one"); '
+        'requests to clear or replace the whole list ("clear all locations", '
+        '"change targeting to just Bangalore").\n'
         "1b. Keyword question or edit (once keywords are in the panel) → call "
         "`manage_keywords(user_message=<their verbatim message>)` IMMEDIATELY. Do NOT "
         "answer it yourself — the keyword agent recorded why each keyword was chosen or "
         "skipped; you did not, so you would be guessing.\n"
-        "   Triggers (any of these): why a keyword is there (\"why did you include "
-        "affordable running shoes?\"); why one ISN'T (\"why is cheap shoes missing?\", "
-        "\"where's my brand name?\"); judgement on a keyword (\"is X too broad?\", "
-        "\"is X worth it?\"); adding (\"add keywords for the locations\", \"include "
-        "apartment terms too\"); removing or changing (\"remove the low-volume ones\", "
-        "\"make X exact match\", \"that one's irrelevant\").\n"
+        '   Triggers (any of these): why a keyword is there ("why did you include '
+        'affordable running shoes?"); why one ISN\'T ("why is cheap shoes missing?", '
+        '"where\'s my brand name?"); judgement on a keyword ("is X too broad?", '
+        '"is X worth it?"); adding ("add keywords for the locations", "include '
+        'apartment terms too"); removing or changing ("remove the low-volume ones", '
+        '"make X exact match", "that one\'s irrelevant").\n'
         "   AFTER manage_keywords: the keyword agent has ALREADY replied to the user in chat, "
         "and you were NOT told what it did. Do NOT restate it, summarise it, or claim any "
         "outcome (added / removed / changed) — you would be guessing. Just continue.\n"
+        "1c. Audience question or edit (once an audience is in the panel) → call "
+        "`manage_audience(user_message=<their verbatim message>)` IMMEDIATELY. Do NOT "
+        "answer it yourself — the audience agent recorded why each segment was chosen and "
+        "holds Google's segment catalogue; you have neither, so you would be guessing.\n"
+        '   Triggers (any of these): why a segment is targeted ("why are we targeting '
+        'apartment buyers?"); who it reaches ("who does this actually reach?"); adding '
+        '("add something for new parents", "target people moving house"); removing '
+        '("drop the luxury one", "stop targeting students"); demographic changes '
+        '("only 25 to 44", "women only", "top income brackets").\n'
+        "   AFTER manage_audience: same rule as 1b — the audience agent has already replied "
+        "and you were NOT told what it changed. Do NOT restate or claim any outcome.\n"
         "2. Info question → answer briefly from State, then do the Next action.\n"
         "3. Correction → `set_campaign_spec(<field>=<new>)`, acknowledge, then re-check Next action.\n"
         "4. **New data** (typed or chip-clicked) → `set_campaign_spec(<field>=<value>)` IMMEDIATELY, "
@@ -161,6 +175,7 @@ def _how_to_respond_section() -> str:
         "tool; your visible reply is natural prose only. NEVER write a tool "
         "name or `tool(...)` call syntax into the chat."
     )
+
 
 def _ad_account_summary(spec: dict, account_names: dict) -> str:
     platform = Platform.from_value(spec.get("platform"))

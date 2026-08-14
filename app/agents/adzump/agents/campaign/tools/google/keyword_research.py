@@ -44,6 +44,14 @@ from app.agents.adzump.agents.campaign.google.keyword.themes import (
     DEFAULT_THEME_IDS,
     KEYWORD_THEMES,
 )
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    resolve_channel,
+    set_keyword_research,
+)
+from app.agents.adzump.agents.campaign.models import (
+    keyword_research as _saved_keywords,
+)
 from app.agents.adzump.agents.location.targeting_run import (
     resolve_coordinates,
     resolve_country_geo_constant,
@@ -165,13 +173,15 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
             error="Keyword research is available for Google Search campaigns only.",
         )
 
-    # Channel gate — Search uses keywords; PMax/others don't (future campaign types).
-    channel = str(params.get("channel") or spec.get("channel") or "SEARCH").upper()
-    if channel != "SEARCH":
+    # Channel gate — Search uses keywords; audience-targeted channels don't. Through
+    # resolve_channel, the same reading audience_targeting gates on: two gates parsing the
+    # spec differently is how a campaign ends up with neither tool running.
+    channel = resolve_channel(spec)
+    if channel is not Channel.SEARCH:
         return ToolResult(
             success=True,
-            summary=f"{channel} campaigns don't use keywords — skipped.",
-            data={"skipped": True, "channel": channel},
+            summary=f"{channel.value} campaigns don't use keywords — skipped.",
+            data={"skipped": True, "channel": channel.value},
         )
 
     customer_id = str(spec.get("account") or "").strip()
@@ -197,11 +207,13 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     # needs it rather than the whole run.
     geo_constants = geo.get("geo_target_constants") or [""]
     research_key = _research_key(customer_id, product, themes, geo_constants[0])
-    cached = session_ctx.get("keyword_research")
+    cached = _saved_keywords(session_ctx)
     craft_id = (
         session_ctx.get("craft_id") or f"campaign_{context.get('session_id', '')}"
     )
-    same_inputs = bool(cached) and (cached.get("meta") or {}).get("key") == research_key
+    same_inputs = (
+        cached is not None and (cached.get("meta") or {}).get("key") == research_key
+    )
     cached_themes = ((cached or {}).get("themes") or {}) if same_inputs else {}
     carried = {
         t: cached_themes[t]
@@ -288,7 +300,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     bundle = KeywordResearchResult(
         meta={
             "craft_id": craft_id,
-            "channel": channel,
+            "channel": channel.value,
             "geo": geo,
             "key": research_key,
             # The panel's edit gate has no LLM, so it reads the brand the taxonomy named.
@@ -331,7 +343,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
         bundle.meta[AdGroupStatus.PENDING.value] = sorted(pending)
         bundle.meta[AdGroupStatus.FAILED.value] = failed
         dump = bundle.model_dump(mode="json")
-        session_ctx["keyword_research"] = dump
+        set_keyword_research(session_ctx, dump)
         if emitted:
             await emit_section_update(stream, craft_id, keyword_review_block(dump))
         else:
@@ -373,5 +385,3 @@ keyword_research = ToolDefinition(
     parameters=[],
     execute=_keyword_research,
 )
-
-GOOGLE_CAMPAIGN_TOOLS = [keyword_research]

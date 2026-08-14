@@ -12,6 +12,7 @@ A diff here means the model's instructions changed. That is either a real regres
 intentional prompt edit — in which case re-capture the fixture in the SAME commit, so the
 prompt change is reviewable on its own rather than hidden inside a refactor.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,7 +56,9 @@ class GoldenPromptTests(unittest.TestCase):
     def test_golden_covers_every_theme_and_build_phase(self):
         # Guards the guard: a theme added without a fixture would otherwise pass silently.
         # Only the BUILD phases are pinned — MANAGE is shared and post-dates the fixture.
-        expected_keys = {f"{p.value}|{fid}" for p in BUILD_PHASES for fid in KEYWORD_THEMES}
+        expected_keys = {
+            f"{p.value}|{fid}" for p in BUILD_PHASES for fid in KEYWORD_THEMES
+        }
         self.assertEqual(set(self.golden), expected_keys)
 
 
@@ -74,8 +77,8 @@ class ThemeGuidanceTests(unittest.TestCase):
         for theme in KEYWORD_THEMES.values():
             with self.subTest(theme=theme.id):
                 rendered = _render(Phase.MANAGE, theme)
-                self.assertIn("lookup_keyword", rendered)      # answer from the record
-                self.assertIn("edit_keywords", rendered)       # never re-submit a set
+                self.assertIn("lookup_keyword", rendered)  # answer from the record
+                self.assertIn("edit_keywords", rendered)  # never re-submit a set
                 self.assertIn(theme.select_guidance, rendered)  # the build's own bar
 
     def test_registry_is_keyed_by_theme_id(self):
@@ -87,15 +90,19 @@ class ThemeGuidanceTests(unittest.TestCase):
         # These flags exist so the policy stated in the prompt and the policy enforced in
         # code come from one place — assert they agree with the guidance text.
         brand, generic = KEYWORD_THEMES["brand"], KEYWORD_THEMES["generic"]
-        self.assertTrue(brand.keep_zero_volume)          # "own these even at low or zero volume"
+        self.assertTrue(
+            brand.keep_zero_volume
+        )  # "own these even at low or zero volume"
         self.assertIn("at low or zero", brand.select_guidance)
         self.assertIn("Keep brand terms at zero", brand.select_guidance)
-        self.assertFalse(generic.keep_zero_volume)       # "drop 0-volume terms"
+        self.assertFalse(generic.keep_zero_volume)  # "drop 0-volume terms"
         self.assertIn("drop 0-volume terms", generic.select_guidance)
-        self.assertTrue(generic.allows_cross_business)   # is_cross_business is generic-only
+        self.assertTrue(
+            generic.allows_cross_business
+        )  # is_cross_business is generic-only
         self.assertIn("is_cross_business", generic.select_guidance)
         self.assertFalse(brand.allows_cross_business)
-        self.assertTrue(brand.requires_brand_token)      # brand ELIGIBILITY rule
+        self.assertTrue(brand.requires_brand_token)  # brand ELIGIBILITY rule
         self.assertFalse(generic.requires_brand_token)
 
 

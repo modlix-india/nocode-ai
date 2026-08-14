@@ -4,6 +4,7 @@
 Covers _resolve_themes — the seam that turns the user's chosen ad groups into the
 keyword themes we run — and _resolve_geo's defensive read of product_data["place"].
 """
+
 # regression: an unknown/absent ad-group choice must fall back to the plan we showed the
 # user, never to an arbitrary theme; a null `place` must not crash the run.
 from __future__ import annotations
@@ -12,16 +13,17 @@ import asyncio
 import unittest
 from unittest import mock
 
-from app.agents.adzump.agents.campaign.tools.google import keyword_research as kr
-from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
-    _resolve_themes,
-    _resolve_geo,
-)
 from app.agents.adzump.agents.campaign.craft import keyword_review_block
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     KeywordSet,
     NegativeKeyword,
     OptimizedKeyword,
+)
+from app.agents.adzump.agents.campaign.models import keyword_research as saved_keywords
+from app.agents.adzump.agents.campaign.tools.google import keyword_research as kr
+from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
+    _resolve_geo,
+    _resolve_themes,
 )
 
 _ALL = ["brand", "generic"]
@@ -72,13 +74,19 @@ class ResolveGeoTests(unittest.TestCase):
         # A setdefault would hand back None here and the .get below would raise.
         ctx = {"product_data": {"place": None}, "campaign_spec": {}}
         geo = self._geo(ctx)
-        self.assertEqual(geo["geo_target_constants"], [])  # unresolved -> Planner default
+        self.assertEqual(
+            geo["geo_target_constants"], []
+        )  # unresolved -> Planner default
         self.assertIsInstance(ctx["product_data"]["place"], dict)  # normalised in place
 
     def test_country_geo_constant_is_read_not_re_resolved(self):
         ctx = {
-            "product_data": {"place": {"country_geo_constant": "geoTargetConstants/2826",
-                                       "country_code": "GB"}},
+            "product_data": {
+                "place": {
+                    "country_geo_constant": "geoTargetConstants/2826",
+                    "country_code": "GB",
+                }
+            },
             "campaign_spec": {},
         }
         geo = self._geo(ctx)
@@ -96,41 +104,79 @@ class _ProgressiveHarness:
     def __init__(self):
         self.emits: list[tuple[str, list]] = []
         self.session_ctx = {
-            "campaign_spec": {"platform": "GOOGLE", "account": "1", "ad_groups": "brand,generic"},
+            "campaign_spec": {
+                "platform": "GOOGLE",
+                "account": "1",
+                "ad_groups": "brand,generic",
+            },
             "product_data": {"product_name": "K"},
         }
 
     @staticmethod
     def kset(theme, n_pos, n_neg, status="complete"):
         return KeywordSet(
-            theme=theme, label=theme.title(), status=status,
-            positives=[OptimizedKeyword(keyword=f"{theme} kw {i}", volume=100) for i in range(n_pos)],
-            negatives=[NegativeKeyword(keyword=f"{theme} neg {i}") for i in range(n_neg)],
+            theme=theme,
+            label=theme.title(),
+            status=status,
+            positives=[
+                OptimizedKeyword(keyword=f"{theme} kw {i}", volume=100)
+                for i in range(n_pos)
+            ],
+            negatives=[
+                NegativeKeyword(keyword=f"{theme} neg {i}") for i in range(n_neg)
+            ],
         )
 
     def run(self, research):
         async def cap_craft(stream, cid, sctx):
-            themes = (sctx.get("keyword_research") or {}).get("themes") or {}
+            themes = (saved_keywords(sctx) or {}).get("themes") or {}
             self.emits.append(("full", sorted(themes)))
 
         async def cap_section(stream, cid, block):
-            self.emits.append(("section", [(t["key"], t["status"]) for t in block["tabs"]]))
+            self.emits.append(
+                ("section", [(t["key"], t["status"]) for t in block["tabs"]])
+            )
 
-        taxonomy = mock.MagicMock(model_dump=lambda: {
-            "complete": True, "core_terms": [], "sibling_categories": [],
-            "is_location_specific": True, "includes_informational_funnel": False,
-            "primary_offering": "t"})
-        ctx = {"session_context": self.session_ctx, "auth": mock.MagicMock(),
-               "event_stream": mock.AsyncMock()}
-        with mock.patch.object(kr, "_resolve_geo", new=mock.AsyncMock(return_value={
-                 "geo_target_constants": [], "hl": "en", "gl": "IN", "language": "x"})), \
-             mock.patch.object(kr, "derive_offering_taxonomy", new=mock.AsyncMock(return_value=taxonomy)), \
-             mock.patch.object(kr, "resolve_url", return_value=""), \
-             mock.patch.object(kr, "_business_text", return_value="b"), \
-             mock.patch.object(kr, "_resolve_location", return_value=("D", [])), \
-             mock.patch.object(kr, "emit_campaign_craft", new=cap_craft), \
-             mock.patch.object(kr, "emit_section_update", new=cap_section), \
-             mock.patch.object(kr, "get_keyword_research_agent") as agent:
+        taxonomy = mock.MagicMock(
+            model_dump=lambda: {
+                "complete": True,
+                "core_terms": [],
+                "sibling_categories": [],
+                "is_location_specific": True,
+                "includes_informational_funnel": False,
+                "primary_offering": "t",
+            }
+        )
+        ctx = {
+            "session_context": self.session_ctx,
+            "auth": mock.MagicMock(),
+            "event_stream": mock.AsyncMock(),
+        }
+        with (
+            mock.patch.object(
+                kr,
+                "_resolve_geo",
+                new=mock.AsyncMock(
+                    return_value={
+                        "geo_target_constants": [],
+                        "hl": "en",
+                        "gl": "IN",
+                        "language": "x",
+                    }
+                ),
+            ),
+            mock.patch.object(
+                kr,
+                "derive_offering_taxonomy",
+                new=mock.AsyncMock(return_value=taxonomy),
+            ),
+            mock.patch.object(kr, "resolve_url", return_value=""),
+            mock.patch.object(kr, "_business_text", return_value="b"),
+            mock.patch.object(kr, "_resolve_location", return_value=("D", [])),
+            mock.patch.object(kr, "emit_campaign_craft", new=cap_craft),
+            mock.patch.object(kr, "emit_section_update", new=cap_section),
+            mock.patch.object(kr, "get_keyword_research_agent") as agent,
+        ):
             agent.return_value.research = research
             return asyncio.run(kr._keyword_research({}, ctx))
 
@@ -167,9 +213,9 @@ class ProgressiveEmissionTests(unittest.TestCase):
 
         res = h.run(research)
         self.assertTrue(res.success)
-        generic = h.session_ctx["keyword_research"]["themes"]["generic"]
+        generic = saved_keywords(h.session_ctx)["themes"]["generic"]
         self.assertEqual(generic["status"], "partial")
-        self.assertEqual(len(generic["positives"]), 25)   # real work, not discarded
+        self.assertEqual(len(generic["positives"]), 25)  # real work, not discarded
         self.assertEqual(generic["negatives"], [])
         self.assertIn("partial", res.summary)
 
@@ -183,7 +229,7 @@ class ProgressiveEmissionTests(unittest.TestCase):
         res = h.run(research)
         self.assertTrue(res.success)
         self.assertIn(("generic", "failed"), h.emits[-1][1])
-        self.assertNotIn("generic", h.session_ctx["keyword_research"]["themes"])
+        self.assertNotIn("generic", saved_keywords(h.session_ctx)["themes"])
 
     def test_when_every_ad_group_fails_nothing_is_shown_or_stored(self):
         h = _ProgressiveHarness()
@@ -193,8 +239,8 @@ class ProgressiveEmissionTests(unittest.TestCase):
 
         res = h.run(research)
         self.assertFalse(res.success)
-        self.assertEqual(h.emits, [])                       # no misleading panel
-        self.assertNotIn("keyword_research", h.session_ctx)  # nothing persisted
+        self.assertEqual(h.emits, [])  # no misleading panel
+        self.assertIsNone(saved_keywords(h.session_ctx))  # nothing persisted
 
 
 class PanelStatusTests(unittest.TestCase):
@@ -202,12 +248,19 @@ class PanelStatusTests(unittest.TestCase):
 
     def test_pending_and_failed_ad_groups_get_their_own_tabs(self):
         dump = {
-            "themes": {"brand": {"theme": "brand", "label": "Brand", "status": "complete",
-                                 "positives": [{"keyword": "a", "volume": 1}], "negatives": []}},
+            "themes": {
+                "brand": {
+                    "theme": "brand",
+                    "label": "Brand",
+                    "status": "complete",
+                    "positives": [{"keyword": "a", "volume": 1}],
+                    "negatives": [],
+                }
+            },
             "meta": {"pending": ["generic"], "failed": ["local"]},
         }
         tabs = {t["key"]: t for t in keyword_review_block(dump)["tabs"]}
         self.assertEqual(tabs["brand"]["status"], "complete")
         self.assertEqual(tabs["generic"]["status"], "pending")
         self.assertEqual(tabs["local"]["status"], "failed")
-        self.assertEqual(tabs["generic"]["sections"], [])   # nothing to edit yet
+        self.assertEqual(tabs["generic"]["sections"], [])  # nothing to edit yet

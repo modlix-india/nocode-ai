@@ -22,7 +22,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from app.agents.adzump.agents._child_stream import ChildAgentStream
-from app.agents.adzump.agents.campaign.brief import conversation_text
+from app.agents.adzump.agents.campaign.brief import wider_brief
 from app.agents.adzump.agents.campaign.google.keyword import constants
 from app.agents.adzump.agents.campaign.google.keyword.brief import resolve_location
 from app.agents.adzump.agents.campaign.google.keyword.context import (
@@ -49,7 +49,10 @@ from app.agents.adzump.agents.campaign.google.keyword.tools import (
     EXPAND_KEYWORDS,
     KEYWORD_METRICS,
 )
-from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.agents.campaign.models import (
+    keyword_research,
+    set_keyword_research,
+)
 from app.agents.adzump.services.business_storage import resolve_url
 from app.config import settings
 from app.core.agent import BaseAgent
@@ -218,7 +221,7 @@ class KeywordResearchAgent(BaseAgent):
         if ctx.get("kw_mode") == "manage":
             # Manage spans EVERY ad group (lookup reads all, edit targets any), so frame it
             # across all of them — not one guessed theme, which would misdirect the model.
-            built = (ctx.get("keyword_research") or {}).get("themes") or {}
+            built = (keyword_research(ctx) or {}).get("themes") or {}
             names = ", ".join((k.get("label") or tid) for tid, k in built.items())
             campaign_line = (
                 f"AD GROUPS (you work across all of these): {names or '(none)'}"
@@ -248,7 +251,7 @@ class KeywordResearchAgent(BaseAgent):
             # read it as finished) and spans every ad group — so render EACH built ad group's
             # own bar, so an addition to any of them still has to clear the standard it was
             # built with.
-            built = (ctx.get("keyword_research") or {}).get("themes") or {}
+            built = (keyword_research(ctx) or {}).get("themes") or {}
             bars: list[str] = []
             for t, kset in built.items():
                 if t not in KEYWORD_THEMES:
@@ -414,9 +417,10 @@ class KeywordResearchAgent(BaseAgent):
     async def handle(self, user_message: str, context: dict) -> ToolResult:
         """Answer or edit an existing set, from the user's verbatim words.
 
-        Throwaway session, as in generation — but seeded with SHARED refs to the parent's
-        keyword_research, so edits write through to the saved set instead of dying with the
-        run. What the agent needs to reason is seeded up front; nothing is reconnected.
+        Throwaway session, as in generation, holding its OWN copy of the set — handed back
+        once the run ends. Sharing the parent's dict instead would carry exactly one edit:
+        the build envelope's writer copies, so later edits would land on a copy the parent
+        never sees. What the agent needs to reason is seeded up front; nothing is reconnected.
         """
         parent_ctx = context.get("session_context")
         if parent_ctx is None:
@@ -467,13 +471,10 @@ class KeywordResearchAgent(BaseAgent):
             "kw_mode": "manage",
             "kw_user_message": user_message,
             "kw_type": theme_id,
-            # Shared refs — edit_keywords writes through to the saved set, exactly as the
-            # location agent's sub-session writes through to product_data.
-            "keyword_research": dump,
             "product_data": product,
             # The business picture, not a keyword-shaped slice: a question can be about the
             # competition or the budget as easily as about a keyword.
-            "kw_business_text": conversation_text(parent_ctx),
+            "kw_business_text": wider_brief(parent_ctx),
             "kw_category": taxonomy.get("primary_offering")
             or product.get("business_type", ""),
             "kw_core_terms": list(taxonomy.get("core_terms") or []),
@@ -490,6 +491,9 @@ class KeywordResearchAgent(BaseAgent):
             "kw_language": geo.get("language") or "",
             "campaign_craft_id": parent_ctx.get("campaign_craft_id") or "",
         }
+        # The set this run edits — through the accessor, so every reader here (the prompt
+        # builders, lookup, the shared edit engine) finds it the same way production does.
+        set_keyword_research(session.context, dump)
 
         # Replay the recent manage exchanges as conversation history. Built through the
         # session's own message constructors, so the shape stays whatever the providers
@@ -529,6 +533,12 @@ class KeywordResearchAgent(BaseAgent):
                 error="The keyword agent couldn't complete that — try rephrasing.",
             )
         finally:
+            # Hand the edited set back. In `finally` because edits already applied are real
+            # even when the turn later fails - losing them would contradict what the user
+            # was told in the panel.
+            edited = keyword_research(session.context)
+            if edited is not None:
+                set_keyword_research(parent_ctx, edited)
             if isinstance(stream, ChildAgentStream):
                 await stream._emit_finished(
                     agent_id=agent_id,

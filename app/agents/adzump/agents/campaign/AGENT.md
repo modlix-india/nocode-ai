@@ -72,9 +72,10 @@ needs an orchestration layer with its own loop and session, for concrete reasons
 - **Extensibility contract.** A new capability = **one tool + one craft section**; the
   orchestrator, the main agent, and the streaming/craft plumbing don't change.
 
-**Today it runs one tool (`keyword_research`), so the loop is short — but that's the first
-of the build tools, not the whole job.** The layer exists precisely so the create/launch
-tools land as drop-ins instead of forcing a refactor of the main agent later.
+**Today it runs one build tool per channel (`keyword_research` for Search,
+`audience_targeting` for Demand Gen), so the loop is short — but those are the first of the
+build tools, not the whole job.** The layer exists precisely so the create/launch tools land
+as drop-ins instead of forcing a refactor of the main agent later.
 
 ---
 
@@ -84,7 +85,7 @@ tools land as drop-ins instead of forcing a refactor of the main agent later.
 
 | Property | Value | Why |
 |---|---|---|
-| `tools` | `GOOGLE_CAMPAIGN_TOOLS` (= `[keyword_research]`) | one platform's tools at a time |
+| `tools` | `GOOGLE_CAMPAIGN_TOOLS` (`tools/google/registry.py`) | one platform's tools at a time; each gates on the channel and skips when it does not apply |
 | `model_tier` | `balanced` | tool-selection orchestration |
 | `MAX_TURNS` | 5 | run the build tool(s) and stop — small loop |
 | `MAX_TOKENS` | `settings.AGENT_MAX_TOKENS` | provider-sized — a reasoning model spends output tokens deliberating before a tool call, so a hardcoded budget starves it |
@@ -125,8 +126,8 @@ are documented in [`google/keyword/AGENT.md`](google/keyword/AGENT.md) — not d
 ### `tools/google/keyword_update.py` — the shared mutation engine (implemented)
 `_apply_edit()` is the single add/delete/edit path, with **two callers**: the review panel's
 mechanical clicks (`update_keywords`, 0 LLM — HTTP transport in `api.py`:
-`parse_keyword_widget_message` + `stream_keyword_widget`) **and** the keyword agent's
-`edit_keywords` tool for spoken edits. Both mutate `session_ctx["keyword_research"]` through
+`parse_widget_message` + `stream_widget`) **and** the keyword agent's
+`edit_keywords` tool for spoken edits. Both mutate the saved set through
 the same invariants and re-emit **only** the `keyword_review` block (keyed upsert, no flash),
 so an edit made in words can't break a rule a click couldn't. The *words* path is routed by
 the main agent's `manage_keywords` tool → `KeywordResearchAgent.handle()` — see
@@ -150,7 +151,7 @@ section.
 | `agent.py` | `CampaignAgent` shell + `create()` entry |
 | `context.py` | static system prompt (`build_campaign_context`) — small, tool-driven |
 | `craft.py` | campaign side-panel builder; **platform dispatch** (`_google_campaign_blocks` / `_meta_campaign_blocks`). `emit_campaign_craft` (full) + `emit_section_update` (append, no flash) |
-| `api.py` | Campaign HTTP: `keyword/volume` (scores a panel-added keyword via Planner historical metrics, fail-soft → 0) **and** the review-panel widget transport (`parse_keyword_widget_message` + `stream_keyword_widget` → `update_keywords`; fast path, no LLM) |
+| `api.py` | Campaign HTTP: `keyword/volume` (scores a panel-added keyword, fail-soft → 0), `audience/search` (segments the panel can offer to add — a ref is opaque, so the panel picks from the catalogue) **and** the review-panel widget transport (`parse_widget_message` + `stream_widget` → `_WIDGET_MUTATIONS`; one dispatch table, fast path, no LLM) |
 | `tools/google/` | implemented Google tools (above) |
 | `tools/meta/` | reserved |
 

@@ -27,10 +27,6 @@ from app.agents.adzump.agents.campaign.google.keyword.constants import (
     KEYWORD_MAX_WORDS,
     KEYWORD_MIN_LENGTH,
 )
-from app.agents.adzump.agents.campaign.models import (
-    keyword_research,
-    set_keyword_research,
-)
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     AdGroupStatus,
 )
@@ -38,6 +34,10 @@ from app.agents.adzump.agents.campaign.google.keyword.models import (
     normalize as _normalize,
 )
 from app.agents.adzump.agents.campaign.google.keyword.themes import get_theme
+from app.agents.adzump.agents.campaign.models import (
+    keyword_research,
+    set_keyword_research,
+)
 from app.core.tools.base import ToolResult
 
 logger = logging.getLogger(__name__)

@@ -3,6 +3,7 @@
 consecutive failures or a single definitive back-off signal (429), fails fast
 while open, resets on success, and closes again once the cooldown elapses.
 """
+
 # regression: a rate-limit (429) must open the breaker immediately so the caller
 # stops hammering the Planner, and success must reset the consecutive-failure count.
 from __future__ import annotations

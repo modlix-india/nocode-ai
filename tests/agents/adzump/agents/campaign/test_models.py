@@ -2,6 +2,7 @@
 (app/agents/adzump/agents/campaign/google/keyword/models.py) —
 BusinessProfile.source_names per-keyword-type autosuggest selection.
 """
+
 # regression: YouTube (informational intent) must join only the generic run, never
 # the brand (bottom-funnel) run; the web-search defaults are always the primary set.
 from __future__ import annotations

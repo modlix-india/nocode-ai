@@ -5,8 +5,9 @@ Platform-aware via explicit dispatch (_google_campaign_blocks / _meta_campaign_b
 new platforms add a section builder + one dispatch branch here — nowhere else.
 
 Callers:
-  keyword_research.py  — emit_campaign_craft() after initial research completes
-  keyword_update.py    — emit_section_update() for add/delete/edit (append=True, no flash)
+  keyword_research.py   — emit_campaign_craft() after initial research completes
+  audience_targeting.py — same, for a Demand Gen campaign's audience
+  keyword_update.py     — emit_section_update() for add/delete/edit (append=True, no flash)
   Future campaign tools add their own sections inside the platform section builders.
 """
 
@@ -14,8 +15,12 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adzump.agents.campaign.google.audience.models import (
+    IncomeRange,
+    SignalKind,
+)
 from app.agents.adzump.agents.campaign.google.keyword.models import AdGroupStatus
-from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.agents.campaign.models import audience, keyword_research
 from app.agents.adzump.platform import is_google as _is_google
 from app.agents.adzump.platform import is_meta as _is_meta
 
@@ -117,6 +122,99 @@ def keyword_review_block(dump: dict) -> dict:
     return {"id": "keyword_review", "type": "keyword_review", "tabs": tabs}
 
 
+def _demographic_rows(spec: dict) -> list[dict]:
+    """One row per dimension the agent narrowed. Dimensions AND together, so an absent one
+    means "everyone" and is left out rather than shown as a filter."""
+    rows: list[dict] = []
+    ages = [
+        f"{r['min_age']}-{r['max_age']}" if r.get("max_age") else f"{r['min_age']}+"
+        for r in (spec.get("age_ranges") or [])
+    ]
+    if ages:
+        rows.append({"attribute": "Age", "value": ", ".join(ages)})
+    if genders := spec.get("genders"):
+        rows.append({"attribute": "Gender", "value": ", ".join(_titled(genders))})
+    if incomes := spec.get("income_ranges"):
+        rows.append(
+            {
+                "attribute": "Household income",
+                "value": ", ".join(IncomeRange(i).label for i in incomes),
+            }
+        )
+    if parental := spec.get("parental_statuses"):
+        rows.append(
+            {"attribute": "Parental status", "value": ", ".join(_titled(parental))}
+        )
+    return rows
+
+
+def _titled(values: list[str]) -> list[str]:
+    return [str(v).replace("_", " ").capitalize() for v in values]
+
+
+def audience_review_block(dump: dict) -> dict:
+    """Exported so update handlers can re-emit only this block (keyed upsert, no panel flash).
+
+    Flat sections grouped by signal kind, each row carrying its ancestors as a breadcrumb.
+    The agent sees the taxonomy as a tree because it navigates a thousand entries; a handful
+    of chosen segments spread across branches reads as a list.
+    """
+    signals = dump.get("signals") or []
+    sections: list[dict] = []
+    for kind in SignalKind:
+        rows = [
+            {
+                "segment": s.get("label", ""),
+                "category": " > ".join((s.get("path") or [])[:-1]),
+                "rationale": s.get("rationale", ""),
+            }
+            for s in signals
+            if s.get("kind") == kind.value and not s.get("negative")
+        ]
+        if rows:
+            sections.append(
+                {
+                    "key": kind.value.lower(),
+                    "label": f"{kind.label} ({len(rows)})",
+                    "columns": ["segment", "category", "rationale"],
+                    "rows": rows,
+                    # No edit: a segment is a reference into Google's catalogue, not free
+                    # text, so changing one is a delete plus an add picked from a search.
+                    "actions": ["add", "delete"],
+                }
+            )
+
+    # Only user lists are excludable (ExclusionSegment has one variant), so exclusions are
+    # one section rather than a negatives split inside every kind.
+    excluded = [
+        {"segment": s.get("label", ""), "rationale": s.get("rationale", "")}
+        for s in signals
+        if s.get("negative")
+    ]
+    if excluded:
+        sections.append(
+            {
+                "key": "excluded",
+                "label": f"Excluded ({len(excluded)})",
+                "columns": ["segment", "rationale"],
+                "rows": excluded,
+            }
+        )
+
+    # Always present, even with no rows: "no narrowing" is the common and usually correct
+    # answer, and a section the user can open is how they change it.
+    sections.append(
+        {
+            "key": "demographics",
+            "label": "Demographics",
+            "columns": ["attribute", "value"],
+            "rows": _demographic_rows(dump.get("demographics") or {}),
+            "actions": ["edit"],
+        }
+    )
+    return {"id": "audience_review", "type": "audience_review", "sections": sections}
+
+
 # Platform section builders
 
 
@@ -134,6 +232,13 @@ def _google_campaign_blocks(session_ctx: dict) -> list[dict]:
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Keyword Suggestions"})
         blocks.append(keyword_review_block(dump))
+
+    # A build is one channel's, so at most one of these is ever populated.
+    aud = audience(session_ctx) or {}
+    if aud:
+        blocks.append({"type": "divider"})
+        blocks.append({"type": "heading", "text": "Audience Targeting"})
+        blocks.append(audience_review_block(aud))
 
     # Future sections (ad copy, quality score …) extend blocks here.
     return blocks

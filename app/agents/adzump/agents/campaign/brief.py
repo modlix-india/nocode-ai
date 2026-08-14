@@ -23,12 +23,13 @@ def business_text(product: dict) -> str:
     return "\n".join(p for p in parts if p.strip())
 
 
-def conversation_text(session_ctx: dict) -> str:
-    """business_text plus what a *question* may reach for that generation never needs.
+def wider_brief(session_ctx: dict) -> str:
+    """business_text plus what a *question* may reach for that a build never needs.
 
     A build targets the offering; a question can be about the competition or the budget
     ("are we covering what competitors bid on?"), so those are added here rather than
-    widening the build prompt.
+    widening the build prompt. Carries no conversation - the manage agents replay that
+    separately as real messages (``kw_conversation`` / ``aud_conversation``).
     """
     product = session_ctx.get("product_data") or {}
     parts = [business_text(product)]

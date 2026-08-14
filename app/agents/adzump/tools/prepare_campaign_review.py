@@ -2,19 +2,18 @@
 
 Called by the main agent once the campaign details are collected and confirmed. Reads
 campaign_spec + product_data from the session, spawns the CampaignAgent (which runs the
-platform's creation tools — for Google Search, keyword research), and persists the
-keyword_research result back onto the session for review and launch.
+platform's creation tools — keyword research for Search, audience targeting for Demand
+Gen), and persists the build it produced back onto the session for review and launch.
 """
 
 from __future__ import annotations
 
 import logging
 
+from app.agents.adzump.agents.campaign.agent import get_campaign_agent
+from app.agents.adzump.agents.campaign.models import set_build
 from app.core.streaming import pre_emit_agent_started
 from app.core.tools.base import ToolDefinition, ToolResult
-
-from app.agents.adzump.agents.campaign.agent import get_campaign_agent
-from app.agents.adzump.agents.campaign.models import set_keyword_research
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +57,9 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
     if not result:
         return ToolResult(
             success=False,
-            error="Campaign creation produced no keyword results — check the ad account and retry.",
+            error="Campaign creation produced nothing to review — check the ad account and retry.",
         )
-    set_keyword_research(session_ctx, result)
+    set_build(session_ctx, result)
 
     # The elicitation owns its ask (the deferred break skips the follow-up turn).
     await stream.emit_text(

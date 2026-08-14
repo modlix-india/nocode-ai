@@ -1,6 +1,7 @@
 """Unit tests for offering-taxonomy fail-soft behavior
 (app/agents/adzump/agents/campaign/google/keyword/taxonomy.py).
 """
+
 # regression: a transient derivation failure must return complete=False so the
 # caller does NOT cache (and permanently poison) the degraded taxonomy; a response
 # with usage populated must not crash the one-shot billing hook.
@@ -28,8 +29,9 @@ def _fake_openai(*, content=None, usage=None, raise_exc=None):
         create.side_effect = raise_exc
     else:
         create.return_value = types.SimpleNamespace(
-            choices=[types.SimpleNamespace(
-                message=types.SimpleNamespace(content=content))],
+            choices=[
+                types.SimpleNamespace(message=types.SimpleNamespace(content=content))
+            ],
             usage=usage,
         )
     client = mock.MagicMock()
@@ -65,8 +67,9 @@ class TaxonomyFailSoftTests(unittest.TestCase):
 
     def test_valid_response_is_complete(self):
         with _fake_openai(content=_VALID_JSON, usage=None):
-            tax = _derive({"business_type": "eyewear brand",
-                           "products_services": ["eyeglasses"]})
+            tax = _derive(
+                {"business_type": "eyewear brand", "products_services": ["eyeglasses"]}
+            )
         self.assertTrue(tax.complete)
         self.assertEqual(tax.primary_offering, "eyewear")
         self.assertIn("eyeglasses", tax.core_terms)
@@ -74,7 +77,9 @@ class TaxonomyFailSoftTests(unittest.TestCase):
 
     def test_usage_present_does_not_crash_billing(self):
         # resp.usage populated + no active session -> record_oneshot_usage no-ops safely.
-        usage = types.SimpleNamespace(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+        usage = types.SimpleNamespace(
+            prompt_tokens=10, completion_tokens=20, total_tokens=30
+        )
         with _fake_openai(content=_VALID_JSON, usage=usage):
             tax = _derive({"business_type": "eyewear brand"})
         self.assertTrue(tax.complete)

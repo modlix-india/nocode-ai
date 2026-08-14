@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 
 from app.agents.adzump.agents.campaign.google.keyword.models import normalize
+from app.agents.adzump.agents.campaign.models import keyword_research
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,10 @@ def _state(context: dict) -> dict:
 
 
 def _themes(state: dict) -> dict[str, dict]:
-    return (state.get("keyword_research") or {}).get("themes") or {}
+    # Through the accessor, not the session key: the first edit migrates the set into the
+    # build envelope, and a raw read would find nothing from then on - so every later
+    # lookup would answer "no record of that keyword" about a keyword sitting in the panel.
+    return (keyword_research(state) or {}).get("themes") or {}
 
 
 def _find(state: dict, kw: str) -> tuple[str, str, dict] | None:

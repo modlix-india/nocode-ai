@@ -24,12 +24,37 @@ LEGACY_KEYWORD_KEY = "keyword_research"  # pre-envelope sessions; read-side only
 DEMAND_GEN_ENABLED = False
 
 
+class AdvertisingChannelType(str, Enum):
+    """Google's own enum, transcribed from
+    https://github.com/googleapis/googleapis/blob/master/google/ads/googleads/v23/enums/advertising_channel_type.proto
+    """
+
+    SEARCH = "SEARCH"
+    DISPLAY = "DISPLAY"
+    SHOPPING = "SHOPPING"
+    HOTEL = "HOTEL"
+    VIDEO = "VIDEO"
+    MULTI_CHANNEL = "MULTI_CHANNEL"
+    LOCAL = "LOCAL"
+    SMART = "SMART"
+    PERFORMANCE_MAX = "PERFORMANCE_MAX"
+    LOCAL_SERVICES = "LOCAL_SERVICES"
+    TRAVEL = "TRAVEL"
+    DEMAND_GEN = "DEMAND_GEN"
+
+
 class Channel(str, Enum):
     """Which Google campaign type to build. Meta has its own objective model and
     leaves ``campaign_spec["channel"]`` unset."""
 
     SEARCH = "SEARCH"
     DEMAND_GEN = "DEMAND_GEN"
+
+    @property
+    def google_channel_type(self) -> AdvertisingChannelType:
+        """What Google calls this channel. Ours is the set we build; Google's is the set that
+        exists, so the two are mapped rather than assumed to stay identical."""
+        return _GOOGLE_CHANNEL_TYPE[self]
 
     @classmethod
     def from_value(cls, value: str | None) -> Channel | None:
@@ -43,6 +68,12 @@ class Channel(str, Enum):
             if any(re.search(rf"\b{re.escape(k)}\b", v) for k in keywords):
                 return channel
         return None
+
+
+_GOOGLE_CHANNEL_TYPE: dict[Channel, AdvertisingChannelType] = {
+    Channel.SEARCH: AdvertisingChannelType.SEARCH,
+    Channel.DEMAND_GEN: AdvertisingChannelType.DEMAND_GEN,
+}
 
 
 # Demand Gen first: its chip label may also carry the word "search".
@@ -109,8 +140,8 @@ def _load(session_ctx: dict) -> CampaignBuild | None:
 
 
 def _put(session_ctx: dict, channel: Channel, slot: str, value: Any) -> None:
-    """The only write path. A build for the wrong channel is replaced rather than
-    merged - its slots describe a campaign type this one is not."""
+    """The only path that writes a slot. A build for the wrong channel is replaced rather
+    than merged - its slots describe a campaign type this one is not."""
     build = _load(session_ctx)
     if build is None or build.channel is not channel:
         build = CampaignBuild(channel=channel)
@@ -134,6 +165,40 @@ def keyword_research(session_ctx: dict) -> dict | None:
 
 def set_keyword_research(session_ctx: dict, dump: dict) -> None:
     _put(session_ctx, Channel.SEARCH, "keyword_research", dump)
+
+
+def audience(session_ctx: dict) -> dict | None:
+    """The built audience targeting, or None. Mutating it needs ``set_audience``."""
+    build = _load(session_ctx)
+    return build.demand_gen.audience if build and build.demand_gen else None
+
+
+def set_audience(session_ctx: dict, dump: dict) -> None:
+    _put(session_ctx, Channel.DEMAND_GEN, "audience", dump)
+
+
+def build_dump(session_ctx: dict) -> dict | None:
+    """The whole build, for handing a throwaway sub-session's output to the session that
+    keeps it.
+
+    Channel-neutral by necessity: the campaign sub-agent does not know which channel's tool
+    ran, and reaching for one channel's slot returns None for every other channel.
+    """
+    build = _load(session_ctx)
+    return build.model_dump(mode="json") if build else None
+
+
+def set_build(session_ctx: dict, dump: dict) -> None:
+    """Install a build assembled in another session.
+
+    Not a second way to write a slot - the slots were written by ``_put`` over there.
+    Revalidated because this is where the dump crosses a session boundary, and a malformed
+    one would otherwise surface far from here on the next read.
+    """
+    session_ctx[SESSION_KEY] = CampaignBuild.model_validate(dump).model_dump(
+        mode="json"
+    )
+    session_ctx.pop(LEGACY_KEYWORD_KEY, None)
 
 
 def is_build_complete(session_ctx: dict) -> bool:

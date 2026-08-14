@@ -13,7 +13,10 @@ import asyncio
 import unittest
 
 from app.agents.adzump.agents.campaign.google.keyword import manage_tools, tools
-from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.agents.campaign.models import (
+    keyword_research,
+    set_keyword_research,
+)
 
 
 def _row(keyword: str, **extra) -> dict:
@@ -238,6 +241,120 @@ class EditTests(unittest.TestCase):
 
     def test_edits_must_be_a_non_empty_list(self):
         self.assertFalse(_edit([], _ctx()).success)
+
+
+class ManageSessionHandBackTests(unittest.TestCase):
+    """handle() edits in a throwaway session and hands the set back at the end.
+
+    The set must survive as its own copy, not a shared reference to the parent's: the build
+    envelope's writer copies and drops the pre-envelope key, so aliasing would carry exactly
+    one edit and silently strand the rest.
+    """
+
+    @staticmethod
+    def _seed_manage_session(parent: dict) -> dict:
+        # What handle() does when it builds the manage session's context.
+        manage: dict = {"product_data": {}}
+        set_keyword_research(manage, keyword_research(parent))
+        return manage
+
+    def _parent(self) -> dict:
+        parent: dict = {}
+        set_keyword_research(
+            parent,
+            {
+                "themes": {
+                    "generic": {
+                        "theme": "generic",
+                        "label": "Generic",
+                        "positives": [_row("running shoes")],
+                        "negatives": [],
+                    }
+                },
+                "meta": {},
+            },
+        )
+        return parent
+
+    def _add(self, manage: dict, keyword: str):
+        return _edit(
+            [
+                {
+                    "action": "add",
+                    "keyword_type": "generic",
+                    "section": "positives",
+                    "keyword": keyword,
+                }
+            ],
+            {"session_context": manage},
+        )
+
+    def test_every_edit_in_a_turn_reaches_the_parent(self):
+        parent = self._parent()
+        manage = self._seed_manage_session(parent)
+        self.assertTrue(self._add(manage, "trail shoes").success)
+        self.assertTrue(self._add(manage, "hiking shoes").success)
+
+        # the hand-back handle() performs once the run ends
+        set_keyword_research(parent, keyword_research(manage))
+        saved = [
+            r["keyword"]
+            for r in keyword_research(parent)["themes"]["generic"]["positives"]
+        ]
+        self.assertEqual(
+            sorted(saved), ["hiking shoes", "running shoes", "trail shoes"]
+        )
+
+    def test_the_record_stays_readable_after_an_edit(self):
+        # lookup_keyword reads the same set; if an edit hid it, the agent would answer
+        # "no record of that" about a keyword sitting in the panel.
+        parent = self._parent()
+        manage = self._seed_manage_session(parent)
+        self._add(manage, "trail shoes")
+
+        self.assertEqual(list(manage_tools._themes(manage)), ["generic"])
+        res = _lookup("trail shoes", {"session_context": manage})
+        self.assertIn("IS in the generic ad group", res.summary)
+
+    def test_the_manage_prompts_still_see_the_set(self):
+        """The prompt builders read the saved set the same way the tools do.
+
+        They ran off the raw session key, which the envelope's writer drops — leaving the
+        model with "(none)" ad groups and no keyword listing, so "remove the low-volume
+        ones" would be answered against nothing.
+        """
+        from app.agents.adzump.agents.campaign.google.keyword.agent import (
+            get_keyword_manage_agent,
+        )
+        from app.core.session import BaseSession
+
+        session = BaseSession(agent_name="keyword_research")
+        session.context = {
+            "kw_mode": "manage",
+            "kw_type": "generic",
+            "kw_user_message": "drop the low volume ones",
+        }
+        set_keyword_research(session.context, keyword_research(self._parent()) or {})
+
+        agent = get_keyword_manage_agent()
+        context = asyncio.run(agent.build_dynamic_context(session))
+        reminder = asyncio.run(agent.build_turn_reminder(session, 1))
+
+        self.assertIn("AD GROUPS (you work across all of these): Generic", context)
+        self.assertIn(
+            "Generic ad group", reminder
+        )  # the standards bar it was built with
+        self.assertIn("running shoes", reminder)  # the set it is editing, with volumes
+
+    def test_editing_the_copy_leaves_the_parent_alone_until_hand_back(self):
+        parent = self._parent()
+        manage = self._seed_manage_session(parent)
+        self._add(manage, "trail shoes")
+        saved = [
+            r["keyword"]
+            for r in keyword_research(parent)["themes"]["generic"]["positives"]
+        ]
+        self.assertEqual(saved, ["running shoes"])
 
 
 class SubmitToolsAreStructurallyBuildOnlyTests(unittest.TestCase):

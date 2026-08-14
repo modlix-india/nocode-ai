@@ -27,10 +27,12 @@ from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
 from app.agents.adzump.agents.campaign.api import (
     router as campaign_api_router,
-    parse_keyword_widget_message,
-    stream_keyword_widget,
+    parse_widget_message,
+    stream_widget,
 )
-from app.agents.adzump.agents.location.search_router import router as location_search_router
+from app.agents.adzump.agents.location.search_router import (
+    router as location_search_router,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,13 +78,12 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
             if a.type == "image" and a.data
         ]
 
-    # Keyword widget: structured JSON action from the campaign keyword panel (fast path, no LLM).
-    kw_widget = parse_keyword_widget_message(body.message)
-    if kw_widget is not None:
-        return stream_keyword_widget(agent, session, kw_widget)
+    # Review-panel widget: structured JSON action from a campaign panel (fast path, no LLM).
+    widget = parse_widget_message(body.message)
+    if widget is not None:
+        payload, mutate = widget
+        return stream_widget(agent, session, payload, mutate)
 
     return stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )
-
-
