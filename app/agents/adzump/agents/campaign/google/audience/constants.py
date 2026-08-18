@@ -16,19 +16,23 @@ CUSTOM_URL_MAX_CHARS = (
     2048  # proto: "An HTTP URL, protocol-included - at most 2048 characters"
 )
 
-# INTEREST and PURCHASE_INTENT are rejected on create; AUTO is the documented default.
-CUSTOM_AUDIENCE_TYPE = "AUTO"
-
-# Demand Gen's own floor, not the general 100.
+# Unused while Lookalike and existing-audience reuse are paused: the account campaigns are
+# created in has no user lists, and Customer Match is closed to our token, so neither can be
+# built or tested. Kept because they are verified numbers, not guesses.
 # https://developers.google.com/google-ads/api/docs/remarketing/audience-segments/lookalike-audiences
-LOOKALIKE_MIN_SEED_SIZE = 1000
+LOOKALIKE_MIN_SEED_SIZE = 1000  # Demand Gen's own floor, not the general 100
 USER_LIST_MIN_ACTIVE_SIZE = 100  # before a list can serve at all
 
 # Google's recommendation, not a limit — a custom segment is valid with one keyword. Aim for
 # this band; do not reject a thinner one, since a niche product may not have ten terms worth
-# using. https://support.google.com/google-ads/answer/9805516
+# using. Source is the Demand Gen FAQ ("use 10-15 search keywords that capture audience
+# interests/purchase intent/conversion intent"), NOT the "About custom segments" page, which
+# states no number: https://support.google.com/google-ads/answer/14509385
 CUSTOM_SEGMENT_KEYWORD_TARGET_MIN = 10
 CUSTOM_SEGMENT_KEYWORD_TARGET_MAX = 15
+
+# No published cap on members per custom audience — neither the API reference nor the Help
+# Center states one. Do not invent a number; the band above is far inside anything plausible.
 
 # The only user_interest types an Audience segment accepts — "user list, affinity/in-market,
 # life event, and detailed demographic segments". A grouped-mode constraint, so it belongs
@@ -48,7 +52,6 @@ MAX_SIGNALS_PER_KIND = 10
 # exposes no size data to judge that with. Report a shortfall rather than pad to reach it.
 MIN_SIGNALS_TOTAL = 3
 
-MAX_REFINE_ROUNDS = 2
 MAX_SEARCH_RESULTS = 25  # what one search returns to the agent or the panel
 
 # Written into a created resource's description so we recognise our own work later. Matched

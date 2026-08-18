@@ -12,21 +12,53 @@ import logging
 
 from app.agents.adzump.agents.campaign.agent import get_campaign_agent
 from app.agents.adzump.agents.campaign.models import set_build
+from app.agents.adzump.platform import is_google as platform_is_google
 from app.core.streaming import pre_emit_agent_started
 from app.core.tools.base import ToolDefinition, ToolResult
 
 logger = logging.getLogger(__name__)
+
+# A failed build leaves the slot empty, so _next_action re-prescribes this tool and the model
+# calls it again. Per TURN, not per session - the session outlives the loop.
+_MAX_BUILD_ATTEMPTS = 2
+_ATTEMPTS_KEY = "_build_attempts"
 
 
 async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context")
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
+
+    turn = getattr(context.get("_session"), "_turn_count", 0) or 0
+    tally = session_ctx.get(_ATTEMPTS_KEY) or {}
+    attempts = tally.get("count", 0) if tally.get("turn") == turn else 0
+    if attempts >= _MAX_BUILD_ATTEMPTS:
+        logger.warning("prepare_campaign_review: giving up after %d attempts", attempts)
+        return ToolResult(
+            success=False,
+            error=(
+                f"The campaign build has already failed {attempts} times this turn. Do NOT "
+                "call this tool again. Tell the user it could not be built, and stop."
+            ),
+        )
+
     spec = session_ctx.get("campaign_spec") or {}
     if not spec.get("account"):
         return ToolResult(
             success=False,
             error="Campaign details incomplete — no ad account selected yet.",
+        )
+
+    # The channel decides WHICH build runs, and resolve_channel falls back to Search - so
+    # skipping the ask silently builds a Search campaign instead of failing.
+    if platform_is_google(spec.get("platform")) and not spec.get("channel"):
+        logger.warning("prepare_campaign_review: no channel chosen yet")
+        return ToolResult(
+            success=False,
+            error=(
+                "Cannot build yet — the user has not chosen a Google campaign type. Ask "
+                'with present_options(field="channel") first, then call this again.'
+            ),
         )
     auth = context.get("auth")
     if auth is None:
@@ -47,6 +79,7 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
         parent_tool_use_id=context.get("tool_use_id", ""),
         context=context,
     )
+    session_ctx[_ATTEMPTS_KEY] = {"turn": turn, "count": attempts + 1}
     result = await get_campaign_agent().create(
         campaign_spec=spec,
         product_data=session_ctx.get("product_data") or {},
@@ -60,6 +93,7 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
             error="Campaign creation produced nothing to review — check the ad account and retry.",
         )
     set_build(session_ctx, result)
+    session_ctx.pop(_ATTEMPTS_KEY, None)
 
     # The elicitation owns its ask (the deferred break skips the follow-up turn).
     await stream.emit_text(

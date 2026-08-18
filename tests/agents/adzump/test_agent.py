@@ -40,6 +40,89 @@ def _budget_pe(**extra):
                                   "₹25,000/day": "₹25,000/day"}, **extra)
 
 
+# ── the channel choice ──────────────────────────────────────────
+class ChannelChoiceTests(unittest.TestCase):
+    """Asked in the BUILD stage, not with the details the summary confirms - it decides which
+    build runs. Offered from the enum, so a new channel needs no change in next_action."""
+
+    BASE = {"platform": "Google Ads", "duration": "30 days", "budget": "₹10,000/day",
+            "parent_account": "P", "account": "A", "location": "Hyderabad",
+            "competitive_analysis_declined": "true"}
+    PRODUCT = {**SAAS, "target_areas": [{"name": "Hyderabad", "google": "1007751"}]}
+
+    def _first(self, spec, **kw):
+        m = _next_action(make_cctx(dict(spec), product=self.PRODUCT, **kw))
+        return m[0] if m else ""
+
+    def test_not_asked_before_the_summary_is_confirmed(self):
+        self.assertNotIn("channel -", self._first(self.BASE))
+
+    def test_asked_once_the_summary_is_confirmed(self):
+        line = self._first(self.BASE, summary_confirmed=True)
+        self.assertTrue(line.startswith("channel -"))
+
+    def test_every_channel_in_the_enum_is_offered(self):
+        from app.agents.adzump.agents.campaign.models import Channel
+
+        line = self._first(self.BASE, summary_confirmed=True)
+        for channel in Channel:
+            self.assertIn(f'answer "{channel.value}"', line)
+            self.assertIn(channel.chip_label, line)
+
+    def test_the_choice_routes_to_that_channels_build(self):
+        for channel, expected in [("DEMAND_GEN", "audience targeting"),
+                                  ("SEARCH", "ad groups -")]:
+            with self.subTest(channel=channel):
+                line = self._first({**self.BASE, "channel": channel},
+                                   summary_confirmed=True)
+                self.assertIn(expected, line)
+
+
+# ── the pre-launch review line ──────────────────────────────────
+class ReviewLineTests(unittest.TestCase):
+    """The line names what the panel HOLDS, which the channel itself declares - this module
+    must never grow a branch per channel or per slot."""
+
+    GOOGLE_FULL = {"platform": "Google Ads", "duration": "30 days",
+                   "budget": "₹10,000/day", "parent_account": "P", "account": "A",
+                   "location": "Hyderabad", "summary_confirmed": "true",
+                   "ad_groups": "brand", "competitive_analysis_declined": "true"}
+    PRODUCT = {**SAAS, "target_areas": [{"name": "Hyderabad", "google": "1007751"}]}
+
+    def _launch_line(self, items):
+        cctx = make_cctx(dict(self.GOOGLE_FULL), product=self.PRODUCT, build_done=True,
+                         summary_confirmed=True, review_items=items)
+        return next(m for m in _next_action(cctx) if m.startswith("launch"))
+
+    def test_it_names_whatever_the_channel_declared(self):
+        for items, expected in [
+            (("the keyword suggestions",), "the keyword suggestions"),
+            (("the audience targeting", "where the ads will show"),
+             "the audience targeting, where the ads will show"),
+            (("a", "b", "c"), "a, b, c"),   # a channel that has not shipped yet
+        ]:
+            with self.subTest(items=items):
+                self.assertIn(f"The panel shows {expected}.", self._launch_line(items))
+
+    def test_nothing_on_screen_does_not_promise_a_panel(self):
+        # Meta has no build step - the old text told every user to review keywords.
+        line = self._launch_line(())
+        self.assertIn("The campaign details are confirmed.", line)
+        self.assertNotIn("panel", line)
+
+    def test_a_slot_that_never_ran_is_not_promised(self):
+        # DemandGenBuild declares creative, but no tool fills it yet.
+        from app.agents.adzump.agents.campaign.models import (
+            build_review_items,
+            set_audience,
+        )
+        ctx = {"campaign_spec": {"platform": "GOOGLE", "account": "1",
+                                 "channel": "Demand Gen"}}
+        set_audience(ctx, {"signals": [], "demographics": {},
+                           "dimension_groups": [], "meta": {}})
+        self.assertEqual(build_review_items(ctx), ("the audience targeting",))
+
+
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
 class InstagramOptionalTests(unittest.TestCase):
     META_FULL = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",
@@ -335,6 +418,9 @@ def _full_google_cctx():
         "platform": "Google Ads", "location": "Bengaluru", "duration": "30 days",
         "budget": "₹10,000/day", "competitive_analysis_declined": "true",
         "parent_account": "1234567890", "account": "4461972633",
+        # Ad groups are a Search concept, so these fixtures pick Search. The channel is
+        # asked first now - see ChannelChoiceTests.
+        "channel": "SEARCH",
     }
     product = {
         "business_type": "real estate", "product_name": "Sumadhura Solea",
@@ -395,8 +481,9 @@ def _full_meta_cctx():
 
 
 class AdGroupConsentTests(unittest.TestCase):
-    """Two consents, in order: okay the summary, THEN choose the ad groups (Google only).
-    What gets built is the user's pick, so the summary never states it as decided."""
+    """Consents in order: okay the summary, choose the channel, THEN choose the ad groups
+    (Search only). What gets built is the user's pick, so the summary never states it as
+    decided."""
 
     def _step(self, cctx, prefix: str) -> str:
         steps = _next_action(cctx)

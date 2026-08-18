@@ -261,7 +261,9 @@ class ReviewBlockTests(unittest.TestCase):
         # a root-level entry has no ancestors, not a breadcrumb of itself
         self.assertEqual(sections["affinity"]["rows"][0]["category"], "")
 
-    def test_empty_dimensions_are_left_out_rather_than_shown_as_filters(self):
+    def test_every_dimension_shows_and_an_unset_one_reads_as_everyone(self):
+        # Omitting the unset ones hid that the filter exists: the user could not tell
+        # "not narrowed" from "not offered", and only ever saw the one that was set.
         dump = _result(
             _signal("A"),
             demographics=DemographicSpec(genders=["FEMALE"]),
@@ -271,7 +273,34 @@ class ReviewBlockTests(unittest.TestCase):
             for s in audience_review_block(dump)["sections"]
             if s["key"] == "demographics"
         )["rows"]
-        self.assertEqual(rows, [{"attribute": "Gender", "value": "Female"}])
+        self.assertEqual(
+            [(r["attribute"], r["value"]) for r in rows],
+            [
+                ("Age", "Everyone"),
+                ("Gender", "Female"),
+                ("Household income", "Everyone"),
+                ("Parental status", "Everyone"),
+            ],
+        )
+
+    def test_each_dimension_carries_the_reason_it_was_set_that_way(self):
+        # "Everyone" with no reason reads as a step nobody took. The agent has to say why it
+        # left one open, and a panel edit must not blank that.
+        dump = _result(
+            _signal("A"),
+            demographics=DemographicSpec(
+                genders=["FEMALE"],
+                rationales={"age_ranges": "anyone who can afford it buys it"},
+            ),
+        ).model_dump(mode="json")
+        rows = next(
+            s
+            for s in audience_review_block(dump)["sections"]
+            if s["key"] == "demographics"
+        )["rows"]
+        by_attr = {r["attribute"]: r["rationale"] for r in rows}
+        self.assertEqual(by_attr["Age"], "anyone who can afford it buys it")
+        self.assertEqual(by_attr["Gender"], "")
 
     def test_income_shows_the_percentile_not_the_api_value(self):
         dump = _result(
@@ -283,7 +312,8 @@ class ReviewBlockTests(unittest.TestCase):
             for s in audience_review_block(dump)["sections"]
             if s["key"] == "demographics"
         )["rows"]
-        self.assertEqual(rows, [{"attribute": "Household income", "value": "Top 10%"}])
+        income = next(r for r in rows if r["attribute"] == "Household income")
+        self.assertEqual(income["value"], "Top 10%")
 
     def test_an_open_ended_age_range_reads_as_a_floor(self):
         dump = _result(
@@ -296,6 +326,34 @@ class ReviewBlockTests(unittest.TestCase):
             if s["key"] == "demographics"
         )["rows"]
         self.assertEqual(rows[0]["value"], "65+")
+
+    def test_demographics_carries_the_raw_spec_the_editor_seeds_from(self):
+        # set_demographics REPLACES, so the editor has to open on what is already saved.
+        # The rows are prose ("25-44", "Top 10%") and cannot be parsed back into a spec -
+        # without this key the panel opens blank and a gender edit wipes age and income.
+        dump = _result(
+            _signal("A"),
+            demographics=DemographicSpec(
+                age_ranges=[{"min_age": 25, "max_age": 44}],
+                genders=["FEMALE"],
+                income_ranges=["INCOME_RANGE_90_UP"],
+            ),
+        ).model_dump(mode="json")
+        section = next(
+            s
+            for s in audience_review_block(dump)["sections"]
+            if s["key"] == "demographics"
+        )
+        self.assertEqual(section["values"], dump["demographics"])
+
+    def test_rows_carry_the_ref_the_panel_deletes_by(self):
+        # A label is not an identity: the mutation matches on resource name or bare id, so a
+        # row without `ref` makes every panel delete fail.
+        dump = _result(_signal("A", ref="customers/1/userInterests/1")).model_dump(
+            mode="json"
+        )
+        row = audience_review_block(dump)["sections"][0]["rows"][0]
+        self.assertEqual(row["ref"], "customers/1/userInterests/1")
 
     def test_exclusions_get_their_own_section(self):
         dump = _result(

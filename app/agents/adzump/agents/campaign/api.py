@@ -34,6 +34,9 @@ from app.agents.adzump.agents.campaign.models import (
 from app.agents.adzump.agents.campaign.tools.google.audience_update import (
     update_audience,
 )
+from app.agents.adzump.agents.campaign.tools.google.channel_controls import (
+    update_channel_controls,
+)
 from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
     update_keywords,
 )
@@ -210,6 +213,7 @@ async def audience_search(
 _WIDGET_MUTATIONS: dict[str, Callable[[dict, dict], Awaitable[ToolResult]]] = {
     "keyword_widget": update_keywords,
     "audience_widget": update_audience,
+    "channel_controls_widget": update_channel_controls,
 }
 
 

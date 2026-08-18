@@ -71,20 +71,27 @@ def _rebuild(dump: dict, signals: list[dict]) -> tuple[bool, str]:
 async def _resolve_ref(
     ref: str, session_ctx: dict, dump: dict, context: dict
 ) -> dict | None:
-    """The catalogue entry for a reference, or None if it cannot serve this campaign."""
-    spec = session_ctx.get("campaign_spec") or {}
-    customer_id = str(spec.get("account") or "").strip()
-    if not customer_id:
-        return None
-    candidates = await catalogue.load(
-        customer_id=customer_id,
-        channel_type=resolve_channel(spec).google_channel_type.value,
-        country_code=str((dump.get("meta") or {}).get("country") or ""),
-        login_customer_id=str(spec.get("parent_account") or "").strip(),
-        client_code=context.get("client_code", ""),
-        auth_headers=context.get("headers", {}),
-    )
-    return catalogue.by_key(candidates).get(ref)
+    """The catalogue entry for a reference, or None if it cannot serve this campaign.
+
+    The index is memoised on the request context: a spoken edit can carry a dozen adds, and
+    rebuilding a thousand-entry index per add is wasted work even though the fetch is cached.
+    """
+    if (index := context.get("_audience_index")) is None:
+        spec = session_ctx.get("campaign_spec") or {}
+        customer_id = str(spec.get("account") or "").strip()
+        if not customer_id:
+            return None
+        candidates = await catalogue.load(
+            customer_id=customer_id,
+            channel_type=resolve_channel(spec).google_channel_type.value,
+            country_code=str((dump.get("meta") or {}).get("country") or ""),
+            login_customer_id=str(spec.get("parent_account") or "").strip(),
+            client_code=context.get("client_code", ""),
+            auth_headers=context.get("headers", {}),
+        )
+        index = catalogue.by_key(candidates)
+        context["_audience_index"] = index
+    return index.get(ref)
 
 
 async def apply_edit(params: dict, context: dict) -> tuple[bool, str]:
@@ -117,6 +124,11 @@ async def apply_edit(params: dict, context: dict) -> tuple[bool, str]:
                     "genders": params.get("genders") or [],
                     "income_ranges": params.get("income_ranges") or [],
                     "parental_statuses": params.get("parental_statuses") or [],
+                    # Carried through: the panel edits values, not reasoning, so dropping
+                    # these would blank the "why" column on every click.
+                    "rationales": params.get("rationales")
+                    or (dump.get("demographics") or {}).get("rationales")
+                    or {},
                 }
             )
         except ValidationError as exc:
@@ -176,23 +188,50 @@ async def apply_edit(params: dict, context: dict) -> tuple[bool, str]:
         signals = remaining
         message = f"Removed '{target['label']}'."
 
-    ok, err = _rebuild(dump, signals)
+    ok, note = _persist(session_ctx, dump, signals)
     if not ok:
-        return False, err
-    set_audience(session_ctx, dump)
-
-    over = AudienceTargetingResult.model_validate(dump).over_cap()
-    if over:
-        message += " Now over the guard for " + ", ".join(
-            f"{k.value} ({n} of {MAX_SIGNALS_PER_KIND})" for k, n in over.items()
-        )
+        return False, note
     logger.info(
         "aud_update action=%s ref=%r signals=%d",
         action,
         params.get("ref"),
         len(signals),
     )
-    return True, message
+    return True, message + note
+
+
+def _persist(session_ctx: dict, dump: dict, signals: list[dict]) -> tuple[bool, str]:
+    """Revalidate, save, and report any guard the result now exceeds.
+
+    The only write path, shared by the panel's actions and by a custom segment we just
+    created - so neither can save an audience the other would have refused.
+    """
+    ok, err = _rebuild(dump, signals)
+    if not ok:
+        return False, err
+    set_audience(session_ctx, dump)
+    over = AudienceTargetingResult.model_validate(dump).over_cap()
+    if not over:
+        return True, ""
+    return True, " Now over the guard for " + ", ".join(
+        f"{k.value} ({n} of {MAX_SIGNALS_PER_KIND})" for k, n in over.items()
+    )
+
+
+def add_signal(session_ctx: dict, signal: AudienceSignal) -> tuple[bool, str]:
+    """Append an already-resolved signal - one whose ref did not come from the catalogue,
+    because we just created it. Goes through the same invariants as every other add."""
+    dump = audience(session_ctx)
+    if not dump:
+        return False, "No audience in session - build the campaign first."
+    signals: list[dict] = list(dump.get("signals") or [])
+    if any(s["ref"] == signal.ref for s in signals):
+        return False, f"'{signal.label}' is already targeted."
+    signals.append(signal.model_dump(mode="json"))
+    ok, note = _persist(session_ctx, dump, signals)
+    if not ok:
+        return False, note
+    return True, f"Added '{signal.label}'.{note}"
 
 
 async def emit_panel(context: dict, session_ctx: dict) -> None:

@@ -14,7 +14,8 @@ Generic), with positives + negatives, and shows them to the user for review. Cal
 
 For a Google DEMAND GEN campaign, call audience_targeting instead — Demand Gen has no
 keywords; it reaches people by audience segment. It picks the segments and demographics
-that fit this business and shows them for review. Call it once.
+that fit this business and shows them for review. Call it once. Then call channel_controls
+once, which sets where the ads may show.
 
 (Other platforms and campaign types — Performance Max, Meta — and the create/launch
 steps are added as more tools later.)

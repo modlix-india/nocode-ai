@@ -13,7 +13,7 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.adapters.google import audience_taxonomy as taxonomy
-from app.agents.adzump.agents.campaign.google.audience import tools
+from app.agents.adzump.agents.campaign.google.audience import catalogue, tools
 from app.agents.adzump.agents.campaign.google.audience.context import (
     Phase,
     current_phase,
@@ -42,6 +42,76 @@ def _entry(
         parent=parent,
         availabilities=availabilities if availabilities is not None else _INDIA_ONLY,
     )
+
+
+class ModelSeesThePayloadTests(unittest.TestCase):
+    """Assert on to_tool_result_content(), not on state or .data.
+
+    Every other test here checks what the tool wrote into session state. The tools did that
+    correctly while sending the model a bare count - ToolResult.data reaches the LLM only
+    when summary and model_summary are both empty, so a discovery tool that sets summary
+    silently drops its payload and the agent has no id to pick.
+    """
+
+    CANDS = [
+        {"id": "80827", "ref": "customers/1/inMarketSegments/80827", "kind": "IN_MARKET",
+         "label": "Residential Properties",
+         "path": ["Real Estate", "Residential Properties"]},
+        {"id": "90112", "ref": "customers/1/userInterests/90112", "kind": "AFFINITY",
+         "label": "Luxury Shoppers", "path": ["Shoppers", "Luxury Shoppers"]},
+    ]
+
+    def test_fetch_gives_the_model_every_id_not_just_a_count(self):
+        state = {"aud_customer_id": "1", "aud_channel_type": "DEMAND_GEN",
+                 "aud_country": "IN"}
+        with mock.patch.object(catalogue, "load", new=mock.AsyncMock(return_value=self.CANDS)):
+            res = asyncio.run(tools._fetch_audience_segments({}, {"session_context": state}))
+        seen = res.to_tool_result_content()
+        for c in self.CANDS:
+            self.assertIn(c["id"], seen)
+            self.assertIn(c["label"], seen)
+        self.assertNotEqual(seen, res.summary)   # the count alone is not enough to pick from
+
+    def test_search_gives_the_model_ids_and_ancestry(self):
+        state = {"aud_candidates": self.CANDS}
+        res = asyncio.run(
+            tools._search_audience_segments({"query": "properties"}, {"session_context": state})
+        )
+        seen = res.to_tool_result_content()
+        self.assertIn("80827", seen)
+        # ancestry, not just the label: "Residential Properties" under Real Estate means
+        # buyers; the same words under Employment would mean estate agents.
+        self.assertIn("Real Estate > Residential Properties", seen)
+
+    def test_a_second_fetch_does_not_resend_the_tree(self):
+        # Seen in every live run: the model calls fetch twice. A duplicate tree in the
+        # history costs as much as the first and tells it nothing new.
+        state = {"aud_customer_id": "1", "aud_channel_type": "DEMAND_GEN",
+                 "aud_country": "IN"}
+        load = mock.AsyncMock(return_value=self.CANDS)
+        with mock.patch.object(catalogue, "load", new=load):
+            first = asyncio.run(tools._fetch_audience_segments({}, {"session_context": state}))
+            second = asyncio.run(tools._fetch_audience_segments({}, {"session_context": state}))
+        self.assertEqual(load.await_count, 1)          # no second Google round trip
+        self.assertTrue(second.success)
+        self.assertIn("80827", first.to_tool_result_content())
+        self.assertNotIn("80827", second.to_tool_result_content())
+        self.assertIn("search_audience_segments", second.to_tool_result_content())
+
+    def test_the_whole_catalogue_survives_the_result_cap(self):
+        # The default 4000-char cap would keep ~7% of a real tree, and as_tree sorts by kind
+        # - so the surviving slice would be AFFINITY only, with no IN_MARKET at all.
+        many = [
+            {"id": str(i), "ref": f"customers/1/inMarketSegments/{i}", "kind": "IN_MARKET",
+             "label": f"Segment number {i}", "path": ["Root", f"Segment number {i}"]}
+            for i in range(1200)
+        ]
+        state = {"aud_customer_id": "1", "aud_channel_type": "DEMAND_GEN", "aud_country": "IN"}
+        with mock.patch.object(catalogue, "load", new=mock.AsyncMock(return_value=many)):
+            res = asyncio.run(tools._fetch_audience_segments({}, {"session_context": state}))
+        seen = res.to_tool_result_content()
+        self.assertNotIn("truncated", seen)
+        self.assertIn("Segment number 1199", seen)   # the last one, not just the first
 
 
 class FetchTests(unittest.TestCase):

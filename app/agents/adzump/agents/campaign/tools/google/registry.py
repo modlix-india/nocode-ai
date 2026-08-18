@@ -13,8 +13,11 @@ from __future__ import annotations
 from app.agents.adzump.agents.campaign.tools.google.audience_targeting import (
     audience_targeting,
 )
+from app.agents.adzump.agents.campaign.tools.google.channel_controls import (
+    channel_controls,
+)
 from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
     keyword_research,
 )
 
-GOOGLE_CAMPAIGN_TOOLS = [keyword_research, audience_targeting]
+GOOGLE_CAMPAIGN_TOOLS = [keyword_research, audience_targeting, channel_controls]

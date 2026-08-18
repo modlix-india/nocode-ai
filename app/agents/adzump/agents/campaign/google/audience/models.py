@@ -7,13 +7,18 @@ rather than segments, and age is a numeric range rather than a reference.
 
 from __future__ import annotations
 
+import unicodedata
 from enum import Enum
 from itertools import pairwise
-from typing import Any
+from typing import Any, NamedTuple
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.agents.adzump.agents.campaign.google.audience.constants import (
+    CUSTOM_KEYWORD_MAX_CHARS,
+    CUSTOM_KEYWORD_MAX_CHARS_CJK,
+    CUSTOM_KEYWORD_MAX_WORDS,
+    CUSTOM_URL_MAX_CHARS,
     MAX_SIGNALS_PER_KIND,
 )
 
@@ -35,16 +40,49 @@ class SignalKind(str, Enum):
 
     @property
     def label(self) -> str:
-        return _KIND_LABELS[self]
+        return _KIND_META[self].label
+
+    @property
+    def help(self) -> str:
+        """One line for the panel. The kinds are the whole reason a pick reaches the right
+        people, and the names alone do not say it."""
+        return _KIND_META[self].help
 
 
-_KIND_LABELS = {
-    SignalKind.IN_MARKET: "In-Market",
-    SignalKind.AFFINITY: "Affinity",
-    SignalKind.LIFE_EVENT: "Life Events",
-    SignalKind.DETAILED_DEMOGRAPHIC: "Detailed Demographics",
-    SignalKind.CUSTOM_AUDIENCE: "Custom Segments",
-    SignalKind.USER_LIST: "Your Data",
+class _KindMeta(NamedTuple):
+    label: str
+    help: str
+
+
+_KIND_META: dict[SignalKind, _KindMeta] = {
+    SignalKind.IN_MARKET: _KindMeta(
+        "In-Market",
+        "People shopping for this right now - the closest to ready to buy.",
+    ),
+    SignalKind.AFFINITY: _KindMeta(
+        "Affinity",
+        "People who are into this generally, but are not shopping yet. Reaches far more "
+        "people, and fewer of them are ready.",
+    ),
+    SignalKind.LIFE_EVENT: _KindMeta(
+        "Life Events",
+        "People going through something that creates the need - moving home, getting "
+        "married, having a baby.",
+    ),
+    SignalKind.DETAILED_DEMOGRAPHIC: _KindMeta(
+        "Detailed Demographics",
+        "Facts that stay true for years - whether they own a home, how far they studied, "
+        "what they do for a living.",
+    ),
+    SignalKind.CUSTOM_AUDIENCE: _KindMeta(
+        "Custom Segments",
+        "Built for this campaign from what people type into Google, for when none of "
+        "Google's ready-made segments fit.",
+    ),
+    SignalKind.USER_LIST: _KindMeta(
+        "Your Data",
+        "Lists you uploaded yourself - your customers, or people who visited your site.",
+    ),
 }
 
 # custom_affinity, custom_intent and combined_audience are deliberately absent: they exist on
@@ -193,6 +231,10 @@ class DemographicSpec(BaseModel):
     income_ranges: list[IncomeRange] = Field(default_factory=list)
     parental_statuses: list[ParentalStatus] = Field(default_factory=list)
     include_undetermined: bool = True
+    # Why each dimension is set the way it is, keyed by the field above. Leaving one open is
+    # a decision too - without the reason the panel can only show "Everyone", which reads as
+    # "not considered" rather than "considered and deliberately not narrowed".
+    rationales: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _age_ranges_do_not_overlap(self) -> DemographicSpec:
@@ -221,6 +263,56 @@ class DemographicSpec(BaseModel):
             or self.income_ranges
             or self.parental_statuses
         )
+
+
+def _display_width_limit(text: str) -> int:
+    """Google counts double-width characters against a halved cap.
+
+    east_asian_width W (wide) and F (fullwidth) are the double-width classes; one of them
+    anywhere in the term switches the whole term to the CJK limit.
+    """
+    wide = any(unicodedata.east_asian_width(c) in ("W", "F") for c in text)
+    return CUSTOM_KEYWORD_MAX_CHARS_CJK if wide else CUSTOM_KEYWORD_MAX_CHARS
+
+
+class CustomSegmentTerm(BaseModel):
+    """One keyword member of a custom segment.
+
+    Google's limits are enforced HERE because the API will not: validateOnly on
+    customAudiences:mutate accepts an 11-word, 81-character keyword (probed live). Nothing
+    downstream would report it, and the created segment would not target what we meant.
+    """
+
+    keyword: str
+    volume: int = 0
+
+    @field_validator("keyword")
+    @classmethod
+    def _within_googles_limits(cls, v: str) -> str:
+        term = " ".join((v or "").split())  # collapse whitespace before measuring
+        if not term:
+            raise ValueError("a term cannot be empty")
+        if len(term.split()) > CUSTOM_KEYWORD_MAX_WORDS:
+            raise ValueError(f"'{term}' is over {CUSTOM_KEYWORD_MAX_WORDS} words")
+        limit = _display_width_limit(term)
+        if len(term) > limit:
+            raise ValueError(f"'{term[:40]}...' is over {limit} characters")
+        return term
+
+
+class CustomSegmentUrl(BaseModel):
+    url: str
+
+    @field_validator("url")
+    @classmethod
+    def _within_googles_limits(cls, v: str) -> str:
+        url = (v or "").strip()
+        if not url.startswith(("http://", "https://")):
+            # proto: "An HTTP URL, protocol-included" - a bare domain is silently useless.
+            raise ValueError(f"'{url}' must include http:// or https://")
+        if len(url) > CUSTOM_URL_MAX_CHARS:
+            raise ValueError(f"url is over {CUSTOM_URL_MAX_CHARS} characters")
+        return url
 
 
 class AudienceTargetingResult(BaseModel):

@@ -101,11 +101,23 @@ def by_key(candidates: list[dict]) -> dict[str, dict]:
 
 
 def as_tree(candidates: list[dict]) -> str:
-    """The candidates as an indented tree, for a model only — indentation costs less than
-    repeating ancestors per line, and ids stand in for resource names, which would roughly
-    triple the prompt. The panel reads the flat candidates instead."""
+    """The catalogue as an indented tree, for a model only - the panel reads the flat
+    candidates. Every byte is resent with each turn's history, so indentation carries the
+    ancestry, ids stand in for resource names, and the kind is a heading, not a suffix."""
     lines: list[str] = []
+    kind = None
     for c in sorted(candidates, key=lambda x: (x["kind"], x["path"])):
+        if c["kind"] != kind:
+            kind = c["kind"]
+            lines.append(f"[{kind}]")
         depth = len(c["path"]) - 1
-        lines.append(f"{'  ' * depth}{c['id']} {c['label']} [{c['kind']}]")
+        lines.append(f"{'  ' * depth}{c['id']} {c['label']}")
     return "\n".join(lines)
+
+
+def as_lines(candidates: list[dict]) -> str:
+    """Search hits, for a model only. Full ancestry per line - a match is pulled out of the
+    tree, so as_tree's indentation would sit under nothing."""
+    return "\n".join(
+        f"{c['id']} {' > '.join(c['path'])} [{c['kind']}]" for c in candidates
+    )

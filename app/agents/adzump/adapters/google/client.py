@@ -33,11 +33,18 @@ class GoogleAdsApiError(RuntimeError):
 
     Carries ``status_code`` so callers branch on the failure kind (e.g. a 429 rate
     limit) by type — never by parsing the message string.
+
+    ``payload`` is the decoded error body. Google's top-level ``error.message`` is generic
+    ("Request contains an invalid argument."); the actual cause is in ``error.details[]``,
+    in one of two envelopes. Callers that need it parse the body rather than the message.
     """
 
-    def __init__(self, status_code: int, message: str) -> None:
+    def __init__(
+        self, status_code: int, message: str, payload: dict | None = None
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.payload = payload or {}
 
     @property
     def is_rate_limited(self) -> bool:
@@ -65,7 +72,10 @@ class GoogleAdsClient:
         return token
 
     async def get(
-        self, endpoint: str, client_code: str, auth_headers: dict[str, str],
+        self,
+        endpoint: str,
+        client_code: str,
+        auth_headers: dict[str, str],
     ) -> dict:
         token = await self._get_api_token(client_code, auth_headers)
         url = f"{self.BASE_URL}/{self.API_VERSION}/{endpoint}"
@@ -163,7 +173,9 @@ class GoogleAdsClient:
             return response.json()
 
     async def _get_api_token(
-        self, client_code: str, auth_headers: dict[str, str],
+        self,
+        client_code: str,
+        auth_headers: dict[str, str],
     ) -> str:
         # Priority order:
         # 1. Direct access token from config (short-lived, pasted by dev)
@@ -178,7 +190,9 @@ class GoogleAdsClient:
         return await fetch_google_api_token(client_code, auth_headers)
 
     def _build_auth_headers(
-        self, access_token: str, login_customer_id: str | None = None,
+        self,
+        access_token: str,
+        login_customer_id: str | None = None,
     ) -> dict[str, str]:
         if not access_token:
             raise RuntimeError(
@@ -253,8 +267,10 @@ def _raise_for_google_error(response: httpx.Response) -> None:
         return
 
     message = f"Google Ads API {response.status_code}"
+    payload: dict = {}
     try:
-        error = response.json().get("error", {})
+        payload = response.json()
+        error = payload.get("error", {})
         if error.get("message"):
             message = f"Google Ads API {response.status_code}: {error['message']}"
     except Exception:
@@ -262,9 +278,10 @@ def _raise_for_google_error(response: httpx.Response) -> None:
 
     logger.warning(
         "google_ads_error: status=%d body=%s",
-        response.status_code, response.text[:400],
+        response.status_code,
+        response.text[:400],
     )
-    raise GoogleAdsApiError(response.status_code, message)
+    raise GoogleAdsApiError(response.status_code, message, payload)
 
 
 # Singleton instance

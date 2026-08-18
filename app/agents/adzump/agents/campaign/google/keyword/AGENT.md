@@ -390,10 +390,17 @@ flowchart TD
 
 **`handle()` mirrors the location agent's `handle()`**, with two differences that matter:
 
-- **Shared refs, not a copy.** The throwaway session is seeded with a *reference* to the
-  parent's `keyword_research` dump (exactly as the location sub-session shares
-  `product_data`), so `edit_keywords` writes through to the saved set instead of dying with
-  the run. Nothing is reconnected — **the record, not the session, is the durable thing.**
+- **Its own copy, handed back at the end.** The throwaway session gets a *copy* of the saved
+  set and writes it back to the parent when the run ends — in `finally`, because edits
+  already applied are real even if the turn later fails, and losing them would contradict
+  what the panel already showed. **The record, not the session, is the durable thing.**
+
+  ⚠️ It is deliberately **not** a shared reference, unlike the location sub-session's
+  `product_data`. The build envelope's writer copies (`model_dump`) and drops the
+  pre-envelope key, so a shared reference carries exactly the **first** edit and then
+  silently stops propagating — and `lookup_keyword` goes blank once the key is gone, so the
+  agent starts answering "no record of that keyword" about keywords sitting in the panel.
+  Do not "simplify" this back to a shared ref.
 - **A passthrough stream.** Generation's `_ReviewStream` swallows prose (only the lifecycle
   card surfaces); an *answer* IS prose, so `handle()` uses `_ManageStream` which forwards
   `emit_text` to the parent.

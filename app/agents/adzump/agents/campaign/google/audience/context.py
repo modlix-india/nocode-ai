@@ -23,8 +23,9 @@ Always:
 - A name alone is ambiguous — read where it sits in the tree. The same words appear under a
   product category, meaning people BUYING that thing, and under Employment, meaning people who
   WORK in that field. Those are opposite audiences.
-- Fewer, sharper segments beat more. What you choose is an informed starting point that
-  Google expands from, so a loose starting set is amplified loosely.
+- Cover the buyer from each angle the catalogue genuinely supports; within one angle, keep
+  only the sharpest few. Naming one angle reaches a fraction of the market, while two labels
+  for the same people add no one.
 - If the catalogue has no segment for what the business needs, say so plainly rather than
   substituting something close enough."""
 
@@ -48,28 +49,42 @@ What each kind means — this decides who is actually reached:
   product genuinely follows the event, weak otherwise.
 - DETAILED_DEMOGRAPHIC — "long-term life facts". Education, homeownership, marital status,
   and EMPLOYMENT — which is what someone does for a living, not what they buy.
+  These are SEGMENTS and belong in THIS call. The later demographics step is a different
+  thing entirely - it cannot accept them, and leaving them for it drops them silently.
 
 Use the tree. A segment's ancestors tell you what it actually covers, and picking a parent
 reaches everyone beneath it — choose the parent for reach, a leaf for precision.
 
-Pick the smallest set that covers the buyer. Every extra segment widens the audience because
-they are OR'd together, and Google then expands further on its own.
+Reach the buyer from every angle that genuinely applies. Someone already shopping for it, the
+person a life event has just turned into a buyer, and the people the product is built for are
+DIFFERENT audiences — a set that names only one of them leaves most of the market unreached.
 
-If nothing in the catalogue fits, say which audience is missing instead of picking the
-nearest label."""
+Within one angle it is the opposite: segments are OR'd, so a second label for the same people
+buys nothing. Keep the sharpest few and drop the near-synonyms.
+
+A kind with nothing that genuinely fits stays empty — say which audience is missing rather
+than filling it with the nearest label."""
 
 
 DEMOGRAPHICS = """\
-STEP — DEMOGRAPHICS. Narrow only where the product genuinely excludes people, then call
-submit_demographics. Call it with nothing if no narrowing is justified — that is a normal
-answer and often the right one.
+STEP — DEMOGRAPHICS. Age, gender, household income and parental status ONLY. This is not the
+DETAILED_DEMOGRAPHIC segment kind — those were segments and are already done; nothing here can
+carry them.
+
+These FILTER: they AND with every segment, so each one removes people the segments reached.
+Narrow only where the product genuinely excludes someone, then call submit_demographics. Call
+it with nothing if no narrowing is justified — that is a normal answer and often the right one.
 
 Every filter here shrinks reach and they combine with the segments, so a wrong one silently
 removes real buyers.
 - Age and gender: only when the product truly does not apply. Most products do not qualify.
 - Income: percentile bands of household income, not amounts. A premium product may justify
   the top bands; an everyday product does not.
-- Parental status: only when the product is about children."""
+- Parental status: only when the product is about children.
+
+Send `rationales` with an entry for EVERY dimension, the open ones included. "Anyone who can
+afford this buys it, so an age band would cut real buyers" is exactly what the user needs to
+read; an unexplained "Everyone" looks like a step you skipped."""
 
 
 MANAGE = """\
@@ -85,8 +100,17 @@ ANSWERING ("why this one?", "who does this reach?"):
 
 EDITING ("add something for young families", "drop the finance ones"):
 - Find real segments with search_audience_segments first. Never write an id.
-- If the search returns nothing, tell the user Google has no segment for it — do not
-  substitute a loose match.
+- If the search returns nothing, Google has no segment for it. Never substitute a loose
+  match. Instead offer a custom segment, which reaches people by what they SEARCH:
+  call draft_custom_segment, show the terms it found, and ASK. Only if they agree, call
+  submit_custom_segment — that creates a real thing in their account, so it is never the
+  answer to a question, only to a yes.
+- Go straight to draft_custom_segment when the user asks for search behaviour outright
+  ("people searching for X", "anyone comparing prices").
+- draft_custom_segment takes `themes` — give it the user's own words FIRST, then three to
+  five phrasings a real person would type for the same intent, using what you know about
+  this business. Those seed the search expansion, so this is where a good segment is won.
+  One phrase explores one direction and the result will be thin.
 
 WHAT CANNOT BE DONE — say so rather than silently ignoring it:
 - Only the advertiser's own customer lists can be EXCLUDED. An interest or life event cannot

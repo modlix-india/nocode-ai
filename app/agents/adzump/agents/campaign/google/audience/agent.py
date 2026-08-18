@@ -29,6 +29,9 @@ from app.agents.adzump.agents.campaign.google.audience.context import (
     current_phase,
     phase_prompt,
 )
+from app.agents.adzump.agents.campaign.google.audience.custom_segment import (
+    CUSTOM_SEGMENT_TOOLS,
+)
 from app.agents.adzump.agents.campaign.google.audience.manage_tools import MANAGE_TOOLS
 from app.agents.adzump.agents.campaign.google.audience.models import (
     AudienceSignal,
@@ -45,6 +48,7 @@ from app.agents.adzump.agents.campaign.models import (
     resolve_channel,
     set_audience,
 )
+from app.agents.adzump.services.business_storage import resolve_url
 from app.config import settings
 from app.core.agent import BaseAgent
 from app.core.context import BaseContext
@@ -63,10 +67,29 @@ _BUSINESS_TEXT_MAX = 4000
 AUD_MANAGE_HISTORY_TURNS = 4
 _MANAGE_REPLY_CAP = 1500  # chars of a stored reply — bounds the seeded history
 
-# Manage mode gets search but not fetch/submit. The submit tools replace a set wholesale,
-# which would fabricate rationales for segments the model never re-derived and clobber a
-# concurrent panel click; edits go through edit_audience instead.
-_MANAGE_TOOL_SET = [SEARCH_AUDIENCE_SEGMENTS, *MANAGE_TOOLS]
+# No submit_segments in manage mode: it replaces a set wholesale, fabricating rationales for
+# segments the model never re-derived. Edits go through edit_audience.
+_MANAGE_TOOL_SET = [SEARCH_AUDIENCE_SEGMENTS, *MANAGE_TOOLS, *CUSTOM_SEGMENT_TOOLS]
+
+# A custom segment is drafted on one turn and created on the next, so the drafted terms ride
+# the parent session between two throwaway ones - the user confirms what they were shown.
+_CARRIED_KEYS = ("aud_custom_candidates", "aud_custom_theme")
+_DRAFT_SEEN = "aud_custom_offered"
+
+
+def carry_draft(parent_ctx: dict) -> dict:
+    """The drafted terms a manage run may submit, and never more than one turn old.
+
+    A declined draft used to linger, so a later "yes" meant for something else could create a
+    real segment in the advertiser's account.
+    """
+    if parent_ctx.pop(_DRAFT_SEEN, None):
+        for key in _CARRIED_KEYS:
+            parent_ctx.pop(key, None)
+    carried = {k: parent_ctx[k] for k in _CARRIED_KEYS if k in parent_ctx}
+    if carried:
+        parent_ctx[_DRAFT_SEEN] = True
+    return carried
 
 
 def _reply_text(messages: list[dict]) -> str:
@@ -88,24 +111,14 @@ def _reply_text(messages: list[dict]) -> str:
 
 
 class _AudienceStream(ChildAgentStream):
-    """Swallows the agent's own prose and tool calls — the panel is the output."""
+    """Swallows the prose - the panel is the output. Tool calls forward: the run is a minute
+    of silence, and a step that came back empty must not look like one that worked."""
 
     label = "audience_targeting"
 
-    async def emit_tool_start(self, *a, **kw) -> None:
-        return
 
-    async def emit_tool_update(self, *a, **kw) -> None:
-        return
-
-    async def emit_tool_result(self, *a, **kw) -> None:
-        return
-
-
-class _ManageStream(ChildAgentStream):
-    """Generation swallows the prose; here the prose is the answer, so forward it."""
-
-    label = "audience_targeting"
+class _ManageStream(_AudienceStream):
+    """Here the prose IS the answer, not the panel."""
 
     async def emit_text(self, text: str) -> None:
         await self._parent.emit_text(text)
@@ -179,9 +192,8 @@ class AudienceAgent(BaseAgent):
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         ctx = super().build_tool_context(session)
-        ctx["session_context"] = (
-            session.context
-        )  # tools read/write aud_* run state here
+        # tools read and write aud_* run state here
+        ctx["session_context"] = session.context
         if session.auth:
             ctx["auth"] = session.auth
         return ctx
@@ -227,9 +239,8 @@ class AudienceAgent(BaseAgent):
                 event_stream=stream,
             )
         except asyncio.CancelledError:
-            # The orchestrator's wait_for timeout cancels us with CancelledError, which is a
-            # BaseException the handler below misses - close the card, then re-raise. There
-            # is no partial audience to hand back: an ad group needs the whole set.
+            # A timeout cancels us with CancelledError, which the handler below misses -
+            # close the card, then re-raise. No partial audience: an ad group needs them all.
             await stream._emit_finished(
                 agent_id="audience_targeting",
                 run_start=run_start,
@@ -300,16 +311,32 @@ class AudienceAgent(BaseAgent):
             "aud_login_customer_id": str(spec.get("parent_account") or ""),
             "aud_channel_type": resolve_channel(spec).google_channel_type.value,
             "aud_country": str((dump.get("meta") or {}).get("country") or ""),
+            # Seeds custom-segment expansion, and stamps the OWNED_MARKER description.
+            "aud_product_name": str(
+                (parent_ctx.get("product_data") or {}).get("product_name") or ""
+            ),
+            # Rides the Planner call as a keywordAndUrlSeed, so Google reads the landing
+            # page for ideas rather than working from the theme alone.
+            "aud_business_url": resolve_url(parent_ctx) or "",
+            # The Planner scores against this; unset, it falls back to its India default.
+            "aud_geo": [
+                g
+                for g in [
+                    ((parent_ctx.get("product_data") or {}).get("place") or {}).get(
+                        "country_geo_constant"
+                    )
+                ]
+                if g
+            ],
             # apply_edit reads the account off this to re-resolve a ref against the catalogue.
             "campaign_spec": spec,
             "campaign_craft_id": parent_ctx.get("campaign_craft_id") or "",
         }
         set_audience(session.context, dump)
+        session.context.update(carry_draft(parent_ctx))
 
-        # Seed the catalogue up front. search_audience_segments reads it, the MANAGE step
-        # tells the model to search before adding anything, and manage mode never calls
-        # fetch — so without this every "add something for X" would dead-end. The adapter
-        # caches for 24h, so this is a dict lookup on any campaign built today.
+        # Manage mode has no fetch tool, so without this every "add something for X" would
+        # dead-end at the search it is told to run first. Cached 24h by the adapter.
         session.context["aud_candidates"] = await catalogue.load(
             customer_id=session.context["aud_customer_id"],
             channel_type=session.context["aud_channel_type"],
@@ -360,6 +387,12 @@ class AudienceAgent(BaseAgent):
             edited = audience(session.context)
             if edited is not None:
                 set_audience(parent_ctx, edited)
+            for key in _CARRIED_KEYS:
+                value = session.context.get(key)
+                if value is None:
+                    parent_ctx.pop(key, None)  # spent, or never drafted
+                else:
+                    parent_ctx[key] = value
             if isinstance(stream, ChildAgentStream):
                 await stream._emit_finished(
                     agent_id=agent_id,
@@ -375,9 +408,8 @@ class AudienceAgent(BaseAgent):
                 history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]
             )[-AUD_MANAGE_HISTORY_TURNS:]
 
-        # The audience agent has already replied to the user directly (forwarded prose).
-        # Tell the orchestrator exactly that — it was NOT told the outcome, so it must not
-        # state one.
+        # The reply already reached the user as forwarded prose. The orchestrator was not
+        # told the outcome, so it must not state one.
         return ToolResult(
             success=True,
             summary=(

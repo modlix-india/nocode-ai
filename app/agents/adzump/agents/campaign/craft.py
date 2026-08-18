@@ -19,8 +19,23 @@ from app.agents.adzump.agents.campaign.google.audience.models import (
     IncomeRange,
     SignalKind,
 )
+from app.agents.adzump.agents.campaign.google.channel_controls import (
+    AD_TYPE_LABEL,
+    SURFACES,
+    AdType,
+    ad_type_for,
+    locked_reason,
+)
+from app.agents.adzump.agents.campaign.google.channel_controls import (
+    normalize as normalize_controls,
+)
 from app.agents.adzump.agents.campaign.google.keyword.models import AdGroupStatus
-from app.agents.adzump.agents.campaign.models import audience, keyword_research
+from app.agents.adzump.agents.campaign.models import (
+    audience,
+    channel_controls,
+    creative,
+    keyword_research,
+)
 from app.agents.adzump.platform import is_google as _is_google
 from app.agents.adzump.platform import is_meta as _is_meta
 
@@ -40,7 +55,10 @@ def _spec_blocks(spec: dict) -> list[dict]:
         blocks.append({"type": "badge", "label": platform})
     kv: list[dict] = []
     if spec.get("channel"):
-        kv.append({"key": "Channel", "value": str(spec["channel"])})
+        # Stored as the API enum (DEMAND_GEN); the panel is read by a person.
+        kv.append(
+            {"key": "Channel", "value": str(spec["channel"]).replace("_", " ").title()}
+        )
     if spec.get("duration"):
         kv.append({"key": "Duration", "value": str(spec["duration"])})
     if spec.get("budget"):
@@ -122,30 +140,43 @@ def keyword_review_block(dump: dict) -> dict:
     return {"id": "keyword_review", "type": "keyword_review", "tabs": tabs}
 
 
+_EVERYONE = "Everyone"
+
+# Panel order, and the DemographicSpec field each row reads.
+_DIMENSIONS = (
+    ("age_ranges", "Age"),
+    ("genders", "Gender"),
+    ("income_ranges", "Household income"),
+    ("parental_statuses", "Parental status"),
+)
+
+
 def _demographic_rows(spec: dict) -> list[dict]:
-    """One row per dimension the agent narrowed. Dimensions AND together, so an absent one
-    means "everyone" and is left out rather than shown as a filter."""
-    rows: list[dict] = []
+    """Every dimension with the reason it was set that way, narrowed or not.
+
+    Leaving one open is a judgement; shown as a bare "Everyone" it reads as one nobody made.
+    """
     ages = [
         f"{r['min_age']}-{r['max_age']}" if r.get("max_age") else f"{r['min_age']}+"
         for r in (spec.get("age_ranges") or [])
     ]
-    if ages:
-        rows.append({"attribute": "Age", "value": ", ".join(ages)})
-    if genders := spec.get("genders"):
-        rows.append({"attribute": "Gender", "value": ", ".join(_titled(genders))})
-    if incomes := spec.get("income_ranges"):
-        rows.append(
-            {
-                "attribute": "Household income",
-                "value": ", ".join(IncomeRange(i).label for i in incomes),
-            }
-        )
-    if parental := spec.get("parental_statuses"):
-        rows.append(
-            {"attribute": "Parental status", "value": ", ".join(_titled(parental))}
-        )
-    return rows
+    values = {
+        "age_ranges": ", ".join(ages),
+        "genders": ", ".join(_titled(spec.get("genders") or [])),
+        "income_ranges": ", ".join(
+            IncomeRange(i).label for i in spec.get("income_ranges") or []
+        ),
+        "parental_statuses": ", ".join(_titled(spec.get("parental_statuses") or [])),
+    }
+    why = spec.get("rationales") or {}
+    return [
+        {
+            "attribute": label,
+            "value": values[field] or _EVERYONE,
+            "rationale": why.get(field, ""),
+        }
+        for field, label in _DIMENSIONS
+    ]
 
 
 def _titled(values: list[str]) -> list[str]:
@@ -164,6 +195,9 @@ def audience_review_block(dump: dict) -> dict:
     for kind in SignalKind:
         rows = [
             {
+                # Not a column, but the panel needs it: a label is not an identity, and the
+                # mutation matches on resource name or bare id.
+                "ref": s.get("ref", ""),
                 "segment": s.get("label", ""),
                 "category": " > ".join((s.get("path") or [])[:-1]),
                 "rationale": s.get("rationale", ""),
@@ -176,18 +210,25 @@ def audience_review_block(dump: dict) -> dict:
                 {
                     "key": kind.value.lower(),
                     "label": f"{kind.label} ({len(rows)})",
+                    "help": kind.help,
                     "columns": ["segment", "category", "rationale"],
                     "rows": rows,
-                    # No edit: a segment is a reference into Google's catalogue, not free
-                    # text, so changing one is a delete plus an add picked from a search.
-                    "actions": ["add", "delete"],
+                    # No edit — segments are catalogue refs, not free text; change = delete + add.
+                    # No add on custom segments — those are built in chat, not picked from a search.
+                    "actions": ["delete"]
+                    if kind is SignalKind.CUSTOM_AUDIENCE
+                    else ["add", "delete"],
                 }
             )
 
     # Only user lists are excludable (ExclusionSegment has one variant), so exclusions are
     # one section rather than a negatives split inside every kind.
     excluded = [
-        {"segment": s.get("label", ""), "rationale": s.get("rationale", "")}
+        {
+            "ref": s.get("ref", ""),
+            "segment": s.get("label", ""),
+            "rationale": s.get("rationale", ""),
+        }
         for s in signals
         if s.get("negative")
     ]
@@ -203,16 +244,57 @@ def audience_review_block(dump: dict) -> dict:
 
     # Always present, even with no rows: "no narrowing" is the common and usually correct
     # answer, and a section the user can open is how they change it.
+    demographics = dump.get("demographics") or {}
     sections.append(
         {
             "key": "demographics",
-            "label": "Demographics",
-            "columns": ["attribute", "value"],
-            "rows": _demographic_rows(dump.get("demographics") or {}),
+            # "Demographic Filters", not "Demographics": the segment section above is called
+            # Detailed Demographics and ADDS people, while this one removes them.
+            "label": "Demographic Filters",
+            "help": (
+                "Applied on top of every segment above. Someone has to match here AND be "
+                "in one of those segments, so each filter you set makes the audience "
+                "smaller. Leave one as Everyone unless it truly does not apply."
+            ),
+            "columns": ["attribute", "value", "rationale"],
+            "rows": _demographic_rows(demographics),
+            # The rows are prose ("25-44", "Top 10%"); the editor needs the values back, and
+            # set_demographics REPLACES, so anything it cannot see it silently drops.
+            "values": demographics,
             "actions": ["edit"],
         }
     )
     return {"id": "audience_review", "type": "audience_review", "sections": sections}
+
+
+def channel_controls_block(controls: dict | None, ad_type: AdType) -> dict:
+    """Exported so the toggle handler can re-emit only this block (keyed upsert, no flash).
+
+    Every surface is listed, including ones this ad type cannot serve on — those carry the
+    reason and are not toggleable. Hiding them would leave the user wondering where YouTube
+    in-stream went.
+    """
+    selected = normalize_controls(controls, ad_type)
+    rows = []
+    for surface in SURFACES:
+        reason = locked_reason(surface, ad_type)
+        rows.append(
+            {
+                "surface": surface.key,
+                "label": surface.label,
+                "enabled": selected[surface.key],
+                "locked": bool(reason),
+                "reason": reason,
+            }
+        )
+    return {
+        "id": "channel_controls",
+        "type": "channel_controls",
+        "ad_type": AD_TYPE_LABEL[ad_type],
+        "columns": ["label", "enabled", "reason"],
+        "rows": rows,
+        "actions": ["toggle"],
+    }
 
 
 # Platform section builders
@@ -237,6 +319,14 @@ def _google_campaign_blocks(session_ctx: dict) -> list[dict]:
     aud = audience(session_ctx) or {}
     if aud:
         blocks.append({"type": "divider"})
+        # Surfaces before segments: campaign-level shape reads with the summary above it,
+        # and the audience is long enough to bury anything under it.
+        blocks.append({"type": "heading", "text": "Where Ads Show"})
+        blocks.append(
+            channel_controls_block(
+                channel_controls(session_ctx), ad_type_for(creative(session_ctx))
+            )
+        )
         blocks.append({"type": "heading", "text": "Audience Targeting"})
         blocks.append(audience_review_block(aud))
 
@@ -289,7 +379,9 @@ async def emit_campaign_craft(stream, craft_id: str, session_ctx: dict) -> None:
             [b.get("type") for b in blocks],
         )
     except Exception as exc:
-        logger.debug("emit_campaign_craft failed: %s", str(exc)[:_LOG_TRUNCATE])
+        # Warning, not debug: the panel is the whole output of a build, so a failure here is
+        # the user staring at an empty card - not a detail worth hiding at INFO.
+        logger.warning("emit_campaign_craft failed: %s", str(exc)[:_LOG_TRUNCATE])
 
 
 async def emit_section_update(stream, craft_id: str, block: dict) -> None:
@@ -299,4 +391,4 @@ async def emit_section_update(stream, craft_id: str, block: dict) -> None:
     try:
         await stream.emit_craft(craft_id, "Campaign", [block], append=True)
     except Exception as exc:
-        logger.debug("emit_section_update failed: %s", str(exc)[:_LOG_TRUNCATE])
+        logger.warning("emit_section_update failed: %s", str(exc)[:_LOG_TRUNCATE])

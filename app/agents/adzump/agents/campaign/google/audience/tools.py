@@ -15,6 +15,7 @@ JSON persistence). Submit re-checks every reference against what was fetched.
 from __future__ import annotations
 
 import logging
+from collections import Counter
 
 from pydantic import ValidationError
 
@@ -39,10 +40,27 @@ def _state(context: dict) -> dict | None:
     return context.get("session_context")
 
 
+_TREE_MAX_CHARS = 120_000  # the whole catalogue in one result; the 4000 default cuts ~93%
+
+
 async def _fetch_audience_segments(params: dict, context: dict) -> ToolResult:
     state = _state(context)
     if state is None:
         return ToolResult(success=False, error="No session context available.")
+
+    # Every live run so far has called this twice. The catalogue is 24h-cached and cannot
+    # change mid-run, so a second tree in the history is a pure duplicate of the first.
+    if loaded := state.get("aud_candidates"):
+        return ToolResult(
+            success=True,
+            summary=f"{len(loaded)} targetable segments available.",
+            model_summary=(
+                f"Already loaded - the full tree is in the earlier "
+                f"fetch_audience_segments result ({len(loaded)} segments). Scroll back to "
+                "it, or call search_audience_segments to narrow it."
+            ),
+        )
+
     customer_id = state.get("aud_customer_id")
     if not customer_id:
         return ToolResult(success=False, error="No ad account set for this run.")
@@ -62,10 +80,23 @@ async def _fetch_audience_segments(params: dict, context: dict) -> ToolResult:
         )
 
     state["aud_candidates"] = candidates
+    tree = catalogue.as_tree(candidates)
+    # The tree is ~90% of this agent's context and is resent every turn. Logged by depth so
+    # a decision to prune deep leaves (leaving them to search) rests on real numbers.
+    depths = Counter(len(c["path"]) for c in candidates)
+    logger.info(
+        "audience catalogue: %d segments, %d chars, depths %s",
+        len(candidates),
+        len(tree),
+        dict(sorted(depths.items())),
+    )
     return ToolResult(
         success=True,
+        # summary is the chat line; model_summary is what the LLM reads. `data` does NOT
+        # reach it - to_tool_result_content falls back to data only when both are empty.
         summary=f"{len(candidates)} targetable segments available.",
-        data={"segments": catalogue.as_tree(candidates)},
+        model_summary=tree,
+        MAX_RESULT_CHARS=_TREE_MAX_CHARS,
     )
 
 
@@ -84,12 +115,12 @@ async def _search_audience_segments(params: dict, context: dict) -> ToolResult:
         return ToolResult(
             success=True,
             summary=f"Nothing matches {query!r}. Describe the audience with a custom segment instead.",
-            data={"matches": []},
         )
+    shown = hits[: constants.MAX_SEARCH_RESULTS]
     return ToolResult(
         success=True,
         summary=f"{len(hits)} match {query!r}.",
-        data={"matches": hits[: constants.MAX_SEARCH_RESULTS]},
+        model_summary=catalogue.as_lines(shown),
     )
 
 
@@ -172,6 +203,7 @@ async def _submit_demographics(params: dict, context: dict) -> ToolResult:
                 "genders": params.get("genders") or [],
                 "income_ranges": params.get("income_ranges") or [],
                 "parental_statuses": params.get("parental_statuses") or [],
+                "rationales": params.get("rationales") or {},
             }
         )
     except ValidationError as exc:
@@ -269,6 +301,17 @@ SUBMIT_DEMOGRAPHICS = ToolDefinition(
             name="parental_statuses",
             type="array",
             description="PARENT and/or NOT_A_PARENT.",
+            required=False,
+        ),
+        ToolParameter(
+            name="rationales",
+            type="object",
+            description=(
+                "One short reason per dimension, keyed age_ranges / genders / "
+                "income_ranges / parental_statuses. Give one for EVERY dimension, the ones "
+                "you leave open included - the user is shown why it was not narrowed, and "
+                "'Everyone' with no reason reads as a step you skipped."
+            ),
             required=False,
         ),
     ],

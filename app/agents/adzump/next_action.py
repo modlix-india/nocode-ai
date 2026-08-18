@@ -17,8 +17,8 @@ from app.agents.adzump.agents.campaign.google.keyword.themes import (
     KEYWORD_THEMES,
 )
 from app.agents.adzump.agents.campaign.models import (
-    DEMAND_GEN_ENABLED,
     Channel,
+    build_review_items,
     is_build_complete,
     resolve_channel,
 )
@@ -112,6 +112,9 @@ class CampaignContext:
     # flips the review branch from "prepare the campaign" to "launch". Which slot counts
     # depends on the channel: keywords for Search, audience for Demand Gen.
     build_done: bool = False
+    # What the review panel is showing, named by the channel that built it - so this module
+    # never has to know which slots a channel has.
+    review_items: tuple[str, ...] = ()
     # True once the user okays the campaign summary - the gate between showing the summary
     # and asking which ad groups to build.
     summary_confirmed: bool = False
@@ -149,6 +152,7 @@ class CampaignContext:
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
             build_done=is_build_complete(ctx),
+            review_items=build_review_items(ctx),
             summary_confirmed=_is_affirmative(
                 (ctx.get("campaign_spec") or {}).get("summary_confirmed")
             ),
@@ -255,18 +259,6 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             'platform - use the present_options tool (field "platform") to ask '
             '"Which platform should we run this on?" with chip choices: Google Ads, '
             "Meta. CALL the tool - never type the call into your reply."
-        )
-
-    # Google splits into campaign types with different builds - Search targets keywords,
-    # Demand Gen targets audiences. Meta has its own objective model and no channel.
-    if DEMAND_GEN_ENABLED and cctx.is_google and not cctx.spec.get("channel"):
-        missing.append(
-            'channel - use the present_options tool (field "channel") to ask '
-            '"What kind of Google campaign should we run?" with these options - each '
-            "carries its own `answer`: "
-            '{label "Search - capture people already looking", answer "SEARCH"}, '
-            '{label "Demand Gen - reach people on YouTube, Discover and Gmail", '
-            'answer "DEMAND_GEN"}. CALL the tool - never type the call into your reply.'
         )
 
     has_platform = bool(cctx.spec.get("platform"))
@@ -444,7 +436,20 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     elif not missing and cctx.is_google and not cctx.build_done:
         # Google-only build stage. Other platforms have no build step yet and skip
         # straight to launch below.
-        if cctx.channel is Channel.SEARCH and not cctx.spec.get("ad_groups"):
+        if not cctx.spec.get("channel"):
+            # Which build runs, so it belongs to the build stage - not to the details the
+            # summary confirms. Options come from the enum: a channel that exists can be
+            # built, so a new one is offered without touching this module.
+            options = ", ".join(
+                f'{{label "{c.chip_label}", answer "{c.value}"}}' for c in Channel
+            )
+            missing.append(
+                'channel - use the present_options tool (field "channel") to ask '
+                '"What kind of Google campaign should we run?" with these options - each '
+                f"carries its own `answer`: {options}. CALL the tool - never type the "
+                "call into your reply."
+            )
+        elif cctx.channel is Channel.SEARCH and not cctx.spec.get("ad_groups"):
             # Ad groups are keyword themes, so only Search picks them.
             missing.append("ad groups - " + _ad_group_question())
         elif cctx.channel is Channel.SEARCH:
@@ -464,9 +469,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         # Launch. Google has keywords in the panel to review first; other platforms go
         # straight from the confirmed summary to the launch confirm.
         review = (
-            "The keyword suggestions are shown in the panel. Ask the user to review and edit "
-            "them (add / remove / edit), then "
-            if cctx.is_google
+            f"The panel shows {', '.join(cctx.review_items)}. Ask the user to review and "
+            "edit them, then "
+            if cctx.review_items
             else "The campaign details are confirmed. "
         )
         missing.append(
