@@ -299,11 +299,29 @@ class AdzumpAgent(BaseAgent):
         """v9 I-0 · when the user attached image(s) this turn, hand them to the
         Asset Manager via manage_assets (bytes are stashed on the session by the
         /chat handler). First action of the turn - otherwise the upload is lost
-        (it only lives in the pending stash)."""
+        (it only lives in the pending stash).
+
+        Exception: when a Lead Form draft is active, the image belongs to the
+        Lead Form agent (cover/background photo), not the general asset pipeline.
+        In that case skip manage_assets entirely and route to suggest_lead_form
+        so the sub-agent can upload the image to Meta in the same turn.
+        """
         pending = session.context.get("_pending_uploads")
         if not pending:
             return ""
         n = len(pending)
+
+        # Lead Form background upload — do NOT let manage_assets consume the bytes.
+        if session.context.get("lead_form_draft"):
+            return (
+                f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
+                "A Lead Form draft is currently active. DO NOT call `manage_assets`. "
+                "The uploaded image is intended as the lead form background cover photo. "
+                "Pass the user's request directly to `suggest_lead_form` — the Lead Form "
+                "agent will handle the upload to Meta automatically. Do this before "
+                "anything else, then continue."
+            )
+
         return (
             f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
             "FIRST, call `manage_assets` to hand the upload(s) to the Asset "
