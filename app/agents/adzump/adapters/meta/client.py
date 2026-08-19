@@ -47,13 +47,20 @@ class MetaClient:
         client_code: str,
         auth_headers: dict[str, str],
         json: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
+        access_token: str | None = None,
     ) -> dict[str, Any]:
-        token = await self._get_api_token(client_code, auth_headers)
+        token = access_token or await self._get_api_token(client_code, auth_headers)
         url = f"{self.BASE_URL}{endpoint}"
+        headers = {"Authorization": f"Bearer {token}"}
+        if json is not None:
+            headers["Content-Type"] = "application/json"
+
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
-                url, headers=self._build_headers(token), json=json, params=params,
+                url, headers=headers, json=json, data=data, files=files, params=params,
             )
             _raise_for_meta_error(response)
             return response.json()
