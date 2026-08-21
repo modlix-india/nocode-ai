@@ -40,6 +40,10 @@ def _data_text(data: Any) -> str | None:
         return str(data)
 
 
+# Shown in the user's tool row when a failed tool set no `display_error`.
+GENERIC_FAILURE_DISPLAY = "This step didn't complete."
+
+
 @dataclass(frozen=True)
 class ToolParameter:
     """A single parameter for a tool definition."""
@@ -88,10 +92,24 @@ class ToolResult:
     # Terse model-facing note for audience="user" — what the model sees instead
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""
+    # User-facing one-liner for FAILURES (model_summary's mirror image): `error`
+    # is model-steering text (gate refusals, "call X NOW" prescriptions) and
+    # never reaches the UI; unset falls back to GENERIC_FAILURE_DISPLAY.
+    display_error: str = ""
 
     # Hard cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.
     MAX_RESULT_CHARS: int = 4000
+
+    def to_display_text(self, model_content: str = "") -> str:
+        """What the USER's tool row shows (SSE event + persisted turn).
+
+        Success keeps today's display (summary, else the model content the
+        caller passes). Failure shows `display_error` or the calm generic -
+        NEVER `error`, which is written to steer the model."""
+        if self.success:
+            return self.summary or model_content
+        return self.display_error or GENERIC_FAILURE_DISPLAY
 
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM.

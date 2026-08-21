@@ -74,6 +74,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
                 "Meta's creative-bound delivery). This campaign is not on Meta - "
                 "do not offer or fetch them."
             ),
+            display_error="Competitor ads are available on Meta campaigns.",
         )
     if not wants_competitor_creatives(_last_user_text(context)):
         return ToolResult(
@@ -82,10 +83,11 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
                 "Consent gate: fetching competitor creatives costs ad-library "
                 "credits, so it needs an explicit go-ahead in the user's LATEST "
                 "message. Ask first via the present_options tool (field "
-                '"competitor_creatives_declined"): "Want to see the ads your '
-                'competitors are running?" with chips Yes / No - then call this '
+                '"competitor_creatives_declined"): "Want to see your '
+                'competitors\' recent ads?" with chips Yes / No - then call this '
                 "tool only after a clear yes."
             ),
+            display_error="Waiting for your go-ahead before fetching competitor ads.",
         )
 
     competitive = session_ctx.get("competitor_analysis") or {}
@@ -99,51 +101,70 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
                 "turn - the user's consent is already given and must not be "
                 "asked for twice."
             ),
+            display_error="Finding your competitors first…",
         )
 
     force = bool(params.get("force"))
     await emit_progress(context, "Fetching competitor creatives…")
 
+    # Stream each competitor into the panel as it resolves - a 5-competitor
+    # fetch takes minutes end-to-end, and the customer should watch ads land
+    # one competitor at a time, not stare at a spinner until the last one.
+    business = session_ctx.get("product_data") or {}
+    comps_by_key: dict[str, list[dict]] = {}  # several entries can share a domain
+    for comp in competitors:
+        key, _name = ci.competitor_identity(comp)
+        if key:
+            comps_by_key.setdefault(key, []).append(comp)
+
+    total_creatives = 0
+    resolved = 0
+
+    async def _on_resolved(key: str, record) -> None:
+        nonlocal total_creatives, resolved
+        comps = comps_by_key.get(key)
+        if not comps:
+            return
+        dumped = record.model_dump(by_alias=True)
+        for comp in comps:
+            comp["creatives"] = dumped["creatives"]
+            comp["totalCreatives"] = dumped["totalCreatives"]
+            comp["activeCreatives"] = dumped["activeCreatives"]
+        total_creatives += dumped["totalCreatives"]
+        resolved += 1
+        await emit_progress(
+            context,
+            f"{record.name or key}: {dumped['totalCreatives']} ads "
+            f"({resolved}/{len(comps_by_key)} competitors)…",
+        )
+        await rerender_craft(session_ctx, context, business,
+                             spec.get("platform") or "")
+
     try:
         results = await ci.creatives_for_all(
-            competitors, context, force=force, enrich=_essence_enrich(context))
+            competitors, context, force=force, enrich=_essence_enrich(context),
+            on_resolved=_on_resolved)
     except Exception as e:
         logger.warning("fetch_competitor_creatives failed: %s: %s",
                        type(e).__name__, str(e)[:200])
-        return ToolResult(success=False, error=f"Creative fetch failed: {e}")
+        return ToolResult(
+            success=False, error=f"Creative fetch failed: {e}",
+            display_error="Couldn't fetch competitor ads right now.",
+        )
 
     # The consented fetch ran to completion - the offer is resolved even when it
     # found nothing (zero ads, no usable domains). An explicit marker, not the
     # creative lists: an empty result must not re-open the consent every turn
     # (see campaign_data.competitor_creatives_offer_resolved).
+    # NOTE: on the rare failure path above (cancellation / loop bug), earlier
+    # _on_resolved side effects survive while this stays unset - acceptable:
+    # the refetch is cache-served for the competitors already resolved.
     session_ctx["_competitor_creatives_fetched"] = True
 
-    # Attach creatives back to each competitor entry (persisted in session),
-    # then rebuild the panel ONCE - each competitor card nests its own
-    # creatives, so there is no appendable standalone section anymore.
-    business = session_ctx.get("product_data") or {}
-
-    total_creatives = 0
-    enriched = 0
-    for comp in competitors:
-        key, _name = ci.competitor_identity(comp)
-        record = results.get(key)
-        if not record:
-            continue
-        dumped = record.model_dump(by_alias=True)
-        comp["creatives"] = dumped["creatives"]
-        comp["totalCreatives"] = dumped["totalCreatives"]
-        comp["activeCreatives"] = dumped["activeCreatives"]
-        total_creatives += dumped["totalCreatives"]
-        enriched += 1
-    if enriched:
-        await rerender_craft(session_ctx, context, business,
-                             spec.get("platform") or "")
-
     summary = (
-        f"Fetched creatives for {enriched} competitor"
-        f"{'s' if enriched != 1 else ''} ({total_creatives} ads total)."
-        if enriched else "No creatives found for the current competitors."
+        f"Fetched creatives for {resolved} competitor"
+        f"{'s' if resolved != 1 else ''} ({total_creatives} ads total)."
+        if resolved else "No creatives found for the current competitors."
     )
     return ToolResult(
         success=True,

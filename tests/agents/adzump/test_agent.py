@@ -51,9 +51,9 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
     def test_unoffered_prescribes_the_ask_once(self):
         cases = [
             ("with analysis", dict(competitor_names=["Rival"], attempted=True),
-             "Want to see the ads your competitors are running right now?"),
+             "Want to see your competitors' recent ads?"),
             ("without analysis", {},
-             "Want me to analyze your competitors and show the ads they're running?"),
+             "Want me to analyze your competitors and show their recent ads?"),
         ]
         for name, kw, question in cases:
             with self.subTest(case=name):

@@ -7,11 +7,13 @@ Below the model, no mocks: real functions, hand-built inputs. The one stub is
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import unittest
 
 from app.agents.adzump.agents.creative_essence.agent import (
     EssenceAnalyst,
+    MAX_CONCURRENT_CALLS,
     MAX_IMAGES_PER_CALL,
     _build_essence_message,
     _collect,
@@ -151,6 +153,25 @@ class ExtractTests(unittest.IsolatedAsyncioTestCase):
             await agent.extract([_ci(f"h{i}") for i in range(MAX_IMAGES_PER_CALL + 1)],
                                 _ParentStream(), auth=None)
             self.assertEqual([len(c) for c in agent.calls], [MAX_IMAGES_PER_CALL, 1])
+        with self.subTest("chunks run concurrently, bounded by MAX_CONCURRENT_CALLS"):
+            class _Probe(EssenceAnalyst):
+                def __init__(self):
+                    self.name = "creative_essence"
+                    self.in_flight = 0
+                    self.max_in_flight = 0
+
+                async def _run_once(self, chunk, stream, auth, parent_session_context):
+                    self.in_flight += 1
+                    self.max_in_flight = max(self.max_in_flight, self.in_flight)
+                    await asyncio.sleep(0.01)
+                    self.in_flight -= 1
+                    return EssenceBatch(verdicts=[]), 0, 0
+
+            probe = _Probe()
+            await probe.extract([_ci(f"h{i}") for i in range(MAX_IMAGES_PER_CALL * 4)],
+                                _ParentStream(), auth=None)
+            self.assertGreater(probe.max_in_flight, 1)
+            self.assertLessEqual(probe.max_in_flight, MAX_CONCURRENT_CALLS)
         with self.subTest("agent_finished carries summed usage"):
             parent = _ParentStream()
             agent = _StubbedAnalyst([

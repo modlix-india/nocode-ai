@@ -906,10 +906,10 @@ class BaseAgent:
         )
         tool_content = result.to_tool_result_content()
 
-        # Use a short display summary for the SSE event — the UI only
-        # shows 80 chars anyway and very large payloads (e.g. full page
-        # trees) can fragment SSE lines and stall the spinner.
-        display_summary = result.summary or result.error or tool_content
+        # What the user's tool row shows (never `error` - that text steers the
+        # model; see ToolResult.to_display_text). Kept short: the UI truncates,
+        # and very large payloads can fragment SSE lines and stall the spinner.
+        display_summary = result.to_display_text(tool_content)
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
 
@@ -917,9 +917,13 @@ class BaseAgent:
         # posted to chat AND persisted (append to the run-scoped parts the saved
         # turn is built from, so it survives refresh). The model writes only a
         # lead-in (tool-text contract); no de-dup — a rare verbatim echo is OK.
+        # Framed as its own paragraph: the parts are "".join'd (they're stream
+        # deltas) and the UI concatenates text events, so an unseparated summary
+        # glues onto surrounding prose ("…Pride EuphoraFetched creatives…").
         if result.audience in ("user", "both") and result.success and result.summary:
-            await event_stream.emit_text(result.summary)
-            assistant_text_parts.append(result.summary)
+            paragraph = f"\n\n{result.summary}\n\n"
+            await event_stream.emit_text(paragraph)
+            assistant_text_parts.append(paragraph)
 
         # Learning loop: track tool errors for pitfall detection
         if not result.success:
@@ -961,7 +965,9 @@ class BaseAgent:
             "display_name": display_name,
             "input": tool_input,
             "success": result.success,
-            "summary": result.summary or result.error or "",
+            # Rebuilds the user's tool rows on refresh - same display rule as
+            # the SSE event (sans the model-content fallback).
+            "summary": result.to_display_text(),
             "tool_use_id": tool_use_id,
             "kind": getattr(tool, "kind", "tool") if tool else "tool",
             "elicit_mode": getattr(tool, "elicit_mode", "deferred") if tool else "deferred",

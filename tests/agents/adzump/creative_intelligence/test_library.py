@@ -52,9 +52,14 @@ def _record(*, age_days: int, creatives=None) -> Competitor:
                       creatives=creatives or [Creative(creative_id="old")])
 
 
-def _ad(creative_id: str, media_type: str = "image") -> Creative:
+def _ad(creative_id: str, media_type: str = "image", *,
+        last_seen_days_ago: int = 1, **fields) -> Creative:
+    """A fetched creative; recently-seen by default so it clears the essence
+    recency gate (which has its own dedicated test)."""
+    fields.setdefault("last_seen", (
+        datetime.now(timezone.utc) - timedelta(days=last_seen_days_ago)).isoformat())
     return Creative(creative_id=creative_id, media_type=media_type,
-                    source_asset_url=f"https://vendor/{creative_id}.jpg")
+                    source_asset_url=f"https://vendor/{creative_id}.jpg", **fields)
 
 
 async def _rehost_hashing_by_creative_id(src, kind, ctx, hints=None, name="", perceptual=False):
@@ -109,15 +114,29 @@ class LibraryTests(unittest.TestCase):
             rec = self._run(stored=_record(age_days=99), source=FakeSource(creatives=[]))
             self.assertEqual(rec.creatives[0].creative_id, "old")
             library.store.upsert_competitor.assert_not_awaited()
-        with self.subTest("one failed competitor does not abort the batch"):
-            async def one_bad(*, key, name, ctx, force=False, source=None, enrich=None):
+        with self.subTest("one failed FETCH does not abort the batch"):
+            async def fetch_one_bad(*, key, name, ctx, force, source):
                 if key == "bad.com":
                     raise RuntimeError("poisoned record")
-                return _record(age_days=1)
-            with mock.patch.object(library, "creatives_for", new=one_bad):
+                return None, _record(age_days=1)  # cache hit
+            with mock.patch.object(library, "_fetch_stage", new=fetch_one_bad):
                 results = asyncio.run(library.creatives_for_all(
                     [{"name": "Bad", "url": "https://bad.com"},
                      {"name": "Nike", "url": "https://nike.com"}], ctx={}))
+            self.assertEqual(list(results), ["nike.com"])
+        with self.subTest("one failed PROCESS does not abort the batch"):
+            async def bad_upsert(competitor, ctx):
+                if competitor.competitor_key == "bad.com":
+                    raise RuntimeError("write refused")
+                return "id1"
+            with mock.patch.object(library.store, "get_competitor",
+                                   new=mock.AsyncMock(return_value=None)), \
+                 mock.patch.object(library.store, "upsert_competitor",
+                                   new=mock.AsyncMock(side_effect=bad_upsert)):
+                results = asyncio.run(library.creatives_for_all(
+                    [{"name": "Bad", "url": "https://bad.com"},
+                     {"name": "Nike", "url": "https://nike.com"}],
+                    ctx={}, source=FakeSource(creatives=[_ad("a1")])))
             self.assertEqual(list(results), ["nike.com"])
         with self.subTest("no key -> None"):
             self.assertIsNone(asyncio.run(library.creatives_for(
@@ -181,6 +200,88 @@ class LibraryTests(unittest.TestCase):
                 enrich = FakeEnrich()
                 self._run(stored=stored, source=source, enrich=enrich)
                 self.assertEqual(enrich.calls, [])
+
+    def test_essence_recency_gate(self):
+        """Vision is spent only on recently-active creatives: active now, or
+        last seen within ESSENCE_RECENCY_DAYS. Stale/undated ads are still
+        stored and rendered - they just stay essence=None."""
+        enrich = FakeEnrich()
+        rec = self._run(stored=None, enrich=enrich, source=FakeSource(creatives=[
+            _ad("recent", last_seen_days_ago=5),
+            _ad("edge", last_seen_days_ago=library.ESSENCE_RECENCY_DAYS),
+            _ad("stale", last_seen_days_ago=120),
+            _ad("active-no-date", is_active=True, last_seen=""),
+            _ad("undated", last_seen=""),
+            _ad("garbage-date", last_seen="not-a-timestamp"),
+        ]))
+        self.assertEqual(enrich.calls, [["active-no-date", "edge", "recent"]])
+        # the ineligible ones survive the ingest, just without essence
+        self.assertEqual({c.creative_id for c in rec.creatives},
+                         {"recent", "edge", "stale", "active-no-date",
+                          "undated", "garbage-date"})
+
+    def test_streaming_and_pipelining(self):
+        with self.subTest("on_resolved fires per competitor, cache hits included"):
+            delivered: list[str] = []
+
+            async def on_resolved(key, record):
+                delivered.append(key)
+
+            async def stage(*, key, name, ctx, force, source):
+                if key == "cached.com":
+                    return None, _record(age_days=1)  # cache hit
+                return SourceFetch(creatives=[_ad("a1")], resolved_name=name), None
+
+            with mock.patch.object(library, "_fetch_stage", new=stage), \
+                 mock.patch.object(library.store, "get_competitor",
+                                   new=mock.AsyncMock(return_value=None)):
+                results = asyncio.run(library.creatives_for_all(
+                    [{"name": "Cached", "url": "https://cached.com"},
+                     {"name": "Nike", "url": "https://nike.com"}],
+                    ctx={}, on_resolved=on_resolved))
+            self.assertEqual(sorted(delivered), ["cached.com", "nike.com"])
+            self.assertEqual(sorted(results), ["cached.com", "nike.com"])
+        with self.subTest("a failing on_resolved does not poison the batch"):
+            async def boom(key, record):
+                raise RuntimeError("render died")
+            with mock.patch.object(library.store, "get_competitor",
+                                   new=mock.AsyncMock(return_value=_record(age_days=1))):
+                results = asyncio.run(library.creatives_for_all(
+                    [{"name": "Nike", "url": "https://nike.com"}],
+                    ctx={}, on_resolved=boom))
+            self.assertEqual(list(results), ["nike.com"])
+        with self.subTest("competitor N's processing overlaps competitor N+1's fetch"):
+            # nike's essence pass blocks until adidas' fetch has happened - only
+            # a pipelined creatives_for_all can finish (sequential deadlocks;
+            # the wait_for timeout turns that into a failure, not a hang).
+            fetched_second = asyncio.Event()
+
+            class GateSource(FakeSource):
+                async def fetch(self, *, domain, name):
+                    if domain == "adidas.com":
+                        fetched_second.set()
+                    return await super().fetch(domain=domain, name=name)
+
+            class GatedEnrich(FakeEnrich):
+                async def __call__(self, images):
+                    await asyncio.wait_for(fetched_second.wait(), timeout=2)
+                    return await super().__call__(images)
+
+            gated = GatedEnrich()
+
+            async def run():
+                with mock.patch.object(library.store, "get_competitor",
+                                       new=mock.AsyncMock(return_value=None)):
+                    return await library.creatives_for_all(
+                        [{"name": "Nike", "url": "https://nike.com"},
+                         {"name": "Adidas", "url": "https://adidas.com"}],
+                        ctx={}, source=GateSource(creatives=[_ad("a1")]),
+                        enrich=gated)
+            results = asyncio.run(run())
+            self.assertEqual(sorted(results), ["adidas.com", "nike.com"])
+            # A sequential creatives_for_all would time nike's enrich out
+            # (swallowed by _enrich_essence) - both succeeding proves overlap.
+            self.assertEqual(len(gated.calls), 2)
 
 
 if __name__ == "__main__":

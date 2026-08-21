@@ -15,7 +15,7 @@ from unittest import mock
 from app.agents.adzump.tools import creatives
 
 
-def _ctx(*, platform="Meta", last_user="Yes", competitors=None):
+def _ctx(*, platform="Meta", last_user="Yes", competitors=None, messages=None):
     session_ctx = {
         "campaign_spec": {"platform": platform},
         "competitor_analysis": {"competitors": (
@@ -23,8 +23,21 @@ def _ctx(*, platform="Meta", last_user="Yes", competitors=None):
             else [{"name": "Prestige", "url": "https://prestige.com"}]
         )},
     }
-    session = SimpleNamespace(messages=[{"role": "user", "content": last_user}])
+    session = SimpleNamespace(
+        messages=messages if messages is not None
+        else [{"role": "user", "content": last_user}])
     return {"session_context": session_ctx, "_session": session}
+
+
+# The Anthropic-format history mid-turn: the human's Yes, then a tool call and
+# its result - which is appended as a role="user" message (session.append_tool_results).
+_MID_TURN_MESSAGES = [
+    {"role": "user", "content": "Yes"},
+    {"role": "assistant", "content": [
+        {"type": "tool_use", "id": "t1", "name": "analyze_competitors", "input": {}}]},
+    {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": "t1", "content": "Found 5 competitors"}]},
+]
 
 
 def _run(ctx, fetch=None):
@@ -59,6 +72,15 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
                     # the refusal names the re-ask tool + tagged field
                     self.assertIn("present_options", result.error)
                     self.assertIn("competitor_creatives_declined", result.error)
+                    # the customer's tool row gets calm copy, never the steering
+                    self.assertIn("go-ahead", result.display_error)
+                    self.assertNotIn("present_options", result.to_display_text())
+        with self.subTest("consent survives a tool result later in the turn"):
+            # The gate's own "run analyze_competitors NOW, then call fetch AGAIN
+            # in this same turn" must be satisfiable (incident: LastUserTextTests).
+            result, fetch = _run(_ctx(messages=list(_MID_TURN_MESSAGES)))
+            self.assertTrue(result.success)
+            fetch.assert_awaited()
         with self.subTest("consented but no competitors prescribes analysis"):
             result, fetch = _run(_ctx(competitors=[]))
             self.assertFalse(result.success)

@@ -274,11 +274,14 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "in the same turn"
         )
         if not cctx.competitor_creatives_offered:
+            # "recent", not "running" - the ad library's crawl lags, so what we
+            # show may include recently-paused ads (each card carries its own
+            # Active/Paused + last-seen chips).
             question = (
-                "Want to see the ads your competitors are running right now?"
+                "Want to see your competitors' recent ads?"
                 if cctx.competitor_names
-                else "Want me to analyze your competitors and show the ads "
-                "they're running?"
+                else "Want me to analyze your competitors and show their "
+                "recent ads?"
             )
             missing.append(
                 "competitor creatives - offer it ONCE: ask via the present_options "

@@ -49,6 +49,10 @@ ESSENCE_MODEL_OVERRIDE = "openai:gpt-4o-mini"
 # well under the ceiling so truncation (-> unparseable JSON) can't happen.
 ESSENCE_MAX_TOKENS = 4000
 MAX_IMAGES_PER_CALL = 12
+# Chunks are independent (fresh session per call), so they run concurrently -
+# bounded, or a 60-creative competitor would fire 5 vision calls at once on top
+# of the other competitors' pipelines.
+MAX_CONCURRENT_CALLS = 3
 
 # Single-shot LLM call per chunk.
 ESSENCE_MAX_TURNS = 1
@@ -118,15 +122,18 @@ class EssenceAnalyst(BaseAgent):
         tokens_in = tokens_out = 0
         status = "success"
 
-        try:
-            for start in range(0, len(items), MAX_IMAGES_PER_CALL):
+        sem = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
+
+        async def _do_chunk(chunk: list[CreativeImage]) -> tuple[dict[str, Essence], int, int]:
+            got: dict[str, Essence] = {}
+            t_in = t_out = 0
+            async with sem:
                 if stream.is_cancelled:
-                    break
-                chunk = items[start : start + MAX_IMAGES_PER_CALL]
-                batch, t_in, t_out = await self._run_once(
+                    return got, t_in, t_out
+                batch, i, o = await self._run_once(
                     chunk, stream, auth, parent_session_context)
-                tokens_in += t_in
-                tokens_out += t_out
+                t_in += i
+                t_out += o
                 if batch is None and len(chunk) > 1:
                     # Unparseable batch JSON - retry each creative alone.
                     logger.warning("essence_batch_unparseable: falling back "
@@ -134,17 +141,30 @@ class EssenceAnalyst(BaseAgent):
                     for ci in chunk:
                         if stream.is_cancelled:
                             break
-                        single, t_in, t_out = await self._run_once(
+                        single, i, o = await self._run_once(
                             [ci], stream, auth, parent_session_context)
-                        tokens_in += t_in
-                        tokens_out += t_out
-                        _collect(single, [ci], essences)
+                        t_in += i
+                        t_out += o
+                        _collect(single, [ci], got)
                 else:
-                    _collect(batch, chunk, essences)
-        except Exception as e:
-            logger.warning("essence_extract_failed: %s: %s",
-                           type(e).__name__, str(e)[:200])
-            status = "error"
+                    _collect(batch, chunk, got)
+            return got, t_in, t_out
+
+        chunks = [items[s : s + MAX_IMAGES_PER_CALL]
+                  for s in range(0, len(items), MAX_IMAGES_PER_CALL)]
+        # One chunk's failure must not abort the others - partials from the
+        # healthy chunks are kept.
+        for result in await asyncio.gather(*map(_do_chunk, chunks),
+                                           return_exceptions=True):
+            if isinstance(result, BaseException):
+                logger.warning("essence_extract_failed: %s: %s",
+                               type(result).__name__, str(result)[:200])
+                status = "error"
+                continue
+            got, t_in, t_out = result
+            essences.update(got)
+            tokens_in += t_in
+            tokens_out += t_out
         if not essences:
             status = "error"  # every verdict failed to parse - not a quiet success
 

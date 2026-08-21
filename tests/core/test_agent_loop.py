@@ -82,15 +82,18 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
                 texts.append(ev.data["text"])
         return texts, parts
 
+    # Summaries are framed as their own paragraph ("\n\n…\n\n"): the persisted
+    # parts are "".join'd stream deltas and the UI concatenates text events, so
+    # an unframed summary glues onto prose ("…Pride EuphoraFetched creatives…").
     async def test_user_emits_and_persists_the_summary(self):
         texts, parts = await self._run(ToolResult(success=True, summary="Saved.", audience="user"))
-        self.assertEqual(texts, ["Saved."])
-        self.assertEqual(parts, ["Saved."])     # persisted → survives refresh
+        self.assertEqual(texts, ["\n\nSaved.\n\n"])
+        self.assertEqual(parts, ["\n\nSaved.\n\n"])     # persisted → survives refresh
 
     async def test_both_also_emits(self):
         texts, parts = await self._run(ToolResult(success=True, summary="Found 2.", audience="both"))
-        self.assertEqual(texts, ["Found 2."])
-        self.assertEqual(parts, ["Found 2."])
+        self.assertEqual(texts, ["\n\nFound 2.\n\n"])
+        self.assertEqual(parts, ["\n\nFound 2.\n\n"])
 
     async def test_assistant_default_does_not_post_to_chat(self):
         texts, parts = await self._run(ToolResult(success=True, summary="internal note"))
@@ -111,7 +114,7 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
             texts, _ = await self._run(
                 ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience=aud),
                 streamed="Sure — Found 2 competitors: Sobha, Prestige. Continue?")
-            self.assertEqual(texts, ["Found 2 competitors: Sobha, Prestige."], aud)
+            self.assertEqual(texts, ["\n\nFound 2 competitors: Sobha, Prestige.\n\n"], aud)
 
 
 if __name__ == "__main__":

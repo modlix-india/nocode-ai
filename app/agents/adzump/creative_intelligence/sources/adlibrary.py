@@ -178,11 +178,16 @@ class AdLibrarySource:
         media_type = _MEDIA_TYPE.get(raw.get("ads_type"), "image")
         preview_img = raw.get("preview_img_url") or ""
         resources = [u for u in (raw.get("resource_urls") or []) if isinstance(u, str)]
-        # Video: file lives in resource_urls when present, else only the still
-        # (video2pic ads); preview_img is always the poster. Image/carousel:
-        # prefer a full-res resource, else the preview.
-        source_asset = (resources[0] if resources else "") or preview_img
-        poster = preview_img if media_type == "video" else ""
+        # Video: the playable file lives in resource_urls; preview_img is the
+        # poster. Poster-only ("video2pic") ads have no file, so source_asset
+        # stays empty - we never rehost a poster as a bogus, unplayable video.
+        # Image/carousel: prefer a full-res resource, else the preview.
+        if media_type == "video":
+            source_asset = resources[0] if resources else ""
+            poster = preview_img
+        else:
+            source_asset = (resources[0] if resources else "") or preview_img
+            poster = ""
 
         return Creative(
             creative_id=str(raw.get("ad_key") or ""),

@@ -10,6 +10,8 @@ modules contain rendering logic directly.
 from __future__ import annotations
 
 import logging
+import re
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,11 @@ def render_competitors(
         if creatives:
             total = int(c.get("totalCreatives") or 0)
             card["badge"] = f"{total} ad" + ("" if total == 1 else "s")
+        elif "creatives" in c:
+            # Fetched, but the ad library had none - say so explicitly. An
+            # UNfetched competitor (no "creatives" key) stays badge-less:
+            # absence of a fetch must never read as "runs no ads".
+            card["badge"] = "No ads found"
         blocks.append(card)
 
 
@@ -93,22 +100,60 @@ _CREATIVE_METRICS = [
 ]
 
 
+def _to_int(v) -> int:
+    """Coerce a vendor metric to an int; 0 on anything unparseable. The ad
+    library sends counts inconsistently - ints, floats, or strings like
+    '1,234', '10K', '1.2M', even ranges ('1K-5K'). A raw int() on those raises
+    and (via rerender_craft's swallow) would silently drop the whole panel, so
+    every count the render touches goes through here."""
+    if isinstance(v, bool):
+        return 0
+    if isinstance(v, (int, float)):
+        return int(v)
+    if not isinstance(v, str):
+        return 0
+    m = re.match(r"\s*(\d+(?:\.\d+)?)\s*([kmb])?", v.strip().replace(",", ""), re.I)
+    if not m:
+        return 0
+    mult = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}.get(
+        (m.group(2) or "").lower(), 1)
+    return int(float(m.group(1)) * mult)
+
+
 def _fmt_count(n) -> str:
     """1234 -> '1.2K', 2500000 -> '2.5M' - compact card-footer numbers."""
-    n = int(n or 0)
+    n = _to_int(n)
     for cut, suffix in ((1_000_000, "M"), (1_000, "K")):
         if n >= cut:
             return f"{n / cut:.1f}".rstrip("0").rstrip(".") + suffix
     return str(n)
 
 
+def _days_since(iso: str) -> int | None:
+    """Whole days since an ISO timestamp; None when absent/unparseable."""
+    try:
+        seen = datetime.fromisoformat(iso)
+    except (TypeError, ValueError):
+        return None
+    if seen.tzinfo is None:
+        seen = seen.replace(tzinfo=timezone.utc)
+    return max(0, (datetime.now(timezone.utc) - seen).days)
+
+
 def _creative_badges(c: dict) -> list[dict]:
-    """Active/Paused status + days-running chips for one creative card."""
+    """Active/Paused status + days-running chips for one creative card.
+    Paused ads carry a last-seen chip - the ad library's crawl lags, so
+    "Paused" alone can't tell a fresh pause from months-old inventory."""
     badges = [
         {"label": "Active", "tone": "active"}
         if c.get("isActive") else {"label": "Paused", "tone": "paused"}
     ]
-    days = int(c.get("daysRunning") or 0)
+    if not c.get("isActive"):
+        ago = _days_since(c.get("lastSeen") or "")
+        if ago is not None:
+            badges.append(
+                {"label": "seen today" if ago == 0 else f"seen {ago}d ago"})
+    days = _to_int(c.get("daysRunning"))
     if days > 0:
         badges.append({"label": f"{days}d"})
     return badges
@@ -121,7 +166,7 @@ def _creative_meta(c: dict) -> str:
     parts = [
         f"{_fmt_count(metrics[key])} {label}"
         for key, label in _CREATIVE_METRICS
-        if int(metrics.get(key) or 0) > 0
+        if _to_int(metrics.get(key)) > 0
     ]
     return " · ".join(parts[:3])
 
@@ -317,8 +362,8 @@ async def rerender_craft(
             ),
             platform=platform,
         )
-    except Exception as e:
-        logger.warning("Craft panel re-render failed: %s", e)
+    except Exception:
+        logger.exception("Craft panel re-render failed")
 
 
 async def append_competitor_blocks(

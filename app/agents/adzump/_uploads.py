@@ -338,6 +338,25 @@ async def rehost_image(
 VIDEO_MAX_BYTES = 50 * 1024 * 1024
 _VIDEO_TIMEOUT_S = 120.0
 
+# Leading magic bytes of image formats the ad library sometimes serves at a
+# "video" URL (poster stills). Trusted over the vendor's content-type header.
+_IMAGE_MAGIC = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"GIF87a", b"GIF89a")
+
+
+def _sniff_video_ctype(data: bytes, header_ctype: str) -> str | None:
+    """The content-type to store `data` under IF it is genuinely a video, else
+    None. Magic bytes beat the vendor header: MP4/MOV carry an 'ftyp' box, WebM/
+    MKV an EBML header. The ad library serves a poster JPEG at some "video" URLs
+    (poster-only 'video2pic' ads); saving those as .mp4 makes an unplayable file,
+    so anything that sniffs as an image is rejected here."""
+    if any(data.startswith(sig) for sig in _IMAGE_MAGIC):
+        return None
+    if b"ftyp" in data[:16]:
+        return "video/mp4"
+    if data.startswith(b"\x1aE\xdf\xa3"):
+        return "video/webm"
+    return header_ctype if header_ctype.startswith("video/") else None
+
 
 async def rehost_video(source_url: str, kind: str, context: dict, *, name: str = "") -> str | None:
     """Download a video and re-host it on our file store. Returns the hosted
@@ -358,8 +377,6 @@ async def rehost_video(source_url: str, kind: str, context: dict, *, name: str =
                                 resp.status_code, source_url[:200])
                     return None
                 ctype = (resp.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
-                if not ctype.startswith("video/"):
-                    ctype = "video/mp4"
                 if int(resp.headers.get("content-length") or 0) > VIDEO_MAX_BYTES:
                     logger.info("video_rehost_skip: oversize url=%s", source_url[:200])
                     return None
@@ -375,6 +392,10 @@ async def rehost_video(source_url: str, kind: str, context: dict, *, name: str =
 
     video_bytes = b"".join(chunks)
     if not video_bytes:
+        return None
+    ctype = _sniff_video_ctype(video_bytes, ctype)
+    if ctype is None:
+        logger.info("video_rehost_skip: not-a-video url=%s", source_url[:200])
         return None
     filename = _asset_filename(context, name, kind, video_bytes, ctype)
     url = await upload_image(video_bytes, filename, kind, context, ctype,

@@ -28,9 +28,9 @@ class AdLibraryTests(unittest.TestCase):
             ("video: file + poster still",
              {"ads_type": 2, "resource_urls": ["clip.mp4"], "preview_img_url": "still.jpg"},
              "video", "clip.mp4", "still.jpg"),
-            ("video2pic: still-only fallback",
+            ("video2pic (no file): poster only, no asset to rehost as a video",
              {"ads_type": 2, "resource_urls": [], "preview_img_url": "still.jpg"},
-             "video", "still.jpg", "still.jpg"),
+             "video", "", "still.jpg"),
             ("unknown type defaults to image",
              {"ads_type": 99, "preview_img_url": "p.jpg"}, "image", "p.jpg", ""),
         ]:

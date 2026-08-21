@@ -254,7 +254,12 @@ def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
 
 
 def _last_user_text(context: dict[str, Any]) -> str:
-    """Most recent user message as a flat string (handles Anthropic list-content)."""
+    """Most recent HUMAN message as a flat string (handles Anthropic list-content).
+
+    Tool results are ALSO appended as role="user" messages (Anthropic format,
+    session.append_tool_results) - protocol plumbing, not the human, so they are
+    skipped. Reading one as "the user said nothing" broke every gate on this
+    helper mid-turn (incident + repro: LastUserTextTests)."""
     session = context.get("_session")
     messages = getattr(session, "messages", None) or []
     for msg in reversed(messages):
@@ -262,6 +267,9 @@ def _last_user_text(context: dict[str, Any]) -> str:
             continue
         content = msg.get("content", "")
         if isinstance(content, list):
+            if any(isinstance(b, dict) and b.get("type") == "tool_result"
+                   for b in content):
+                continue
             parts: list[str] = []
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":

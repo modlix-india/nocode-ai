@@ -392,6 +392,44 @@ class WantsCompetitorCreativesTests(unittest.TestCase):
                 self.assertEqual(wants_competitor_creatives(text), expected)
 
 
+class LastUserTextTests(unittest.TestCase):
+    """_last_user_text means what the HUMAN last typed. Tool results are also
+    appended as role="user" messages (Anthropic format, session.append_tool_results)
+    and must be skipped - reading one as "the user said nothing" made every
+    _last_user_text-based gate refuse mid-turn (live 2026-07-30: consent gate
+    silently dropped the competitor-creatives fetch after analyze ran)."""
+
+    def test_table(self):
+        from types import SimpleNamespace
+        from app.agents.adzump.tools.campaign_data import _last_user_text
+
+        tool_result_msg = {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "t1", "content": "found 5"}]}
+        assistant_msg = {"role": "assistant", "content": [
+            {"type": "tool_use", "id": "t1", "name": "analyze_competitors", "input": {}}]}
+
+        cases = [
+            ("plain string", [{"role": "user", "content": "Yes"}], "Yes"),
+            ("text blocks", [{"role": "user", "content": [
+                {"type": "text", "text": "show me"}, {"type": "text", "text": "their ads"}]}],
+             "show me their ads"),
+            ("skips tool_result carrier back to the human",
+             [{"role": "user", "content": "Yes"}, assistant_msg, tool_result_msg], "Yes"),
+            ("skips several tool_result carriers",
+             [{"role": "user", "content": "Yes"}, assistant_msg, tool_result_msg,
+              assistant_msg, tool_result_msg], "Yes"),
+            ("tool results only - no human text yet", [tool_result_msg], ""),
+            ("image-only message IS the latest human message",
+             [{"role": "user", "content": "Yes"},
+              {"role": "user", "content": [{"type": "image", "source": {}}]}], ""),
+            ("no messages", [], ""),
+        ]
+        for name, messages, expected in cases:
+            with self.subTest(case=name):
+                context = {"_session": SimpleNamespace(messages=messages)}
+                self.assertEqual(_last_user_text(context), expected)
+
+
 class PendingCreativesFetchSteerTests(unittest.TestCase):
     """analyze_competitors results carry the fetch reminder while a consented
     creative fetch is still owed - live 2026-07-29: the model burned the Yes
@@ -401,17 +439,32 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
         from types import SimpleNamespace
         from app.agents.adzump.tools.campaign_data import pending_creatives_fetch_steer
 
-        def ctx(*, platform="Meta", offered=True, fetched=False, last_user="Yes"):
+        def ctx(*, platform="Meta", offered=True, fetched=False, last_user="Yes",
+                messages=None):
             session_ctx = {
                 "campaign_spec": {"platform": platform},
                 "_competitor_creatives_offered": offered,
                 "_competitor_creatives_fetched": fetched,
             }
-            session = SimpleNamespace(messages=[{"role": "user", "content": last_user}])
+            session = SimpleNamespace(
+                messages=messages if messages is not None
+                else [{"role": "user", "content": last_user}])
             return {"session_context": session_ctx, "_session": session}
+
+        # The shape the steer was written for: analyze_competitors just ran,
+        # so its tool_result (a role="user" message) sits after the human Yes.
+        mid_turn = [
+            {"role": "user", "content": "Yes"},
+            {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "t1", "name": "analyze_competitors",
+                 "input": {}}]},
+            {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "t1", "content": "found 5"}]},
+        ]
 
         cases = [
             ("owed: offered + yes + unfetched", ctx(), True),
+            ("owed mid-turn, after analyze's tool_result", ctx(messages=mid_turn), True),
             ("google flow", ctx(platform="Google Ads"), False),
             ("never offered", ctx(offered=False), False),
             ("already fetched (resolved)", ctx(fetched=True), False),

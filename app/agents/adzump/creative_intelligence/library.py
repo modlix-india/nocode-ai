@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Awaitable, Callable
 
 from app.agents.adzump import _uploads
 from app.agents.adzump.creative_intelligence import store
@@ -29,10 +30,14 @@ from app.agents.adzump.creative_intelligence.dedup import dedupe
 from app.agents.adzump.creative_intelligence.enrich import CreativeImage, EnrichCreatives
 from app.agents.adzump.creative_intelligence.models import (
     Competitor,
+    Creative,
     MAX_CREATIVES_PER_COMPETITOR,
 )
 from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibrarySource
-from app.agents.adzump.creative_intelligence.sources.base import AdIntelligenceSource
+from app.agents.adzump.creative_intelligence.sources.base import (
+    AdIntelligenceSource,
+    SourceFetch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +48,10 @@ MAX_BINARIES_PER_COMPETITOR = MAX_CREATIVES_PER_COMPETITOR
 # Video files are orders of magnitude bigger than stills - rehost only the
 # first few per competitor (the craft carousel renders 12 creatives total).
 MAX_VIDEOS_PER_COMPETITOR = 6
+# Vision (essence) is spent only on creatives with recent market presence - an
+# ad neither active nor seen within this window is stale inspiration and stays
+# essence=None (stored + rendered all the same).
+ESSENCE_RECENCY_DAYS = 30
 
 _DEFAULT_SOURCE = AdLibrarySource()
 
@@ -67,16 +76,31 @@ async def creatives_for(
 
     ``enrich`` is the injected Tier-3 essence hook (see ``enrich.py``) - it runs
     only on a real ingest (never on a cache hit, empty fetch, or stale-serve)
-    and only for deduped survivors that still lack essence, before the ONE
-    store write."""
+    and only for deduped recently-active survivors that still lack essence,
+    before the ONE store write."""
     if not key:
         return None
+    fetched, prior = await _fetch_stage(
+        key=key, name=name, ctx=ctx, force=force, source=source)
+    if fetched is None:
+        return prior
+    return await _process_stage(key=key, name=name, ctx=ctx,
+                                fetched=fetched, prior=prior, enrich=enrich)
+
+
+async def _fetch_stage(
+    *, key: str, name: str, ctx: dict, force: bool,
+    source: AdIntelligenceSource | None,
+) -> tuple[SourceFetch | None, Competitor | None]:
+    """The rate-limited half: cache check + source fetch. Returns
+    ``(fetched, prior)`` - when ``fetched`` is None, ``prior`` IS the answer
+    (cache hit, stale-serve on failure, or kept-prior on empty fetch)."""
     src = source or _DEFAULT_SOURCE
 
     record = await store.get_competitor(key, ctx)
     if record and not force and not store.is_stale(record):
         logger.info("creative_intelligence: cache hit key=%s", key)
-        return record
+        return None, record
 
     why = "forced" if force else ("stale" if record else "miss")
     logger.info("creative_intelligence: fetching key=%s reason=%s", key, why)
@@ -87,7 +111,7 @@ async def creatives_for(
         # stale rather than raising (the batch contract in the module docstring).
         logger.warning("creative_intelligence: source fetch failed key=%s: %s: %s",
                        key, type(e).__name__, str(e)[:200])
-        return record  # serve stale if we have it; else None
+        return None, record  # serve stale if we have it; else None
 
     if not fetched.creatives and record and record.creatives:
         # A transiently-empty search result must not destroy a good record
@@ -95,8 +119,17 @@ async def creatives_for(
         # and the stored essences would be lost). Serve the prior record.
         logger.warning("creative_intelligence: empty fetch, keeping prior record "
                        "key=%s (%d creatives)", key, len(record.creatives))
-        return record
+        return None, record
 
+    return fetched, record
+
+
+async def _process_stage(
+    *, key: str, name: str, ctx: dict, fetched: SourceFetch,
+    prior: Competitor | None, enrich: EnrichCreatives | None,
+) -> Competitor:
+    """The unmetered half: rehost, dedup, essence, store. Safe to overlap with
+    other competitors' fetches - nothing here touches the vendor API."""
     competitor = Competitor(
         competitor_key=key,
         name=fetched.resolved_name or name,
@@ -111,7 +144,7 @@ async def creatives_for(
     # Deterministic dedup cascade: exact (md5) then perceptual (pHash). Vision
     # never culls - it only adds essence (see dedup.py, creative_essence agent).
     competitor.creatives = dedupe(competitor.creatives)
-    _carry_forward_essence(record, competitor)
+    _carry_forward_essence(prior, competitor)
     await _enrich_essence(competitor, binaries, enrich)
     await store.upsert_competitor(competitor, ctx)
     return competitor
@@ -121,30 +154,74 @@ async def creatives_for_all(
     competitors: list[dict], ctx: dict, *, force: bool = False,
     source: AdIntelligenceSource | None = None,
     enrich: EnrichCreatives | None = None,
+    on_resolved: Callable[[str, Competitor], Awaitable[None]] | None = None,
 ) -> dict[str, Competitor]:
-    """Run ``creatives_for`` for each entry. Returns ``{key: Competitor}`` for
-    every competitor resolved (cache hit or fresh fetch). Skips entries without a
-    usable domain - the source query and our dedup key both need one."""
+    """Resolve every entry, pipelined: source fetches stay strictly sequential
+    (the vendor is rate-limited and metered), but each competitor's unmetered
+    processing (rehost/dedup/essence/store) runs as a background task overlapping
+    the NEXT competitor's fetch - wall-clock is dominated by the fetch chain, not
+    the sum of everything.
+
+    ``on_resolved(key, record)`` - optional async callback awaited as EACH
+    competitor resolves (cache hits immediately, fetched ones as their processing
+    lands), so a caller can stream partial results to the user. Callback failures
+    are logged, never poison the batch.
+
+    Returns ``{key: Competitor}`` for every competitor resolved. Skips entries
+    without a usable domain - the source query and our dedup key both need one."""
     results: dict[str, Competitor] = {}
     skipped = 0
+    seen: set[str] = set()
+    tasks: list[asyncio.Task] = []
+
+    async def _deliver(key: str, record: Competitor) -> None:
+        results[key] = record
+        if on_resolved is None:
+            return
+        try:
+            await on_resolved(key, record)
+        except Exception as e:
+            logger.warning("creative_intelligence: on_resolved failed key=%s: %s: %s",
+                           key, type(e).__name__, str(e)[:200])
+
+    async def _process_and_deliver(key: str, name: str, fetched: SourceFetch,
+                                   prior: Competitor | None) -> None:
+        try:
+            record = await _process_stage(key=key, name=name, ctx=ctx,
+                                          fetched=fetched, prior=prior, enrich=enrich)
+        except Exception as e:
+            # One competitor must never abort the batch (e.g. an upsert
+            # refusal) - the rest still resolve.
+            logger.warning("creative_intelligence: competitor failed key=%s: %s: %s",
+                           key, type(e).__name__, str(e)[:200])
+            return
+        await _deliver(key, record)
+
     for comp in competitors:
         key, name = competitor_identity(comp)
         if not key:
             skipped += 1
             continue
-        if key in results:  # same domain listed twice - fetch once
+        if key in seen:  # same domain listed twice - fetch once
             continue
+        seen.add(key)
         try:
-            record = await creatives_for(key=key, name=name, ctx=ctx, force=force,
-                                         source=source, enrich=enrich)
+            fetched, prior = await _fetch_stage(
+                key=key, name=name, ctx=ctx, force=force, source=source)
         except Exception as e:
-            # One competitor must never abort the batch (e.g. a stored record
-            # that no longer validates) - the rest still resolve.
+            # e.g. a stored record that no longer validates - skip, don't abort.
             logger.warning("creative_intelligence: competitor failed key=%s: %s: %s",
                            key, type(e).__name__, str(e)[:200])
             continue
-        if record:
-            results[key] = record
+        if fetched is None:
+            if prior:
+                await _deliver(key, prior)
+            continue
+        tasks.append(asyncio.create_task(
+            _process_and_deliver(key, name, fetched, prior)))
+
+    if tasks:
+        await asyncio.gather(*tasks)  # each task handles its own failure
     logger.info("creative_intelligence: resolved=%d skipped_no_domain=%d", len(results), skipped)
     return results
 
@@ -216,6 +293,22 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
     return binaries
 
 
+def _recently_active(c: Creative) -> bool:
+    """Essence eligibility: active now, or last seen within the recency window.
+    No parseable ``last_seen`` means no recency evidence - not eligible."""
+    if c.is_active:
+        return True
+    if not c.last_seen:
+        return False
+    try:
+        seen = datetime.fromisoformat(c.last_seen)
+    except ValueError:
+        return False
+    if seen.tzinfo is None:
+        seen = seen.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - seen).days <= ESSENCE_RECENCY_DAYS
+
+
 def _carry_forward_essence(prior: Competitor | None, competitor: Competitor) -> None:
     """The essence cache: a refetch re-lists mostly the same images, and essence
     is content-addressed - copy it from the prior stored record by content_hash
@@ -250,7 +343,7 @@ async def _enrich_essence(
         CreativeImage(creative=c, data=binaries[c.content_hash][0],
                       content_type=binaries[c.content_hash][1])
         for c in competitor.creatives
-        if c.essence is None and c.content_hash in binaries
+        if c.essence is None and c.content_hash in binaries and _recently_active(c)
     ]
     if not pending:
         return

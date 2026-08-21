@@ -198,6 +198,16 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     # Focused add/remove by name.
     query = (params.get("query") or "").strip()
     remove = (params.get("remove") or "").strip()
+    # The model sometimes passes the SUBJECT product's own name as the query on
+    # the fetch->"analyze first"->retry path; looking that up just skips it as
+    # "same business" and discovers nothing. Drop any query name matching the
+    # subject so a subject-only query falls through to real discovery.
+    if query:
+        subject = _normalize(product_name)
+        query = ", ".join(
+            n.strip() for n in query.split(",")
+            if n.strip() and _normalize(n) != subject
+        )
     if query or remove:
         if auth is None:
             return ToolResult(success=False, error="Authentication required.")
