@@ -55,38 +55,44 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
         return ToolResult(success=False, error="options array is required.")
 
     field = (params.get("field") or "").strip() or None
+
+    def _answerless_refusal(offender: str) -> ToolResult:
+        # Every chip on a field-tagged ask must say what it writes - a silent
+        # fall-through is the bug class where a click lands nowhere and the
+        # question re-fires. Self-healing: hand back the corrected options
+        # (answer == value; the Custom escape gets null) so the retry is a
+        # copy-paste, never a dead-end turn.
+        corrected = []
+        for o in options:
+            label = o if isinstance(o, str) else str(o.get("label", ""))
+            value = label if isinstance(o, str) else str(o.get("value") or label)
+            answer = (o.get("answer") if isinstance(o, dict) and "answer" in o
+                      else (None if value == "Custom" else value))
+            corrected.append({"label": label, "value": value, "answer": answer})
+        return ToolResult(
+            success=False,
+            error=(
+                f'Option "{offender}" carries no "answer" key. On a field-tagged '
+                f'ask (field="{field}") EVERY option must declare what it writes '
+                'on click ("answer": null = a deliberate fall-through like '
+                '"Custom"). Re-call present_options NOW with the SAME question '
+                f"and options={json.dumps(corrected, ensure_ascii=False)}"
+            ),
+            display_error="Re-forming those options…",
+        )
+
     normalized: list[dict[str, str]] = []
     answer_map: dict[str, str] = {}
     for opt in options:
         if isinstance(opt, str):
             if field:
-                # Every chip on a field-tagged ask must say what it writes -
-                # a silent fall-through is the bug class where a click lands
-                # nowhere and the question re-fires.
-                return ToolResult(
-                    success=False,
-                    error=(
-                        f'Option "{opt}" on a field-tagged ask must be a dict '
-                        'with an "answer" key (the value stored on click), or '
-                        '"answer": null for a deliberate fall-through like '
-                        '"Custom". Re-call with dict options.'
-                    ),
-                )
+                return _answerless_refusal(opt)
             normalized.append({"label": opt, "value": opt})
         elif isinstance(opt, dict) and opt.get("label"):
             label = str(opt["label"])
             value = str(opt.get("value") or label)
             if field and "answer" not in opt:
-                return ToolResult(
-                    success=False,
-                    error=(
-                        f'Option "{label}" carries no "answer" key. On a '
-                        f'field-tagged ask (field="{field}") EVERY option must '
-                        'declare what it writes on click - use "answer": null '
-                        'only for a deliberate fall-through ("Custom", '
-                        '"Facebook only"). Re-call with the answers filled in.'
-                    ),
-                )
+                return _answerless_refusal(label)
             normalized.append({"label": label, "value": value})
             # PR2 · a capturable option declares `answer` (the value to store on
             # click). An explicit "answer": null is a declared fall-through

@@ -192,16 +192,21 @@ class AdzumpAgent(BaseAgent):
                 and not pe.get("awaiting_custom")
             ):
                 pe["awaiting_custom"] = True
+                # Same-turn stamp: _resume_elicitation_section must NOT also
+                # emit its awaiting-steer this turn (this steer owns it).
+                pe["custom_marked_turn"] = current
                 logger.info(
                     "tagged_capture: custom escape for field=%s - awaiting typed value",
                     field,
                 )
                 return (
                     "## The user chose a custom value\n"
-                    f"They want to enter their own {field}. Ask them in ONE short line "
-                    f'to TYPE it (e.g. "45 days" / "₹7,500/day") - do NOT call '
-                    f"present_options or show chips. You will store their typed reply "
-                    f"next turn via set_campaign_spec."
+                    f"They want to enter their own {field}. Ask them to TYPE it, in "
+                    "ONE short line written as PLAIN CHAT TEXT - this is the one "
+                    "case where a question is plain text: do NOT call "
+                    f'present_options or show chips (e.g. "Sure - type the exact '
+                    f'{field}, like 45 days or ₹7,500/day"). You will store their '
+                    "typed reply next turn via set_campaign_spec."
                 )
             # Layer-2 fallthrough: no exact chip match, no clear decline - the
             # steered model owns the reply. Logged so no-matches are countable.
@@ -336,6 +341,11 @@ class AdzumpAgent(BaseAgent):
         if current - pe.get("first_reply_turn", current) > STALE_RAIL_TURNS:
             logger.info("resume_elicitation: stale rail field=%s - dropped", pe_field)
             session.context.pop("_pending_elicitation", None)
+            return ""
+        # The Custom click was THIS turn - the capture steer already owns it;
+        # emitting the awaiting-steer too would hand the model two conflicting
+        # instructions in one prompt.
+        if pe.get("custom_marked_turn") == current and pe.get("awaiting_custom"):
             return ""
         if pe.get("expects") == "multi":
             return (

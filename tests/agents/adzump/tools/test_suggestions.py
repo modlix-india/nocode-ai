@@ -125,8 +125,9 @@ class PresentOptionsTagTests(unittest.TestCase):
         # missing "answer" key is the silent-fall-through bug class. An
         # explicit answer=None is a DECLARED fall-through and passes.
         for options in (
-            ["30 days"],                                   # string option
-            [{"label": "30 days", "value": "30 days"}],    # no answer key
+            ["30 days", "Custom"],                         # string options
+            [{"label": "30 days", "value": "30 days"},
+             {"label": "Custom", "value": "Custom"}],      # no answer keys
         ):
             with self.subTest(options=options):
                 res = asyncio.run(_present_options(
@@ -135,6 +136,13 @@ class PresentOptionsTagTests(unittest.TestCase):
                     {"session_context": {}}))
                 self.assertFalse(res.success)
                 self.assertIn("30 days", res.error)        # names the option
+                # Self-healing: the error hands back the corrected options so
+                # the retry is a copy-paste, never a dead-end turn (live bug:
+                # a Custom-click follow-up died on this refusal).
+                self.assertIn('"answer": "30 days"', res.error)
+                self.assertIn('"answer": null', res.error)   # Custom fall-through
+                # The user never sees the steering text.
+                self.assertNotIn("answer", res.display_error)
         # Control-flow ask (no field): string options stay fine.
         res = asyncio.run(_present_options(
             {"question": "Ready to launch?", "options": ["Yes, launch", "No"]},

@@ -412,6 +412,22 @@ class CustomChipFreeTextTests(unittest.TestCase):
         self.assertEqual(_cap(s), "")
         self.assertFalse(s.context["_pending_elicitation"].get("awaiting_custom"))
 
+    def test_custom_click_turn_emits_one_steer_not_two(self):
+        # Live bug (manual test, 2026-08-21): on the Custom-click turn the
+        # capture steer AND the awaiting-steer both fired - two conflicting
+        # instructions in one prompt. The resume section must stay silent on
+        # the turn the mark was set; the awaiting steer belongs to LATER turns.
+        s = make_session(last_user="Custom", pending_elicitation=_budget_pe())
+        ack = _cap(s)
+        self.assertIn("custom value", ack.lower())
+        self.assertIn("PLAIN CHAT TEXT", ack)
+        self.assertEqual(
+            AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
+        # Next user message: the awaiting steer takes over.
+        s._turn_count = 2
+        out = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
+        self.assertIn("awaiting a typed budget", out)
+
     def test_resume_keeps_open_when_awaiting_custom(self):
         # regression: F10 ("Custom" → free-text); slice 1b: the resume section
         # emits the typed-value steer and keeps the rail open.
