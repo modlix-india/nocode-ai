@@ -103,11 +103,12 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
         "filter": {"field": "businessUrl", "value": _normalize_url(url)},
     }
     result = await get_saas_client().post(
-        READ_PAGE, headers=_storage_headers(ctx), json=payload,
+        READ_PAGE,
+        headers=_storage_headers(ctx),
+        json=payload,
     )
     if not result.success:
-        logger.info("business_storage_read_miss: url=%s err=%s",
-                    url, result.error)
+        logger.info("business_storage_read_miss: url=%s err=%s", url, result.error)
         return None
     records = _extract_records(result.data)
     return records[-1] if records else None
@@ -153,7 +154,9 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     if existing:
         existing_id = existing.get("_id") or existing.get("id")
         if not existing_id:
-            logger.warning("save_campaign: existing record has no _id, falling back to create")
+            logger.warning(
+                "save_campaign: existing record has no _id, falling back to create"
+            )
         else:
             payload = {
                 "storageName": STORAGE_NAME,
@@ -163,13 +166,18 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
                 "isPartial": True,  # merge - preserves existing fields not in record
             }
             result = await get_saas_client().post(
-                UPDATE, headers=_storage_headers(ctx), json=payload,
+                UPDATE,
+                headers=_storage_headers(ctx),
+                json=payload,
             )
             if not result.success:
-                logger.warning("save_campaign_update_failed: url=%s err=%s",
-                               url, result.error)
+                logger.warning(
+                    "save_campaign_update_failed: url=%s err=%s", url, result.error
+                )
                 return None
-            logger.info("save_campaign_ok: action=update url=%s id=%s", url, existing_id)
+            logger.info(
+                "save_campaign_ok: action=update url=%s id=%s", url, existing_id
+            )
             return existing_id
 
     # Create path
@@ -179,17 +187,18 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         "dataObject": record,
     }
     result = await get_saas_client().post(
-        CREATE, headers=_storage_headers(ctx), json=payload,
+        CREATE,
+        headers=_storage_headers(ctx),
+        json=payload,
     )
     if not result.success:
-        logger.warning("save_campaign_create_failed: url=%s err=%s",
-                       url, result.error)
+        logger.warning("save_campaign_create_failed: url=%s err=%s", url, result.error)
         return None
 
     new_records = _extract_records(result.data)
     new_id = ""
     if new_records:
-        new_id = (new_records[0].get("_id") or new_records[0].get("id") or "")
+        new_id = new_records[0].get("_id") or new_records[0].get("id") or ""
     logger.info("save_campaign_ok: action=create url=%s id=%s", url, new_id)
     return new_id or None
 
@@ -260,10 +269,22 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
     assets = product.get("assets") or {}
     primary_logo = (assets.get("logos") or [{}])[0]
     images = assets.get("images") or []
+    creative_image_urls = [i.get("url") or "" for i in images if i.get("url")]
+    creative_image_displays = [i.get("display") or {} for i in images]
+
+    # Prepend or append newly generated creative URLs from campaign_spec["ad_copy"]
+    # so they are saved to the root level creativeImages array for UI panel visualization
+    ad_copy_list = spec.get("ad_copy") or []
+    if isinstance(ad_copy_list, list):
+        for item in ad_copy_list:
+            urls = item.get("creative_urls", {})
+            for size, url in urls.items():
+                if url and url not in creative_image_urls:
+                    creative_image_urls.append(url)
+                    creative_image_displays.append({"fit": "contain", "background": "neutral"})
 
     return {
         "businessUrl": _normalize_url(url),
-
         # ── Analysis fields (mirror ds-v1 schema so its downstream APIs
         #    keep working when reading rows nocode-ai writes) ──
         "summary": summary,
@@ -303,8 +324,8 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
         # document size. The stored parallel-array shape (creativeImages +
         # creativeDisplays) is the ds-side contract; session shape is
         # assets.images (one object per image).
-        "creativeImages": [i.get("url") or "" for i in images][:30],
-        "creativeDisplays": [i.get("display") or {} for i in images][:30],
+        "creativeImages": creative_image_urls[:30],
+        "creativeDisplays": creative_image_displays[:30],
         # Persist scrape budget state so resume hydration can dedupe against
         # what we've already scraped instead of resetting to 0.
         "scrapedUrls": list(product.get("pages") or {}),
@@ -321,12 +342,10 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
         "contact": product.get("contact") or {},
         "pagesAnalyzed": product.get("pages_analyzed") or [],
         "competitors": (competitive or {}).get("competitors") or [],
-
         # ── Provenance ──
         "lastAnalyzedAt": _now_iso(),
         "lastAnalyzedBy": "adzump-launch",
         "schemaVersion": SCHEMA_VERSION,
-
         # ── Campaign sub-object ──
         "campaign": {
             "savedAt": _now_iso(),
@@ -349,8 +368,12 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
             "accounts": {
                 "parent": _account_pair(spec.get("parent_account"), account_names),
                 "ad": _account_pair(spec.get("account"), account_names),
-                "fbPage": _account_pair(spec.get("fb_page"), account_names) if is_meta else None,
-                "igPage": _account_pair(spec.get("ig_page"), account_names) if is_meta else None,
+                "fbPage": _account_pair(spec.get("fb_page"), account_names)
+                if is_meta
+                else None,
+                "igPage": _account_pair(spec.get("ig_page"), account_names)
+                if is_meta
+                else None,
             },
             "competitive": {
                 "attempted": session_ctx.get("competitor_analysis") is not None,
@@ -358,8 +381,10 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
                 # (analysis having run voids a prior decline; clear_competitor_decline
                 # handles the realistic paths, this keeps the durable record honest
                 # even if a stale flag survives an un-instrumented path).
-                "declined": (spec.get("competitive_analysis_declined") == "true"
-                             and session_ctx.get("competitor_analysis") is None),
+                "declined": (
+                    spec.get("competitive_analysis_declined") == "true"
+                    and session_ctx.get("competitor_analysis") is None
+                ),
             },
             # Persist target areas so they survive session restarts. The
             # per-platform keys are the ds-side contract - projected from
@@ -371,6 +396,7 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
             "metaMappedLocations": (
                 product.get("target_areas") or []
             ) if is_meta else [],
+            "adCopy": spec.get("ad_copy"),
         },
     }
 
@@ -438,7 +464,9 @@ def _record_to_business(record: dict) -> dict:
     # Hydrate into product_data.place.
     raw_loc = d.get("location") or ""
     if isinstance(raw_loc, dict):
-        location_str = raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+        location_str = (
+            raw_loc.get("product_location") or raw_loc.get("area_location") or ""
+        )
     else:
         location_str = raw_loc
     # scrapedUrls seed pages (resume keeps the scrape budget); the one stored
@@ -476,6 +504,7 @@ def _record_to_business(record: dict) -> dict:
         "site_links": d.get("siteLinks") or [],
         "assets": _record_to_assets(d),
         "target_areas": (d.get("campaign") or {}).get("targetAreas") or [],
+
     }
 
 
@@ -523,8 +552,11 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
         comp = _record_to_competitive(record)
         if comp:
             session_ctx["competitor_analysis"] = comp
-            logger.info("hydrate_from_storage: %d competitors loaded url=%s",
-                        len(comp.get("competitors") or []), url)
+            logger.info(
+                "hydrate_from_storage: %d competitors loaded url=%s",
+                len(comp.get("competitors") or []),
+                url,
+            )
 
     return True
 

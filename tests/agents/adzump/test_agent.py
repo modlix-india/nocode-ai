@@ -96,8 +96,16 @@ class InstagramOptionalTests(unittest.TestCase):
 
     def test_declined_drops_ig_and_reaches_review(self):
         # regression: F3 (Instagram optional)
-        spec = {**self.META_FULL, "ig_page_declined": "true"}
-        m = _next_action(make_cctx(spec, product=SAAS))
+        spec = {
+            **self.META_FULL,
+            "ig_page_declined": "true",
+            "ad_copy": [{"headline": "foo", "creative_urls": {"square": "http://image.png"}}],
+        }
+        product = {
+            **SAAS,
+            "assets": {"logos": [{"url": "http://logo.png"}]},
+        }
+        m = _next_action(make_cctx(spec, product=product))
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
 
@@ -105,10 +113,14 @@ class InstagramOptionalTests(unittest.TestCase):
         # regression: F3 (Instagram optional)
         from app.agents.adzump.tools.campaign_data import _review_hint_if_complete
         # fb_page set but IG neither picked nor declined → not complete yet
+        session_ctx = {
+            "product_data": SAAS,
+            "product_profile": {"creative_generated": True},
+        }
         self.assertEqual(
-            _review_hint_if_complete(dict(self.META_FULL), {"product_data": SAAS}), "")
+            _review_hint_if_complete(dict(self.META_FULL), session_ctx), "")
         hint = _review_hint_if_complete({**self.META_FULL, "ig_page_declined": "true"},
-                                        {"product_data": SAAS})
+                                        session_ctx)
         self.assertNotEqual(hint, "")
         self.assertIn("not linked (Facebook only)", hint)
 
@@ -334,11 +346,14 @@ def _full_google_cctx():
         "platform": "Google Ads", "location": "Bengaluru", "duration": "30 days",
         "budget": "₹10,000/day", "competitive_analysis_declined": "true",
         "parent_account": "1234567890", "account": "4461972633",
+        "ad_copy": [{"headline": "foo", "creative_urls": {"square": "http://image.png"}}],
+        "creative_approved": "true",
     }
     product = {
         "business_type": "real estate", "product_name": "Sumadhura Solea",
         "target_areas": [{"name": "Bengaluru",
                           "google": {"resourceName": "geoTargetConstants/1026181"}}],
+        "assets": {"logos": [{"url": "http://logo.png"}]},
     }
     return make_cctx(spec, product=product, attempted=True,
                      account_names={"1234567890": "MCC", "4461972633": "Acct"})

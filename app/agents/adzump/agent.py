@@ -52,6 +52,23 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Substrings in ``product_data.business_type`` that flag a session as
+# real-estate. Matches the scraper's metadata prompt.
+_REAL_ESTATE_KEYWORDS = (
+    "real estate",
+    "realty",
+    "villa",
+    "apartment",
+    "residential",
+    "property",
+    "housing",
+    "homes",
+    "realtor",
+    "township",
+    "builder",
+    "developer",
+)
+
 
 def _hydrate_location_from_product_data(ctx: dict) -> None:
     """Restore campaign_spec.location from product_data.place on returning
@@ -76,9 +93,6 @@ def _hydrate_location_from_product_data(ctx: dict) -> None:
     has_resolved_targets = any(
         a.get("google") or a.get("meta") for a in product.get("target_areas") or []
     )
-    if is_local_business(scale) and not has_resolved_targets:
-        return
-
     spec["location"] = place["address"]
     logger.info(
         "hydrated_location_from_product_data: location=%s", place["address"]
@@ -150,8 +164,11 @@ class AdzumpAgent(BaseAgent):
             value = parse_typed_answer(
                 field, last_user, currency_for(session.context)
             )  # (b) typed
-        if value is None and field == "competitive_analysis_declined" \
-                and is_clear_decline_reply(last_user):
+        if (
+            value is None
+            and field == "competitive_analysis_declined"
+            and is_clear_decline_reply(last_user)
+        ):
             value = "true"  # (c) F17 · typed clear decline
         if value is None:
             # v4 · F10 - the user picked the "Custom" escape on a duration/budget
@@ -217,7 +234,11 @@ class AdzumpAgent(BaseAgent):
         )
 
     def _record_prose_decline(
-        self, session: BaseSession, cctx: "CampaignContext", last_user: str, turn: int,
+        self,
+        session: BaseSession,
+        cctx: "CampaignContext",
+        last_user: str,
+        turn: int,
     ) -> bool:
         """F18 · the competitor offer is non-deterministically asked as PROSE (no
         tagged ``present_options``), so a typed decline has no elicitation for
@@ -233,20 +254,27 @@ class AdzumpAgent(BaseAgent):
             return False
         pe = session.context.get("_pending_elicitation")
         if pe and pe.get("field") == "competitive_analysis_declined":
-            return False                                     # tagged-capture owns it
-        if not (cctx.is_google
-                and not cctx.competitor_analysis_attempted
-                and "competitive_analysis_declined" not in cctx.spec):
+            return False  # tagged-capture owns it
+        if not (
+            cctx.is_google
+            and not cctx.competitor_analysis_attempted
+            and "competitive_analysis_declined" not in cctx.spec
+        ):
             return False
         if not is_clear_decline_reply(last_user):
-            return False                                     # ambiguous → let the LLM judge
+            return False  # ambiguous → let the LLM judge
         stored, _ = _apply_field(
-            "competitive_analysis_declined", "true", last_user,
-            session.context, _current_turn({"_session": session}),
+            "competitive_analysis_declined",
+            "true",
+            last_user,
+            session.context,
+            _current_turn({"_session": session}),
         )
         if stored:
-            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
-                        last_user[:80])
+            logger.info(
+                "prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+                last_user[:80],
+            )
         return bool(stored)
 
     def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
@@ -341,11 +369,20 @@ class AdzumpAgent(BaseAgent):
 
     # ── public surface - BaseAgent override hooks (last, per Kiran's BaseAgent) ──
 
-    async def run(self, user_message, session, event_stream, image_blocks=None, model_override=None):
+    async def run(
+        self,
+        user_message,
+        session,
+        event_stream,
+        image_blocks=None,
+        model_override=None,
+    ):
         """Stash event_stream so _on_loop_complete can emit without session.context."""
         self._current_stream = event_stream
         try:
-            await super().run(user_message, session, event_stream, image_blocks, model_override)
+            await super().run(
+                user_message, session, event_stream, image_blocks, model_override
+            )
         finally:
             self._current_stream = None
 
@@ -410,7 +447,9 @@ class AdzumpAgent(BaseAgent):
         return ctx
 
     async def _on_loop_complete(
-        self, session: BaseSession, tool_call_log: list[dict[str, Any]],
+        self,
+        session: BaseSession,
+        tool_call_log: list[dict[str, Any]],
     ) -> None:
         await super()._on_loop_complete(session, tool_call_log)
         await self._autosave_campaign(session)
@@ -521,21 +560,39 @@ class AdzumpAgent(BaseAgent):
         # trailing line, so anchoring there fixes the over-match.
         tail = next((ln for ln in reversed(lt.splitlines()) if ln.strip()), "")
         markers = (
-            "let's confirm", "lets confirm", "confirm the location", "shall i",
-            "shall we", "ready to", "ready when you", "go ahead", "look good",
-            "looks good", "proceed", "all set",
+            "let's confirm",
+            "lets confirm",
+            "confirm the location",
+            "shall i",
+            "shall we",
+            "ready to",
+            "ready when you",
+            "go ahead",
+            "look good",
+            "looks good",
+            "proceed",
+            "all set",
         )
         if not any(m in tail for m in markers):
             return None
         # Label precedence: launch → location → generic (launch must win - the
         # launch ask's trailing line is "…Ready to launch the campaign?").
-        if "launch" in tail:                                   # F27 · launch step
-            return {"options": [{"label": "Yes, launch",
-                                 "value": "yes, launch"}], "mode": "single"}
+        if "launch" in tail:  # F27 · launch step
+            return {
+                "options": [{"label": "Yes, launch", "value": "yes, launch"}],
+                "mode": "single",
+            }
         if "location" in tail:
-            return {"options": [{"label": "Confirm location",
-                                 "value": "yes, confirm the location"}], "mode": "single"}
-        return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
+            return {
+                "options": [
+                    {"label": "Confirm location", "value": "yes, confirm the location"}
+                ],
+                "mode": "single",
+            }
+        return {
+            "options": [{"label": "Go ahead", "value": "yes, go ahead"}],
+            "mode": "single",
+        }
 
     async def get_pending_suggestions(
         self,

@@ -35,6 +35,7 @@ def short_url(url: str, max_len: int = 55) -> str:
     URL (see business_storage._normalize_url for the storage-canonical form).
     """
     from urllib.parse import urlparse
+
     if not url:
         return ""
     try:
@@ -103,23 +104,50 @@ def extract_json(text: str) -> dict | None:
 # need a narrower or broader set can extend it (e.g. comp_discovery adds
 # google.com for Maps-citation URLs; competitor.py adds content platforms).
 
-AGGREGATOR_HOSTS: frozenset[str] = frozenset({
-    # Real-estate / property portals
-    "99acres.com", "magicbricks.com", "housing.com", "squareyards.com",
-    "commonfloor.com", "nobroker.in", "makaan.com", "proptiger.com",
-    "nestaway.com",
-    # Local-services / reviews / listings
-    "yelp.com", "tripadvisor.com", "zomato.com", "swiggy.com",
-    "justdial.com", "sulekha.com", "glassdoor.com", "indeed.com",
-    # Marketplaces
-    "amazon.com", "amazon.in", "flipkart.com", "indiamart.com",
-    # SaaS/product aggregators
-    "g2.com", "capterra.com", "producthunt.com", "trustpilot.com",
-    # Social / forums / wiki
-    "reddit.com", "quora.com", "youtube.com", "facebook.com",
-    "instagram.com", "twitter.com", "x.com", "wikipedia.org",
-    "linkedin.com", "pinterest.com",
-})
+AGGREGATOR_HOSTS: frozenset[str] = frozenset(
+    {
+        # Real-estate / property portals
+        "99acres.com",
+        "magicbricks.com",
+        "housing.com",
+        "squareyards.com",
+        "commonfloor.com",
+        "nobroker.in",
+        "makaan.com",
+        "proptiger.com",
+        "nestaway.com",
+        # Local-services / reviews / listings
+        "yelp.com",
+        "tripadvisor.com",
+        "zomato.com",
+        "swiggy.com",
+        "justdial.com",
+        "sulekha.com",
+        "glassdoor.com",
+        "indeed.com",
+        # Marketplaces
+        "amazon.com",
+        "amazon.in",
+        "flipkart.com",
+        "indiamart.com",
+        # SaaS/product aggregators
+        "g2.com",
+        "capterra.com",
+        "producthunt.com",
+        "trustpilot.com",
+        # Social / forums / wiki
+        "reddit.com",
+        "quora.com",
+        "youtube.com",
+        "facebook.com",
+        "instagram.com",
+        "twitter.com",
+        "x.com",
+        "wikipedia.org",
+        "linkedin.com",
+        "pinterest.com",
+    }
+)
 
 
 def host_of(url: str | None) -> str:
@@ -128,12 +156,15 @@ def host_of(url: str | None) -> str:
         return ""
     try:
         from urllib.parse import urlparse
+
         return (urlparse(url).netloc or "").lower().removeprefix("www.")
     except Exception:
         return ""
 
 
-def is_aggregator_host(host: str, extra_hosts: frozenset[str] | set[str] = frozenset()) -> bool:
+def is_aggregator_host(
+    host: str, extra_hosts: frozenset[str] | set[str] = frozenset()
+) -> bool:
     """True if host matches AGGREGATOR_HOSTS or its extensions (``a.example.com``
     matches ``example.com``). Callers may pass ``extra_hosts`` for domain-specific
     additions (e.g. ``{"google.com"}`` for Maps-citation URLs)."""
@@ -144,6 +175,7 @@ def is_aggregator_host(host: str, extra_hosts: frozenset[str] | set[str] = froze
 
 
 # ─── Shared product-data helpers ─────────────────────────────────────────
+
 
 def product_location_str(product_data: dict) -> str:
     """The business address from product_data.place (the LLM's wire shapes are
@@ -161,8 +193,11 @@ def primary_screenshot_url(product_data: dict) -> str:
 
 # ─── Shared progress emission ────────────────────────────────────────────
 
+
 async def emit_progress(
-    context: dict[str, Any], message: str, tool_use_id: str | None = None,
+    context: dict[str, Any],
+    message: str,
+    tool_use_id: str | None = None,
 ) -> None:
     """Fire-and-forget progress update for a tool row.
 

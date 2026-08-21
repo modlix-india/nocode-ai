@@ -293,6 +293,7 @@ class BaseAgent:
         stuck_sig: tuple[str, ...] | None = None
         stuck_n = 0
         quarantined: set[str] = set()
+        content_blocks: list[dict[str, Any]] = []  # last turn's assistant content blocks
 
         while turn < self.max_turns:
             if event_stream.is_cancelled:
@@ -322,7 +323,7 @@ class BaseAgent:
             content_blocks, tool_use_blocks, stop_reason, usage, _text_chunk_count = (
                 await self._stream_turn(
                     provider, system_prompt, call_messages, effective_tier,
-                    event_stream, assistant_text_parts, tools=call_tools,
+                    event_stream, assistant_text_parts, session, tools=call_tools,
                 )
             )
 
@@ -523,11 +524,24 @@ class BaseAgent:
                 "Please continue the conversation to proceed.]"
             )
 
-        # Persist the turn summary, tool call log, and context. Cap the summary
-        # well under the ASSISTANT_SUMMARY column width (TEXT, ~64KB): a verbose
-        # M3 turn can otherwise overflow it, failing the whole turn upsert
+        # Persist the turn summary, tool call log, and context.
+        # For image-generation turns (e.g. GeminiImagenProvider) the model returns
+        # no text — only an image_source block.  We embed each image URL as a
+        # ``[image_source: <url>]`` sentinel so it survives the DB round-trip and
+        # can be restored as a proper image_source block on the next request.
+        # Cap the summary well under the ASSISTANT_SUMMARY column width (TEXT, ~64KB):
+        # a verbose M3 turn can otherwise overflow it, failing the whole turn upsert
         # (MySQL error 1406) and silently dropping conversation history.
         assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
+        image_source_urls = [
+            b["url"] for b in content_blocks
+            if b.get("type") == "image_source" and b.get("url")
+        ]
+        if image_source_urls:
+            sentinel_parts = [f"[image_source: {u}]" for u in image_source_urls]
+            assistant_summary = (
+                assistant_summary + "\n" if assistant_summary else ""
+            ) + "\n".join(sentinel_parts)
         if len(assistant_summary) > 60000:
             assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
@@ -561,6 +575,7 @@ class BaseAgent:
         effective_tier: str,
         event_stream: AgentEventStream,
         assistant_text_parts: list[str],
+        session: BaseSession,
         tools: list[dict[str, Any]] | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str, dict[str, Any], int]:
         """Stream one LLM turn; assemble provider chunks into blocks.
@@ -658,6 +673,19 @@ class BaseAgent:
                         )
                         current_text = ""
                         current_tool = None
+
+                elif chunk.type == "image_chunk":
+                    if current_text:
+                        cleaned = self._clean_assistant_text(current_text)
+                        if cleaned:
+                            content_blocks.append({"type": "text", "text": cleaned})
+                            assistant_text_parts.append(cleaned)
+                        current_text = ""
+                    url = await self._on_image_generated(
+                        chunk.image_data, chunk.image_mime, session, event_stream,
+                    )
+                    if url:
+                        content_blocks.append({"type": "image_source", "url": url})
 
                 elif chunk.type == "done":
                     stop_reason = chunk.stop_reason or "end_turn"
@@ -918,6 +946,10 @@ class BaseAgent:
         # turn is built from, so it survives refresh). The model writes only a
         # lead-in (tool-text contract); no de-dup — a rare verbatim echo is OK.
         if result.audience in ("user", "both") and result.success and result.summary:
+            logger.info(
+                "audience_text: emitting tool %s result summary (len=%d, preview=%s)",
+                tool_name, len(result.summary), result.summary[:120],
+            )
             await event_stream.emit_text(result.summary)
             assistant_text_parts.append(result.summary)
 
@@ -1179,6 +1211,27 @@ class BaseAgent:
             f"Client: {session.auth.client_code}\n"
             f"App: {session.auth.app_code}\n"
         )
+
+    # ── image generation hook · called when provider yields image_chunk ──
+    async def _on_image_generated(
+        self,
+        image_data: bytes,
+        image_mime: str,
+        session: BaseSession,
+        event_stream: AgentEventStream,
+    ) -> str | None:
+        """Called when the provider yields an ``image_chunk``.
+
+        Subclasses (e.g. ``ImageAgent``) override to upload to CDN and
+        emit a preview event. Return the public CDN URL or ``None``.
+        Base implementation logs a warning and returns ``None``.
+        """
+        logger.warning(
+            "_on_image_generated not overridden; dropping image "
+            "(type=%s, size=%d bytes)",
+            image_mime, len(image_data),
+        )
+        return None
 
     # ── pre-call hook · per turn, before each LLM call → message tail ──
     async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
