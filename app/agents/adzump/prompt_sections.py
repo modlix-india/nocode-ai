@@ -8,6 +8,7 @@ split out of agent.py alongside next_action.py.
 
 from __future__ import annotations
 
+from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.next_action import CampaignContext
 from app.agents.adzump.platform import Platform
 
@@ -45,7 +46,7 @@ def _state_section(cctx: CampaignContext) -> str:
         lines.append(f"- Competitors: {names}{suffix} ✓")
     elif (
         cctx.competitor_analysis_attempted
-        or "competitive_analysis_declined" in cctx.spec
+        or offer_state(cctx.spec, "competitive_analysis") is OfferState.DECLINED
     ):
         lines.append("- Competitors: none analyzed")
 

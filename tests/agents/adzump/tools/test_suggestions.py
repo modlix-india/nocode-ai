@@ -76,7 +76,8 @@ class PresentOptionsTagTests(unittest.TestCase):
     def test_tagged_returns_answer_map_on_data(self):
         res = asyncio.run(_present_options(
             {"question": "How long?",
-             "options": [{"label": "30 days", "value": "30 days", "answer": "30 days"}, "Custom"],
+             "options": [{"label": "30 days", "value": "30 days", "answer": "30 days"},
+                         {"label": "Custom", "value": "Custom", "answer": None}],
              "field": "duration"},
             {"session_context": {}}))
         self.assertEqual(res.data["elicit_field"], "duration")
@@ -95,18 +96,42 @@ class PresentOptionsTagTests(unittest.TestCase):
         session_ctx: dict = {}
         asyncio.run(_present_options(
             {"question": "Want to see competitor ads?",
-             "options": ["Yes", {"label": "No", "value": "No", "answer": "true"}],
-             "field": "competitor_creatives_declined"},
+             "options": [{"label": "Yes", "value": "Yes", "answer": "accepted"},
+                         {"label": "No", "value": "No", "answer": "declined"}],
+             "field": "competitor_creatives"},
             {"session_context": session_ctx}))
         self.assertTrue(session_ctx["_competitor_creatives_offered"])
 
     def test_other_fields_do_not_set_offered_marker(self):
         session_ctx: dict = {}
         asyncio.run(_present_options(
-            {"question": "How long?", "options": ["30 days", "Custom"],
+            {"question": "How long?",
+             "options": [{"label": "30 days", "value": "30 days", "answer": "30 days"},
+                         {"label": "Custom", "value": "Custom", "answer": None}],
              "field": "duration"},
             {"session_context": session_ctx}))
         self.assertNotIn("_competitor_creatives_offered", session_ctx)
+
+    def test_field_tagged_option_must_declare_answer(self):
+        # S1-1 · every chip on a field-tagged ask says what it writes; a
+        # missing "answer" key is the silent-fall-through bug class. An
+        # explicit answer=None is a DECLARED fall-through and passes.
+        for options in (
+            ["30 days"],                                   # string option
+            [{"label": "30 days", "value": "30 days"}],    # no answer key
+        ):
+            with self.subTest(options=options):
+                res = asyncio.run(_present_options(
+                    {"question": "How long?", "options": options,
+                     "field": "duration"},
+                    {"session_context": {}}))
+                self.assertFalse(res.success)
+                self.assertIn("30 days", res.error)        # names the option
+        # Control-flow ask (no field): string options stay fine.
+        res = asyncio.run(_present_options(
+            {"question": "Ready to launch?", "options": ["Yes, launch", "No"]},
+            {"session_context": {}}))
+        self.assertTrue(res.success)
 
 
 if __name__ == "__main__":

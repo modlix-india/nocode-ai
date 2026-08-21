@@ -98,8 +98,8 @@ class TraceabilityTests(unittest.TestCase):
             ("duration", "60 days", "make it 60 days"),
             ("duration", "30 days", "30"),                          # F1 canonical bare number
             ("budget", "₹4,000/day", "4k"),                         # PR2 normalization
-            ("competitive_analysis_declined", "true", "No"),        # chip decline
-            ("competitive_analysis_declined", "true",
+            ("competitive_analysis", "declined", "No"),              # chip decline
+            ("competitive_analysis", "declined",
              "No, skip competitor analysis for now"),               # F11: comma broke exact-match
         ]:
             with self.subTest(field=field, msg=msg):
@@ -117,9 +117,9 @@ class TraceabilityTests(unittest.TestCase):
             ("budget", "₹5,000/day", "call me at 5000"),      # F1 phone-number leak
             ("duration", "3 days", "make it 3 weeks"),        # wrong unit
             ("budget", "₹4,000/day", "no competitors"),       # off-topic reply
-            ("competitive_analysis_declined", "true",
+            ("competitive_analysis", "declined",
              "no, change the budget to 20k"),                 # polarity flip
-            ("competitive_analysis_declined", "false", "no"), # only "true" is traceable
+            ("competitive_analysis", "unset", "no"),          # only accepted/declined store
         ]:
             with self.subTest(field=field, value=value, msg=msg):
                 self.assertFalse(_field_traceable(field, value, msg, SC))

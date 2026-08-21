@@ -24,6 +24,12 @@ import unicodedata
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.models import (
+    LEGACY_DECLINED_KEYS,
+    OFFER_FIELDS,
+    OfferState,
+    offer_state,
+)
 from app.agents.adzump.platform import Platform
 from app.agents.adzump.answer_parse import (
     parse_typed_answer, currency_for, field_candidates,
@@ -81,10 +87,16 @@ ALLOWED_FIELDS = {
     "account",
     "fb_page",
     "ig_page",
-    "competitive_analysis_declined",
-    "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
-    "competitor_creatives_declined",  # Meta-only creative-inspiration offer
+    # Offer fields (enum: accepted/declined). Legacy *_declined names stay
+    # accepted (in-flight rails, steered-by-old-prompt writes) but are
+    # canonicalized to the enum at the _apply_field seam - storage never
+    # gains a new legacy marker.
+    *OFFER_FIELDS,
+    *LEGACY_DECLINED_KEYS.values(),
 }
+
+# Legacy marker key -> the offer field it canonicalizes to.
+_LEGACY_TO_OFFER_FIELD = {v: k for k, v in LEGACY_DECLINED_KEYS.items()}
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
 # (via session_ctx["account_names"]).
@@ -92,17 +104,15 @@ _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 
 # Free-text fields whose values must be traceable to the user's most recent
 # message. Together with _ACCOUNT_LIKE_FIELDS, every allowed field passes
-# through one kind of traceability check. The two decline flags
-# (`competitive_analysis_declined`, `ig_page_declined`) have their own narrow
-# rules (see _field_traceable).
+# through one kind of traceability check. The offer fields have their own
+# narrow rules (see _field_traceable); legacy *_declined names never reach
+# this set - _apply_field canonicalizes them first.
 _USER_TEXT_FIELDS = {
     "platform",
     "duration",
     "budget",
     "location",
-    "competitive_analysis_declined",
-    "ig_page_declined",
-    "competitor_creatives_declined",
+    *OFFER_FIELDS,
 }
 
 # v3 · F2 - when a campaign field that OTHERS depend on is *changed*, those
@@ -117,16 +127,25 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
         "account",
         "fb_page",
         "ig_page",
+        # Offers reset to UNSET on a platform switch (pop = UNSET; the enum
+        # keys and their legacy markers both cleared - old sessions carry the
+        # latter).
+        "instagram",
+        "competitive_analysis",
+        "competitor_creatives",
         "ig_page_declined",
         "competitive_analysis_declined",
         "competitor_creatives_declined",
     ),
-    "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
-    "fb_page": ("ig_page", "ig_page_declined"),
+    "parent_account": ("account", "fb_page", "ig_page", "instagram", "ig_page_declined"),
+    "fb_page": ("ig_page", "instagram", "ig_page_declined"),
+    # No spec dependents, but a genuine change invalidates the geo targets in
+    # product_data (R11) - handled as a special case in _clear_dependents.
+    "location": (),
 }
 
 # v3 · F3 - phrases that mean "skip linking Instagram, run Facebook-only".
-# Consulted by the ig_page_declined traceability rule (chip-click text like
+# Consulted by the instagram-decline traceability rule (chip-click text like
 # "Continue with Facebook only") and by _next_action (typed "skip insta",
 # "lets do it later"). Kept narrow + scoped to the IG-pending branch.
 _IG_SKIP_PHRASES = (
@@ -309,17 +328,21 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
             return True
         return False
 
-    # Decline flags - accept "true" when the user declines (chip or typed). Uses
-    # the shared substring helper (F11: comma-robust; old `"no" in lu.split()`
-    # silently rejected "no, skip competitor analysis for now" → re-ask loop).
-    if field in ("competitive_analysis_declined", "competitor_creatives_declined"):
-        return v in ("true", "yes", "1") and is_decline(lu)
-
-    # v3 · F3 - Instagram-skip flag. Accept "true" when the user opts out of
-    # linking IG, by chip ("Continue with Facebook only") or typed ("skip insta",
-    # "do it later"). Same shape as the competitor decline above.
-    if field == "ig_page_declined":
-        return v in ("true", "yes", "1") and is_ig_skip(lu)
+    # Offer enums - the value must be a valid state AND match the polarity of
+    # what the user said. Decline detection uses the shared substring helpers
+    # (F11: comma-robust; old `"no" in lu.split()` silently rejected "no, skip
+    # competitor analysis for now" → re-ask loop). Instagram takes only
+    # "declined" - linked is ig_page being set (D12).
+    if field in ("competitive_analysis", "competitor_creatives"):
+        if v == OfferState.DECLINED.value:
+            return is_decline(lu)
+        if v == OfferState.ACCEPTED.value:
+            return is_clear_affirmative_reply(lu) or (
+                field == "competitor_creatives" and wants_competitor_creatives(last_user)
+            )
+        return False
+    if field == "instagram":
+        return v == OfferState.DECLINED.value and is_ig_skip(lu)
 
     if lu == v:
         return True
@@ -568,7 +591,7 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     {platform, account} write would undo its own account. Returns the names
     actually cleared (for the delta string)."""
     deps = _FIELD_DEPENDENTS.get(field)
-    if not deps:
+    if deps is None:
         return []
     spec = session_ctx.get("campaign_spec") or {}
     set_at = session_ctx.get("_spec_set_at") or {}
@@ -579,6 +602,14 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
         if spec.pop(dep, None) is not None:
             set_at.pop(dep, None)
             cleared.append(dep)
+    # R11 - a genuinely changed location invalidates the geo targets, which
+    # live in product_data (out of the spec cascade's reach): without this a
+    # corrected city launches on the OLD city's polygons. Clearing re-opens
+    # the geo step (has_mapped_geo_targets turns False).
+    if field == "location":
+        product = session_ctx.get("product_data") or {}
+        if product.pop("target_areas", None) is not None:
+            cleared.append("target_areas")
     # A changed FB page (or anything upstream of it) also invalidates the
     # "Instagram options were already offered" marker (F3).
     if field in ("platform", "parent_account", "fb_page"):
@@ -598,10 +629,17 @@ def clear_competitor_decline(session_ctx: dict) -> bool:
     _clear_dependents' spec/set_at lockstep. Idempotent. Returns whether it
     popped (for logging)."""
     spec = session_ctx.get("campaign_spec") or {}
-    if spec.pop("competitive_analysis_declined", None) is None:
-        return False
-    (session_ctx.get("_spec_set_at") or {}).pop("competitive_analysis_declined", None)
-    return True
+    set_at = session_ctx.get("_spec_set_at") or {}
+    popped = False
+    if spec.pop("competitive_analysis_declined", None) is not None:
+        set_at.pop("competitive_analysis_declined", None)
+        popped = True
+    # Enum home of the same fact - clear only a DECLINED (an ACCEPTED stands).
+    if spec.get("competitive_analysis") == OfferState.DECLINED.value:
+        spec.pop("competitive_analysis")
+        set_at.pop("competitive_analysis", None)
+        popped = True
+    return popped
 
 
 def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
@@ -615,9 +653,9 @@ def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
                  fetch_competitor_creatives), even when it found zero ads - an
                  empty result must not re-ask forever;
       moot     - analysis ran and found no named rivals to fetch for."""
-    if "competitor_creatives_declined" in spec:
+    if offer_state(spec, "competitor_creatives") is OfferState.DECLINED:
         return True
-    if "competitive_analysis_declined" in spec:
+    if offer_state(spec, "competitive_analysis") is OfferState.DECLINED:
         return True
     if session_ctx.get("_competitor_creatives_fetched"):
         return True
@@ -647,10 +685,25 @@ def _apply_field(
     reason on failure."""
     spec = session_ctx.setdefault("campaign_spec", {})
     set_at = session_ctx.setdefault("_spec_set_at", {})
+    # Canonicalize legacy offer writes at the ONE write seam: a lingering
+    # `ig_page_declined="true"` (old rail, old prompt) stores as the enum -
+    # storage never gains a new legacy marker. The legacy key, if present from
+    # an old session, is dropped in the same write.
+    legacy_field = _LEGACY_TO_OFFER_FIELD.get(field)
+    if legacy_field is not None:
+        if OfferState.from_legacy(value) is not OfferState.DECLINED:
+            return (False, f"{field} takes only \"true\" (a decline)")
+        field, value = legacy_field, OfferState.DECLINED.value
     if field in _USER_TEXT_FIELDS and not _field_traceable(
         field, value, last_user, session_ctx
     ):
         return (False, "not traceable to user's last message")
+    # Validated: retire the legacy marker (if an old session carried one) in
+    # the same write - never AFTER a failed validation, which would erase a
+    # stored decline.
+    if field in OFFER_FIELDS:
+        spec.pop(LEGACY_DECLINED_KEYS[field], None)
+        set_at.pop(LEGACY_DECLINED_KEYS[field], None)
     if field in _ACCOUNT_LIKE_FIELDS:
         known_ids = set((session_ctx.get("account_names") or {}).keys())
         if str(value) not in known_ids:
@@ -658,7 +711,7 @@ def _apply_field(
             if field == "ig_page":
                 # v5 · live mangle: the model sent ig_page="true" meaning a
                 # Facebook-only decline. Point it at the right key.
-                reason += ' - to run Facebook-only, set ig_page_declined="true" instead'
+                reason += ' - to run Facebook-only, set instagram="declined" instead'
             return (False, reason)
     prior = spec.get(field)
     spec[field] = value
@@ -709,16 +762,20 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     if is_google:
         if (
             session_ctx.get("competitor_analysis") is None
-            and "competitive_analysis_declined" not in spec
+            and offer_state(spec, "competitive_analysis") is not OfferState.DECLINED
         ):
             return ""
 
     # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) - but it must have
-    # been OFFERED, i.e. an ig_page was picked OR ig_page_declined is set. This
+    # been OFFERED, i.e. an ig_page was picked OR Instagram declined. This
     # gates review until the IG choice has been made once, without making IG
     # mandatory (Facebook-only is a valid campaign).
     if is_meta and not (
-        spec.get("fb_page") and (spec.get("ig_page") or spec.get("ig_page_declined"))
+        spec.get("fb_page")
+        and (
+            spec.get("ig_page")
+            or offer_state(spec, "instagram") is OfferState.DECLINED
+        )
     ):
         return ""
 
@@ -755,7 +812,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
         f"{meta_extra}\n"
         "  - **Competitors**: <comma-separated names from State, or 'none "
-        "analyzed', or 'declined' if competitive_analysis_declined='true'>\n\n"
+        "analyzed', or 'declined' if competitive analysis was declined>\n\n"
         'Then call `present_options(question="Ready to launch the campaign?", '
         'options=["Yes, launch", "No, make changes"])`. EVERY bullet must '
         "be present. **On the user's 'Yes, launch' reply, call "

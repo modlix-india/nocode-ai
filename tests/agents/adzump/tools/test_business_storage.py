@@ -125,6 +125,13 @@ class LaunchRecordTests(unittest.TestCase):
         self.assertFalse(c["attempted"])
         self.assertTrue(c["declined"])
 
+    def test_enum_decline_persists_identically(self):
+        # S1-2 - the enum spec and the legacy spec produce the identical
+        # durable record (the ds JSON shape never changes).
+        c = _rec({"platform": "Google Ads", "competitive_analysis": "declined"})
+        self.assertFalse(c["attempted"])
+        self.assertTrue(c["declined"])
+
     def test_neither_attempted_nor_declined(self):
         c = _rec({"platform": "Google Ads"})
         self.assertFalse(c["attempted"])

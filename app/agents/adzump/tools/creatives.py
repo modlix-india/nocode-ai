@@ -19,6 +19,7 @@ import logging
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
 from app.agents.adzump import creative_intelligence as ci
+from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.platform import is_meta
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
@@ -76,16 +77,24 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             ),
             display_error="Competitor ads are available on Meta campaigns.",
         )
-    if not wants_competitor_creatives(_last_user_text(context)):
+    # Stored-ok exception (HLD/LLD §4.5): the fetch is metered but internal and
+    # reversible, so a stored ACCEPTED passes - the user's Yes must not expire
+    # because a digression moved the "latest message" (the F-bug where a
+    # consented fetch died on the way to the analyze step).
+    stored_yes = (
+        offer_state(spec, "competitor_creatives") is OfferState.ACCEPTED
+    )
+    if not stored_yes and not wants_competitor_creatives(_last_user_text(context)):
         return ToolResult(
             success=False,
             error=(
                 "Consent gate: fetching competitor creatives costs ad-library "
-                "credits, so it needs an explicit go-ahead in the user's LATEST "
-                "message. Ask first via the present_options tool (field "
-                '"competitor_creatives_declined"): "Want to see your '
-                'competitors\' recent ads?" with chips Yes / No - then call this '
-                "tool only after a clear yes."
+                "credits, so it needs the user's go-ahead - a stored yes to the "
+                "offer, or an explicit yes in their latest message. Ask first "
+                'via the present_options tool (field "competitor_creatives"): '
+                '"Want to see your competitors\' recent ads?" with chips Yes / '
+                "No (answers accepted/declined) - then call this tool only "
+                "after a clear yes."
             ),
             display_error="Waiting for your go-ahead before fetching competitor ads.",
         )
@@ -180,8 +189,9 @@ fetch_competitor_creatives = ToolDefinition(
         "Fetch competitor ad creatives (image/video thumbnails, ad copy, metrics, "
         "extracted essence) to use as creative inspiration. META flow only, and "
         "gated on consent: call ONLY after the user says yes to seeing competitor "
-        "ads in their latest message (offer it via present_options, field "
-        '"competitor_creatives_declined") - NOT as a routine step of competitor '
+        "ads - a stored yes to the offer, or a yes in their latest message "
+        '(offer it via present_options, field "competitor_creatives", answers '
+        "accepted/declined) - NOT as a routine step of competitor "
         "analysis; the tool refuses otherwise. Requires competitors to already "
         "exist (from analyze_competitors). Reuses a shared creative library and "
         "only queries the ad library for competitors that are missing or stale. "

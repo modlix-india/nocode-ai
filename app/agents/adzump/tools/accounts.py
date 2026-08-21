@@ -206,15 +206,16 @@ _NO_FB_PAGES = (
 # v3 · F3 - empty IG is no longer a dead end. Instagram is optional, so offer a
 # tagged Facebook-only choice (deterministically captured) + a connect-and-retry
 # fall-through. The "Continue with Facebook only" click stores
-# ig_page_declined="true"; "I'll connect Instagram first" falls through to the LLM.
+# instagram="declined"; "I'll connect Instagram first" falls through to the LLM.
 _NO_IG_ACCOUNTS = (
     "No Instagram account is linked to this Facebook page. Instagram is OPTIONAL - "
     "the campaign can run on Facebook alone. Call `present_options(question=\"No "
     "Instagram is linked to this page. Instagram is optional - continue with Facebook "
     "only, or connect an Instagram account and retry.\", options=[{\"label\":\"Continue "
-    "with Facebook only\",\"value\":\"Facebook only\",\"answer\":\"true\"}, {\"label\":"
-    "\"I'll connect Instagram first\",\"value\":\"I'll connect Instagram first\"}], "
-    "field=\"ig_page_declined\")` and STOP - no chat text. Do NOT invent an Instagram id."
+    "with Facebook only\",\"value\":\"Facebook only\",\"answer\":\"declined\"}, {\"label\":"
+    "\"I'll connect Instagram first\",\"value\":\"I'll connect Instagram first\","
+    "\"answer\":null}], "
+    "field=\"instagram\")` and STOP - no chat text. Do NOT invent an Instagram id."
 )
 
 
@@ -385,7 +386,7 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
     if not accounts:
         # No IG linked is NOT an error anymore - it's a valid Facebook-only path.
         # Offer the choice as a tagged decline so "Facebook only" is captured
-        # deterministically (field=ig_page_declined, answer="true").
+        # deterministically (field=instagram, answer="declined").
         return ToolResult(
             success=True,
             data={"accounts": [], "ig_optional": True},
@@ -412,7 +413,8 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
             _list_summary("Instagram account", accounts,
                           _options_pairs(accounts, "id"), "ig_page")
             + " ALSO append one final option {\"label\":\"Continue with Facebook only\","
-              "\"value\":\"Facebook only\"} (no answer - Instagram is optional)."
+              "\"value\":\"Facebook only\",\"answer\":null} (a declared fall-through - "
+              "Instagram is optional and the account pick owns this ask's field)."
         ),
     )
 

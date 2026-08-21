@@ -22,6 +22,7 @@ from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_meta as _platform_is_meta,
 )
+from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.models.product import Image, Logo, check_product
 from app.agents.adzump._shared import (
     STORAGE_CREATE as CREATE,
@@ -334,8 +335,12 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
                 # (analysis having run voids a prior decline; clear_competitor_decline
                 # handles the realistic paths, this keeps the durable record honest
                 # even if a stale flag survives an un-instrumented path).
-                "declined": (spec.get("competitive_analysis_declined") == "true"
-                             and session_ctx.get("competitor_analysis") is None),
+                # Migration-aware read: enum spec and legacy-marker spec answer
+                # identically; the ds JSON shape is unchanged (a plain bool).
+                "declined": (
+                    offer_state(spec, "competitive_analysis") is OfferState.DECLINED
+                    and session_ctx.get("competitor_analysis") is None
+                ),
             },
             # Persist target areas so they survive session restarts. The
             # per-platform keys are the ds-side contract - projected from

@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.core.session import BaseSession
+from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.platform import (
     CANONICAL_LABEL,
     Platform,
@@ -73,7 +74,7 @@ class CampaignContext:
     # re-firing. Defaulted for direct test construction.
     competitor_creatives_offer_resolved: bool = False
     # True once the creative-inspiration question has been PUT ON SCREEN (marker
-    # set by present_options, field "competitor_creatives_declined"). Between
+    # set by present_options, field "competitor_creatives"). Between
     # offered and resolved, _next_action prescribes reacting to the reply -
     # never the ask text again (live bug: a Yes resolved nothing, so the
     # verbatim ask re-fired and the model copied it instead of fetching).
@@ -213,8 +214,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
             "platform - use the present_options tool (field \"platform\") to ask "
-            "\"Which platform should we run this on?\" with chip choices: Google Ads, "
-            "Meta. CALL the tool - never type the call into your reply."
+            "\"Which platform should we run this on?\" with chips Google Ads / "
+            "Meta, each carrying answer == its value. CALL the tool - never "
+            "type the call into your reply."
         )
 
     has_platform = bool(cctx.spec.get("platform"))
@@ -234,30 +236,43 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         )
         )
 
+    analysis_state = offer_state(cctx.spec, "competitive_analysis")
     if (
         cctx.is_google
         and not cctx.competitor_analysis_attempted
-        and "competitive_analysis_declined" not in cctx.spec
+        and analysis_state is not OfferState.DECLINED
     ):
         # F11 · agentic, not a hardcoded phrase ladder: the MODEL interprets the
         # user's reply to THIS competitor offer (the old `lu in (...)` exact-match
         # missed "No, skip competitor analysis for now" → re-ask loop). Scoped +
         # biased to re-ask on doubt so a polarity-flip ("no, change the budget")
         # is never read as a decline. The _field_traceable guard backstops it.
-        missing.append(
-            "competitive analysis - offer it ONCE as a Yes/No question, then react:\n"
-            "  • if you have not offered competitor analysis yet → ask via the "
-            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
-            "analyze competitors before we set things up?\" with chips Yes / No. A No "
-            "(or a clear typed decline) is recorded for you automatically - do NOT call "
-            "set_campaign_spec for it, and never set a field the user hasn't stated "
-            "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
-            "  • they want it (yes / go ahead) → run analyze_competitors.\n"
-            "  • the reply is unclear or about something ELSE (budget, a named competitor) "
-            "→ re-ask the same Yes/No present_options; do NOT treat a doubtful reply as a "
-            "decline.\n"
-            "(These are instructions to CALL tools - never type tool-call syntax into your reply.)"
-        )
+        if analysis_state is OfferState.ACCEPTED:
+            # Every chip writes: the Yes already landed as ACCEPTED - the ask
+            # is settled, only the analysis itself is owed.
+            missing.append(
+                "competitive analysis - the user already said YES to it. Run "
+                "`analyze_competitors` NOW; do NOT re-ask. (This is an "
+                "instruction to CALL the tool - never type tool-call syntax "
+                "into your reply.)"
+            )
+        else:
+            missing.append(
+                "competitive analysis - offer it ONCE as a Yes/No question, then react:\n"
+                "  • if you have not offered competitor analysis yet → ask via the "
+                "present_options tool (field \"competitive_analysis\"): \"Want me to "
+                "analyze competitors before we set things up?\" with options "
+                '[{"label":"Yes","value":"Yes","answer":"accepted"}, '
+                '{"label":"No","value":"No","answer":"declined"}]. BOTH answers are '
+                "recorded for you automatically - do NOT call set_campaign_spec for "
+                "them, and never set a field the user hasn't stated (F17/F12: don't "
+                "copy a value into duration/budget/account to 'proceed').\n"
+                "  • they want it (yes / go ahead) → run analyze_competitors.\n"
+                "  • the reply is unclear or about something ELSE (budget, a named competitor) "
+                "→ re-ask the same Yes/No present_options; do NOT treat a doubtful reply as a "
+                "decline.\n"
+                "(These are instructions to CALL tools - never type tool-call syntax into your reply.)"
+            )
 
     # Meta creative inspiration - Meta campaigns are creative-bound, so the
     # competitors' running ads are the seed material. Consent-gated (ad-library
@@ -285,13 +300,17 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
             missing.append(
                 "competitor creatives - offer it ONCE: ask via the present_options "
-                f'tool (field "competitor_creatives_declined"): "{question}" with '
-                "chips Yes / No. A No (or a clear typed decline) is recorded for "
-                "you automatically - do NOT call set_campaign_spec for it. (This is "
-                "an instruction to CALL the tool - never type tool-call syntax into "
-                "your reply.)"
+                f'tool (field "competitor_creatives"): "{question}" with options '
+                '[{"label":"Yes","value":"Yes","answer":"accepted"}, '
+                '{"label":"No","value":"No","answer":"declined"}]. BOTH answers '
+                "are recorded for you automatically - do NOT call "
+                "set_campaign_spec for them. (This is an instruction to CALL the "
+                "tool - never type tool-call syntax into your reply.)"
             )
-        elif wants_competitor_creatives(cctx.last_user):
+        elif (
+            offer_state(cctx.spec, "competitor_creatives") is OfferState.ACCEPTED
+            or wants_competitor_creatives(cctx.last_user)
+        ):
             missing.append(
                 f'competitor creatives - the user said YES ("{cctx.last_user[:40]}") '
                 f"to the offer you already made. {fetch_chain} NOW. Do NOT ask "
@@ -306,7 +325,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 f"show me) → {fetch_chain}; a clear decline is recorded "
                 "automatically - do NOT call set_campaign_spec for it; a reply "
                 "about something ELSE → address it first, then re-ask the SAME "
-                'Yes/No present_options (field "competitor_creatives_declined"); '
+                'Yes/No present_options (field "competitor_creatives", answers '
+                "accepted/declined); "
                 "do NOT treat a doubtful reply as a decline. (These are "
                 "instructions to CALL tools - never type tool-call syntax into "
                 "your reply.)"
@@ -325,8 +345,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             missing.append(
                 "duration - use the present_options tool (field \"duration\") to ask "
-                "\"How long should the campaign run?\" with chip choices: 30 days, "
-                "60 days, 90 days, Custom. CALL the tool - never type the call into your reply."
+                "\"How long should the campaign run?\" with chips 30 days / 60 days / "
+                "90 days (each carrying answer == its value) plus Custom (carrying "
+                '\"answer\": null - it is the typed-value escape). CALL the tool - '
+                "never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
         if cctx.awaiting_custom_field == "budget":
@@ -342,9 +364,11 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
                 "budget - use the present_options tool (field \"budget\") to ask "
-                "\"What's your daily budget?\" with platform-tuned chip choices "
-                f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day) "
-                "plus Custom. CALL the tool - never type the call into your reply."
+                "\"What's your daily budget?\" with platform-tuned chips "
+                f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day, "
+                "each carrying answer == its value) plus Custom (carrying "
+                '\"answer\": null - it is the typed-value escape). CALL the tool - '
+                "never type the call into your reply."
             )
     # Account-block lines depend on the platform pick - skip until platform
     # is set so we don't suggest the wrong fetch tool.
@@ -375,11 +399,14 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         # v3 · F3 - Instagram is OPTIONAL (Facebook-only is a valid campaign).
         # Offer it once; honour skip/later; never block. Gated on fb_page being
         # set so we ask one thing at a time.
-        elif not cctx.spec.get("ig_page") and "ig_page_declined" not in cctx.spec:
+        elif (
+            not cctx.spec.get("ig_page")
+            and offer_state(cctx.spec, "instagram") is not OfferState.DECLINED
+        ):
             if is_ig_skip(cctx.last_user):
                 missing.append(
                     "instagram - user is skipping Instagram (it's OPTIONAL). Call "
-                    '`set_campaign_spec(ig_page_declined="true")` and proceed to review.'
+                    '`set_campaign_spec(instagram="declined")` and proceed to review.'
                 )
             elif cctx.ig_offered:
                 # Already FETCHED - do NOT re-fetch (that was the live loop).
@@ -391,11 +418,11 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 missing.append(
                     "instagram - Instagram accounts were already fetched; do NOT call "
                     "fetch_meta_ig_accounts again. If you have NOT yet shown the choice, "
-                    "call present_options EXACTLY as the fetch result instructed "
-                    '(field="ig_page_declined"). If the user picked an account it\'s '
-                    "captured. If they want Facebook only, call "
-                    '`set_campaign_spec(ig_page_declined="true")`. If they\'re connecting '
-                    "an Instagram account, wait and re-fetch only when they say they're ready."
+                    "call present_options EXACTLY as the fetch result instructed. "
+                    "If the user picked an account it's captured. If they want "
+                    'Facebook only, call `set_campaign_spec(instagram="declined")`. '
+                    "If they're connecting an Instagram account, wait and re-fetch "
+                    "only when they say they're ready."
                 )
             else:
                 missing.append(
@@ -432,7 +459,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             f"{meta_extra}\n"
             "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
-            "if competitive_analysis_declined='true'>\n\n"
+            "if competitive analysis was declined>\n\n"
             "EVERY bullet must be present - do not omit any.\n"
             "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
             "the campaign?\" with chips: Yes, launch / No, make changes. When the user "

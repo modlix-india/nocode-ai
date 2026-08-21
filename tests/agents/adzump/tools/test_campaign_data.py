@@ -135,6 +135,30 @@ class DependencyCascadeTests(unittest.TestCase):
         self.assertNotIn("ig_page_declined", sc["campaign_spec"])
         self.assertNotIn("_ig_offered", sc)                          # F3 marker cleared
 
+    def test_platform_change_resets_enum_offers(self):
+        # Offers reset to UNSET (key popped) on a platform switch - a Google
+        # decline must not silently carry into the Meta flow.
+        sc = _ctx({"platform": "Google Ads", "competitive_analysis": "accepted",
+                   "competitor_creatives": "declined", "instagram": "declined"})
+        _apply_field("platform", "Meta", "Meta", sc, 2)
+        for offer in ("competitive_analysis", "competitor_creatives", "instagram"):
+            self.assertNotIn(offer, sc["campaign_spec"])
+
+    def test_location_change_clears_target_areas(self):
+        # S1-9/R11 - a corrected city must never launch on the old polygons.
+        sc = _ctx({"platform": "Google Ads", "location": "Pune"})
+        sc["product_data"] = {"business_type": "real estate",
+                              "target_areas": [{"name": "Pune", "google": {"id": 1}}]}
+        stored, info = _apply_field("location", "Mumbai", "make it Mumbai", sc, 3)
+        self.assertTrue(stored)
+        self.assertNotIn("target_areas", sc["product_data"])
+        self.assertIn("target_areas", info)
+        # First-set never cascades: a fresh confirm keeps existing targets.
+        sc2 = _ctx({})
+        sc2["product_data"] = {"target_areas": [{"name": "Pune"}]}
+        _apply_field("location", "Pune", "Pune", sc2, 1)
+        self.assertIn("target_areas", sc2["product_data"])
+
     def test_clear_dependents_returns_names(self):
         sc = _ctx({"platform": "Meta", "account": "A"}, account_names={})
         cleared = _clear_dependents("platform", sc, frozenset())
@@ -203,7 +227,7 @@ class SpecRetryBreakerTests(unittest.TestCase):
         ctx, sc = spec_context({}, "continue")
         r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
         self.assertFalse(r.success)
-        self.assertIn("ig_page_declined", r.error or "")
+        self.assertIn('instagram="declined"', r.error or "")
 
     def test_stored_account_field_unknown_id_still_rejected(self):
         # Kiran (v5 review): the kept-noop must NOT swallow account fields -
@@ -216,12 +240,12 @@ class SpecRetryBreakerTests(unittest.TestCase):
         self.assertEqual(sc["campaign_spec"]["account"], "act_111")
 
     def test_stored_ig_page_unknown_value_keeps_hint(self):
-        # With ig_page already stored, the ig_page_declined hint must still
+        # With ig_page already stored, the Facebook-only hint must still
         # surface (kept-noop would have swallowed it before the narrowing).
         ctx, sc = spec_context({"ig_page": "12345"}, "continue")
         r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
         self.assertFalse(r.success)
-        self.assertIn("ig_page_declined", r.error or "")
+        self.assertIn('instagram="declined"', r.error or "")
         self.assertEqual(sc["campaign_spec"]["ig_page"], "12345")
 
 
@@ -292,7 +316,9 @@ class BleedContainmentTests(unittest.TestCase):
             "budget": "true", "account": "true",
         }, ctx))
         self.assertTrue(r.success)
-        self.assertEqual(sc["campaign_spec"].get("competitive_analysis_declined"), "true")
+        # Legacy write canonicalizes to the enum at the _apply_field seam.
+        self.assertEqual(sc["campaign_spec"].get("competitive_analysis"), "declined")
+        self.assertNotIn("competitive_analysis_declined", sc["campaign_spec"])
         for f in ("duration", "budget", "account"):
             self.assertNotIn(f, sc["campaign_spec"])               # bleed contained
 
@@ -335,7 +361,7 @@ class ClearAffirmativeReplyTableTests(unittest.TestCase):
         for user, expected in [("No", True), ("no thanks", True), ("yes please", False)]:
             with self.subTest(user=user):
                 self.assertEqual(
-                    _field_traceable("competitor_creatives_declined", "true", user, ctx),
+                    _field_traceable("competitor_creatives", "declined", user, ctx),
                     expected)
 
 
@@ -349,8 +375,15 @@ class CreativesOfferResolvedTests(unittest.TestCase):
         rival = {"name": "R", "url": "https://r.com"}
         cases = [
             ("declined", {"competitor_creatives_declined": "true"}, {}, True),
+            ("declined (enum)", {"competitor_creatives": "declined"}, {}, True),
             ("analysis itself declined",
              {"competitive_analysis_declined": "true"}, {}, True),
+            ("analysis itself declined (enum)",
+             {"competitive_analysis": "declined"}, {}, True),
+            ("accepted alone is NOT resolved (fetch still owed)",
+             {"competitor_creatives": "accepted"},
+             {"competitor_analysis": {"competitors": [
+                 {"name": "R", "url": "https://r.com"}]}}, False),
             ("fetch completed, zero ads", {},
              {"_competitor_creatives_fetched": True,
               "competitor_analysis": {"competitors": [dict(rival)]}}, True),

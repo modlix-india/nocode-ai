@@ -71,10 +71,19 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
                     self.assertIn("Consent gate", result.error)
                     # the refusal names the re-ask tool + tagged field
                     self.assertIn("present_options", result.error)
-                    self.assertIn("competitor_creatives_declined", result.error)
+                    self.assertIn('field "competitor_creatives"', result.error)
                     # the customer's tool row gets calm copy, never the steering
                     self.assertIn("go-ahead", result.display_error)
                     self.assertNotIn("present_options", result.to_display_text())
+        with self.subTest("stored acceptance passes the gate (stored-ok exception)"):
+            # HLD/LLD §4.5: the fetch is metered but internal and reversible -
+            # a stored yes must not expire because a digression moved the
+            # latest message (live: the consented fetch died on the way to
+            # the analyze step).
+            ctx = _ctx(last_user="tell me about the budget")
+            ctx["session_context"]["campaign_spec"]["competitor_creatives"] = "accepted"
+            result, fetch = _run(ctx)
+            self.assertTrue(result.success)
         with self.subTest("consent survives a tool result later in the turn"):
             # The gate's own "run analyze_competitors NOW, then call fetch AGAIN
             # in this same turn" must be satisfiable (incident: LastUserTextTests).

@@ -28,6 +28,7 @@ from app.agents.adzump.next_action import (
     _is_custom_reply,
     _next_action,
 )
+from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.platform import is_mapped_for
 from app.agents.adzump.prompt_sections import (
     _how_to_respond_section,
@@ -51,6 +52,12 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# How many user turns an open elicitation may age (measured from the first
+# reply to it) before layer-1/2 auto-capture steps aside and the message is
+# handled conversationally. Wide enough for a short digression while typing a
+# Custom value; tight enough that a forgotten chip row can't claim a fresh
+# message (R6/S1-11).
+STALE_RAIL_TURNS = 4
 
 
 def _hydrate_location_from_product_data(ctx: dict) -> None:
@@ -141,6 +148,19 @@ class AdzumpAgent(BaseAgent):
         if not pe or not pe.get("field") or pe.get("expects") != "single":
             return ""
         field = pe["field"]
+        # Stale-rail guard (R6/S1-11): a rail kept open across several user
+        # turns (the awaiting_custom path) must not claim an unrelated later
+        # message as its answer. Stamped on first sight - the turn the first
+        # reply to this ask arrives; past the window, layers 1/2 step aside
+        # and the model handles the message conversationally.
+        current = _current_turn({"_session": session})
+        first_reply_turn = pe.setdefault("first_reply_turn", current)
+        if current - first_reply_turn > STALE_RAIL_TURNS:
+            logger.info(
+                "tagged_capture: stale rail field=%s age=%d turns - auto-capture skipped",
+                field, current - first_reply_turn,
+            )
+            return ""
         answers = pe.get("answers") or {}
         last_user = _last_user_text({"_session": session})
         if not last_user:
@@ -150,10 +170,15 @@ class AdzumpAgent(BaseAgent):
             value = parse_typed_answer(
                 field, last_user, currency_for(session.context)
             )  # (b) typed
-        if value is None and field in (
-            "competitive_analysis_declined", "competitor_creatives_declined"
-        ) and is_clear_decline_reply(last_user):
-            value = "true"  # (c) F17 · typed clear decline
+        if value is None and is_clear_decline_reply(last_user):
+            # (c) F17 · typed clear decline. Legacy field names ride an old
+            # rail; _apply_field canonicalizes their "true" to the enum.
+            if field in ("competitive_analysis", "competitor_creatives"):
+                value = OfferState.DECLINED.value
+            elif field in (
+                "competitive_analysis_declined", "competitor_creatives_declined"
+            ):
+                value = "true"
         if value is None:
             # v4 · F10 - the user picked the "Custom" escape on a duration/budget
             # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
@@ -223,7 +248,7 @@ class AdzumpAgent(BaseAgent):
         """F18 · the competitor offer is non-deterministically asked as PROSE (no
         tagged ``present_options``), so a typed decline has no elicitation for
         ``_capture_tagged_answer`` to match - and the model often just advances
-        without recording it, leaving ``competitive_analysis_declined`` unset and
+        without recording it, leaving the ``competitive_analysis`` offer UNSET and
         the prescription re-firing every turn. Record it in code at turn-start,
         with a NARROW guard (Kiran): only the competitor-offer state, only a
         clear-decline reply (``is_clear_decline_reply`` excludes ambiguous "no…"
@@ -233,20 +258,23 @@ class AdzumpAgent(BaseAgent):
         if turn != 1 or not last_user:
             return False
         pe = session.context.get("_pending_elicitation")
-        if pe and pe.get("field") == "competitive_analysis_declined":
+        if pe and pe.get("field") in (
+            "competitive_analysis", "competitive_analysis_declined"
+        ):
             return False                                     # tagged-capture owns it
         if not (cctx.is_google
                 and not cctx.competitor_analysis_attempted
-                and "competitive_analysis_declined" not in cctx.spec):
+                and offer_state(cctx.spec, "competitive_analysis")
+                is OfferState.UNSET):
             return False
         if not is_clear_decline_reply(last_user):
             return False                                     # ambiguous → let the LLM judge
         stored, _ = _apply_field(
-            "competitive_analysis_declined", "true", last_user,
+            "competitive_analysis", OfferState.DECLINED.value, last_user,
             session.context, _current_turn({"_session": session}),
         )
         if stored:
-            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+            logger.info("prose_decline_recorded: competitive_analysis=declined user_said=%r",
                         last_user[:80])
         return bool(stored)
 
@@ -369,7 +397,7 @@ class AdzumpAgent(BaseAgent):
         last_user = _last_user_text({"_session": session})
         # F18 · when the competitor offer was asked as PROSE (not a tagged
         # present_options), a clear typed decline has no capture rail - record it
-        # in code at turn-start so competitive_analysis_declined doesn't persist
+        # in code at turn-start so the competitive-analysis ask doesn't persist
         # in `missing` forever. Re-derive cctx since the spec changed.
         if self._record_prose_decline(session, cctx, last_user, turn):
             cctx = CampaignContext.from_session(session)

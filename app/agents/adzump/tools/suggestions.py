@@ -58,14 +58,39 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     answer_map: dict[str, str] = {}
     for opt in options:
         if isinstance(opt, str):
+            if field:
+                # Every chip on a field-tagged ask must say what it writes -
+                # a silent fall-through is the bug class where a click lands
+                # nowhere and the question re-fires.
+                return ToolResult(
+                    success=False,
+                    error=(
+                        f'Option "{opt}" on a field-tagged ask must be a dict '
+                        'with an "answer" key (the value stored on click), or '
+                        '"answer": null for a deliberate fall-through like '
+                        '"Custom". Re-call with dict options.'
+                    ),
+                )
             normalized.append({"label": opt, "value": opt})
         elif isinstance(opt, dict) and opt.get("label"):
             label = str(opt["label"])
             value = str(opt.get("value") or label)
+            if field and "answer" not in opt:
+                return ToolResult(
+                    success=False,
+                    error=(
+                        f'Option "{label}" carries no "answer" key. On a '
+                        f'field-tagged ask (field="{field}") EVERY option must '
+                        'declare what it writes on click - use "answer": null '
+                        'only for a deliberate fall-through ("Custom", '
+                        '"Facebook only"). Re-call with the answers filled in.'
+                    ),
+                )
             normalized.append({"label": label, "value": value})
             # PR2 · a capturable option declares `answer` (the value to store on
-            # click). Options without `answer` (e.g. "Custom", competitor "Yes")
-            # are fall-through - absent from the map → capture defers to the LLM.
+            # click). An explicit "answer": null is a declared fall-through
+            # ("Custom", "Facebook only") - absent from the map → capture
+            # defers to the LLM.
             if opt.get("answer") is not None:
                 answer_map[value] = str(opt["answer"])
         else:
@@ -86,7 +111,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     # screen, _next_action stops prescribing the ask and prescribes reacting to
     # the reply instead (live bug: a Yes resolved nothing, the verbatim ask
     # re-fired next turn, and the model copied it instead of fetching).
-    if field == "competitor_creatives_declined":
+    if field in ("competitor_creatives", "competitor_creatives_declined"):
         session_ctx["_competitor_creatives_offered"] = True
 
     # Stream the question into the assistant message so it visually precedes
@@ -186,13 +211,14 @@ present_options = ToolDefinition(
             type="string",
             description=(
                 "Set ONLY for data-collection asks that fill a campaign field "
-                "(platform / duration / budget / competitive_analysis_declined / "
-                "competitor_creatives_declined / account picks). The harness then "
-                "stores the user's answer directly. For each capturable option "
-                "give an `answer` (the value to store on click; usually == value; "
-                "\"true\" for a competitor decline). Omit `answer` on fall-through "
-                "options (\"Custom\", competitor \"Yes\"). Leave `field` unset for "
-                "control-flow asks (launch confirmation)."
+                "(platform / duration / budget / competitive_analysis / "
+                "competitor_creatives / instagram / account picks). The harness "
+                "then stores the user's answer directly. EVERY option on a "
+                "field-tagged ask must carry an `answer` key - the value to "
+                "store on click (usually == value; \"accepted\"/\"declined\" for "
+                "offer Yes/No chips). Use `answer: null` ONLY for a deliberate "
+                "fall-through option (\"Custom\", \"Facebook only\"). Leave "
+                "`field` unset for control-flow asks (launch confirmation)."
             ),
             required=False,
         ),

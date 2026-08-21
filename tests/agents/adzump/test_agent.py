@@ -60,7 +60,7 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
                 offer = self._offer_lines(**kw)
                 self.assertEqual(len(offer), 1)
                 self.assertIn("present_options", offer[0])
-                self.assertIn("competitor_creatives_declined", offer[0])
+                self.assertIn('field "competitor_creatives"', offer[0])
                 self.assertIn(question, offer[0])
 
     def test_offered_plus_yes_prescribes_fetch_not_reask(self):
@@ -147,7 +147,7 @@ class InstagramOptionalTests(unittest.TestCase):
         ]:
             with self.subTest(user=user):
                 self.assertEqual(
-                    _field_traceable("ig_page_declined", "true", user, ctx), expected)
+                    _field_traceable("instagram", "declined", user, ctx), expected)
 
     def test_next_action_offers_ig_once(self):
         # regression: F3 (Instagram optional)
@@ -158,7 +158,7 @@ class InstagramOptionalTests(unittest.TestCase):
         # regression: F3 (Instagram optional)
         m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS,
                                    last_user="skip insta page"))
-        self.assertTrue(any("ig_page_declined" in x for x in m))
+        self.assertTrue(any('instagram="declined"' in x for x in m))
         self.assertFalse(any("fetch_meta_ig_accounts" in x for x in m))
 
     def test_next_action_offered_does_not_refetch(self):
@@ -228,18 +228,24 @@ class TaggedCaptureTests(unittest.TestCase):
         creatives_decline = elicitation("competitor_creatives_declined")
         cases = [  # (name, pe, user, stored, consumed)
             ("creatives decline chip", creatives_decline, "No",
-             {"competitor_creatives_declined": "true"}, True),
+             {"competitor_creatives": "declined"}, True),
             ("creatives typed clear decline", creatives_decline, "no thanks, skip it",
-             {"competitor_creatives_declined": "true"}, True),
+             {"competitor_creatives": "declined"}, True),
             ("creatives yes falls through to model", creatives_decline, "Yes", {}, False),
+            ("offer yes chip writes accepted",
+             elicitation("competitive_analysis", {"Yes": "accepted", "No": "declined"}),
+             "Yes", {"competitive_analysis": "accepted"}, True),
+            ("creatives yes chip writes accepted",
+             elicitation("competitor_creatives", {"Yes": "accepted", "No": "declined"}),
+             "Yes", {"competitor_creatives": "accepted"}, True),
             ("duration chip", _dur_pe(), "30 days",
              {"duration": "30 days"}, True),
             ("budget preset chip", _budget_pe(), "₹10,000/day",
              {"budget": "₹10,000/day"}, True),
             ("decline chip", decline, "No",
-             {"competitive_analysis_declined": "true"}, True),
+             {"competitive_analysis": "declined"}, True),
             ("typed clear decline", decline, "no thanks, skip it",  # the live F17b message
-             {"competitive_analysis_declined": "true"}, True),
+             {"competitive_analysis": "declined"}, True),
             ("yes falls through to model", decline, "Yes", {}, False),
             ("defer with question", decline,
              "not now, first tell me about the audience", {}, False),
@@ -270,6 +276,26 @@ class TaggedCaptureTests(unittest.TestCase):
                 else:
                     self.assertEqual(ack, "")
                     self.assertIsNotNone(s.context.get("_pending_elicitation"))
+
+    def test_stale_rail_steps_aside(self):
+        # S1-11/R6 - a rail kept open across turns (awaiting_custom) must not
+        # claim a much-later unrelated-but-parseable message as its answer.
+        stale = {**_dur_pe(), "awaiting_custom": True, "first_reply_turn": 2}
+        s = make_session(last_user="45 days", pending_elicitation=stale, turn=9)
+        self.assertEqual(_cap(s), "")
+        self.assertEqual(s.context["campaign_spec"], {})
+        # Within the window the same reply still lands.
+        fresh = {**_dur_pe(), "awaiting_custom": True, "first_reply_turn": 8}
+        s = make_session(last_user="45 days", pending_elicitation=fresh, turn=9)
+        _cap(s)
+        self.assertEqual(s.context["campaign_spec"].get("duration"), "45 days")
+        # First sight stamps the rail, so age counts from the first reply.
+        unstamped = {**_dur_pe(), "awaiting_custom": True}
+        s = make_session(last_user="what about targeting?",
+                         pending_elicitation=unstamped, turn=9)
+        _cap(s)
+        self.assertEqual(
+            s.context["_pending_elicitation"].get("first_reply_turn"), 9)
 
     def test_decline_capture_acknowledges(self):
         # regression: D14 (acknowledgement steer on deterministic capture)
@@ -431,7 +457,8 @@ class ProseDeclineRecorderTests(unittest.TestCase):
                 self.assertEqual(self._record(s, turn=turn), recorded)
                 if not extra_spec:
                     self.assertEqual(
-                        "competitive_analysis_declined" in s.context["campaign_spec"],
+                        s.context["campaign_spec"].get("competitive_analysis")
+                        == "declined",
                         recorded)
 
 
@@ -563,7 +590,7 @@ class PrescriptionAuditTests(unittest.TestCase):
         missing = _next_action(make_cctx({"platform": "Google Ads"}))
         self.assertEqual(_untagged_present_options(missing), [])
         joined = "\n".join(missing)
-        self.assertIn('field "competitive_analysis_declined"', joined)
+        self.assertIn('field "competitive_analysis"', joined)
         self.assertIn('field "duration"', joined)
         self.assertIn('field "budget"', joined)
 
