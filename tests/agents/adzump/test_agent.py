@@ -1,7 +1,7 @@
 """AdzumpAgent orchestration seams: _capture_tagged_answer,
 _resume_elicitation_section, _record_prose_decline, _next_action (workflow tree
 incl. the Instagram-optional branch), get_pending_suggestions, _advance_chip,
-_is_custom_reply, CampaignContext.from_session.
+CampaignContext.from_session.
 
 Run:
     cd nocode-ai && ./venv/bin/python -m unittest tests.agents.adzump.test_agent -v
@@ -14,7 +14,7 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.agent import (
-    AdzumpAgent, CampaignContext, _is_custom_reply, _next_action,
+    AdzumpAgent, CampaignContext, _next_action,
 )
 from tests.agents.adzump._fixtures import (
     RE, SAAS, elicitation, make_cctx, make_session,
@@ -287,8 +287,8 @@ class TaggedCaptureTests(unittest.TestCase):
                     self.assertIsNotNone(s.context.get("_pending_elicitation"))
 
     def test_stale_rail_steps_aside(self):
-        # S1-11/R6 - a rail kept open across turns (awaiting_custom) must not
-        # claim a much-later unrelated-but-parseable message as its answer.
+        # S1-11/R6 - a rail kept open across turns must not claim a
+        # much-later exact-match message as its answer.
         stale = {**_dur_pe(), "first_reply_turn": 2}
         s = make_session(last_user="30 days", pending_elicitation=stale, turn=9)
         self.assertEqual(_cap(s), "")
@@ -304,7 +304,7 @@ class TaggedCaptureTests(unittest.TestCase):
         _cap(s)
         self.assertEqual(s.context["campaign_spec"].get("duration"), "30 days")
         # First sight stamps the rail, so age counts from the first reply.
-        unstamped = {**_dur_pe(), "awaiting_custom": True}
+        unstamped = dict(_dur_pe())
         s = make_session(last_user="what about targeting?",
                          pending_elicitation=unstamped, turn=9)
         _cap(s)
@@ -366,142 +366,6 @@ class CaptureMarkerTests(unittest.TestCase):
 
 
 # ── F10 · "Custom" chip → free-text ─────────────────────────────────────────
-class CustomChipFreeTextTests(unittest.TestCase):
-    def test_is_custom_reply(self):
-        # regression: F10 ("Custom" → free-text)
-        for text, expected in [
-            ("Custom", True), ("custom", True), ("custom amount", True),
-            ("Custom budget", True),
-            ("₹5,000/day", False), ("30 days", False), ("Meta", False), ("", False),
-        ]:
-            with self.subTest(text=text):
-                self.assertEqual(bool(_is_custom_reply(text)), expected)
-
-    def test_custom_click_keeps_elicitation_open_and_steers(self):
-        # regression: F10 - "Custom" isn't a value: keep the elicitation OPEN,
-        # mark awaiting_custom, return a free-text steer (live bug #11 was
-        # re-rendering the same chips instead).
-        for pe in (_budget_pe(), _dur_pe()):
-            with self.subTest(field=pe["field"]):
-                s = make_session(last_user="Custom", pending_elicitation=pe)
-                ack = _cap(s)
-                self.assertIn("custom value", ack.lower())
-                self.assertTrue(s.context["_pending_elicitation"].get("awaiting_custom"))
-                self.assertEqual(s.context["campaign_spec"], {})   # not stored
-
-    def test_typed_value_after_custom_goes_to_layer_2(self):
-        # F10 rework (slice 1b): the typed value is the MODEL's to store - the
-        # capture falls through, the resume steer prescribes the write, and the
-        # rail is reaped once the field is set.
-        s = make_session(last_user="₹7000",
-                         pending_elicitation=_budget_pe(awaiting_custom=True))
-        self.assertEqual(_cap(s), "")
-        self.assertEqual(s.context["campaign_spec"], {})           # model writes, not code
-        steer = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
-        self.assertIn("set_campaign_spec(budget=", steer)
-        self.assertIsNotNone(s.context.get("_pending_elicitation"))  # stays open
-        # Once the model's write lands, the next turn reaps the rail.
-        s.context["campaign_spec"]["budget"] = "₹7,000/day"
-        self.assertEqual(AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
-        self.assertNotIn("_pending_elicitation", s.context)
-
-    def test_offtopic_is_not_mistaken_for_custom(self):
-        # regression: F10 ("Custom" → free-text)
-        s = make_session(last_user="what does daily budget mean?",
-                         pending_elicitation=_budget_pe())
-        self.assertEqual(_cap(s), "")
-        self.assertFalse(s.context["_pending_elicitation"].get("awaiting_custom"))
-
-    def test_custom_click_turn_emits_one_steer_not_two(self):
-        # Live bug (manual test, 2026-08-21): on the Custom-click turn the
-        # capture steer AND the awaiting-steer both fired - two conflicting
-        # instructions in one prompt. The resume section must stay silent on
-        # the turn the mark was set; the awaiting steer belongs to LATER turns.
-        s = make_session(last_user="Custom", pending_elicitation=_budget_pe())
-        ack = _cap(s)
-        self.assertIn("custom value", ack.lower())
-        self.assertIn("PLAIN CHAT TEXT", ack)
-        self.assertEqual(
-            AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
-        # Next user message: the awaiting steer takes over.
-        s._turn_count = 2
-        out = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
-        self.assertIn("awaiting a typed budget", out)
-
-    def test_resume_keeps_open_when_awaiting_custom(self):
-        # regression: F10 ("Custom" → free-text); slice 1b: the resume section
-        # emits the typed-value steer and keeps the rail open.
-        s = make_session(last_user="ok",
-                         pending_elicitation=_budget_pe(awaiting_custom=True))
-        out = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
-        self.assertIn("awaiting a typed budget", out)
-        self.assertIn("set_campaign_spec(budget=", out)
-        self.assertIsNotNone(s.context.get("_pending_elicitation"))  # NOT popped
-        self.assertTrue(s.context["_pending_elicitation"].get("awaiting_custom"))
-
-    def test_next_action_free_text_when_awaiting_chips_otherwise(self):
-        # regression: F10 ("Custom" → free-text)
-        spec = {"platform": "Meta", "duration": "30 days",
-                "parent_account": "P", "account": "A"}
-        budget = [x for x in _next_action(make_cctx(spec, product=SAAS, awaiting="budget"))
-                  if x.startswith("budget")]
-        self.assertTrue(budget)
-        self.assertIn("TYPE", budget[0])
-        # The free-text prescription may *name* present_options in a "do NOT
-        # call" instruction - the chip-CALL signature is what must be absent.
-        self.assertNotIn("present_options(question", budget[0])
-        budget = [x for x in _next_action(make_cctx(spec, product=SAAS))
-                  if x.startswith("budget")]
-        self.assertTrue(budget)
-        self.assertIn("present_options", budget[0])                # normal chip ask
-
-    def test_from_session_resolves_awaiting_custom(self):
-        # regression: F10 - from_session must NOT raise (the walrus-in-conditional
-        # UnboundLocalError) and must resolve awaiting_custom_field; the other
-        # F10 tests build CampaignContext directly, this exercises the live path.
-        s = make_session(last_user="₹7000",
-                         pending_elicitation=_budget_pe(awaiting_custom=True))
-        self.assertEqual(CampaignContext.from_session(s).awaiting_custom_field, "budget")
-        s = make_session(last_user="₹7000", pending_elicitation=_budget_pe())
-        self.assertIsNone(CampaignContext.from_session(s).awaiting_custom_field)
-        self.assertIsNone(CampaignContext.from_session(
-            make_session(last_user="hi")).awaiting_custom_field)
-
-
-# ── F18 · prose-offer typed decline recorded in code ────────────────────────
-class ProseDeclineRecorderTests(unittest.TestCase):
-    @staticmethod
-    def _record(s, turn=1):
-        cctx = CampaignContext.from_session(s)
-        return AdzumpAgent._record_prose_decline(
-            None, s, cctx, s.messages[-1]["content"], turn)
-
-    def test_table(self):
-        pe = elicitation("competitive_analysis_declined")
-        cases = [  # (name, user, extra_spec, pe, turn, recorded)
-            ("clear typed decline", "no thanks, skip it", {}, None, 1, True),
-            ("ambiguous defer", "not now, first tell me about the audience",
-             {}, None, 1, False),
-            ("informing, not declining", "no competitors named yet", {}, None, 1, False),
-            ("pending elicitation defers to tagged capture", "no", {}, pe, 1, False),
-            ("already attempted is a noop", "no thanks",
-             {"competitive_analysis_declined": "true"}, None, 1, False),
-            ("turn 2 is a noop", "no thanks, skip it", {}, None, 2, False),
-        ]
-        for name, user, extra_spec, pe_, turn, recorded in cases:
-            with self.subTest(name):
-                s = make_session(last_user=user,
-                                 spec={"platform": "Google Ads", **extra_spec},
-                                 pending_elicitation=dict(pe_) if pe_ else None,
-                                 turn=turn)
-                self.assertEqual(self._record(s, turn=turn), recorded)
-                if not extra_spec:
-                    self.assertEqual(
-                        s.context["campaign_spec"].get("competitive_analysis")
-                        == "declined",
-                        recorded)
-
-
 # ── R12 · refused-required-slot escape (slice 1e) ───────────────────────────
 class RefusedSlotEscapeTests(unittest.TestCase):
     """S1-10: a required slot asked ESCAPE_AFTER_ASKS times without landing
@@ -514,7 +378,9 @@ class RefusedSlotEscapeTests(unittest.TestCase):
                                  field_asks={field: 3})
                 line = next(x for x in _next_action(cctx) if x.startswith(field))
                 self.assertIn("want to go with that?", line)
-                self.assertIn('"answer":', line)           # explicit-click chips
+                self.assertIn("type your own", line)
+                self.assertIn('"answer":', line)           # explicit-click chip
+                self.assertNotIn("Custom", line)           # D13
                 self.assertIn("no silent defaults", line)
         # Below the threshold: the normal chip ask.
         cctx = make_cctx({"platform": "Google Ads"}, attempted=True,

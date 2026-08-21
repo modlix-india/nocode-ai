@@ -84,7 +84,6 @@ def make_cctx(
     competitor_names: list | None = None,
     attempted: bool = False,
     ig_fetched: bool = False,
-    awaiting: str | None = None,
     turn: int = 1,
     creatives_resolved: bool = False,
     pending_ask: str | None = None,
@@ -106,7 +105,6 @@ def make_cctx(
         ig_accounts_fetched=ig_fetched,
         pending_ask_field=pending_ask,
         field_asks=dict(field_asks or {}),
-        awaiting_custom_field=awaiting,
         competitor_creatives_offer_resolved=creatives_resolved,
     )
 

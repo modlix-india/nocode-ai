@@ -147,44 +147,5 @@ class SpecCaptureTests(unittest.TestCase):
                 self.assertFalse(is_clear_decline_reply(msg))
 
 
-class CustomPathTests(unittest.TestCase):
-    """Picking "Custom" keeps the elicitation open (awaiting_custom); the typed
-    value next turn is the steered MODEL's to store (slice 1b) - capture never
-    parses it, and the rail stays open until the write lands."""
-
-    def _ses(self, field, answers, user, *, awaiting=False):
-        pe = {"tool": "present_options", "expects": "single",
-              "field": field, "answers": dict(answers)}
-        if awaiting:
-            pe["awaiting_custom"] = True
-        s = types.SimpleNamespace()
-        s.context = {"_pending_elicitation": pe,
-                     "campaign_spec": {"platform": "Google Ads"},
-                     "_spec_set_at": {}, "product_data": dict(RE)}
-        s.messages = [{"role": "user", "content": user}]
-        s._turn_count = 1
-        return s
-
-    def _cap(self, s):
-        return AdzumpAgent._capture_tagged_answer(None, s, turn=1)
-
-    def test_custom_two_turns(self):
-        for field, answers, typed in [
-            ("duration", {"30 days": "30 days", "60 days": "60 days"}, "45 days"),
-            ("budget", {"₹10,000/day": "₹10,000/day"}, "₹7,500/day"),
-        ]:
-            with self.subTest(field=field, typed=typed):
-                a = self._ses(field, answers, "Custom")
-                self._cap(a)
-                self.assertTrue(a.context["_pending_elicitation"].get("awaiting_custom"))
-                self.assertNotIn(field, a.context["campaign_spec"])   # not captured yet
-                # The typed value falls through to the model - code never
-                # parses it (slice 1b); the rail stays open for the reap.
-                b = self._ses(field, answers, typed, awaiting=True)
-                self.assertEqual(self._cap(b), "")
-                self.assertNotIn(field, b.context["campaign_spec"])
-                self.assertIsNotNone(b.context.get("_pending_elicitation"))
-
-
 if __name__ == "__main__":
     unittest.main()

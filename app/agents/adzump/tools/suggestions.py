@@ -59,9 +59,11 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     def _answerless_refusal(offender: str) -> ToolResult:
         # Every chip on a field-tagged ask must say what it writes - a silent
         # fall-through is the bug class where a click lands nowhere and the
-        # question re-fires. Self-healing: hand back the corrected options
-        # (answer == value; the Custom escape gets null) so the retry is a
-        # copy-paste, never a dead-end turn.
+        # question re-fires. Self-healing (D13): hand back the corrected
+        # options (answer == value; an invented "Custom" chip - deleted from
+        # the flow, but old habits linger - maps to null so a click can never
+        # store the literal string) - the retry is a copy-paste, never a
+        # dead-end turn.
         corrected = []
         for o in options:
             label = o if isinstance(o, str) else str(o.get("label", ""))
@@ -75,8 +77,8 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
                 f'Option "{offender}" carries no "answer" key. On a field-tagged '
                 f'ask (field="{field}") EVERY option must declare what it writes '
                 'on click ("answer": null = a deliberate fall-through like '
-                '"Custom"). Re-call present_options NOW with the SAME question '
-                f"and options={json.dumps(corrected, ensure_ascii=False)}"
+                '"Facebook only"). Re-call present_options NOW with the SAME '
+                f"question and options={json.dumps(corrected, ensure_ascii=False)}"
             ),
             display_error="Re-forming those options…",
         )
@@ -96,8 +98,8 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             normalized.append({"label": label, "value": value})
             # PR2 · a capturable option declares `answer` (the value to store on
             # click). An explicit "answer": null is a declared fall-through
-            # ("Custom", "Facebook only") - absent from the map → capture
-            # defers to the LLM.
+            # ("Facebook only") - absent from the map → capture defers to the
+            # LLM.
             if opt.get("answer") is not None:
                 answer_map[value] = str(opt["answer"])
         else:
@@ -239,7 +241,7 @@ present_options = ToolDefinition(
                 "field-tagged ask must carry an `answer` key - the value to "
                 "store on click (usually == value; \"accepted\"/\"declined\" for "
                 "offer Yes/No chips). Use `answer: null` ONLY for a deliberate "
-                "fall-through option (\"Custom\", \"Facebook only\"). Leave "
+                "fall-through option (\"Facebook only\"). Leave "
                 "`field` unset for control-flow asks (launch confirmation)."
             ),
             required=False,
@@ -277,7 +279,7 @@ How to use the business context:
 - If the context shows a mid-market SaaS at $49/mo, budgets should be much smaller.
 - If the context shows a D2C consumer product at ₹500-1500, tune down accordingly.
 - Match labels to the currency/format already used in the conversation (₹/day vs $/day).
-- Always include a sensible "Custom" option for numeric presets so the user can override.
+- Numeric preset questions must END with "or type your own" - never add a "Custom" chip (typed replies are handled).
 - If the message lists options inline (e.g. "Google Ads or Meta?"), honour those exact labels - don't invent new ones.
 
 Other rules:

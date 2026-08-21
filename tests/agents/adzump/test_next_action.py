@@ -71,16 +71,16 @@ class NextActionInvariants(unittest.TestCase):
                 cctx = CampaignContext.from_session(session)
                 self.assertIsNone(_entry(_next_action(cctx), prefix))
 
-    # S0-3 · Custom escape prescribes a typed ask, never re-renders chips
-    def test_custom_escape_never_rechips(self):
+    # S0-3 · chip asks invite typing; no Custom chip is ever prescribed (D13)
+    def test_chip_asks_invite_typing_no_custom_chip(self):
         for field in ("duration", "budget"):
             with self.subTest(field):
                 cctx = make_cctx({"platform": "Google Ads"}, product=SAAS,
-                                 attempted=True, awaiting=field)
+                                 attempted=True)
                 line = _entry(_next_action(cctx), field)
                 self.assertIsNotNone(line)
-                self.assertIn("TYPE", line)
-                self.assertNotIn("chip choices", line)
+                self.assertIn("type your own", line)
+                self.assertNotIn("Custom", line)
 
     # S0-4 · an accepted creatives offer prescribes the fetch, not a re-ask
     def test_accepted_offer_unlocks_fetch(self):

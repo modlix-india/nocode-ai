@@ -32,15 +32,6 @@ from app.agents.adzump.tools.campaign_data import (
 ESCAPE_AFTER_ASKS = 3
 
 
-def _is_custom_reply(text: str) -> bool:
-    """v4 · F10 - did the user pick the "Custom" escape on a chip ask? The chip's
-    value is literally "Custom", so a click sends exactly that; a typed "custom
-    amount" / "custom budget" also qualifies. Tight on purpose - presets are
-    never "custom", so this won't fire on a real value."""
-    lu = (text or "").strip().lower()
-    return lu == "custom" or lu.startswith("custom")
-
-
 @dataclass(frozen=True)
 class CampaignContext:
     """Typed read-model over ``session.context``.
@@ -72,10 +63,6 @@ class CampaignContext:
     # Times each field-tagged ask has been shown (present_options counter).
     # Drives offer exhaustion and the refused-required-slot escape (R12).
     field_asks: dict[str, int] = dc_field(default_factory=dict)
-    # v4 · F10 - the field ("duration"/"budget") whose chip ask the user
-    # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
-    # free-text prescription instead of re-rendering the same chips. Defaulted.
-    awaiting_custom_field: str | None = None
     # True once the Meta creative-inspiration offer is settled (fetched,
     # declined, or moot) - computed by the shared predicate in campaign_data so
     # this gate and the review gate can never disagree. Stops the offer from
@@ -89,11 +76,7 @@ class CampaignContext:
         competitive = competitive_raw or {}
         # Sole writer (tools/location.py) stores the detected location string.
         pending_location = ctx.get("_pending_location_confirm") or None
-        # v4 · F10 - the field whose chip ask was escaped via "Custom" (awaiting a
-        # typed value). Computed before the return; a conditional expression would
-        # evaluate the condition before the walrus and raise UnboundLocalError.
         pe = ctx.get("_pending_elicitation") or {}
-        awaiting_custom_field = pe.get("field") if pe.get("awaiting_custom") else None
         # The current ask's field, canonicalized so a legacy in-flight rail
         # (an old *_declined field name) matches the enum offer field.
         pending_ask_field = pe.get("field")
@@ -121,7 +104,6 @@ class CampaignContext:
             ig_accounts_fetched=ctx.get("ig_accounts") is not None,
             pending_ask_field=pending_ask_field,
             field_asks=dict(ctx.get("_field_asks") or {}),
-            awaiting_custom_field=awaiting_custom_field,
             competitor_creatives_offer_resolved=competitor_creatives_offer_resolved(
                 ctx.get("campaign_spec") or {}, ctx
             ),
@@ -289,74 +271,48 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
 
     if not cctx.spec.get("duration"):
-        if (
-            cctx.awaiting_custom_field != "duration"
-            and cctx.field_asks.get("duration", 0) >= ESCAPE_AFTER_ASKS
-        ):
+        if cctx.field_asks.get("duration", 0) >= ESCAPE_AFTER_ASKS:
             # R12 · refused-required-slot escape: repeated asks landed nothing.
             missing.append(
                 "duration - asked several times without an answer; the user may "
                 'be unsure. Offer help via the present_options tool (field '
                 '"duration"): "Not sure? Most campaigns start with 30 days - '
-                'want to go with that?" with options '
-                '[{"label":"Yes, use 30 days","value":"30 days","answer":"30 days"}, '
-                '{"label":"I\'ll type my own","value":"Custom","answer":null}]. '
+                'want to go with that? Or just type your own." with the single '
+                'option [{"label":"Yes, use 30 days","value":"30 days",'
+                '"answer":"30 days"}]. '
                 "NEVER store a duration the user hasn't explicitly picked or "
                 "typed - no silent defaults (F17)."
-            )
-        elif cctx.awaiting_custom_field == "duration":
-            # v4 · F10 - user chose "Custom"; ask for a typed value, NOT chips.
-            # The elicitation is kept open, so their typed reply is captured.
-            missing.append(
-                "duration - the user chose Custom. Ask them in one short line to "
-                'TYPE the exact duration (e.g. "45 days", "6 weeks"). Do NOT call '
-                "present_options or show chips again - their typed reply is captured "
-                "automatically."
             )
         else:
             missing.append(
                 "duration - use the present_options tool (field \"duration\") to ask "
-                "\"How long should the campaign run?\" with chips 30 days / 60 days / "
-                "90 days (each carrying answer == its value) plus Custom (carrying "
-                '\"answer\": null - it is the typed-value escape). CALL the tool - '
-                "never type the call into your reply."
+                "\"How long should the campaign run? Pick one below or type your "
+                "own.\" with chips 30 days / 60 days / 90 days, each carrying "
+                "answer == its value; a typed reply like \"45 days\" is handled "
+                "for you. CALL the tool - never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
-        if (
-            cctx.awaiting_custom_field != "budget"
-            and cctx.field_asks.get("budget", 0) >= ESCAPE_AFTER_ASKS
-        ):
-            currency = "₹" if cctx.is_real_estate else "$"
+        currency = "₹" if cctx.is_real_estate else "$"
+        if cctx.field_asks.get("budget", 0) >= ESCAPE_AFTER_ASKS:
             recommended = f"{currency}10,000/day"
             missing.append(
                 "budget - asked several times without an answer; the user may "
                 'be unsure. Offer help via the present_options tool (field '
                 f'"budget"): "Not sure? {recommended} is a solid starting point '
-                '- want to go with that?" with options '
-                f'[{{"label":"Yes, use {recommended}","value":"{recommended}",'
-                f'"answer":"{recommended}"}}, '
-                '{"label":"I\'ll type my own","value":"Custom","answer":null}]. '
+                '- want to go with that? Or just type your own." with the single '
+                f'option [{{"label":"Yes, use {recommended}","value":"{recommended}",'
+                f'"answer":"{recommended}"}}]. '
                 "NEVER store a budget the user hasn't explicitly picked or "
                 "typed - no silent defaults (F17)."
             )
-        elif cctx.awaiting_custom_field == "budget":
-            # v4 · F10 - user chose "Custom"; ask for a typed value, NOT chips.
-            currency = "₹" if cctx.is_real_estate else "$"
-            missing.append(
-                "budget - the user chose Custom. Ask them in one short line to TYPE "
-                f'the exact daily budget (e.g. "{currency}7,500/day"). Do NOT call '
-                "present_options or show chips again - their typed reply is captured "
-                "automatically."
-            )
         else:
-            currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
                 "budget - use the present_options tool (field \"budget\") to ask "
-                "\"What's your daily budget?\" with platform-tuned chips "
-                f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day, "
-                "each carrying answer == its value) plus Custom (carrying "
-                '\"answer\": null - it is the typed-value escape). CALL the tool - '
-                "never type the call into your reply."
+                "\"What's your daily budget? Pick one below or type your own.\" "
+                f"with platform-tuned chips (e.g. {currency}5,000/day, "
+                f"{currency}10,000/day, {currency}25,000/day), each carrying "
+                'answer == its value; a typed reply like "4k" is handled for '
+                "you. CALL the tool - never type the call into your reply."
             )
     # Account-block lines depend on the platform pick - skip until platform
     # is set so we don't suggest the wrong fetch tool.
