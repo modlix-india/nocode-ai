@@ -160,14 +160,20 @@ class SaasClient:
             data = None
             if response.content:
                 content_type = response.headers.get("content-type", "").lower()
-                if "application/json" in content_type:
+                if "json" in content_type:
                     data = response.json()
                 elif (
-                    "text/" in content_type
-                    or "application/xml" in content_type
+                    not content_type
+                    or "text/" in content_type
+                    or "xml" in content_type
                     or "javascript" in content_type
                 ):
                     data = response.text
+                else:
+                    logger.debug(
+                        f"  skipping non-text body ({content_type}, "
+                        f"{len(response.content)} bytes)"
+                    )
 
             return ToolResult(
                 success=True,
