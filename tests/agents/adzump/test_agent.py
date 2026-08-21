@@ -486,6 +486,27 @@ class ProseDeclineRecorderTests(unittest.TestCase):
                         recorded)
 
 
+# ── R12 · refused-required-slot escape (slice 1e) ───────────────────────────
+class RefusedSlotEscapeTests(unittest.TestCase):
+    """S1-10: a required slot asked ESCAPE_AFTER_ASKS times without landing
+    switches to explicit "help me pick" chips - never a silent default."""
+
+    def test_escape_after_repeated_asks(self):
+        for field in ("duration", "budget"):
+            with self.subTest(field):
+                cctx = make_cctx({"platform": "Google Ads"}, attempted=True,
+                                 field_asks={field: 3})
+                line = next(x for x in _next_action(cctx) if x.startswith(field))
+                self.assertIn("want to go with that?", line)
+                self.assertIn('"answer":', line)           # explicit-click chips
+                self.assertIn("no silent defaults", line)
+        # Below the threshold: the normal chip ask.
+        cctx = make_cctx({"platform": "Google Ads"}, attempted=True,
+                         field_asks={"duration": 2})
+        line = next(x for x in _next_action(cctx) if x.startswith("duration"))
+        self.assertIn("How long should the campaign run?", line)
+
+
 # ── F20 · review/publish prescription must not leak tool-call syntax ────────
 def _full_google_cctx():
     # "full" = every _next_action gate satisfied, so review & publish is the

@@ -88,6 +88,7 @@ def make_cctx(
     turn: int = 1,
     creatives_resolved: bool = False,
     pending_ask: str | None = None,
+    field_asks: dict | None = None,
     pending_location: str | None = None,
 ) -> CampaignContext:
     """A `CampaignContext` for `_next_action` / prescription tests."""
@@ -104,6 +105,7 @@ def make_cctx(
         pending_location=pending_location,
         ig_accounts_fetched=ig_fetched,
         pending_ask_field=pending_ask,
+        field_asks=dict(field_asks or {}),
         awaiting_custom_field=awaiting,
         competitor_creatives_offer_resolved=creatives_resolved,
     )

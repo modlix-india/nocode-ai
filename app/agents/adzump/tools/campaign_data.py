@@ -520,6 +520,13 @@ async def _set_campaign_spec(
         )
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
+        # Slice 1e (S1-7) - per-slot acknowledgement on a partial accept: the
+        # model must visibly name what landed AND what it still needs.
+        summary_parts.append(
+            "In your visible reply, acknowledge each stored value by name, then "
+            "ask for the rejected field(s) - a partial accept must never read "
+            "as fully saved or fully ignored"
+        )
         # User sees only what was actually stored; the rejection steer + kept/
         # review hints are model-only - never leak validator internals to chat.
         user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
@@ -606,12 +613,12 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
     # fetched Instagram list (F3) and the instagram ask count.
     if field in ("platform", "parent_account", "fb_page"):
         session_ctx.pop("ig_accounts", None)
-        (session_ctx.get("_offer_asks") or {}).pop("instagram", None)
+        (session_ctx.get("_field_asks") or {}).pop("instagram", None)
     # A platform switch voids every offer's ask count (offers reset to UNSET
     # above): re-offering after a Google round-trip is harmless; a stale
     # exhaustion count is not.
     if field == "platform":
-        session_ctx.pop("_offer_asks", None)
+        session_ctx.pop("_field_asks", None)
     return cleared
 
 
@@ -656,7 +663,7 @@ def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
         return True
     if session_ctx.get("_competitor_creatives_fetched"):
         return True
-    if (session_ctx.get("_offer_asks") or {}).get("competitor_creatives", 0) >= 2:
+    if (session_ctx.get("_field_asks") or {}).get("competitor_creatives", 0) >= 2:
         return True
     competitive_raw = session_ctx.get("competitor_analysis")
     competitors = (competitive_raw or {}).get("competitors") or []

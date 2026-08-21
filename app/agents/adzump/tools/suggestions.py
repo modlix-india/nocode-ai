@@ -17,7 +17,7 @@ import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.models import LEGACY_MARKER_TO_FIELD, OFFER_FIELDS
+from app.agents.adzump.models import LEGACY_MARKER_TO_FIELD
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -108,13 +108,14 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
     session_ctx["_pending_suggestions"] = suggestions
-    # Per-offer ask counter (slice 1d, replaces the offered marker): each time
-    # an offer question goes on screen the count bumps; the resolved predicate
-    # treats an offer asked twice and never answered as settled, so a digression
-    # can resurface an offer at most ONCE and review is never held hostage.
-    counted = LEGACY_MARKER_TO_FIELD.get(field, field)
-    if counted in OFFER_FIELDS:
-        asks = session_ctx.setdefault("_offer_asks", {})
+    # Per-field ask counter (slice 1d/1e): every field-tagged ask that goes on
+    # screen bumps its count. Consumers: the creatives resolved predicate
+    # (asked twice unanswered = settled, so a digression resurfaces an offer at
+    # most ONCE and review is never held hostage) and the refused-required-slot
+    # escape in _next_action (R12: repeated misses → "help me pick" chips).
+    if field:
+        counted = LEGACY_MARKER_TO_FIELD.get(field, field)
+        asks = session_ctx.setdefault("_field_asks", {})
         asks[counted] = asks.get(counted, 0) + 1
 
     # Stream the question into the assistant message so it visually precedes
@@ -130,12 +131,24 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     stream = context.get("event_stream")
     if stream is not None:
         streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
+        # Slice 1e (R7) - the acknowledgement backstop: a capture landed this
+        # turn but the model's streamed prose never named the value → prepend a
+        # short visible ack. The F9 emit-skip below may skip the QUESTION,
+        # never the ack - a click must never look ignored. Runs before the
+        # core turn-break (core/agent.py:478-502), so the ack always streams.
+        ack_pending = session_ctx.pop("_capture_ack_pending", None)
+        ack_text = ""
+        if ack_pending and str(ack_pending.get("value", "")) not in streamed:
+            ack_field = str(ack_pending.get("field", "")).replace("_", " ")
+            ack_text = f"Got it - {ack_field}: {ack_pending.get('value')}.\n"
         nq = _norm_q(question)
         already = bool(nq) and nq in _norm_q(streamed)
         if already:
             logger.info("present_options: question already in streamed prose - skip emit (F9)")
+            if ack_text:
+                await stream.emit_text(f"\n\n{ack_text}")
         else:
-            await stream.emit_text(f"\n\n{question}\n")
+            await stream.emit_text(f"\n\n{ack_text}{question}\n")
 
     logger.info("present_options: mode=%s field=%s options=%s question=%r",
                 mode, field, options, question[:80])

@@ -130,12 +130,12 @@ class DependencyCascadeTests(unittest.TestCase):
         sc = _ctx({"fb_page": "p1", "ig_page": "i1", "ig_page_declined": "true"},
                   account_names={"p1": "", "p2": "", "i1": ""})
         sc["ig_accounts"] = ["i1"]
-        sc["_offer_asks"] = {"instagram": 1, "competitor_creatives": 1}
+        sc["_field_asks"] = {"instagram": 1, "competitor_creatives": 1}
         _apply_field("fb_page", "p2", "p2", sc, 2)
         self.assertNotIn("ig_page", sc["campaign_spec"])
         self.assertNotIn("ig_page_declined", sc["campaign_spec"])
         self.assertNotIn("ig_accounts", sc)                # F3 fetched list cleared
-        self.assertEqual(sc["_offer_asks"], {"competitor_creatives": 1})
+        self.assertEqual(sc["_field_asks"], {"competitor_creatives": 1})
 
     def test_platform_change_resets_enum_offers(self):
         # Offers reset to UNSET (key popped) on a platform switch - a Google
@@ -168,13 +168,13 @@ class DependencyCascadeTests(unittest.TestCase):
 
     def test_platform_change_voids_offer_ask_counts(self):
         sc = _ctx({"platform": "Meta"})
-        sc["_offer_asks"] = {"competitor_creatives": 2}
+        sc["_field_asks"] = {"competitor_creatives": 2}
         _clear_dependents("platform", sc, frozenset())
-        self.assertNotIn("_offer_asks", sc)
+        self.assertNotIn("_field_asks", sc)
         # A downstream change (fb_page) clears only the instagram count.
-        sc["_offer_asks"] = {"competitor_creatives": 2, "instagram": 1}
+        sc["_field_asks"] = {"competitor_creatives": 2, "instagram": 1}
         _clear_dependents("fb_page", sc, frozenset())
-        self.assertEqual(sc["_offer_asks"], {"competitor_creatives": 2})
+        self.assertEqual(sc["_field_asks"], {"competitor_creatives": 2})
 
 
 # ── v5 · set_campaign_spec retry-loop fixes ────────────────────────────────
@@ -398,10 +398,10 @@ class CreativesOfferResolvedTests(unittest.TestCase):
             ("unresolved: rivals found, no consent yet", {},
              {"competitor_analysis": {"competitors": [dict(rival)]}}, False),
             ("exhausted: asked twice, never answered", {},
-             {"_offer_asks": {"competitor_creatives": 2},
+             {"_field_asks": {"competitor_creatives": 2},
               "competitor_analysis": {"competitors": [dict(rival)]}}, True),
             ("asked once is NOT exhausted", {},
-             {"_offer_asks": {"competitor_creatives": 1},
+             {"_field_asks": {"competitor_creatives": 1},
               "competitor_analysis": {"competitors": [dict(rival)]}}, False),
             ("unresolved: no analysis yet", {}, {}, False),
         ]

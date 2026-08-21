@@ -145,6 +145,9 @@ class AdzumpAgent(BaseAgent):
         retired (slice 1b); every model write passes the same validation."""
         if turn != 1:
             return ""
+        # A pending ack that no tool consumed last turn is stale by the time a
+        # new message arrives - drop it, never ack an old capture late.
+        session.context.pop("_capture_ack_pending", None)
         pe = session.context.get("_pending_elicitation")
         if not pe or not pe.get("field") or pe.get("expects") != "single":
             return ""
@@ -234,6 +237,11 @@ class AdzumpAgent(BaseAgent):
         # (its chips would carry no field tag → silent drop → re-ask). Lives in
         # session.context but is popped on read, so it never leaks to next turn.
         session.context["_captured_this_turn"] = field
+        # Slice 1e (R7) - consumed by present_options: if the model's visible
+        # prose never names the value, the tool prepends the ack itself, so a
+        # click can never look ignored (emit-skip may skip the question, never
+        # the ack).
+        session.context["_capture_ack_pending"] = {"field": field, "value": str(value)}
         logger.info(
             "tagged_capture: stored field=%s value=%r user_said=%r",
             field,
@@ -243,11 +251,12 @@ class AdzumpAgent(BaseAgent):
         return (
             "## You just captured the user's answer\n"
             f"Their last message set **{field} = {value}**. It is already stored - "
-            "do NOT call set_campaign_spec for it. Acknowledge it in one short "
-            "phrase, then CALL the next tool from the missing-list (a fetch tool or "
-            "present_options) - do NOT write the next question as plain text, and "
-            "NEVER end your turn without making that tool call (a live run stalled "
-            "on a dead-end turn that acknowledged and stopped)."
+            "do NOT call set_campaign_spec for it. Your visible reply MUST begin "
+            f'with a one-short-phrase acknowledgement naming the value (e.g. "Got '
+            f'it - {value}."), then CALL the next tool from the missing-list (a '
+            "fetch tool or present_options) - do NOT write the next question as "
+            "plain text, and NEVER end your turn without making that tool call (a "
+            "live run stalled on a dead-end turn that acknowledged and stopped)."
         )
 
     def _record_prose_decline(
@@ -286,6 +295,8 @@ class AdzumpAgent(BaseAgent):
                 {"layer": 1, "field": "competitive_analysis",
                  "value": OfferState.DECLINED.value, "verdict": "stored"}
             )
+            session.context["_capture_ack_pending"] = {
+                "field": "competitive analysis", "value": "skipped"}
             logger.info("prose_decline_recorded: competitive_analysis=declined user_said=%r",
                         last_user[:80])
         return bool(stored)

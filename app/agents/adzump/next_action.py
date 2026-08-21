@@ -9,7 +9,7 @@ lives in a leaf module.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dc_field
 
 from app.core.session import BaseSession
 from app.agents.adzump.models import LEGACY_DECLINED_KEYS, OfferState, offer_state
@@ -25,6 +25,11 @@ from app.agents.adzump.tools.campaign_data import (
     is_real_estate,
     wants_competitor_creatives,
 )
+
+
+# R12 · a required slot asked this many times without landing switches to the
+# "help me pick" escape - the user may be unsure; never a silent default (F17).
+ESCAPE_AFTER_ASKS = 3
 
 
 def _is_custom_reply(text: str) -> bool:
@@ -64,6 +69,9 @@ class CampaignContext:
     # The open elicitation's field, if any - the CURRENT ask on screen. An
     # offer whose rail is open is waiting on the reply, never re-prescribed.
     pending_ask_field: str | None = None
+    # Times each field-tagged ask has been shown (present_options counter).
+    # Drives offer exhaustion and the refused-required-slot escape (R12).
+    field_asks: dict[str, int] = dc_field(default_factory=dict)
     # v4 · F10 - the field ("duration"/"budget") whose chip ask the user
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
@@ -112,6 +120,7 @@ class CampaignContext:
             pending_location=pending_location,
             ig_accounts_fetched=ctx.get("ig_accounts") is not None,
             pending_ask_field=pending_ask_field,
+            field_asks=dict(ctx.get("_field_asks") or {}),
             awaiting_custom_field=awaiting_custom_field,
             competitor_creatives_offer_resolved=competitor_creatives_offer_resolved(
                 ctx.get("campaign_spec") or {}, ctx
@@ -280,7 +289,22 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
 
     if not cctx.spec.get("duration"):
-        if cctx.awaiting_custom_field == "duration":
+        if (
+            cctx.awaiting_custom_field != "duration"
+            and cctx.field_asks.get("duration", 0) >= ESCAPE_AFTER_ASKS
+        ):
+            # R12 · refused-required-slot escape: repeated asks landed nothing.
+            missing.append(
+                "duration - asked several times without an answer; the user may "
+                'be unsure. Offer help via the present_options tool (field '
+                '"duration"): "Not sure? Most campaigns start with 30 days - '
+                'want to go with that?" with options '
+                '[{"label":"Yes, use 30 days","value":"30 days","answer":"30 days"}, '
+                '{"label":"I\'ll type my own","value":"Custom","answer":null}]. '
+                "NEVER store a duration the user hasn't explicitly picked or "
+                "typed - no silent defaults (F17)."
+            )
+        elif cctx.awaiting_custom_field == "duration":
             # v4 · F10 - user chose "Custom"; ask for a typed value, NOT chips.
             # The elicitation is kept open, so their typed reply is captured.
             missing.append(
@@ -298,7 +322,24 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
-        if cctx.awaiting_custom_field == "budget":
+        if (
+            cctx.awaiting_custom_field != "budget"
+            and cctx.field_asks.get("budget", 0) >= ESCAPE_AFTER_ASKS
+        ):
+            currency = "₹" if cctx.is_real_estate else "$"
+            recommended = f"{currency}10,000/day"
+            missing.append(
+                "budget - asked several times without an answer; the user may "
+                'be unsure. Offer help via the present_options tool (field '
+                f'"budget"): "Not sure? {recommended} is a solid starting point '
+                '- want to go with that?" with options '
+                f'[{{"label":"Yes, use {recommended}","value":"{recommended}",'
+                f'"answer":"{recommended}"}}, '
+                '{"label":"I\'ll type my own","value":"Custom","answer":null}]. '
+                "NEVER store a budget the user hasn't explicitly picked or "
+                "typed - no silent defaults (F17)."
+            )
+        elif cctx.awaiting_custom_field == "budget":
             # v4 · F10 - user chose "Custom"; ask for a typed value, NOT chips.
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
