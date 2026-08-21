@@ -39,9 +39,7 @@ from app.core.session import BaseSession
 from app.core.context import BaseContext
 from app.services import billing
 from app.core.builtin_tools import (
-    close_builtin_rows,
-    on_builtin_tool_result,
-    on_builtin_tool_use,
+    close_builtin_rows, on_builtin_tool_result, on_builtin_tool_use,
 )
 from app.services.llm_provider import get_llm_provider
 
@@ -124,8 +122,7 @@ class BaseAgent:
                     "unmarked_elicitation_tool: agent=%s tool=%s is in "
                     "CONFIRMATION_TOOLS but kind!='elicitation' — mark it "
                     "kind='elicitation', elicit_mode='blocking'",
-                    name,
-                    _cname,
+                    name, _cname,
                 )
 
         # strong refs so tasks aren't GC'd mid-flight
@@ -182,21 +179,13 @@ class BaseAgent:
 
         try:
             try:
-                logger.info(
-                    "Agent '%s' run: session=%s, provider=%s, model_override=%s, images=%s",
-                    self.name,
-                    session.session_id,
-                    self._provider_name or "(default)",
-                    model_override or "(none)",
-                    len(image_blocks) if image_blocks else 0,
-                )
-                await self._run_loop(
-                    user_message, session, event_stream, image_blocks, model_override
-                )
+                logger.info("Agent '%s' run: session=%s, provider=%s, model_override=%s, images=%s",
+                           self.name, session.session_id, self._provider_name or "(default)",
+                           model_override or "(none)",
+                           len(image_blocks) if image_blocks else 0)
+                await self._run_loop(user_message, session, event_stream, image_blocks, model_override)
             except asyncio.CancelledError:
-                logger.info(
-                    "Agent '%s' cancelled in session %s", self.name, session.session_id
-                )
+                logger.info("Agent '%s' cancelled in session %s", self.name, session.session_id)
                 if is_sub_agent:
                     raise
                 try:
@@ -214,9 +203,7 @@ class BaseAgent:
                     # Let the parent's tool wrapper catch & convert to ToolResult.
                     raise
                 # Top-level: emit error + done so the SSE stream closes cleanly.
-                logger.exception(
-                    "Agent '%s' error in session %s", self.name, session.session_id
-                )
+                logger.exception("Agent '%s' error in session %s", self.name, session.session_id)
                 error_text = f"Agent error: {type(e).__name__}: {e}"
                 await event_stream.emit_error(error_text)
                 await session.persist_turn(user_message, error_text, None)
@@ -248,21 +235,12 @@ class BaseAgent:
         override_model: str | None = None
         if model_override:
             from app.services.llm_provider import resolve_model_override
-
             override_provider, override_model = resolve_model_override(model_override)
             provider = get_llm_provider(override_provider)
-            logger.info(
-                "Model override: provider=%s, model=%s",
-                override_provider,
-                override_model,
-            )
+            logger.info("Model override: provider=%s, model=%s", override_provider, override_model)
         else:
             provider = get_llm_provider(self._provider_name)
-        logger.info(
-            "Provider resolved: %s (class=%s)",
-            self._provider_name,
-            type(provider).__name__,
-        )
+        logger.info("Provider resolved: %s (class=%s)", self._provider_name, type(provider).__name__)
 
         # Mark session as processing so UI can detect in-progress state on refresh
         await session.set_processing()
@@ -284,9 +262,7 @@ class BaseAgent:
             await event_stream.emit_error(out_msg)
             await session.persist_turn(user_message, out_msg, None)
             await session.complete()
-            await event_stream.emit_done(
-                session_id=session.session_id, usage=session.get_usage_summary()
-            )
+            await event_stream.emit_done(session_id=session.session_id, usage=session.get_usage_summary())
             return
 
         # Layer 1 — system-prompt context: build_dynamic_context runs ONCE per
@@ -317,9 +293,7 @@ class BaseAgent:
         stuck_sig: tuple[str, ...] | None = None
         stuck_n = 0
         quarantined: set[str] = set()
-        content_blocks: list[
-            dict[str, Any]
-        ] = []  # last turn's assistant content blocks
+        content_blocks: list[dict[str, Any]] = []  # last turn's assistant content blocks
 
         while turn < self.max_turns:
             if event_stream.is_cancelled:
@@ -330,14 +304,8 @@ class BaseAgent:
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
             effective_tier = override_model or self.model_tier
-            logger.info(
-                "Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
-                turn,
-                self.max_turns,
-                effective_tier,
-                self.max_tokens,
-                len(self._anthropic_tools),
-            )
+            logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
+                       turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
             start_time = time.monotonic()
 
             # Pre-call phase — decorate the per-call messages before the request
@@ -350,58 +318,37 @@ class BaseAgent:
             # Withdraw quarantined tools — filtered COPY, never mutate self._anthropic_tools.
             call_tools = (
                 [t for t in self._anthropic_tools if t.get("name") not in quarantined]
-                if quarantined
-                else None
+                if quarantined else None
             )
-            (
-                content_blocks,
-                tool_use_blocks,
-                stop_reason,
-                usage,
-                _text_chunk_count,
-            ) = await self._stream_turn(
-                provider,
-                system_prompt,
-                call_messages,
-                effective_tier,
-                event_stream,
-                assistant_text_parts,
-                session,
-                tools=call_tools,
+            content_blocks, tool_use_blocks, stop_reason, usage, _text_chunk_count = (
+                await self._stream_turn(
+                    provider, system_prompt, call_messages, effective_tier,
+                    event_stream, assistant_text_parts, session, tools=call_tools,
+                )
             )
 
             latency_ms = int((time.monotonic() - start_time) * 1000)
             usage["latency_ms"] = latency_ms
-            logger.info(
-                "Turn %d: LLM streamed in %dms, stop_reason=%s, text_chunks=%d, usage=%s",
-                turn,
-                latency_ms,
-                stop_reason,
-                _text_chunk_count,
-                usage,
-            )
+            logger.info("Turn %d: LLM streamed in %dms, stop_reason=%s, text_chunks=%d, usage=%s",
+                       turn, latency_ms, stop_reason, _text_chunk_count, usage)
             if stop_reason == "max_tokens":
                 logger.warning(
                     "Turn %d truncated at max_tokens=%d — response incomplete. "
                     "Increase max_tokens or tighten the prompt's output.",
-                    turn,
-                    self.max_tokens,
+                    turn, self.max_tokens,
                 )
 
             resolved_model = provider.get_model(effective_tier)
             if not model_used:
                 model_used = resolved_model
             session.accumulate_usage(usage)
-            await session.record_token_usage(
-                usage, request_id, resolved_model, provider.name.lower()
-            )
+            await session.record_token_usage(usage, request_id, resolved_model, provider.name.lower())
 
             # Billing — charge this LLM call's usage immediately. Best-effort;
             # security weights nothing further (weighting is done in billing.py),
             # debits allow-negative, and is idempotent per requestId.
             await billing.charge_llm_call(
-                session.auth, usage, resolved_model, request_id, session.session_id
-            )
+                session.auth, usage, resolved_model, request_id, session.session_id)
 
             # Thinking-mode providers (DeepSeek V4 Pro, MiniMax M3) stash
             # interleaved chain-of-thought in usage["reasoning_content"]. The API
@@ -409,11 +356,7 @@ class BaseAgent:
             # `append_assistant_message` stores it as `_reasoning_content` and the
             # provider re-emits it. Pop here so it doesn't leak into the persisted
             # usage record.
-            reasoning_content = (
-                usage.pop("reasoning_content", None)
-                if isinstance(usage, dict)
-                else None
-            )
+            reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
 
             session.append_assistant_message(content_blocks, reasoning_content)
 
@@ -423,13 +366,10 @@ class BaseAgent:
             if event_stream.is_cancelled:
                 break
 
-            logger.info(
-                "Turn %d: executing %d tool(s) %s: %s",
-                turn,
-                len(tool_use_blocks),
-                "in parallel" if len(tool_use_blocks) > 1 else "",
-                [tb.get("name", "?") for tb in tool_use_blocks],
-            )
+            logger.info("Turn %d: executing %d tool(s) %s: %s",
+                        turn, len(tool_use_blocks),
+                        "in parallel" if len(tool_use_blocks) > 1 else "",
+                        [tb.get("name", "?") for tb in tool_use_blocks])
 
             # THIS turn's streamed prose (before tool calls) so a widget tool can skip
             # re-emitting text the model already wrote (e.g. present_options de-dupes a
@@ -445,21 +385,19 @@ class BaseAgent:
             # two widgets stacked in one bubble). force_serial_on_elicitation early-exits
             # after the first deferred elicitation so a second can't stack; this warning
             # fires regardless, for visibility into batch frequency.
-            batch_has_elicitation = self._batch_has_deferred_elicitation(
-                tool_use_blocks
-            )
+            batch_has_elicitation = self._batch_has_deferred_elicitation(tool_use_blocks)
             if len(tool_use_blocks) > 1 and batch_has_elicitation:
                 logger.warning(
                     "stacked_elicitation_batch: turn=%d tools=%s force_serial=%s · "
                     "LLM emitted multiple tool_use blocks incl. a deferred "
                     "elicitation; widgets may stack unless force_serial_on_elicitation is on",
-                    turn,
-                    [tb.get("name", "?") for tb in tool_use_blocks],
+                    turn, [tb.get("name", "?") for tb in tool_use_blocks],
                     self.force_serial_on_elicitation,
                 )
 
-            run_serial = len(tool_use_blocks) == 1 or (
-                self.force_serial_on_elicitation and batch_has_elicitation
+            run_serial = (
+                len(tool_use_blocks) == 1
+                or (self.force_serial_on_elicitation and batch_has_elicitation)
             )
             if run_serial:
                 tool_result_blocks = []
@@ -471,32 +409,26 @@ class BaseAgent:
                 stop_batch = False
                 for tb in tool_use_blocks:
                     if stop_batch:
-                        tool_result_blocks.append(
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": tb.get("id", ""),
-                                "content": (
-                                    "Deferred: an earlier tool in this turn asked the "
-                                    "user a question, so this call was not run. Re-issue "
-                                    "it after the user replies if it's still needed."
-                                ),
-                                "is_error": False,
-                            }
-                        )
-                        tool_call_log.append(
-                            {
-                                "tool": tb.get("name", ""),
-                                "display_name": tb.get("name", ""),
-                                "input": tb.get("input", {}),
-                                "success": False,
-                                "summary": "deferred (batched after an elicitation)",
-                                "tool_use_id": tb.get("id", ""),
-                                "kind": "tool",
-                                "elicit_mode": "deferred",
-                                "elicited": False,
-                                "elicit_expects": "single",
-                            }
-                        )
+                        tool_result_blocks.append({
+                            "type": "tool_result",
+                            "tool_use_id": tb.get("id", ""),
+                            "content": (
+                                "Deferred: an earlier tool in this turn asked the "
+                                "user a question, so this call was not run. Re-issue "
+                                "it after the user replies if it's still needed."
+                            ),
+                            "is_error": False,
+                        })
+                        tool_call_log.append({
+                            "tool": tb.get("name", ""),
+                            "display_name": tb.get("name", ""),
+                            "input": tb.get("input", {}),
+                            "success": False,
+                            "summary": "deferred (batched after an elicitation)",
+                            "tool_use_id": tb.get("id", ""),
+                            "kind": "tool", "elicit_mode": "deferred",
+                            "elicited": False, "elicit_expects": "single",
+                        })
                         continue
                     result_block, log_entry = await self._run_tool_block(
                         tb, session, event_stream, assistant_text_parts
@@ -507,12 +439,8 @@ class BaseAgent:
                         stop_batch = True
             else:
                 results = await asyncio.gather(
-                    *(
-                        self._run_tool_block(
-                            tb, session, event_stream, assistant_text_parts
-                        )
-                        for tb in tool_use_blocks
-                    ),
+                    *(self._run_tool_block(tb, session, event_stream, assistant_text_parts)
+                      for tb in tool_use_blocks),
                     return_exceptions=False,
                 )
                 tool_result_blocks = [r[0] for r in results]
@@ -526,15 +454,13 @@ class BaseAgent:
             session.append_tool_results(tool_result_blocks)
 
             # Persist incremental progress so data is not lost on disconnect
-            partial_summary = (
-                "".join(assistant_text_parts) if assistant_text_parts else ""
-            )
+            partial_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
             await session.persist_turn_incremental(
                 user_message, partial_summary, tool_call_log, model_used
             )
 
             # Elicitation turn boundary + lifecycle.
-            new_entries = tool_call_log[-len(tool_result_blocks) :]
+            new_entries = tool_call_log[-len(tool_result_blocks):]
             # Multi-reply elicitation (e.g. asset uploads): if one is open and
             # this turn ran a tool other than its opener, the LLM has moved on
             # to real work → close it. (A new deferred elicitation below would
@@ -571,10 +497,8 @@ class BaseAgent:
                 }
                 logger.info(
                     "elicitation_break: turn=%d tool=%s expects=%s batch=%d",
-                    turn,
-                    elicited.get("tool"),
-                    elicited.get("elicit_expects"),
-                    len(tool_result_blocks),
+                    turn, elicited.get("tool"),
+                    elicited.get("elicit_expects"), len(tool_result_blocks),
                 )
                 break
 
@@ -588,9 +512,7 @@ class BaseAgent:
                 quarantined |= newly
                 logger.warning(
                     "stuck_loop_quarantine: turn=%d tools=%s — withdrawing for the "
-                    "rest of this run so the model must ask/move on",
-                    turn,
-                    sorted(newly),
+                    "rest of this run so the model must ask/move on", turn, sorted(newly),
                 )
 
         else:
@@ -610,12 +532,9 @@ class BaseAgent:
         # Cap the summary well under the ASSISTANT_SUMMARY column width (TEXT, ~64KB):
         # a verbose M3 turn can otherwise overflow it, failing the whole turn upsert
         # (MySQL error 1406) and silently dropping conversation history.
-        assistant_summary = (
-            "".join(assistant_text_parts) if assistant_text_parts else ""
-        )
+        assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
         image_source_urls = [
-            b["url"]
-            for b in content_blocks
+            b["url"] for b in content_blocks
             if b.get("type") == "image_source" and b.get("url")
         ]
         if image_source_urls:
@@ -623,12 +542,9 @@ class BaseAgent:
             assistant_summary = (
                 assistant_summary + "\n" if assistant_summary else ""
             ) + "\n".join(sentinel_parts)
-
         if len(assistant_summary) > 60000:
             assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
-        await session.persist_turn(
-            user_message, assistant_summary, tool_call_log or None, model_used
-        )
+        await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
         # (AI billing is charged per LLM call, immediately, inside the loop above.)
@@ -732,9 +648,7 @@ class BaseAgent:
 
                 elif chunk.type == "tool_input_delta":
                     if current_tool:
-                        current_tool["_input_json"] = (
-                            current_tool.get("_input_json", "") + chunk.tool_input_json
-                        )
+                        current_tool["_input_json"] = current_tool.get("_input_json", "") + chunk.tool_input_json
 
                 elif chunk.type == "tool_use_end":
                     if current_tool:
@@ -755,8 +669,7 @@ class BaseAgent:
                     # arrive intact in their original position.
                     if chunk.blocks:
                         content_blocks, tool_use_blocks = self._adopt_final_blocks(
-                            chunk.blocks,
-                            assistant_text_parts,
+                            chunk.blocks, assistant_text_parts,
                         )
                         current_text = ""
                         current_tool = None
@@ -769,10 +682,7 @@ class BaseAgent:
                             assistant_text_parts.append(cleaned)
                         current_text = ""
                     url = await self._on_image_generated(
-                        chunk.image_data,
-                        chunk.image_mime,
-                        session,
-                        event_stream,
+                        chunk.image_data, chunk.image_mime, session, event_stream,
                     )
                     if url:
                         content_blocks.append({"type": "image_source", "url": url})
@@ -814,8 +724,7 @@ class BaseAgent:
                 b["text"] = self._clean_assistant_text(b["text"])
         tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
         assistant_text_parts[:] = [
-            b["text"]
-            for b in content_blocks
+            b["text"] for b in content_blocks
             if b.get("type") == "text" and b.get("text")
         ]
         return content_blocks, tool_use_blocks
@@ -847,8 +756,7 @@ class BaseAgent:
         return static or log_entry.get("elicited") is True
 
     def _batch_has_deferred_elicitation(
-        self,
-        tool_use_blocks: list[dict[str, Any]],
+        self, tool_use_blocks: list[dict[str, Any]],
     ) -> bool:
         """True if any block names a statically-declared deferred elicitation
         tool. Runtime-conditional elicitations (analyze_product) are unknown
@@ -868,10 +776,7 @@ class BaseAgent:
         return False
 
     def _build_confirmation_message(
-        self,
-        tool_name: str,
-        display_name: str,
-        tool_input: dict[str, Any],
+        self, tool_name: str, display_name: str, tool_input: dict[str, Any],
     ) -> str:
         """Human-readable confirmation prompt for a CONFIRMATION_TOOLS call.
 
@@ -906,13 +811,10 @@ class BaseAgent:
         # Asking the user IS progress — a turn that elicits is never stuck.
         if any(e.get("elicited") for e in new_entries):
             return None, 0, set()
-        stuck = [
-            e for e in new_entries if (not e.get("success")) or e.get("no_progress")
-        ]
+        stuck = [e for e in new_entries if (not e.get("success")) or e.get("no_progress")]
         sig = (
             tuple(sorted(e.get("tool", "") for e in new_entries))
-            if new_entries and len(stuck) == len(new_entries)
-            else None
+            if new_entries and len(stuck) == len(new_entries) else None
         )
         n = (prev_n + 1) if (sig and sig == prev_sig) else (1 if sig else 0)
         if sig and n >= n_threshold:
@@ -949,11 +851,8 @@ class BaseAgent:
         decay) so the leak is a counted alarm, not a silent spot-check."""
         cleaned, n = self._strip_tool_syntax(text, set(self.tools))
         if n:
-            logger.warning(
-                "stripped_tool_syntax_leak: removed %d line(s) of "
-                "tool-call syntax from assistant text",
-                n,
-            )
+            logger.warning("stripped_tool_syntax_leak: removed %d line(s) of "
+                           "tool-call syntax from assistant text", n)
         return cleaned
 
     async def _run_tool_block(
@@ -980,9 +879,7 @@ class BaseAgent:
         tool = self.tools.get(tool_name)
         display_name = tool.get_display_name() if tool else tool_name
 
-        await event_stream.emit_tool_start(
-            tool_name, tool_input, tool_use_id, display_name
-        )
+        await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
         # Request user confirmation for mutating operations.
         # Headless/harness callers set session.context["auto_confirm"]=True to
@@ -996,9 +893,7 @@ class BaseAgent:
                 tool_input.setdefault("confirmed", True)
         elif tool_name in self.CONFIRMATION_TOOLS:
             confirmation_id = f"confirm_{tool_use_id}"
-            confirm_msg = self._build_confirmation_message(
-                tool_name, display_name, tool_input
-            )
+            confirm_msg = self._build_confirmation_message(tool_name, display_name, tool_input)
             confirmation = await event_stream.request_confirmation(
                 confirmation_id=confirmation_id,
                 message=confirm_msg,
@@ -1010,9 +905,7 @@ class BaseAgent:
             if not confirmation.get("approved"):
                 reason = confirmation.get("reason", "User denied the operation")
                 result = ToolResult(success=False, error=f"Operation denied: {reason}")
-                await event_stream.emit_tool_result(
-                    tool_name, False, f"Denied: {reason}", tool_use_id
-                )
+                await event_stream.emit_tool_result(tool_name, False, f"Denied: {reason}", tool_use_id)
                 result_block = {
                     "type": "tool_result",
                     "tool_use_id": tool_use_id,
@@ -1029,20 +922,15 @@ class BaseAgent:
                     # Blocking elicitation (already resolved in-tool) — never
                     # triggers the deferred break. Stamped for consistency.
                     "kind": getattr(tool, "kind", "tool") if tool else "tool",
-                    "elicit_mode": getattr(tool, "elicit_mode", "deferred")
-                    if tool
-                    else "deferred",
+                    "elicit_mode": getattr(tool, "elicit_mode", "deferred") if tool else "deferred",
                     "elicited": False,
                     "elicit_expects": "single",
                 }
                 return result_block, log_entry
 
         result = await self._execute_tool(
-            tool_name,
-            tool_input,
-            session,
-            event_stream=event_stream,
-            tool_use_id=tool_use_id,
+            tool_name, tool_input, session,
+            event_stream=event_stream, tool_use_id=tool_use_id,
         )
         tool_content = result.to_tool_result_content()
 
@@ -1051,9 +939,7 @@ class BaseAgent:
         # trees) can fragment SSE lines and stall the spinner.
         display_summary = result.summary or result.error or tool_content
 
-        await event_stream.emit_tool_result(
-            tool_name, result.success, display_summary, tool_use_id
-        )
+        await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
 
         # audience: a tool whose summary targets the user ("user"/"both") has it
         # posted to chat AND persisted (append to the run-scoped parts the saved
@@ -1062,18 +948,14 @@ class BaseAgent:
         if result.audience in ("user", "both") and result.success and result.summary:
             logger.info(
                 "audience_text: emitting tool %s result summary (len=%d, preview=%s)",
-                tool_name,
-                len(result.summary),
-                result.summary[:120],
+                tool_name, len(result.summary), result.summary[:120],
             )
             await event_stream.emit_text(result.summary)
             assistant_text_parts.append(result.summary)
 
         # Learning loop: track tool errors for pitfall detection
         if not result.success:
-            await self._on_tool_error(
-                tool_name, tool_input, result.error or "Unknown error"
-            )
+            await self._on_tool_error(tool_name, tool_input, result.error or "Unknown error")
 
         # Multimodal tool_result: when the active provider accepts image
         # content blocks inside `tool_result.content` (Anthropic does), forward
@@ -1084,7 +966,6 @@ class BaseAgent:
         result_content: Any = tool_content
         try:
             from app.services.llm_provider import get_llm_provider as _get_llm_provider
-
             _provider = _get_llm_provider(self._provider_name)
             if getattr(_provider, "supports_image_in_tool_result", False):
                 image_blocks = result.extract_anthropic_image_blocks()
@@ -1115,9 +996,7 @@ class BaseAgent:
             "summary": result.summary or result.error or "",
             "tool_use_id": tool_use_id,
             "kind": getattr(tool, "kind", "tool") if tool else "tool",
-            "elicit_mode": getattr(tool, "elicit_mode", "deferred")
-            if tool
-            else "deferred",
+            "elicit_mode": getattr(tool, "elicit_mode", "deferred") if tool else "deferred",
             "elicited": _elicited,
             "elicit_expects": (
                 (result.data.get("elicit_expects") or "single")
@@ -1127,31 +1006,17 @@ class BaseAgent:
             # Domain-agnostic pass-through. A tool may tag its elicitation with
             # the field it fills + a per-option answer map; a subclass can then
             # capture the reply. Inert (None) for every other tool and agent.
-            "elicit_field": (
-                result.data.get("elicit_field")
-                if isinstance(result.data, dict)
-                else None
-            ),
-            "elicit_answers": (
-                result.data.get("elicit_answers")
-                if isinstance(result.data, dict)
-                else None
-            ),
+            "elicit_field": (result.data.get("elicit_field") if isinstance(result.data, dict) else None),
+            "elicit_answers": (result.data.get("elicit_answers") if isinstance(result.data, dict) else None),
             # Generic typed payload an elicitation collects across turns (e.g.
             # the still-missing AssetRequirements). Opaque to core - a subclass owns its
             # shape + (de)serialization. Inert (None) for every other tool.
-            "elicit_payload": (
-                result.data.get("elicit_payload")
-                if isinstance(result.data, dict)
-                else None
-            ),
+            "elicit_payload": (result.data.get("elicit_payload") if isinstance(result.data, dict) else None),
             # A success that stored nothing new (kept-noop). The stuck-loop
             # breaker treats it like a failure so a re-send loop the model won't
             # break out of gets the tool quarantined. Generic + inert (False) for
             # every other tool. Domain-agnostic pass-through, same as elicited.
-            "no_progress": bool(
-                isinstance(result.data, dict) and result.data.get("no_progress")
-            ),
+            "no_progress": bool(isinstance(result.data, dict) and result.data.get("no_progress")),
         }
         return result_block, log_entry
 
@@ -1193,16 +1058,12 @@ class BaseAgent:
         # bodies stay synchronous (`progress("...")`, not `await progress(...)`).
         # Tools opt in with `progress = context.get("progress") or (lambda m: None)`.
         if event_stream and tool_use_id:
-
             def _progress(msg: str) -> None:
                 try:
                     loop = asyncio.get_running_loop()
-                    loop.create_task(
-                        event_stream.emit_tool_update(tool_use_id, str(msg))
-                    )
+                    loop.create_task(event_stream.emit_tool_update(tool_use_id, str(msg)))
                 except Exception:  # noqa: BLE001
                     pass
-
             context["progress"] = _progress
         else:
             context["progress"] = lambda _m: None
@@ -1267,14 +1128,11 @@ class BaseAgent:
 
         # First call — inject the schema and tell the LLM to retry.
         import json as _json
-
         anthropic_shape = tool.to_anthropic_tool()
         payload = {
             "name": tool.name,
             "description": tool.description,
-            "input_schema": anthropic_shape.get(
-                "input_schema", {"type": "object", "properties": {}}
-            ),
+            "input_schema": anthropic_shape.get("input_schema", {"type": "object", "properties": {}}),
         }
         if isinstance(fetched, list):
             if tool_name not in fetched:
@@ -1295,8 +1153,7 @@ class BaseAgent:
     # place a build_turn_reminder (Layer 2) at the message tail ──
     @staticmethod
     def _with_tail_reminder(
-        messages: list[dict[str, Any]],
-        reminder_text: str,
+        messages: list[dict[str, Any]], reminder_text: str,
     ) -> list[dict[str, Any]]:
         """Return a PER-CALL copy of ``messages`` with a fresh ``<system-reminder>``
         text block appended to the tail (the last message's content).
@@ -1312,10 +1169,7 @@ class BaseAgent:
         """
         if not reminder_text:
             return messages
-        block = {
-            "type": "text",
-            "text": f"<system-reminder>\n{reminder_text}\n</system-reminder>",
-        }
+        block = {"type": "text", "text": f"<system-reminder>\n{reminder_text}\n</system-reminder>"}
         out = list(messages)
         if not out:
             return [{"role": "user", "content": [block]}]
@@ -1324,17 +1178,13 @@ class BaseAgent:
         if isinstance(content, list):
             last["content"] = [*content, block]
         elif isinstance(content, str):
-            last["content"] = (
-                [{"type": "text", "text": content}] if content else []
-            ) + [block]
+            last["content"] = ([{"type": "text", "text": content}] if content else []) + [block]
         else:
             last["content"] = [block]
         out[-1] = last
         return out
 
-    async def _apply_pre_call(
-        self, session: BaseSession, turn: int
-    ) -> list[dict[str, Any]]:
+    async def _apply_pre_call(self, session: BaseSession, turn: int) -> list[dict[str, Any]]:
         """Pre-call phase — build the decorated message list for this turn's LLM
         request. The single seam for per-call request decoration: invoke the
         per-turn reminder hook and inject its text at the tail of a PER-CALL copy
@@ -1357,7 +1207,10 @@ class BaseAgent:
         """
         if not session.auth:
             return ""
-        return f"Client: {session.auth.client_code}\nApp: {session.auth.app_code}\n"
+        return (
+            f"Client: {session.auth.client_code}\n"
+            f"App: {session.auth.app_code}\n"
+        )
 
     # ── image generation hook · called when provider yields image_chunk ──
     async def _on_image_generated(
@@ -1376,8 +1229,7 @@ class BaseAgent:
         logger.warning(
             "_on_image_generated not overridden; dropping image "
             "(type=%s, size=%d bytes)",
-            image_mime,
-            len(image_data),
+            image_mime, len(image_data),
         )
         return None
 
@@ -1400,9 +1252,7 @@ class BaseAgent:
         return ""
 
     async def _on_loop_complete(
-        self,
-        session: BaseSession,
-        tool_call_log: list[dict[str, Any]],
+        self, session: BaseSession, tool_call_log: list[dict[str, Any]],
     ) -> None:
         """Hook called after the agent loop completes.
 
@@ -1410,7 +1260,6 @@ class BaseAgent:
         """
         try:
             from app.learning.outcome import get_outcome_analyzer
-
             task = asyncio.create_task(
                 get_outcome_analyzer().score_session(session.session_id)
             )
@@ -1420,10 +1269,7 @@ class BaseAgent:
             logger.debug("Learning post-hook skipped: %s", e)
 
     async def _on_tool_error(
-        self,
-        tool_name: str,
-        tool_input: dict[str, Any],
-        error: str,
+        self, tool_name: str, tool_input: dict[str, Any], error: str,
     ) -> None:
         """Hook called when a tool execution fails.
 
@@ -1431,7 +1277,6 @@ class BaseAgent:
         """
         try:
             from app.learning.knowledge import get_knowledge_extractor
-
             await get_knowledge_extractor().extract_pitfall_from_errors(
                 agent_name=self.name,
                 tool_name=tool_name,
@@ -1491,9 +1336,7 @@ class BaseAgent:
         return ctx
 
     async def get_pending_suggestions(
-        self,
-        session: BaseSession,
-        assistant_text: str = "",
+        self, session: BaseSession, assistant_text: str = "",
     ) -> dict[str, Any] | None:
         """Return pending suggestion options to show in the UI.
 
