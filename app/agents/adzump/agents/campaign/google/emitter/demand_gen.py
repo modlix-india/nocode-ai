@@ -4,14 +4,15 @@ Five operations, in dependency order: budget, campaign, audience, ad group, crit
 Temporary negative ids thread across them, which is why the emitter is channel-level rather
 than per-slot - no single slot can own a fragment of it.
 
-Shape validated live with validateOnly on a client account; the traps it caught are recorded
-in docs/demand-gen-audience-mechanisms.md.
+Shape validated live with validateOnly on a client account; the traps it caught are in the
+regression note on tests/agents/adzump/agents/campaign/test_emitter.py.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from app.agents.adzump.agents.campaign.google.audience.constants import is_pending
 from app.agents.adzump.agents.campaign.google.audience.models import (
     AudienceTargetingResult,
     SignalKind,
@@ -78,7 +79,7 @@ def audience_dimensions(result: AudienceTargetingResult) -> list[dict]:
                         }
                         for r in demo.age_ranges
                     ],
-                    "includeUndetermined": demo.include_undetermined,
+                    "includeUndetermined": demo.includes_undetermined("age_ranges"),
                 }
             }
         )
@@ -87,7 +88,7 @@ def audience_dimensions(result: AudienceTargetingResult) -> list[dict]:
             {
                 "gender": {
                     "genders": [g.value for g in demo.genders],
-                    "includeUndetermined": demo.include_undetermined,
+                    "includeUndetermined": demo.includes_undetermined("genders"),
                 }
             }
         )
@@ -96,7 +97,7 @@ def audience_dimensions(result: AudienceTargetingResult) -> list[dict]:
             {
                 "householdIncome": {
                     "incomeRanges": [i.value for i in demo.income_ranges],
-                    "includeUndetermined": demo.include_undetermined,
+                    "includeUndetermined": demo.includes_undetermined("income_ranges"),
                 }
             }
         )
@@ -105,7 +106,9 @@ def audience_dimensions(result: AudienceTargetingResult) -> list[dict]:
             {
                 "parentalStatus": {
                     "parentalStatuses": [p.value for p in demo.parental_statuses],
-                    "includeUndetermined": demo.include_undetermined,
+                    "includeUndetermined": demo.includes_undetermined(
+                        "parental_statuses"
+                    ),
                 }
             }
         )
@@ -132,6 +135,7 @@ def operations(
     start_date: str = "",
     end_date: str = "",
     surfaces: dict[str, bool] | None = None,
+    geo_targets: list[str] | None = None,
 ) -> list[dict]:
     """Every operation for one Demand Gen campaign, in dependency order.
 
@@ -141,11 +145,22 @@ def operations(
     audience_dump = build.get("audience") or {}
     if not audience_dump:
         raise ValueError("a Demand Gen campaign needs an audience")
+    if not geo_targets:
+        # Google reads no location criteria as "everywhere", so this cannot be a warning.
+        raise ValueError("a Demand Gen campaign needs at least one location to target")
+    pending = [
+        s["ref"] for s in audience_dump.get("signals") or [] if is_pending(s["ref"])
+    ]
+    if pending:
+        # publish materialises blueprints before calling this; reaching here means it did not.
+        raise ValueError(f"custom segment was never created: {pending[0]}")
 
     result = AudienceTargetingResult.model_validate(audience_dump)
     dimensions = audience_dimensions(result)
-    if not dimensions:
-        raise ValueError("a Demand Gen ad group needs at least one audience dimension")
+    if not any("audienceSegments" in d for d in dimensions):
+        # Demographics alone is not a narrow campaign, it is everyone in the country who
+        # happens to match. Same rule apply_edit enforces on deleting the last positive.
+        raise ValueError("a Demand Gen ad group needs at least one audience segment")
 
     ad_type = ad_type_for(build.get("creative"))
     temp = TempIds(customer_id)
@@ -214,6 +229,19 @@ def operations(
                 }
             }
         },
+        # Demand Gen puts location on the AD GROUP, the opposite of Search's campaign-level
+        # CampaignCriterion. Without these the campaign serves worldwide.
+        *(
+            {
+                "adGroupCriterionOperation": {
+                    "create": {
+                        "adGroup": ad_group_rn,
+                        "location": {"geoTargetConstant": geo},
+                    }
+                }
+            }
+            for geo in geo_targets or ()
+        ),
         *creative_operations(temp=temp, ad_group_rn=ad_group_rn, build=build),
     ]
 
@@ -229,6 +257,6 @@ def creative_operations(*, temp: TempIds, ad_group_rn: str, build: dict) -> list
     if not creative:
         return []
     raise NotImplementedError(
-        "creative slot filled but Demand Gen cannot emit it yet - phase D in "
-        "docs/campaign-build-model-design.md"
+        "creative slot filled but Demand Gen cannot emit it yet - the AdGroupAd and its "
+        "asset operations are not built"
     )

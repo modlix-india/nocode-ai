@@ -107,26 +107,3 @@ def as_campaign_datetime(date: str, *, end_of_day: bool = False) -> str:
     if not date or " " in date:
         return date
     return f"{date} 23:59:59" if end_of_day else f"{date} 00:00:00"
-
-
-def parse_mutate_errors(payload: dict) -> list[str]:
-    """Readable messages from a failed mutate.
-
-    Google answers in TWO envelopes - GoogleAdsFailure.errors[] and, for a type mismatch,
-    google.rpc.BadRequest.fieldViolations[]. Order is kept: the FIRST error is the cause, the
-    later RESOURCE_NOT_FOUNDs are its fallout.
-    """
-    messages: list[str] = []
-    for detail in (payload.get("error") or {}).get("details") or []:
-        for err in detail.get("errors") or []:
-            code = err.get("errorCode") or {}
-            label = next(iter(code.values()), "") if code else ""
-            text = err.get("message", "")
-            messages.append(f"{label}: {text}" if label else text)
-        for violation in detail.get("fieldViolations") or []:
-            messages.append(
-                f"{violation.get('field', '')}: {violation.get('description', '')}"
-            )
-    if not messages and (message := (payload.get("error") or {}).get("message")):
-        messages.append(message)
-    return messages

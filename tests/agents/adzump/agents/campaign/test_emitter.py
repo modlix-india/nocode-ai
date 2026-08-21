@@ -7,9 +7,8 @@ tests pin the shape that was accepted - not a shape we believe is right.
 
 # regression: `maps` is a v24 field and the client speaks v23, so sending it failed the whole
 # mutate with Unknown name "maps"; the schedule fields are start_date_time / end_date_time and
-# the END must be 23:59:59; biddingStrategyType is OUTPUT_ONLY and must never be sent; an
-# open-ended age band must OMIT maxAge rather than send null; and errors arrive in two
-# different envelopes, so a handler reading one shows nothing for the other.
+# the END must be 23:59:59; biddingStrategyType is OUTPUT_ONLY and must never be sent; and an
+# open-ended age band must OMIT maxAge rather than send null.
 from __future__ import annotations
 
 import unittest
@@ -17,7 +16,6 @@ import unittest
 from app.agents.adzump.agents.campaign.google.emitter import (
     MICROS,
     as_campaign_datetime,
-    parse_mutate_errors,
 )
 from app.agents.adzump.agents.campaign.google.channel_controls import SURFACES
 from app.agents.adzump.agents.campaign.google.emitter.demand_gen import (
@@ -65,6 +63,9 @@ def _ops(**over):
         "budget_micros": 1000 * MICROS,
         "build": {"audience": _dump()},
         "product_name": "probe",
+        # A real campaign always has these - Demand Gen with no location serves worldwide,
+        # so the emitter refuses without them.
+        "geo_targets": ["geoTargetConstants/1007751"],
     }
     if "build_audience" in over:
         kwargs["build"] = {"audience": over.pop("build_audience")}
@@ -77,7 +78,7 @@ def _op(ops, key):
 
 
 class StructureTests(unittest.TestCase):
-    def test_five_operations_in_dependency_order(self):
+    def test_operations_come_in_dependency_order(self):
         self.assertEqual(
             [next(iter(o)) for o in _ops()],
             [
@@ -85,7 +86,8 @@ class StructureTests(unittest.TestCase):
                 "campaignOperation",
                 "audienceOperation",
                 "adGroupOperation",
-                "adGroupCriterionOperation",
+                "adGroupCriterionOperation",  # the audience
+                "adGroupCriterionOperation",  # one location
             ],
         )
 
@@ -132,6 +134,35 @@ class StructureTests(unittest.TestCase):
     def test_budget_is_not_shared(self):
         # Demand Gen budgets cannot be shared, unlike Search.
         self.assertIs(_op(_ops(), "campaignBudgetOperation")["explicitlyShared"], False)
+
+
+class LocationTests(unittest.TestCase):
+    """Demand Gen puts location on the AD GROUP, unlike Search's campaign-level criteria."""
+
+    def test_each_geo_becomes_an_ad_group_criterion(self):
+        ops = _ops(
+            geo_targets=["geoTargetConstants/1007751", "geoTargetConstants/200635"]
+        )
+        locs = [
+            o["adGroupCriterionOperation"]["create"]
+            for o in ops
+            if "adGroupCriterionOperation" in o
+            and "location" in o["adGroupCriterionOperation"]["create"]
+        ]
+        self.assertEqual(
+            [c["location"]["geoTargetConstant"] for c in locs],
+            ["geoTargetConstants/1007751", "geoTargetConstants/200635"],
+        )
+        # on the ad group, never the campaign
+        self.assertTrue(all(c["adGroup"].startswith("customers/") for c in locs))
+        self.assertFalse(any("campaignCriterionOperation" in o for o in ops))
+
+    def test_no_locations_is_refused_rather_than_served_worldwide(self):
+        # Google reads absent location criteria as "everywhere", and a campaign that spends
+        # globally cannot be undone - so this is a refusal, not a warning.
+        with self.assertRaises(ValueError) as e:
+            _ops(geo_targets=[])
+        self.assertIn("location", str(e.exception))
 
 
 class ScheduleTests(unittest.TestCase):
@@ -264,6 +295,38 @@ class DimensionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ops(build_audience=_dump(signals=[], groups=[]))
 
+    def test_demographics_alone_do_not_count_as_targeting(self):
+        # They pass the "has a dimension" bar while reaching everyone in the country who
+        # happens to be female - a campaign nobody built.
+        with self.assertRaises(ValueError) as caught:
+            _ops(
+                build_audience=_dump(
+                    signals=[], groups=[], demographics={"genders": ["FEMALE"]}
+                )
+            )
+        self.assertIn("audience segment", str(caught.exception))
+
+    def test_each_dimension_carries_its_own_undetermined_flag(self):
+        # One shared flag would tie income - where undetermined is most of the world - to
+        # whatever was decided for gender.
+        dims = self._dims(
+            build_audience=_dump(
+                demographics={
+                    "age_ranges": [{"min_age": 25, "max_age": 54}],
+                    "genders": ["FEMALE"],
+                    "income_ranges": ["INCOME_RANGE_90_UP"],
+                    "include_undetermined": {"income_ranges": False},
+                }
+            )
+        )
+        flags = {
+            k: d[k]["includeUndetermined"]
+            for d in dims
+            for k in d
+            if k != "audienceSegments"
+        }
+        self.assertEqual(flags, {"age": True, "gender": True, "householdIncome": False})
+
 
 class ExclusionTests(unittest.TestCase):
     def test_only_user_lists_are_excludable(self):
@@ -292,84 +355,6 @@ class ExclusionTests(unittest.TestCase):
         ]["segments"]
         self.assertEqual(
             segments, [{"userInterest": {"userInterestCategory": _INTEREST}}]
-        )
-
-
-class ErrorEnvelopeTests(unittest.TestCase):
-    """Google answers in two shapes; reading one shows nothing for the other."""
-
-    def test_google_ads_failure_envelope(self):
-        payload = {
-            "error": {
-                "details": [
-                    {
-                        "errors": [
-                            {
-                                "errorCode": {"audienceError": "DIMENSION_INVALID"},
-                                "message": "A dimension is not valid.",
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-        self.assertEqual(
-            parse_mutate_errors(payload),
-            ["DIMENSION_INVALID: A dimension is not valid."],
-        )
-
-    def test_field_violation_envelope(self):
-        payload = {
-            "error": {
-                "details": [
-                    {
-                        "fieldViolations": [
-                            {
-                                "field": "operations[0].create.type",
-                                "description": 'Unknown name "maps"',
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-        self.assertEqual(
-            parse_mutate_errors(payload),
-            ['operations[0].create.type: Unknown name "maps"'],
-        )
-
-    def test_the_first_error_is_kept_first(self):
-        # In a failed atomic build the later RESOURCE_NOT_FOUNDs are symptoms of the
-        # operation that actually failed.
-        payload = {
-            "error": {
-                "details": [
-                    {
-                        "errors": [
-                            {
-                                "errorCode": {
-                                    "contextError": "OPERATION_NOT_PERMITTED_FOR_CONTEXT"
-                                },
-                                "message": "cause",
-                            },
-                            {
-                                "errorCode": {"mutateError": "RESOURCE_NOT_FOUND"},
-                                "message": "symptom",
-                            },
-                        ]
-                    }
-                ]
-            }
-        }
-        self.assertEqual(
-            parse_mutate_errors(payload)[0],
-            "OPERATION_NOT_PERMITTED_FOR_CONTEXT: cause",
-        )
-
-    def test_a_bare_message_still_surfaces(self):
-        self.assertEqual(
-            parse_mutate_errors({"error": {"message": "UNAUTHENTICATED"}}),
-            ["UNAUTHENTICATED"],
         )
 
 

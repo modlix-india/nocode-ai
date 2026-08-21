@@ -123,6 +123,106 @@ class ReviewLineTests(unittest.TestCase):
         self.assertEqual(build_review_items(ctx), ("the audience targeting",))
 
 
+class PendingSubAgentQuestionTests(unittest.TestCase):
+    """A sub-agent asked the user something. It holds the record the answer refers to, so the
+    reply goes back to it - prescribing the next campaign step instead reads as leave to move
+    on, and the orchestrator reports an outcome nobody gave it."""
+
+    FULL = {"platform": "Google Ads", "duration": "60 days", "budget": "$10,000/day",
+            "parent_account": "P", "account": "A", "channel": "Demand Gen",
+            "summary_confirmed": "true", "competitive_analysis_declined": "true"}
+
+    def _missing(self, **kw):
+        return _next_action(make_cctx(dict(self.FULL), product=SAAS, build_done=True,
+                                      summary_confirmed=True,
+                                      review_items=("the audience targeting",), **kw))
+
+    def test_the_reply_is_routed_back_to_whichever_tool_asked(self):
+        first = self._missing(awaiting_tool="manage_audience")[0]
+        self.assertIn("manage_audience(user_message=", first)
+        self.assertIn("Do NOT act on it yourself", first)
+
+    def test_launch_is_not_offered_while_a_question_is_open(self):
+        # The live failure: "yes add them" was answered with "should we launch?", and the
+        # next "yes" launched the campaign.
+        self.assertFalse(
+            any(m.startswith("launch") for m in self._missing(awaiting_tool="manage_audience"))
+        )
+
+    def test_launch_returns_once_it_is_answered(self):
+        self.assertTrue(any(m.startswith("launch") for m in self._missing()))
+
+    def test_it_is_not_bound_to_one_agent(self):
+        first = self._missing(awaiting_tool="manage_keywords")[0]
+        self.assertIn("manage_keywords(user_message=", first)
+
+
+class ElicitationRoutingTests(unittest.TestCase):
+    """`awaiting_tool` reads one shape only, so the elicitations already in use are untouched."""
+
+    @staticmethod
+    def _session(pe, said=""):
+        return types.SimpleNamespace(
+            context={
+                "product_data": dict(SAAS),
+                "campaign_spec": {},
+                "_pending_elicitation": pe,
+            },
+            messages=[{"role": "user", "content": said}] if said else [],
+            _turn_count=11,
+        )
+
+    def _awaiting(self, pe):
+        return CampaignContext.from_session(self._session(pe)).awaiting_tool
+
+    def _hint(self, pe):
+        return AdzumpAgent._resume_elicitation_section(
+            AdzumpAgent.__new__(AdzumpAgent), self._session(pe), 1
+        )
+
+    def test_only_an_elicitation_naming_user_message_routes_back(self):
+        self.assertEqual(
+            self._awaiting({"tool": "manage_audience", "field": "user_message"}),
+            "manage_audience",
+        )
+
+    def test_the_existing_elicitations_are_unaffected(self):
+        for pe in [
+            {"tool": "present_options", "field": "platform", "expects": "single"},
+            {"tool": "present_options", "field": "budget", "answers": {"a": "b"}},
+            {"tool": "prepare_campaign_review", "field": None, "expects": "multi"},
+            {"tool": "extract_site_assets", "field": None, "expects": "multi"},
+            {},
+        ]:
+            with self.subTest(tool=pe.get("tool")):
+                self.assertIsNone(self._awaiting(pe))
+
+    def test_a_routed_question_does_not_write_a_campaign_field(self):
+        # `field` is a tool PARAMETER here, not a spec field - tagged-capture must ignore it.
+        session = self._session(
+            {"tool": "manage_audience", "field": "user_message",
+             "expects": "single", "answers": None},
+            said="yes add them",
+        )
+        agent = AdzumpAgent.__new__(AdzumpAgent)
+        self.assertEqual(AdzumpAgent._capture_tagged_answer(agent, session, 1), "")
+        self.assertEqual(session.context["campaign_spec"], {})
+        # Left open, so the resume hint and _next_action still see it this turn.
+        self.assertIn("_pending_elicitation", session.context)
+
+    def test_the_resume_hint_sends_the_answer_back(self):
+        hint = self._hint({"tool": "manage_audience", "field": "user_message",
+                           "expects": "single"})
+        self.assertIn("manage_audience(user_message=", hint)
+        self.assertIn("not told what was asked", hint)
+
+    def test_a_chip_question_keeps_the_original_hint(self):
+        hint = self._hint({"tool": "present_options", "field": "platform",
+                           "expects": "single"})
+        self.assertIn("pick the next action", hint)
+        self.assertNotIn("user_message=", hint)
+
+
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
 class InstagramOptionalTests(unittest.TestCase):
     META_FULL = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",

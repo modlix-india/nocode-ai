@@ -166,11 +166,45 @@ the way the audience mutation is split would be ceremony. Eligibility rules live
 ### `google/emitter/` + `google/publish.py` — build → the platform (implemented)
 `emitter/` turns a finished build into one atomic `googleAds:mutate` payload: shared helpers,
 then **one module per channel**, because a channel's payload is not a variation of another's.
-`publish.py` posts it with `partialFailure: false`, so a campaign is never half created.
+`publish.py` decides what to send and what the answer means; the request itself is
+`adapters/google/campaigns.py`, which is the only place in adzump that speaks HTTP to Google
+for a campaign.
+
+⚠️ The emitter stays in the agent tree on purpose. It does no I/O and it imports the build
+model, so moving it under `adapters/` would point an adapter at `agents/` — the one direction
+that layer does not allow.
 
 ⚠️ `publish_campaign` is deliberately **not** a `ToolDefinition` — an LLM-callable tool could
 publish without the consent gate. `launch_campaign` calls it directly, **before** saving, so
 the record never describes a launch that did not happen.
+
+#### Bidding — set explicitly, never inherited
+We send `targetSpend: {}` (Maximize Clicks) on every Demand Gen campaign. Google lists it as
+supported: *"Supported bidding strategies are maximize clicks, target CPA, maximize
+conversions, and target ROAS."*
+
+⚠️ **There is no account-level strategy a campaign falls back to.** The portfolio (shared)
+strategy is `campaign.bidding_strategy`, and it sits in the **same `campaign_bidding_strategy`
+oneof** as `target_spend` — so the two are mutually exclusive, and a campaign uses a shared
+strategy only when it names one. Sending `targetSpend` is what guarantees this campaign is not
+on someone else's portfolio strategy.
+
+⚠️ `biddingStrategyType` is `OUTPUT_ONLY` — accepted silently if sent, so never send it.
+
+Choosing the strategy from the account's conversion readiness is deferred; the payload is one
+key, the judgement is not.
+
+⚠️ **Demand Gen puts location on the AD GROUP, not the campaign** — one
+`AdGroupCriterion.location.geo_target_constant` per area, the opposite of Search's
+campaign-level `CampaignCriterion`. Google's create-campaign guide: *"With Demand Gen, you can
+choose to set the location and language group criteria at the ad group level."* A test asserts
+no `campaignCriterionOperation` is ever emitted, because the Search shape looks like the fix.
+
+⚠️ **No location criteria means Google serves the campaign worldwide**, so the emitter refuses
+to build without at least one — a warning would be spent budget by the time anyone read it.
+Constants come from the location agent (`target_areas[].google.resourceName`) and are
+**deduped**: neighbourhoods resolve to postal codes, so 19 areas collapsed to 18 constants
+live, and repeating one fails the whole batch.
 
 ### `tools/meta/` — reserved
 Placeholder namespace for Meta campaign tools (mirrors `tools/google/`).
@@ -203,7 +237,7 @@ generated from the `Channel` enum, so a new channel is offered by existing.
 | `google/audience/` | audience targeting — its own [AGENT.md](google/audience/AGENT.md). **Channel-neutral**: one `Audience` resource also serves Performance Max and App |
 | `google/channel_controls.py` | which surfaces an ad may show on. Demand Gen only; eligibility is (ad type × surface) data |
 | `google/emitter/` | build → atomic mutate payload. Shared helpers + one module per channel |
-| `google/publish.py` | posts it. Not a tool, deliberately — the consent gate lives in `launch_campaign` |
+| `google/publish.py` | decides what to send and reads the answer; `adapters/google/campaigns.py` sends it. Not a tool, deliberately — the consent gate lives in `launch_campaign` |
 | `tools/google/` | the tools that fill the slots (above) |
 | `tools/meta/` | reserved |
 

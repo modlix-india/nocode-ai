@@ -11,6 +11,7 @@ import logging
 from app.agents.adzump.agents.campaign.google.audience.agent import (
     get_audience_manage_agent,
 )
+from app.agents.adzump.agents.campaign.models import audience
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,18 @@ async def _manage_audience(params: dict, context: dict) -> ToolResult:
                 "manage_audience requires a `user_message` - the orchestrator should "
                 "forward the user's verbatim text. Empty messages are rejected here so "
                 "the orchestrator gets a clean retry signal."
+            ),
+        )
+    # The manage prompt is built from the saved audience; without one it has nothing to
+    # answer from and the orchestrator would fall through to rebuilding the campaign.
+    session_ctx = context.get("session_context") or {}
+    if audience(session_ctx) is None:
+        logger.warning("manage_audience: no audience built yet")
+        return ToolResult(
+            success=False,
+            error=(
+                "This campaign has no audience yet - only a Demand Gen campaign has one, "
+                "and it must be built first. Do NOT rebuild the campaign to get one."
             ),
         )
     return await get_audience_manage_agent().handle(user_message, context)

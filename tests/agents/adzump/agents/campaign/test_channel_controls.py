@@ -197,7 +197,11 @@ class EmitterReadsTheSlotTests(unittest.TestCase):
 
         block = (build_dump(session_ctx) or {})["demand_gen"]
         ops = demand_gen_operations(
-            customer_id="1", campaign_name="C", budget_micros=1, build=block
+            customer_id="1",
+            campaign_name="C",
+            budget_micros=1,
+            build=block,
+            geo_targets=["geoTargetConstants/1007751"],
         )
         return ops[3]["adGroupOperation"]["create"]["demandGenAdGroupSettings"][
             "channelControls"
@@ -221,7 +225,11 @@ class EmitterReadsTheSlotTests(unittest.TestCase):
 
         block = (build_dump(ctx["session_context"]) or {})["demand_gen"]
         ops = demand_gen_operations(
-            customer_id="1", campaign_name="C", budget_micros=1, build=block
+            customer_id="1",
+            campaign_name="C",
+            budget_micros=1,
+            build=block,
+            geo_targets=["geoTargetConstants/1007751"],
         )
         controls = ops[3]["adGroupOperation"]["create"]["demandGenAdGroupSettings"][
             "channelControls"

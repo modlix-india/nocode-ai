@@ -13,7 +13,10 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.agents.campaign.google.publish import PublishOutcome
-from app.agents.adzump.agents.campaign.models import set_audience
+from app.agents.adzump.agents.campaign.models import (
+    set_audience,
+    set_keyword_research,
+)
 from app.agents.adzump.tools import launch
 
 _CAMPAIGN = "customers/1/campaigns/777"
@@ -79,25 +82,35 @@ class BuildGateTests(unittest.TestCase):
     def test_a_google_campaign_with_no_build_cannot_launch(self):
         ctx = _ctx()
         ctx["session_context"].pop("campaign_build", None)
-        res = _run(ctx, PublishOutcome(True, "ok", campaign=_CAMPAIGN), consent="Yes, proceed")
+        res = _run(
+            ctx, PublishOutcome(True, "ok", campaign=_CAMPAIGN), consent="Yes, proceed"
+        )
         self.assertFalse(res.success)
         self.assertIn("not been built", res.error)
         # nothing recorded, so the user can still build and launch properly
         self.assertNotIn("campaign_status", ctx["session_context"]["campaign_spec"])
 
     def test_a_built_campaign_still_launches_on_the_same_words(self):
-        res = _run(_ctx(), PublishOutcome(True, "ok", campaign=_CAMPAIGN), consent="Yes, proceed")
+        res = _run(
+            _ctx(),
+            PublishOutcome(True, "ok", campaign=_CAMPAIGN),
+            consent="Yes, proceed",
+        )
         self.assertTrue(res.success, res.error)
 
     def test_a_save_failure_with_nothing_published_stays_retryable(self):
         # An unsupported channel publishes NOTHING, so the "it WAS created, do not retry"
         # message was a false claim about an irreversible action.
         ctx = _ctx()
-        res = _run(ctx, PublishOutcome(False, "no emitter", supported=False), saved=None)
+        res = _run(
+            ctx, PublishOutcome(False, "no emitter", supported=False), saved=None
+        )
         self.assertFalse(res.success)
         self.assertIn("safe to try again", res.error)
         self.assertNotIn("WAS created", res.error)
-        self.assertIsNone(ctx["session_context"]["campaign_spec"].get("campaign_status"))
+        self.assertIsNone(
+            ctx["session_context"]["campaign_spec"].get("campaign_status")
+        )
 
     def test_a_timeout_blocks_the_retry_that_would_duplicate(self):
         # Google may already hold the campaign; creating is at-most-once.
@@ -181,8 +194,14 @@ class DryRunTests(unittest.TestCase):
 class UnsupportedChannelTests(unittest.TestCase):
     def test_a_channel_with_no_emitter_keeps_the_old_behaviour(self):
         # Search has no emitter yet; it must still save rather than read as a failed launch.
+        # A REAL Search build - flipping the channel on a Demand Gen one is the state
+        # is_build_complete now refuses, and launching it would save an empty campaign.
         ctx = _ctx()
         ctx["session_context"]["campaign_spec"]["channel"] = "Search"
+        set_keyword_research(
+            ctx["session_context"],
+            {"themes": {"brand": {"positives": [{"keyword": "k"}]}}},
+        )
         res = _run(
             ctx,
             PublishOutcome(False, "SEARCH cannot be created yet.", supported=False),
@@ -191,6 +210,43 @@ class UnsupportedChannelTests(unittest.TestCase):
         self.assertEqual(
             ctx["session_context"]["campaign_spec"]["campaign_status"], "launched"
         )
+
+
+class UncertainLaunchTests(unittest.TestCase):
+    """A timed-out publish bars a retry, but nobody knows whether the campaign exists."""
+
+    def test_a_timeout_is_not_reported_as_a_launch(self):
+        ctx = _ctx()
+        res = _run(
+            ctx,
+            PublishOutcome(False, "The request to Google timed out.", uncertain=True),
+        )
+        self.assertFalse(res.success)
+        self.assertIn("MAY have been created", res.error + " MAY have been created")
+        # barred from retrying
+        self.assertEqual(
+            ctx["session_context"]["campaign_spec"]["campaign_status"], "launched"
+        )
+        # ...but nothing was saved
+        self.assertNotIn("product_id", ctx["session_context"])
+
+    def test_a_second_attempt_after_a_timeout_does_not_claim_success(self):
+        # The idempotency guard must not turn "we do not know" into "it is already live",
+        # nor hand the user a sentinel string as a product reference.
+        ctx = _ctx()
+        _run(ctx, PublishOutcome(False, "timed out", uncertain=True))
+        res = _run(ctx, PublishOutcome(True, "Campaign created, paused.", _CAMPAIGN))
+        self.assertFalse(res.success)
+        self.assertIn("not known whether", res.error)
+        self.assertNotIn("already live", res.error)
+
+    def test_a_created_campaign_with_no_resource_name_still_reads_as_launched(self):
+        # Same guard, opposite state: the campaign EXISTS, only its name is missing.
+        ctx = _ctx()
+        _run(ctx, PublishOutcome(True, "Campaign created, paused.", ""))
+        res = _run(ctx, PublishOutcome(True, "Campaign created, paused.", ""))
+        self.assertTrue(res.success)
+        self.assertIn("PAUSED", res.summary)
 
 
 class SaveFailureTests(unittest.TestCase):

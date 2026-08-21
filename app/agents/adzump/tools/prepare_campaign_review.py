@@ -11,7 +11,12 @@ from __future__ import annotations
 import logging
 
 from app.agents.adzump.agents.campaign.agent import get_campaign_agent
-from app.agents.adzump.agents.campaign.models import set_build
+from app.agents.adzump.agents.campaign.models import (
+    build_dump,
+    build_missing,
+    is_build_complete,
+    set_build,
+)
 from app.agents.adzump.platform import is_google as platform_is_google
 from app.core.streaming import pre_emit_agent_started
 from app.core.tools.base import ToolDefinition, ToolResult
@@ -60,6 +65,23 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
                 'with present_options(field="channel") first, then call this again.'
             ),
         )
+    # set_build below replaces the whole build, and the model reaches for this tool whenever
+    # it wants progress - so a stray call on an edit request discards the user's review. A
+    # PARTIAL build still retries: create() now carries it in, so the gap is filled rather
+    # than rebuilt.
+    if is_build_complete(session_ctx):
+        logger.warning("prepare_campaign_review: refused - build already complete")
+        return ToolResult(
+            success=False,
+            error=(
+                "This campaign is ALREADY built and the user is reviewing it. Building "
+                "again would discard every edit they made. Never call this tool twice for "
+                "one campaign. If they asked to change the audience call manage_audience "
+                "with their verbatim message; for keywords call manage_keywords; if they "
+                "are done, ask them to launch."
+            ),
+        )
+
     auth = context.get("auth")
     if auth is None:
         return ToolResult(success=False, error="No auth context for campaign creation.")
@@ -86,6 +108,7 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
         craft_id=craft_id,
         parent_event_stream=stream,
         auth=auth,
+        build=build_dump(session_ctx),
     )
     if not result:
         return ToolResult(
@@ -93,6 +116,18 @@ async def _prepare_campaign_review(params: dict, context: dict) -> ToolResult:
             error="Campaign creation produced nothing to review — check the ad account and retry.",
         )
     set_build(session_ctx, result)
+    # A partial build is a failed one. channel_controls writes its slot unconditionally, so
+    # "not empty" would pass a run whose audience died and hand the user an empty panel -
+    # and clearing the attempt counter would let it retry forever.
+    if missing := build_missing(session_ctx):
+        logger.warning("campaign_build_incomplete: missing=%s", ", ".join(missing))
+        return ToolResult(
+            success=False,
+            error=(
+                f"Campaign setup is missing {', '.join(missing)} — that step did not "
+                "complete. Tell the user which part failed and ask before retrying."
+            ),
+        )
     session_ctx.pop(_ATTEMPTS_KEY, None)
 
     # The elicitation owns its ask (the deferred break skips the follow-up turn).

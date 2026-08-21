@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adzump.agents.campaign.google.audience import constants
 from app.agents.adzump.agents.campaign.models import audience
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
@@ -109,7 +110,9 @@ async def _edit_audience(params: dict, context: dict) -> ToolResult:
 
     if not done:
         return ToolResult(
-            success=False, error="No edit applied. " + " ".join(failed[:3])
+            success=False,
+            error="No edit applied. "
+            + " ".join(failed[: constants.ERROR_ITEMS_DISPLAY_MAX]),
         )
     # Re-emit the audience block so the panel matches the mutated set — the SAME keyed
     # upsert the panel's own click path does. Without this the panel silently shows the old

@@ -19,6 +19,7 @@ from app.agents.adzump.agents.campaign.models import (
     Channel,
     build_dump,
     resolve_channel,
+    set_build,
 )
 from app.agents.adzump.agents.campaign.tools.google.registry import (
     GOOGLE_CAMPAIGN_TOOLS,
@@ -99,6 +100,7 @@ class CampaignAgent(BaseAgent):
         craft_id: str,
         parent_event_stream: AgentEventStream,
         auth: AuthContext,
+        build: dict | None = None,
     ) -> dict | None:
         """Run campaign creation and return the build it produced (or None).
 
@@ -107,6 +109,11 @@ class CampaignAgent(BaseAgent):
         their output back into that session, which we hand to the caller to keep on the
         main session. The whole build rather than one channel's slot - this shell does not
         know which channel's tool ran.
+
+        ``build`` is what the main session already holds. Without it every tool starts blind:
+        their "already built for these inputs" checks read the session they run in, so on a
+        retry after a partial failure they cannot tell finished work from missing work and
+        redo all of it.
         """
         session = BaseSession(agent_name="campaign")
         await session.get_or_create(None, auth)
@@ -115,6 +122,8 @@ class CampaignAgent(BaseAgent):
             "product_data": product_data,
             "craft_id": craft_id,
         }
+        if build:
+            set_build(session.context, build)
         run_start = time.monotonic()
         stream = _CampaignStream(parent_event_stream)
         try:

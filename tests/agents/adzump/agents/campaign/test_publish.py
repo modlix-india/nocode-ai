@@ -12,12 +12,19 @@ import unittest
 from datetime import date
 from unittest import mock
 
+from app.agents.adzump.adapters.google import campaigns
 from app.agents.adzump.adapters.google.client import GoogleAdsApiError
 from app.agents.adzump.agents.campaign.google import publish
-from app.agents.adzump.agents.campaign.models import set_audience
+from app.agents.adzump.agents.campaign.google.audience.constants import (
+    BLUEPRINTS_KEY,
+    pending_ref,
+)
+from app.agents.adzump.agents.campaign.models import audience, set_audience
 
 _REF = "customers/1/userInterests/80001"
 _CAMPAIGN = "customers/1/campaigns/777"
+_PENDING = pending_ref("Buyers")
+_CREATED = "customers/1/customAudiences/4242"
 
 
 def _session(**spec):
@@ -30,7 +37,15 @@ def _session(**spec):
             "duration": "30 days",
             **spec,
         },
-        "product_data": {"product_name": "Acme"},
+        "product_data": {
+            "product_name": "Acme",
+            "target_areas": [
+                {
+                    "name": "Bengaluru",
+                    "google": {"resourceName": "geoTargetConstants/1007751"},
+                }
+            ],
+        },
     }
     set_audience(
         session_ctx,
@@ -66,8 +81,10 @@ def _run(session_ctx, *, dry_run=False, response=None, error=None):
             raise error
         return response if response is not None else {"mutateOperationResponses": []}
 
+    # Patched at the adapter's client, not at campaigns.mutate: what these pin is the
+    # request that actually reaches Google.
     with (
-        mock.patch.object(publish.google_ads_client, "post", new=fake_post),
+        mock.patch.object(campaigns.google_ads_client, "post", new=fake_post),
         mock.patch.object(publish.settings, "ADZUMP_PUBLISH_DRY_RUN", dry_run),
     ):
         outcome = asyncio.run(publish.publish_campaign(session_ctx, {}))
@@ -93,6 +110,27 @@ class RequestShapeTests(unittest.TestCase):
     def test_it_posts_to_the_atomic_endpoint(self):
         _, sent = _run(_session())
         self.assertEqual(sent["endpoint"], "customers/1/googleAds:mutate")
+
+
+class GeoTargetTests(unittest.TestCase):
+    def test_the_location_agents_constants_reach_the_payload(self):
+        ctx = _session()
+        ctx["product_data"]["target_areas"] = [
+            {"name": "A", "google": {"resourceName": "geoTargetConstants/1"}},
+            {"name": "B", "google": {"resourceName": "geoTargetConstants/2"}},
+            # 19 neighbourhoods resolved to 18 postal-code constants live, so duplicates are
+            # normal input - sending one twice fails the whole batch.
+            {"name": "C", "google": {"resourceName": "geoTargetConstants/1"}},
+            {"name": "D", "google": {}},
+        ]
+        _, sent = _run(ctx)
+        geos = [
+            o["adGroupCriterionOperation"]["create"]["location"]["geoTargetConstant"]
+            for o in sent["body"]["mutateOperations"]
+            if "adGroupCriterionOperation" in o
+            and "location" in o["adGroupCriterionOperation"]["create"]
+        ]
+        self.assertEqual(geos, ["geoTargetConstants/1", "geoTargetConstants/2"])
 
 
 class OutcomeTests(unittest.TestCase):
@@ -190,6 +228,104 @@ class ConversionTests(unittest.TestCase):
         )
         self.assertNotIn("startDateTime", campaign)
         self.assertTrue(campaign["endDateTime"].endswith("23:59:59"))
+
+
+class CustomSegmentTests(unittest.TestCase):
+    """The approved-but-not-yet-created segment. Google will not take a CustomAudience inside
+    the atomic mutate, so publish creates it first and swaps the pending ref for the real one.
+    """
+
+    def _pending(self, *, alone=False):
+        session_ctx = _session()
+        dump = audience(session_ctx)
+        dump["signals"].append(
+            {
+                "kind": "CUSTOM_AUDIENCE",
+                "ref": _PENDING,
+                "label": "Buyers",
+                "source": "GENERATED",
+                "rationale": "",
+                "path": [],
+                "negative": False,
+                "owned": True,
+                "metrics": None,
+            }
+        )
+        if alone:
+            dump["signals"] = [s for s in dump["signals"] if s["ref"] != _REF]
+            dump["dimension_groups"] = [[_PENDING]]
+        else:
+            dump["dimension_groups"] = [[_REF, _PENDING]]
+        set_audience(session_ctx, dump)
+        session_ctx[BLUEPRINTS_KEY] = {
+            _PENDING: {
+                "label": "Buyers",
+                "terms": [{"keyword": "k", "volume": 10}],
+                "urls": [],
+                "apps": [],
+            }
+        }
+        return session_ctx
+
+    def _live(self, session_ctx):
+        async def fake_list(**_):
+            return []
+
+        async def fake_create(**_):
+            return _CREATED
+
+        with (
+            mock.patch.object(publish.custom_audience, "list_enabled", new=fake_list),
+            mock.patch.object(publish.custom_audience, "create", new=fake_create),
+        ):
+            return _run(session_ctx, response={"mutateOperationResponses": []})
+
+    def test_a_created_segment_replaces_its_pending_ref_in_the_session(self):
+        # The build publish emits from is a COPY, so a swap made only there leaves the session
+        # holding a ref for a segment that now exists - and the next launch creates a second.
+        session_ctx = self._pending()
+        outcome, sent = self._live(session_ctx)
+
+        self.assertTrue(outcome.ok)
+        refs = [s["ref"] for s in audience(session_ctx)["signals"]]
+        self.assertEqual(refs, [_REF, _CREATED])
+        self.assertEqual(audience(session_ctx)["dimension_groups"], [[_REF, _CREATED]])
+        # Re-keyed, not dropped - the panel still shows what the segment is made of.
+        self.assertNotIn(_PENDING, session_ctx[BLUEPRINTS_KEY])
+        self.assertEqual(session_ctx[BLUEPRINTS_KEY][_CREATED]["label"], "Buyers")
+        # The real ref, not the pending one, is what Google was asked to target.
+        self.assertIn(_CREATED, str(sent["body"]))
+        self.assertNotIn(_PENDING, str(sent["body"]))
+
+    def test_a_dry_run_creates_nothing_and_leaves_the_session_alone(self):
+        session_ctx = self._pending()
+        outcome, sent = _run(session_ctx, dry_run=True)
+
+        self.assertTrue(outcome.ok)
+        self.assertIn("Buyers", outcome.message)
+        # Still pending, still holding its terms: nothing was created to swap in.
+        self.assertIn(_PENDING, [s["ref"] for s in audience(session_ctx)["signals"]])
+        self.assertIn(_PENDING, session_ctx[BLUEPRINTS_KEY])
+        self.assertNotIn(_PENDING, str(sent["body"]))
+
+    def test_a_dry_run_refuses_when_the_custom_segment_is_the_only_audience(self):
+        # Dropping it would leave nothing to target, and validating what remains says nothing
+        # about the campaign the user built.
+        session_ctx = self._pending(alone=True)
+        outcome, sent = _run(session_ctx, dry_run=True)
+
+        self.assertFalse(outcome.ok)
+        self.assertIn("ADZUMP_PUBLISH_DRY_RUN=false", outcome.message)
+        self.assertEqual(sent, {})
+
+    def test_a_missing_blueprint_stops_the_launch(self):
+        session_ctx = self._pending()
+        session_ctx[BLUEPRINTS_KEY] = {}
+        outcome, sent = self._live(session_ctx)
+
+        self.assertFalse(outcome.ok)
+        self.assertIn("terms are missing", outcome.message)
+        self.assertEqual(sent, {})
 
 
 if __name__ == "__main__":

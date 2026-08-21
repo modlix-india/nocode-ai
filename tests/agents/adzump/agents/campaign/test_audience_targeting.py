@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from typing import ClassVar
 from unittest import mock
 
 from app.agents.adzump.agents.campaign.craft import audience_review_block
+from app.agents.adzump.agents.campaign.google.audience.agent import _current_audience
 from app.agents.adzump.agents.campaign.google.audience.models import (
+    DIMENSION_FIELDS,
     AudienceSignal,
     AudienceTargetingResult,
     DemographicSpec,
@@ -24,10 +27,12 @@ from app.agents.adzump.agents.campaign.google.audience.models import (
 from app.agents.adzump.agents.campaign.models import (
     audience,
     build_dump,
+    build_review_items,
     is_build_complete,
     keyword_research,
     set_audience,
     set_build,
+    set_channel_controls,
     set_keyword_research,
 )
 from app.agents.adzump.agents.campaign.tools.google import audience_targeting as at
@@ -219,22 +224,40 @@ class BuildHandoffTests(unittest.TestCase):
     main session is where launch, next_action and the manage agent all read from.
     """
 
-    def _hop(self, sub_ctx):
-        main_ctx = {}
+    def _hop(self, sub_ctx, channel):
+        # The main session always carries the spec - it is what chose the channel, and
+        # is_build_complete checks the build against it.
+        main_ctx = {"campaign_spec": {"platform": "GOOGLE", "channel": channel}}
         set_build(main_ctx, build_dump(sub_ctx))
         return main_ctx
 
     def test_a_demand_gen_build_survives_the_hop(self):
         sub = {}
         set_audience(sub, {"signals": [{"label": "A"}]})
-        main = self._hop(sub)
+        main = self._hop(sub, "Demand Gen")
         self.assertEqual(audience(main), {"signals": [{"label": "A"}]})
         self.assertTrue(is_build_complete(main))
+
+    def test_a_build_for_another_channel_does_not_count_as_this_one(self):
+        # Switching channel leaves the old build stored. Read as this channel's work it
+        # skips the build stage, and launch then saves a campaign with nothing in it.
+        ctx = {"campaign_spec": {"platform": "GOOGLE", "channel": "Demand Gen"}}
+        set_audience(ctx, _result(_signal("A")).model_dump(mode="json"))
+        set_channel_controls(ctx, {"youtube_in_feed": True})
+        self.assertTrue(is_build_complete(ctx))
+
+        ctx["campaign_spec"]["channel"] = "Search"
+        self.assertFalse(is_build_complete(ctx))
+        self.assertEqual(build_review_items(ctx), ())
+
+        # and switching back does not lose it
+        ctx["campaign_spec"]["channel"] = "Demand Gen"
+        self.assertTrue(is_build_complete(ctx))
 
     def test_a_search_build_survives_the_hop(self):
         sub = {}
         set_keyword_research(sub, {"themes": {"brand": {}}})
-        main = self._hop(sub)
+        main = self._hop(sub, "Search")
         self.assertEqual(keyword_research(main), {"themes": {"brand": {}}})
         self.assertTrue(is_build_complete(main))
 
@@ -315,6 +338,46 @@ class ReviewBlockTests(unittest.TestCase):
         income = next(r for r in rows if r["attribute"] == "Household income")
         self.assertEqual(income["value"], "Top 10%")
 
+    def test_an_income_span_reads_as_one_slice(self):
+        # The top three bands ARE the top 30%. Joining the end labels would read "Top 10% to
+        # Top 20-30%" - two overlapping things rather than the one slice it is.
+        dump = _result(
+            _signal("A"),
+            demographics=DemographicSpec(
+                income_ranges=[
+                    "INCOME_RANGE_90_UP",
+                    "INCOME_RANGE_80_90",
+                    "INCOME_RANGE_70_80",
+                ]
+            ),
+        ).model_dump(mode="json")
+        rows = next(
+            s
+            for s in audience_review_block(dump)["sections"]
+            if s["key"] == "demographics"
+        )["rows"]
+        income = next(r for r in rows if r["attribute"] == "Household income")
+        self.assertEqual(income["value"], "Top 30%")
+
+    def test_excluding_unknown_is_shown_only_where_it_bites(self):
+        # An unset dimension is never emitted, so its flag never reaches Google - saying
+        # "unknown excluded" on an Everyone row would claim a filter that does not exist.
+        dump = _result(
+            _signal("A"),
+            demographics=DemographicSpec(
+                genders=["FEMALE"],
+                include_undetermined={"genders": False, "age_ranges": False},
+            ),
+        ).model_dump(mode="json")
+        rows = next(
+            s
+            for s in audience_review_block(dump)["sections"]
+            if s["key"] == "demographics"
+        )["rows"]
+        by_attr = {r["attribute"]: r["value"] for r in rows}
+        self.assertEqual(by_attr["Gender"], "Female · unknown excluded")
+        self.assertEqual(by_attr["Age"], "Everyone")
+
     def test_an_open_ended_age_range_reads_as_a_floor(self):
         dump = _result(
             _signal("A"),
@@ -369,6 +432,76 @@ class ReviewBlockTests(unittest.TestCase):
         self.assertEqual(sections["excluded"]["label"], "Excluded (1)")
         # the excluded list must not also appear as something the campaign targets
         self.assertNotIn("user_list", sections)
+
+
+class DemographicRationaleTests(unittest.TestCase):
+    """The panel prints a reason beside every dimension. Left blank, "Everyone" reads as a
+    step that was skipped rather than a decision that was taken - so the tool refuses."""
+
+    _OPEN: ClassVar[dict] = {f: [] for f in DIMENSION_FIELDS}
+
+    def _submit(self, params):
+        from app.agents.adzump.agents.campaign.google.audience.tools import (
+            _submit_demographics,
+        )
+
+        ctx: dict = {}
+        result = asyncio.run(_submit_demographics(params, {"session_context": ctx}))
+        return result, ctx
+
+    def test_a_dimension_with_no_reason_is_refused_by_name(self):
+        result, ctx = self._submit(
+            {**self._OPEN, "rationales": {"age_ranges": "anyone buys this"}}
+        )
+        self.assertFalse(result.success)
+        for missing in ("genders", "income_ranges", "parental_statuses"):
+            self.assertIn(missing, result.error)
+        # Not stored either: a half-reasoned spec would print blanks in the panel.
+        self.assertNotIn("aud_demographics", ctx)
+
+    def test_leaving_every_dimension_open_still_needs_its_reasons(self):
+        reasons = {f: "considered, not narrowed" for f in DIMENSION_FIELDS}
+        result, ctx = self._submit({**self._OPEN, "rationales": reasons})
+        self.assertTrue(result.success, result.error)
+        rows = audience_review_block(
+            {"signals": [], "demographics": ctx["aud_demographics"], "meta": {}},
+            None,
+        )["sections"][0]["rows"]
+        self.assertEqual({r["value"] for r in rows}, {"Everyone"})
+        self.assertTrue(all(r["rationale"] for r in rows))
+
+
+class ManageViewTests(unittest.TestCase):
+    """What the manage run is shown as the audience it is editing."""
+
+    def test_excluded_unknowns_are_spelled_out(self):
+        # submit_demographics REPLACES the whole spec, so a narrowing the model cannot see
+        # is one it silently undoes on the next edit.
+        dump = _result(
+            _signal("A"),
+            demographics=DemographicSpec(
+                income_ranges=["INCOME_RANGE_90_UP", "INCOME_RANGE_80_90"],
+                include_undetermined={"income_ranges": False},
+            ),
+        ).model_dump(mode="json")
+        line = next(
+            ln
+            for ln in _current_audience(dump).splitlines()
+            if ln.startswith("DEMOGRAPHICS")
+        )
+        self.assertEqual(line, "DEMOGRAPHICS: income Top 20% (unknown excluded)")
+
+    def test_a_kept_dimension_says_nothing_extra(self):
+        dump = _result(
+            _signal("A"),
+            demographics=DemographicSpec(genders=["FEMALE"]),
+        ).model_dump(mode="json")
+        line = next(
+            ln
+            for ln in _current_audience(dump).splitlines()
+            if ln.startswith("DEMOGRAPHICS")
+        )
+        self.assertEqual(line, "DEMOGRAPHICS: gender FEMALE")
 
 
 if __name__ == "__main__":

@@ -236,18 +236,47 @@ def set_build(session_ctx: dict, dump: dict) -> None:
     session_ctx.pop(LEGACY_KEYWORD_KEY, None)
 
 
+def _current(session_ctx: dict) -> CampaignBuild | None:
+    """The stored build, unless the user has picked a DIFFERENT channel since.
+
+    Only an explicit, recognised choice disowns a build. resolve_channel's Search default
+    would disown a Demand Gen one whenever the channel is missing or unparsed - and an
+    orphaned build reads as unbuilt, which invites a rebuild over the user's review.
+    """
+    build = _load(session_ctx)
+    if build is None:
+        return None
+    chosen = chosen_channel(session_ctx)
+    return build if chosen is None or build.channel is chosen else None
+
+
 def is_build_complete(session_ctx: dict) -> bool:
     """Has this channel's build produced every slot it cannot launch without?"""
-    build = _load(session_ctx)
+    build = _current(session_ctx)
     return build is not None and build.is_complete
+
+
+def build_missing(session_ctx: dict) -> tuple[str, ...]:
+    """Required slots this channel's build has not produced, worded as the user reads them."""
+    build = _current(session_ctx)
+    if build is None:
+        return ("the campaign build",)
+    block = build.block
+    return tuple(block.shows.get(slot, slot) for slot in block.missing)
 
 
 def build_review_items(session_ctx: dict) -> tuple[str, ...]:
     """What the review panel is showing, for the prompt that asks the user to check it."""
-    build = _load(session_ctx)
+    build = _current(session_ctx)
     return build.block.review_items if build else ()
 
 
 def resolve_channel(campaign_spec: dict) -> Channel:
     """Defaults to Search: Search campaigns skip the channel step, as do old sessions."""
     return Channel.from_value(campaign_spec.get("channel")) or Channel.SEARCH
+
+
+def chosen_channel(session_ctx: dict) -> Channel | None:
+    """The channel the user picked, or None. No Search default - changing platform clears
+    the channel, so a stale build must not read as Search."""
+    return Channel.from_value((session_ctx.get("campaign_spec") or {}).get("channel"))

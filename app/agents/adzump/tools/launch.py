@@ -7,9 +7,9 @@ Order is publish then save, so the record never describes a launch that did not 
 so a failed publish leaves campaign_status untouched and simply retries. A channel with no
 emitter yet (Search) skips the publish and keeps the pre-posting behaviour.
 
-What the record holds is the per-URL business record `ds/chatv2` shares; the created
-campaign's resource name is not persisted yet - see section 11 of
-docs/campaign-build-model-design.md.
+What the record holds is the per-URL business record `ds/chatv2` shares. The created
+campaign's resource name is NOT persisted - it is logged only, so a launched campaign is
+traceable from the logs but cannot be resolved from the record.
 """
 
 from __future__ import annotations
@@ -43,6 +43,9 @@ _AFFIRMATIVE_RE = re.compile(
 # Stored when a campaign exists but Google did not hand back its resource name - the
 # idempotency guard tests truthiness, and "" would let a retry create a duplicate.
 _UNCONFIRMED = "created (resource name unconfirmed)"
+# Distinct from _UNCONFIRMED: there the campaign EXISTS and only its name is missing; here
+# nobody knows whether it exists. Both bar a retry, only one is a launch.
+_UNCERTAIN = "launch timed out (existence unknown)"
 
 
 def _user_confirmed_launch(last_user: str) -> bool:
@@ -65,6 +68,18 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
     if spec.get("campaign_status") == "launched" and (
         session_ctx.get("product_id") or session_ctx.get("launched_campaign")
     ):
+        if session_ctx.get("launched_campaign") == _UNCERTAIN:
+            # The publish timed out. Retrying is still barred - Google may hold the campaign
+            # - but nothing here knows that it does, so this must not read as a success.
+            logger.warning("launch_campaign_idempotent: previous publish was uncertain")
+            return ToolResult(
+                success=False,
+                error=(
+                    "The earlier launch timed out and it is not known whether Google created "
+                    "the campaign. Do NOT launch again - that could create a second one. Tell "
+                    "the user to check the Google Ads account."
+                ),
+            )
         record_id = session_ctx.get("product_id") or session_ctx["launched_campaign"]
         logger.info(
             "launch_campaign_idempotent: already launched, product_id=%s", record_id
@@ -73,8 +88,8 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
             success=True,
             data={"product_id": record_id},
             summary=(
-                f"Campaign was already launched (product reference: {record_id}). "
-                "Do not launch again - tell the user it is already live."
+                f"Campaign was already launched (product reference: {record_id}). Do not "
+                "launch again - tell the user it exists and is PAUSED, not yet serving."
             ),
         )
 
@@ -154,7 +169,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
         # Google may already hold the campaign. Marking it launched blocks the retry that
         # would create a second one; the user is told to check rather than reassured.
         spec["campaign_status"] = "launched"
-        session_ctx["launched_campaign"] = _UNCONFIRMED
+        session_ctx["launched_campaign"] = _UNCERTAIN
         logger.error("launch_publish_uncertain: %s", outcome.message)
         return ToolResult(success=False, error=outcome.message)
     if outcome.supported and not outcome.ok:
@@ -219,8 +234,7 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
     # re-launches for the same URL. Persist it under `product_id` so future
     # turns can resolve it and survive session restore.
     session_ctx["product_id"] = record_id
-    # The campaign resource name is not persisted yet - see section 11 of
-    # docs/campaign-build-model-design.md. Logged so a created campaign is always traceable.
+    # The campaign resource name is not persisted - logged so it is at least traceable.
     logger.info(
         "launch_campaign_ok: product_id=%s campaign=%s",
         record_id,

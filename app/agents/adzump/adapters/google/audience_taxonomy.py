@@ -5,7 +5,7 @@ types: the same taxonomy serves Demand Gen, Performance Max and App campaigns, s
 to ask for and which channel to check against are the caller's.
 
 Fetched whole rather than searched — the set is small enough that one cached call lets a
-ranker see all of it. Measurements and sources: docs/demand-gen-audience-mechanisms.md.
+ranker see all of it.
 """
 
 from __future__ import annotations

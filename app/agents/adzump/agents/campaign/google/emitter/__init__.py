@@ -25,7 +25,6 @@ from app.agents.adzump.agents.campaign.google.emitter.shared import (
     as_campaign_datetime,
     budget_operation,
     campaign_operation,
-    parse_mutate_errors,
 )
 from app.agents.adzump.agents.campaign.models import Channel
 
@@ -41,5 +40,4 @@ __all__ = [
     "as_campaign_datetime",
     "budget_operation",
     "campaign_operation",
-    "parse_mutate_errors",
 ]

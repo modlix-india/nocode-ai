@@ -118,6 +118,10 @@ class CampaignContext:
     # True once the user okays the campaign summary - the gate between showing the summary
     # and asking which ad groups to build.
     summary_confirmed: bool = False
+    # The tool that asked the user something and must be handed their reply, because it
+    # answers from a record the orchestrator was never given. Any tool whose elicitation
+    # names `user_message` as the field it fills.
+    awaiting_tool: str | None = None
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -131,6 +135,8 @@ class CampaignContext:
         # evaluate the condition before the walrus and raise UnboundLocalError.
         pe = ctx.get("_pending_elicitation") or {}
         awaiting_custom_field = pe.get("field") if pe.get("awaiting_custom") else None
+        # Read here, before _resume_elicitation_section pops it later in the same build.
+        awaiting_tool = pe.get("tool") if pe.get("field") == "user_message" else None
         return cls(
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
@@ -156,6 +162,7 @@ class CampaignContext:
             summary_confirmed=_is_affirmative(
                 (ctx.get("campaign_spec") or {}).get("summary_confirmed")
             ),
+            awaiting_tool=awaiting_tool,
         )
 
     @property
@@ -220,6 +227,15 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     if not cctx.product:
         missing.append("business URL - call `analyze_product(url=<the user's URL>)`")
         return missing
+
+    # First, not only: anything else at the top reads as leave to move on and to report an
+    # outcome nobody gave us. The rest of the list stays for a user who changed the subject.
+    if cctx.awaiting_tool:
+        missing.append(
+            f"answer the question `{cctx.awaiting_tool}` asked - call "
+            f"`{cctx.awaiting_tool}(user_message=<their verbatim reply>)` NOW. Do NOT act "
+            "on it yourself, claim anything changed, or move on."
+        )
 
     # Intent routing: if the user's last message is a recognizable answer for
     # a pending field, surface "store this NOW" as the top of missing. This

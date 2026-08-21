@@ -22,6 +22,7 @@ from app.agents.adzump.agents.campaign.craft import (
 )
 from app.agents.adzump.agents.campaign.google.audience.agent import get_audience_agent
 from app.agents.adzump.agents.campaign.google.audience.constants import (
+    BLUEPRINTS_KEY,
     MIN_SIGNALS_TOTAL,
 )
 from app.agents.adzump.agents.campaign.models import (
@@ -68,6 +69,24 @@ async def _resolve_country(session_ctx: dict) -> str:
             "audience_targeting: country unresolved - catalogue will be thinner"
         )
     return code
+
+
+# Restricted targeting for housing, employment and credit ads - US and Canada only.
+# https://support.google.com/adspolicy/answer/143465
+_HEC_COUNTRIES = {"united states": "US", "canada": "CA"}
+
+
+def _hec_regions(product: dict) -> list[str]:
+    """Restricted-targeting countries this campaign reaches, from Google's canonical geo name
+    (always ends in the country). Separate from the catalogue country: targeting Mumbai AND
+    Austin loads India's catalogue but is still bound by US policy."""
+    found: list[str] = []
+    for area in product.get("target_areas") or []:
+        name = str((area.get("google") or {}).get("name") or "")
+        code = _HEC_COUNTRIES.get(name.rsplit(",", 1)[-1].strip().lower())
+        if code and code not in found:
+            found.append(code)
+    return found
 
 
 def _targeting_key(customer_id: str, product: dict, country: str) -> str:
@@ -123,7 +142,11 @@ async def _audience_targeting(params: dict, context: dict) -> ToolResult:
     cached = audience(session_ctx)
     targeting_key = _targeting_key(customer_id, product, country)
     if cached and (cached.get("meta") or {}).get("key") == targeting_key:
-        await emit_section_update(stream, craft_id, audience_review_block(cached))
+        await emit_section_update(
+            stream,
+            craft_id,
+            audience_review_block(cached, session_ctx.get(BLUEPRINTS_KEY)),
+        )
         return ToolResult(
             success=True,
             summary="Audience already built for these details — showing the saved set.",
@@ -140,6 +163,7 @@ async def _audience_targeting(params: dict, context: dict) -> ToolResult:
                 },
                 channel=channel,
                 country_code=country,
+                hec_regions=_hec_regions(product),
                 parent_event_stream=stream,
                 auth=context["auth"],
             ),
@@ -170,7 +194,11 @@ async def _audience_targeting(params: dict, context: dict) -> ToolResult:
     panel_exists = bool(cached)
     set_audience(session_ctx, dump)
     if panel_exists:
-        await emit_section_update(stream, craft_id, audience_review_block(dump))
+        await emit_section_update(
+            stream,
+            craft_id,
+            audience_review_block(dump, session_ctx.get(BLUEPRINTS_KEY)),
+        )
     else:
         await emit_campaign_craft(stream, craft_id, session_ctx)
 

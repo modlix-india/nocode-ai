@@ -294,6 +294,16 @@ class AdzumpAgent(BaseAgent):
         # single: one-shot - clear after emitting so it fires for exactly this turn
         session.context.pop("_pending_elicitation", None)
         tool = pe.get("tool", "the previous step")
+        if pe.get("field") == "user_message":
+            # The asker holds the record the reply refers to, and we were never told what it
+            # asked - so reading the answer here means inventing what it meant.
+            return (
+                "## Resuming after a question\n"
+                f"`{tool}` asked the user something last turn and their message is the "
+                f"answer. Send it straight back: `{tool}(user_message=<their verbatim "
+                "reply>)`. Do NOT interpret it, act on it, or say anything was added or "
+                "changed - you were not told what was asked."
+            )
         return (
             "## Resuming after a question\n"
             f"Last turn you asked the user a question (via {tool}); the widget is "

@@ -2,8 +2,8 @@
 
 Cannot be created inside the campaign's atomic build: MutateOperation has no
 custom_audience_operation. It must exist first, then be referenced by resource name.
-validateOnly here checks parsing and required fields only, so the published limits are ours
-to enforce. Both verified live; see docs/demand-gen-audience-mechanisms.md.
+validateOnly here checks parsing and required fields only - it accepts an over-length
+keyword and even zero members - so the published limits are ours to enforce. Verified live.
 """
 
 from __future__ import annotations
@@ -63,18 +63,20 @@ async def create(
     description: str,
     keywords: list[str],
     urls: list[str] | None = None,
+    apps: list[str] | None = None,
     login_customer_id: str = "",
     client_code: str = "",
     auth_headers: dict[str, str] | None = None,
 ) -> str:
-    """Create one custom audience from keywords and/or URLs; returns its resource name.
+    """Create one custom audience from keywords, URLs and/or apps; returns its resource name.
 
     status and id are OUTPUT_ONLY and never sent - the API accepts them silently.
-    APP members are absent because nothing gives us an app id; PLACE_CATEGORY is refused by
-    the API. So this signature is the whole supported set.
+    PLACE_CATEGORY is the one member type left out: it is in the proto but the service
+    rejects it at request parsing.
     """
     members = [{"memberType": "KEYWORD", "keyword": k} for k in keywords]
     members += [{"memberType": "URL", "url": u} for u in urls or []]
+    members += [{"memberType": "APP", "app": a} for a in apps or []]
     if not members:
         raise ValueError("a custom audience needs at least one member")
 

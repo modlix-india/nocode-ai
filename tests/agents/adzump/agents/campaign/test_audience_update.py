@@ -139,6 +139,38 @@ class DeleteTests(unittest.TestCase):
         self.assertTrue(ok, msg)
         self.assertEqual([s["ref"] for s in _signals(ctx)], [_APARTMENTS])
 
+    def test_deleting_a_pending_custom_segment_drops_its_blueprint(self):
+        # Nothing exists in the account yet, so the terms go with the signal. Left behind,
+        # the panel would keep offering terms for a segment the user already removed.
+        from app.agents.adzump.agents.campaign.google.audience.constants import (
+            BLUEPRINTS_KEY,
+            pending_ref,
+        )
+
+        ref = pending_ref("Villa buyers")
+        ctx = _ctx(
+            _signal(_APARTMENTS, "Apartments"),
+            _signal(ref, "Villa buyers", kind="CUSTOM_AUDIENCE", owned=True),
+        )
+        ctx["session_context"][BLUEPRINTS_KEY] = {ref: {"label": "Villa buyers"}}
+
+        ok, msg = _apply({"action": "delete", "ref": ref}, ctx)
+        self.assertTrue(ok, msg)
+        self.assertEqual(ctx["session_context"][BLUEPRINTS_KEY], {})
+
+    def test_deleting_a_real_segment_leaves_other_blueprints_alone(self):
+        from app.agents.adzump.agents.campaign.google.audience.constants import (
+            BLUEPRINTS_KEY,
+            pending_ref,
+        )
+
+        ref = pending_ref("Villa buyers")
+        ctx = _ctx(_signal(_APARTMENTS, "Apartments"), _signal(_VILLAS, "Villas"))
+        ctx["session_context"][BLUEPRINTS_KEY] = {ref: {"label": "Villa buyers"}}
+
+        _apply({"action": "delete", "ref": _VILLAS}, ctx)
+        self.assertIn(ref, ctx["session_context"][BLUEPRINTS_KEY])
+
     def test_the_last_segment_cannot_be_removed(self):
         # An ad group with no positive segment cannot run, and grouped mode has no
         # untargeted fallback to land in.

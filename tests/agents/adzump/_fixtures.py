@@ -89,6 +89,7 @@ def make_cctx(
     build_done: bool = False,
     review_items: tuple[str, ...] = (),
     summary_confirmed: bool = False,
+    awaiting_tool: str | None = None,
 ) -> CampaignContext:
     """A `CampaignContext` for `_next_action` / prescription tests."""
     return CampaignContext(
@@ -107,6 +108,7 @@ def make_cctx(
         build_done=build_done,
         review_items=review_items,
         summary_confirmed=summary_confirmed,
+        awaiting_tool=awaiting_tool,
     )
 
 

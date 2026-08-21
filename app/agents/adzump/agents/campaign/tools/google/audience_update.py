@@ -3,7 +3,8 @@
 The panel sends structured actions as pure JSON:
   {"type": "audience_widget", "action": "add|delete", "ref": "<resource name or id>"}
   {"type": "audience_widget", "action": "set_demographics", "age_ranges": [...],
-   "genders": [...], "income_ranges": [...], "parental_statuses": [...]}
+   "genders": [...], "income_ranges": [...], "parental_statuses": [...],
+   "include_undetermined": {"<dimension>": bool}}
 
 ``apply_edit`` applies one to the saved audience (through ``campaign/models.py``, never by
 session key); ``update_audience`` re-emits only the audience_review block. HTTP transport is
@@ -26,11 +27,17 @@ from app.agents.adzump.agents.campaign.craft import (
 )
 from app.agents.adzump.agents.campaign.google.audience import catalogue
 from app.agents.adzump.agents.campaign.google.audience.constants import (
+    BLUEPRINTS_KEY,
+    CUSTOM_SEGMENT_KEYWORD_TARGET_MAX,
     MAX_SIGNALS_PER_KIND,
+    is_pending,
 )
 from app.agents.adzump.agents.campaign.google.audience.models import (
     AudienceSignal,
     AudienceTargetingResult,
+    CustomSegmentApp,
+    CustomSegmentTerm,
+    CustomSegmentUrl,
     DemographicSpec,
     SignalKind,
     SignalSource,
@@ -124,6 +131,7 @@ async def apply_edit(params: dict, context: dict) -> tuple[bool, str]:
                     "genders": params.get("genders") or [],
                     "income_ranges": params.get("income_ranges") or [],
                     "parental_statuses": params.get("parental_statuses") or [],
+                    "include_undetermined": params.get("include_undetermined") or {},
                     # Carried through: the panel edits values, not reasoning, so dropping
                     # these would blank the "why" column on every click.
                     "rationales": params.get("rationales")
@@ -186,6 +194,11 @@ async def apply_edit(params: dict, context: dict) -> tuple[bool, str]:
                 f"'{target['label']}' is the only segment left — a campaign cannot run with no audience. Add a replacement first.",
             )
         signals = remaining
+        # Goes with the signal whether or not Google holds the segment - nothing reads a
+        # blueprint for a row that is no longer targeted. The resource itself stays.
+        blueprints = dict(session_ctx.get(BLUEPRINTS_KEY) or {})
+        blueprints.pop(target["ref"], None)
+        session_ctx[BLUEPRINTS_KEY] = blueprints
         message = f"Removed '{target['label']}'."
 
     ok, note = _persist(session_ctx, dump, signals)
@@ -246,7 +259,9 @@ async def emit_panel(context: dict, session_ctx: dict) -> None:
         or f"campaign_{context.get('session_id', '')}"
     )
     await emit_section_update(
-        context.get("event_stream"), craft_id, audience_review_block(dump)
+        context.get("event_stream"),
+        craft_id,
+        audience_review_block(dump, session_ctx.get(BLUEPRINTS_KEY)),
     )
 
 
@@ -266,3 +281,145 @@ async def update_audience(params: dict, context: dict) -> ToolResult:
         summary=message,
         data={"action": str(params.get("action", "")).lower()},
     )
+
+
+MEMBER_LISTS = {"term": "terms", "url": "urls", "app": "apps"}
+
+
+# Where each kind's value travels. A term's is "keyword" after the model field, not "term",
+# so a caller building these dicts cannot guess the key from the action name.
+MEMBER_VALUE_KEYS = {"term": "keyword", "url": "url", "app": "app"}
+
+
+def _member(kind: str, params: dict) -> tuple[object, str]:
+    """The member the panel sent, validated, or the reason it cannot be used."""
+    value = str(params.get(MEMBER_VALUE_KEYS[kind]) or "")
+    try:
+        if kind == "term":
+            return CustomSegmentTerm(
+                keyword=value,
+                volume=int(params.get("volume") or 0),
+            ).model_dump(), ""
+        if kind == "url":
+            return CustomSegmentUrl(url=value).url, ""
+        return CustomSegmentApp(app=value).app, ""
+    except ValidationError as exc:
+        return None, str(exc.errors()[0].get("msg", f"invalid {kind}"))
+
+
+def _is_same(kind: str, a: object, b: object) -> bool:
+    """Two members, both already through _member.
+
+    Case-folded for terms and urls, which are the same signal typed differently, but NOT for
+    apps: an Android package name is case-sensitive, so two spellings are two apps.
+    """
+    if kind == "term":
+        if not (isinstance(a, dict) and isinstance(b, dict)):
+            return False
+        return a["keyword"].casefold() == b["keyword"].casefold()
+    if kind == "url":
+        return str(a).casefold() == str(b).casefold()
+    return a == b
+
+
+async def apply_member_edit(params: dict, context: dict) -> tuple[bool, str]:
+    """Add or remove one member of a PENDING custom segment.
+
+    Google does allow editing a created one; that path is not built - AGENT.md 6.3.
+    """
+    session_ctx = context.get("session_context")
+    if session_ctx is None:
+        return False, "No session context available."
+
+    verb, _, kind = str(params.get("action") or "").partition("_")
+    if verb not in ("add", "delete", "edit") or kind not in MEMBER_LISTS:
+        return False, f"Invalid action '{params.get('action')}'."
+    if verb == "edit" and kind == "term":
+        # A term's volume is looked up from the keyword, so changing the text means a new
+        # lookup - delete and add keeps the two in step.
+        return (
+            False,
+            "Search terms cannot be edited in place - remove it and add the new one.",
+        )
+
+    ref = str(params.get("ref") or "").strip()
+    if not is_pending(ref):
+        return False, "This segment is already in the account - its terms are fixed."
+
+    blueprints = dict(session_ctx.get(BLUEPRINTS_KEY) or {})
+    plan = blueprints.get(ref)
+    if plan is None:
+        return False, "That custom segment is no longer in this campaign."
+
+    # Normalised before comparing: raw "home  loan" would land beside a stored "home loan".
+    item, error = _member(kind, params)
+    if error:
+        return False, error
+
+    field = MEMBER_LISTS[kind]
+    items = list(plan.get(field) or [])
+
+    if verb == "add":
+        if any(_is_same(kind, existing, item) for existing in items):
+            return False, "That is already in this segment."
+        items.append(item)
+        over = kind == "term" and len(items) > CUSTOM_SEGMENT_KEYWORD_TARGET_MAX
+        message = f"Added to '{plan['label']}'." + (
+            f" That is past Google's guidance of {CUSTOM_SEGMENT_KEYWORD_TARGET_MAX} "
+            "search terms."
+            if over
+            else ""
+        )
+    elif verb == "edit":
+        previous, error = _member(kind, {kind: params.get("old")})
+        if error:
+            return False, error
+        at = next(
+            (
+                i
+                for i, existing in enumerate(items)
+                if _is_same(kind, existing, previous)
+            ),
+            None,
+        )
+        if at is None:
+            return False, "That is not in this segment."
+        if any(
+            _is_same(kind, existing, item)
+            for i, existing in enumerate(items)
+            if i != at
+        ):
+            return False, "That is already in this segment."
+        items[at] = item  # in place, so the row does not jump while being edited
+        message = f"Updated in '{plan['label']}'."
+
+    else:
+        remaining = [i for i in items if not _is_same(kind, i, item)]
+        if len(remaining) == len(items):
+            return False, "That is not in this segment."
+        if field == "terms" and not remaining:
+            # Keywords are the one member type a segment cannot be built without.
+            return False, "A custom segment needs at least one search term."
+        items = remaining
+        message = f"Removed from '{plan['label']}'."
+
+    blueprints[ref] = {**plan, field: items}
+    session_ctx[BLUEPRINTS_KEY] = blueprints
+    logger.info(
+        "aud_member %s ref=%s %s=%d", params.get("action"), ref, field, len(items)
+    )
+    return True, message
+
+
+async def update_custom_segment(params: dict, context: dict) -> ToolResult:
+    """Panel-click entry for a custom segment's members: one edit, zero LLM."""
+    session_ctx = context.get("session_context")
+    if session_ctx is None:
+        return ToolResult(success=False, error="No session context available.")
+
+    ok, message = await apply_member_edit(params, context)
+    if not ok:
+        return ToolResult(success=False, error=message)
+
+    await emit_panel(context, session_ctx)
+    return ToolResult(success=True, summary=message)

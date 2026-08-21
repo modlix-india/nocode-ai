@@ -33,6 +33,7 @@ from app.agents.adzump.agents.campaign.models import (
 )
 from app.agents.adzump.agents.campaign.tools.google.audience_update import (
     update_audience,
+    update_custom_segment,
 )
 from app.agents.adzump.agents.campaign.tools.google.channel_controls import (
     update_channel_controls,
@@ -115,6 +116,14 @@ async def keyword_volume(
     if panel.customer_id:
         # Reuse the same geo the run scored with, so added keywords are comparable.
         geo = ((keyword_research(panel.ctx) or {}).get("meta") or {}).get("geo") or {}
+        if not geo.get("geo_target_constants"):
+            # A Demand Gen campaign has no keyword run, so without this the Planner falls
+            # back to its India default and a US term is scored on Indian volume.
+            country = ((panel.ctx.get("product_data") or {}).get("place") or {}).get(
+                "country_geo_constant"
+            )
+            if country:
+                geo = {**geo, "geo_target_constants": [country]}
         metrics = await keyword_planner.fetch_keyword_historical_metrics(
             keywords,
             **keyword_planner.planner_call_args(
@@ -150,6 +159,9 @@ async def keyword_volume(
 class AudienceSearchRequest(BaseModel):
     session_id: str
     query: str = ""
+    # Set by the panel's Browse tab, which asks for one section's whole catalogue rather than
+    # a ranked slice. The panel builds the tree itself - every result carries its `path`.
+    kind: str = ""
 
 
 class AudienceSegment(BaseModel):
@@ -157,6 +169,9 @@ class AudienceSegment(BaseModel):
     label: str
     kind: str
     path: list[str] = Field(default_factory=list)
+    # Browse only. Search drops what is already targeted, but a tree cannot: removing a
+    # targeted PARENT leaves its children with nothing to expand from.
+    targeted: bool = False
 
 
 class AudienceSearchResponse(BaseModel):
@@ -168,14 +183,17 @@ async def audience_search(
     body: AudienceSearchRequest,
     auth: AuthContext = Depends(require_auth_context),
 ) -> AudienceSearchResponse:
-    """Segments the panel can offer to add, matching a phrase.
+    """Segments the panel can offer to add — a phrase match, or one kind's whole catalogue.
 
     A segment reference is opaque, so the panel cannot construct one — it has to pick from
     the same catalogue the build ran on. Empty results are a real answer: Google has no
     segment for everything.
+
+    With `kind` and no `query` this is the Browse tab: everything of that kind, in tree order,
+    for a user who does not know what to search for.
     """
     query = body.query.strip()
-    if not query:
+    if not query and not body.kind:
         return AudienceSearchResponse()
 
     panel = await _panel(body.session_id, auth)
@@ -194,6 +212,19 @@ async def audience_search(
     )
     # Already-targeted segments are dropped rather than shown and refused on click.
     targeted = {s["ref"] for s in dump.get("signals") or []}
+    if body.kind:
+        candidates = [c for c in candidates if c["kind"] == body.kind]
+    if not query:
+        # Browse: the whole section, ordered so ancestors precede their children and the
+        # panel can nest it without a second pass. Uncapped by design - a tree with an
+        # arbitrary 25 entries cut out of it is not a tree.
+        return AudienceSearchResponse(
+            results=[
+                AudienceSegment(**c, targeted=c["ref"] in targeted)
+                for c in sorted(candidates, key=lambda c: c["path"])
+            ]
+        )
+
     hits = [
         c
         for c in audience_taxonomy.rank_by_name(candidates, query, lambda c: c["label"])
@@ -213,6 +244,7 @@ async def audience_search(
 _WIDGET_MUTATIONS: dict[str, Callable[[dict, dict], Awaitable[ToolResult]]] = {
     "keyword_widget": update_keywords,
     "audience_widget": update_audience,
+    "custom_segment_widget": update_custom_segment,
     "channel_controls_widget": update_channel_controls,
 }
 

@@ -8,8 +8,15 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adzump.agents.campaign.google.keyword.agent import (
+    get_keyword_manage_agent,
+)
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    chosen_channel,
+    keyword_research,
+)
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
-from app.agents.adzump.agents.campaign.google.keyword.agent import get_keyword_manage_agent
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +40,32 @@ async def _manage_keywords(params: dict, context: dict) -> ToolResult:
                 "manage_keywords requires a `user_message` - the orchestrator should "
                 "forward the user's verbatim text. Empty messages are rejected here so "
                 "the orchestrator gets a clean retry signal."
+            ),
+        )
+    # Two different refusals, kept apart so each says what is actually true. Routed here by
+    # mistake the keyword agent finds nothing to reason over, and the orchestrator - having
+    # got nothing useful - reaches for the next tool that looks like progress.
+    session_ctx = context.get("session_context") or {}
+    if keyword_research(session_ctx) is None:
+        logger.warning("manage_keywords: no keyword research in session")
+        return ToolResult(
+            success=False,
+            error=(
+                "This campaign has no keywords - only a Search campaign has them. If the "
+                "user asked about who the campaign reaches, call manage_audience with their "
+                "verbatim message instead. Do NOT rebuild the campaign."
+            ),
+        )
+    # None is not "not Search" - a Search campaign skips the channel step, and so do old
+    # sessions. Only an explicit other choice disowns these keywords.
+    chosen = chosen_channel(session_ctx)
+    if chosen is not None and chosen is not Channel.SEARCH:
+        logger.warning("manage_keywords: campaign is no longer on Search")
+        return ToolResult(
+            success=False,
+            error=(
+                "Those keywords belong to a Search campaign and this campaign is not on "
+                "Search any more. Do NOT rebuild the campaign."
             ),
         )
     return await get_keyword_manage_agent().handle(user_message, context)

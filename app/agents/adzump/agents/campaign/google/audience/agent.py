@@ -16,12 +16,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from copy import deepcopy
 from string import Template
 from typing import Any
 
 from app.agents.adzump.agents._child_stream import ChildAgentStream
 from app.agents.adzump.agents.campaign.brief import wider_brief
 from app.agents.adzump.agents.campaign.google.audience import catalogue
+from app.agents.adzump.agents.campaign.google.audience.constants import BLUEPRINTS_KEY
 from app.agents.adzump.agents.campaign.google.audience.context import (
     BASE,
     BASE_MANAGE,
@@ -31,12 +33,14 @@ from app.agents.adzump.agents.campaign.google.audience.context import (
 )
 from app.agents.adzump.agents.campaign.google.audience.custom_segment import (
     CUSTOM_SEGMENT_TOOLS,
+    DRAFT_ID_KEY,
 )
 from app.agents.adzump.agents.campaign.google.audience.manage_tools import MANAGE_TOOLS
 from app.agents.adzump.agents.campaign.google.audience.models import (
     AudienceSignal,
     AudienceTargetingResult,
     DemographicSpec,
+    span_label,
 )
 from app.agents.adzump.agents.campaign.google.audience.tools import (
     ALL_TOOLS,
@@ -73,22 +77,29 @@ _MANAGE_TOOL_SET = [SEARCH_AUDIENCE_SEGMENTS, *MANAGE_TOOLS, *CUSTOM_SEGMENT_TOO
 
 # A custom segment is drafted on one turn and created on the next, so the drafted terms ride
 # the parent session between two throwaway ones - the user confirms what they were shown.
-_CARRIED_KEYS = ("aud_custom_candidates", "aud_custom_theme")
+_CARRIED_KEYS = ("aud_custom_candidates", "aud_custom_theme", DRAFT_ID_KEY)
 _DRAFT_SEEN = "aud_custom_offered"
 
 
 def carry_draft(parent_ctx: dict) -> dict:
-    """The drafted terms a manage run may submit, and never more than one turn old.
+    """The drafted terms a manage run may submit - good until it is used or redrafted.
 
-    A declined draft used to linger, so a later "yes" meant for something else could create a
-    real segment in the advertiser's account.
+    Expiry follows the draft's own id, not a "this was offered" flag. A run that offers a
+    draft often redrafts on the same turn, and the flag then killed the NEW list before the
+    user's "yes" reached it: the yes failed, the model drafted a third time, and the segment
+    was created from terms the user had never seen.
     """
-    if parent_ctx.pop(_DRAFT_SEEN, None):
-        for key in _CARRIED_KEYS:
+    # Presence, not value: a draft written before this key existed has no id, and comparing
+    # two Nones would expire it on the turn it was offered.
+    if _DRAFT_SEEN in parent_ctx and parent_ctx[_DRAFT_SEEN] == parent_ctx.get(
+        DRAFT_ID_KEY
+    ):
+        for key in (*_CARRIED_KEYS, _DRAFT_SEEN):
             parent_ctx.pop(key, None)
+        return {}
     carried = {k: parent_ctx[k] for k in _CARRIED_KEYS if k in parent_ctx}
     if carried:
-        parent_ctx[_DRAFT_SEEN] = True
+        parent_ctx[_DRAFT_SEEN] = parent_ctx.get(DRAFT_ID_KEY)
     return carried
 
 
@@ -170,11 +181,22 @@ class AudienceAgent(BaseAgent):
         ]
         if country := ctx.get("aud_country"):
             parts.append(f"COUNTRY: {country}")
+        if regions := ctx.get("aud_hec_regions"):
+            parts.append(
+                f"AD POLICY — this campaign targets {', '.join(regions)}. If the product is "
+                "housing, real estate, employment or credit, Google PROHIBITS narrowing by "
+                "age, gender, parental status or marital status there, and ads that do are "
+                "disapproved. Leave those open and say why. Income is not on Google's list, "
+                "but treat it the same way for these verticals."
+            )
+
         if ctx.get("aud_mode") == "manage":
             # The manage step says "the audience below", so it has to be below. Without it
             # "drop the finance ones" has no labels to work from and the model can only
             # guess at names to look up.
-            parts.append(_current_audience(audience(ctx) or {}))
+            parts.append(
+                _current_audience(audience(ctx) or {}, ctx.get(BLUEPRINTS_KEY))
+            )
         return "\n\n".join(parts)
 
     async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
@@ -207,6 +229,7 @@ class AudienceAgent(BaseAgent):
         ad_account: dict,
         channel: Channel,
         country_code: str,
+        hec_regions: list[str],
         parent_event_stream: AgentEventStream,
         auth: AuthContext,
     ) -> AudienceTargetingResult:
@@ -223,6 +246,7 @@ class AudienceAgent(BaseAgent):
             "aud_login_customer_id": ad_account.get("login_customer_id", ""),
             "aud_channel_type": channel.google_channel_type.value,
             "aud_country": country_code,
+            "aud_hec_regions": hec_regions,
         }
 
         run_start = time.monotonic()
@@ -334,6 +358,9 @@ class AudienceAgent(BaseAgent):
         }
         set_audience(session.context, dump)
         session.context.update(carry_draft(parent_ctx))
+        # Its own copy, not a shared ref - _put rebinds, so an alias survives one edit and
+        # then silently diverges. Handed back in `finally`.
+        session.context[BLUEPRINTS_KEY] = deepcopy(parent_ctx.get(BLUEPRINTS_KEY) or {})
 
         # Manage mode has no fetch tool, so without this every "add something for X" would
         # dead-end at the search it is told to run first. Cached 24h by the adapter.
@@ -387,6 +414,7 @@ class AudienceAgent(BaseAgent):
             edited = audience(session.context)
             if edited is not None:
                 set_audience(parent_ctx, edited)
+            parent_ctx[BLUEPRINTS_KEY] = session.context.get(BLUEPRINTS_KEY) or {}
             for key in _CARRIED_KEYS:
                 value = session.context.get(key)
                 if value is None:
@@ -408,19 +436,31 @@ class AudienceAgent(BaseAgent):
                 history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]
             )[-AUD_MANAGE_HISTORY_TURNS:]
 
+        # A drafted-but-unsubmitted segment means this run ended by asking the user to
+        # approve terms it has just shown them. Declaring that as an elicitation is what
+        # stops the orchestrator asking its own question in the same turn - core breaks the
+        # loop after one ask, so their "yes" can only mean the thing they were shown.
+        asked = bool(session.context.get("aud_custom_candidates"))
+
         # The reply already reached the user as forwarded prose. The orchestrator was not
         # told the outcome, so it must not state one.
         return ToolResult(
             success=True,
             summary=(
-                "The audience agent replied to the user directly (shown above). You were "
-                "not told what it changed — do not restate or claim any outcome; just "
-                "continue."
+                "The audience agent asked the user a question (shown above) and is waiting "
+                "on their answer. Say nothing further and ask nothing else this turn."
+                if asked
+                else "The audience agent replied to the user directly (shown above). You "
+                "were not told what it changed — do not restate or claim any outcome; "
+                "just continue."
             ),
+            # elicit_field names the parameter the user's reply fills, so the orchestrator
+            # sends it back HERE rather than acting on it - it was never told what was asked.
+            data={"elicited": True, "elicit_field": "user_message"} if asked else None,
         )
 
 
-def _current_audience(dump: dict) -> str:
+def _current_audience(dump: dict, blueprints: dict | None = None) -> str:
     """The saved audience as the manage run sees it — what it is editing.
 
     Ancestry included: "Apartments" under Real Estate and under Employment are opposite
@@ -436,6 +476,20 @@ def _current_audience(dump: dict) -> str:
             + (f" (under {where})" if where else "")
             + why
         )
+        # A custom segment's rationale names only its first few terms, so "drop the invoicing
+        # one" would be a guess. Listed in full instead.
+        plan = (blueprints or {}).get(s.get("ref", ""))
+        if plan:
+            for field, label in (
+                ("terms", "search terms"),
+                ("urls", "websites"),
+                ("apps", "apps"),
+            ):
+                items = plan.get(field) or []
+                if not items:
+                    continue
+                shown = [i["keyword"] if isinstance(i, dict) else i for i in items]
+                lines.append(f"    {label}: {', '.join(shown)}")
 
     demo = DemographicSpec.model_validate(dump.get("demographics") or {})
     if demo.is_empty:
@@ -447,19 +501,30 @@ def _current_audience(dump: dict) -> str:
             f"{r.min_age}-{r.max_age}" if r.max_age else f"{r.min_age}+"
             for r in demo.age_ranges
         )
-        bits = [
-            f"age {ages}" if ages else "",
-            "gender " + ", ".join(g.value for g in demo.genders)
+        shown = {
+            "age_ranges": f"age {ages}" if ages else "",
+            "genders": "gender " + ", ".join(g.value for g in demo.genders)
             if demo.genders
             else "",
-            "income " + ", ".join(i.label for i in demo.income_ranges)
+            "income_ranges": "income " + span_label(demo.income_ranges)
             if demo.income_ranges
             else "",
-            "parental " + ", ".join(p.value for p in demo.parental_statuses)
+            "parental_statuses": "parental "
+            + ", ".join(p.value for p in demo.parental_statuses)
             if demo.parental_statuses
             else "",
-        ]
-        lines.append("DEMOGRAPHICS: " + "; ".join(b for b in bits if b))
+        }
+        # Spelled out because submit_demographics REPLACES the whole spec: an edit made
+        # without seeing this would silently switch the dropped users back on.
+        lines.append(
+            "DEMOGRAPHICS: "
+            + "; ".join(
+                text
+                + ("" if demo.includes_undetermined(field) else " (unknown excluded)")
+                for field, text in shown.items()
+                if text
+            )
+        )
     return "\n".join(lines)
 
 

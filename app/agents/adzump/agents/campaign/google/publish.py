@@ -1,10 +1,9 @@
-"""Post the assembled build to Google as one atomic mutate.
+"""Decide what to send for a launch, and what the answer means.
+
+The request itself is ``adapters.google.campaigns``.
 
 Deliberately NOT a ToolDefinition. Creating a campaign is irreversible and the consent gate
 lives in ``launch_campaign``; an LLM-callable tool here could publish without it.
-
-One request, all or nothing: partialFailure is false, so either the whole campaign exists or
-none of it does.
 
 Settings.ADZUMP_PUBLISH_DRY_RUN sends validateOnly instead. On googleAds:mutate that is a
 semantic check - it catches bad dates, unknown segments, budgets under the minimum and
@@ -16,21 +15,31 @@ from __future__ import annotations
 
 import logging
 import re
+from copy import deepcopy
 from datetime import date, datetime, timedelta
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 import httpx
 
+from app.agents.adzump.adapters.google import campaigns, custom_audience
 from app.agents.adzump.adapters.google.client import (
     GoogleAdsApiError,
-    google_ads_client,
-)
-from app.agents.adzump.agents.campaign.google.emitter import (
-    MICROS,
-    OPERATIONS,
     parse_mutate_errors,
 )
-from app.agents.adzump.agents.campaign.models import Channel, resolve_channel
+from app.agents.adzump.agents.campaign.google.audience.constants import (
+    BLUEPRINTS_KEY,
+    OWNED_MARKER,
+    is_pending,
+)
+from app.agents.adzump.agents.campaign.google.audience.custom_segment import (
+    resolve_name,
+)
+from app.agents.adzump.agents.campaign.google.emitter import MICROS, OPERATIONS
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    resolve_channel,
+    set_audience,
+)
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -39,8 +48,13 @@ logger = logging.getLogger(__name__)
 # headroom keeps that inside it too.
 _NAME_MAX = 240
 _AMOUNT = re.compile(r"(\d[\d,]*)")
-_DURATION = re.compile(r"(\d+)\s*(day|week|month|year)", re.I)
+_DURATION = re.compile(r"(\d+)\s*(day|week|month|year)", re.IGNORECASE)
 _DAYS_PER = {"day": 1, "week": 7, "month": 30, "year": 365}
+
+_DRY_RUN_ONLY_CUSTOM = (
+    "The only audience on this campaign is a custom segment, which is created at launch - a "
+    "dry run cannot validate it. Set ADZUMP_PUBLISH_DRY_RUN=false to exercise the real path."
+)
 
 
 class PublishOutcome(NamedTuple):
@@ -76,7 +90,22 @@ def _end_date(duration: str, today: date | None = None) -> str:
     if not match:
         raise ValueError(f"no duration in {duration!r}")
     days = int(match.group(1)) * _DAYS_PER[match.group(2).lower()]
-    return ((today or date.today()) + timedelta(days=days)).isoformat()
+    # astimezone, not utc: an account ahead of UTC would get an end date a day early.
+    start = today or datetime.now().astimezone().date()
+    return (start + timedelta(days=days)).isoformat()
+
+
+def _geo_targets(product: dict) -> list[str]:
+    """The geo constants the location agent already resolved, deduped in panel order.
+
+    Empty means the campaign serves worldwide, so publish refuses rather than emitting it.
+    """
+    seen: list[str] = []
+    for area in product.get("target_areas") or []:
+        rn = str((area.get("google") or {}).get("resourceName") or "").strip()
+        if rn and rn not in seen:
+            seen.append(rn)
+    return seen
 
 
 def _campaign_name(product: dict, channel: Channel) -> str:
@@ -86,11 +115,104 @@ def _campaign_name(product: dict, channel: Channel) -> str:
     would cut the stamp off a long name and make every relaunch collide. The budget name
     appends to this, so the budget is what the headroom is for.
     """
-    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    stamp = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
     label = channel.value.replace("_", " ").title()
     tail = f" · {label} · {stamp}"
     product_name = str(product.get("product_name") or "Campaign").strip()
     return product_name[: _NAME_MAX - len(tail)] + tail
+
+
+async def _materialise_segments(
+    session_ctx: dict, block: dict, context: dict, *, dry_run: bool
+) -> tuple[dict, list[str], str]:
+    """Create each approved custom segment and swap its pending ref for the real one.
+
+    Returns (the block to build from, labels a dry run skipped, error). A CustomAudience
+    cannot go inside the atomic mutate, so this is a separate call before it.
+    """
+    audience_dump = block.get("audience") or {}
+    signals = audience_dump.get("signals") or []
+    pending = [s for s in signals if is_pending(s.get("ref", ""))]
+    if not pending:
+        return block, [], ""
+
+    if dry_run:
+        # Dropped from a COPY: a dry run must not delete the user's segment from the panel.
+        dropped = {s["ref"] for s in pending}
+        trimmed = deepcopy(block)
+        trimmed_audience = trimmed["audience"]
+        trimmed_audience["signals"] = [
+            s for s in trimmed_audience.get("signals") or [] if s["ref"] not in dropped
+        ]
+        groups = [
+            [r for r in g if r not in dropped]
+            for g in trimmed_audience.get("dimension_groups") or []
+        ]
+        trimmed_audience["dimension_groups"] = groups
+        if not any(groups):
+            # What is left would validate on demographics alone - a pass that says nothing
+            # about the campaign the user built.
+            return block, [], _DRY_RUN_ONLY_CUSTOM
+        return trimmed, [s.get("label", "") for s in pending], ""
+
+    spec = session_ctx.get("campaign_spec") or {}
+    account = {
+        "customer_id": str(spec.get("account") or "").strip(),
+        "login_customer_id": str(spec.get("parent_account") or "").strip(),
+        "client_code": context.get("client_code", ""),
+        "auth_headers": context.get("headers", {}),
+    }
+    blueprints = session_ctx.get(BLUEPRINTS_KEY) or {}
+    for signal in pending:
+        # Read before the swap below rewrites it in place.
+        ref = signal["ref"]
+        plan = blueprints.get(ref)
+        if not plan:
+            logger.error("publish: no blueprint for %s", ref)
+            return block, [], "A custom segment was approved but its terms are missing."
+        try:
+            existing = await custom_audience.list_enabled(**account)
+            created = await custom_audience.create(
+                name=resolve_name(existing, plan["label"]),
+                description=f"{OWNED_MARKER}{(session_ctx.get('product_data') or {}).get('product_name', '')}",
+                keywords=[t["keyword"] for t in plan.get("terms") or []],
+                urls=plan.get("urls") or [],
+                apps=plan.get("apps") or [],
+                **account,
+            )
+        except GoogleAdsApiError as exc:
+            detail = "; ".join(parse_mutate_errors(exc.payload)) or str(exc)[:200]
+            logger.error("publish: custom segment create failed: %s", detail)
+            hint = (
+                " Custom segments cannot be created on a manager account - use the client "
+                "account."
+                if "ACTION_NOT_PERMITTED" in detail
+                or "OPERATION_NOT_PERMITTED" in detail
+                else ""
+            )
+            return (
+                block,
+                [],
+                f"Google refused to create the custom segment: {detail}{hint}",
+            )
+        _swap_ref(audience_dump, ref, created)
+        # Saved before the next one is attempted: a session still holding the pending ref
+        # would create this segment a second time on the next launch.
+        set_audience(session_ctx, audience_dump)
+        # Re-keyed, not dropped - the panel keeps showing what the segment is made of.
+        blueprints[created] = blueprints.pop(ref)
+        logger.info("publish: created custom segment %s", created)
+    return block, [], ""
+
+
+def _swap_ref(audience_dump: dict, old: str, new: str) -> None:
+    for s in audience_dump.get("signals") or []:
+        if s.get("ref") == old:
+            s["ref"] = new
+    audience_dump["dimension_groups"] = [
+        [new if r == old else r for r in group]
+        for group in audience_dump.get("dimension_groups") or []
+    ]
 
 
 async def publish_campaign(session_ctx: dict, context: dict) -> PublishOutcome:
@@ -118,6 +240,13 @@ async def publish_campaign(session_ctx: dict, context: dict) -> PublishOutcome:
     if not customer_id:
         return PublishOutcome(False, "No ad account selected.")
 
+    dry_run = settings.ADZUMP_PUBLISH_DRY_RUN
+    block, skipped, error = await _materialise_segments(
+        session_ctx, block, context, dry_run=dry_run
+    )
+    if error:
+        return PublishOutcome(False, error)
+
     try:
         operations = build_operations(
             customer_id=customer_id,
@@ -126,29 +255,20 @@ async def publish_campaign(session_ctx: dict, context: dict) -> PublishOutcome:
             build=block,
             product_name=str(product.get("product_name") or ""),
             end_date=_end_date(str(spec.get("duration") or "")),
+            geo_targets=_geo_targets(product),
         )
     except (ValueError, KeyError) as exc:
         logger.warning("publish payload build failed: %s", exc)
         return PublishOutcome(False, f"Could not assemble the campaign: {exc}")
 
-    dry_run = settings.ADZUMP_PUBLISH_DRY_RUN
-    payload: dict[str, Any] = {
-        "mutateOperations": operations,
-        # Sent explicitly though it is the default: with false, "all operations will be
-        # carried out in one transaction if and only if they are all valid", so a campaign
-        # can never be half created. Too important to leave resting on a default.
-        "partialFailure": False,
-    }
-    if dry_run:
-        payload["validateOnly"] = True
-
     try:
-        response = await google_ads_client.post(
-            f"customers/{customer_id}/googleAds:mutate",
-            payload,
-            context.get("client_code", ""),
-            context.get("headers", {}),
-            str(spec.get("parent_account") or "").strip() or None,
+        response = await campaigns.mutate(
+            customer_id=customer_id,
+            operations=operations,
+            validate_only=dry_run,
+            login_customer_id=str(spec.get("parent_account") or "").strip(),
+            client_code=context.get("client_code", ""),
+            auth_headers=context.get("headers", {}),
         )
     except GoogleAdsApiError as exc:
         # exc's message is Google's generic "Request contains an invalid argument"; the
@@ -177,25 +297,19 @@ async def publish_campaign(session_ctx: dict, context: dict) -> PublishOutcome:
 
     if dry_run:
         logger.info("publish dry run OK: %d operations", len(operations))
+        note = (
+            f" The custom segment ({', '.join(skipped)}) was left out - it is only created "
+            "on a real launch, so this run could not validate it."
+            if skipped
+            else ""
+        )
         return PublishOutcome(
             True,
             f"Validated {len(operations)} operations with Google - nothing was created "
-            "(ADZUMP_PUBLISH_DRY_RUN).",
+            f"(ADZUMP_PUBLISH_DRY_RUN).{note}",
             dry_run=True,
         )
 
-    campaign = _created_campaign(response)
+    campaign = campaigns.created_campaign(response)
     logger.info("campaign created: %s", campaign)
     return PublishOutcome(True, "Campaign created, paused.", campaign=campaign)
-
-
-def _created_campaign(response: dict) -> str:
-    """The campaign's resource name out of the mutate response.
-
-    Results come back positionally, one per operation, so this reads the campaign's own
-    result rather than assuming an index.
-    """
-    for result in response.get("mutateOperationResponses") or []:
-        if name := (result.get("campaignResult") or {}).get("resourceName"):
-            return name
-    return ""

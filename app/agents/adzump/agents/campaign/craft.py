@@ -15,9 +15,25 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adzump.agents.campaign.google.audience.constants import (
+    BLUEPRINTS_KEY,
+    CUSTOM_SEGMENT_KEYWORD_TARGET_MAX,
+    CUSTOM_SEGMENT_KEYWORD_TARGET_MIN,
+    DIMENSION_HELP,
+    MEMBER_HELP,
+    MEMBER_MIX_HELP,
+    UNKNOWN_HELP,
+    is_pending,
+)
 from app.agents.adzump.agents.campaign.google.audience.models import (
+    MAX_AGES,
+    MIN_AGES,
+    DemographicSpec,
+    Gender,
     IncomeRange,
+    ParentalStatus,
     SignalKind,
+    span_label,
 )
 from app.agents.adzump.agents.campaign.google.channel_controls import (
     AD_TYPE_LABEL,
@@ -151,48 +167,122 @@ _DIMENSIONS = (
 )
 
 
-def _demographic_rows(spec: dict) -> list[dict]:
+def _demographic_rows(dump: dict) -> list[dict]:
     """Every dimension with the reason it was set that way, narrowed or not.
 
     Leaving one open is a judgement; shown as a bare "Everyone" it reads as one nobody made.
     """
-    ages = [
-        f"{r['min_age']}-{r['max_age']}" if r.get("max_age") else f"{r['min_age']}+"
-        for r in (spec.get("age_ranges") or [])
-    ]
+    spec = DemographicSpec.model_validate(dump or {})
     values = {
-        "age_ranges": ", ".join(ages),
-        "genders": ", ".join(_titled(spec.get("genders") or [])),
-        "income_ranges": ", ".join(
-            IncomeRange(i).label for i in spec.get("income_ranges") or []
+        "age_ranges": ", ".join(
+            f"{r.min_age}-{r.max_age}" if r.max_age else f"{r.min_age}+"
+            for r in spec.age_ranges
         ),
-        "parental_statuses": ", ".join(_titled(spec.get("parental_statuses") or [])),
+        "genders": ", ".join(_titled([g.value for g in spec.genders])),
+        # Validated as one unbroken span, so its outer edges name it.
+        "income_ranges": span_label(spec.income_ranges),
+        "parental_statuses": ", ".join(
+            _titled([p.value for p in spec.parental_statuses])
+        ),
     }
-    why = spec.get("rationales") or {}
-    return [
-        {
-            "attribute": label,
-            "value": values[field] or _EVERYONE,
-            "rationale": why.get(field, ""),
-        }
-        for field, label in _DIMENSIONS
-    ]
+    rows = []
+    for field, label in _DIMENSIONS:
+        value = values[field]
+        # An unset dimension is never emitted, so saying this there would claim a filter
+        # that does not exist.
+        if value and not spec.includes_undetermined(field):
+            value = f"{value} · unknown excluded"
+        rows.append(
+            {
+                "attribute": label,
+                "value": value or _EVERYONE,
+                "rationale": spec.rationales.get(field, ""),
+            }
+        )
+    return rows
 
 
 def _titled(values: list[str]) -> list[str]:
     return [str(v).replace("_", " ").capitalize() for v in values]
 
 
-def audience_review_block(dump: dict) -> dict:
+def _demographic_options() -> dict:
+    """The editor's whole vocabulary, from the enums that also validate it. Sent rather than
+    hardcoded in the panel: a bad value fails loudly, a drifted label never would."""
+    return {
+        "dimensions": [
+            {
+                "field": field,
+                "label": label,
+                "help": DIMENSION_HELP[field],
+                "unknown_help": UNKNOWN_HELP[field],
+            }
+            for field, label in _DIMENSIONS
+        ],
+        "age_mins": list(MIN_AGES),
+        "age_maxes": list(MAX_AGES),
+        # Ordered top band first - the span the user picks runs down this list.
+        "income_ranges": [{"value": i.value, "label": i.label} for i in IncomeRange],
+        "genders": [{"value": g.value, "label": _titled([g.value])[0]} for g in Gender],
+        "parental_statuses": [
+            {"value": p.value, "label": _titled([p.value])[0]} for p in ParentalStatus
+        ],
+    }
+
+
+def _member_groups(rows: list[dict], blueprints: dict) -> list[dict]:
+    """What each custom segment is made of. Editable only until launch creates it."""
+    groups = []
+    for row in rows:
+        plan = blueprints.get(row["ref"]) or {}
+        terms = plan.get("terms") or []
+        groups.append(
+            {
+                "ref": row["ref"],
+                "label": row["segment"],
+                "terms": terms,
+                "urls": plan.get("urls") or [],
+                "apps": plan.get("apps") or [],
+                # Editing stops at creation because the update path is not built, not
+                # because Google forbids it - AGENT.md 6.3. Shown either way.
+                "editable": is_pending(row["ref"]),
+                "help": MEMBER_HELP,
+                # Google's own guidance; outside it the segment reaches too few or too vaguely.
+                "warning": (
+                    f"Google recommends {CUSTOM_SEGMENT_KEYWORD_TARGET_MIN}-"
+                    f"{CUSTOM_SEGMENT_KEYWORD_TARGET_MAX} search terms - this one has "
+                    f"{len(terms)}."
+                )
+                # Silent once created: nothing can be done about it, so it is only noise.
+                if is_pending(row["ref"])
+                and not (
+                    CUSTOM_SEGMENT_KEYWORD_TARGET_MIN
+                    <= len(terms)
+                    <= CUSTOM_SEGMENT_KEYWORD_TARGET_MAX
+                )
+                else "",
+            }
+        )
+    return groups
+
+
+def audience_review_block(dump: dict, blueprints: dict | None = None) -> dict:
     """Exported so update handlers can re-emit only this block (keyed upsert, no panel flash).
 
     Flat sections grouped by signal kind, each row carrying its ancestors as a breadcrumb.
     The agent sees the taxonomy as a tree because it navigates a thousand entries; a handful
     of chosen segments spread across branches reads as a list.
+
+    ``blueprints`` are the not-yet-created custom segments, keyed by ref - they hold the
+    members the user reviews and edits before launch.
     """
     signals = dump.get("signals") or []
     sections: list[dict] = []
-    for kind in SignalKind:
+    # Custom segments last: the section carries a member editor, so it is far taller than the
+    # catalogue ones and pushes them off screen if it sits among them.
+    ordered = [k for k in SignalKind if k is not SignalKind.CUSTOM_AUDIENCE]
+    custom: dict | None = None
+    for kind in [*ordered, SignalKind.CUSTOM_AUDIENCE]:
         rows = [
             {
                 # Not a column, but the panel needs it: a label is not an identity, and the
@@ -205,21 +295,26 @@ def audience_review_block(dump: dict) -> dict:
             for s in signals
             if s.get("kind") == kind.value and not s.get("negative")
         ]
-        if rows:
-            sections.append(
-                {
-                    "key": kind.value.lower(),
-                    "label": f"{kind.label} ({len(rows)})",
-                    "help": kind.help,
-                    "columns": ["segment", "category", "rationale"],
-                    "rows": rows,
-                    # No edit — segments are catalogue refs, not free text; change = delete + add.
-                    # No add on custom segments — those are built in chat, not picked from a search.
-                    "actions": ["delete"]
-                    if kind is SignalKind.CUSTOM_AUDIENCE
-                    else ["add", "delete"],
-                }
-            )
+        if not rows:
+            continue
+        section = {
+            "key": kind.value.lower(),
+            "label": f"{kind.label} ({len(rows)})",
+            "help": kind.help,
+            "columns": ["segment", "category", "rationale"],
+            "rows": rows,
+            # No edit — segments are catalogue refs, not free text; change = delete + add.
+            # No add on custom segments — those are built in chat, not picked from a search.
+            "actions": ["delete"]
+            if kind is SignalKind.CUSTOM_AUDIENCE
+            else ["add", "delete"],
+        }
+        if kind is SignalKind.CUSTOM_AUDIENCE:
+            section["members"] = _member_groups(rows, blueprints or {})
+            section["mix_help"] = MEMBER_MIX_HELP
+            custom = section
+            continue
+        sections.append(section)
 
     # Only user lists are excludable (ExclusionSegment has one variant), so exclusions are
     # one section rather than a negatives split inside every kind.
@@ -261,9 +356,12 @@ def audience_review_block(dump: dict) -> dict:
             # The rows are prose ("25-44", "Top 10%"); the editor needs the values back, and
             # set_demographics REPLACES, so anything it cannot see it silently drops.
             "values": demographics,
+            "options": _demographic_options(),
             "actions": ["edit"],
         }
     )
+    if custom:
+        sections.append(custom)
     return {"id": "audience_review", "type": "audience_review", "sections": sections}
 
 
@@ -328,7 +426,7 @@ def _google_campaign_blocks(session_ctx: dict) -> list[dict]:
             )
         )
         blocks.append({"type": "heading", "text": "Audience Targeting"})
-        blocks.append(audience_review_block(aud))
+        blocks.append(audience_review_block(aud, session_ctx.get(BLUEPRINTS_KEY)))
 
     # Future sections (ad copy, quality score …) extend blocks here.
     return blocks

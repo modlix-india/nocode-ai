@@ -7,10 +7,11 @@ rather than segments, and age is a numeric range rather than a reference.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from enum import Enum
 from itertools import pairwise
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -145,32 +146,46 @@ class Gender(str, Enum):
 
 
 class IncomeRange(str, Enum):
-    """Percentiles of household income in the target country, not currency amounts — the
-    proto comments read "0%-50%", "80% to 90%", "Greater than 90%". A premium product wants
-    the top bands, not a rupee figure."""
+    """Percentiles of household income in the target country, not currency amounts.
 
-    TOP_10 = "INCOME_RANGE_90_UP"
-    TOP_10_20 = "INCOME_RANGE_80_90"
-    TOP_20_30 = "INCOME_RANGE_70_80"
-    TOP_30_40 = "INCOME_RANGE_60_70"
-    TOP_40_50 = "INCOME_RANGE_50_60"
-    LOWER_50 = "INCOME_RANGE_0_50"
+    Each row carries the API value and the band's own edges, counting down from the richest.
+    Both are needed because the API counts from the BOTTOM - 90_UP is the top 10%.
+    """
+
+    def __new__(cls, value: str, top_from: int, top_to: int) -> Self:
+        band = str.__new__(cls, value)
+        band._value_ = value
+        band.top_from, band.top_to = top_from, top_to
+        return band
+
+    top_from: int
+    top_to: int
+
+    TOP_10 = ("INCOME_RANGE_90_UP", 0, 10)
+    TOP_10_20 = ("INCOME_RANGE_80_90", 10, 20)
+    TOP_20_30 = ("INCOME_RANGE_70_80", 20, 30)
+    TOP_30_40 = ("INCOME_RANGE_60_70", 30, 40)
+    TOP_40_50 = ("INCOME_RANGE_50_60", 40, 50)
+    LOWER_50 = ("INCOME_RANGE_0_50", 50, 100)
 
     @property
     def label(self) -> str:
-        """The band as a person reads it. The API value names its bounds
-        ("INCOME_RANGE_90_UP"), which shown verbatim reads as an income, not a percentile."""
-        return _INCOME_LABELS[self]
+        return span_label([self])
 
 
-_INCOME_LABELS = {
-    IncomeRange.TOP_10: "Top 10%",
-    IncomeRange.TOP_10_20: "Top 10-20%",
-    IncomeRange.TOP_20_30: "Top 20-30%",
-    IncomeRange.TOP_30_40: "Top 30-40%",
-    IncomeRange.TOP_40_50: "Top 40-50%",
-    IncomeRange.LOWER_50: "Lower 50%",
-}
+def span_label(bands: list[IncomeRange]) -> str:
+    """One unbroken run of bands named by its outer edges, as Google's picker shows it.
+
+    Joining the end labels instead would read "Top 10% to Top 10-20%" - two overlapping
+    things rather than the single 0-20% slice it actually is.
+    """
+    if not bands:
+        return ""
+    low, high = bands[0].top_from, bands[-1].top_to
+    # 100 is the bottom of the ladder: a span reaching it has no upper edge left to name.
+    if high == 100:
+        return "Everyone" if low == 0 else f"Lower {100 - low}%"
+    return f"Top {high}%" if low == 0 else f"Top {low}-{high}%"
 
 
 class ParentalStatus(str, Enum):
@@ -181,11 +196,14 @@ class ParentalStatus(str, Enum):
 # Each enum also defines UNDETERMINED, deliberately absent here: every dimension carries its
 # own include_undetermined flag, and two ways to say the same thing invites contradiction.
 
+# The four AudienceDimension slots, in the order the panel shows them.
+DIMENSION_FIELDS = ("age_ranges", "genders", "income_ranges", "parental_statuses")
+
 # common/audiences.proto, AgeSegment: "A minimum age must be specified and must be at least
 # 18. Allowed values are 18, 25, 35, 45, 55, and 65." / "max_age must be greater than
 # min_age, and allowed values are 24, 34, 44, 54, and 64."
-_MIN_AGES = (18, 25, 35, 45, 55, 65)
-_MAX_AGES = (24, 34, 44, 54, 64)
+MIN_AGES = (18, 25, 35, 45, 55, 65)
+MAX_AGES = (24, 34, 44, 54, 64)
 
 
 class AgeRange(BaseModel):
@@ -201,15 +219,15 @@ class AgeRange(BaseModel):
     @field_validator("min_age")
     @classmethod
     def _valid_min(cls, v: int) -> int:
-        if v not in _MIN_AGES:
-            raise ValueError(f"min_age must be one of {_MIN_AGES}")
+        if v not in MIN_AGES:
+            raise ValueError(f"min_age must be one of {MIN_AGES}")
         return v
 
     @field_validator("max_age")
     @classmethod
     def _valid_max(cls, v: int | None) -> int | None:
-        if v is not None and v not in _MAX_AGES:
-            raise ValueError(f"max_age must be one of {_MAX_AGES}")
+        if v is not None and v not in MAX_AGES:
+            raise ValueError(f"max_age must be one of {MAX_AGES}")
         return v
 
     @model_validator(mode="after")
@@ -220,21 +238,51 @@ class AgeRange(BaseModel):
 
 
 class DemographicSpec(BaseModel):
-    """AudienceDimension entries, which AND with the segments rather than joining them.
-
-    include_undetermined defaults true: Google cannot determine age or gender for a large
-    share of users, and leaving it false silently discards them.
-    """
+    """AudienceDimension entries, which AND with the segments rather than joining them."""
 
     age_ranges: list[AgeRange] = Field(default_factory=list)
     genders: list[Gender] = Field(default_factory=list)
     income_ranges: list[IncomeRange] = Field(default_factory=list)
     parental_statuses: list[ParentalStatus] = Field(default_factory=list)
-    include_undetermined: bool = True
+    # Per dimension, keyed like `rationales`: each *Dimension message declares its own.
+    # A missing key means Google's default, ON.
+    include_undetermined: dict[str, bool] = Field(default_factory=dict)
     # Why each dimension is set the way it is, keyed by the field above. Leaving one open is
     # a decision too - without the reason the panel can only show "Everyone", which reads as
     # "not considered" rather than "considered and deliberately not narrowed".
     rationales: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("include_undetermined")
+    @classmethod
+    def _known_dimensions(cls, v: dict[str, bool]) -> dict[str, bool]:
+        # A typo'd key reads as "left at the default" - silently the opposite.
+        if unknown := sorted(set(v) - set(DIMENSION_FIELDS)):
+            raise ValueError(
+                f"include_undetermined: unknown dimension {unknown[0]!r}; "
+                f"keys are {', '.join(DIMENSION_FIELDS)}"
+            )
+        return v
+
+    @field_validator("income_ranges")
+    @classmethod
+    def _income_is_one_span(cls, v: list[IncomeRange]) -> list[IncomeRange]:
+        """One unbroken run of bands. The API takes any set, but Google's picker is a
+        from/to pair - a gap in the middle is a campaign the user cannot verify there."""
+        if not v:
+            return v
+        order = list(IncomeRange)
+        chosen = sorted({order.index(i) for i in v})
+        if gaps := [i for i in range(chosen[0], chosen[-1]) if i not in chosen]:
+            raise ValueError(
+                f"income ranges must be one unbroken span - {order[gaps[0]].label} is "
+                "missing from the middle"
+            )
+        return [order[i] for i in chosen]
+
+    def includes_undetermined(self, field: str) -> bool:
+        """Defaults ON, as every "Unknown" box in Google's UI starts checked. Off is a real
+        narrowing - for income, undetermined is most users outside the reported countries."""
+        return self.include_undetermined.get(field, True)
 
     @model_validator(mode="after")
     def _age_ranges_do_not_overlap(self) -> DemographicSpec:
@@ -300,6 +348,11 @@ class CustomSegmentTerm(BaseModel):
         return term
 
 
+# Two or more dot-separated segments, each starting with a letter. Matches Android's own
+# rule closely enough to catch a pasted App Store id or a bare app name.
+_ANDROID_PACKAGE = re.compile(r"[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+")
+
+
 class CustomSegmentUrl(BaseModel):
     url: str
 
@@ -313,6 +366,24 @@ class CustomSegmentUrl(BaseModel):
         if len(url) > CUSTOM_URL_MAX_CHARS:
             raise ValueError(f"url is over {CUSTOM_URL_MAX_CHARS} characters")
         return url
+
+
+class CustomSegmentApp(BaseModel):
+    """An APP member. The proto documents an ANDROID package name; nothing states how an iOS
+    app is expressed, so only Android is accepted rather than guessing a shape."""
+
+    app: str
+
+    @field_validator("app")
+    @classmethod
+    def _looks_like_a_package(cls, v: str) -> str:
+        app = (v or "").strip()
+        if not _ANDROID_PACKAGE.fullmatch(app):
+            raise ValueError(
+                f"'{app}' is not an Android package name - it looks like com.example.app, "
+                "and you can copy it from the app's Play Store link (the id= part)"
+            )
+        return app
 
 
 class AudienceTargetingResult(BaseModel):

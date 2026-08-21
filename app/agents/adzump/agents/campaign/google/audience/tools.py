@@ -22,6 +22,7 @@ from pydantic import ValidationError
 from app.agents.adzump.adapters.google import audience_taxonomy as taxonomy
 from app.agents.adzump.agents.campaign.google.audience import catalogue, constants
 from app.agents.adzump.agents.campaign.google.audience.models import (
+    DIMENSION_FIELDS,
     AudienceSignal,
     AudienceTargetingResult,
     DemographicSpec,
@@ -170,7 +171,7 @@ async def _submit_segments(params: dict, context: dict) -> ToolResult:
     if not kept:
         return ToolResult(
             success=False,
-            error=f"No valid segments. Unknown refs: {', '.join(rejected[:5])}",
+            error=f"No valid segments. Unknown refs: {', '.join(rejected[:constants.ERROR_ITEMS_DISPLAY_MAX])}",
         )
 
     state["aud_segments"] = kept
@@ -203,6 +204,7 @@ async def _submit_demographics(params: dict, context: dict) -> ToolResult:
                 "genders": params.get("genders") or [],
                 "income_ranges": params.get("income_ranges") or [],
                 "parental_statuses": params.get("parental_statuses") or [],
+                "include_undetermined": params.get("include_undetermined") or {},
                 "rationales": params.get("rationales") or {},
             }
         )
@@ -210,6 +212,19 @@ async def _submit_demographics(params: dict, context: dict) -> ToolResult:
         return ToolResult(
             success=False,
             error=f"Invalid demographics: {exc.errors()[0].get('msg', 'check the allowed values')}",
+        )
+    # Refused rather than stored: the panel prints this beside every dimension, and an open
+    # one with no reason reads as a step that was skipped, not a decision that was taken.
+    if bare := [
+        f for f in DIMENSION_FIELDS if not (spec.rationales.get(f) or "").strip()
+    ]:
+        return ToolResult(
+            success=False,
+            error=(
+                f"Missing `rationales` for {', '.join(bare)}. Send one per dimension, the "
+                "ones left open included - there the reason is why narrowing would cost "
+                "reach. Resend the whole call."
+            ),
         )
     state["aud_demographics"] = spec.model_dump(mode="json")
     if spec.is_empty:
@@ -293,7 +308,8 @@ SUBMIT_DEMOGRAPHICS = ToolDefinition(
             type="array",
             description=(
                 "Percentile bands, not amounts: INCOME_RANGE_90_UP (top 10%), _80_90, "
-                "_70_80, _60_70, _50_60, _0_50."
+                "_70_80, _60_70, _50_60, _0_50. Must be one unbroken span - Google's own "
+                "picker is a top band and a bottom band, so a gap in the middle is refused."
             ),
             required=False,
         ),
@@ -301,6 +317,19 @@ SUBMIT_DEMOGRAPHICS = ToolDefinition(
             name="parental_statuses",
             type="array",
             description="PARENT and/or NOT_A_PARENT.",
+            required=False,
+        ),
+        ToolParameter(
+            name="include_undetermined",
+            type="object",
+            description=(
+                "Per dimension, keyed age_ranges / genders / income_ranges / "
+                "parental_statuses. Google cannot classify a large share of users on each; "
+                "true (the default) keeps them, false drops them and narrows again on top "
+                "of the bands you chose. Send false only where reaching an unclassified "
+                "user is genuinely wrong - for income it removes most of the world, since "
+                "Google reports it in select countries only."
+            ),
             required=False,
         ),
         ToolParameter(
@@ -312,7 +341,7 @@ SUBMIT_DEMOGRAPHICS = ToolDefinition(
                 "you leave open included - the user is shown why it was not narrowed, and "
                 "'Everyone' with no reason reads as a step you skipped."
             ),
-            required=False,
+            required=True,
         ),
     ],
     execute=_submit_demographics,

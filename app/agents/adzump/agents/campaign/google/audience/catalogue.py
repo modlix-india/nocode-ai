@@ -55,7 +55,9 @@ async def load(
         except Exception as exc:
             # Fail soft per resource: a thinner candidate set beats no campaign.
             logger.warning(
-                "audience taxonomy fetch failed: %s - %s", resource, str(exc)[:200]
+                "audience taxonomy fetch failed: %s - %s",
+                resource,
+                str(exc)[: constants.LOG_ERROR_MAX_CHARS],
             )
             continue
         fetched.extend(rows)

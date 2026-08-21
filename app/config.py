@@ -180,10 +180,14 @@ class Settings(BaseSettings):
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
-    # Publish with validateOnly: Google checks the real payload and creates nothing.
-    # On until creative lands - without an ad a created campaign can never serve. The launch
-    # reply says when a run was dry, so a forgotten flag is visible rather than silent.
-    ADZUMP_PUBLISH_DRY_RUN: bool = True
+    # Both ship as the real behaviour; a test run turns them down in
+    # ~/.nocode-ai/variables.sh, which start-standalone.sh sources.
+    # true = validateOnly: Google checks the payload and creates nothing, and the custom
+    # segment is left out rather than created. The launch reply says when a run was dry.
+    ADZUMP_PUBLISH_DRY_RUN: bool = False
+    # false skips asset selection - the priciest step in a scrape (~266k tokens). A campaign
+    # built with it off has no logo or images.
+    ADZUMP_VISION_ENABLED: bool = True
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     
