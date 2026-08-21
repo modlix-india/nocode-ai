@@ -1,4 +1,4 @@
-"""Typed-answer capture: parse_typed_answer, field_candidates, _field_traceable,
+"""Typed-answer validation: field_candidates, _field_traceable,
 _set_campaign_spec, and the Custom two-turn path (_capture_tagged_answer).
 
 Merges the old test_answer_parse.py + test_adversarial_probe.py (the G2/G5/M2
@@ -18,7 +18,7 @@ import types
 import unittest
 
 from app.agents.adzump.agent import AdzumpAgent
-from app.agents.adzump.answer_parse import field_candidates, parse_typed_answer
+from app.agents.adzump.answer_parse import field_candidates
 from app.agents.adzump.tools.campaign_data import (
     _field_traceable, _set_campaign_spec, is_clear_decline_reply,
 )
@@ -35,31 +35,6 @@ def _set(spec, last_user, params):
         messages=[{"role": "user", "content": last_user}], _turn_count=7)
     r = asyncio.run(_set_campaign_spec(params, {"session_context": sc, "_session": session}))
     return r, sc["campaign_spec"]
-
-
-class ParseTypedAnswerTests(unittest.TestCase):
-    def test_table(self):
-        cases = [
-            ("duration", "25 days", "$", "25 days"),
-            ("duration", "a week", "$", "1 week"),
-            ("duration", "2 months", "$", "2 months"),
-            ("duration", "30", "$", "30 days"),      # F1: bare number reads as days
-            ("duration", "1", "$", "1 day"),
-            ("duration", " 45 ", "$", "45 days"),
-            ("duration", "30 days no make it 60", "$", None),  # cue word → bail
-            ("duration", "asap", "$", None),
-            ("budget", "4k", "₹", "₹4,000/day"),
-            ("budget", "₹4000/day", "₹", "₹4,000/day"),
-            ("budget", "4000", "₹", None),
-            ("budget", "$50", "₹", "$50/day"),
-            ("platform", "facebook", "$", "Meta"),
-            ("platform", "not google", "$", None),
-            ("platform", "google or meta", "$", None),
-            ("competitive_analysis_declined", "No", "$", None),  # chip-only field
-        ]
-        for field, text, cur, exp in cases:
-            with self.subTest(field=field, text=text):
-                self.assertEqual(parse_typed_answer(field, text, cur), exp)
 
 
 class FieldCandidatesTests(unittest.TestCase):
@@ -174,7 +149,8 @@ class SpecCaptureTests(unittest.TestCase):
 
 class CustomPathTests(unittest.TestCase):
     """Picking "Custom" keeps the elicitation open (awaiting_custom); the typed
-    value next turn is captured and the elicitation consumed - the F10 path."""
+    value next turn is the steered MODEL's to store (slice 1b) - capture never
+    parses it, and the rail stays open until the write lands."""
 
     def _ses(self, field, answers, user, *, awaiting=False):
         pe = {"tool": "present_options", "expects": "single",
@@ -193,20 +169,21 @@ class CustomPathTests(unittest.TestCase):
         return AdzumpAgent._capture_tagged_answer(None, s, turn=1)
 
     def test_custom_two_turns(self):
-        for field, answers, typed, expected in [
-            ("duration", {"30 days": "30 days", "60 days": "60 days"}, "45 days", "45 days"),
-            ("budget", {"₹10,000/day": "₹10,000/day"}, "₹7,500/day", "₹7,500/day"),
-            ("duration", {"30 days": "30 days"}, "45", "45 days"),  # bare int → days
+        for field, answers, typed in [
+            ("duration", {"30 days": "30 days", "60 days": "60 days"}, "45 days"),
+            ("budget", {"₹10,000/day": "₹10,000/day"}, "₹7,500/day"),
         ]:
             with self.subTest(field=field, typed=typed):
                 a = self._ses(field, answers, "Custom")
                 self._cap(a)
                 self.assertTrue(a.context["_pending_elicitation"].get("awaiting_custom"))
                 self.assertNotIn(field, a.context["campaign_spec"])   # not captured yet
+                # The typed value falls through to the model - code never
+                # parses it (slice 1b); the rail stays open for the reap.
                 b = self._ses(field, answers, typed, awaiting=True)
-                self._cap(b)
-                self.assertEqual(b.context["campaign_spec"].get(field), expected)
-                self.assertNotIn("_pending_elicitation", b.context)   # consumed
+                self.assertEqual(self._cap(b), "")
+                self.assertNotIn(field, b.context["campaign_spec"])
+                self.assertIsNotNone(b.context.get("_pending_elicitation"))
 
 
 if __name__ == "__main__":

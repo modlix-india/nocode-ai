@@ -2,10 +2,9 @@
 
 ``CampaignContext`` is a typed, frozen read-model over ``session.context``;
 ``_next_action`` computes the ordered missing-list (with the exact tool call
-to make per item) from it; ``_detect_intent`` recognizes an unambiguous
-chip/typed answer for a pending field. All pure functions - no I/O, no
-session mutation - split out of agent.py so the most test-valuable code in
-the orchestrator lives in a leaf module.
+to make per item) from it. All pure functions - no I/O, no session mutation -
+split out of agent.py so the most test-valuable code in the orchestrator
+lives in a leaf module.
 """
 
 from __future__ import annotations
@@ -15,8 +14,6 @@ from dataclasses import dataclass
 from app.core.session import BaseSession
 from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.platform import (
-    CANONICAL_LABEL,
-    Platform,
     is_google as _platform_is_google,
     is_mapped_for,
     is_meta as _platform_is_meta,
@@ -139,32 +136,6 @@ class CampaignContext:
         )
 
 
-def _detect_intent(cctx: CampaignContext) -> tuple[str, str] | None:
-    """Recognize when the user's last message is an obvious answer for a
-    pending campaign-spec field. Returns (field, value) to store, or None.
-
-    Conservative: only matches unambiguous cases. Anything subtle (custom
-    durations, free-form budgets) is left to the LLM via the default
-    missing-list prescription.
-    """
-    lu = (cctx.last_user or "").strip()
-    lu_lower = lu.lower()
-    if not lu:
-        return None
-    spec = cctx.spec
-
-    # Platform: "Google Ads" / "Meta" chip clicks or close natural-language
-    # variants. Only fire if platform isn't already stored. Defers keyword
-    # classification to app.agents.adzump.platform so all consumers stay
-    # aligned on which strings count as which platform.
-    if not spec.get("platform"):
-        platform = Platform.from_value(lu_lower)
-        if platform is not None:
-            return ("platform", CANONICAL_LABEL[platform])
-
-    return None
-
-
 def _next_action(cctx: CampaignContext) -> list[str]:
     """Compute the ordered list of what's still missing, with concrete tool calls.
 
@@ -178,20 +149,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         missing.append("business URL - call `analyze_product(url=<the user's URL>)`")
         return missing
 
-    # Intent routing: if the user's last message is a recognizable answer for
-    # a pending field, surface "store this NOW" as the top of missing. This
-    # prevents the LLM from following the default Next-action prescription
-    # while ignoring the user's actual input. (E.g. user clicks "Google Ads"
-    # chip while location is still missing - without this, the LLM would
-    # call confirm_location and drop platform on the floor.)
-    intent = _detect_intent(cctx)
-    intent_field: str | None = None
-    if intent is not None:
-        intent_field, value = intent
-        missing.append(
-            f'{intent_field} - user said "{cctx.last_user[:40]}". '
-            f"Call `set_campaign_spec({intent_field}={value!r})` FIRST."
-        )
+    # (The old _detect_intent platform special-case is retired, slice 1b: a
+    # platform chip click is captured at layer 1 via the tagged answer_map; a
+    # typed cross-field answer lands via the steered model + validation.)
 
     if cctx.is_real_estate and not cctx.spec.get("location"):
         if cctx.pending_location:
@@ -211,7 +171,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "location - call `confirm_location()` (real estate business)"
             )
 
-    if not cctx.spec.get("platform") and intent_field != "platform":
+    if not cctx.spec.get("platform"):
         missing.append(
             "platform - use the present_options tool (field \"platform\") to ask "
             "\"Which platform should we run this on?\" with chips Google Ads / "

@@ -250,10 +250,11 @@ class TaggedCaptureTests(unittest.TestCase):
             ("defer with question", decline,
              "not now, first tell me about the audience", {}, False),
             ("informing, not declining", decline, "no competitors named yet", {}, False),
-            ("typed duration", _dur_pe(), "25 days", {"duration": "25 days"}, True),
-            ("typed budget with marker", elicitation("budget", {}), "4k",
-             {"budget": "₹4,000/day"}, True),
-            ("typed budget no marker", elicitation("budget", {}), "around 4000", {}, False),
+            # Typed values fall through to the steered model (layer 2) - the
+            # regex parser is retired (slice 1b); only exact chips + clear
+            # declines capture in code.
+            ("typed duration falls to layer 2", _dur_pe(), "25 days", {}, False),
+            ("typed budget falls to layer 2", elicitation("budget", {}), "4k", {}, False),
             ("cross-field correction", _dur_pe(), "make it Meta", {}, False),
             ("untagged elicitation", {"tool": "confirm_location", "expects": "single"},
              "confirm", {}, False),
@@ -280,15 +281,20 @@ class TaggedCaptureTests(unittest.TestCase):
     def test_stale_rail_steps_aside(self):
         # S1-11/R6 - a rail kept open across turns (awaiting_custom) must not
         # claim a much-later unrelated-but-parseable message as its answer.
-        stale = {**_dur_pe(), "awaiting_custom": True, "first_reply_turn": 2}
-        s = make_session(last_user="45 days", pending_elicitation=stale, turn=9)
+        stale = {**_dur_pe(), "first_reply_turn": 2}
+        s = make_session(last_user="30 days", pending_elicitation=stale, turn=9)
         self.assertEqual(_cap(s), "")
         self.assertEqual(s.context["campaign_spec"], {})
-        # Within the window the same reply still lands.
-        fresh = {**_dur_pe(), "awaiting_custom": True, "first_reply_turn": 8}
-        s = make_session(last_user="45 days", pending_elicitation=fresh, turn=9)
+        # ...and layer 2 skips it too: the resume section drops the stale rail
+        # instead of steering the model to select for a forgotten ask.
+        self.assertEqual(
+            AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
+        self.assertNotIn("_pending_elicitation", s.context)
+        # Within the window the same chip reply still lands.
+        fresh = {**_dur_pe(), "first_reply_turn": 8}
+        s = make_session(last_user="30 days", pending_elicitation=fresh, turn=9)
         _cap(s)
-        self.assertEqual(s.context["campaign_spec"].get("duration"), "45 days")
+        self.assertEqual(s.context["campaign_spec"].get("duration"), "30 days")
         # First sight stamps the rail, so age counts from the first reply.
         unstamped = {**_dur_pe(), "awaiting_custom": True}
         s = make_session(last_user="what about targeting?",
@@ -375,13 +381,21 @@ class CustomChipFreeTextTests(unittest.TestCase):
                 self.assertTrue(s.context["_pending_elicitation"].get("awaiting_custom"))
                 self.assertEqual(s.context["campaign_spec"], {})   # not stored
 
-    def test_typed_value_after_custom_is_captured(self):
-        # regression: F10 ("Custom" → free-text)
+    def test_typed_value_after_custom_goes_to_layer_2(self):
+        # F10 rework (slice 1b): the typed value is the MODEL's to store - the
+        # capture falls through, the resume steer prescribes the write, and the
+        # rail is reaped once the field is set.
         s = make_session(last_user="₹7000",
                          pending_elicitation=_budget_pe(awaiting_custom=True))
-        _cap(s)
-        self.assertEqual(s.context["campaign_spec"].get("budget"), "₹7,000/day")
-        self.assertNotIn("_pending_elicitation", s.context)        # consumed on capture
+        self.assertEqual(_cap(s), "")
+        self.assertEqual(s.context["campaign_spec"], {})           # model writes, not code
+        steer = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
+        self.assertIn("set_campaign_spec(budget=", steer)
+        self.assertIsNotNone(s.context.get("_pending_elicitation"))  # stays open
+        # Once the model's write lands, the next turn reaps the rail.
+        s.context["campaign_spec"]["budget"] = "₹7,000/day"
+        self.assertEqual(AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
+        self.assertNotIn("_pending_elicitation", s.context)
 
     def test_offtopic_is_not_mistaken_for_custom(self):
         # regression: F10 ("Custom" → free-text)
@@ -391,11 +405,13 @@ class CustomChipFreeTextTests(unittest.TestCase):
         self.assertFalse(s.context["_pending_elicitation"].get("awaiting_custom"))
 
     def test_resume_keeps_open_when_awaiting_custom(self):
-        # regression: F10 ("Custom" → free-text)
+        # regression: F10 ("Custom" → free-text); slice 1b: the resume section
+        # emits the typed-value steer and keeps the rail open.
         s = make_session(last_user="ok",
                          pending_elicitation=_budget_pe(awaiting_custom=True))
         out = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
-        self.assertEqual(out, "")
+        self.assertIn("awaiting a typed budget", out)
+        self.assertIn("set_campaign_spec(budget=", out)
         self.assertIsNotNone(s.context.get("_pending_elicitation"))  # NOT popped
         self.assertTrue(s.context["_pending_elicitation"].get("awaiting_custom"))
 

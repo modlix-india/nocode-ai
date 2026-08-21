@@ -31,9 +31,7 @@ from app.agents.adzump.models import (
     offer_state,
 )
 from app.agents.adzump.platform import Platform
-from app.agents.adzump.answer_parse import (
-    parse_typed_answer, currency_for, field_candidates,
-)
+from app.agents.adzump.answer_parse import currency_for, field_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -357,25 +355,18 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         if v_platform is not None and Platform.from_value(lu) is v_platform:
             return True
     if field in ("duration", "budget"):
-        # PR2 · Option 2 - normalization-aware: a typed reply and a normalized
-        # candidate that parse to the SAME canonical value are traceable, even
-        # when their raw digits differ ("4k" vs "₹4,000/day"). Hardens the LLM's
-        # own save path too.
-        #
-        # v3 · F1 - the old loose digit-substring fallback (digits_v in
-        # digits_lu) was DELETED: it leaked an unrelated number through (a stored
-        # "5 days" traced to "I have 15 properties" because "5" ⊂ "15"). The one
-        # legitimate case it used to cover - a typed bare number meaning days -
-        # is now handled CANONICALLY: parse_typed_answer reads bare "30" → "30
-        # days" (duration-only), so both sides parse equal and match above.
-        # F24 - read the user's message for ALL values it supports for this field
-        # (corrections with a cue word, multi-number volunteered messages), then
-        # accept iff the model's canonical value is one of them. The anti-invention
-        # property is this canonical equality, NOT a digit-substring - so F1 (a
-        # stored "5 days" tracing to "15 properties") stays closed.
+        # Normalization-aware canonical equality (slice 1b): parse BOTH sides
+        # through field_candidates and accept on a non-empty intersection - the
+        # model's value ("₹4000/day", "4k") and the user's text ("4k") trace
+        # whenever they support the same canonical value. The anti-invention
+        # property is this canonical equality, NOT a digit-substring - F1 (a
+        # stored "5 days" tracing to "15 properties" because "5" ⊂ "15") stays
+        # closed, and F24 corrections / volunteered multi-number messages count
+        # because field_candidates is cue-free and multi-number-tolerant.
         cur = currency_for(session_ctx)
-        cand = parse_typed_answer(field, str(value), cur)
-        if cand is not None and cand in field_candidates(field, last_user, cur):
+        if field_candidates(field, str(value), cur) & field_candidates(
+            field, last_user, cur
+        ):
             return True
     return False
 

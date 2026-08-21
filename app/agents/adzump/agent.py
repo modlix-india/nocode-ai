@@ -45,7 +45,6 @@ from app.agents.adzump.tools.campaign_data import (
     is_clear_decline_reply,
 )
 from app.agents.adzump._shared import primary_screenshot_url
-from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 from app.agents.adzump.tools.registry import ALL_TOOLS
 from app.agents.adzump.tools.suggestions import infer_suggestions
 from app.config import settings
@@ -137,11 +136,12 @@ class AdzumpAgent(BaseAgent):
         acknowledgement steer on a successful capture, else "".
 
         Gated to agentic ``turn == 1`` (the reply only just arrived) - NOT
-        ``session._turn_count`` (restored to the max turn on resume). Match by
-        exact option value (chips), else a conservative typed parser
-        (duration/budget/platform). Ambiguous answers (Custom / "Yes" /
-        off-topic / unparseable) leave ``_pending_elicitation`` intact and fall
-        through to the LLM (then ``_resume_elicitation_section`` steers it)."""
+        ``session._turn_count`` (restored to the max turn on resume). Layer 1:
+        match by exact option value (chips) or a clear typed decline. Anything
+        else (Custom / "Yes" / typed values / off-topic) leaves
+        ``_pending_elicitation`` intact and falls through to the steered model
+        (layer 2, ``_resume_elicitation_section``) - the regex typed-parser is
+        retired (slice 1b); every model write passes the same validation."""
         if turn != 1:
             return ""
         pe = session.context.get("_pending_elicitation")
@@ -166,10 +166,6 @@ class AdzumpAgent(BaseAgent):
         if not last_user:
             return ""
         value = answers.get(last_user)  # (a) exact chip match
-        if value is None and field in ("duration", "budget", "platform"):
-            value = parse_typed_answer(
-                field, last_user, currency_for(session.context)
-            )  # (b) typed
         if value is None and is_clear_decline_reply(last_user):
             # (c) F17 · typed clear decline. Legacy field names ride an old
             # rail; _apply_field canonicalizes their "true" to the enum.
@@ -181,9 +177,9 @@ class AdzumpAgent(BaseAgent):
                 value = "true"
         if value is None:
             # v4 · F10 - the user picked the "Custom" escape on a duration/budget
-            # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
-            # NEXT typed reply is captured by the typed-parser above, and steer a
-            # free-text ask instead of re-rendering the same chips (the live loop,
+            # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so the
+            # layer-2 steer owns their NEXT typed reply, and steer a free-text
+            # ask instead of re-rendering the same chips (the live loop,
             # bug #11). The mark also drives _next_action (awaiting_custom_field)
             # and tells _resume_elicitation_section not to pop.
             if (
@@ -200,9 +196,16 @@ class AdzumpAgent(BaseAgent):
                     "## The user chose a custom value\n"
                     f"They want to enter their own {field}. Ask them in ONE short line "
                     f'to TYPE it (e.g. "45 days" / "₹7,500/day") - do NOT call '
-                    f"present_options or show chips. Their typed reply is captured automatically."
+                    f"present_options or show chips. You will store their typed reply "
+                    f"next turn via set_campaign_spec."
                 )
-            return ""  # Yes / off-topic / unparseable → LLM
+            # Layer-2 fallthrough: no exact chip match, no clear decline - the
+            # steered model owns the reply. Logged so no-matches are countable.
+            logger.info(
+                "tagged_capture: layer2_fallthrough field=%s user_said=%r",
+                field, last_user[:80],
+            )
+            return ""
         stored, info = _apply_field(
             field,
             value,
@@ -299,6 +302,21 @@ class AdzumpAgent(BaseAgent):
         pe = session.context.get("_pending_elicitation")
         if not pe:
             return ""
+        # A rail whose field is already answered is dead - pop it silently.
+        # This is how a layer-2 write closes the awaiting_custom rail: the
+        # model stores the value one turn, this reaps the rail the next.
+        pe_field = pe.get("field")
+        if pe_field and (session.context.get("campaign_spec") or {}).get(pe_field):
+            session.context.pop("_pending_elicitation", None)
+            return ""
+        # Stale rail (R6/S1-11, same window as the capture guard): layer 2 must
+        # not steer the model to select for a long-forgotten ask - pop it and
+        # let the message be handled conversationally (the missing-list re-asks).
+        current = _current_turn({"_session": session})
+        if current - pe.get("first_reply_turn", current) > STALE_RAIL_TURNS:
+            logger.info("resume_elicitation: stale rail field=%s - dropped", pe_field)
+            session.context.pop("_pending_elicitation", None)
+            return ""
         if pe.get("expects") == "multi":
             return (
                 "## Resuming - upload request is still open\n"
@@ -309,13 +327,40 @@ class AdzumpAgent(BaseAgent):
                 "you judge the captured assets sufficient."
             )
         # v4 · F10 - awaiting a typed custom value: keep the elicitation OPEN
-        # (do NOT pop) so the next typed reply is captured by the typed-parser.
-        # _capture_tagged_answer already emitted the free-text steer this turn.
+        # (do NOT pop). Layer 2 (slice 1b): the MODEL stores the typed value -
+        # the write is validated against what the user actually said, and the
+        # field-satisfied reap above closes the rail next turn.
         if pe.get("awaiting_custom"):
-            return ""
+            return (
+                f"## Resuming - awaiting a typed {pe_field}\n"
+                f"The user chose Custom for {pe_field} last turn. If their current "
+                "message states the value, normalize it to the canonical form "
+                f'(e.g. "45 days" / "₹7,500/day") and call '
+                f"`set_campaign_spec({pe_field}=<canonical value>)` NOW - never a "
+                "value they didn't state. If it's about something else, handle "
+                f"that; the {pe_field} question stays open."
+            )
         # single: one-shot - clear after emitting so it fires for exactly this turn
         session.context.pop("_pending_elicitation", None)
         tool = pe.get("tool", "the previous step")
+        if pe_field and pe.get("answers"):
+            # Layer 2 (slice 1b): a typed reply to a field-tagged chip ask is
+            # the MODEL's to land - select the canonical value and write it.
+            canonical = ", ".join(f'"{v}"' for v in dict(pe["answers"]).values())
+            return (
+                "## Resuming after a question\n"
+                f"Last turn you asked the user to pick **{pe_field}** (chips are "
+                f"already on screen; canonical values: {canonical}). Their current "
+                "message IS the reply - do NOT restate or paraphrase the question.\n"
+                f"- It clearly selects an option (typed variant, \"60 days please\") "
+                f"→ call `set_campaign_spec({pe_field}=<canonical value>)` NOW; for "
+                "duration/budget a clearly stated non-preset value counts too "
+                '(normalize it, e.g. "45 days" / "₹7,500/day").\n'
+                "- It is about a DIFFERENT field or a question → it selects NOTHING "
+                "here; handle it, then re-render the SAME chips via present_options "
+                'with a short "pick one below" - do not guess.\n'
+                "- Never store a value the user didn't state."
+            )
         return (
             "## Resuming after a question\n"
             f"Last turn you asked the user a question (via {tool}); the widget is "
