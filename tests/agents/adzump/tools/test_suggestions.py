@@ -89,18 +89,19 @@ class PresentOptionsTagTests(unittest.TestCase):
             {"session_context": {}}))
         self.assertIsNone(res.data)
 
-    def test_creatives_offer_sets_offered_marker(self):
-        # regression: live 2026-07-27 re-ask loop - _next_action needs a
-        # code-level "the offer is on screen" signal to stop re-prescribing
-        # the ask after a Yes (which resolves nothing by itself).
+    def test_offer_ask_increments_count(self):
+        # slice 1d: the offered marker is replaced by a per-offer ask counter -
+        # the resolved predicate treats two unanswered asks as settled, so a
+        # digression resurfaces an offer at most once.
         session_ctx: dict = {}
-        asyncio.run(_present_options(
-            {"question": "Want to see competitor ads?",
-             "options": [{"label": "Yes", "value": "Yes", "answer": "accepted"},
-                         {"label": "No", "value": "No", "answer": "declined"}],
-             "field": "competitor_creatives"},
-            {"session_context": session_ctx}))
-        self.assertTrue(session_ctx["_competitor_creatives_offered"])
+        ask = {"question": "Want to see competitor ads?",
+               "options": [{"label": "Yes", "value": "Yes", "answer": "accepted"},
+                           {"label": "No", "value": "No", "answer": "declined"}],
+               "field": "competitor_creatives"}
+        asyncio.run(_present_options(dict(ask), {"session_context": session_ctx}))
+        self.assertEqual(session_ctx["_offer_asks"], {"competitor_creatives": 1})
+        asyncio.run(_present_options(dict(ask), {"session_context": session_ctx}))
+        self.assertEqual(session_ctx["_offer_asks"], {"competitor_creatives": 2})
 
     def test_other_fields_do_not_set_offered_marker(self):
         session_ctx: dict = {}
@@ -110,7 +111,7 @@ class PresentOptionsTagTests(unittest.TestCase):
                          {"label": "Custom", "value": "Custom", "answer": None}],
              "field": "duration"},
             {"session_context": session_ctx}))
-        self.assertNotIn("_competitor_creatives_offered", session_ctx)
+        self.assertNotIn("_offer_asks", session_ctx)
 
     def test_field_tagged_option_must_declare_answer(self):
         # S1-1 · every chip on a field-tagged ask says what it writes; a

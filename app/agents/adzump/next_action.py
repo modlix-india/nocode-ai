@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.core.session import BaseSession
-from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.models import LEGACY_DECLINED_KEYS, OfferState, offer_state
 from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_mapped_for,
@@ -56,11 +56,14 @@ class CampaignContext:
     # Detected location string when `confirm_location` has shown the map and
     # we're awaiting the user's reply. None when no map is in flight.
     pending_location: str | None
-    # v3 · F3 - True once Instagram options have been offered (a multi-IG list
-    # was shown, or the empty-IG Facebook-only choice). Stops _next_action from
-    # re-prescribing the IG fetch every turn. Defaulted so existing test
-    # fixtures that build CampaignContext directly need no change.
-    ig_offered: bool = False
+    # v3 · F3 - True once fetch_meta_ig_accounts stored its result (the
+    # ``ig_accounts`` data key, [] when none are linked). Stops _next_action
+    # from re-prescribing the IG fetch every turn - data-backed; the old
+    # offered marker is deleted (slice 1d).
+    ig_accounts_fetched: bool = False
+    # The open elicitation's field, if any - the CURRENT ask on screen. An
+    # offer whose rail is open is waiting on the reply, never re-prescribed.
+    pending_ask_field: str | None = None
     # v4 · F10 - the field ("duration"/"budget") whose chip ask the user
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
@@ -70,12 +73,6 @@ class CampaignContext:
     # this gate and the review gate can never disagree. Stops the offer from
     # re-firing. Defaulted for direct test construction.
     competitor_creatives_offer_resolved: bool = False
-    # True once the creative-inspiration question has been PUT ON SCREEN (marker
-    # set by present_options, field "competitor_creatives"). Between
-    # offered and resolved, _next_action prescribes reacting to the reply -
-    # never the ask text again (live bug: a Yes resolved nothing, so the
-    # verbatim ask re-fired and the model copied it instead of fetching).
-    competitor_creatives_offered: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -89,6 +86,12 @@ class CampaignContext:
         # evaluate the condition before the walrus and raise UnboundLocalError.
         pe = ctx.get("_pending_elicitation") or {}
         awaiting_custom_field = pe.get("field") if pe.get("awaiting_custom") else None
+        # The current ask's field, canonicalized so a legacy in-flight rail
+        # (an old *_declined field name) matches the enum offer field.
+        pending_ask_field = pe.get("field")
+        for offer_field, legacy in LEGACY_DECLINED_KEYS.items():
+            if pending_ask_field == legacy:
+                pending_ask_field = offer_field
         return cls(
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
@@ -107,13 +110,11 @@ class CampaignContext:
             current_turn=int(getattr(session, "_turn_count", 0) or 0),
             last_user=_last_user_text({"_session": session}),
             pending_location=pending_location,
-            ig_offered=bool(ctx.get("_ig_offered")),
+            ig_accounts_fetched=ctx.get("ig_accounts") is not None,
+            pending_ask_field=pending_ask_field,
             awaiting_custom_field=awaiting_custom_field,
             competitor_creatives_offer_resolved=competitor_creatives_offer_resolved(
                 ctx.get("campaign_spec") or {}, ctx
-            ),
-            competitor_creatives_offered=bool(
-                ctx.get("_competitor_creatives_offered")
             ),
         )
 
@@ -236,11 +237,11 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     # Meta creative inspiration - Meta campaigns are creative-bound, so the
     # competitors' running ads are the seed material. Consent-gated (ad-library
-    # credits + vision tokens). Offer-once is enforced by the offered marker
-    # (set when present_options fires with the tagged field), not by model
-    # judgment: once offered, the ask text is NEVER re-prescribed - the live
-    # re-ask loop was a Yes reply resolving nothing, so the verbatim ask
-    # re-fired and the model copied it instead of fetching.
+    # credits + vision tokens). Three states, all read from durable signals
+    # (slice 1d - the offered marker is deleted): ACCEPTED → the fetch is owed;
+    # the ask's rail is open → WAIT (the resume steer owns the reply); else →
+    # offer it. Resurface after a digression is capped at once via the resolved
+    # predicate's ask-count exhaustion.
     if cctx.is_meta and not cctx.competitor_creatives_offer_resolved:
         fetch_chain = (
             "call `fetch_competitor_creatives`"
@@ -248,7 +249,17 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             else "run `analyze_competitors`, THEN `fetch_competitor_creatives` "
             "in the same turn"
         )
-        if not cctx.competitor_creatives_offered:
+        if offer_state(cctx.spec, "competitor_creatives") is OfferState.ACCEPTED:
+            missing.append(
+                "competitor creatives - the user said YES to the offer you "
+                f"already made. {fetch_chain} NOW. Do NOT ask again via "
+                "present_options - the question was already asked and answered. "
+                "(These are instructions to CALL tools - never type tool-call "
+                "syntax into your reply.)"
+            )
+        elif cctx.pending_ask_field == "competitor_creatives":
+            pass  # ask is on screen - waiting on the reply, never re-prescribed
+        else:
             # "recent", not "running" - the ad library's crawl lags, so what we
             # show may include recently-paused ads (each card carries its own
             # Active/Paused + last-seen chips).
@@ -266,30 +277,6 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 "are recorded for you automatically - do NOT call "
                 "set_campaign_spec for them. (This is an instruction to CALL the "
                 "tool - never type tool-call syntax into your reply.)"
-            )
-        elif (
-            offer_state(cctx.spec, "competitor_creatives") is OfferState.ACCEPTED
-            or wants_competitor_creatives(cctx.last_user)
-        ):
-            missing.append(
-                f'competitor creatives - the user said YES ("{cctx.last_user[:40]}") '
-                f"to the offer you already made. {fetch_chain} NOW. Do NOT ask "
-                "again via present_options - the question was already asked and "
-                "answered. (These are instructions to CALL tools - never type "
-                "tool-call syntax into your reply.)"
-            )
-        else:
-            missing.append(
-                "competitor creatives - you ALREADY offered this; never re-ask it "
-                "as if new. React to the user's reply instead: they want it (yes / "
-                f"show me) → {fetch_chain}; a clear decline is recorded "
-                "automatically - do NOT call set_campaign_spec for it; a reply "
-                "about something ELSE → address it first, then re-ask the SAME "
-                'Yes/No present_options (field "competitor_creatives", answers '
-                "accepted/declined); "
-                "do NOT treat a doubtful reply as a decline. (These are "
-                "instructions to CALL tools - never type tool-call syntax into "
-                "your reply.)"
             )
 
     if not cctx.spec.get("duration"):
@@ -368,7 +355,7 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "instagram - user is skipping Instagram (it's OPTIONAL). Call "
                     '`set_campaign_spec(instagram="declined")` and proceed to review.'
                 )
-            elif cctx.ig_offered:
+            elif cctx.ig_accounts_fetched:
                 # Already FETCHED - do NOT re-fetch (that was the live loop).
                 # v5: fetch-time ≠ render-time. The marker is set when the fetch
                 # tool returns, but the model may not have rendered the choice

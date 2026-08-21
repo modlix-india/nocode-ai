@@ -129,11 +129,13 @@ class DependencyCascadeTests(unittest.TestCase):
     def test_fb_page_change_clears_ig(self):
         sc = _ctx({"fb_page": "p1", "ig_page": "i1", "ig_page_declined": "true"},
                   account_names={"p1": "", "p2": "", "i1": ""})
-        sc["_ig_offered"] = True
+        sc["ig_accounts"] = ["i1"]
+        sc["_offer_asks"] = {"instagram": 1, "competitor_creatives": 1}
         _apply_field("fb_page", "p2", "p2", sc, 2)
         self.assertNotIn("ig_page", sc["campaign_spec"])
         self.assertNotIn("ig_page_declined", sc["campaign_spec"])
-        self.assertNotIn("_ig_offered", sc)                          # F3 marker cleared
+        self.assertNotIn("ig_accounts", sc)                # F3 fetched list cleared
+        self.assertEqual(sc["_offer_asks"], {"competitor_creatives": 1})
 
     def test_platform_change_resets_enum_offers(self):
         # Offers reset to UNSET (key popped) on a platform switch - a Google
@@ -164,15 +166,15 @@ class DependencyCascadeTests(unittest.TestCase):
         cleared = _clear_dependents("platform", sc, frozenset())
         self.assertIn("account", cleared)
 
-    def test_platform_change_voids_creatives_offered_marker(self):
+    def test_platform_change_voids_offer_ask_counts(self):
         sc = _ctx({"platform": "Meta"})
-        sc["_competitor_creatives_offered"] = True
+        sc["_offer_asks"] = {"competitor_creatives": 2}
         _clear_dependents("platform", sc, frozenset())
-        self.assertNotIn("_competitor_creatives_offered", sc)
-        # A downstream change (fb_page) leaves the offer marker alone.
-        sc["_competitor_creatives_offered"] = True
+        self.assertNotIn("_offer_asks", sc)
+        # A downstream change (fb_page) clears only the instagram count.
+        sc["_offer_asks"] = {"competitor_creatives": 2, "instagram": 1}
         _clear_dependents("fb_page", sc, frozenset())
-        self.assertIn("_competitor_creatives_offered", sc)
+        self.assertEqual(sc["_offer_asks"], {"competitor_creatives": 2})
 
 
 # ── v5 · set_campaign_spec retry-loop fixes ────────────────────────────────
@@ -395,6 +397,12 @@ class CreativesOfferResolvedTests(unittest.TestCase):
              True),
             ("unresolved: rivals found, no consent yet", {},
              {"competitor_analysis": {"competitors": [dict(rival)]}}, False),
+            ("exhausted: asked twice, never answered", {},
+             {"_offer_asks": {"competitor_creatives": 2},
+              "competitor_analysis": {"competitors": [dict(rival)]}}, True),
+            ("asked once is NOT exhausted", {},
+             {"_offer_asks": {"competitor_creatives": 1},
+              "competitor_analysis": {"competitors": [dict(rival)]}}, False),
             ("unresolved: no analysis yet", {}, {}, False),
         ]
         for name, spec, session_ctx, expected in cases:
@@ -472,11 +480,13 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
         from types import SimpleNamespace
         from app.agents.adzump.tools.campaign_data import pending_creatives_fetch_steer
 
-        def ctx(*, platform="Meta", offered=True, fetched=False, last_user="Yes",
+        def ctx(*, platform="Meta", accepted=False, fetched=False, last_user="Yes",
                 messages=None):
+            spec = {"platform": platform}
+            if accepted:
+                spec["competitor_creatives"] = "accepted"
             session_ctx = {
-                "campaign_spec": {"platform": platform},
-                "_competitor_creatives_offered": offered,
+                "campaign_spec": spec,
                 "_competitor_creatives_fetched": fetched,
             }
             session = SimpleNamespace(
@@ -496,12 +506,13 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
         ]
 
         cases = [
-            ("owed: offered + yes + unfetched", ctx(), True),
+            ("owed: fresh yes + unfetched", ctx(), True),
+            ("owed: stored ACCEPTED survives a digression",
+             ctx(accepted=True, last_user="what about targeting?"), True),
             ("owed mid-turn, after analyze's tool_result", ctx(messages=mid_turn), True),
             ("google flow", ctx(platform="Google Ads"), False),
-            ("never offered", ctx(offered=False), False),
             ("already fetched (resolved)", ctx(fetched=True), False),
-            ("reply is not consent", ctx(last_user="30 days"), False),
+            ("reply is not consent, nothing stored", ctx(last_user="30 days"), False),
         ]
         for name, context, owed in cases:
             with self.subTest(case=name):

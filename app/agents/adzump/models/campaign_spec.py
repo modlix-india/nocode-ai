@@ -21,6 +21,7 @@ LEGACY_DECLINED_KEYS: dict[str, str] = {
     "competitor_creatives": "competitor_creatives_declined",
     "instagram": "ig_page_declined",
 }
+LEGACY_MARKER_TO_FIELD: dict[str, str] = {v: k for k, v in LEGACY_DECLINED_KEYS.items()}
 OFFER_FIELDS: tuple[str, ...] = tuple(LEGACY_DECLINED_KEYS)
 
 

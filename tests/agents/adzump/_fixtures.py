@@ -83,11 +83,11 @@ def make_cctx(
     account_names: dict | None = None,
     competitor_names: list | None = None,
     attempted: bool = False,
-    ig_offered: bool = False,
+    ig_fetched: bool = False,
     awaiting: str | None = None,
     turn: int = 1,
     creatives_resolved: bool = False,
-    creatives_offered: bool = False,
+    pending_ask: str | None = None,
     pending_location: str | None = None,
 ) -> CampaignContext:
     """A `CampaignContext` for `_next_action` / prescription tests."""
@@ -102,10 +102,10 @@ def make_cctx(
         current_turn=turn,
         last_user=last_user,
         pending_location=pending_location,
-        ig_offered=ig_offered,
+        ig_accounts_fetched=ig_fetched,
+        pending_ask_field=pending_ask,
         awaiting_custom_field=awaiting,
         competitor_creatives_offer_resolved=creatives_resolved,
-        competitor_creatives_offered=creatives_offered,
     )
 
 

@@ -44,8 +44,9 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
     META = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",
             "parent_account": "P", "account": "A", "fb_page": "F", "ig_page": "I"}
 
-    def _offer_lines(self, **kw):
-        m = _next_action(make_cctx(dict(self.META), product=SAAS, **kw))
+    def _offer_lines(self, spec_extra=None, **kw):
+        m = _next_action(make_cctx({**self.META, **(spec_extra or {})},
+                                   product=SAAS, **kw))
         return [x for x in m if "competitor creatives" in x]
 
     def test_unoffered_prescribes_the_ask_once(self):
@@ -63,22 +64,22 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
                 self.assertIn('field "competitor_creatives"', offer[0])
                 self.assertIn(question, offer[0])
 
-    def test_offered_plus_yes_prescribes_fetch_not_reask(self):
+    def test_accepted_prescribes_fetch_not_reask(self):
         # regression: live 2026-07-27 - after a Yes chip click the verbatim ask
-        # re-fired (nothing marks a Yes as resolving the offer) and the model
-        # copied it instead of fetching.
+        # re-fired (nothing marked a Yes as resolving the offer) and the model
+        # copied it instead of fetching. Slice 1d: the stored ACCEPTED is the
+        # signal - the wants-heuristic branch is deleted.
         cases = [
-            ("yes, competitors known", ["Rival"], True, "Yes",
+            ("accepted, competitors known", ["Rival"], True,
              "call `fetch_competitor_creatives`"),
-            ("yes, no analysis yet", [], False, "Yes",
+            ("accepted, no analysis yet", [], False,
              "run `analyze_competitors`, THEN `fetch_competitor_creatives`"),
-            ("creative verbs count as yes", ["Rival"], True, "show me their ads",
-             "call `fetch_competitor_creatives`"),
         ]
-        for name, names, attempted, reply, chain in cases:
+        for name, names, attempted, chain in cases:
             with self.subTest(case=name):
-                offer = self._offer_lines(competitor_names=names, attempted=attempted,
-                                          creatives_offered=True, last_user=reply)
+                offer = self._offer_lines(
+                    spec_extra={"competitor_creatives": "accepted"},
+                    competitor_names=names, attempted=attempted)
                 self.assertEqual(len(offer), 1)
                 self.assertIn(chain, offer[0])
                 self.assertIn("said YES", offer[0])
@@ -86,22 +87,29 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
                 self.assertNotIn("Want me to analyze your competitors", offer[0])
                 self.assertNotIn("Want to see the ads", offer[0])
 
-    def test_offered_plus_unclear_reply_prescribes_react_not_fresh_ask(self):
-        offer = self._offer_lines(creatives_offered=True,
-                                  last_user="what will this cost me?")
-        self.assertEqual(len(offer), 1)
-        self.assertIn("ALREADY offered", offer[0])
-        self.assertNotIn("Want me to analyze your competitors", offer[0])
-        self.assertNotIn("Want to see the ads", offer[0])
+    def test_open_ask_is_never_represcribed(self):
+        # The ask's rail is open → WAIT: no creatives line at all (the resume
+        # steer owns the reply). Once the rail is gone (digression popped it),
+        # the ask resurfaces - capped at once by the exhaustion predicate.
+        self.assertEqual(
+            self._offer_lines(pending_ask="competitor_creatives",
+                              last_user="what will this cost me?"), [])
+        resurfaced = self._offer_lines(last_user="what will this cost me?")
+        self.assertEqual(len(resurfaced), 1)
+        self.assertIn("offer it ONCE", resurfaced[0])
 
-    def test_from_session_reads_offered_marker(self):
-        offered = make_session(spec=dict(self.META),
-                               _competitor_creatives_offered=True)
-        self.assertTrue(
-            CampaignContext.from_session(offered).competitor_creatives_offered)
-        self.assertFalse(
-            CampaignContext.from_session(make_session(spec=dict(self.META)))
-            .competitor_creatives_offered)
+    def test_from_session_reads_rail_and_ig_data(self):
+        # slice 1d: the offered markers are gone - from_session reads the open
+        # rail (legacy field name canonicalized) and the fetched-IG data key.
+        s = make_session(spec=dict(self.META), ig_accounts=[],
+                         pending_elicitation=elicitation(
+                             "competitor_creatives_declined"))
+        cctx = CampaignContext.from_session(s)
+        self.assertEqual(cctx.pending_ask_field, "competitor_creatives")
+        self.assertTrue(cctx.ig_accounts_fetched)
+        bare = CampaignContext.from_session(make_session(spec=dict(self.META)))
+        self.assertIsNone(bare.pending_ask_field)
+        self.assertFalse(bare.ig_accounts_fetched)
 
     def test_offer_is_suppressed_when_resolved(self):
         # Declined/fetched/moot resolution is computed by the shared predicate
@@ -164,7 +172,7 @@ class InstagramOptionalTests(unittest.TestCase):
     def test_next_action_offered_does_not_refetch(self):
         # regression: F3 (Instagram optional) / v5 (fetch≠render)
         m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS,
-                                   last_user="proceed", ig_offered=True))
+                                   last_user="proceed", ig_fetched=True))
         # The offered-branch may *name* the tool in a "do NOT call it again"
         # instruction - discriminate on the offer-branch's prescription syntax,
         # which is the thing that must be absent.

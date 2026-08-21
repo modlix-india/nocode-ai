@@ -7,6 +7,7 @@ import product-side models from ``app.agents.adzump.models.product`` directly.
 
 from app.agents.adzump.models.campaign_spec import (
     LEGACY_DECLINED_KEYS,
+    LEGACY_MARKER_TO_FIELD,
     OFFER_FIELDS,
     CampaignSpec,
     offer_state,
@@ -17,6 +18,7 @@ from app.agents.adzump.models.place import Place
 __all__ = [
     "CampaignSpec",
     "LEGACY_DECLINED_KEYS",
+    "LEGACY_MARKER_TO_FIELD",
     "OFFER_FIELDS",
     "OfferState",
     "Place",

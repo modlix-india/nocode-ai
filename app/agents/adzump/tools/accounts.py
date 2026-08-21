@@ -377,11 +377,12 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
                        page_id, str(e)[:200])
         return ToolResult(success=False, error=_META_NOT_CONNECTED)
 
-    # v3 · F3 - Instagram is OPTIONAL. Mark that we've offered it so _next_action
-    # won't re-prescribe this fetch every turn (the cityville no-escape loop).
+    # v3 · F3 - Instagram is OPTIONAL. Store the fetch result as DATA ([] when
+    # none are linked) so _next_action won't re-prescribe this fetch every turn
+    # (the cityville no-escape loop) - slice 1d: data, not a marker.
     sc = context.get("session_context")
     if sc is not None:
-        sc["_ig_offered"] = True
+        sc["ig_accounts"] = [a.get("id") for a in accounts]
 
     if not accounts:
         # No IG linked is NOT an error anymore - it's a valid Facebook-only path.

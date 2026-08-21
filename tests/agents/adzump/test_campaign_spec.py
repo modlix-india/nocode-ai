@@ -6,8 +6,10 @@ writes never re-emit legacy keys, unknown keys survive the round-trip.
 """
 from __future__ import annotations
 
+import pathlib
 import unittest
 
+import app.agents.adzump
 from app.agents.adzump.models import CampaignSpec, OfferState, offer_state
 
 
@@ -73,6 +75,42 @@ class CampaignSpecStoredTests(unittest.TestCase):
         self.assertEqual(stored.get("mystery_key"), 7)
         # Round-trip stability: re-parsing the stored dict changes nothing.
         self.assertEqual(CampaignSpec.from_stored(stored).to_stored(), stored)
+
+
+class MarkerGrepCleanTests(unittest.TestCase):
+    """S1-8 - the deleted markers stay deleted, and legacy ``*_declined``
+    strings appear only in the sanctioned back-compat seams. A new reader or a
+    resurrected marker fails here before it ships."""
+
+    ADZUMP = pathlib.Path(app.agents.adzump.__file__).parent
+
+    def test_offered_markers_are_gone(self):
+        for py in self.ADZUMP.rglob("*.py"):
+            text = py.read_text()
+            for marker in ("_ig_offered", "_competitor_creatives_offered"):
+                self.assertNotIn(
+                    marker, text,
+                    f"{py.relative_to(self.ADZUMP)} still mentions {marker}")
+
+    def test_legacy_declined_mentions_are_allowlisted(self):
+        # The seams that MAY mention the legacy keys: the lenient parse (models),
+        # write canonicalization + cascade (campaign_data), legacy-rail capture
+        # (agent), legacy field-name count map consumer (suggestions).
+        allowed = {
+            "models/campaign_spec.py",
+            "tools/campaign_data.py",
+            "agent.py",
+            "tools/suggestions.py",
+        }
+        legacy = ("competitive_analysis_declined", "competitor_creatives_declined",
+                  "ig_page_declined")
+        offenders = sorted(
+            py.relative_to(self.ADZUMP).as_posix()
+            for py in self.ADZUMP.rglob("*.py")
+            if any(k in py.read_text() for k in legacy)
+            and py.relative_to(self.ADZUMP).as_posix() not in allowed
+        )
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

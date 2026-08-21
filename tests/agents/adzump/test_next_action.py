@@ -90,9 +90,9 @@ class NextActionInvariants(unittest.TestCase):
         ]
         for label, names, tool in rows:
             with self.subTest(label):
-                cctx = make_cctx({"platform": "Meta"}, product=SAAS,
-                                 creatives_offered=True, competitor_names=names,
-                                 last_user="Yes")
+                cctx = make_cctx(
+                    {"platform": "Meta", "competitor_creatives": "accepted"},
+                    product=SAAS, competitor_names=names, last_user="Yes")
                 line = _entry(_next_action(cctx), "competitor creatives")
                 self.assertIsNotNone(line)
                 self.assertIn(tool, line)
@@ -131,11 +131,10 @@ class NextActionInvariants(unittest.TestCase):
             spec={**META_DONE, "ig_page_declined": "true",
                   "competitor_creatives_declined": "true"},
             product=SAAS,
-            _ig_offered=True,
+            _ig_offered=True,  # dead legacy marker rides along, ignored
             competitor_analysis={"competitors": [{"name": "Lodha"}]},
         )
         cctx = CampaignContext.from_session(session)
-        self.assertTrue(cctx.ig_offered)
         self.assertTrue(cctx.competitor_creatives_offer_resolved)
         missing = _next_action(cctx)
         self.assertEqual(len(missing), 1)

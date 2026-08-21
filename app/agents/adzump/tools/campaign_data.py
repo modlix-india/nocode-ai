@@ -26,6 +26,7 @@ from typing import Any
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.models import (
     LEGACY_DECLINED_KEYS,
+    LEGACY_MARKER_TO_FIELD,
     OFFER_FIELDS,
     OfferState,
     offer_state,
@@ -93,8 +94,6 @@ ALLOWED_FIELDS = {
     *LEGACY_DECLINED_KEYS.values(),
 }
 
-# Legacy marker key -> the offer field it canonicalizes to.
-_LEGACY_TO_OFFER_FIELD = {v: k for k, v in LEGACY_DECLINED_KEYS.items()}
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
 # (via session_ctx["account_names"]).
@@ -257,11 +256,13 @@ def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
     spec = session_ctx.get("campaign_spec") or {}
     if Platform.from_value(spec.get("platform")) is not Platform.META:
         return ""
-    if not session_ctx.get("_competitor_creatives_offered"):
-        return ""
     if competitor_creatives_offer_resolved(spec, session_ctx):
         return ""
-    if not wants_competitor_creatives(_last_user_text(context)):
+    if offer_state(
+        spec, "competitor_creatives"
+    ) is not OfferState.ACCEPTED and not wants_competitor_creatives(
+        _last_user_text(context)
+    ):
         return ""
     return (
         " The user already said YES to seeing competitor ads - call "
@@ -602,13 +603,15 @@ def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
         if product.pop("target_areas", None) is not None:
             cleared.append("target_areas")
     # A changed FB page (or anything upstream of it) also invalidates the
-    # "Instagram options were already offered" marker (F3).
+    # fetched Instagram list (F3) and the instagram ask count.
     if field in ("platform", "parent_account", "fb_page"):
-        session_ctx.pop("_ig_offered", None)
-    # A platform switch voids the creative-inspiration offer too (Meta-only):
-    # re-offering after a Google round-trip is harmless; a stale marker is not.
+        session_ctx.pop("ig_accounts", None)
+        (session_ctx.get("_offer_asks") or {}).pop("instagram", None)
+    # A platform switch voids every offer's ask count (offers reset to UNSET
+    # above): re-offering after a Google round-trip is harmless; a stale
+    # exhaustion count is not.
     if field == "platform":
-        session_ctx.pop("_competitor_creatives_offered", None)
+        session_ctx.pop("_offer_asks", None)
     return cleared
 
 
@@ -643,12 +646,17 @@ def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
       fetched  - a consented fetch ran to completion (the session marker set by
                  fetch_competitor_creatives), even when it found zero ads - an
                  empty result must not re-ask forever;
-      moot     - analysis ran and found no named rivals to fetch for."""
+      moot     - analysis ran and found no named rivals to fetch for;
+      exhausted - asked twice (the offer + one resurface) with no answer -
+                 a digression resurfaces an offer at most ONCE (slice 1d),
+                 and review is never held hostage by an ignored offer."""
     if offer_state(spec, "competitor_creatives") is OfferState.DECLINED:
         return True
     if offer_state(spec, "competitive_analysis") is OfferState.DECLINED:
         return True
     if session_ctx.get("_competitor_creatives_fetched"):
+        return True
+    if (session_ctx.get("_offer_asks") or {}).get("competitor_creatives", 0) >= 2:
         return True
     competitive_raw = session_ctx.get("competitor_analysis")
     competitors = (competitive_raw or {}).get("competitors") or []
@@ -680,7 +688,7 @@ def _apply_field(
     # `ig_page_declined="true"` (old rail, old prompt) stores as the enum -
     # storage never gains a new legacy marker. The legacy key, if present from
     # an old session, is dropped in the same write.
-    legacy_field = _LEGACY_TO_OFFER_FIELD.get(field)
+    legacy_field = LEGACY_MARKER_TO_FIELD.get(field)
     if legacy_field is not None:
         if OfferState.from_legacy(value) is not OfferState.DECLINED:
             return (False, f"{field} takes only \"true\" (a decline)")

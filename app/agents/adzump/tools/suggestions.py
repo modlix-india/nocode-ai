@@ -17,6 +17,7 @@ import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.models import LEGACY_MARKER_TO_FIELD, OFFER_FIELDS
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -107,12 +108,14 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
     session_ctx["_pending_suggestions"] = suggestions
-    # Offer-once marker: once the Meta creative-inspiration question is on
-    # screen, _next_action stops prescribing the ask and prescribes reacting to
-    # the reply instead (live bug: a Yes resolved nothing, the verbatim ask
-    # re-fired next turn, and the model copied it instead of fetching).
-    if field in ("competitor_creatives", "competitor_creatives_declined"):
-        session_ctx["_competitor_creatives_offered"] = True
+    # Per-offer ask counter (slice 1d, replaces the offered marker): each time
+    # an offer question goes on screen the count bumps; the resolved predicate
+    # treats an offer asked twice and never answered as settled, so a digression
+    # can resurface an offer at most ONCE and review is never held hostage.
+    counted = LEGACY_MARKER_TO_FIELD.get(field, field)
+    if counted in OFFER_FIELDS:
+        asks = session_ctx.setdefault("_offer_asks", {})
+        asks[counted] = asks.get(counted, 0) + 1
 
     # Stream the question into the assistant message so it visually precedes
     # the chips. Wrapped in newlines so it separates from any conversational
