@@ -29,6 +29,7 @@ from app.agents.adzump.next_action import (
     _next_action,
 )
 from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.observability import log_turn_decision
 from app.agents.adzump.platform import is_mapped_for
 from app.agents.adzump.prompt_sections import (
     _how_to_respond_section,
@@ -213,6 +214,10 @@ class AdzumpAgent(BaseAgent):
             session.context,
             _current_turn({"_session": session}),
         )
+        session.context.setdefault("_turn_captures", []).append(
+            {"layer": 1, "field": field, "value": str(value),
+             "verdict": "stored" if stored else "rejected"}
+        )
         if not stored:
             logger.info(
                 "tagged_capture: rejected field=%s value=%r reason=%s user_said=%r",
@@ -277,6 +282,10 @@ class AdzumpAgent(BaseAgent):
             session.context, _current_turn({"_session": session}),
         )
         if stored:
+            session.context.setdefault("_turn_captures", []).append(
+                {"layer": 1, "field": "competitive_analysis",
+                 "value": OfferState.DECLINED.value, "verdict": "stored"}
+            )
             logger.info("prose_decline_recorded: competitive_analysis=declined user_said=%r",
                         last_user[:80])
         return bool(stored)
@@ -431,6 +440,10 @@ class AdzumpAgent(BaseAgent):
     async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
         self._migrate_legacy_keys(session.context)
         self._migrate_campaign_ids(session.context)
+        # Rail snapshot for the turn decision record - the state the user's
+        # message ARRIVED into, before capture/resume consume the rail.
+        rail = session.context.get("_pending_elicitation") or {}
+        open_rail_field, open_rail_untagged = rail.get("field"), bool(rail) and not rail.get("field")
         # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
         # snapshot, so the just-answered field drops out of the missing-list
         # this turn. AFTER the migrations (its setdefault would otherwise strand
@@ -444,23 +457,47 @@ class AdzumpAgent(BaseAgent):
         # present_options), a clear typed decline has no capture rail - record it
         # in code at turn-start so the competitive-analysis ask doesn't persist
         # in `missing` forever. Re-derive cctx since the spec changed.
-        if self._record_prose_decline(session, cctx, last_user, turn):
+        prose_declined = self._record_prose_decline(session, cctx, last_user, turn)
+        if prose_declined:
             cctx = CampaignContext.from_session(session)
         missing = _next_action(cctx)
-        logger.info(
-            "next_action: turn=%d agentic=%d missing=%s user_said=%r",
-            cctx.current_turn,
-            turn,
-            missing,
-            last_user[:80],
+        uploads = self._uploaded_assets_section(session)
+        resume = self._resume_elicitation_section(session, turn)
+
+        # Slice 1c · the turn decision record - one line per agentic turn.
+        # prior_capture rotates on agentic turn 1 (captures only happen there),
+        # so the record pairs a repeat-ask with what landed the turn before.
+        captures = session.context.pop("_turn_captures", [])
+        prior_capture = session.context.get("_prior_capture")
+        if turn == 1:
+            session.context["_prior_capture"] = (
+                {"field": captures[-1]["field"], "verdict": captures[-1]["verdict"]}
+                if captures else None
+            )
+        log_turn_decision(
+            session_id=str(getattr(session, "session_id", "")),
+            turn=cctx.current_turn,
+            agentic_turn=turn,
+            missing=missing,
+            steers=[name for name, fired in (
+                ("capture_ack", bool(ack)),
+                ("prose_decline", prose_declined),
+                ("uploaded_assets", bool(uploads)),
+                ("resume_elicitation", bool(resume)),
+            ) if fired],
+            captures=captures,
+            prior_capture=prior_capture,
+            open_rail_field=open_rail_field,
+            open_rail_untagged=open_rail_untagged,
         )
+
         reminder = "\n".join(
             filter(
                 None,
                 [
                     ack,
-                    self._uploaded_assets_section(session),
-                    self._resume_elicitation_section(session, turn),
+                    uploads,
+                    resume,
                     _state_section(cctx),
                     _user_said_section(last_user),
                     _how_to_respond_section(),
