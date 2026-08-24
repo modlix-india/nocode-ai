@@ -21,7 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.agents.adzump.agents._child_stream import ChildAgentStream
+from app.agents.adzump.agents._child_stream import ChildAgentStream, reply_text
 from app.agents.adzump.agents.campaign.brief import wider_brief
 from app.agents.adzump.agents.campaign.google.keyword import constants
 from app.agents.adzump.agents.campaign.google.keyword.brief import resolve_location
@@ -77,24 +77,6 @@ MAX_TOKENS = settings.AGENT_MAX_TOKENS
 # follow-up to reference what the agent said earlier.
 KW_MANAGE_HISTORY_TURNS = 4
 _MANAGE_REPLY_CAP = 1500  # chars of a stored reply — bounds the seeded history
-
-
-def _reply_text(messages: list[dict]) -> str:
-    """The assistant's spoken text across ``messages`` — the keyword agent's reply."""
-    parts: list[str] = []
-    for m in messages:
-        if m.get("role") != "assistant":
-            continue
-        content = m.get("content")
-        if isinstance(content, str):
-            parts.append(content)
-        elif isinstance(content, list):
-            parts.extend(
-                b.get("text", "")
-                for b in content
-                if isinstance(b, dict) and b.get("type") == "text"
-            )
-    return "".join(parts).strip()
 
 
 def _fill_guidance(text: str) -> str:
@@ -549,7 +531,7 @@ class KeywordResearchAgent(BaseAgent):
                 )
 
         # Append this exchange to the main session's window, newest kept, oldest dropped.
-        reply = _reply_text(session.messages[seeded_len:])
+        reply = reply_text(session.messages[seeded_len:])
         if reply:
             parent_ctx["kw_conversation"] = (
                 history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]

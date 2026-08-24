@@ -20,6 +20,7 @@ from app.agents.adzump.agents.campaign.google.audience.constants import (
     CUSTOM_KEYWORD_MAX_CHARS_CJK,
     CUSTOM_KEYWORD_MAX_WORDS,
     CUSTOM_URL_MAX_CHARS,
+    DIMENSIONS,
     MAX_SIGNALS_PER_KIND,
 )
 
@@ -196,8 +197,9 @@ class ParentalStatus(str, Enum):
 # Each enum also defines UNDETERMINED, deliberately absent here: every dimension carries its
 # own include_undetermined flag, and two ways to say the same thing invites contradiction.
 
-# The four AudienceDimension slots, in the order the panel shows them.
-DIMENSION_FIELDS = ("age_ranges", "genders", "income_ranges", "parental_statuses")
+# The AudienceDimension slots, in the order the panel shows them. Derived so a dimension is
+# declared once, in DIMENSIONS, with its label and help.
+DIMENSION_FIELDS = tuple(d.field for d in DIMENSIONS)
 
 # common/audiences.proto, AgeSegment: "A minimum age must be specified and must be at least
 # 18. Allowed values are 18, 25, 35, 45, 55, and 65." / "max_age must be greater than

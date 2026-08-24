@@ -161,7 +161,7 @@ than depending on a counter that may not have survived.
   business. A shortfall is reported, never filled with near-misses.
 - **Substitute a loose match.** If the catalogue has nothing, it says so and stops there.
 
-⚠️ The build run **cannot** offer a custom segment — it does not hold those tools ([§2](#2-two-modes-one-class)).
+The build run **cannot** offer a custom segment — it does not hold those tools ([§2](#2-two-modes-one-class)).
 A thin catalogue ends the build honestly; the segment is drafted afterwards, in manage
 ([§6.2](#62-custom-segments)), once the user asks. So every custom segment starts as a
 sentence the user typed at a panel that already exists.
@@ -254,7 +254,7 @@ and is the only thing that can act on a yes.
 Spoken edits take **lists**: `edit_custom_segment` applies one action to every value in the
 call, looks all volumes up together, and redraws the panel once.
 
-⚠️ **Only manage mode can do this.** The build agent holds no custom-segment tools, so a
+**Only manage mode can do this.** The build agent holds no custom-segment tools, so a
 segment always begins with something the user typed at a panel that already exists.
 
 **Approving still creates nothing at Google.** `submit_custom_segment` records a **blueprint**
@@ -310,11 +310,11 @@ would type the same intent — expanded through autosuggest and then the Keyword
 expands again and returns volume. Zero-volume terms are dropped: a term nobody searches
 reaches nobody.
 
-⚠️ Google's published limits are enforced **here, not by the API**. `validateOnly` on
+Google's published limits are enforced **here, not by the API**. `validateOnly` on
 `customAudiences:mutate` accepts an over-length keyword and even zero members, so a
 "validated" payload can still target something we did not mean.
 
-⚠️ **A dry run cannot cover this path.** `ADZUMP_PUBLISH_DRY_RUN` drops the pending segment
+**A dry run cannot cover this path.** `ADZUMP_PUBLISH_DRY_RUN` drops the pending segment
 before validating, since a `pending:` ref is not a thing Google can check — and if it was the
 only audience, publish refuses rather than validating a campaign with the audience removed.
 Exercising it means a real launch, and the segment that creates is permanent.
@@ -330,7 +330,7 @@ so the next change starts from what is true rather than from what the code impli
 | **Reusing an existing custom segment** | `list_enabled` already reads the account's segments; any of them can be targeted by resource name. | It is only used to avoid a name collision. Offering "you already have one for this" needs a match the user can trust — name similarity is not it, and the members that would decide it are not returned by the list call. |
 | **Lookalike segments** | `LookalikeUserList`, seeded from a user list. | Needs a seed list of **1000+** members that the advertiser must already own; nothing in this flow can produce one, so it would be an option that fails for most accounts. |
 
-⚠️ The pre-launch editor is the reason creation is deferred to launch. If a reviewer asks why
+The pre-launch editor is the reason creation is deferred to launch. If a reviewer asks why
 approval does not create the resource, the two facts are linked: post-creation edits are not
 built, so the editable window has to sit before creation.
 

@@ -20,7 +20,7 @@ from copy import deepcopy
 from string import Template
 from typing import Any
 
-from app.agents.adzump.agents._child_stream import ChildAgentStream
+from app.agents.adzump.agents._child_stream import ChildAgentStream, reply_text
 from app.agents.adzump.agents.campaign.brief import wider_brief
 from app.agents.adzump.agents.campaign.google.audience import catalogue
 from app.agents.adzump.agents.campaign.google.audience.constants import BLUEPRINTS_KEY
@@ -101,24 +101,6 @@ def carry_draft(parent_ctx: dict) -> dict:
     if carried:
         parent_ctx[_DRAFT_SEEN] = parent_ctx.get(DRAFT_ID_KEY)
     return carried
-
-
-def _reply_text(messages: list[dict]) -> str:
-    """The assistant's spoken text across ``messages`` — the audience agent's reply."""
-    parts: list[str] = []
-    for m in messages:
-        if m.get("role") != "assistant":
-            continue
-        content = m.get("content")
-        if isinstance(content, str):
-            parts.append(content)
-        elif isinstance(content, list):
-            parts.extend(
-                b.get("text", "")
-                for b in content
-                if isinstance(b, dict) and b.get("type") == "text"
-            )
-    return "".join(parts).strip()
 
 
 class _AudienceStream(ChildAgentStream):
@@ -430,7 +412,7 @@ class AudienceAgent(BaseAgent):
                     summary=summary,
                 )
 
-        reply = _reply_text(session.messages[seeded_len:])
+        reply = reply_text(session.messages[seeded_len:])
         if reply:
             parent_ctx["aud_conversation"] = (
                 history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]

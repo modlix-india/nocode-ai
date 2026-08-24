@@ -5,6 +5,8 @@ Only the first group is fixed by the API; the rest we chose. Each carries its so
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 # Google's limits — verified. Not tunable.
 # https://github.com/googleapis/googleapis/blob/master/google/ads/googleads/v23/resources/custom_audience.proto
 CUSTOM_KEYWORD_MAX_WORDS = 10
@@ -72,35 +74,47 @@ MEMBER_HELP = {
     ),
 }
 
-# Keyed by DemographicSpec field. Here, not in the panel, so one repo owns label and value.
-DIMENSION_HELP = {
-    "age_ranges": (
-        "Google's fixed brackets - you cannot pick an exact age. Leave it as Everyone "
-        "unless the product genuinely does not apply to a whole bracket."
-    ),
-    "genders": "Male and female are the only values Google exposes.",
-    "income_ranges": (
-        "A percentile band of household income in the country you target - not an amount. "
-        "Pick a top band and a bottom one; Google only estimates income in some countries."
-    ),
-    "parental_statuses": (
-        "Filters everyone else out. Different from the Detailed Demographics segment of the "
-        "same name above, which instead ADDS parents to your reach."
-    ),
-}
+class Dimension(NamedTuple):
+    """One demographic filter, named for its DemographicSpec field. Everything the panel and
+    the model need about it in one place - split across dicts, a new one arrives half-defined
+    and fails at the first lookup that forgot it."""
 
-# Shown next to each dimension's Unknown box.
-UNKNOWN_HELP = {
-    "age_ranges": "Keep people whose age Google could not determine - a large share.",
-    "genders": "Keep people whose gender Google could not determine - a large share.",
-    "income_ranges": (
+    field: str
+    label: str  # the panel's row and control heading
+    help: str
+    unknown_help: str  # shown beside the dimension's Unknown box
+
+
+DIMENSIONS = (
+    Dimension(
+        "age_ranges",
+        "Age",
+        "Google's fixed brackets - you cannot pick an exact age. Leave it as Everyone "
+        "unless the product genuinely does not apply to a whole bracket.",
+        "Keep people whose age Google could not determine - a large share.",
+    ),
+    Dimension(
+        "genders",
+        "Gender",
+        "Male and female are the only values Google exposes.",
+        "Keep people whose gender Google could not determine - a large share.",
+    ),
+    Dimension(
+        "income_ranges",
+        "Household income",
+        "A percentile band of household income in the country you target - not an amount. "
+        "Pick a top band and a bottom one; Google only estimates income in some countries.",
         "Keep people whose household income Google could not determine. It only estimates "
-        "income in some countries, so switching this off can remove nearly everyone."
+        "income in some countries, so switching this off can remove nearly everyone.",
     ),
-    "parental_statuses": (
-        "Keep people whose parental status Google could not determine - a large share."
+    Dimension(
+        "parental_statuses",
+        "Parental status",
+        "Filters everyone else out. Different from the Detailed Demographics segment of the "
+        "same name above, which instead ADDS parents to your reach.",
+        "Keep people whose parental status Google could not determine - a large share.",
     ),
-}
+)
 
 # The mix is what decides the segment's character, so it leads the section.
 MEMBER_MIX_HELP = (

@@ -395,7 +395,7 @@ flowchart TD
   already applied are real even if the turn later fails, and losing them would contradict
   what the panel already showed. **The record, not the session, is the durable thing.**
 
-  ⚠️ It is deliberately **not** a shared reference, unlike the location sub-session's
+  It is deliberately **not** a shared reference, unlike the location sub-session's
   `product_data`. The build envelope's writer copies (`model_dump`) and drops the
   pre-envelope key, so a shared reference carries exactly the **first** edit and then
   silently stops propagating — and `lookup_keyword` goes blank once the key is gone, so the

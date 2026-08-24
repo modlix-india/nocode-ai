@@ -266,6 +266,20 @@ class BuildHandoffTests(unittest.TestCase):
 
 
 class ReviewBlockTests(unittest.TestCase):
+    def test_the_dimension_payload_keys_are_the_panel_contract(self):
+        # These reach the editor as-is (DemoOptions.dimensions in the panel's types.ts), and
+        # they are the Dimension fields' own names - so a rename in Python silently reshapes
+        # the wire. Pinned here because nothing else would fail.
+        dump = _result(_signal("A")).model_dump(mode="json")
+        section = next(
+            s for s in audience_review_block(dump)["sections"] if s["key"] == "demographics"
+        )
+        dimensions = section["options"]["dimensions"]
+        self.assertEqual([d["field"] for d in dimensions], list(DIMENSION_FIELDS))
+        for d in dimensions:
+            self.assertEqual(set(d), {"field", "label", "help", "unknown_help"})
+            self.assertTrue(all(str(v).strip() for v in d.values()))
+
     def test_sections_group_by_kind_and_carry_breadcrumbs(self):
         dump = _result(
             _signal(

@@ -103,7 +103,7 @@ as drop-ins instead of forcing a refactor of the main agent later.
 sub-session with the collected campaign data, runs the loop, and **returns the whole build
 envelope** for `prepare_campaign_review` to persist on the main session.
 
-⚠️ The whole envelope, not one channel's slot: this shell does not know which channel's tool
+The whole envelope, not one channel's slot: this shell does not know which channel's tool
 ran, so reaching for a named slot returns `None` for every other channel — which is exactly
 how a Demand Gen build reached the main session as nothing. Streaming goes through `_CampaignStream` (a `ChildAgentStream`) which forwards
 panel + sub-agent lifecycle to the parent and swallows the orchestrator's own prose.
@@ -170,37 +170,44 @@ then **one module per channel**, because a channel's payload is not a variation 
 `adapters/google/campaigns.py`, which is the only place in adzump that speaks HTTP to Google
 for a campaign.
 
-⚠️ The emitter stays in the agent tree on purpose. It does no I/O and it imports the build
+The emitter stays in the agent tree on purpose. It does no I/O and it imports the build
 model, so moving it under `adapters/` would point an adapter at `agents/` — the one direction
 that layer does not allow.
 
-⚠️ `publish_campaign` is deliberately **not** a `ToolDefinition` — an LLM-callable tool could
+`publish_campaign` is deliberately **not** a `ToolDefinition` — an LLM-callable tool could
 publish without the consent gate. `launch_campaign` calls it directly, **before** saving, so
 the record never describes a launch that did not happen.
+
+The gate reads words, not context: `_user_confirmed_launch` matches an affirmative in the
+user's latest message, so a yes meant for another question on screen satisfies it. Binding
+consent to the question it answers would use the pending-elicitation record — which already
+carries `tool`, `field` and `opened_turn` — but no tool can read it: the prompt builder pops
+it before tools run, and making it survive turns a one-shot hint into a lifecycle every ask
+depends on. Deferred as its own change rather than worked around here.
 
 #### Bidding — set explicitly, never inherited
 We send `targetSpend: {}` (Maximize Clicks) on every Demand Gen campaign. Google lists it as
 supported: *"Supported bidding strategies are maximize clicks, target CPA, maximize
 conversions, and target ROAS."*
 
-⚠️ **There is no account-level strategy a campaign falls back to.** The portfolio (shared)
+**There is no account-level strategy a campaign falls back to.** The portfolio (shared)
 strategy is `campaign.bidding_strategy`, and it sits in the **same `campaign_bidding_strategy`
 oneof** as `target_spend` — so the two are mutually exclusive, and a campaign uses a shared
 strategy only when it names one. Sending `targetSpend` is what guarantees this campaign is not
 on someone else's portfolio strategy.
 
-⚠️ `biddingStrategyType` is `OUTPUT_ONLY` — accepted silently if sent, so never send it.
+`biddingStrategyType` is `OUTPUT_ONLY` — accepted silently if sent, so never send it.
 
 Choosing the strategy from the account's conversion readiness is deferred; the payload is one
 key, the judgement is not.
 
-⚠️ **Demand Gen puts location on the AD GROUP, not the campaign** — one
+**Demand Gen puts location on the AD GROUP, not the campaign** — one
 `AdGroupCriterion.location.geo_target_constant` per area, the opposite of Search's
 campaign-level `CampaignCriterion`. Google's create-campaign guide: *"With Demand Gen, you can
 choose to set the location and language group criteria at the ad group level."* A test asserts
 no `campaignCriterionOperation` is ever emitted, because the Search shape looks like the fix.
 
-⚠️ **No location criteria means Google serves the campaign worldwide**, so the emitter refuses
+**No location criteria means Google serves the campaign worldwide**, so the emitter refuses
 to build without at least one — a warning would be spent budget by the time anyone read it.
 Constants come from the location agent (`target_areas[].google.resourceName`) and are
 **deduped**: neighbourhoods resolve to postal codes, so 19 areas collapsed to 18 constants
@@ -214,7 +221,7 @@ Creative — headlines, descriptions and images. It is **platform-level**, not G
 (Meta needs the same copy), so the agent sits beside the campaign agent and each platform's
 emitter converts one neutral creative into its own shape.
 
-⚠️ Until creative lands a Demand Gen campaign has **no `AdGroupAd`**: it validates and creates,
+Until creative lands a Demand Gen campaign has **no `AdGroupAd`**: it validates and creates,
 but cannot serve. That is why it is created `PAUSED` and why `ADZUMP_PUBLISH_DRY_RUN` defaults
 on.
 
@@ -255,11 +262,11 @@ The shell is built to extend in one place each:
 
 **Still to come:** Meta tools and Performance Max (no keywords — asset groups instead).
 
-⚠️ **Meta will not fit `CampaignBuild` as it stands.** It is keyed by `Channel`, which is
+**Meta will not fit `CampaignBuild` as it stands.** It is keyed by `Channel`, which is
 Google's campaign types, and Meta has no channel — so Meta needs a platform dimension above
 the channel one, not another block beside `SearchBuild` / `DemandGenBuild`.
 
-⚠️ **A slot's rules live with the slot, not in `models.py`** — that file is the storage
+**A slot's rules live with the slot, not in `models.py`** — that file is the storage
 contract and holds `dict | None`. `google/audience/` is channel-neutral (one `Audience`
 resource also serves Performance Max and App); `google/channel_controls.py` is Demand Gen
 only. Do not group them under a per-channel folder: it would misfile the audience.

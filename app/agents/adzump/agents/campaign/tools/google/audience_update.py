@@ -18,6 +18,7 @@ which a stored snapshot could not.
 from __future__ import annotations
 
 import logging
+from typing import NamedTuple
 
 from pydantic import ValidationError
 
@@ -52,6 +53,21 @@ from app.core.tools.base import ToolResult
 logger = logging.getLogger(__name__)
 
 _VALID_ACTIONS = frozenset({"add", "delete", "set_demographics"})
+
+
+class Member(NamedTuple):
+    """One member kind. A term's param is "keyword", not "term", so neither half is
+    derivable from the action name - holding them together is what stops them drifting."""
+
+    field: str  # the blueprint list it lands in
+    param: str  # the key its value arrives under
+
+
+MEMBERS = {
+    "term": Member("terms", "keyword"),
+    "url": Member("urls", "url"),
+    "app": Member("apps", "app"),
+}
 
 
 def _positive_refs(signals: list[dict]) -> list[str]:
@@ -283,17 +299,9 @@ async def update_audience(params: dict, context: dict) -> ToolResult:
     )
 
 
-MEMBER_LISTS = {"term": "terms", "url": "urls", "app": "apps"}
-
-
-# Where each kind's value travels. A term's is "keyword" after the model field, not "term",
-# so a caller building these dicts cannot guess the key from the action name.
-MEMBER_VALUE_KEYS = {"term": "keyword", "url": "url", "app": "app"}
-
-
 def _member(kind: str, params: dict) -> tuple[object, str]:
     """The member the panel sent, validated, or the reason it cannot be used."""
-    value = str(params.get(MEMBER_VALUE_KEYS[kind]) or "")
+    value = str(params.get(MEMBERS[kind].param) or "")
     try:
         if kind == "term":
             return CustomSegmentTerm(
@@ -332,7 +340,7 @@ async def apply_member_edit(params: dict, context: dict) -> tuple[bool, str]:
         return False, "No session context available."
 
     verb, _, kind = str(params.get("action") or "").partition("_")
-    if verb not in ("add", "delete", "edit") or kind not in MEMBER_LISTS:
+    if verb not in ("add", "delete", "edit") or kind not in MEMBERS:
         return False, f"Invalid action '{params.get('action')}'."
     if verb == "edit" and kind == "term":
         # A term's volume is looked up from the keyword, so changing the text means a new
@@ -356,7 +364,7 @@ async def apply_member_edit(params: dict, context: dict) -> tuple[bool, str]:
     if error:
         return False, error
 
-    field = MEMBER_LISTS[kind]
+    field = MEMBERS[kind].field
     items = list(plan.get(field) or [])
 
     if verb == "add":

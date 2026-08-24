@@ -1,4 +1,4 @@
-"""Shared sub-agent event-stream facade.
+"""Shared sub-agent plumbing: the event-stream facade, and reading a run's reply back.
 
 A worker sub-agent runs on its parent's SSE connection. This base forwards user-facing
 events (panel data/craft, sub-agent lifecycle, confirmations, completion) to the parent
@@ -24,6 +24,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _LOG_TRUNCATE = 160
+
+
+def reply_text(messages: list[dict]) -> str:
+    """The assistant's spoken text across ``messages`` — a sub-agent run's reply."""
+    parts: list[str] = []
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        content = m.get("content")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            parts.extend(
+                b.get("text", "")
+                for b in content
+                if isinstance(b, dict) and b.get("type") == "text"
+            )
+    return "".join(parts).strip()
 
 
 class ChildAgentStream(AgentEventStream):

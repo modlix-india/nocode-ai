@@ -19,10 +19,9 @@ from app.agents.adzump.agents.campaign.google.audience.constants import (
     BLUEPRINTS_KEY,
     CUSTOM_SEGMENT_KEYWORD_TARGET_MAX,
     CUSTOM_SEGMENT_KEYWORD_TARGET_MIN,
-    DIMENSION_HELP,
+    DIMENSIONS,
     MEMBER_HELP,
     MEMBER_MIX_HELP,
-    UNKNOWN_HELP,
     is_pending,
 )
 from app.agents.adzump.agents.campaign.google.audience.models import (
@@ -158,15 +157,6 @@ def keyword_review_block(dump: dict) -> dict:
 
 _EVERYONE = "Everyone"
 
-# Panel order, and the DemographicSpec field each row reads.
-_DIMENSIONS = (
-    ("age_ranges", "Age"),
-    ("genders", "Gender"),
-    ("income_ranges", "Household income"),
-    ("parental_statuses", "Parental status"),
-)
-
-
 def _demographic_rows(dump: dict) -> list[dict]:
     """Every dimension with the reason it was set that way, narrowed or not.
 
@@ -186,17 +176,17 @@ def _demographic_rows(dump: dict) -> list[dict]:
         ),
     }
     rows = []
-    for field, label in _DIMENSIONS:
-        value = values[field]
+    for dim in DIMENSIONS:
+        value = values[dim.field]
         # An unset dimension is never emitted, so saying this there would claim a filter
         # that does not exist.
-        if value and not spec.includes_undetermined(field):
+        if value and not spec.includes_undetermined(dim.field):
             value = f"{value} · unknown excluded"
         rows.append(
             {
-                "attribute": label,
+                "attribute": dim.label,
                 "value": value or _EVERYONE,
-                "rationale": spec.rationales.get(field, ""),
+                "rationale": spec.rationales.get(dim.field, ""),
             }
         )
     return rows
@@ -210,15 +200,7 @@ def _demographic_options() -> dict:
     """The editor's whole vocabulary, from the enums that also validate it. Sent rather than
     hardcoded in the panel: a bad value fails loudly, a drifted label never would."""
     return {
-        "dimensions": [
-            {
-                "field": field,
-                "label": label,
-                "help": DIMENSION_HELP[field],
-                "unknown_help": UNKNOWN_HELP[field],
-            }
-            for field, label in _DIMENSIONS
-        ],
+        "dimensions": [d._asdict() for d in DIMENSIONS],
         "age_mins": list(MIN_AGES),
         "age_maxes": list(MAX_AGES),
         # Ordered top band first - the span the user picks runs down this list.

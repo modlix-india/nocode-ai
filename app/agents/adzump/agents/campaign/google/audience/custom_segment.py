@@ -406,8 +406,7 @@ async def _edit_custom_segment(params: dict, context: dict) -> ToolResult:
     half landed.
     """
     from app.agents.adzump.agents.campaign.tools.google.audience_update import (
-        MEMBER_LISTS,
-        MEMBER_VALUE_KEYS,
+        MEMBERS,
         apply_member_edit,
         emit_panel,
     )
@@ -434,9 +433,9 @@ async def _edit_custom_segment(params: dict, context: dict) -> ToolResult:
 
     action = str(params.get("action") or "")
     _, _, kind = action.partition("_")
-    if kind not in MEMBER_LISTS:
+    if kind not in MEMBERS:
         return ToolResult(success=False, error=f"Invalid action '{action}'.")
-    field = MEMBER_LISTS[kind]
+    field = MEMBERS[kind].field
     values = [str(v).strip() for v in (params.get(field) or []) if str(v).strip()]
     if not values:
         return ToolResult(success=False, error=f"No {field} given for '{action}'.")
@@ -445,7 +444,7 @@ async def _edit_custom_segment(params: dict, context: dict) -> ToolResult:
 
     applied, refused = [], []
     for value in values:
-        edit = {"action": action, "ref": refs[0], MEMBER_VALUE_KEYS[kind]: value}
+        edit = {"action": action, "ref": refs[0], MEMBERS[kind].param: value}
         if action == "add_term":
             edit["volume"] = volumes.get(value, 0)
         ok, message = await apply_member_edit(edit, context)
