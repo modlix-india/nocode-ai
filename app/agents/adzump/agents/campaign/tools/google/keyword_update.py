@@ -66,9 +66,8 @@ def _validate_keyword(kw: str) -> str | None:
 
 def _coerce_match_type(raw: object, section: str, fallback: str = "PHRASE") -> str:
     # Positives are EXACT/PHRASE; negatives are PHRASE/BROAD (mirrors the keyword models).
-    # The fallback is validated too: an edit that omits match_type passes the row's stored
-    # value here, which may be out-of-section (e.g. a legacy EXACT negative) — coerce it
-    # rather than persist it. PHRASE is valid for both sections, so it's the safe default.
+    # The fallback is validated too - a stored value can be out-of-section (a legacy EXACT
+    # negative), so coerce rather than persist it. PHRASE is valid for both.
     allowed = _NEGATIVE_MATCH_TYPES if section == "negatives" else _POSITIVE_MATCH_TYPES
     mt = str(raw or "").upper()
     if mt in allowed:
@@ -185,7 +184,11 @@ def _apply_edit(params: dict, session_ctx: dict) -> tuple[bool, str]:
     if keyword_type not in themes:
         return (
             False,
-            f"No '{keyword_type}' ad group in this campaign. Built: {', '.join(sorted(themes)) or 'none'}.",
+            (
+                f"No '{keyword_type}' ad group in this campaign. Built: "
+                f"{', '.join(sorted(themes)) or 'none'}. Research it first with "
+                "research_ad_group - it cannot be edited into existence."
+            ),
         )
     if section not in _VALID_SECTIONS:
         return False, f"Invalid section '{section}'. Must be positives or negatives."

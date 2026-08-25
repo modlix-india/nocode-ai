@@ -140,8 +140,10 @@ mechanical clicks (`update_keywords`, 0 LLM — HTTP transport in `api.py`:
 `parse_widget_message` + `stream_widget`) **and** the keyword agent's
 `edit_keywords` tool for spoken edits. Both mutate the saved set through
 the same invariants and re-emit **only** the `keyword_review` block (keyed upsert, no flash),
-so an edit made in words can't break a rule a click couldn't. The *words* path is routed by
-the main agent's `manage_keywords` tool → `KeywordResearchAgent.handle()` — see
+so an edit made in words can't break a rule a click couldn't. It edits **existing** ad groups
+only: an ad group with no keywords is refused and pointed at `research_ad_group`, since one
+edited into existence would carry no provenance and no rejections ledger. The *words* path is
+routed by the main agent's `manage_keywords` tool → `KeywordResearchAgent.handle()` — see
 [`google/keyword/AGENT.md` §5](google/keyword/AGENT.md#5-the-manage-flow--answer--edit-after-generation).
 
 ### `tools/google/audience_targeting.py` — the Demand Gen build tool (implemented)

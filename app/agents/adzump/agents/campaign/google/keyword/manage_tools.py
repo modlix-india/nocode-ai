@@ -1,7 +1,8 @@
-"""Tools the KeywordResearchAgent uses AFTER generation — to answer and to edit.
+"""Tools the KeywordResearchAgent uses AFTER generation — to answer, edit and rebuild.
 
-  lookup_keyword   what we recorded about one keyword (in the set / passed over / unseen)
-  edit_keywords    add, remove or change keywords — batched
+  lookup_keyword     what we recorded about one keyword (in the set / passed over / unseen)
+  edit_keywords      add, remove or change keywords — batched
+  research_ad_group  run the full research pipeline for an ad group that has none
 
 Both are general capabilities, not one handler per question: "why this?", "why not that?",
 "add location keywords", "drop the low-volume ones" are all composed from these plus the
@@ -15,10 +16,24 @@ concurrent panel click.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
-from app.agents.adzump.agents.campaign.google.keyword.models import normalize
-from app.agents.adzump.agents.campaign.models import keyword_research
+from app.agents.adzump.agents.campaign.google.keyword.models import (
+    AdGroupStatus,
+    BusinessProfile,
+    KeywordSet,
+    normalize,
+)
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    KEYWORD_THEMES,
+    get_theme,
+)
+from app.agents.adzump.agents.campaign.google.keyword.tools import fill_volumes
+from app.agents.adzump.agents.campaign.models import (
+    keyword_research,
+    set_keyword_research,
+)
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -131,6 +146,23 @@ async def _edit_keywords(params: dict, context: dict) -> ToolResult:
     )
 
     state = _state(context)
+
+    def needs_volume(e: dict) -> bool:
+        # Only a keyword whose text changes: re-pricing an unchanged one would overwrite a
+        # real stored volume with a lookup that often returns nothing.
+        action = str(e.get("action", "")).lower()
+        if not str(e.get("keyword", "")).strip():
+            return False
+        if action == "add":
+            return True
+        return action == "edit" and normalize(str(e.get("keyword", ""))) != normalize(
+            str(e.get("old_keyword", ""))
+        )
+
+    priced = [e for e in edits if isinstance(e, dict) and needs_volume(e)]
+    if priced:
+        await fill_volumes(context, priced)
+
     done: list[str] = []
     failed: list[str] = []
     for edit in edits:
@@ -144,9 +176,8 @@ async def _edit_keywords(params: dict, context: dict) -> ToolResult:
             success=False,
             error="No edit applied. " + " ".join(failed[:3]),
         )
-    # Re-emit the keyword block so the panel matches the mutated set — the SAME keyed
-    # upsert (append=True, stable block id → replace-in-place, no flash) the panel's own
-    # click path does. Without this the panel silently shows the old set after a spoken edit.
+    # Without this the panel silently shows the old set after a spoken edit. Same keyed
+    # upsert the panel's own click path uses, so it replaces in place without a flash.
     await _emit_panel(context, state)
     logger.info(
         "kw_edit applied=%d rejected=%d themes=%s",
@@ -158,6 +189,137 @@ async def _edit_keywords(params: dict, context: dict) -> ToolResult:
     if failed:
         summary += f" ({len(failed)} rejected: {failed[0]})"
     return ToolResult(success=True, summary=summary, data={"applied": len(done)})
+
+
+async def _research_ad_group(params: dict, context: dict) -> ToolResult:
+    theme_id = str(params.get("keyword_type", "")).strip().lower()
+    if theme_id not in KEYWORD_THEMES:
+        return ToolResult(
+            success=False,
+            error=f"Unknown ad group '{theme_id}'. Known: {', '.join(sorted(KEYWORD_THEMES))}.",
+        )
+    state = _state(context)
+    wanted = state.get("kw_wanted") or []
+    if wanted and theme_id not in wanted:
+        return ToolResult(
+            success=False,
+            error=(
+                f"The user did not ask for a {get_theme(theme_id).label} ad group. Which ad "
+                "groups to build is their choice, made at the consent step - offer it, do "
+                "not create it."
+            ),
+        )
+    dump = keyword_research(state)
+    if not dump:
+        return ToolResult(success=False, error="No keyword research in this session.")
+    existing = (dump.get("themes") or {}).get(theme_id) or {}
+    if existing.get("positives"):
+        return ToolResult(
+            success=False,
+            error=(
+                f"The {get_theme(theme_id).label} ad group already has keywords. Edit them "
+                "with edit_keywords - researching again would discard the user's review."
+            ),
+        )
+
+    # Imported here: both live in the campaign tools layer, which imports this package.
+    from app.agents.adzump.agents.campaign.google.keyword.agent import (
+        KeywordResearchAgent,
+    )
+    from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
+        _RESEARCH_TIMEOUT_SECONDS,
+    )
+
+    # The research singleton, never `self`: the pipeline needs the generation tools to submit.
+    agent = KeywordResearchAgent.get_instance()
+    partials: dict[str, KeywordSet] = {}
+    result: KeywordSet | None
+    try:
+        result = await asyncio.wait_for(
+            agent.research(
+                keyword_type=theme_id,
+                business_text=state.get("kw_business_text", ""),
+                ad_account={
+                    "customer_id": state.get("kw_customer_id", ""),
+                    "login_customer_id": state.get("kw_login_customer_id", ""),
+                },
+                geo={
+                    "geo_target_constants": state.get("kw_geo") or [],
+                    "hl": state.get("kw_hl", "en"),
+                    "gl": state.get("kw_gl", "US"),
+                    "language": state.get("kw_language", ""),
+                },
+                parent_event_stream=context["event_stream"],
+                auth=context["auth"],
+                category=state.get("kw_category", ""),
+                core_terms=list(state.get("kw_core_terms") or []),
+                siblings=list(state.get("kw_siblings") or []),
+                # This theme's own surfaces, not the manage session's union: BRAND takes no
+                # informational sources.
+                sources=BusinessProfile(
+                    category=state.get("kw_category", ""),
+                    includes_informational_funnel=bool(state.get("kw_informational")),
+                ).source_names(theme_id),
+                location=state.get("kw_location", ""),
+                service_areas=list(state.get("kw_service_areas") or []),
+                business_url=state.get("kw_business_url", ""),
+                partial_sink=partials,
+            ),
+            _RESEARCH_TIMEOUT_SECONDS,
+        )
+    except asyncio.CancelledError:
+        # The caller hung up. Re-raised, or the manage loop keeps spending on a dead request.
+        raise
+    except Exception as exc:  # noqa: BLE001 - a timeout still leaves usable phases
+        result = partials.get(theme_id)
+        if result is None or not result.positives:
+            logger.warning(
+                "research_ad_group %s failed: %s", theme_id, type(exc).__name__
+            )
+            return ToolResult(
+                success=False,
+                error=f"Researching the {get_theme(theme_id).label} ad group did not finish.",
+            )
+
+    if result is None or not result.positives:
+        return ToolResult(
+            success=False,
+            error=f"The {get_theme(theme_id).label} ad group produced no usable keywords.",
+        )
+
+    # Re-read: research ran for minutes, so the earlier copy predates any edit since.
+    dump = keyword_research(state) or dump
+    themes = dump.get("themes") or {}
+    themes[theme_id] = result.model_dump(mode="json")
+    dump["themes"] = themes
+    meta = dump.get("meta") or {}
+    for key in (AdGroupStatus.PENDING.value, AdGroupStatus.FAILED.value):
+        # Left behind it renders a ghost tab beside the real one.
+        if theme_id in (meta.get(key) or []):
+            meta[key] = [t for t in meta[key] if t != theme_id]
+    dump["meta"] = meta
+    set_keyword_research(state, dump)
+
+    from app.agents.adzump.agents.campaign.tools.google.keyword_update import (
+        _emit_panel,
+    )
+
+    await _emit_panel(context, state)
+    logger.info(
+        "research_ad_group type=%s positives=%d negatives=%d status=%s",
+        theme_id,
+        len(result.positives),
+        len(result.negatives),
+        result.status.value,
+    )
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Researched the {result.label or theme_id} ad group: "
+            f"{len(result.positives)} positives, {len(result.negatives)} negatives."
+        ),
+        data={"keyword_type": theme_id, "status": result.status.value},
+    )
 
 
 LOOKUP_KEYWORD = ToolDefinition(
@@ -212,7 +374,6 @@ EDIT_KEYWORDS = ToolDefinition(
                         "type": "string",
                         "description": "positives: EXACT|PHRASE. negatives: PHRASE|BROAD.",
                     },
-                    "volume": {"type": "integer"},
                     "intent": {"type": "string", "description": "positives only."},
                     "reason": {
                         "type": "string",
@@ -226,4 +387,24 @@ EDIT_KEYWORDS = ToolDefinition(
     execute=_edit_keywords,
 )
 
-MANAGE_TOOLS = [LOOKUP_KEYWORD, EDIT_KEYWORDS]
+RESEARCH_AD_GROUP = ToolDefinition(
+    name="research_ad_group",
+    description=(
+        "Run the full research pipeline for an ad group that has NO keywords — one that "
+        "failed or never ran. This is the ONLY way to create an ad group; edit_keywords "
+        "cannot add to one that does not exist. Refuses an ad group that already has "
+        "keywords, so it can never discard the user's review."
+    ),
+    display_name="Research Ad Group",
+    parameters=[
+        ToolParameter(
+            name="keyword_type",
+            type="string",
+            description="The ad group id to research (e.g. brand, generic).",
+            required=True,
+        )
+    ],
+    execute=_research_ad_group,
+)
+
+MANAGE_TOOLS = [LOOKUP_KEYWORD, EDIT_KEYWORDS, RESEARCH_AD_GROUP]

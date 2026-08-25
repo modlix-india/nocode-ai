@@ -18,6 +18,7 @@ from app.agents.adzump.agents.campaign.google.keyword.themes import (
 )
 from app.agents.adzump.agents.campaign.models import (
     Channel,
+    build_gaps,
     build_review_items,
     is_build_complete,
     resolve_channel,
@@ -112,6 +113,9 @@ class CampaignContext:
     # flips the review branch from "prepare the campaign" to "launch". Which slot counts
     # depends on the channel: keywords for Search, audience for Demand Gen.
     build_done: bool = False
+    # Unfinished work inside a build that did run, worded by the channel that owns it. The
+    # one build-stage case that must not be answered by building again.
+    build_gaps: tuple[str, ...] = ()
     # What the review panel is showing, named by the channel that built it - so this module
     # never has to know which slots a channel has.
     review_items: tuple[str, ...] = ()
@@ -158,6 +162,7 @@ class CampaignContext:
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
             build_done=is_build_complete(ctx),
+            build_gaps=build_gaps(ctx),
             review_items=build_review_items(ctx),
             summary_confirmed=_is_affirmative(
                 (ctx.get("campaign_spec") or {}).get("summary_confirmed")
@@ -452,7 +457,11 @@ def _next_action(cctx: CampaignContext) -> list[str]:
     elif not missing and cctx.is_google and not cctx.build_done:
         # Google-only build stage. Other platforms have no build step yet and skip
         # straight to launch below.
-        if not cctx.spec.get("channel"):
+        if cctx.build_gaps:
+            # First: a build that ran has already answered channel and ad groups, and the
+            # branches below would only prescribe building it a second time.
+            missing.extend(cctx.build_gaps)
+        elif not cctx.spec.get("channel"):
             # Which build runs, so it belongs to the build stage - not to the details the
             # summary confirms. Options come from the enum: a channel that exists can be
             # built, so a new one is offered without touching this module.

@@ -128,10 +128,15 @@ def _how_to_respond_section() -> str:
         '"don\'t include that area", "remove the last one"); '
         'requests to clear or replace the whole list ("clear all locations", '
         '"change targeting to just Bangalore").\n'
-        "1b. Keyword question or edit (once keywords are in the panel) → call "
-        "`manage_keywords(user_message=<their verbatim message>)` IMMEDIATELY. Do NOT "
-        "answer it yourself — the keyword agent recorded why each keyword was chosen or "
-        "skipped; you did not, so you would be guessing.\n"
+        "1b. ONCE THE KEYWORD PANEL EXISTS — a question about its keywords, an edit, or "
+        "retrying an ad group that failed → call `manage_keywords(user_message=<their "
+        "verbatim message>)` IMMEDIATELY. Do NOT answer it yourself — the keyword agent "
+        "recorded why each keyword was chosen or skipped; you did not, so you would be "
+        "guessing. Before the panel exists this rule does not apply: choosing which ad "
+        "groups to build is a `set_campaign_spec(ad_groups=...)` answer, not a keyword "
+        "edit.\n"
+        "   A Demand Gen custom segment is also built from keywords — that is rule 1c, not "
+        "this one.\n"
         '   Triggers (any of these): why a keyword is there ("why did you include '
         'affordable running shoes?"); why one ISN\'T ("why is cheap shoes missing?", '
         '"where\'s my brand name?"); judgement on a keyword ("is X too broad?", '

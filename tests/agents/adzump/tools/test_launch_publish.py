@@ -198,6 +198,7 @@ class UnsupportedChannelTests(unittest.TestCase):
         # is_build_complete now refuses, and launching it would save an empty campaign.
         ctx = _ctx()
         ctx["session_context"]["campaign_spec"]["channel"] = "Search"
+        ctx["session_context"]["campaign_spec"]["ad_groups"] = "brand"
         set_keyword_research(
             ctx["session_context"],
             {"themes": {"brand": {"positives": [{"keyword": "k"}]}}},

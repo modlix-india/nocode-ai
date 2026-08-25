@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adzump.agents.campaign.google.audience import catalogue
 from app.agents.adzump.agents.campaign.google.audience.constants import (
     BLUEPRINTS_KEY,
     CUSTOM_SEGMENT_KEYWORD_TARGET_MAX,
@@ -283,6 +284,9 @@ def audience_review_block(dump: dict, blueprints: dict | None = None) -> dict:
             "key": kind.value.lower(),
             "label": f"{kind.label} ({len(rows)})",
             "help": kind.help,
+            # Segments OR together and add reach; demographics and exclusions AND and remove
+            # it. Carried so the panel groups on it rather than on section keys.
+            "group": "custom" if kind is SignalKind.CUSTOM_AUDIENCE else "reach",
             "columns": ["segment", "category", "rationale"],
             "rows": rows,
             # No edit — segments are catalogue refs, not free text; change = delete + add.
@@ -314,6 +318,7 @@ def audience_review_block(dump: dict, blueprints: dict | None = None) -> dict:
             {
                 "key": "excluded",
                 "label": f"Excluded ({len(excluded)})",
+                "group": "narrow",
                 "columns": ["segment", "rationale"],
                 "rows": excluded,
             }
@@ -328,10 +333,10 @@ def audience_review_block(dump: dict, blueprints: dict | None = None) -> dict:
             # "Demographic Filters", not "Demographics": the segment section above is called
             # Detailed Demographics and ADDS people, while this one removes them.
             "label": "Demographic Filters",
+            "group": "narrow",
             "help": (
-                "Applied on top of every segment above. Someone has to match here AND be "
-                "in one of those segments, so each filter you set makes the audience "
-                "smaller. Leave one as Everyone unless it truly does not apply."
+                "Applied on top of every segment above, so each one set makes the audience "
+                "smaller. Leave as Everyone unless it truly does not apply."
             ),
             "columns": ["attribute", "value", "rationale"],
             "rows": _demographic_rows(demographics),
@@ -344,7 +349,15 @@ def audience_review_block(dump: dict, blueprints: dict | None = None) -> dict:
     )
     if custom:
         sections.append(custom)
-    return {"id": "audience_review", "type": "audience_review", "sections": sections}
+    return {
+        "id": "audience_review",
+        "type": "audience_review",
+        "sections": sections,
+        "kinds": [
+            {"key": k.value.lower(), "label": k.label}
+            for k in catalogue.BROWSABLE_KINDS
+        ],
+    }
 
 
 def channel_controls_block(controls: dict | None, ad_type: AdType) -> dict:

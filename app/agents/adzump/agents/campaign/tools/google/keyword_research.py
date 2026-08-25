@@ -7,7 +7,7 @@ of positives/negatives (with volumes), shown as a tab in the review panel.
 
 Which ad groups get built is the user's choice (``campaign_spec["ad_groups"]``, from the
 consent step), never the model's; each one runs the keyword theme of the same id — see
-``_resolve_themes``.
+``resolve_theme_ids``.
 
 Google Search only for now; other platforms and campaign types become sibling tools.
 """
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 from app.agents.adzump._shared import build_ds_headers
 from app.agents.adzump.adapters.google import keyword_planner
@@ -41,8 +42,7 @@ from app.agents.adzump.agents.campaign.google.keyword.taxonomy import (
     derive_offering_taxonomy,
 )
 from app.agents.adzump.agents.campaign.google.keyword.themes import (
-    DEFAULT_THEME_IDS,
-    KEYWORD_THEMES,
+    resolve_theme_ids,
 )
 from app.agents.adzump.agents.campaign.models import (
     Channel,
@@ -64,32 +64,9 @@ from app.core.tools.base import ToolDefinition, ToolResult
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_PLATFORM = "google"
-# Ceiling for one ad group's full run (expand -> score -> select -> negatives), which
-# measures ~330s on a reasoning model.
-_RESEARCH_TIMEOUT_SECONDS = 400
+# Ceiling for one ad group's full run. A hit leaves whatever phases finished (-> partial).
+_RESEARCH_TIMEOUT_SECONDS = 500
 _LOG_TRUNCATE = 200
-
-
-def _resolve_themes(spec: dict) -> list[str]:
-    """The themes to run, from the ad groups the user chose (each runs the theme of its id).
-
-    Normalises whatever the consent step lands — chip, typed, or nothing. Unknown names are
-    dropped rather than guessed; no choice means the full plan we showed them.
-    """
-    raw = spec.get("ad_groups")
-    if isinstance(raw, str):
-        raw = raw.replace("&", ",").split(",")
-    elif not isinstance(raw, (list, tuple, set)):
-        raw = []
-
-    chosen: list[str] = []
-    for item in raw:
-        # Accept an id, a CSV of ids ("brand,generic" — the "Both" chip's answer), or a
-        # spoken label ("both brand and generic").
-        for word in str(item).lower().replace("-", " ").split():
-            if word in KEYWORD_THEMES and word not in chosen:
-                chosen.append(word)
-    return chosen or list(DEFAULT_THEME_IDS)
 
 
 async def _resolve_geo(session_ctx: dict, context: dict) -> dict:
@@ -126,17 +103,18 @@ async def _resolve_geo(session_ctx: dict, context: dict) -> dict:
     }
 
 
-def _research_key(
-    customer_id: str, product: dict, themes: list[str], geo_constant: str
-) -> str:
-    """Fingerprint of the inputs a run depends on — used to skip a redundant re-run."""
+def _research_key(customer_id: str, product: dict, geo_constant: str) -> str:
+    """Fingerprint of the inputs that decide whether an ALREADY-RESEARCHED ad group is still
+    valid. The chosen ad groups are deliberately not part of it: a theme's run reads none of
+    the others, so asking for one more would otherwise invalidate the key and re-research -
+    discarding - the sets the user has already reviewed.
+    """
     return "|".join(
         [
             customer_id,
             str(product.get("product_name", "")),
             str(product.get("business_type", "")),
             geo_constant,
-            ",".join(sorted(themes)),
         ]
     )
 
@@ -194,7 +172,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error="No auth context for keyword research.")
 
     # The user chose these at the consent step; the model does not get to pick.
-    themes = _resolve_themes(spec)
+    themes = resolve_theme_ids(spec)
 
     login_customer_id = str(spec.get("parent_account") or "").strip()
 
@@ -206,7 +184,7 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
     # carried forward and only the rest are researched, so a retry costs the ad group that
     # needs it rather than the whole run.
     geo_constants = geo.get("geo_target_constants") or [""]
-    research_key = _research_key(customer_id, product, themes, geo_constants[0])
+    research_key = _research_key(customer_id, product, geo_constants[0])
     cached = _saved_keywords(session_ctx)
     craft_id = (
         session_ctx.get("craft_id") or f"campaign_{context.get('session_id', '')}"
@@ -235,14 +213,18 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
         )
 
     # Offering taxonomy (core vs sibling + local-vs-national) — product analysis doesn't
-    # persist one, so derive it from confirmed product_data; cached by offering fingerprint
-    # (re-derives only when the product changes).
+    # persist one, so derive it from confirmed product_data. The key guards a second call
+    # within this run; across runs it rides back in meta["taxonomy"] for the manage path.
     tax_key = _taxonomy_key(product)
     cache = session_ctx.get("_offering_taxonomy") or {}
     if cache.get("key") == tax_key:
         taxonomy = cache["data"]
     else:
+        # The only step before the workers that is neither logged nor timed anywhere else,
+        # so a slow run cannot otherwise be told apart from a slow start.
+        started = time.monotonic()
         derived = await derive_offering_taxonomy(product)
+        logger.info("kw_taxonomy derived in %ds", int(time.monotonic() - started))
         taxonomy = derived.model_dump()
         # `complete` is False only for a transient fail-soft fallback — don't cache that
         # (it would poison the session for this product); a real derivation is cached so
@@ -305,6 +287,10 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
             "key": research_key,
             # The panel's edit gate has no LLM, so it reads the brand the taxonomy named.
             "brand_terms": taxonomy.get("brand_terms") or [],
+            # The whole taxonomy rides back with the build: it is derived in this throwaway
+            # sub-session, so the manage path would otherwise seed every later run with no
+            # core terms and no siblings.
+            "taxonomy": taxonomy,
         }
     )
     counts: list[str] = []
@@ -324,8 +310,13 @@ async def _keyword_research(params: dict, context: dict) -> ToolResult:
         theme_id, res, exc = await finished
         pending.discard(theme_id)
         if exc is not None:
+            # A timeout and a cancel both stringify to "", so the type carries the reason.
             logger.warning(
-                "keyword_research %s failed: %s", theme_id, str(exc)[:_LOG_TRUNCATE]
+                "keyword_research %s failed after %ds: %s%s",
+                theme_id,
+                _RESEARCH_TIMEOUT_SECONDS,
+                type(exc).__name__,
+                f": {str(exc)[:_LOG_TRUNCATE]}" if str(exc) else "",
             )
         if res is None or not res.positives:
             # An ad group with no keywords can't run: a failed tab, not an empty one.

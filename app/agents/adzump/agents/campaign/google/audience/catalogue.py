@@ -26,6 +26,15 @@ _KIND_BY_RESOURCE = {
 
 _RESOURCES = (taxonomy.INTEREST, taxonomy.LIFE_EVENT, taxonomy.DETAILED_DEMOGRAPHIC)
 
+# Everything `load` can return, so everything the picker can browse - offered whether or not
+# the campaign already holds one of that kind.
+BROWSABLE_KINDS = (
+    SignalKind.IN_MARKET,
+    SignalKind.AFFINITY,
+    SignalKind.LIFE_EVENT,
+    SignalKind.DETAILED_DEMOGRAPHIC,
+)
+
 
 async def load(
     *,
@@ -69,10 +78,8 @@ async def load(
             )
         )
 
-    # Ancestors resolve against everything fetched, not just the targetable ones. A parent
-    # that cannot serve is still the parent, and indexing only the targetable entries
-    # truncates its children's path - the ancestry that separates "people buying this" from
-    # "people who work in this".
+    # Ancestors resolve against everything fetched, not just the targetable: a parent that
+    # cannot serve is still the parent, and skipping it truncates its children's path.
     index = taxonomy.by_resource_name(fetched)
     return [
         {

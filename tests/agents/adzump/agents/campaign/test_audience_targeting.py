@@ -224,10 +224,10 @@ class BuildHandoffTests(unittest.TestCase):
     main session is where launch, next_action and the manage agent all read from.
     """
 
-    def _hop(self, sub_ctx, channel):
-        # The main session always carries the spec - it is what chose the channel, and
-        # is_build_complete checks the build against it.
-        main_ctx = {"campaign_spec": {"platform": "GOOGLE", "channel": channel}}
+    def _hop(self, sub_ctx, channel, **spec):
+        # The main session always carries the spec - it is what chose the channel and the ad
+        # groups, and is_build_complete checks the build against both.
+        main_ctx = {"campaign_spec": {"platform": "GOOGLE", "channel": channel, **spec}}
         set_build(main_ctx, build_dump(sub_ctx))
         return main_ctx
 
@@ -257,7 +257,7 @@ class BuildHandoffTests(unittest.TestCase):
     def test_a_search_build_survives_the_hop(self):
         sub = {}
         set_keyword_research(sub, {"themes": {"brand": {}}})
-        main = self._hop(sub, "Search")
+        main = self._hop(sub, "Search", ad_groups="brand")
         self.assertEqual(keyword_research(main), {"themes": {"brand": {}}})
         self.assertTrue(is_build_complete(main))
 

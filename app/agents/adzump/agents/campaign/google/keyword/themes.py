@@ -290,3 +290,27 @@ def get_theme(theme_id: str) -> KeywordTheme:
         raise KeyError(
             f"unknown theme {theme_id!r}; known: {sorted(KEYWORD_THEMES)}"
         ) from None
+
+
+def resolve_theme_ids(spec: dict) -> list[str]:
+    """The themes to run, from the ad groups the user chose (each runs the theme of its id).
+
+    Normalises whatever the consent step lands - chip, typed, or nothing. Unknown names are
+    dropped rather than guessed; no choice means the full plan we showed them. Here rather
+    than beside the research tool because the build model asks the same question, to decide
+    whether every ad group the user asked for actually arrived.
+    """
+    raw = spec.get("ad_groups")
+    if isinstance(raw, str):
+        raw = raw.replace("&", ",").split(",")
+    elif not isinstance(raw, (list, tuple, set)):
+        raw = []
+
+    chosen: list[str] = []
+    for item in raw:
+        # Accept an id, a CSV of ids ("brand,generic" - the "Both" chip's answer), or a
+        # spoken label ("both brand and generic").
+        for word in str(item).lower().replace("-", " ").split():
+            if word in KEYWORD_THEMES and word not in chosen:
+                chosen.append(word)
+    return chosen or list(DEFAULT_THEME_IDS)

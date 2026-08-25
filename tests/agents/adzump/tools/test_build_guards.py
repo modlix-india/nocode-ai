@@ -213,6 +213,9 @@ class SearchFlowTests(unittest.TestCase):
 
     def test_a_built_search_campaign_is_not_rebuilt_either(self):
         ctx = _ctx(channel="Search")
+        # The choice this build answered. Without it the plan is both ad groups, and a build
+        # holding only brand is correctly unfinished rather than already built.
+        ctx["session_context"]["campaign_spec"]["ad_groups"] = "brand"
         set_keyword_research(ctx["session_context"], {"themes": {"brand": {}}})
         before = keyword_research(ctx["session_context"])
         res, seen = _run_prepare(ctx, produced=_RESEARCH)

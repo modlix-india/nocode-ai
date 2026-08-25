@@ -136,9 +136,8 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
             normalize(s.keyword), {"source": s.source, "seed": s.seed}
         )
 
-    # Seeds + suggestions form the candidate pool. The top slice is expanded by the Planner
-    # (generateKeywordIdeas); the overflow is real autosuggest queries we'd otherwise discard —
-    # keyword_metrics scores it cheaply via historical metrics instead of throwing it away.
+    # The overflow past the cap is real autosuggest queries, so keyword_metrics scores it
+    # via historical metrics rather than discarding it.
     unique = list(dict.fromkeys(seeds + [s.keyword for s in suggestions]))
     pool = unique[: constants.MAX_EXPANSION_CANDIDATES]
     state["kw_pool"] = pool
@@ -164,9 +163,9 @@ async def _expand_keywords(params: dict, context: dict) -> ToolResult:
 def _collapse_repeats(keyword: str) -> str | None:
     """Order-preserving de-duplication of repeated tokens; None if nothing repeats.
 
-    Repairs duplicate-token phrases the Planner sometimes returns ("a glasses a" -> "a glasses").
-    The collapsed form is only a CANDIDATE — it's re-scored via historical metrics and kept
-    only if real, and the original is never dropped, so a wrong collapse can never corrupt data.
+    Repairs duplicate-token phrases the Planner sometimes returns ("a glasses a" -> "a
+    glasses"). Only a CANDIDATE: re-scored and kept only if real, and the original is never
+    dropped, so a wrong collapse cannot corrupt data.
     """
     toks = keyword.split()
     out = list(dict.fromkeys(toks))
@@ -210,10 +209,9 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             error=f"Keyword Planner request failed: {str(exc)[: constants.LOG_TRUNCATE]}",
         )
 
-    # Recover clean candidates the Planner's expansion misses: the discarded overflow (real
-    # autosuggest queries beyond the cap) + de-mangled repairs of duplicate-token phrases it
-    # returned. Both are scored EXACTLY via historical metrics (no re-expansion → no new
-    # mangling) and kept only if real; originals are never dropped.
+    # Recovers what the Planner's expansion misses: the discarded overflow, and repairs of
+    # duplicate-token phrases it mangled. Scored exactly, so no re-expansion re-mangles
+    # them; originals are never dropped.
     idea_keys = {i["keyword"] for i in ideas}
     repairs = [c for i in ideas if (c := _collapse_repeats(i["keyword"]))]
     recover = [
@@ -233,10 +231,9 @@ async def _keyword_metrics(params: dict, context: dict) -> ToolResult:
             )
         recovered = [r for r in recovered if r.get("volume", 0) > 0]
 
-    # Demand gate — the theme's own policy, the same one its select guidance states to
-    # the model (generic: "drop 0-volume terms"; brand: "own these even at zero volume").
-    # Research only: a manage run scores for ANY ad group (the target isn't knowable
-    # here), so all candidates stay and the per-ad-group bars decide.
+    # Demand gate — the theme's own policy (generic: drop 0-volume; brand: own them anyway).
+    # Research only: a manage run's target ad group isn't knowable here, so everything stays
+    # and the per-ad-group bars decide.
     if (
         state.get("kw_mode") != "manage"
         and not get_theme(state["kw_type"]).keep_zero_volume
@@ -459,7 +456,7 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
             error="None of your submitted keywords were valid (they overlap with positives, are unsafe, or are duplicates). Please try different negatives.",
         )
 
-    await _attach_negative_volumes(context, kept)
+    await fill_volumes(context, kept)
     state["kw_negatives"] = kept
     not_reviewed = len(items) - examined
     logger.info(
@@ -470,7 +467,6 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
         rejected,
         not_reviewed,
     )
-    # Build an honest summary so the model knows exactly what happened.
     parts: list[str] = []
     if rejected:
         parts.append(
@@ -487,20 +483,23 @@ async def _submit_negative_keywords(params: dict, context: dict) -> ToolResult:
     )
 
 
-async def _attach_negative_volumes(context: dict, negatives: list[dict]) -> None:
-    """Fill each negative's volume — reuse the candidate pool, else historical metrics
-    for the rest (negatives are usually wrong-category terms outside the ideas pool)."""
-    if not negatives:
+async def fill_volumes(context: dict, rows: list[dict]) -> None:
+    """Fill each row's volume - the candidate pool first, then historical metrics for the
+    rest. Every path that stores a keyword comes through here: a volume nobody looked up is
+    either a zero the panel shows as fact, or a number the model invented.
+    """
+    if not rows:
         return
     state = _state(context)
     by_kw = _candidates_by_keyword(state)
     missing: list[str] = []
-    for neg in negatives:
-        cand = by_kw.get(neg["keyword"])
+    for row in rows:
+        cand = by_kw.get(normalize(row.get("keyword", "")))
         if cand is not None:
-            neg["volume"] = int(cand.get("volume", 0))
+            row["volume"] = int(cand.get("volume", 0))
         else:
-            missing.append(neg["keyword"])
+            row["volume"] = int(row.get("volume") or 0)
+            missing.append(row["keyword"])
     if not (missing and state.get("kw_customer_id")):
         return
     metrics = await keyword_planner.fetch_keyword_historical_metrics(
@@ -508,14 +507,13 @@ async def _attach_negative_volumes(context: dict, negatives: list[dict]) -> None
     )
     if not metrics and missing:
         logger.warning(
-            "historical_metrics returned empty for %d negatives", len(missing)
+            "historical_metrics returned empty for %d keywords", len(missing)
         )
-    fetched = {m["keyword"]: m["volume"] for m in metrics}
-    for neg in negatives:
-        if (
-            neg["volume"] == 0
-        ):  # pool-hits already have a volume; backfill only the rest
-            neg["volume"] = fetched.get(neg["keyword"], 0)
+    # The Planner echoes its own lowercased text, so both sides are keyed through normalize.
+    fetched = {normalize(m["keyword"]): m["volume"] for m in metrics}
+    for row in rows:
+        if row["volume"] == 0:  # pool-hits already have one; backfill only the rest
+            row["volume"] = fetched.get(normalize(row["keyword"]), 0)
 
 
 # tool definitions

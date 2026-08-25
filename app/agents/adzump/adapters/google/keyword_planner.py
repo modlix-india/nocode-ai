@@ -31,15 +31,15 @@ _VALID_COMPETITION_LEVELS = {"LOW", "MEDIUM", "HIGH"}
 
 # Request tuning (not hard API limits; documented choices)
 _SEED_CHUNK_SIZE = 15  # proven batch size; smaller chunks expand more focused
-_CHUNK_CONCURRENCY = 2  # max in-flight Planner requests, shared process-wide (see _concurrency_gate)
 _MAX_RETRIES = 2
 _RETRY_BACKOFF_BASE_SECONDS = 0.5  # exponential: base * 2**attempt (0.5s, then 1.0s)
 _LOG_ERROR_MAXLEN = 160  # truncation for error messages in logs
 
-# One process-global gate shared by EVERY fetch_keyword_ideas call, so parallel agents
-# (brand + generic) can't collectively exceed the burst and trip the Planner's 429 limit.
-# Lazily created so it binds to the running loop, not import time.
-_planner_gate: "asyncio.Semaphore | None" = None
+# Planner methods allow 1 request/second per customer id; over it: RESOURCE_EXHAUSTED.
+#   https://developers.google.com/google-ads/api/docs/best-practices/quotas
+_PLANNER_MIN_INTERVAL_SECONDS = 1.05  # margin for clock skew
+_planner_next_slot: dict[str, float] = {}
+_planner_slot_lock: asyncio.Lock | None = None
 
 
 def planner_call_args(
@@ -64,11 +64,20 @@ def planner_call_args(
     )
 
 
-def _concurrency_gate() -> asyncio.Semaphore:
-    global _planner_gate
-    if _planner_gate is None:
-        _planner_gate = asyncio.Semaphore(_CHUNK_CONCURRENCY)
-    return _planner_gate
+async def _await_planner_slot(customer_id: str) -> None:
+    """Hold until this customer's next slot, then claim it. Keyed by customer because the
+    quota is - two ad groups on one account share a pace, two customers do not."""
+    global _planner_slot_lock
+    if _planner_slot_lock is None:
+        _planner_slot_lock = asyncio.Lock()
+    # Claimed under the lock so callers queue instead of racing for the same instant.
+    async with _planner_slot_lock:
+        now = time.monotonic()
+        slot = max(_planner_next_slot.get(customer_id, 0.0), now)
+        _planner_next_slot[customer_id] = slot + _PLANNER_MIN_INTERVAL_SECONDS
+    if slot > now:
+        await asyncio.sleep(slot - now)
+
 
 # Circuit breaker — N consecutive failures open it for a cooldown (fail fast).
 # Per-process module state; fine for the single-process uvicorn deploy.
@@ -236,27 +245,26 @@ async def fetch_keyword_ideas(
     _breaker_check()  # surface an open breaker rather than returning a misleading empty set
     geo = geo_target_constants or [INDIA_GEO_TARGET]
     endpoint = f"customers/{customer_id}:generateKeywordIdeas"
-    gate = _concurrency_gate()
 
     async def _fetch_chunk(chunk: list[str]) -> list[dict]:
-        async with gate:
-            payload = _build_payload(chunk, url, geo, language, network)
-            try:
-                response = await _post_with_retry(
-                    endpoint, payload, client_code, auth_headers, login_customer_id
-                )
-                return [
-                    idea
-                    for result in response.get("results", [])
-                    if (idea := _parse_idea(result)) is not None
-                ]
-            except Exception as exc:
-                logger.warning(
-                    "keyword_planner: chunk failed (%d seeds) after retries: %s",
-                    len(chunk),
-                    str(exc)[:_LOG_ERROR_MAXLEN],
-                )
-                return []
+        await _await_planner_slot(customer_id)
+        payload = _build_payload(chunk, url, geo, language, network)
+        try:
+            response = await _post_with_retry(
+                endpoint, payload, client_code, auth_headers, login_customer_id
+            )
+            return [
+                idea
+                for result in response.get("results", [])
+                if (idea := _parse_idea(result)) is not None
+            ]
+        except Exception as exc:
+            logger.warning(
+                "keyword_planner: chunk failed (%d seeds) after retries: %s",
+                len(chunk),
+                str(exc)[:_LOG_ERROR_MAXLEN],
+            )
+            return []
 
     chunks = list(_chunks(seeds, _SEED_CHUNK_SIZE))
     logger.info(
@@ -303,6 +311,8 @@ async def fetch_keyword_historical_metrics(
         "keywordPlanNetwork": network,
         "includeAdultKeywords": False,
     }
+    # Same per-customer quota bucket as generateKeywordIdeas.
+    await _await_planner_slot(customer_id)
     try:
         response = await _post_with_retry(
             endpoint, payload, client_code, auth_headers, login_customer_id

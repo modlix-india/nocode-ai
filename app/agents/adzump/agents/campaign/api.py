@@ -52,7 +52,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _MAX_KEYWORDS = 25  # bound a single add request
-_MAX_SEGMENT_RESULTS = 25  # what one panel search offers
 
 
 class _Panel(NamedTuple):
@@ -169,13 +168,17 @@ class AudienceSegment(BaseModel):
     label: str
     kind: str
     path: list[str] = Field(default_factory=list)
-    # Browse only. Search drops what is already targeted, but a tree cannot: removing a
-    # targeted PARENT leaves its children with nothing to expand from.
+    # Already in the audience. Shown either way - in a tree, dropping a targeted PARENT would
+    # leave its children with nothing to expand from.
     targeted: bool = False
+    # Targeted because the agent chose it, which is why it carries a reason. A panel add has
+    # none, so the picker can say who put each one there.
+    recommended: bool = False
 
 
 class AudienceSearchResponse(BaseModel):
     results: list[AudienceSegment] = Field(default_factory=list)
+    total: int = 0
 
 
 @router.post("/audience/search", response_model=AudienceSearchResponse)
@@ -210,36 +213,37 @@ async def audience_search(
         client_code=auth.client_code,
         auth_headers=auth.to_headers(),
     )
-    # Already-targeted segments are dropped rather than shown and refused on click.
-    targeted = {s["ref"] for s in dump.get("signals") or []}
+    # Marked, not dropped - hiding a targeted segment reads as "Google has no such segment".
+    signals = dump.get("signals") or []
+    targeted = {s["ref"] for s in signals}
+    recommended = {s["ref"] for s in signals if (s.get("rationale") or "").strip()}
+
+    def mark(c: dict) -> AudienceSegment:
+        return AudienceSegment(
+            **c,
+            targeted=c["ref"] in targeted,
+            recommended=c["ref"] in recommended,
+        )
+
     if body.kind:
-        candidates = [c for c in candidates if c["kind"] == body.kind]
+        # The panel's kind keys are lowercased for display; the catalogue's are Google's enum.
+        wanted_kind = body.kind.upper()
+        candidates = [c for c in candidates if c["kind"].upper() == wanted_kind]
     if not query:
         # Browse: the whole section, ordered so ancestors precede their children and the
         # panel can nest it without a second pass. Uncapped by design - a tree with an
         # arbitrary 25 entries cut out of it is not a tree.
-        return AudienceSearchResponse(
-            results=[
-                AudienceSegment(**c, targeted=c["ref"] in targeted)
-                for c in sorted(candidates, key=lambda c: c["path"])
-            ]
-        )
+        rows = sorted(candidates, key=lambda c: c["path"])
+        return AudienceSearchResponse(results=[mark(c) for c in rows], total=len(rows))
 
-    hits = [
-        c
-        for c in audience_taxonomy.rank_by_name(candidates, query, lambda c: c["label"])
-        if c["ref"] not in targeted
-    ]
-    return AudienceSearchResponse(
-        results=[AudienceSegment(**h) for h in hits[:_MAX_SEGMENT_RESULTS]]
-    )
+    # Uncapped, like Browse: the query already bounds this, and a cap had no way to see past.
+    hits = audience_taxonomy.rank_by_name(candidates, query, lambda c: c["label"])
+    return AudienceSearchResponse(results=[mark(h) for h in hits], total=len(hits))
 
 
-# Review-panel widgets (fast path, no LLM)
-#
-# A panel posts a structured JSON action (add/edit/delete) as the chat message. The router
-# sniffs it against this table and streams the mutation directly — no agent turn. A new
-# panel adds a row here; nothing else changes, and the router never grows a branch per panel.
+# Review-panel widgets (fast path, no LLM). A panel posts a structured JSON action as the
+# chat message; the router sniffs it against this table and streams the mutation directly.
+# A new panel adds a row here - the router never grows a branch per panel.
 
 _WIDGET_MUTATIONS: dict[str, Callable[[dict, dict], Awaitable[ToolResult]]] = {
     "keyword_widget": update_keywords,

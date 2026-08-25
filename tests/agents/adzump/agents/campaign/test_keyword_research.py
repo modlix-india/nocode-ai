@@ -1,7 +1,7 @@
 """Unit tests for the keyword_research orchestrator
 (app/agents/adzump/agents/campaign/tools/google/keyword_research.py).
 
-Covers _resolve_themes — the seam that turns the user's chosen ad groups into the
+Covers resolve_theme_ids — the seam that turns the user's chosen ad groups into the
 keyword themes we run — and _resolve_geo's defensive read of product_data["place"].
 """
 
@@ -14,17 +14,31 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.agents.campaign.craft import keyword_review_block
+from app.agents.adzump.agents.campaign.google.keyword import manage_tools
+from app.agents.adzump.agents.campaign.google.keyword.agent import KeywordResearchAgent
 from app.agents.adzump.agents.campaign.google.keyword.models import (
     KeywordSet,
     NegativeKeyword,
     OptimizedKeyword,
 )
+from app.agents.adzump.agents.campaign.google.keyword.themes import resolve_theme_ids
+from app.agents.adzump.agents.campaign.models import (
+    SESSION_KEY,
+    CampaignBuild,
+    Channel,
+    SearchBuild,
+    build_gaps,
+    build_missing,
+    is_build_complete,
+)
 from app.agents.adzump.agents.campaign.models import keyword_research as saved_keywords
 from app.agents.adzump.agents.campaign.tools.google import keyword_research as kr
 from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
     _resolve_geo,
-    _resolve_themes,
 )
+from app.agents.adzump.agents.campaign.tools.google.keyword_update import _apply_edit
+from app.agents.adzump.next_action import _next_action
+from tests.agents.adzump._fixtures import make_cctx
 
 _ALL = ["brand", "generic"]
 
@@ -58,10 +72,10 @@ class ResolveThemesTests(unittest.TestCase):
     def test_table(self):
         for raw, expected, label in self.CASES:
             with self.subTest(label):
-                self.assertEqual(_resolve_themes({"ad_groups": raw}), expected)
+                self.assertEqual(resolve_theme_ids({"ad_groups": raw}), expected)
 
     def test_missing_key_entirely(self):
-        self.assertEqual(_resolve_themes({}), _ALL)
+        self.assertEqual(resolve_theme_ids({}), _ALL)
 
 
 class ResolveGeoTests(unittest.TestCase):
@@ -264,3 +278,294 @@ class PanelStatusTests(unittest.TestCase):
         self.assertEqual(tabs["generic"]["status"], "pending")
         self.assertEqual(tabs["local"]["status"], "failed")
         self.assertEqual(tabs["generic"]["sections"], [])  # nothing to edit yet
+
+
+class UnfinishedBuildRoutingTests(unittest.TestCase):
+    """A build that ran but did not finish must never be answered by building again: the
+    rebuild carries every ad group that has keywords forward untouched, so it would loop."""
+
+    SPEC = {
+        "platform": "Google Ads",
+        "channel": "SEARCH",
+        "ad_groups": "both",
+        "duration": "30 days",
+        "budget": "10,000/day",
+        "parent_account": "P",
+        "account": "A",
+        "location": "Hyderabad",
+        "summary_confirmed": "true",
+        "competitive_analysis_declined": "true",
+    }
+    PRODUCT = {
+        "name": "Acme",
+        "industry": "saas",
+        "target_areas": [{"name": "Hyderabad", "google": "1007751"}],
+    }
+
+    def ctx(self, themes):
+        build = CampaignBuild(
+            channel=Channel.SEARCH,
+            search=SearchBuild(keyword_research={"themes": themes}),
+        )
+        return {
+            SESSION_KEY: build.model_dump(mode="json"),
+            "campaign_spec": dict(self.SPEC),
+        }
+
+    @staticmethod
+    def _set(label, status):
+        return {"label": label, "status": status, "positives": [{"keyword": "a"}]}
+
+    def prescriptions(self, ctx):
+        cctx = make_cctx(
+            dict(self.SPEC),
+            product=self.PRODUCT,
+            summary_confirmed=True,
+            build_done=is_build_complete(ctx),
+            build_gaps=build_gaps(ctx),
+        )
+        return list(_next_action(cctx))
+
+    def test_a_partial_ad_group_routes_to_manage_not_a_rebuild(self):
+        ctx = self.ctx(
+            {
+                "brand": self._set("Brand", "partial"),
+                "generic": self._set("Generic", "complete"),
+            }
+        )
+        self.assertFalse(is_build_complete(ctx))
+        line = "\n".join(self.prescriptions(ctx))
+        self.assertIn("Brand has no negatives", line)
+        self.assertIn("manage_keywords", line)
+        self.assertNotIn("prepare_campaign_review tool", line)
+
+    def test_an_ad_group_with_no_keywords_routes_to_manage_not_a_rebuild(self):
+        # Only the manage agent can create one, through research_ad_group.
+        ctx = self.ctx({"brand": self._set("Brand", "complete")})
+        self.assertFalse(is_build_complete(ctx))
+        line = "\n".join(self.prescriptions(ctx))
+        self.assertIn("Generic has no keywords", line)
+        self.assertIn("manage_keywords", line)
+        self.assertNotIn("prepare_campaign_review", line)
+
+    def test_the_prescription_never_puts_words_in_the_users_mouth(self):
+        # It used to name an ad group itself, and the model researched THAT one instead of
+        # the one the user had just clicked. Their message must travel verbatim.
+        ctx = self.ctx(
+            {
+                "brand": self._set("Brand", "complete"),
+                "generic": self._set("Generic", "partial"),
+            }
+        )
+        line = "\n".join(self.prescriptions(ctx))
+        self.assertIn("VERBATIM", line)
+        self.assertNotIn("user_message=", line)
+
+    def test_an_unfinished_ad_group_is_not_a_missing_slot(self):
+        # prepare_campaign_review reports build_missing as "that step did not complete";
+        # the slot did arrive, so a partial ad group must not surface there.
+        ctx = self.ctx({"brand": self._set("Brand", "partial")})
+        self.assertEqual(build_missing(ctx), ())
+        self.assertTrue(build_gaps(ctx))
+
+    def test_a_finished_build_has_no_gaps(self):
+        ctx = self.ctx(
+            {
+                "brand": self._set("Brand", "complete"),
+                "generic": self._set("Generic", "complete"),
+            }
+        )
+        self.assertTrue(is_build_complete(ctx))
+        self.assertEqual(build_gaps(ctx), ())
+
+
+class ResearchAdGroupTests(unittest.IsolatedAsyncioTestCase):
+    """The only way to create an ad group after the build. edit_keywords cannot, so a theme
+    that failed research has nothing to write into until this runs."""
+
+    def ctx(self, themes, failed=()):
+        build = CampaignBuild(
+            channel=Channel.SEARCH,
+            search=SearchBuild(
+                keyword_research={"themes": themes, "meta": {"failed": list(failed)}}
+            ),
+        )
+        return {
+            SESSION_KEY: build.model_dump(mode="json"),
+            "campaign_spec": {
+                "channel": "SEARCH",
+                "platform": "google",
+                "ad_groups": "brand,generic",
+            },
+            "kw_business_text": "b",
+            "kw_customer_id": "1",
+        }
+
+    @staticmethod
+    def tool_ctx(session_ctx):
+        return {
+            "session_context": session_ctx,
+            "event_stream": mock.AsyncMock(),
+            "auth": mock.MagicMock(),
+        }
+
+    @staticmethod
+    def _complete(theme, label):
+        return {
+            "theme": theme,
+            "label": label,
+            "status": "complete",
+            "positives": [{"keyword": f"{theme} a", "volume": 10}],
+            "negatives": [{"keyword": f"{theme} n"}],
+        }
+
+    async def test_it_researches_a_failed_ad_group_and_clears_the_ghost_tab(self):
+        ctx = self.ctx(
+            {"generic": self._complete("generic", "Generic")}, failed=["brand"]
+        )
+        produced = KeywordSet(
+            theme="brand",
+            label="Brand",
+            positives=[OptimizedKeyword(keyword="brigade group", volume=9900)],
+            negatives=[NegativeKeyword(keyword="brigade careers")],
+        )
+        with mock.patch.object(
+            KeywordResearchAgent, "research", new=mock.AsyncMock(return_value=produced)
+        ):
+            res = await manage_tools._research_ad_group(
+                {"keyword_type": "brand"}, self.tool_ctx(ctx)
+            )
+        self.assertTrue(res.success, res.error)
+        dump = saved_keywords(ctx)
+        self.assertIn("brand", dump["themes"])
+        # Left in meta it would render a second, failed tab beside the real one.
+        self.assertEqual(dump["meta"]["failed"], [])
+        self.assertTrue(is_build_complete(ctx))
+
+    async def test_it_refuses_an_ad_group_that_already_has_keywords(self):
+        ctx = self.ctx({"brand": self._complete("brand", "Brand")})
+        with mock.patch.object(KeywordResearchAgent, "research") as research:
+            res = await manage_tools._research_ad_group(
+                {"keyword_type": "brand"}, self.tool_ctx(ctx)
+            )
+        self.assertFalse(res.success)
+        self.assertIn("already has keywords", res.error)
+        research.assert_not_called()
+
+    async def test_it_refuses_an_unknown_ad_group(self):
+        ctx = self.ctx({"generic": self._complete("generic", "Generic")})
+        res = await manage_tools._research_ad_group(
+            {"keyword_type": "nonsense"}, self.tool_ctx(ctx)
+        )
+        self.assertFalse(res.success)
+        self.assertIn("Unknown ad group", res.error)
+
+    def test_edit_keywords_cannot_create_an_ad_group(self):
+        ctx = self.ctx(
+            {"generic": self._complete("generic", "Generic")}, failed=["brand"]
+        )
+        ok, message = _apply_edit(
+            {
+                "action": "add",
+                "keyword_type": "brand",
+                "section": "positives",
+                "keyword": "brigade group",
+                "volume": 10,
+            },
+            ctx,
+        )
+        self.assertFalse(ok)
+        self.assertIn("research_ad_group", message)
+
+
+class ChatEditVolumeTests(unittest.IsolatedAsyncioTestCase):
+    """A spoken edit must never overwrite a real volume with a fresh lookup. The panel sends
+    one it already has; the model cannot, so only a keyword whose TEXT changes needs one."""
+
+    def ctx(self):
+        build = CampaignBuild(
+            channel=Channel.SEARCH,
+            search=SearchBuild(
+                keyword_research={
+                    "themes": {
+                        "brand": {
+                            "theme": "brand",
+                            "label": "Brand",
+                            "status": "complete",
+                            "positives": [
+                                {
+                                    "keyword": "brigade cornerstone",
+                                    "volume": 9900,
+                                    "match_type": "PHRASE",
+                                }
+                            ],
+                            "negatives": [{"keyword": "n"}],
+                        }
+                    },
+                    "meta": {},
+                }
+            ),
+        )
+        return {
+            SESSION_KEY: build.model_dump(mode="json"),
+            "campaign_spec": {
+                "channel": "SEARCH",
+                "platform": "google",
+                "ad_groups": "brand",
+            },
+            "product_data": {"product_name": "Brigade"},
+        }
+
+    async def _edit(self, ctx, edit):
+        async def zero_fill(context, rows):  # worst case: the Planner knows nothing
+            for row in rows:
+                row["volume"] = 0
+
+        tool_ctx = {
+            "session_context": ctx,
+            "event_stream": mock.AsyncMock(),
+            "auth": mock.MagicMock(),
+        }
+        with (
+            mock.patch.object(manage_tools, "fill_volumes", zero_fill),
+            mock.patch(
+                "app.agents.adzump.agents.campaign.tools.google.keyword_update._emit_panel",
+                new=mock.AsyncMock(),
+            ),
+        ):
+            return await manage_tools._edit_keywords({"edits": [edit]}, tool_ctx)
+
+    async def test_an_edit_that_keeps_the_keyword_keeps_its_volume(self):
+        ctx = self.ctx()
+        res = await self._edit(
+            ctx,
+            {
+                "action": "edit",
+                "keyword_type": "brand",
+                "section": "positives",
+                "old_keyword": "brigade cornerstone",
+                "keyword": "brigade cornerstone",
+                "match_type": "EXACT",
+            },
+        )
+        self.assertTrue(res.success, res.error)
+        row = saved_keywords(ctx)["themes"]["brand"]["positives"][0]
+        self.assertEqual(row["volume"], 9900)
+        self.assertEqual(row["match_type"], "EXACT")
+
+    async def test_a_rename_is_re_priced_and_does_not_inherit_the_old_volume(self):
+        ctx = self.ctx()
+        res = await self._edit(
+            ctx,
+            {
+                "action": "edit",
+                "keyword_type": "brand",
+                "section": "positives",
+                "old_keyword": "brigade cornerstone",
+                "keyword": "brigade utopia",
+            },
+        )
+        self.assertTrue(res.success, res.error)
+        row = saved_keywords(ctx)["themes"]["brand"]["positives"][0]
+        self.assertEqual(row["keyword"], "brigade utopia")
+        self.assertNotEqual(row["volume"], 9900)

@@ -42,8 +42,8 @@ def _ctx(positives, kw_type="generic"):
 
 
 def _submit(items, ctx):
-    # _attach_negative_volumes hits the Planner; stub it — volume attachment is out of scope.
-    with mock.patch.object(tools, "_attach_negative_volumes", new=mock.AsyncMock()):
+    # fill_volumes hits the Planner; stub it — volume attachment is out of scope.
+    with mock.patch.object(tools, "fill_volumes", new=mock.AsyncMock()):
         return asyncio.run(tools._submit_negative_keywords({"keywords": items}, ctx))
 
 

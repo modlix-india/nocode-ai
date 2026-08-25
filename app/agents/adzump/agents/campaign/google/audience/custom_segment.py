@@ -109,10 +109,9 @@ async def _draft_custom_segment(params: dict, context: dict) -> ToolResult:
         :_MAX_PLANNER_SEEDS
     ]
     try:
-        # Ideas, not historical metrics: the Planner EXPANDS beyond the seeds, and that
-        # expansion is where the terms a user would not have thought of come from. Scoring
-        # the exact seed list instead would throw all of it away. The business URL rides
-        # along as a keywordAndUrlSeed so Google reads the landing page too.
+        # Ideas, not historical metrics: the Planner EXPANDS beyond the seeds, and that is
+        # where the terms nobody thought of come from. The URL rides along so Google reads
+        # the landing page too.
         ideas = await keyword_planner.fetch_keyword_ideas(
             planner_seeds,
             url=state.get("aud_business_url") or None,
@@ -442,7 +441,8 @@ async def _edit_custom_segment(params: dict, context: dict) -> ToolResult:
 
     volumes = await _volumes(values, state, context) if action == "add_term" else {}
 
-    applied, refused = [], []
+    applied: list[tuple[str, str]] = []
+    refused: list[tuple[str, str]] = []
     for value in values:
         edit = {"action": action, "ref": refs[0], MEMBERS[kind].param: value}
         if action == "add_term":

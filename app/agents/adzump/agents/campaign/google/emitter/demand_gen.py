@@ -208,10 +208,9 @@ def operations(
                     # A sibling of demandGenAdGroupSettings, not nested inside it.
                     "audienceSetting": {"useAudienceGrouped": True},
                     "demandGenAdGroupSettings": {
-                        # oneof: selectedChannels OR channelStrategy, never both.
-                        # normalize fills the ad type's defaults when the slot is unset and
-                        # forces off anything it cannot serve on, so the payload is right
-                        # whether or not the channel_controls tool ran.
+                        # oneof: selectedChannels OR channelStrategy, never both. normalize
+                        # fills the ad type's defaults and forces off what it cannot serve,
+                        # so an unset slot still emits correctly.
                         "channelControls": {
                             "selectedChannels": normalize_controls(
                                 surfaces or build.get("channel_controls"), ad_type

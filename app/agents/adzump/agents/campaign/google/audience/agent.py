@@ -418,10 +418,9 @@ class AudienceAgent(BaseAgent):
                 history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]
             )[-AUD_MANAGE_HISTORY_TURNS:]
 
-        # A drafted-but-unsubmitted segment means this run ended by asking the user to
-        # approve terms it has just shown them. Declaring that as an elicitation is what
-        # stops the orchestrator asking its own question in the same turn - core breaks the
-        # loop after one ask, so their "yes" can only mean the thing they were shown.
+        # A drafted-but-unsubmitted segment ended the run by asking the user to approve
+        # terms. Declared as an elicitation so the orchestrator does not ask its own
+        # question in the same turn - their "yes" can only mean what they were shown.
         asked = bool(session.context.get("aud_custom_candidates"))
 
         # The reply already reached the user as forwarded prose. The orchestrator was not
@@ -483,7 +482,7 @@ def _current_audience(dump: dict, blueprints: dict | None = None) -> str:
             f"{r.min_age}-{r.max_age}" if r.max_age else f"{r.min_age}+"
             for r in demo.age_ranges
         )
-        shown = {
+        by_field = {
             "age_ranges": f"age {ages}" if ages else "",
             "genders": "gender " + ", ".join(g.value for g in demo.genders)
             if demo.genders
@@ -503,7 +502,7 @@ def _current_audience(dump: dict, blueprints: dict | None = None) -> str:
             + "; ".join(
                 text
                 + ("" if demo.includes_undetermined(field) else " (unknown excluded)")
-                for field, text in shown.items()
+                for field, text in by_field.items()
                 if text
             )
         )

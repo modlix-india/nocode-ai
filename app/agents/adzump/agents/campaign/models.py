@@ -15,6 +15,9 @@ from typing import Any, ClassVar, NamedTuple
 
 from pydantic import BaseModel
 
+from app.agents.adzump.agents.campaign.google.keyword.models import AdGroupStatus
+from app.agents.adzump.agents.campaign.google.keyword.themes import resolve_theme_ids
+
 SESSION_KEY = "campaign_build"
 LEGACY_KEYWORD_KEY = "keyword_research"  # pre-envelope sessions; read-side only
 
@@ -121,12 +124,47 @@ class ChannelBuild(BaseModel):
         has not landed yet is never promised to the user."""
         return tuple(t for s, t in self.shows.items() if getattr(self, s) is not None)
 
+    def gaps(self, spec: dict) -> tuple[str, ...]:
+        """Work a filled slot still owes, each naming the tool that finishes it. Written by
+        the channel: what counts as unfinished, and what repairs it, differ per channel."""
+        return ()
+
 
 class SearchBuild(ChannelBuild):
     required: ClassVar[tuple[str, ...]] = ("keyword_research",)
     shows: ClassVar[dict[str, str]] = {"keyword_research": "the keyword suggestions"}
 
     keyword_research: dict[str, Any] | None = None
+
+    def gaps(self, spec: dict) -> tuple[str, ...]:
+        """One ad group runs the keyword theme of the same id. The slot fills as soon as ONE
+        of them lands, so without this a campaign missing half of them reads as launchable."""
+        if self.keyword_research is None:
+            return ()
+        sets = self.keyword_research.get("themes") or {}
+        # The same question research asked, so an absent choice resolves to the same default
+        # set it ran - reading the sets instead would never notice one that failed.
+        wanted = resolve_theme_ids(spec)
+        done = AdGroupStatus.COMPLETE.value
+        unfinished = []
+        for ad_group in wanted:
+            kset = sets.get(ad_group)
+            name = (kset or {}).get("label") or ad_group.replace("_", " ").title()
+            if kset is None:
+                unfinished.append(f"{name} has no keywords")
+            # A set written before `status` existed defaults to complete, as the model does.
+            elif kset.get("status", done) != done:
+                unfinished.append(f"{name} has no negatives")
+        if not unfinished:
+            return ()
+        # One item, naming no ad group of its own: both repairs go through the same tool, and
+        # a prescription that picked one would override the ad group the user actually named.
+        return (
+            f"unfinished ad groups ({'; '.join(unfinished)}) - call `manage_keywords` and "
+            "pass the user's message VERBATIM as user_message. The keyword agent reads it "
+            "and researches or finishes whichever ad group they meant. Do NOT rebuild the "
+            "campaign, and do NOT substitute your own wording for theirs.",
+        )
 
 
 class DemandGenBuild(ChannelBuild):
@@ -251,18 +289,27 @@ def _current(session_ctx: dict) -> CampaignBuild | None:
 
 
 def is_build_complete(session_ctx: dict) -> bool:
-    """Has this channel's build produced every slot it cannot launch without?"""
-    build = _current(session_ctx)
-    return build is not None and build.is_complete
+    """Has this channel's build produced every slot it cannot launch without, and finished
+    the work inside them?"""
+    return not build_missing(session_ctx) and not build_gaps(session_ctx)
 
 
 def build_missing(session_ctx: dict) -> tuple[str, ...]:
-    """Required slots this channel's build has not produced, worded as the user reads them."""
+    """Slots that never arrived, worded as the user reads them. Separate from the gaps below:
+    a slot that arrived holding unfinished work did not fail to build."""
     build = _current(session_ctx)
     if build is None:
         return ("the campaign build",)
     block = build.block
     return tuple(block.shows.get(slot, slot) for slot in block.missing)
+
+
+def build_gaps(session_ctx: dict) -> tuple[str, ...]:
+    """Unfinished work inside slots that did arrive, each naming the tool that finishes it."""
+    build = _current(session_ctx)
+    if build is None:
+        return ()
+    return build.block.gaps(session_ctx.get("campaign_spec") or {})
 
 
 def build_review_items(session_ctx: dict) -> tuple[str, ...]:

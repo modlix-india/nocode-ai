@@ -59,31 +59,27 @@ class _KindMeta(NamedTuple):
 _KIND_META: dict[SignalKind, _KindMeta] = {
     SignalKind.IN_MARKET: _KindMeta(
         "In-Market",
-        "People shopping for this right now - the closest to ready to buy.",
+        "Shopping for this right now - the closest to ready to buy.",
     ),
     SignalKind.AFFINITY: _KindMeta(
         "Affinity",
-        "People who are into this generally, but are not shopping yet. Reaches far more "
-        "people, and fewer of them are ready.",
+        "Into this generally, not shopping yet - far more people, fewer of them ready.",
     ),
     SignalKind.LIFE_EVENT: _KindMeta(
         "Life Events",
-        "People going through something that creates the need - moving home, getting "
-        "married, having a baby.",
+        "Going through something that creates the need - moving, marrying, a new baby.",
     ),
     SignalKind.DETAILED_DEMOGRAPHIC: _KindMeta(
         "Detailed Demographics",
-        "Facts that stay true for years - whether they own a home, how far they studied, "
-        "what they do for a living.",
+        "Facts that stay true for years - home, education, what they do for a living.",
     ),
     SignalKind.CUSTOM_AUDIENCE: _KindMeta(
         "Custom Segments",
-        "Built for this campaign from what people type into Google, for when none of "
-        "Google's ready-made segments fit.",
+        "Built for this campaign from what people type into Google.",
     ),
     SignalKind.USER_LIST: _KindMeta(
         "Your Data",
-        "Lists you uploaded yourself - your customers, or people who visited your site.",
+        "Lists you uploaded - your customers, or people who visited your site.",
     ),
 }
 

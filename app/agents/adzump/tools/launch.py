@@ -18,7 +18,11 @@ import logging
 import re
 
 from app.agents.adzump.agents.campaign.google.publish import publish_campaign
-from app.agents.adzump.agents.campaign.models import is_build_complete, resolve_channel
+from app.agents.adzump.agents.campaign.models import (
+    build_gaps,
+    is_build_complete,
+    resolve_channel,
+)
 from app.agents.adzump.platform import is_google as platform_is_google
 from app.agents.adzump.platform import to_enum_value as platform_enum_value
 from app.agents.adzump.services.business_storage import resolve_url, save_campaign
@@ -106,12 +110,23 @@ async def _launch_campaign(params: dict, context: dict) -> ToolResult:
     # The consent gate below only reads an affirmative, so any "yes" can reach here. Meta has
     # no build stage; a Google campaign with no keywords or audience is not launchable.
     if platform_is_google(spec.get("platform")) and not is_build_complete(session_ctx):
-        logger.warning("launch_blocked_no_build: spec=%s", spec.get("channel") or "-")
+        gaps = build_gaps(session_ctx)
+        logger.warning(
+            "launch_blocked_no_build: spec=%s gaps=%d",
+            spec.get("channel") or "-",
+            len(gaps),
+        )
+        # A build with gaps is built - it just owes work, and each gap names the tool that
+        # settles it. Sending those to prepare_campaign_review rebuilds what is already there.
         return ToolResult(
             success=False,
             error=(
-                "Cannot launch - this campaign has not been built yet. Call "
-                "prepare_campaign_review first and let the user review the panel."
+                "Cannot launch - " + gaps[0]
+                if gaps
+                else (
+                    "Cannot launch - this campaign has not been built yet. Call "
+                    "prepare_campaign_review first and let the user review the panel."
+                )
             ),
         )
 

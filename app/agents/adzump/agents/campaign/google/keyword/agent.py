@@ -3,8 +3,7 @@
 A worker sub-agent the Campaign Agent spawns once per chosen theme, in parallel; each
 run produces that theme's ad group. It reasons over real data through its tools instead
 of a fixed pipeline: seeds -> expand_keywords -> keyword_metrics -> pick positives ->
-derive negatives -> submit. Seeing Planner volume/competition as it goes, it catches
-category drift and mines real negatives — what the old blind pipeline could not do.
+derive negatives -> submit, seeing Planner volume and competition as it goes.
 
 The base system prompt stays small; ``build_turn_reminder`` injects only the current
 phase's guidance (via ``phase_prompt(phase, theme)``), so each turn is as focused as a
@@ -43,6 +42,7 @@ from app.agents.adzump.agents.campaign.google.keyword.models import (
 from app.agents.adzump.agents.campaign.google.keyword.themes import (
     KEYWORD_THEMES,
     get_theme,
+    resolve_theme_ids,
 )
 from app.agents.adzump.agents.campaign.google.keyword.tools import (
     ALL_TOOLS,
@@ -68,21 +68,18 @@ MODEL_TIER = (
     "balanced"  # selection/negatives are judgment-heavy — use the stronger model
 )
 MAX_TURNS = 10  # seed -> expand -> metrics -> select -> negatives, with room to loop
-# Selection deliberates over hundreds of scored candidates and THEN calls a submit tool. A
-# reasoning model spends output tokens on that deliberation, so the budget has to cover both
-# - too small and the run ends mid-thought having submitted nothing.
+# Covers deliberation AND the submit call - too small ends the run mid-thought, having
+# submitted nothing.
 MAX_TOKENS = settings.AGENT_MAX_TOKENS
-# The throwaway manage session carries no history of its own, so a bounded window of prior
-# manage exchanges is kept on the main session and replayed into each run — enough for a
-# follow-up to reference what the agent said earlier.
+# The throwaway manage session has no history of its own; this window rides the main session.
 KW_MANAGE_HISTORY_TURNS = 4
 _MANAGE_REPLY_CAP = 1500  # chars of a stored reply — bounds the seeded history
+_RESULT_CARD_CHARS = 300  # chars of a tool summary the panel card shows
 
 
 def _fill_guidance(text: str) -> str:
-    """Fill a guidance bar's numeric placeholders ($target_count etc.) with the real
-    numbers. Needed when the bar is nested inside another prompt (manage), where the
-    outer single-pass substitution never reaches them."""
+    """Fill a guidance bar's numeric placeholders. Needed when the bar is nested inside
+    another prompt, which the outer single-pass substitution never reaches."""
     return Template(text).safe_substitute(
         max_seeds=constants.MAX_SEEDS,
         target_count=constants.TARGET_POSITIVE_COUNT,
@@ -111,18 +108,40 @@ def _current_keywords(built: dict) -> str:
 
 
 class _ReviewStream(ChildAgentStream):
-    """Like the base, but also swallows the agent's own tool calls (shared agent
-    name) so they don't surface per worker in chat."""
+    """Forwards a worker's tool calls, named by the ad group. Every worker runs under the one
+    agent name, so the event cannot say which raised it - the name carries it instead."""
 
     label = "keyword_research"
 
-    async def emit_tool_start(self, *a, **kw) -> None:
-        return
+    def __init__(self, parent: AgentEventStream, ad_group: str = "") -> None:
+        super().__init__(parent)
+        self._ad_group = ad_group
+
+    def _named(self, display_name: str, tool_name: str) -> str:
+        shown = display_name or tool_name.replace("_", " ").title()
+        return f"{self._ad_group} · {shown}" if self._ad_group else shown
+
+    async def emit_tool_start(
+        self,
+        tool_name: str,
+        tool_input: dict,
+        tool_use_id: str = "",
+        display_name: str = "",
+    ) -> None:
+        await self._parent.emit_tool_start(
+            tool_name, tool_input, tool_use_id, self._named(display_name, tool_name)
+        )
+
+    async def emit_tool_result(
+        self, tool_name: str, success: bool, summary: str, tool_use_id: str = ""
+    ) -> None:
+        # A tool summary here is the model's working context - a candidates page runs to
+        # thousands of chars. The card only shows a line of it.
+        await self._parent.emit_tool_result(
+            tool_name, success, summary[:_RESULT_CARD_CHARS], tool_use_id
+        )
 
     async def emit_tool_update(self, *a, **kw) -> None:
-        return
-
-    async def emit_tool_result(self, *a, **kw) -> None:
         return
 
 
@@ -229,10 +248,8 @@ class KeywordResearchAgent(BaseAgent):
         # rather than silently work on another theme's keywords.
         theme = get_theme(ctx["kw_type"])
         if ctx.get("kw_mode") == "manage":
-            # A manage run starts pre-seeded with the saved set (the build phases below would
-            # read it as finished) and spans every ad group — so render EACH built ad group's
-            # own bar, so an addition to any of them still has to clear the standard it was
-            # built with.
+            # Every built ad group gets its own bar: an addition to any of them still has to
+            # clear the standard it was built with.
             built = (keyword_research(ctx) or {}).get("themes") or {}
             bars: list[str] = []
             for t, kset in built.items():
@@ -252,6 +269,14 @@ class KeywordResearchAgent(BaseAgent):
                         f"{_fill_guidance(built_theme.negative_guidance)}"
                     )
                 bars.append(bar)
+            # Unlisted, the prompt's "not yet built" section refers to nothing.
+            for t in ctx.get("kw_wanted") or []:
+                if t in built or t not in KEYWORD_THEMES:
+                    continue
+                bars.append(
+                    f"**{get_theme(t).label} ad group** — NOT YET BUILT. It has no keywords; "
+                    f'research it with research_ad_group(keyword_type="{t}").'
+                )
             standards = "\n\n".join(bars) or _fill_guidance(theme.select_guidance)
             rendered = Template(phase_prompt(Phase.MANAGE, theme)).safe_substitute(
                 user_message=ctx.get("kw_user_message", ""),
@@ -344,7 +369,7 @@ class KeywordResearchAgent(BaseAgent):
             label=f"Keyword Research · {keyword_type}",
             parent_id=current_agent_id.get(),
         )
-        stream = _ReviewStream(parent_event_stream)
+        stream = _ReviewStream(parent_event_stream, get_theme(keyword_type).label)
         try:
             await self.run(
                 user_message="Begin keyword research.",
@@ -352,10 +377,8 @@ class KeywordResearchAgent(BaseAgent):
                 event_stream=stream,
             )
         except asyncio.CancelledError:
-            # Orchestrator wait_for timeout cancels us with CancelledError (a
-            # BaseException the handler below misses) — close the card, then re-raise.
-            # Phases that finished are handed back through the sink: the keywords are
-            # real, and the caller decides what to do with an unfinished set.
+            # wait_for cancels with CancelledError - a BaseException the handler below
+            # misses. Finished phases go back through the sink; the caller decides.
             if partial_sink is not None:
                 partial_sink[keyword_type] = self._build_result(
                     keyword_type, session.context, status=AdGroupStatus.PARTIAL
@@ -399,10 +422,9 @@ class KeywordResearchAgent(BaseAgent):
     async def handle(self, user_message: str, context: dict) -> ToolResult:
         """Answer or edit an existing set, from the user's verbatim words.
 
-        Throwaway session, as in generation, holding its OWN copy of the set — handed back
-        once the run ends. Sharing the parent's dict instead would carry exactly one edit:
-        the build envelope's writer copies, so later edits would land on a copy the parent
-        never sees. What the agent needs to reason is seeded up front; nothing is reconnected.
+        Throwaway session holding its OWN copy of the set, handed back once the run ends.
+        Sharing the parent's dict would carry exactly one edit - the build envelope's writer
+        copies, so later edits land where the parent never sees them.
         """
         parent_ctx = context.get("session_context")
         if parent_ctx is None:
@@ -430,7 +452,12 @@ class KeywordResearchAgent(BaseAgent):
 
         product = parent_ctx.get("product_data") or {}
         spec = parent_ctx.get("campaign_spec") or {}
-        taxonomy = (parent_ctx.get("_offering_taxonomy") or {}).get("data") or {}
+        # From the build: it was derived in a throwaway sub-session and rides back in meta.
+        taxonomy = (
+            ((keyword_research(parent_ctx) or {}).get("meta") or {}).get("taxonomy")
+            or (parent_ctx.get("_offering_taxonomy") or {}).get("data")
+            or {}
+        )
         geo = (dump.get("meta") or {}).get("geo") or {}
         location, service_areas = resolve_location(
             product, bool(taxonomy.get("is_location_specific", True))
@@ -454,6 +481,11 @@ class KeywordResearchAgent(BaseAgent):
             "kw_user_message": user_message,
             "kw_type": theme_id,
             "product_data": product,
+            # What research_ad_group needs to build a missing ad group as a fresh run would.
+            "kw_wanted": resolve_theme_ids(spec),
+            "kw_informational": bool(
+                taxonomy.get("includes_informational_funnel", False)
+            ),
             # The business picture, not a keyword-shaped slice: a question can be about the
             # competition or the budget as easily as about a keyword.
             "kw_business_text": wider_brief(parent_ctx),
@@ -477,9 +509,8 @@ class KeywordResearchAgent(BaseAgent):
         # builders, lookup, the shared edit engine) finds it the same way production does.
         set_keyword_research(session.context, dump)
 
-        # Replay the recent manage exchanges as conversation history. Built through the
-        # session's own message constructors, so the shape stays whatever the providers
-        # consume rather than a hand-written format that could drift on a provider change.
+        # Through the session's own message constructors, so the shape cannot drift from
+        # what the providers consume.
         history: list[dict] = parent_ctx.get("kw_conversation") or []
         for past in history[-KW_MANAGE_HISTORY_TURNS:]:
             session.append_user_message(str(past.get("user", "")))
@@ -537,8 +568,8 @@ class KeywordResearchAgent(BaseAgent):
                 history + [{"user": user_message, "reply": reply[:_MANAGE_REPLY_CAP]}]
             )[-KW_MANAGE_HISTORY_TURNS:]
 
-        # The keyword agent has already replied to the user directly (forwarded prose). Tell the
-        # orchestrator exactly that — it was NOT told the outcome, so it must not state one (1b).
+        # The agent already replied to the user directly. The orchestrator was NOT told the
+        # outcome, so it must not state one.
         return ToolResult(
             success=True,
             summary=(
