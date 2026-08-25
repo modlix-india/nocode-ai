@@ -180,6 +180,16 @@ class Settings(BaseSettings):
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
+    # Overridden per environment in ~/.nocode-ai/variables.sh, which start-standalone.sh
+    # sources - set either of these there rather than editing the default.
+    # true = validateOnly: Google checks the payload and creates nothing, and the custom
+    # segment is left out rather than created. The launch reply says when a run was dry.
+    # ON until creative lands: with no AdGroupAd a created campaign can never serve, so a
+    # real launch would leave an unservable campaign and a permanent custom audience.
+    ADZUMP_PUBLISH_DRY_RUN: bool = True
+    # false skips asset selection - the priciest step in a scrape (~266k tokens). A campaign
+    # built with it off has no logo or images.
+    ADZUMP_VISION_ENABLED: bool = True
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     

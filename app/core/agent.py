@@ -35,7 +35,7 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream, current_agent_id
-from app.core.session import BaseSession
+from app.core.session import BaseSession, current_session
 from app.core.context import BaseContext
 from app.services import billing
 from app.core.builtin_tools import (
@@ -176,6 +176,8 @@ class BaseAgent:
         # itself to close the SSE stream.
         is_sub_agent = current_agent_id.get() != "root"
         ctx_token = current_agent_id.set(self.name)
+        # Bill standalone one-shot LLM calls (outside the loop) to this agent's session.
+        sess_token = current_session.set(session)
 
         try:
             try:
@@ -219,6 +221,7 @@ class BaseAgent:
             # user-visible lifecycle (craft emission, summary streaming, etc.),
             # not just the LLM tool-use loop.
             current_agent_id.reset(ctx_token)
+            current_session.reset(sess_token)
 
     async def _run_loop(
         self,

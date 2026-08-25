@@ -31,6 +31,7 @@ from app.agents.adzump.agents.product.models import (
     ProductAssets,
     SiteImage,
 )
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,10 @@ async def select_product_assets(
     {'bytes': ..., 'content_type': ...} for each *picked* candidate, so
     the caller can upload directly without re-fetching."""
     from app.agents.adzump.agents.product.scrape_stages import ScrapeStage, stage_emit
+
+    if not settings.ADZUMP_VISION_ENABLED:
+        logger.info("vision_select_disabled url=%s", page.url)
+        return ProductAssets(), {}
 
     if not page.images:
         _stage("candidates", url=page.url, total=0)

@@ -86,6 +86,11 @@ def make_cctx(
     ig_offered: bool = False,
     awaiting: str | None = None,
     turn: int = 1,
+    build_done: bool = False,
+    build_gaps: tuple[str, ...] = (),
+    review_items: tuple[str, ...] = (),
+    summary_confirmed: bool = False,
+    awaiting_tool: str | None = None,
 ) -> CampaignContext:
     """A `CampaignContext` for `_next_action` / prescription tests."""
     return CampaignContext(
@@ -101,6 +106,11 @@ def make_cctx(
         pending_location=None,
         ig_offered=ig_offered,
         awaiting_custom_field=awaiting,
+        build_done=build_done,
+        build_gaps=build_gaps,
+        review_items=review_items,
+        summary_confirmed=summary_confirmed,
+        awaiting_tool=awaiting_tool,
     )
 
 

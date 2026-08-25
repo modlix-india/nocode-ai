@@ -9,6 +9,7 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import types
 import unittest
 from unittest import mock
@@ -37,6 +38,189 @@ def _budget_pe(**extra):
     return elicitation("budget", {"₹5,000/day": "₹5,000/day",
                                   "₹10,000/day": "₹10,000/day",
                                   "₹25,000/day": "₹25,000/day"}, **extra)
+
+
+# ── the channel choice ──────────────────────────────────────────
+class ChannelChoiceTests(unittest.TestCase):
+    """Asked in the BUILD stage, not with the details the summary confirms - it decides which
+    build runs. Offered from the enum, so a new channel needs no change in next_action."""
+
+    BASE = {"platform": "Google Ads", "duration": "30 days", "budget": "₹10,000/day",
+            "parent_account": "P", "account": "A", "location": "Hyderabad",
+            "competitive_analysis_declined": "true"}
+    PRODUCT = {**SAAS, "target_areas": [{"name": "Hyderabad", "google": "1007751"}]}
+
+    def _first(self, spec, **kw):
+        m = _next_action(make_cctx(dict(spec), product=self.PRODUCT, **kw))
+        return m[0] if m else ""
+
+    def test_not_asked_before_the_summary_is_confirmed(self):
+        self.assertNotIn("channel -", self._first(self.BASE))
+
+    def test_asked_once_the_summary_is_confirmed(self):
+        line = self._first(self.BASE, summary_confirmed=True)
+        self.assertTrue(line.startswith("channel -"))
+
+    def test_every_channel_in_the_enum_is_offered(self):
+        from app.agents.adzump.agents.campaign.models import Channel
+
+        line = self._first(self.BASE, summary_confirmed=True)
+        for channel in Channel:
+            self.assertIn(f'answer "{channel.value}"', line)
+            self.assertIn(channel.chip_label, line)
+
+    def test_the_choice_routes_to_that_channels_build(self):
+        for channel, expected in [("DEMAND_GEN", "audience targeting"),
+                                  ("SEARCH", "ad groups -")]:
+            with self.subTest(channel=channel):
+                line = self._first({**self.BASE, "channel": channel},
+                                   summary_confirmed=True)
+                self.assertIn(expected, line)
+
+
+# ── the pre-launch review line ──────────────────────────────────
+class ReviewLineTests(unittest.TestCase):
+    """The line names what the panel HOLDS, which the channel itself declares - this module
+    must never grow a branch per channel or per slot."""
+
+    GOOGLE_FULL = {"platform": "Google Ads", "duration": "30 days",
+                   "budget": "₹10,000/day", "parent_account": "P", "account": "A",
+                   "location": "Hyderabad", "summary_confirmed": "true",
+                   "ad_groups": "brand", "competitive_analysis_declined": "true"}
+    PRODUCT = {**SAAS, "target_areas": [{"name": "Hyderabad", "google": "1007751"}]}
+
+    def _launch_line(self, items):
+        cctx = make_cctx(dict(self.GOOGLE_FULL), product=self.PRODUCT, build_done=True,
+                         summary_confirmed=True, review_items=items)
+        return next(m for m in _next_action(cctx) if m.startswith("launch"))
+
+    def test_it_names_whatever_the_channel_declared(self):
+        for items, expected in [
+            (("the keyword suggestions",), "the keyword suggestions"),
+            (("the audience targeting", "where the ads will show"),
+             "the audience targeting, where the ads will show"),
+            (("a", "b", "c"), "a, b, c"),   # a channel that has not shipped yet
+        ]:
+            with self.subTest(items=items):
+                self.assertIn(f"The panel shows {expected}.", self._launch_line(items))
+
+    def test_nothing_on_screen_does_not_promise_a_panel(self):
+        # Meta has no build step - the old text told every user to review keywords.
+        line = self._launch_line(())
+        self.assertIn("The campaign details are confirmed.", line)
+        self.assertNotIn("panel", line)
+
+    def test_a_slot_that_never_ran_is_not_promised(self):
+        # DemandGenBuild declares creative, but no tool fills it yet.
+        from app.agents.adzump.agents.campaign.models import (
+            build_review_items,
+            set_audience,
+        )
+        ctx = {"campaign_spec": {"platform": "GOOGLE", "account": "1",
+                                 "channel": "Demand Gen"}}
+        set_audience(ctx, {"signals": [], "demographics": {},
+                           "dimension_groups": [], "meta": {}})
+        self.assertEqual(build_review_items(ctx), ("the audience targeting",))
+
+
+class PendingSubAgentQuestionTests(unittest.TestCase):
+    """A sub-agent asked the user something. It holds the record the answer refers to, so the
+    reply goes back to it - prescribing the next campaign step instead reads as leave to move
+    on, and the orchestrator reports an outcome nobody gave it."""
+
+    FULL = {"platform": "Google Ads", "duration": "60 days", "budget": "$10,000/day",
+            "parent_account": "P", "account": "A", "channel": "Demand Gen",
+            "summary_confirmed": "true", "competitive_analysis_declined": "true"}
+
+    def _missing(self, **kw):
+        return _next_action(make_cctx(dict(self.FULL), product=SAAS, build_done=True,
+                                      summary_confirmed=True,
+                                      review_items=("the audience targeting",), **kw))
+
+    def test_the_reply_is_routed_back_to_whichever_tool_asked(self):
+        first = self._missing(awaiting_tool="manage_audience")[0]
+        self.assertIn("manage_audience(user_message=", first)
+        self.assertIn("Do NOT act on it yourself", first)
+
+    def test_launch_is_not_offered_while_a_question_is_open(self):
+        # The live failure: "yes add them" was answered with "should we launch?", and the
+        # next "yes" launched the campaign.
+        self.assertFalse(
+            any(m.startswith("launch") for m in self._missing(awaiting_tool="manage_audience"))
+        )
+
+    def test_launch_returns_once_it_is_answered(self):
+        self.assertTrue(any(m.startswith("launch") for m in self._missing()))
+
+    def test_it_is_not_bound_to_one_agent(self):
+        first = self._missing(awaiting_tool="manage_keywords")[0]
+        self.assertIn("manage_keywords(user_message=", first)
+
+
+class ElicitationRoutingTests(unittest.TestCase):
+    """`awaiting_tool` reads one shape only, so the elicitations already in use are untouched."""
+
+    @staticmethod
+    def _session(pe, said=""):
+        return types.SimpleNamespace(
+            context={
+                "product_data": dict(SAAS),
+                "campaign_spec": {},
+                "_pending_elicitation": pe,
+            },
+            messages=[{"role": "user", "content": said}] if said else [],
+            _turn_count=11,
+        )
+
+    def _awaiting(self, pe):
+        return CampaignContext.from_session(self._session(pe)).awaiting_tool
+
+    def _hint(self, pe):
+        return AdzumpAgent._resume_elicitation_section(
+            AdzumpAgent.__new__(AdzumpAgent), self._session(pe), 1
+        )
+
+    def test_only_an_elicitation_naming_user_message_routes_back(self):
+        self.assertEqual(
+            self._awaiting({"tool": "manage_audience", "field": "user_message"}),
+            "manage_audience",
+        )
+
+    def test_the_existing_elicitations_are_unaffected(self):
+        for pe in [
+            {"tool": "present_options", "field": "platform", "expects": "single"},
+            {"tool": "present_options", "field": "budget", "answers": {"a": "b"}},
+            {"tool": "prepare_campaign_review", "field": None, "expects": "multi"},
+            {"tool": "extract_site_assets", "field": None, "expects": "multi"},
+            {},
+        ]:
+            with self.subTest(tool=pe.get("tool")):
+                self.assertIsNone(self._awaiting(pe))
+
+    def test_a_routed_question_does_not_write_a_campaign_field(self):
+        # `field` is a tool PARAMETER here, not a spec field - tagged-capture must ignore it.
+        session = self._session(
+            {"tool": "manage_audience", "field": "user_message",
+             "expects": "single", "answers": None},
+            said="yes add them",
+        )
+        agent = AdzumpAgent.__new__(AdzumpAgent)
+        self.assertEqual(AdzumpAgent._capture_tagged_answer(agent, session, 1), "")
+        self.assertEqual(session.context["campaign_spec"], {})
+        # Left open, so the resume hint and _next_action still see it this turn.
+        self.assertIn("_pending_elicitation", session.context)
+
+    def test_the_resume_hint_sends_the_answer_back(self):
+        hint = self._hint({"tool": "manage_audience", "field": "user_message",
+                           "expects": "single"})
+        self.assertIn("manage_audience(user_message=", hint)
+        self.assertIn("not told what was asked", hint)
+
+    def test_a_chip_question_keeps_the_original_hint(self):
+        hint = self._hint({"tool": "present_options", "field": "platform",
+                           "expects": "single"})
+        self.assertIn("pick the next action", hint)
+        self.assertNotIn("user_message=", hint)
 
 
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
@@ -334,6 +518,9 @@ def _full_google_cctx():
         "platform": "Google Ads", "location": "Bengaluru", "duration": "30 days",
         "budget": "₹10,000/day", "competitive_analysis_declined": "true",
         "parent_account": "1234567890", "account": "4461972633",
+        # Ad groups are a Search concept, so these fixtures pick Search. The channel is
+        # asked first now - see ChannelChoiceTests.
+        "channel": "SEARCH",
     }
     product = {
         "business_type": "real estate", "product_name": "Sumadhura Solea",
@@ -351,12 +538,107 @@ class ReviewPublishPrescriptionTests(unittest.TestCase):
         review = next((m for m in missing if "review & publish" in m), None)
         self.assertIsNotNone(review, f"review&publish should appear; got: {missing}")
         # F20: the live leak was the model echoing this prescription's copyable
-        # present_options(...)/launch_campaign() syntax into the launch bubble.
+        # present_options(...) / tool-call syntax into the reply bubble. The confirm
+        # step now routes to keyword research (prepare_campaign_review); launch is a
+        # separate later step, so this message names prepare_campaign_review, not launch.
         self.assertNotIn("present_options(", review)
-        self.assertNotIn("launch_campaign(", review)
+        self.assertNotIn("prepare_campaign_review(", review)
         # but it must still instruct CALLING those tools (intent prose form)
         self.assertIn("present_options tool", review)
-        self.assertIn("launch_campaign tool", review)
+
+    def test_build_step_names_its_tool_without_call_syntax(self):
+        # Same F20 rule on the step that actually starts the build.
+        base = _full_google_cctx()
+        cctx = dataclasses.replace(
+            base, summary_confirmed=True, spec={**base.spec, "ad_groups": "brand,generic"}
+        )
+        build = next(
+            (m for m in _next_action(cctx) if m.startswith("build the campaign")), None
+        )
+        self.assertIsNotNone(build)
+        self.assertNotIn("prepare_campaign_review(", build)
+        self.assertIn("prepare_campaign_review tool", build)
+
+
+def _full_meta_cctx():
+    """Same completeness as _full_google_cctx, on Meta (needs a meta geo handle + pages)."""
+    g = _full_google_cctx()
+    product = {
+        **g.product,
+        "target_areas": [
+            {
+                "name": "Bengaluru",
+                "google": {"resourceName": "geoTargetConstants/1026181"},
+                "meta": {"key": "1234", "type": "city"},
+            }
+        ],
+    }
+    return dataclasses.replace(
+        g,
+        spec={**g.spec, "platform": "Meta", "fb_page": "1234567890", "ig_page": "4461972633"},
+        product=product,
+    )
+
+
+class AdGroupConsentTests(unittest.TestCase):
+    """Consents in order: okay the summary, choose the channel, THEN choose the ad groups
+    (Search only). What gets built is the user's pick, so the summary never states it as
+    decided."""
+
+    def _step(self, cctx, prefix: str) -> str:
+        steps = _next_action(cctx)
+        step = next((m for m in steps if m.startswith(prefix)), None)
+        self.assertIsNotNone(step, f"expected a {prefix!r} step; got: {steps}")
+        return step or ""
+
+    def test_summary_step_only_asks_whether_to_proceed(self):
+        review = self._step(_full_google_cctx(), "review & publish")
+        self.assertNotIn("**Ad groups**", review)       # not ours to declare
+        self.assertNotIn("Brand", review)
+        self.assertIn('field "summary_confirmed"', review)
+        self.assertIn("Yes, proceed", review)
+        self.assertIn("No, make changes", review)
+        self.assertNotIn("present_options(", review)    # F20: prose, not syntax
+
+    def test_ad_groups_asked_only_once_the_summary_is_okayed(self):
+        cctx = dataclasses.replace(_full_google_cctx(), summary_confirmed=True)
+        ask = self._step(cctx, "ad groups")
+        self.assertIn('field "ad_groups"', ask)         # captured into the spec
+        for label in ("Brand", "Generic", "Both"):      # one chip per theme + combined
+            self.assertIn(f'"{label}"', ask)
+        self.assertNotIn("present_options(", ask)
+
+    def test_both_consents_in_hand_builds(self):
+        base = _full_google_cctx()
+        cctx = dataclasses.replace(
+            base, summary_confirmed=True, spec={**base.spec, "ad_groups": "brand"}
+        )
+        build = self._step(cctx, "build the campaign")
+        self.assertIn("prepare_campaign_review tool", build)
+        self.assertIn("do NOT ask either question again", build)
+
+    def test_meta_is_never_asked_about_ad_groups(self):
+        # Meta targets audiences in ad sets and has no keywords — the question is meaningless.
+        review = self._step(_full_meta_cctx(), "review & publish")
+        self.assertNotIn("**Ad groups**", review)
+        self.assertNotIn("ad_groups", review)
+        self.assertIn("Proceed with the campaign", review)  # still confirms
+        self.assertIn("Facebook Page", review)              # still Meta-specific
+
+    def test_meta_skips_the_build_and_goes_straight_to_launch(self):
+        # Meta has no build tools yet, so a confirmed Meta campaign must NOT spawn
+        # prepare_campaign_review — that unsatisfiable call is what looped. It goes to launch.
+        cctx = dataclasses.replace(_full_meta_cctx(), summary_confirmed=True)
+        step = self._step(cctx, "launch")
+        self.assertIn("launch_campaign", step)
+        self.assertNotIn("prepare_campaign_review", step)
+        self.assertNotIn("keyword", step.lower())  # no keyword review for Meta
+
+    def test_meta_never_prescribes_prepare_campaign_review_in_any_state(self):
+        base = _full_meta_cctx()
+        for cctx in (base, dataclasses.replace(base, summary_confirmed=True)):
+            joined = " ".join(_next_action(cctx))
+            self.assertNotIn("prepare_campaign_review", joined)
 
 
 # ── F23/F27 · value-only advance chip for prose asks ────────────────────────

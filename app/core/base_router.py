@@ -197,6 +197,50 @@ def build_image_blocks(
     return blocks if blocks else None
 
 
+def sse_stream_response(
+    event_stream: AgentEventStream,
+    run_coro,
+    *,
+    keepalive: bool = True,
+) -> StreamingResponse:
+    """Wrap a run-coroutine + its event stream as an SSE StreamingResponse. Runs a 15s
+    keepalive pinger for long agent runs; pass ``keepalive=False`` for a quick one-shot
+    stream (e.g. a review-panel widget action that finishes immediately)."""
+
+    async def _keepalive():
+        try:
+            while True:
+                await asyncio.sleep(15)
+                await event_stream.emit_keepalive()
+        except asyncio.CancelledError:
+            pass
+
+    async def _event_generator():
+        task = asyncio.create_task(run_coro)
+        ka_task = asyncio.create_task(_keepalive()) if keepalive else None
+        try:
+            async for event in event_stream.events():
+                yield event.to_sse()
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        finally:
+            if ka_task is not None:
+                ka_task.cancel()
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 def stream_agent_response(
     agent,
     message: str,
@@ -221,34 +265,4 @@ def stream_agent_response(
             await event_stream.emit_error(str(e))
             await event_stream.emit_done(session_id=session.session_id)
 
-    async def keepalive():
-        try:
-            while True:
-                await asyncio.sleep(15)
-                await event_stream.emit_keepalive()
-        except asyncio.CancelledError:
-            pass
-
-    async def event_generator():
-        task = asyncio.create_task(run_agent())
-        keepalive_task = asyncio.create_task(keepalive())
-        try:
-            async for event in event_stream.events():
-                yield event.to_sse()
-        except asyncio.CancelledError:
-            task.cancel()
-            raise
-        finally:
-            keepalive_task.cancel()
-            if not task.done():
-                task.cancel()
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    return sse_stream_response(event_stream, run_agent(), keepalive=True)

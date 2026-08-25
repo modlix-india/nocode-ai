@@ -88,6 +88,18 @@ class PresentOptionsTagTests(unittest.TestCase):
             {"session_context": {}}))
         self.assertIsNone(res.data)
 
+    def test_summary_is_the_bare_question_not_a_meta_frame(self):
+        # regression: the summary doubles as the tool-only-turn restore stand-in. A
+        # fixed meta-frame ('Presented quick-reply options for: "…"') repeats verbatim
+        # across every options turn and the resumed model imitates it into chat, so the
+        # summary must be the plain question the user saw.
+        res = asyncio.run(_present_options(
+            {"question": "Which platform should we run this on?",
+             "options": ["Google Ads", "Meta"]},
+            {"session_context": {}}))
+        self.assertEqual(res.summary, "Which platform should we run this on?")
+        self.assertNotIn("Presented quick-reply options", res.summary)
+
 
 if __name__ == "__main__":
     unittest.main()

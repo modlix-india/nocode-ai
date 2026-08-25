@@ -12,12 +12,26 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.session import BaseSession
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    DEFAULT_THEME_IDS,
+    KEYWORD_THEMES,
+)
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    build_gaps,
+    build_review_items,
+    is_build_complete,
+    resolve_channel,
+)
 from app.agents.adzump.platform import (
     CANONICAL_LABEL,
     Platform,
-    is_google as _platform_is_google,
     is_mapped_for,
+)
+from app.agents.adzump.platform import (
+    is_google as _platform_is_google,
+)
+from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.tools.campaign_data import (
@@ -25,6 +39,7 @@ from app.agents.adzump.tools.campaign_data import (
     is_ig_skip,
     is_real_estate,
 )
+from app.core.session import BaseSession
 
 
 def _is_custom_reply(text: str) -> bool:
@@ -34,6 +49,35 @@ def _is_custom_reply(text: str) -> bool:
     never "custom", so this won't fire on a real value."""
     lu = (text or "").strip().lower()
     return lu == "custom" or lu.startswith("custom")
+
+
+# A refusal, however the chip was labelled or answered.
+_CONSENT_REFUSALS = ("false", "no")
+
+
+def _is_affirmative(value: object) -> bool:
+    """Whether a captured consent answer means yes. The model sends either the answer we
+    asked for ("true"/"false") or lets the chip label through ("Yes, proceed"), so both
+    shapes have to read the same way."""
+    text = str(value or "").strip().lower()
+    return bool(text) and not text.startswith(_CONSENT_REFUSALS)
+
+
+def _ad_group_question() -> str:
+    """The Google ad-group choice - one chip per keyword theme plus a combined one, derived
+    from the theme registry so a new theme becomes a chip without touching this copy."""
+    ids = list(DEFAULT_THEME_IDS)
+    chips = ", ".join(
+        f'{{label "{KEYWORD_THEMES[t].label}", answer "{t}"}}' for t in ids
+    )
+    combined = "Both" if len(ids) == 2 else "All"
+    return (
+        'use the present_options tool (field "ad_groups") to ask "Which ad groups should '
+        'we build?" with these options - each carries its own `answer`: '
+        f'{chips}, {{label "{combined}", answer "{",".join(ids)}"}}. Whatever they pick is '
+        "what gets built - do not talk them out of narrowing it. CALL the tool - never type "
+        "the call into your reply."
+    )
 
 
 @dataclass(frozen=True)
@@ -65,6 +109,23 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    # True once prepare_campaign_review has run and the channel's build slot is filled -
+    # flips the review branch from "prepare the campaign" to "launch". Which slot counts
+    # depends on the channel: keywords for Search, audience for Demand Gen.
+    build_done: bool = False
+    # Unfinished work inside a build that did run, worded by the channel that owns it. The
+    # one build-stage case that must not be answered by building again.
+    build_gaps: tuple[str, ...] = ()
+    # What the review panel is showing, named by the channel that built it - so this module
+    # never has to know which slots a channel has.
+    review_items: tuple[str, ...] = ()
+    # True once the user okays the campaign summary - the gate between showing the summary
+    # and asking which ad groups to build.
+    summary_confirmed: bool = False
+    # The tool that asked the user something and must be handed their reply, because it
+    # answers from a record the orchestrator was never given. Any tool whose elicitation
+    # names `user_message` as the field it fills.
+    awaiting_tool: str | None = None
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -78,6 +139,8 @@ class CampaignContext:
         # evaluate the condition before the walrus and raise UnboundLocalError.
         pe = ctx.get("_pending_elicitation") or {}
         awaiting_custom_field = pe.get("field") if pe.get("awaiting_custom") else None
+        # Read here, before _resume_elicitation_section pops it later in the same build.
+        awaiting_tool = pe.get("tool") if pe.get("field") == "user_message" else None
         return cls(
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
@@ -98,6 +161,13 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            build_done=is_build_complete(ctx),
+            build_gaps=build_gaps(ctx),
+            review_items=build_review_items(ctx),
+            summary_confirmed=_is_affirmative(
+                (ctx.get("campaign_spec") or {}).get("summary_confirmed")
+            ),
+            awaiting_tool=awaiting_tool,
         )
 
     @property
@@ -111,6 +181,11 @@ class CampaignContext:
     @property
     def is_meta(self) -> bool:
         return _platform_is_meta(self.spec.get("platform"))
+
+    @property
+    def channel(self) -> Channel:
+        """Google's campaign type. Meaningless for Meta - guard with ``is_google``."""
+        return resolve_channel(self.spec)
 
     @property
     def has_mapped_geo_targets(self) -> bool:
@@ -158,6 +233,15 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         missing.append("business URL - call `analyze_product(url=<the user's URL>)`")
         return missing
 
+    # First, not only: anything else at the top reads as leave to move on and to report an
+    # outcome nobody gave us. The rest of the list stays for a user who changed the subject.
+    if cctx.awaiting_tool:
+        missing.append(
+            f"answer the question `{cctx.awaiting_tool}` asked - call "
+            f"`{cctx.awaiting_tool}(user_message=<their verbatim reply>)` NOW. Do NOT act "
+            "on it yourself, claim anything changed, or move on."
+        )
+
     # Intent routing: if the user's last message is a recognizable answer for
     # a pending field, surface "store this NOW" as the top of missing. This
     # prevents the LLM from following the default Next-action prescription
@@ -193,8 +277,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
 
     if not cctx.spec.get("platform") and intent_field != "platform":
         missing.append(
-            "platform - use the present_options tool (field \"platform\") to ask "
-            "\"Which platform should we run this on?\" with chip choices: Google Ads, "
+            'platform - use the present_options tool (field "platform") to ask '
+            '"Which platform should we run this on?" with chip choices: Google Ads, '
             "Meta. CALL the tool - never type the call into your reply."
         )
 
@@ -209,10 +293,10 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         loc_arg = cctx.spec.get("location") or ""
         missing.append(
             (
-            'target_areas - call `manage_targeting_locations(user_message="set up geo targeting")`'
-            if not loc_arg
-            else f'target_areas - call `manage_targeting_locations(user_message="set up geo targeting for {loc_arg!r}")`'
-        )
+                'target_areas - call `manage_targeting_locations(user_message="set up geo targeting")`'
+                if not loc_arg
+                else f'target_areas - call `manage_targeting_locations(user_message="set up geo targeting for {loc_arg!r}")`'
+            )
         )
 
     if (
@@ -228,8 +312,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         missing.append(
             "competitive analysis - offer it ONCE as a Yes/No question, then react:\n"
             "  • if you have not offered competitor analysis yet → ask via the "
-            "present_options tool (field \"competitive_analysis_declined\"): \"Want me to "
-            "analyze competitors before we set things up?\" with chips Yes / No. A No "
+            'present_options tool (field "competitive_analysis_declined"): "Want me to '
+            'analyze competitors before we set things up?" with chips Yes / No. A No '
             "(or a clear typed decline) is recorded for you automatically - do NOT call "
             "set_campaign_spec for it, and never set a field the user hasn't stated "
             "(F17/F12: don't copy a value into duration/budget/account to 'proceed').\n"
@@ -252,8 +336,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             )
         else:
             missing.append(
-                "duration - use the present_options tool (field \"duration\") to ask "
-                "\"How long should the campaign run?\" with chip choices: 30 days, "
+                'duration - use the present_options tool (field "duration") to ask '
+                '"How long should the campaign run?" with chip choices: 30 days, '
                 "60 days, 90 days, Custom. CALL the tool - never type the call into your reply."
             )
     if not cctx.spec.get("budget"):
@@ -269,8 +353,8 @@ def _next_action(cctx: CampaignContext) -> list[str]:
         else:
             currency = "₹" if cctx.is_real_estate else "$"
             missing.append(
-                "budget - use the present_options tool (field \"budget\") to ask "
-                "\"What's your daily budget?\" with platform-tuned chip choices "
+                'budget - use the present_options tool (field "budget") to ask '
+                '"What\'s your daily budget?" with platform-tuned chip choices '
                 f"(e.g. {currency}5,000/day, {currency}10,000/day, {currency}25,000/day) "
                 "plus Custom. CALL the tool - never type the call into your reply."
             )
@@ -333,7 +417,9 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                     "option). If none are linked, the tool says so - offer Facebook-only."
                 )
 
-    if not missing:
+    if not missing and not cctx.summary_confirmed:
+        # Every platform reviews the summary and confirms before anything is built or launched.
+        # What gets built is the user's choice in the next step, so nothing is decided here.
         meta_extra = ""
         if cctx.is_meta:
             meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
@@ -362,11 +448,64 @@ def _next_action(cctx: CampaignContext) -> list[str]:
             "if competitor_analysis_attempted is true with empty list, or 'declined' "
             "if competitive_analysis_declined='true'>\n\n"
             "EVERY bullet must be present - do not omit any.\n"
-            "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
-            "the campaign?\" with chips: Yes, launch / No, make changes. When the user "
-            "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the one "
-            "tool that persists the campaign. These are tools to CALL - never type "
-            "tool-call syntax into your reply, only the markdown summary above is text."
+            "(2) THEN, separately, use the present_options tool (field "
+            '"summary_confirmed") to ask "Proceed with the campaign?" with exactly '
+            'two options: {label "Yes, proceed", answer "true"} and a plain "No, make '
+            'changes". These are tools to CALL - never type tool-call syntax into your '
+            "reply, only the markdown summary above is text."
+        )
+    elif not missing and cctx.is_google and not cctx.build_done:
+        # Google-only build stage. Other platforms have no build step yet and skip
+        # straight to launch below.
+        if cctx.build_gaps:
+            # First: a build that ran has already answered channel and ad groups, and the
+            # branches below would only prescribe building it a second time.
+            missing.extend(cctx.build_gaps)
+        elif not cctx.spec.get("channel"):
+            # Which build runs, so it belongs to the build stage - not to the details the
+            # summary confirms. Options come from the enum: a channel that exists can be
+            # built, so a new one is offered without touching this module.
+            options = ", ".join(
+                f'{{label "{c.chip_label}", answer "{c.value}"}}' for c in Channel
+            )
+            missing.append(
+                'channel - use the present_options tool (field "channel") to ask '
+                '"What kind of Google campaign should we run?" with these options - each '
+                f"carries its own `answer`: {options}. CALL the tool - never type the "
+                "call into your reply."
+            )
+        elif cctx.channel is Channel.SEARCH and not cctx.spec.get("ad_groups"):
+            # Ad groups are keyword themes, so only Search picks them.
+            missing.append("ad groups - " + _ad_group_question())
+        elif cctx.channel is Channel.SEARCH:
+            missing.append(
+                "build the campaign - the user okayed the summary and chose the ad groups "
+                f'("{cctx.spec.get("ad_groups")}"). Call the prepare_campaign_review tool (no '
+                "arguments) NOW - it researches the keywords and shows them in the review "
+                "panel. Do NOT re-post the summary and do NOT ask either question again."
+            )
+        else:
+            missing.append(
+                "build the campaign - the user okayed the summary. Call the "
+                "prepare_campaign_review tool (no arguments) NOW - it builds the audience "
+                "targeting and shows it in the review panel. Do NOT re-post the summary."
+            )
+    elif not missing:
+        # Launch. Google has keywords in the panel to review first; other platforms go
+        # straight from the confirmed summary to the launch confirm.
+        review = (
+            f"The panel shows {', '.join(cctx.review_items)}. Ask the user to review and "
+            "edit them, then "
+            if cctx.review_items
+            else "The campaign details are confirmed. "
+        )
+        missing.append(
+            "launch - "
+            + review
+            + 'call `present_options(question="Ready to launch the campaign?", '
+            'options=["Yes, launch", "No, make changes"])`. '
+            "**On the user's 'Yes, launch' reply, call `launch_campaign()` (no params) - "
+            "that's the one tool that persists the campaign.**"
         )
 
     return missing

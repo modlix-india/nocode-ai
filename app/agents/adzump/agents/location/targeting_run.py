@@ -86,8 +86,32 @@ async def resolve_coordinates(
         place["country_code"] = geo["country_code"]
     if not place.get("address") and geo.get("address"):
         place["address"] = geo["address"]
-    return {"lat": float(geo["lat"]), "lng": float(geo["lng"]),
-            "country": geo.get("country")}
+    return {
+        "lat": float(geo["lat"]),
+        "lng": float(geo["lng"]),
+        "country": geo.get("country"),
+    }
+
+
+async def resolve_country_code(location_name: str | None, place: dict) -> str:
+    """The two-letter country for ``place``, geocoding by name if it isn't recorded yet.
+
+    Separate from ``resolve_coordinates``, which returns early once lat/lng are cached and
+    only stamps ``country_code`` on a *fresh* geocode - so a place confirmed by map pin
+    carries coordinates and no country. Stamps what it finds, best-effort."""
+    if code := str(place.get("country_code") or "").strip():
+        return code.upper()
+    if not location_name:
+        return ""
+    try:
+        geo = await google_maps_client.geocode(location_name)
+    except Exception as e:
+        logger.warning("Country lookup for '%s' failed: %s", location_name, e)
+        return ""
+    code = str((geo or {}).get("country_code") or "").strip()
+    if code:
+        place["country_code"] = code
+    return code.upper()
 
 
 # ── Step 3b: country geo constant ───────────────────────────────────────────
@@ -96,7 +120,9 @@ async def resolve_country_geo_constant(
 ) -> None:
     """Stamp place.country_geo_constant (Google geoTargetConstants/{id} for the
     country) once per session. Best-effort: failure never blocks the run."""
-    if place.get("country_geo_constant") or not (country_name and place.get("country_code")):
+    if place.get("country_geo_constant") or not (
+        country_name and place.get("country_code")
+    ):
         return
     from app.agents.adzump.adapters.google.client import google_ads_client
 
@@ -118,7 +144,9 @@ async def resolve_country_geo_constant(
 
 
 # ── Step 4: sub-session construction ───────────────────────────────────────
-async def build_sub_session(parent_ctx: dict, auth, chat_session_id: str = "") -> BaseSession:
+async def build_sub_session(
+    parent_ctx: dict, auth, chat_session_id: str = ""
+) -> BaseSession:
     """Create a sub-session with shared context refs but isolated message history.
 
     Shared dict refs let the sub-agent's tools write through to the parent
@@ -163,7 +191,7 @@ def build_run_prompt(
         f"- Target country: {country_code}\n"
         f"- Confirmed location: {location_name or '(none)'}\n"
         f"- Summary: {summary or '(none)'}\n\n"
-        "Current targeting list (1-based - \"the second area\" is index 2):\n"
+        'Current targeting list (1-based - "the second area" is index 2):\n'
         f"{format_current_areas(product.get('target_areas'))}\n\n"
         f'User request:\n"""{user_request}"""\n\n'
         "Do exactly what the request asks with ONE tool call, then write "
@@ -183,9 +211,7 @@ def format_current_areas(areas: list[dict] | None) -> str:
 
 
 # ── Step 6: result construction ─────────────────────────────────────────────
-def build_run_result(
-    sub_session: BaseSession, product: dict, spec: dict
-) -> ToolResult:
+def build_run_result(sub_session: BaseSession, product: dict, spec: dict) -> ToolResult:
     """Compose the ToolResult from the post-run state.
 
     Returns:
@@ -202,15 +228,17 @@ def build_run_result(
             error=(
                 final_text.strip()
                 or "The location agent finished without changing the targeting. "
-                   "Retry manage_targeting_locations with the user's message, or "
-                   "ask the user to clarify what they want targeted."
+                "Retry manage_targeting_locations with the user's message, or "
+                "ask the user to clarify what they want targeted."
             ),
         )
 
     mapped = product.get("target_areas") or []
     platform = (spec.get("platform") or "Google Ads").strip()
     logger.info(
-        "location_agent.run: %d areas for platform=%s", len(mapped), platform,
+        "location_agent.run: %d areas for platform=%s",
+        len(mapped),
+        platform,
     )
 
     user_summary = (

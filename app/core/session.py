@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -428,6 +429,7 @@ class BaseSession:
         request_id: str,
         model: str,
         provider_name: str | None = None,
+        agent_type: str | None = None,
     ) -> None:
         """Record token usage for a single LLM call.
 
@@ -437,6 +439,10 @@ class BaseSession:
             model: Model name used for this call.
             provider_name: LLM provider name (e.g. "anthropic", "deepseek").
                 Falls back to settings.LLM_PROVIDER if not provided.
+            agent_type: Override for the recorded agent label. Defaults to this
+                session's agent_name; a one-shot sub-step passes a distinct value
+                (e.g. "campaign:offering_taxonomy") so it lands as its own line in
+                per-agent breakdowns without changing the session/billing identity.
 
         Best-effort — failures are logged but don't stop the agent.
         """
@@ -454,7 +460,7 @@ class BaseSession:
                 client_code=self.auth.client_code,
                 client_id=self.auth.client_id,
                 user_id=self.auth.user_id,
-                agent_type=self.agent_name,
+                agent_type=agent_type or self.agent_name,
                 model=model,
                 llm_provider=provider_name or settings.LLM_PROVIDER,
                 input_tokens=usage.get("input_tokens", 0),
@@ -698,3 +704,42 @@ def _tool_only_turn_note(tool_calls_json: str | None) -> str:
     if tool_names:
         return f"Done ({', '.join(tool_names)})."
     return "Done."
+
+
+# The session being billed for the currently-running agent. BaseAgent.run sets it
+# (alongside current_agent_id) so a standalone one-shot LLM call — outside the tool
+# loop, e.g. offering-taxonomy — bills its tokens to the right agent without the
+# session being threaded through tool contexts.
+current_session: ContextVar[Optional["BaseSession"]] = ContextVar(
+    "current_session", default=None
+)
+
+
+async def record_oneshot_usage(
+    usage: dict[str, int], model: str, provider: str = "openai", step: str | None = None
+) -> None:
+    """Track AND charge a one-shot LLM call (one made outside the agent loop) against the
+    active session — the same two halves the loop does per call. No-op with no session.
+
+    ``step`` labels the row "<agent>:<step>" so its cost is its own line; the session and
+    billing identity are unchanged."""
+    session = current_session.get()
+    if session is None:
+        return
+    request_id = str(uuid.uuid4())
+    try:
+        session.accumulate_usage(usage)
+        agent_type = f"{session.agent_name}:{step}" if step else None
+        await session.record_token_usage(
+            usage, request_id, model, provider, agent_type=agent_type
+        )
+        # Charge it the same way the loop charges each LLM call — same requestId (idempotent),
+        # best-effort. Function-level import: billing imports AuthContext from this module.
+        if session.auth is not None:
+            from app.services import billing
+
+            await billing.charge_llm_call(
+                session.auth, usage, model, request_id, session.session_id
+            )
+    except Exception:  # billing must never break the one-shot call it wraps
+        logger.warning("record_oneshot_usage failed (ignored)", exc_info=True)

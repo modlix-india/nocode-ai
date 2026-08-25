@@ -88,7 +88,7 @@ def _hydrate_location_from_product_data(ctx: dict) -> None:
 class AdzumpAgent(BaseAgent):
     """Chat agent that manages ad campaigns through conversation."""
 
-    _instance: "AdzumpAgent | None" = None
+    _instance: "AdzumpAgent | None" = None  # singleton; GIL serialises the attr write
 
     # v9 I-1 · data-backed (two present_options stacked live 2026-05-30). When
     # the LLM batches a deferred elicitation with other tools, run them serially
@@ -271,6 +271,13 @@ class AdzumpAgent(BaseAgent):
         if not pe:
             return ""
         if pe.get("expects") == "multi":
+            if pe.get("tool") == "prepare_campaign_review":
+                return (
+                    "## Resuming — campaign review is still open\n"
+                    "The review panel is on screen and the user has been reviewing / editing it "
+                    "across several panel actions. Do NOT restate the setup or re-run the build; "
+                    "acknowledge their changes and, when they signal they're done, move to launch."
+                )
             return (
                 "## Resuming - upload request is still open\n"
                 "Last turn you asked the user to upload assets. They may send "
@@ -287,6 +294,16 @@ class AdzumpAgent(BaseAgent):
         # single: one-shot - clear after emitting so it fires for exactly this turn
         session.context.pop("_pending_elicitation", None)
         tool = pe.get("tool", "the previous step")
+        if pe.get("field") == "user_message":
+            # The asker holds the record the reply refers to, and we were never told what it
+            # asked - so reading the answer here means inventing what it meant.
+            return (
+                "## Resuming after a question\n"
+                f"`{tool}` asked the user something last turn and their message is the "
+                f"answer. Send it straight back: `{tool}(user_message=<their verbatim "
+                "reply>)`. Do NOT interpret it, act on it, or say anything was added or "
+                "changed - you were not told what was asked."
+            )
         return (
             "## Resuming after a question\n"
             f"Last turn you asked the user a question (via {tool}); the widget is "
@@ -459,8 +476,12 @@ class AdzumpAgent(BaseAgent):
         from app.agents.adzump.services.business_storage import resolve_url
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
+        # Stop once campaign creation has begun: the campaign craft owns the panel from
+        # then on, so re-emitting the setup craft here just steals focus
+        # (prepare_campaign_review sets campaign_craft_id).
         if not (platform and cctx.has_mapped_geo_targets) \
-                or ctx.get("_last_craft_platform") == platform:
+                or ctx.get("_last_craft_platform") == platform \
+                or ctx.get("campaign_craft_id"):
             return
         ctx["_last_craft_platform"] = platform
         url = resolve_url(ctx)
