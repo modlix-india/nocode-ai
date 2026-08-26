@@ -7,8 +7,9 @@ its category:
 
   - fetch_interests       : search per seed + targetingsuggestions expansion
   - fetch_behaviors       : full catalog browse + search per seed
-  - fetch_demographics    : browse 5 fixed subtypes + optional search 3 open subtypes
-  - search_open_demographics : targetingsearch per seed across work/education subtypes
+  - fetch_demographics    : browse 5 fixed subtypes (no seeds)
+  - search_open_demographics : targetingsearch per seed across 3 open subtypes
+                               (work_positions, work_employers, education_majors)
   - validate              : batched GET targetingvalidation (50 per batch)
 """
 
@@ -19,18 +20,18 @@ import json
 import logging
 from typing import Any
 
+from app.agents.adzump.adapters.connections import fetch_meta_api_token
 from app.agents.adzump.adapters.meta.client import meta_client
 from app.agents.adzump.agents.meta_detailed_targeting.models import TargetingEntity
+from app.agents.adzump.config import get_adzump_config
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 META_API_TIMEOUT_SECONDS = 15.0
 META_API_MAX_RETRY_ATTEMPTS = 2
 META_API_SUGGESTIONS_MAX_SEEDS = 50
-META_API_CONCURRENT_REQUESTS_SEMAPHORE = asyncio.Semaphore(10)
+META_API_CONCURRENT_REQUESTS_LIMIT = 10
 
 # Fixed catalog subtypes — small, enumerable lists. targetingbrowse returns all entries.
 DEMOGRAPHIC_FIXED_SUBTYPES = (
@@ -39,7 +40,6 @@ DEMOGRAPHIC_FIXED_SUBTYPES = (
     "income",
     "industries",
     "education_statuses",
-    
 )
 
 # Open/searchable subtypes — large databases (job titles, employers, majors).
@@ -48,15 +48,18 @@ DEMOGRAPHIC_SEARCHABLE_SUBTYPES = (
     "work_positions",
     "work_employers",
     "education_majors",
-    "moms",                  
-    "home_ownership",       
-    "household_composition",
 )
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
+async def _resolve_meta_token(client_code: str, auth_headers: dict[str, str]) -> str:
+    """Resolve Meta access token: check local .env override first, then gateway."""
+    local = get_adzump_config().meta.access_token
+    if local:
+        return local
+    return await fetch_meta_api_token(client_code, auth_headers)
+
+
 def _normalize_account_id(account_id: str) -> str:
     """Strip 'act_' prefix and sanitize ad account ID."""
     clean = str(account_id).strip().lower()
@@ -65,30 +68,29 @@ def _normalize_account_id(account_id: str) -> str:
     return clean
 
 
-
-def _parse_entity(item: dict[str, Any]) -> TargetingEntity | None:
-    """Parse a raw Meta API item into a TargetingEntity. Returns None on failure."""
-    return TargetingEntity.from_meta(item)
-
-
 def _deduplicate(entities: list[TargetingEntity]) -> list[TargetingEntity]:
     """Remove duplicate entities by ID, preserving first-seen order."""
     seen: set[str] = set()
     result: list[TargetingEntity] = []
-    for entity in entities:
-        entity_id = str(entity.id) if entity.id else None
-        if not entity_id or entity_id in seen:
-            continue
-        seen.add(entity_id)
-        result.append(entity)
+    for e in entities:
+        if e.id and e.id not in seen:
+            seen.add(e.id)
+            result.append(e)
     return result
 
 
-# ---------------------------------------------------------------------------
 # Adapter
-# ---------------------------------------------------------------------------
 class TargetingAdapter:
-    """Category-aware adapter for Meta Ads Graph API targeting endpoints."""
+    """Async adapter for Meta Detailed Targeting Graph API."""
+
+    def __init__(self) -> None:
+        self._semaphore: asyncio.Semaphore | None = None
+
+    @property
+    def semaphore(self) -> asyncio.Semaphore:
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(META_API_CONCURRENT_REQUESTS_LIMIT)
+        return self._semaphore
 
     async def _fetch_with_retry(
         self,
@@ -97,65 +99,94 @@ class TargetingAdapter:
         account_id: str,
         endpoint: str,
         params: dict[str, Any],
+        access_token: str | None = None,
     ) -> list[TargetingEntity]:
-        """Execute a GET request with semaphore, timeout and exponential backoff."""
+        """Execute a GET request with semaphore, timeout and exponential backoff.
+
+        Only retries on transient errors: asyncio.TimeoutError, network errors
+        (httpx.RequestError), and Meta 5xx/rate-limit responses (RuntimeError
+        from _raise_for_meta_error with status >= 500 or 429).
+        4xx client errors are not retried — they indicate a bad request that
+        will produce the same result on retry.
+        """
         clean_id = _normalize_account_id(account_id)
         full_endpoint = f"/act_{clean_id}/{endpoint}"
 
         for attempt in range(META_API_MAX_RETRY_ATTEMPTS):
             try:
-                async with META_API_CONCURRENT_REQUESTS_SEMAPHORE:
+                async with self.semaphore:
                     response = await asyncio.wait_for(
                         meta_client.get(
                             endpoint=full_endpoint,
                             client_code=client_code,
                             auth_headers=auth_headers,
                             params=params,
+                            access_token=access_token,
                         ),
                         timeout=META_API_TIMEOUT_SECONDS,
                     )
 
                 if "error" in response:
                     error_msg = response["error"].get("message") or str(response["error"])
-                    raise RuntimeError(error_msg)
+                    error_code = response["error"].get("code", 0)
+                    # Rate-limit (code 17 / 32 / 613) and server errors are retryable;
+                    # auth and bad-request errors (code 190, 100, etc.) are not.
+                    if error_code in (17, 32, 613):
+                        raise RuntimeError(error_msg)  # will retry
+                    raise ValueError(error_msg)  # 4xx-equivalent — will not retry
 
                 data_list = response.get("data") or []
-                entities = [_parse_entity(item) for item in data_list]
+                entities = [TargetingEntity.from_meta(item) for item in data_list]
                 return [e for e in entities if e is not None]
 
-            except Exception as exc:
+            except (asyncio.TimeoutError, OSError) as exc:
+                # Transient network errors — always retry
                 logger.warning(
-                    "Meta API %s attempt %d/%d failed: %s",
+                    "Meta API %s attempt %d/%d transient error: %s",
                     endpoint, attempt + 1, META_API_MAX_RETRY_ATTEMPTS, exc,
                 )
                 if attempt == META_API_MAX_RETRY_ATTEMPTS - 1:
                     raise
                 await asyncio.sleep(2 ** attempt)
+            except RuntimeError as exc:
+                # Rate-limit or explicit server error — retry
+                logger.warning(
+                    "Meta API %s attempt %d/%d retryable error: %s",
+                    endpoint, attempt + 1, META_API_MAX_RETRY_ATTEMPTS, exc,
+                )
+                if attempt == META_API_MAX_RETRY_ATTEMPTS - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)
+            except Exception as exc:
+                # Non-retryable: 4xx, ValueError from bad request, etc.
+                logger.warning(
+                    "Meta API %s non-retryable error: %s",
+                    endpoint, exc,
+                )
+                raise
 
         return []
 
-    # ------------------------------------------------------------------
     # search
-    # ------------------------------------------------------------------
     async def search(
         self,
         client_code: str,
         auth_headers: dict[str, str],
         account_id: str,
-        query: str,
+        q: str,
     ) -> list[TargetingEntity]:
         """Perform a general targeting search across interests, behaviors, and demographics."""
+        token = await _resolve_meta_token(client_code, auth_headers)
         return await self._fetch_with_retry(
             client_code=client_code,
             auth_headers=auth_headers,
             account_id=account_id,
             endpoint="targetingsearch",
-            params={"q": query},
+            params={"q": q},
+            access_token=token,
         )
 
-    # ------------------------------------------------------------------
     # fetch_interests
-    # ------------------------------------------------------------------
     async def fetch_interests(
         self,
         client_code: str,
@@ -174,14 +205,17 @@ class TargetingAdapter:
 
         Returns deduplicated interest entities from both phases.
         """
-        # Phase 1: parallel search per seed
+        token = await _resolve_meta_token(client_code, auth_headers)
+
+        # Phase 1: parallel search per seed — limit=50 to override Meta's 8-result default
         search_tasks = [
             self._fetch_with_retry(
                 client_code=client_code,
                 auth_headers=auth_headers,
                 account_id=account_id,
                 endpoint="targetingsearch",
-                params={"q": seed, "limit_type": "interests"},
+                params={"q": seed, "limit_type": "interests", "limit": 50},
+                access_token=token,
             )
             for seed in seeds
         ]
@@ -214,6 +248,7 @@ class TargetingAdapter:
                     ),
                     "limit_type": "interests",
                 },
+                access_token=token,
             )
             for batch in id_batches
         ]
@@ -226,9 +261,7 @@ class TargetingAdapter:
 
         return _deduplicate(all_entities)
 
-    # ------------------------------------------------------------------
     # fetch_behaviors
-    # ------------------------------------------------------------------
     async def fetch_behaviors(
         self,
         client_code: str,
@@ -244,12 +277,15 @@ class TargetingAdapter:
 
         Returns merged, deduplicated behavior entities.
         """
+        token = await _resolve_meta_token(client_code, auth_headers)
+
         browse_task = self._fetch_with_retry(
             client_code=client_code,
             auth_headers=auth_headers,
             account_id=account_id,
             endpoint="targetingbrowse",
             params={"limit_type": "behaviors"},
+            access_token=token,
         )
         search_tasks = [
             self._fetch_with_retry(
@@ -257,7 +293,8 @@ class TargetingAdapter:
                 auth_headers=auth_headers,
                 account_id=account_id,
                 endpoint="targetingsearch",
-                params={"q": seed, "limit_type": "behaviors"},
+                params={"q": seed, "limit_type": "behaviors", "limit": 50},
+                access_token=token,
             )
             for seed in seeds
         ]
@@ -271,9 +308,7 @@ class TargetingAdapter:
 
         return _deduplicate(entities)
 
-    # ------------------------------------------------------------------
     # fetch_demographics  (fixed catalog — no seeds needed)
-    # ------------------------------------------------------------------
     async def fetch_demographics(
         self,
         client_code: str,
@@ -293,6 +328,8 @@ class TargetingAdapter:
                 for each of DEMOGRAPHIC_FIXED_SUBTYPES
         Returns merged, deduplicated demographic entities (~99 total).
         """
+        token = await _resolve_meta_token(client_code, auth_headers)
+
         browse_tasks = [
             self._fetch_with_retry(
                 client_code=client_code,
@@ -300,6 +337,7 @@ class TargetingAdapter:
                 account_id=account_id,
                 endpoint="targetingbrowse",
                 params={"limit_type": subtype},
+                access_token=token,
             )
             for subtype in DEMOGRAPHIC_FIXED_SUBTYPES
         ]
@@ -313,9 +351,7 @@ class TargetingAdapter:
 
         return _deduplicate(entities)
 
-    # ------------------------------------------------------------------
     # search_open_demographics  (job titles / employers / majors)
-    # ------------------------------------------------------------------
     async def search_open_demographics(
         self,
         client_code: str,
@@ -333,13 +369,16 @@ class TargetingAdapter:
                 for each seed x each of DEMOGRAPHIC_SEARCHABLE_SUBTYPES
         Returns merged, deduplicated entities.
         """
+        token = await _resolve_meta_token(client_code, auth_headers)
+
         search_tasks = [
             self._fetch_with_retry(
                 client_code=client_code,
                 auth_headers=auth_headers,
                 account_id=account_id,
                 endpoint="targetingsearch",
-                params={"q": seed, "limit_type": subtype},
+                params={"q": seed, "limit_type": subtype, "limit": 50},
+                access_token=token,
             )
             for seed in seeds
             for subtype in DEMOGRAPHIC_SEARCHABLE_SUBTYPES
@@ -354,9 +393,7 @@ class TargetingAdapter:
 
         return _deduplicate(entities)
 
-    # ------------------------------------------------------------------
     # validate
-    # ------------------------------------------------------------------
     async def validate(
         self,
         client_code: str,
@@ -367,12 +404,13 @@ class TargetingAdapter:
         """Verify targeting entities are still active in Meta's system.
 
         Batches by 50, uses GET targetingvalidation with targeting_list query param.
-        Returns only entities where valid=True. Falls back to returning the batch
-        unvalidated on error so the pipeline never produces empty results.
+        Returns only active entities confirmed by Meta. Invalid, deprecated, or
+        failed items are rejected.
         """
         if not entities:
             return []
 
+        token = await _resolve_meta_token(client_code, auth_headers)
         clean_id = _normalize_account_id(account_id)
         full_endpoint = f"/act_{clean_id}/targetingvalidation"
         batch_size = 50
@@ -381,26 +419,46 @@ class TargetingAdapter:
         async def _validate_batch(batch: list[TargetingEntity]) -> list[TargetingEntity]:
             try:
                 targeting_list = [e.to_validation_pair() for e in batch if e.id]
+                if not targeting_list:
+                    return []
                 response = await meta_client.get(
                     endpoint=full_endpoint,
                     client_code=client_code,
                     auth_headers=auth_headers,
                     params={"targeting_list": json.dumps(targeting_list)},
+                    access_token=token,
                 )
                 if "error" in response:
-                    logger.warning("targetingvalidation error - returning batch unvalidated")
-                    return batch
+                    logger.warning("targetingvalidation error response: %s", response.get("error"))
+                    return []
 
-                active_ids = {
-                    str(item.get("id"))
-                    for item in response.get("data", [])
-                    if item.get("valid") is True
+                # Parse Meta Graph API's validated items and enrich entities with fresh metadata
+                data_items = response.get("data", [])
+                meta_item_map = {
+                    str(item.get("id")).strip(): item
+                    for item in data_items
+                    if item.get("valid") is True and item.get("id") is not None
                 }
-                return [e for e in batch if str(e.id) in active_ids]
+
+                validated: list[TargetingEntity] = []
+                for e in batch:
+                    e_id = str(e.id).strip()
+                    if e_id in meta_item_map:
+                        item_data = meta_item_map[e_id]
+                        enriched = TargetingEntity.from_meta(item_data)
+                        if enriched:
+                            # Preserve original type if Meta returned a generic type
+                            if not enriched.type or enriched.type == "interests":
+                                if e.type and e.type != "interests":
+                                    enriched.type = e.type
+                            validated.append(enriched)
+                        else:
+                            validated.append(e)
+
+                return validated
             except Exception as exc:
-                logger.warning("Validation batch failed: %s - returning unvalidated", exc)
-                return batch
+                logger.warning("Validation batch exception: %s", exc)
+                return []
 
         results = await asyncio.gather(*[_validate_batch(b) for b in batches])
         return [entity for batch_result in results for entity in batch_result]
-

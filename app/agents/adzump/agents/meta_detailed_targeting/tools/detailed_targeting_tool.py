@@ -1,9 +1,6 @@
 """Detailed targeting tool - launches DetailedTargetingAgent sub-agent to generate
 Meta Ads detailed targeting suggestions (interests, demographics, behaviors).
 
-UI-triggered mutations (keyword search, add segment from search, delete chip) are
-handled by REST endpoints in targeting_router.py and bypass the LLM entirely.
-
 This module contains only:
   - suggest_meta_targeting  : spawns the sub-agent for strategic recommendations.
   - delete_targeting_segment: LLM-callable tool for conversational segment deletes
@@ -24,38 +21,12 @@ from app.agents.adzump.agents.meta_detailed_targeting.agent import (
 )
 from app.agents.adzump.agents.meta_detailed_targeting.models import (
     MetaTargetingSuggestionResult,
-    TargetingEntity,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def _build_suggestion_result(
-    targeting: dict[str, Any],
-) -> MetaTargetingSuggestionResult:
-    """Helper to parse raw segment lists into a MetaTargetingSuggestionResult."""
-    all_raw = (
-        targeting.get("interests", [])
-        + targeting.get("demographics", [])
-        + targeting.get("behaviors", [])
-        + targeting.get("entities", [])
-    )
-
-    entities = []
-    for item in all_raw:
-        if isinstance(item, TargetingEntity):
-            entities.append(item)
-        elif isinstance(item, dict):
-            parsed = TargetingEntity.from_meta(item)
-            if parsed is not None:
-                entities.append(parsed)
-
-    return MetaTargetingSuggestionResult(entities=entities)
-
-
-# ---------------------------------------------------------------------------
 # suggest_meta_targeting — spawns the AI sub-agent
-# ---------------------------------------------------------------------------
 
 async def _suggest_meta_targeting(
     params: dict[str, Any], context: dict[str, Any]
@@ -82,16 +53,16 @@ async def _suggest_meta_targeting(
             error="ad_account_id is required. Please select or provide a Meta ad account first.",
         )
 
-    # 2. Resolve URL
-    url = (
-        (session_ctx.get("product_profile") or {}).get("url")
-        or (session_ctx.get("product_data") or {}).get("url")
+    # 2. Resolve business description summary (gate on summary actually used by agent, not url)
+    summary = (
+        (session_ctx.get("product_data") or {}).get("summary")
+        or (session_ctx.get("product_profile") or {}).get("summary")
         or ""
     )
-    if not url:
+    if not summary:
         return ToolResult(
             success=False,
-            error="No website URL found. Please perform website analysis first.",
+            error="No business description found. Please perform website or product analysis first.",
         )
 
     if auth is None:
@@ -129,8 +100,6 @@ async def _suggest_meta_targeting(
             user_query=user_query,
         )
 
-        # Stash structured suggestions back to parent session context
-        session_ctx["detailed_targeting"] = result.model_dump()
 
         summary = f"Suggested {len(result.entities)} detailed targeting segments."
         if explanation:
@@ -158,7 +127,9 @@ suggest_meta_targeting = ToolDefinition(
         "Use this for strategic requests such as 'generate targeting', 'expand my audience', "
         "or 'find more segments for luxury watch buyers'. "
         "Do NOT use this for keyword searches, chip deletes, or adding a specific segment — "
-        "those are handled by the craft panel directly."
+        "those are handled by the craft panel directly. "
+        "Do NOT use this for any request to remove, delete, or clear targeting segments — "
+        "use `delete_targeting_segment` directly for those instead."
     ),
     display_name="Suggest Meta Targeting",
     parameters=[
@@ -182,12 +153,7 @@ suggest_meta_targeting = ToolDefinition(
 )
 
 
-# ---------------------------------------------------------------------------
 # delete_targeting_segment — LLM-callable for conversational deletes
-#
-# Use case: user says "remove the Real Estate segment" or "clear all behaviors"
-# in the chat. The UI chip delete button uses the REST DELETE endpoint instead.
-# ---------------------------------------------------------------------------
 
 async def _delete_targeting_segment(
     params: dict[str, Any], context: dict[str, Any]
@@ -213,7 +179,6 @@ async def _delete_targeting_segment(
         )
 
     session_ctx = context.get("session_context", {}) or {}
-    stream = context.get("event_stream")
     session = context.get("_session")
 
     if not session:
@@ -224,15 +189,12 @@ async def _delete_targeting_segment(
         targeting = {}
         session_ctx["detailed_targeting"] = targeting
 
-    agent = get_detailed_targeting_agent()
-    parent_session_id = session_ctx.get("_parent_session_id") or session.session_id
-    craft_id = f"detailed_targeting_{parent_session_id}"
-
     orig_list = targeting.get("entities") or []
     new_list = []
     removed_names: list[str] = []
 
-    clear_all = name.lower() in ("all", "everything", "all segments") if name else False
+    clear_all_param = bool(params.get("clear_all", False))
+    clear_all = clear_all_param or (name.lower() in ("all", "everything", "all segments") if name else False)
 
     for item in orig_list:
         item_id = item.get("id") if isinstance(item, dict) else getattr(item, "id", None)
@@ -250,17 +212,21 @@ async def _delete_targeting_segment(
             new_list.append(item)
 
     targeting["entities"] = new_list
-    result = _build_suggestion_result(targeting)
+    result = MetaTargetingSuggestionResult.from_dict(targeting)
     session_ctx["detailed_targeting"] = result.model_dump()
 
-    search_results = session_ctx.get("detailed_targeting_search_results") or []
-    await agent._emit_targeting_craft(
-        stream,
-        craft_id,
-        "Targeting Recommendations",
-        result,
-        search_results=search_results,
-    )
+    # Force the UI to re-render by emitting the updated Craft Block
+    stream = context.get("event_stream")
+    if stream:
+        craft_id = f"detailed_targeting_{session.session_id}"
+        search_results = session_ctx.get("detailed_targeting_search_results") or []
+        await get_detailed_targeting_agent()._emit_targeting_craft(
+            stream=stream,
+            craft_id=craft_id,
+            title="Meta Targeting Suggestions",
+            result=result,
+            search_results=search_results
+        )
 
     removed_summary = ", ".join(removed_names) if removed_names else (target_id or name or category)
     return ToolResult(
@@ -273,25 +239,31 @@ async def _delete_targeting_segment(
 delete_targeting_segment = ToolDefinition(
     name="delete_targeting_segment",
     description=(
-        "Delete one or more targeting segments from the current selection. "
-        "Use this ONLY when the user asks conversationally to remove, delete, or clear segments, "
-        "for example: 'remove the Real Estate segment', 'delete all behaviors', 'clear everything'. "
-        "Do NOT call this when the user is using the craft panel delete button — "
-        "that action is handled by the UI directly via the REST API."
+        "Remove targeting segments from the current selection — by segment ID, name, category, or clear all. "
+        "Use this directly whenever the user asks to remove, delete, or clear one or more targeting segments "
+        "conversationally (e.g. 'remove Real Estate', 'delete all behaviors', 'clear everything'). "
+        "This operates in-memory with no API calls and no sub-agent — "
+        "do NOT route deletion requests through suggest_meta_targeting."
     ),
     display_name="Delete Targeting Segment",
     parameters=[
         ToolParameter(
             name="target_id",
             type="string",
-            description="Exact Meta targeting category ID of the segment to delete.",
+            description="Specific Meta segment ID to delete (e.g. '6003139266661').",
             required=False,
         ),
         ToolParameter(
             name="name",
             type="string",
+            description="Segment name or keyword to delete (case-insensitive substring match).",
+            required=False,
+        ),
+        ToolParameter(
+            name="clear_all",
+            type="boolean",
             description=(
-                "Name or partial name of the segment to delete (case-insensitive substring match). "
+                "If true, removes ALL detailed targeting segments. "
                 "Use 'all' or 'everything' to clear all segments."
             ),
             required=False,
@@ -309,4 +281,5 @@ delete_targeting_segment = ToolDefinition(
 )
 
 
-TARGETING_TOOLS = [suggest_meta_targeting]
+# Orchestrator-facing targeting tools (suggest_meta_targeting, delete_targeting_segment)
+ORCHESTRATOR_TARGETING_TOOLS = [suggest_meta_targeting, delete_targeting_segment]

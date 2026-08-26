@@ -1,3 +1,4 @@
+from typing import Any
 import logging
 from pydantic import BaseModel, Field
 
@@ -18,8 +19,8 @@ class TargetingEntity(BaseModel):
     @classmethod
     def from_meta(cls, item: dict) -> "TargetingEntity | None":
         """THE parser for a raw Graph API segment - the only place raw dicts become entities."""
-        if not isinstance(item, dict):
-            logger.debug("Skipping non-dict entity: %r", item)
+        if not isinstance(item, dict) or not item.get("id"):
+            logger.debug("Skipping non-dict or missing id entity: %r", item)
             return None
         try:
             return cls(
@@ -48,3 +49,42 @@ class MetaTargetingSuggestionResult(BaseModel):
     """Final targeting suggestions output."""
 
     entities: list[TargetingEntity] = Field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, targeting: dict[str, Any] | None) -> "MetaTargetingSuggestionResult":
+        """Parse raw entity list or dict into a valid MetaTargetingSuggestionResult."""
+        if not targeting or not isinstance(targeting, dict):
+            return cls(entities=[])
+        all_raw = targeting.get("entities", [])
+        entities: list[TargetingEntity] = []
+        for item in all_raw:
+            if isinstance(item, TargetingEntity):
+                entities.append(item)
+            elif isinstance(item, dict):
+                parsed = TargetingEntity.from_meta(item)
+                if parsed:
+                    entities.append(parsed)
+        return cls(entities=entities)
+
+
+def resolve_ad_account_id(context: dict[str, Any] | None) -> str:
+    """Resolve Meta ad account ID from direct context, parent context, or campaign_spec."""
+    if not context or not isinstance(context, dict):
+        return ""
+    account_id = (context.get("ad_account_id") or "").strip()
+    if account_id:
+        return account_id
+
+    # Check directly on context (when raw session_ctx is passed)
+    account_id = ((context.get("campaign_spec") or {}).get("account") or "").strip()
+    if account_id:
+        return account_id
+
+    parent_ctx = context.get("parent_session_context") or {}
+    account_id = ((parent_ctx.get("campaign_spec") or {}).get("account") or "").strip()
+    if account_id:
+        return account_id
+
+    session_ctx = context.get("session_context") or {}
+    account_id = ((session_ctx.get("campaign_spec") or {}).get("account") or "").strip()
+    return account_id

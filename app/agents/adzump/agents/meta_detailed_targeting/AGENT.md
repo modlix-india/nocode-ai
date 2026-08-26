@@ -76,7 +76,7 @@ The LLM selects seeds (e.g. brand names, job titles) and passes them to the fetc
 
 **Candidate Pool Stashing:** Whenever candidates are fetched, Python calls `_stash_candidates()` to cache full `TargetingEntity` objects in `session_context["_candidate_pool"]` indexed by entity ID. This preserves exact Meta metadata (`name`, `type`, `audience_size`) in Python memory.
 
-*Note: Candidate lists returned to the LLM are capped at `CANDIDATE_DISPLAY_LIMIT = 300` items per fetch call to manage context window size.*
+*Note: Candidate lists returned to the LLM are capped at `CANDIDATE_DISPLAY_LIMIT = 30` items per fetch call to manage context window size.*
 
 ### 3. The Validation Tool (`validate_targeting`) & Token Optimization
 The final step of the LLM's loop MUST be `validate_targeting`. 
@@ -117,7 +117,7 @@ These REST endpoints bypass the LLM entirely, running instant list mutations in 
    - Removes a segment by ID from current detailed targeting selection.
    - Instantly updates session context.
 
-*(Note: Conversational delete requests in chat like "remove the Real Estate segment" use `delete_targeting_segment` in `detailed_targeting_tool.py` via the sub-agent).*
+*(Note: Conversational delete requests in chat like "remove the Real Estate segment" use `delete_targeting_segment` in `detailed_targeting_tool.py` directly on the orchestrator).*
 
 ---
 
@@ -131,10 +131,10 @@ The Detailed Targeting Agent runs within the Adzump app environment and dynamica
 | **Max Tokens** | `settings.AGENT_MAX_TOKENS` |
 | **Turns Budget** | `_MAX_TURNS` in `agent.py` (20 turns) |
 | **Global Segment Limit** | `TOTAL_TARGETING_LIMIT = 60` in `targeting_tools.py` |
-| **Candidate Display Limit** | `CANDIDATE_DISPLAY_LIMIT = 300` per category in `targeting_tools.py` |
+| **Candidate Display Limit** | `CANDIDATE_DISPLAY_LIMIT = 30` per category in `targeting_tools.py` |
 
 **Quirks & Design Decisions:**
-- **UI Event Forwarding:** `MetaPassthroughEventStream` forwards user-visible progress, tool executions, text rationale, and craft blocks to the parent stream while ignoring session completion signals.
+- **UI Event Forwarding:** `MetaPassthroughEventStream` forwards user-visible progress, thinking reasoning, and craft blocks to the parent stream while filtering out internal tool summary noise and session completion signals.
 - **Granular Demographic Type Preservation:** Meta's `/targetingvalidation` endpoint strictly requires exact granular subtypes for demographics (e.g. `life_events`, `income`, `work_positions`). Because `validate_targeting` uses string ID lookups against `_candidate_pool`, Python always sends Meta's exact entity classifier (`e.to_validation_pair()`), guaranteeing 100% validation success for active demographic segments.
 - **Direct REST Mutations:** Direct UI chip additions and deletions bypass LLM turns and perform fast state mutations directly against session storage.
 

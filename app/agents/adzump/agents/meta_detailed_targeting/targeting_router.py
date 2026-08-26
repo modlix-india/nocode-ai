@@ -4,36 +4,20 @@ These are *UI helpers*, not part of the orchestrator's chat flow. The craft
 panel calls these endpoints directly for keyword search, adding a segment, and
 deleting a segment. The orchestrator's LLM never invokes them.
 
-Why not through the LLM?
-  - Search fires on every button press. An LLM roundtrip adds ~5-10s of lag
-    and ~$0.01 per search in token costs. Meta's targetingsearch API does this
-    in ~150ms.
-  - Delete is deterministic: the user clicked a specific chip's trash icon.
-    Routing a known segment ID through the LLM only to call modify_meta_targeting
-    adds an unnecessary LLM roundtrip (5-10s, token cost) for a pure list mutation.
-  - Add from search is deterministic: the segment ID is known from the search result.
-
-The LLM sub-agent (DetailedTargetingAgent) is reserved for strategic requests
-like "expand my audience to include luxury homeowners".
-
-Why a separate HTTP endpoint vs. sending through the chat?
-  The frontend cannot call the Meta Ads Graph API directly — it needs the user's
-  auth headers and the client_code, which only the backend has. The backend proxies
-  the call. The result updates the session state and re-emits the craft panel.
-
 Endpoint summary:
   GET  /sessions/{session_id}/detailed-targeting/search?q={keyword}
        Search Meta targeting catalog. Stashes results in session. Returns list.
 
   DELETE /sessions/{session_id}/detailed-targeting/segments/{segment_id}
-       Remove a segment by ID from the current selection. Re-emits craft.
+       Remove a segment by ID from the current selection. Persists updated state.
 
   POST /sessions/{session_id}/detailed-targeting/segments
-       Add a segment (from prior search results) by ID. Re-emits craft.
+       Add a segment (from prior search results) by ID. Persists updated state.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -41,11 +25,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context, AuthContext
-from app.core.session import BaseSession
+from app.services.session_manager import get_session_manager
 from app.agents.adzump.adapters.meta.targeting_adapter import TargetingAdapter
 from app.agents.adzump.agents.meta_detailed_targeting.models import (
-    MetaTargetingSuggestionResult,
     TargetingEntity,
+    resolve_ad_account_id,
+)
+from app.agents.adzump.agents.meta_detailed_targeting.tools.targeting_tools import (
+    TOTAL_TARGETING_LIMIT,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,50 +42,8 @@ router = APIRouter(tags=["Detailed Targeting Search"])
 _adapter = TargetingAdapter()
 
 
-def _resolve_account_id(session_ctx: dict[str, Any]) -> str:
-    """Resolve Meta ad account ID from session context."""
-    account_id = (session_ctx.get("ad_account_id") or "").strip()
-    if account_id:
-        return account_id
-    spec = session_ctx.get("campaign_spec") or {}
-    return (spec.get("account") or "").strip()
 
-
-def _build_result(targeting: dict[str, Any]) -> MetaTargetingSuggestionResult:
-    """Parse raw entity list into MetaTargetingSuggestionResult."""
-    all_raw = targeting.get("entities", [])
-    entities = [e for e in (TargetingEntity.from_meta(x) for x in all_raw) if e]
-    return MetaTargetingSuggestionResult(entities=entities)
-
-
-async def _rerender_craft(
-    session_ctx: dict[str, Any],
-    targeting: dict[str, Any],
-) -> None:
-    """Re-emit the targeting craft panel after a state mutation.
-
-    Currently logs mutations to persist state in the session; the UI reads it
-    on the next render.
-    """
-    try:
-        result = _build_result(targeting)
-        parent_session_id = session_ctx.get("_parent_session_id") or ""
-        craft_id = f"detailed_targeting_{parent_session_id}"
-
-        logger.info(
-            "[targeting_router] craft re-render skipped (no active SSE); "
-            "state persisted in session — craft_id=%s entities=%d",
-            craft_id,
-            len(result.entities),
-        )
-
-    except Exception as exc:
-        logger.warning("[targeting_router] _rerender_craft failed: %s", exc)
-
-
-# ---------------------------------------------------------------------------
 # GET /sessions/{session_id}/detailed-targeting/search
-# ---------------------------------------------------------------------------
 @router.get("/sessions/{session_id}/detailed-targeting/search")
 async def search_targeting_options(
     session_id: str,
@@ -107,33 +52,46 @@ async def search_targeting_options(
 ):
     """Typeahead search for Meta targeting segments matching a keyword.
 
-    Calls Meta targetingsearch directly — no LLM, no sub-agent.
-    Stashes results in session context so the Add endpoint can resolve metadata.
-    Returns a compact list: [{id, name, type, size}].
     """
-    session = BaseSession(agent_name="adzump")
-    await session.get_or_create(session_id, auth)
+    _sm = get_session_manager()
+    _ai_session = await _sm.get_session(session_id)
+    if not _ai_session:
+        raise HTTPException(status_code=404, detail="Session not found")
 
-    account_id = _resolve_account_id(session.context)
-    if not account_id:
+    # Verify tenant authorization ownership
+    if _ai_session.user_id != auth.user_id:
+        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
+
+    session_ctx: dict[str, Any] = {}
+    if _ai_session.context_json:
+        try:
+            session_ctx = json.loads(_ai_session.context_json)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
+
+    ad_account_id = resolve_ad_account_id(session_ctx)
+    if not ad_account_id:
         raise HTTPException(
             status_code=400,
-            detail="Meta Ad Account ID not found in session. Please set up the campaign spec first.",
+            detail="Meta ad_account_id not found in session context.",
         )
 
     try:
         entities = await _adapter.search(
             client_code=auth.client_code,
             auth_headers=auth.to_headers(),
-            account_id=account_id,
-            query=q,
+            account_id=ad_account_id,
+            q=q,
         )
 
         results = []
         for e in entities:
-            size = None
-            if e.audience_size_lower_bound:
-                size = e.audience_size_lower_bound
+            size = ""
+            if e.audience_size_lower_bound and e.audience_size_upper_bound:
+                size = f"{e.audience_size_lower_bound:,} – {e.audience_size_upper_bound:,}"
+            elif e.audience_size_lower_bound:
+                size = f"Over {e.audience_size_lower_bound:,}"
+
             results.append({
                 "id": e.id,
                 "name": e.name,
@@ -141,8 +99,8 @@ async def search_targeting_options(
                 "size": size,
             })
 
-        # Stash full entity metadata in session so the Add endpoint can retrieve it
-        existing = session.context.get("detailed_targeting_search_results") or []
+        # Stash full entity metadata capped at maximum 50 recent items
+        existing = session_ctx.get("detailed_targeting_search_results") or []
         seen_ids = {str(item.get("id")) for item in existing if item.get("id")}
         merged = list(existing)
         for e in entities:
@@ -150,8 +108,13 @@ async def search_targeting_options(
             if e_id and e_id not in seen_ids:
                 seen_ids.add(e_id)
                 merged.append(e.model_dump())
-        session.context["detailed_targeting_search_results"] = merged
-        await session.save_context()
+        new_search_results = merged[-50:]
+        session_ctx["detailed_targeting_search_results"] = new_search_results
+        await _sm.update_session_context(
+            session_id,
+            context_json=json.dumps(session_ctx),
+            user_id=auth.user_id,
+        )
 
         logger.info(
             "[targeting_router] search q=%r → %d results (session=%s)",
@@ -164,9 +127,7 @@ async def search_targeting_options(
         raise HTTPException(status_code=500, detail=f"Targeting search failed: {exc}")
 
 
-# ---------------------------------------------------------------------------
 # DELETE /sessions/{session_id}/detailed-targeting/segments/{segment_id}
-# ---------------------------------------------------------------------------
 @router.delete("/sessions/{session_id}/detailed-targeting/segments/{segment_id}")
 async def delete_targeting_segment(
     session_id: str,
@@ -175,13 +136,22 @@ async def delete_targeting_segment(
 ):
     """Remove a targeting segment by ID from the current selection.
 
-    No LLM involved. Instant list mutation + session save.
-    The craft panel re-renders from state on the next UI reconnect.
     """
-    session = BaseSession(agent_name="adzump")
-    await session.get_or_create(session_id, auth)
+    _sm = get_session_manager()
+    _ai_session = await _sm.get_session(session_id)
+    if not _ai_session:
+        raise HTTPException(status_code=404, detail="Session not found")
 
-    session_ctx = session.context
+    # Verify tenant authorization ownership
+    if _ai_session.user_id != auth.user_id:
+        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
+
+    session_ctx: dict[str, Any] = {}
+    if _ai_session.context_json:
+        try:
+            session_ctx = json.loads(_ai_session.context_json)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
     targeting = session_ctx.setdefault("detailed_targeting", {})
     if not isinstance(targeting, dict):
         targeting = {}
@@ -195,16 +165,15 @@ async def delete_targeting_segment(
     ]
     removed_count = len(orig_list) - len(new_list)
     targeting["entities"] = new_list
-
-    result = _build_result(targeting)
-    session_ctx["detailed_targeting"] = result.model_dump()
-    await session.save_context()
-
-    await _rerender_craft(session_ctx, result.model_dump())
+    await _sm.update_session_context(
+        session_id,
+        context_json=json.dumps(session_ctx),
+        user_id=auth.user_id,
+    )
 
     logger.info(
-        "[targeting_router] delete segment_id=%s removed=%d (session=%s)",
-        segment_id, removed_count, session_id,
+        "[targeting_router] delete segment_id=%s removed=%d remaining=%d (session=%s)",
+        segment_id, removed_count, len(new_list), session_id,
     )
     return {
         "success": True,
@@ -213,14 +182,11 @@ async def delete_targeting_segment(
     }
 
 
-# ---------------------------------------------------------------------------
 # POST /sessions/{session_id}/detailed-targeting/segments
-# ---------------------------------------------------------------------------
 class AddSegmentRequest(BaseModel):
     id: str
     name: str
     type: str | None = None
-    size: int | None = None
 
 
 @router.post("/sessions/{session_id}/detailed-targeting/segments")
@@ -231,14 +197,26 @@ async def add_targeting_segment(
 ):
     """Add a targeting segment to the current selection.
 
-    Looks up full metadata from the session's stashed search results so audience_size
-    and other fields are preserved. Falls back to the request body if not found.
-    No LLM involved. Instant list mutation + session save.
+    Validates the segment ID against Meta's targetingvalidation API before
+    adding it, so arbitrary or fabricated IDs are rejected. Uses Meta's
+    authoritative response (correct type, name, audience_size) rather than
+    trusting the client body. Enforces TOTAL_TARGETING_LIMIT (60 segments).
     """
-    session = BaseSession(agent_name="adzump")
-    await session.get_or_create(session_id, auth)
+    _sm = get_session_manager()
+    _ai_session = await _sm.get_session(session_id)
+    if not _ai_session:
+        raise HTTPException(status_code=404, detail="Session not found")
 
-    session_ctx = session.context
+    # Verify tenant authorization ownership
+    if _ai_session.user_id != auth.user_id:
+        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
+
+    session_ctx: dict[str, Any] = {}
+    if _ai_session.context_json:
+        try:
+            session_ctx = json.loads(_ai_session.context_json)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
     targeting = session_ctx.setdefault("detailed_targeting", {})
     if not isinstance(targeting, dict):
         targeting = {}
@@ -254,7 +232,22 @@ async def add_targeting_segment(
     ):
         return {"success": True, "added": False, "message": "Segment already in selection."}
 
-    # Try to restore full metadata from stashed search results
+    # Enforce global segment limit before doing any Meta API work
+    if len(orig_list) >= TOTAL_TARGETING_LIMIT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot add segment: maximum of {TOTAL_TARGETING_LIMIT} segments already selected.",
+        )
+
+    # Resolve Meta ad account ID — required for validation
+    ad_account_id = resolve_ad_account_id(session_ctx)
+    if not ad_account_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Meta ad_account_id not found in session context.",
+        )
+
+    # Build a candidate entity.
     search_results = session_ctx.get("detailed_targeting_search_results") or []
     matched = next(
         (item for item in search_results if str(item.get("id")) == str(body.id)),
@@ -262,27 +255,52 @@ async def add_targeting_segment(
     )
 
     if matched:
-        entity = TargetingEntity.from_meta(matched)
+        candidate = TargetingEntity.from_meta(matched)
     else:
-        # Fallback: build a minimal entity from the request body
-        entity = TargetingEntity.from_meta({
+        candidate = TargetingEntity.from_meta({
             "id": body.id,
             "name": body.name,
             "type": body.type or "interests",
         })
 
-    if entity:
-        orig_list.append(entity.model_dump())
+    if not candidate:
+        raise HTTPException(status_code=400, detail="Invalid segment data in request.")
 
-    result = _build_result(targeting)
-    session_ctx["detailed_targeting"] = result.model_dump()
-    await session.save_context()
+    # Validate against Meta's targetingvalidation API.
+    # This rejects fabricated, deprecated, or inactive segment IDs.
+    # The returned entity carries Meta's authoritative type, name, and audience_size.
+    try:
+        valid_entities = await _adapter.validate(
+            client_code=auth.client_code,
+            auth_headers=auth.to_headers(),
+            account_id=ad_account_id,
+            entities=[candidate],
+        )
+    except Exception as exc:
+        logger.exception("[targeting_router] Meta validation failed for segment %s", body.id)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not validate segment with Meta API: {exc}",
+        )
 
-    await _rerender_craft(session_ctx, result.model_dump())
+    if not valid_entities:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Segment '{body.id}' is not a valid or active Meta targeting segment.",
+        )
+
+    # Use the validated entity — has Meta's correct type, name, and audience_size
+    entity = valid_entities[0]
+    orig_list.append(entity.model_dump())
+    await _sm.update_session_context(
+        session_id,
+        context_json=json.dumps(session_ctx),
+        user_id=auth.user_id,
+    )
 
     logger.info(
-        "[targeting_router] add segment_id=%s name=%r (session=%s)",
-        body.id, body.name, session_id,
+        "[targeting_router] add segment_id=%s name=%r type=%s total=%d (session=%s)",
+        entity.id, entity.name, entity.type, len(orig_list), session_id,
     )
     return {
         "success": True,

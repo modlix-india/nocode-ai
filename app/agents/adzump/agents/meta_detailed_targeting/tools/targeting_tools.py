@@ -24,7 +24,10 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.adapters.meta.targeting_adapter import TargetingAdapter
-from app.agents.adzump.agents.meta_detailed_targeting.models import TargetingEntity
+from app.agents.adzump.agents.meta_detailed_targeting.models import (
+    TargetingEntity,
+    resolve_ad_account_id,
+)
 
 
 TOTAL_TARGETING_LIMIT = 60
@@ -34,40 +37,16 @@ logger = logging.getLogger(__name__)
 # Shared adapter instance
 _adapter = TargetingAdapter()
 
-# Cap returned candidates per category to keep LLM context manageable
-CANDIDATE_DISPLAY_LIMIT = 300
+CANDIDATE_DISPLAY_LIMIT = 30
 
 
-# ---------------------------------------------------------------------------
 # Context helpers
-# ---------------------------------------------------------------------------
-def _resolve_account_id(context: dict[str, Any]) -> str:
-    """Resolve the ad account ID from multiple possible context sources."""
-    account_id = (context.get("ad_account_id") or "").strip()
-    if account_id:
-        return account_id
-
-    parent_ctx = context.get("parent_session_context") or {}
-    account_id = ((parent_ctx.get("campaign_spec") or {}).get("account") or "").strip()
-    if account_id:
-        return account_id
-
-    session_ctx = context.get("session_context") or {}
-    account_id = ((session_ctx.get("campaign_spec") or {}).get("account") or "").strip()
-    return account_id
-
-
 def _get_auth(context: dict[str, Any]):
     return context.get("auth")
 
 
 def _entity_to_dict(e: TargetingEntity) -> dict[str, Any]:
-    """Serialise a TargetingEntity to a compact dict for the LLM.
-
-    Omits audience_size keys when 0/None to prevent tool output truncation.
-    Demographics have no audience_size from Meta, so omitting saves ~50 chars
-    per entry, keeping the full 99-item catalog well under any context limit.
-    """
+    """Serialise a TargetingEntity to a compact dict for the LLM."""
     d: dict[str, Any] = {
         "id": e.id,
         "name": e.name,
@@ -79,18 +58,16 @@ def _entity_to_dict(e: TargetingEntity) -> dict[str, Any]:
 
 
 def _stash_candidates(context: dict[str, Any], entities: list[TargetingEntity]) -> None:
-    """Stash fetched TargetingEntity objects in context memory indexed by entity ID."""
+    """Stash fetched candidate entities in context memory as serializable dicts indexed by entity ID."""
     session_ctx = context.get("session_context")
     target = session_ctx if session_ctx is not None else context
     pool = target.setdefault("_candidate_pool", {})
     for e in entities:
         if e and e.id:
-            pool[str(e.id)] = e
+            pool[str(e.id)] = e.model_dump()
 
 
-# ---------------------------------------------------------------------------
 # Tool 1 - fetch_interests
-# ---------------------------------------------------------------------------
 async def _fetch_interests(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Fetch interest targeting candidates using keyword search + recommendation expansion.
 
@@ -108,7 +85,7 @@ async def _fetch_interests(params: dict[str, Any], context: dict[str, Any]) -> T
     if not auth:
         return ToolResult(success=False, error="Authentication context missing")
 
-    account_id = _resolve_account_id(context)
+    account_id = resolve_ad_account_id(context)
     if not account_id:
         return ToolResult(success=False, error="ad_account_id not found in context")
 
@@ -125,17 +102,13 @@ async def _fetch_interests(params: dict[str, Any], context: dict[str, Any]) -> T
         return ToolResult(
             success=True,
             data=data,
-            summary=f"Found {len(data)} interest candidates (from {len(seeds)} seeds).",
-            audience="user",
         )
     except Exception as exc:
         logger.exception("fetch_interests failed")
         return ToolResult(success=False, error=str(exc))
 
 
-# ---------------------------------------------------------------------------
 # Tool 2 - fetch_behaviors
-# ---------------------------------------------------------------------------
 async def _fetch_behaviors(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Fetch behavior targeting candidates via full catalog browse + per-seed search.
 
@@ -152,7 +125,7 @@ async def _fetch_behaviors(params: dict[str, Any], context: dict[str, Any]) -> T
     if not auth:
         return ToolResult(success=False, error="Authentication context missing")
 
-    account_id = _resolve_account_id(context)
+    account_id = resolve_ad_account_id(context)
     if not account_id:
         return ToolResult(success=False, error="ad_account_id not found in context")
 
@@ -169,17 +142,13 @@ async def _fetch_behaviors(params: dict[str, Any], context: dict[str, Any]) -> T
         return ToolResult(
             success=True,
             data=data,
-            summary=f"Found {len(data)} behavior candidates (from {len(seeds)} seeds).",
-            audience="user",
         )
     except Exception as exc:
         logger.exception("fetch_behaviors failed")
         return ToolResult(success=False, error=str(exc))
 
 
-# ---------------------------------------------------------------------------
 # Tool 3 - fetch_demographics  (fixed catalog — no seeds)
-# ---------------------------------------------------------------------------
 async def _fetch_demographics(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Fetch the complete fixed demographic catalog (life_events, family, income, industries, education_statuses).
 
@@ -190,7 +159,7 @@ async def _fetch_demographics(params: dict[str, Any], context: dict[str, Any]) -
     if not auth:
         return ToolResult(success=False, error="Authentication context missing")
 
-    account_id = _resolve_account_id(context)
+    account_id = resolve_ad_account_id(context)
     if not account_id:
         return ToolResult(success=False, error="ad_account_id not found in context")
 
@@ -206,17 +175,13 @@ async def _fetch_demographics(params: dict[str, Any], context: dict[str, Any]) -
         return ToolResult(
             success=True,
             data=data,
-            summary=f"Found {len(data)} demographic candidates.",
-            audience="user",
         )
     except Exception as exc:
         logger.exception("fetch_demographics failed")
         return ToolResult(success=False, error=str(exc))
 
 
-# ---------------------------------------------------------------------------
 # Tool 3b - search_professional_demographics  (open subtypes — needs seeds)
-# ---------------------------------------------------------------------------
 async def _search_professional_demographics(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Search open demographic databases for job titles, employers, and education majors.
 
@@ -234,7 +199,7 @@ async def _search_professional_demographics(params: dict[str, Any], context: dic
     if not auth:
         return ToolResult(success=False, error="Authentication context missing")
 
-    account_id = _resolve_account_id(context)
+    account_id = resolve_ad_account_id(context)
     if not account_id:
         return ToolResult(success=False, error="ad_account_id not found in context")
 
@@ -251,17 +216,13 @@ async def _search_professional_demographics(params: dict[str, Any], context: dic
         return ToolResult(
             success=True,
             data=data,
-            summary=f"Found {len(data)} professional demographic candidates (from {len(seeds)} seeds).",
-            audience="user",
         )
     except Exception as exc:
         logger.exception("search_professional_demographics failed")
         return ToolResult(success=False, error=str(exc))
 
 
-# ---------------------------------------------------------------------------
 # Tool 4 - validate_targeting
-# ---------------------------------------------------------------------------
 async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Validate curated segments and store the final targeting result.
 
@@ -272,45 +233,39 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
     This is the LAST tool in the workflow - do NOT call any other tools after this.
     """
     selected_ids: list[str] = params.get("selected_ids", [])
-    interests_in: list[dict] = params.get("interests", [])
-    behaviors_in: list[dict] = params.get("behaviors", [])
-    demographics_in: list[dict] = params.get("demographics", [])
 
     auth = _get_auth(context)
     if not auth:
         return ToolResult(success=False, error="Authentication context missing")
 
-    account_id = _resolve_account_id(context)
+    account_id = resolve_ad_account_id(context)
     if not account_id:
         return ToolResult(success=False, error="ad_account_id not found in context")
 
     session_ctx = context.get("session_context")
     target = session_ctx if session_ctx is not None else context
-    pool: dict[str, TargetingEntity] = target.get("_candidate_pool") or {}
+    pool: dict[str, Any] = target.get("_candidate_pool") or {}
 
     entities_to_validate: list[TargetingEntity] = []
 
-    # Option A: Fast string ID lookup from stashed candidate pool
     if selected_ids and isinstance(selected_ids, list):
         for sid in selected_ids:
             sid_str = str(sid).strip()
             if sid_str in pool:
-                entities_to_validate.append(pool[sid_str])
+                item = pool[sid_str]
+                if isinstance(item, TargetingEntity):
+                    entities_to_validate.append(item)
+                elif isinstance(item, dict):
+                    parsed = TargetingEntity.from_meta(item)
+                    if parsed:
+                        entities_to_validate.append(parsed)
             elif sid_str:
                 entities_to_validate.append(TargetingEntity(id=sid_str, name=sid_str, type="interests"))
-
-    # Option B: Fallback if legacy object arrays were provided
     else:
-        all_inputs = interests_in + behaviors_in + demographics_in
-        for item in all_inputs:
-            if isinstance(item, dict):
-                item_id = str(item.get("id", "")).strip()
-                if item_id in pool:
-                    entities_to_validate.append(pool[item_id])
-                else:
-                    parsed = TargetingEntity.from_meta(item)
-                    if parsed is not None:
-                        entities_to_validate.append(parsed)
+        logger.warning(
+            "[DetailedTargeting] validate_targeting called with empty selected_ids — "
+            "no segments to validate. The model must pass selected_ids."
+        )
 
     logger.info(
         "[DetailedTargeting] Model selected %d candidates for validation.",
@@ -329,18 +284,19 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
     except Exception as exc:
         logger.warning(f"Targeting validation failed: {exc}")
 
-    # Apply global limit
+    # 2. Limit and format the final result
     final_entities = valid_entities[:TOTAL_TARGETING_LIMIT]
 
+    # Store full model_dump so audience_size, path, description survive round-trip to UI
     final = {
-        "entities": [_entity_to_dict(e) for e in final_entities],
+        "entities": [e.model_dump() for e in final_entities],
     }
 
-    # Store result for recommend() to read after the loop.
+    # Store result in unseeded _validated_targeting key for recommend() to read after loop
     if session_ctx is not None:
-        session_ctx["detailed_targeting"] = final
+        session_ctx["_validated_targeting"] = final
     else:
-        context["detailed_targeting"] = final
+        context["_validated_targeting"] = final
 
     counts = f"total_segments={len(final['entities'])}"
     logger.info("validate_targeting complete - final result stored: %s", counts)
@@ -349,14 +305,13 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
         success=True,
         data=final,
         summary=f"Validated and finalised targeting: {counts}.",
+        model_summary=f"Successfully validated {len(final_entities)} targeting segments.",
         audience="user",
     )
 
 
-# ---------------------------------------------------------------------------
-# Tool registry - consumed by DetailedTargetingAgent.__init__
-# ---------------------------------------------------------------------------
-TARGETING_TOOLS: list[ToolDefinition] = [
+# Inner-loop tools — consumed by DetailedTargetingAgent.__init__
+INNER_TARGETING_TOOLS: list[ToolDefinition] = [
     ToolDefinition(
         name="fetch_interests",
         description=(
@@ -450,8 +405,9 @@ TARGETING_TOOLS: list[ToolDefinition] = [
         name="validate_targeting",
         description=(
             "FINAL STEP - call this last and only once. "
-            "Pass the string IDs of the curated segments you selected from fetch_interests, fetch_behaviors, "
-            "fetch_demographics, or search_professional_demographics. "
+            "Pass the complete list of string IDs representing the desired active targeting selection. "
+            "IMPORTANT: When expanding or adding to existing targeting (when CURRENT TARGETING is present), "
+            "include both the existing segment IDs from CURRENT TARGETING and your newly curated candidate IDs. "
             "Validates each segment ID against Meta's API, removes deprecated/inactive ones, "
             "applies a global limit (maximum 60 segments total), "
             "and stores the final result. Do NOT call any other tools after this."
@@ -462,8 +418,8 @@ TARGETING_TOOLS: list[ToolDefinition] = [
                 name="selected_ids",
                 type="array",
                 description=(
-                    "List of selected Meta targeting segment string IDs to validate. "
-                    "Provide ONLY the string IDs returned by the candidate fetch tools. "
+                    "Complete list of active Meta targeting segment string IDs to validate and keep. "
+                    "Include existing IDs from CURRENT TARGETING (for additive requests) plus newly fetched IDs. "
                     "Example: ['6003139266661', '6003208573211', '6008123456789']"
                 ),
                 required=True,

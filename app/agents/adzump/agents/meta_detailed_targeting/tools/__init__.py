@@ -1,5 +1,4 @@
-# Export targeting tools for the DetailedTargetingAgent
+# Export inner targeting tools for DetailedTargetingAgent
+from .targeting_tools import INNER_TARGETING_TOOLS
 
-from .targeting_tools import TARGETING_TOOLS
-
-__all__ = ["TARGETING_TOOLS"]
+__all__ = ["INNER_TARGETING_TOOLS"]
