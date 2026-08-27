@@ -125,6 +125,46 @@ async def author_template(
     )
 
 
+class WhatsappMessageAiRequest(BaseModel):
+    """Request for the WhatsApp message library's AI panel."""
+
+    prompt: str
+    # How many interchangeable phrasings to write. Several rather than one is the point of the
+    # feature, not a setting: a rule sends one body to every matching lead, and identical text at
+    # volume is what gets a linked number banned.
+    variantCount: Optional[int] = 4
+    currentVariants: Optional[List[str]] = None
+    language: Optional[str] = "en"
+    tone: Optional[str] = ""
+
+
+@router.post("/whatsapp/message")
+async def author_whatsapp_message(
+    body: WhatsappMessageAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Write several interchangeable versions of a WhatsApp message.
+
+    Backs the message library editor. Stateless — the current variants are sent so an unsaved draft
+    can be revised, matching how the template AI tab already works.
+
+    Returns ``{variants, variables, message, warnings}``. The warnings are advisory: an unknown merge
+    field or two near-identical versions are things somebody should see before saving, but refusing
+    to return the draft would just lose their work.
+    """
+    from app.services.whatsapp_message_ai import generate_message_variants
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    return await generate_message_variants(
+        prompt=body.prompt,
+        variant_count=body.variantCount or 4,
+        current_variants=body.currentVariants,
+        language=body.language or "en",
+        tone=body.tone or "",
+    )
+
+
 @router.post("/chat")
 async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_context)):
     """Stream an appbuilder agent response as SSE."""

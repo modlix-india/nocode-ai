@@ -59,6 +59,7 @@ from app.agents.appbuilder.tools.meta_tools import META_TOOLS
 from app.agents.appbuilder.tools.code_workspace import CODE_WORKSPACE_TOOLS as WORKSPACE_TOOLS
 from app.agents.appbuilder.tools.kb_app import KB_APP_TOOLS
 from app.agents.appbuilder.tools.platform_docs import PLATFORM_DOC_TOOLS
+from app.services.lore.tools import LORE_TOOLS
 
 LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TOOLS
 # Vision routing — hide the Gemini-only `describe_image` tool when the
@@ -68,11 +69,11 @@ LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TO
 # a redundant secondary call.
 def _filter_visual_tools(tools: list[ToolDefinition]) -> list[ToolDefinition]:
     try:
-        from app.config import settings as _settings
-        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
+        from app.services.llm_provider import appbuilder_vision_capable
+        vision_capable = appbuilder_vision_capable()
     except Exception:  # noqa: BLE001
-        provider = ""
-    if provider in {"anthropic", "openai", "minimax"}:
+        vision_capable = False
+    if vision_capable:
         return [t for t in tools if t.name != "describe_image"]
     return tools
 
@@ -103,6 +104,11 @@ ALL_TOOLS: list[ToolDefinition] = (
     + WORKSPACE_TOOLS
     + KB_APP_TOOLS
     + PLATFORM_DOC_TOOLS
+    # Lore — read what the app already knows, contribute back what this
+    # session established. Complements KB_APP_TOOLS: those are six narrative
+    # sections a person asks for; lore accumulates on its own and is queried
+    # by question rather than by section.
+    + LORE_TOOLS
 )
 
 # ── Tool-of-tools router (DEPRECATED — retired from AppBuilderAgent) ─────────

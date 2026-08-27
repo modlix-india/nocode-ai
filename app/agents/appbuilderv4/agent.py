@@ -67,9 +67,13 @@ class AppBuilderV4Agent(BaseAgent):
             return ""
         ac = session.context.get("app_code") or session.auth.app_code
         cc = session.auth.client_code
-        return (
+        identity = (
             f"Session identity:\n"
             f"- Client: {cc}\n"
             f"- App:    {ac}\n"
             f"`modlix.config` inside code_run is pre-bound to these.\n"
         )
+        # Big picture from lore. v4 discovers everything else at runtime, but
+        # what the app has already DECIDED is not discoverable from definitions.
+        from app.services.lore import context as lore_context
+        return identity + (await lore_context.big_picture(session))

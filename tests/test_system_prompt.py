@@ -41,6 +41,21 @@ from app.agents.appbuilder.tools.registry import ALL_TOOLS
 # ── Coverage: every ALL_TOOLS entry is accounted for ──────────────────────
 
 
+def _capability_filtered_names() -> set[str]:
+    """Names the index advertises but the registry drops for this deployment.
+
+    `_collect_group_tool_names()` reads each module's raw TOOLS list, while the
+    registry filters on top of it: `_filter_visual_tools` drops
+    `describe_image` when the AppBuilder model has native vision, since the
+    screenshot tools then attach the PNG itself. `_build_tool_index()` already
+    intersects with ALL_TOOLS, so such a name is absent from the rendered
+    prompt by design — not index drift.
+    """
+    from app.services.llm_provider import appbuilder_vision_capable
+
+    return {"describe_image"} if appbuilder_vision_capable() else set()
+
+
 def test_every_tool_is_advertised_or_intentionally_hidden() -> None:
     """The tool index + hidden set must cover ALL_TOOLS exactly.
 
@@ -54,7 +69,7 @@ def test_every_tool_is_advertised_or_intentionally_hidden() -> None:
     all_names = {t.name for t in ALL_TOOLS}
     covered = _ADVERTISED_NAMES | _INTENTIONALLY_HIDDEN
     missing = all_names - covered
-    extra = covered - all_names
+    extra = covered - all_names - _capability_filtered_names()
     assert not missing, (
         f"{len(missing)} tool(s) in ALL_TOOLS are not advertised in the system "
         f"prompt and not in _INTENTIONALLY_HIDDEN: {sorted(missing)}. Add them "
@@ -126,9 +141,15 @@ def test_no_tool_appears_in_multiple_groups() -> None:
 
 
 def test_tool_groups_summary_lists_every_advertised_tool() -> None:
-    """Every advertised tool name appears verbatim in the rendered catalog."""
+    """Every advertised tool name appears verbatim in the rendered catalog.
+
+    Excludes names the registry drops for this deployment: `_build_tool_index`
+    renders only tools present in ALL_TOOLS, so a capability-filtered name is
+    meant to be missing here (see `_capability_filtered_names`).
+    """
+    renderable = _ADVERTISED_NAMES - _capability_filtered_names()
     missing_from_render = [
-        name for name in sorted(_ADVERTISED_NAMES)
+        name for name in sorted(renderable)
         if f"`{name}`" not in TOOL_GROUPS_SUMMARY
     ]
     assert not missing_from_render, (

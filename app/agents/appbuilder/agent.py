@@ -139,6 +139,15 @@ class AppBuilderAgent(BaseAgent):
         if grounding:
             parts.append(grounding)
 
+        # Big picture: what this app already knows about itself. Pushed rather
+        # than left to a tool call, because the failure it prevents is the agent
+        # confidently redoing something this app decided against months ago,
+        # and an agent that does not know to ask will not ask.
+        from app.services.lore import context as lore_context
+        lore_brief = await lore_context.big_picture(session)
+        if lore_brief:
+            parts.append(lore_brief)
+
         # Progressive tool docs: inject detailed reference for relevant groups
         tool_details = get_relevant_tool_details(session.messages)
         if tool_details:

@@ -257,6 +257,12 @@ class ToolDefinition:
     elicit_mode: Literal["deferred", "blocking"] = "deferred"
     elicit_expects: Literal["single", "multi"] = "single"
 
+    # Opt-out of the dispatcher's unknown-parameter rejection (BaseAgent.
+    # _reject_unknown_params). Default False: an argument name the tool does
+    # not declare is an error, not something to silently ignore. Set True only
+    # for a tool that genuinely takes free-form top-level keys.
+    allow_unknown_params: bool = False
+
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""
         if self.display_name:
@@ -306,6 +312,11 @@ class ToolDefinition:
         }
         if required:
             schema["required"] = required
+        # Tell the model up front that undeclared keys are invalid; the
+        # dispatcher enforces the same rule at call time. (Gemini's schema
+        # whitelist strips this key, which is fine: enforcement is server-side.)
+        if properties and not self.allow_unknown_params:
+            schema["additionalProperties"] = False
 
         return {
             "name": self.name,

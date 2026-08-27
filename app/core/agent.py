@@ -533,6 +533,10 @@ class BaseAgent:
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
 
+        # Lore: accumulate what was asked and what happened, so the app's
+        # knowledge grows without anyone remembering to write it down.
+        await self._observe_to_lore(session, user_message, assistant_summary)
+
         # (AI billing is charged per LLM call, immediately, inside the loop above.)
 
         # Emit pending suggestions (e.g. quick reply buttons) if any
@@ -851,6 +855,15 @@ class BaseAgent:
         tool = self.tools.get(tool_name)
         display_name = tool.get_display_name() if tool else tool_name
 
+        # Remember which object the agent is working on, so the next turn can be
+        # handed what is known about it. Best-effort; a missed focus costs
+        # nothing, a wrong one would waste the reminder budget.
+        try:
+            from app.services.lore import context as _lore_ctx
+            _lore_ctx.note_focus(session, tool_name, tool_input)
+        except Exception:  # noqa: BLE001
+            pass
+
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
         # Request user confirmation for mutating operations.
@@ -861,7 +874,12 @@ class BaseAgent:
         # _handlers.py) passes too. Interactive UI sessions leave auto_confirm
         # unset and keep the normal confirmation flow.
         if tool_name in self.CONFIRMATION_TOOLS and session.context.get("auto_confirm"):
-            if isinstance(tool_input, dict):
+            # Stamp only when the tool declares `confirmed` (create/update read
+            # it for their in-tool gate). copy/delete never read it, and an
+            # undeclared key would now be refused by _reject_unknown_params,
+            # turning every headless call to them into a rejection.
+            declares_confirmed = tool is not None and any(p.name == "confirmed" for p in tool.parameters)
+            if declares_confirmed and isinstance(tool_input, dict):
                 tool_input.setdefault("confirmed", True)
         elif tool_name in self.CONFIRMATION_TOOLS:
             confirmation_id = f"confirm_{tool_use_id}"
@@ -912,6 +930,10 @@ class BaseAgent:
         display_summary = result.summary or result.error or tool_content
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
+
+        # Lore: an edit is the strongest evidence a session produces. Recorded
+        # here rather than inside ~190 write tools, so nothing has to remember.
+        await self._observe_edit_to_lore(session, tool_name, tool_input, result)
 
         # audience: a tool whose summary targets the user ("user"/"both") has it
         # posted to chat AND persisted (append to the run-scoped parts the saved
@@ -1046,6 +1068,15 @@ class BaseAgent:
         if gate is not None:
             return gate
 
+        rejected = self._reject_unknown_params(tool, tool_input)
+        if rejected is not None:
+            self._remember_failed_call(context, tool_name, tool_input)
+            return rejected
+
+        repeat = self._reject_repeat_of_failed_call(context, tool_name, tool_input)
+        if repeat is not None:
+            return repeat
+
         try:
             result = await tool.execute(tool_input, context)
         except Exception as e:
@@ -1060,6 +1091,85 @@ class BaseAgent:
         # ctx["fetched_schemas"] (which is aliased to session.context), so
         # the next call to that tool will pass the gate.
         return result
+
+    _FAILED_CALLS_KEY = "_failed_call_signatures"
+
+    @staticmethod
+    def _call_signature(tool_name: str, tool_input: Any) -> str | None:
+        """Stable signature for a (tool, args) pair, or None if unhashable."""
+        try:
+            return f"{tool_name}:{json.dumps(tool_input, sort_keys=True, default=str)}"
+        except Exception:  # noqa: BLE001
+            return None
+
+    @classmethod
+    def _remember_failed_call(cls, context: dict, tool_name: str, tool_input: Any) -> None:
+        sig = cls._call_signature(tool_name, tool_input)
+        if sig is None:
+            return
+        seen = context.setdefault(cls._FAILED_CALLS_KEY, {})
+        seen[sig] = seen.get(sig, 0) + 1
+
+    @classmethod
+    def _reject_repeat_of_failed_call(
+        cls, context: dict, tool_name: str, tool_input: Any
+    ) -> ToolResult | None:
+        """Refuse a call byte-identical to one already rejected this session.
+
+        Re-sending the exact same arguments cannot produce a different outcome,
+        but models do it anyway: one build run repeated an identical rejected
+        `get_page` five times, another repeated `get_tool_schema` and
+        `lore_brief` twice each. Each repeat costs a full turn and teaches the
+        model nothing. Say plainly that the arguments are unchanged so the next
+        attempt has to differ.
+        """
+        sig = cls._call_signature(tool_name, tool_input)
+        if sig is None:
+            return None
+        seen = context.get(cls._FAILED_CALLS_KEY) or {}
+        if sig not in seen:
+            return None
+        return ToolResult(
+            success=False,
+            error=(
+                f"These exact arguments to '{tool_name}' were already rejected this "
+                f"session, so re-sending them cannot succeed. Nothing was executed. "
+                f"Change the arguments, or call a different tool. If you are unsure "
+                f"of the parameter names, the rejection above lists the valid ones."
+            ),
+        )
+
+    @staticmethod
+    def _reject_unknown_params(tool: ToolDefinition, tool_input: Any) -> ToolResult | None:
+        """Refuse top-level argument names the tool does not declare.
+
+        Tools read params by name, so an undeclared key is silently ignored.
+        That is how create_role swallowed `app_code` in the Chit Fund run and
+        produced client-scoped roles behind app-scoped page gates. Judged only
+        when the tool declares parameters; a tool that intentionally accepts
+        free-form input opts out with `allow_unknown_params=True`.
+        """
+        if not isinstance(tool_input, dict) or not tool.parameters:
+            return None
+        if getattr(tool, "allow_unknown_params", False):
+            return None
+        declared = [p.name for p in tool.parameters]
+        unknown = [k for k in tool_input if k not in declared]
+        if not unknown:
+            return None
+        import difflib
+        described = []
+        for k in unknown:
+            close = difflib.get_close_matches(k, declared, n=1, cutoff=0.6)
+            described.append(f"'{k}'" + (f" (did you mean '{close[0]}'?)" if close else ""))
+        return ToolResult(
+            success=False,
+            error=(
+                f"Unknown parameter(s) for {tool.name}: {', '.join(described)}. "
+                f"Valid parameters: {', '.join(declared)}. Nothing was executed; "
+                "re-call with only valid parameter names."
+            ),
+        )
 
     def _gate_deferred_dispatch(
         self,
@@ -1161,7 +1271,31 @@ class BaseAgent:
         _with_tail_reminder returns the messages unchanged.
         """
         reminder = await self.build_turn_reminder(session, turn)
+        lore_reminder = await self._lore_turn_context(session)
+        if lore_reminder:
+            reminder = f"{reminder}\n{lore_reminder}" if reminder else lore_reminder
         return self._with_tail_reminder(session.get_messages(), reminder)
+
+    async def _lore_turn_context(self, session: BaseSession) -> str:
+        """Small picture: what is known about the object now in focus.
+
+        Composed here rather than inside `build_turn_reminder` so subclasses
+        keep that hook pure, and so every agent gets this without opting in.
+        Pushed once per subject per session; repeating it every turn would
+        spend the whole reminder budget restating what was said three turns ago.
+        """
+        from app.config import settings as _settings
+        if not getattr(_settings, "LORE_ENABLED", True):
+            return ""
+        try:
+            from app.services.lore import context as _lore_ctx
+            subject = _lore_ctx.take_unsent_focus(session)
+            if not subject:
+                return ""
+            return await _lore_ctx.small_picture(session, subject)
+        except Exception:  # noqa: BLE001 — lore must never break a turn
+            logger.debug("lore: turn context skipped", exc_info=True)
+            return ""
 
     # ── setup hook · once per request → folded into the (cached) system prompt ──
     async def build_dynamic_context(self, session: BaseSession) -> str:
@@ -1197,6 +1331,168 @@ class BaseAgent:
         missing, ask this next"). ``turn`` is the 1-based agentic loop turn.
         """
         return ""
+
+    class _ScopeAuth:
+        """Minimal shape lore's access resolver needs."""
+
+        def __init__(self, client_code: str) -> None:
+            self.client_code = client_code
+
+    @staticmethod
+    def _lore_target(session: BaseSession) -> tuple[str, str] | None:
+        """(client_code, app_code) for lore writes, or None if lore is off.
+
+        Reads everything defensively: this runs on every tool call, and a
+        session shape it did not expect must yield "no lore", never an
+        exception in the middle of somebody's build.
+        """
+        from app.config import settings as _settings
+
+        if not _settings.LORE_ENABLED:
+            return None
+        auth = getattr(session, "auth", None)
+        client_code = getattr(auth, "client_code", "") if auth else ""
+        context = getattr(session, "context", None) or {}
+        app_code = (context.get("app_code") if isinstance(context, dict) else "") or (
+            getattr(auth, "app_code", "") if auth else ""
+        )
+        if not client_code or not app_code:
+            return None
+        return client_code, app_code
+
+    @staticmethod
+    async def _lore_should_curate(client_code: str, app_code: str) -> bool:
+        """Is there enough pending evidence to be worth an LLM curation pass?
+
+        Two triggers, either sufficient: app-wide volume, or depth about one
+        subject. The second exists because volume alone is the wrong unit —
+        a build touching thirty objects once each has learned less than one
+        that reworked a single page eight times, and only the second yields an
+        entry worth reading.
+        """
+        from app.config import settings as _settings
+        from app.services.lore import store as _store
+
+        app_threshold = int(_settings.LORE_AUTOCURATE_AT or 0)
+        subject_threshold = int(_settings.LORE_AUTOCURATE_SUBJECT_AT or 0)
+        if app_threshold <= 0 and subject_threshold <= 0:
+            return False
+
+        if app_threshold > 0 and await _store.count_pending(client_code, app_code) >= app_threshold:
+            return True
+        if subject_threshold > 0:
+            subject, count = await _store.busiest_pending_subject(client_code, app_code)
+            # "app" is the catch-all bucket, so depth there means nothing.
+            if subject and subject != "app" and count >= subject_threshold:
+                return True
+        return False
+
+    async def _observe_edit_to_lore(
+        self, session: BaseSession, tool_name: str, tool_input: Any, result: Any,
+    ) -> None:
+        """Record a successful definition write as an `edit` observation.
+
+        This is the path that carries real evidence. A chat turn is the agent
+        narrating what it believes it did; an edit is what the platform
+        actually accepted, and it names the object it happened to.
+
+        Best-effort in exactly the same way as the turn observer: an app being
+        built must never fail because its knowledge could not be recorded.
+        """
+        from app.config import settings as _settings
+
+        if not _settings.LORE_OBSERVE_EDITS:
+            return
+        target = self._lore_target(session)
+        if target is None:
+            return
+        client_code, app_code = target
+
+        try:
+            from app.services.lore import watch as _watch
+
+            fact = _watch.classify(
+                tool_name, tool_input,
+                summary=getattr(result, "summary", "") or "",
+                success=bool(getattr(result, "success", False)),
+            )
+            if fact is None:
+                return
+
+            from app.services.lore import access as _access
+            from app.services.lore import ingest as _ingest
+
+            scope = await _access.resolve_scope(self._ScopeAuth(client_code), app_code)
+            if not scope.can_write:
+                return
+
+            auth = getattr(session, "auth", None)
+            await _ingest.from_edit(
+                client_code, app_code,
+                object_type=fact.object_type,
+                object_name=fact.object_name,
+                action=fact.action,
+                subject=fact.subject,
+                detail=fact.detail,
+                actor=self.name,
+                user_id=int(getattr(auth, "user_id", 0) or 0),
+                meta={"tool": tool_name, "session_id": session.session_id},
+            )
+        except Exception:  # noqa: BLE001 — lore must never break a tool call
+            logger.debug("lore: edit observation skipped", exc_info=True)
+
+    async def _observe_to_lore(
+        self, session: BaseSession, user_message: str, assistant_summary: str,
+    ) -> None:
+        """Record this turn into the app's lore, and curate when it piles up.
+
+        Entirely best-effort: lore is a nice-to-have that must never affect a
+        user's turn, so every failure is swallowed at debug level. The curation
+        pass is fired as a background task rather than awaited for the same
+        reason — it involves an LLM call and the user is already done.
+        """
+        from app.config import settings as _settings
+
+        if not (_settings.LORE_ENABLED and _settings.LORE_OBSERVE_CHAT):
+            return
+        auth = getattr(session, "auth", None)
+        client_code = getattr(auth, "client_code", "") if auth else ""
+        app_code = (session.context.get("app_code") if session.context else "") or (
+            getattr(auth, "app_code", "") if auth else ""
+        )
+        if not client_code or not app_code:
+            return
+
+        try:
+            from app.services.lore import access as _access
+            from app.services.lore import curator as _curator
+            from app.services.lore import ingest as _ingest
+            from app.services.lore import store as _store
+
+            # Passive accumulation is still accumulation: an observation becomes
+            # an entry at the next curation pass, so it needs the same edit
+            # access a person would need to write one by hand.
+            scope = await _access.resolve_scope(self._ScopeAuth(client_code), app_code)
+            if not scope.can_write:
+                return
+
+            await _ingest.from_chat_turn(
+                client_code, app_code,
+                session_id=session.session_id,
+                agent_name=self.name,
+                user_message=user_message,
+                assistant_message=assistant_summary,
+                user_id=int(getattr(auth, "user_id", 0) or 0),
+            )
+
+            if await self._lore_should_curate(client_code, app_code):
+                task = asyncio.create_task(
+                    _curator.curate(client_code, app_code, trigger_source=f"turn:{self.name}")
+                )
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
+        except Exception:  # noqa: BLE001 — lore must never break a turn
+            logger.debug("lore: turn observation skipped", exc_info=True)
 
     async def _on_loop_complete(
         self, session: BaseSession, tool_call_log: list[dict[str, Any]],

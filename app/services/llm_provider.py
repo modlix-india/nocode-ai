@@ -1216,6 +1216,67 @@ class _StreamError:
         self.exc = exc
 
 
+# DeepSeek model ids that accept image input. The text-only chat models
+# (deepseek-v4-pro / deepseek-v4-flash) reject `image_url` content parts, so
+# vision cannot be a class-wide flag on DeepSeekProvider the way it is on
+# MiniMax — it has to be decided per configured model.
+_DEEPSEEK_VISION_MODELS: frozenset[str] = frozenset({
+    "deepseek-v4-flash-vision-exp",
+})
+
+# Providers whose models take image input on every tier, so no per-model check
+# is needed. NOTE: gemini is deliberately absent — GeminiProvider has native
+# vision but does not implement the image-in-tool_result path, so listing it
+# here would drop screenshots instead of forwarding them.
+_NATIVE_VISION_PROVIDERS: frozenset[str] = frozenset({
+    "anthropic", "openai", "minimax",
+})
+
+
+def _deepseek_model_for_tier(tier: str) -> str:
+    """Resolve a DeepSeek tier name to its configured model id.
+
+    Mirrors ``DeepSeekProvider.get_model``, including its pass-through of an
+    unknown tier (a ``resolve_model_override`` result arrives as a raw model
+    id in the tier slot). Kept module-level so the capability checks below can
+    run without constructing a provider — they are called at import time.
+    """
+    from app.config import settings
+
+    return {
+        "fast": settings.DEEPSEEK_MODEL_FAST,
+        "balanced": settings.DEEPSEEK_MODEL_BALANCED,
+    }.get(tier, tier)
+
+
+def appbuilder_vision_capable() -> bool:
+    """Whether the AppBuilder's configured model can see images itself.
+
+    The screenshot tools use this to choose between attaching the raw PNG to
+    the tool result (native vision) and paying Gemini to describe it in text.
+    Resolves capability from the model, not just the provider name, so a
+    vision-capable model on an otherwise text-only provider
+    (``deepseek-v4-flash-vision-exp``) gets the native path.
+
+    Settings-only by design — no provider is constructed, because callers
+    include module-level tool-registry filtering that runs before the config
+    server has supplied API keys.
+    """
+    from app.config import settings
+
+    name = (
+        getattr(settings, "APPBUILDER_PROVIDER", "")
+        or getattr(settings, "LLM_PROVIDER", "")
+        or ""
+    ).lower()
+    if name in _NATIVE_VISION_PROVIDERS:
+        return True
+    if name == "deepseek":
+        tier = getattr(settings, "AGENT_MODEL_TIER", "balanced") or "balanced"
+        return _deepseek_model_for_tier(tier) in _DEEPSEEK_VISION_MODELS
+    return False
+
+
 def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
     """Split an Anthropic-shaped tool_result `content` into (text, image_parts).
 
@@ -1323,6 +1384,19 @@ class DeepSeekProvider(LLMProvider):
 
     def get_model(self, tier: str) -> str:
         return self._models.get(tier, tier)
+
+    @property
+    def supports_image_in_tool_result(self) -> bool:
+        """True only when the configured model accepts image input.
+
+        Overrides the base class attribute with a per-model check: the
+        text-only V4 chat models reject the `image_url` parts that
+        `_append_user_list_content` emits, while
+        ``deepseek-v4-flash-vision-exp`` reads them natively. Keyed on the
+        tier the agent actually runs (``AGENT_MODEL_TIER``).
+        """
+        tier = getattr(self.settings, "AGENT_MODEL_TIER", "balanced") or "balanced"
+        return self.get_model(tier) in _DEEPSEEK_VISION_MODELS
 
     def _is_thinking_tier(self, model_tier: str) -> bool:
         if not self.settings.DEEPSEEK_THINKING_ENABLED:

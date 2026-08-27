@@ -247,6 +247,64 @@ For finding components by TYPE or NAME instead of navigating the tree, use `sear
 # ── create_page ──────────────────────────────────────────────────────────
 
 
+async def _create_one_page(
+    client: Any, headers: dict[str, str], ac: str, cc: str, name: str, *,
+    title: str | None, permission: str | None, properties: dict[str, Any] | None, message: str,
+) -> tuple[str | None, str | None]:
+    """POST one page skeleton. Returns (page_id, error).
+
+    `permission` and `properties` ride on the create so a page is born with
+    its access rule; the old create-then-update_page flow cost the Chit Fund
+    run 7 extra turns just to set permissions on freshly created pages.
+    """
+    body = p_ops.new_page_skeleton(name, ac, cc, title=title)
+    body["message"] = message
+    if permission:
+        body["permission"] = permission
+    if isinstance(properties, dict) and properties:
+        merged = dict(body.get("properties") or {})
+        extra = dict(properties)
+        # A bare-string title in `properties` would clobber the platform's
+        # {title: {name: {value}}} shape; normalise it instead of trusting it.
+        if isinstance(extra.get("title"), str):
+            extra["title"] = {"name": {"value": extra["title"]}}
+        merged.update(extra)
+        body["properties"] = merged
+    r = await client.post(p_ops.API_PREFIX, headers=headers, json=body)
+    if not r.success:
+        # A freshly-created app has a poisoned security-access cache, so the
+        # platform's read-back inside create returns "Page with id <id> not
+        # found" even though the document was written. Reporting that as a
+        # failure is actively misleading: one run said "Created 0 of 8 pages"
+        # while all 8 existed. Verify before believing the error.
+        if await _page_exists(client, headers, ac, name):
+            return "?", None
+        return None, r.error
+    pid = (r.data or {}).get("id", "?") if isinstance(r.data, dict) else "?"
+    return str(pid), None
+
+
+async def _page_exists(client: Any, headers: dict[str, str], ac: str, name: str) -> bool:
+    """True if a page with this name is readable in the app (post-404 check)."""
+    try:
+        r = await client.get(
+            p_ops.API_PREFIX, headers=headers,
+            params={"appCode": ac, "name": name, "size": 5},
+        )
+        if not (r.success and isinstance(r.data, dict)):
+            return False
+        return any(
+            isinstance(row, dict) and row.get("name") == name
+            for row in (r.data.get("content") or [])
+        )
+    except Exception:  # noqa: BLE001 - verification is best-effort
+        return False
+
+
+def _permission_note(permission: Any) -> str:
+    return f"permission={permission!r}" if permission else "public (no permission)"
+
+
 async def _execute_create_page(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     name = (params.get("name") or "").strip()
     err = _validate_simple_name(name)
@@ -256,28 +314,117 @@ async def _execute_create_page(params: dict[str, Any], context: dict[str, Any]) 
     if err_result:
         return err_result
     cc = _resolve_client_code(params, context)
-    title = params.get("title")
-    message = params.get("message") or "Created via CFA"
-    body = p_ops.new_page_skeleton(name, ac, cc, title=title)
-    body["message"] = message
     client, headers = _client_and_headers(context)
-    r = await client.post(p_ops.API_PREFIX, headers=headers, json=body)
-    if not r.success:
-        return ToolResult(success=False, error=r.error)
-    pid = (r.data or {}).get("id", "?") if isinstance(r.data, dict) else "?"
-    return ToolResult(success=True, summary=f"Created page '{name}' (id={pid}) with root Grid 'root'.")
+    pid, perr = await _create_one_page(
+        client, headers, ac, cc, name,
+        title=params.get("title"), permission=params.get("permission"),
+        properties=params.get("properties"), message=params.get("message") or "Created via CFA",
+    )
+    if perr:
+        return ToolResult(success=False, error=perr)
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Created page '{name}' (id={pid}, {_permission_note(params.get('permission'))}) with root Grid 'root'. "
+            "Populate it with ONE add_components call (parents before children)."
+        ),
+    )
+
+
+_CREATE_PAGES_MAX = 30
+
+
+async def _execute_create_pages(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    pages = params.get("pages")
+    if not isinstance(pages, list) or not pages:
+        return ToolResult(success=False, error="`pages` must be a non-empty list of {name, title?, permission?, properties?}")
+    if len(pages) > _CREATE_PAGES_MAX:
+        return ToolResult(success=False, error=f"`pages` has {len(pages)} entries; max {_CREATE_PAGES_MAX} per call")
+    ac, err_result = _resolve_app_code(params, context)
+    if err_result:
+        return err_result
+    cc = _resolve_client_code(params, context)
+
+    # Validate every entry before any I/O so one bad name cannot leave a
+    # half-created batch behind.
+    errors: list[str] = []
+    seen: set[str] = set()
+    for i, item in enumerate(pages):
+        if not isinstance(item, dict):
+            errors.append(f"item {i}: must be an object")
+            continue
+        nm = (item.get("name") or "").strip()
+        verr = _validate_simple_name(nm)
+        if verr:
+            errors.append(f"item {i}: {verr}")
+        elif nm in seen:
+            errors.append(f"item {i}: duplicate page name '{nm}' in this batch")
+        seen.add(nm)
+    if errors:
+        return ToolResult(success=False, error="Nothing was created. " + "; ".join(errors))
+
+    client, headers = _client_and_headers(context)
+    message = params.get("message") or "Created via CFA"
+    created: list[str] = []
+    failed: list[str] = []
+    for item in pages:
+        nm = item["name"].strip()
+        pid, perr = await _create_one_page(
+            client, headers, ac, cc, nm,
+            title=item.get("title"), permission=item.get("permission"),
+            properties=item.get("properties"), message=message,
+        )
+        if perr:
+            failed.append(f"{nm}: {perr}")
+        else:
+            created.append(f"  {nm} (id={pid}, {_permission_note(item.get('permission'))})")
+
+    summary = f"Created {len(created)} of {len(pages)} pages in app '{ac}':\n" + "\n".join(created)
+    if failed:
+        summary += "\nFAILED:\n  " + "\n  ".join(failed)
+        if not created:
+            return ToolResult(success=False, error=summary)
+        return ToolResult(success=True, summary=summary)
+    return ToolResult(success=True, summary=summary + "\nNext: one add_components call per page (parents before children).")
+
+
+create_pages_tool = ToolDefinition(
+    name="create_pages",
+    description="""Create several empty pages in ONE call, each with its title and permission. Use this to scaffold every page of an app at once instead of one create_page per page (plus one update_page per permission).
+
+```
+create_pages(pages=[
+  {"name": "login", "title": "MyApp - Sign In"},                                    # public: no permission
+  {"name": "home", "title": "Home", "permission": "Authorities.Logged_IN"},
+  {"name": "admin", "title": "Admin", "permission": "Authorities.Logged_IN and Authorities.MYAPP.ROLE_Admin"},
+  {"name": "forbidden", "title": "No access"},
+  {"name": "notFound", "title": "Not found"},
+])
+```
+
+Every name is validated before anything is created (letters/digits only, unique in the batch). Each page gets a root Grid 'root'; fill it afterwards with one `add_components` call per page. `permission` uses the same grammar as update_page (`Authorities.Logged_IN`, `and`/`or`, `Authorities.<APPCODE>.ROLE_<Name>` for app-scoped roles).""",
+    parameters=[
+        ToolParameter(
+            name="pages", type="array", items={"type": "object"},
+            description="List of {name (required), title?, permission?, properties?} — one entry per page, max 30",
+        ),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode"),
+        ToolParameter(name="message", type="string", required=False, description="Commit message applied to every page"),
+    ],
+    execute=_execute_create_pages,
+)
 
 
 create_page_tool = ToolDefinition(
     name="create_page",
-    description="""Create a new empty page in the current app. The page is created with a single root Grid container component (key=`root`); you populate it with `add_component` calls afterwards.
+    description="""Create a new empty page in the current app, with its permission set at birth. The page is created with a single root Grid container component (key=`root`); you populate it with ONE `add_components` call afterwards. To scaffold many pages at once use `create_pages`.
 
-Use this as the FIRST call when building a new page from scratch — never try to author the full page in one shot. The flow is:
-1. `create_page(name="contact", title="Contact Us")` — empty page exists.
-2. `add_component(page_name="contact", parent_key="root", component_key="form", type="Grid", properties={...})` — add layout.
-3. `add_component(page_name="contact", parent_key="form", component_key="emailInput", type="TextBox", properties={...})` — add children.
-4. … and so on for each component.
-5. Optional: `patch_component_styles` for theme-aware styling, `create_page_event_function` + `patch_component_props` to wire onClick handlers.
+The flow is:
+1. `create_page(name="contact", title="Contact Us", permission="Authorities.Logged_IN")` — empty page exists (omit `permission` for a public page).
+2. `add_components(page_name="contact", components=[{parent_key:"root", component_type:"Grid", component_key:"form", ...}, {parent_key:"form", component_type:"TextBox", component_key:"emailInput", ...}, ...])` — the whole layout in one save; list parents before their children.
+3. `save_page_event_function_from_text` for onLoad / onClick logic, then `patch_component_props` to wire handlers; `patch_component_styles` for breakpoint/hover styles.
+4. `screenshot_page` and fix what you see; `validate_page` before calling the page done.
 
 IMPORTANT — page name rules:
 - Letters and digits only. No hyphens, no underscores, no spaces. `contactUs` ✓ , `contact-us` ✗
@@ -290,6 +437,8 @@ The optional `title` is the browser tab text. Defaults to the page name if omitt
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
         ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode"),
         ToolParameter(name="title", type="string", required=False, description="Browser title; defaults to name. Set for camelCase page names ('Contact Us' for 'contactUs')."),
+        ToolParameter(name="permission", type="string", required=False, description="Access rule, e.g. 'Authorities.Logged_IN' or 'Authorities.Logged_IN and Authorities.<APPCODE>.ROLE_<Name>'. Omit for a public page (login, landing)."),
+        ToolParameter(name="properties", type="object", required=False, description="Extra page-level properties merged over the skeleton (title is set from `title`)"),
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
     ],
     execute=_execute_create_page,
@@ -474,6 +623,23 @@ def _check_property_value(comp_key: str, prop: str, val: Any) -> list[str]:
     if not isinstance(val, dict):
         return [f"{comp_key}.properties.{prop}: not a dict; expected {{value: ...}} or {{location: ...}}"]
     if "value" in val:
+        # A literal that contains a Modlix path is almost always a computed
+        # value that was stored as plain text: it renders the expression
+        # SOURCE on the page ("Page.membersCount - Page.paidThisMonth"), and
+        # as a `visibility` it is a non-empty string, so it is always truthy
+        # and the component never hides.
+        literal = val.get("value")
+        if (
+            "location" not in val
+            and isinstance(literal, str)
+            and c._EXPRESSION_REF_RE.search(literal)
+        ):
+            return [
+                f"{comp_key}.properties.{prop}: the literal {literal!r} contains a Modlix path, "
+                f"so it will render as text rather than evaluate (and as a visibility it is "
+                f"always truthy). Store it as "
+                f'{{"location": {{"type": "EXPRESSION", "expression": {literal!r}}}}}.'
+            ]
         return []  # literal — anything wrapped is acceptable
     if "location" in val:
         loc = val["location"]
@@ -484,6 +650,23 @@ def _check_property_value(comp_key: str, prop: str, val: Any) -> list[str]:
             return [f"{comp_key}.properties.{prop}.location.type: expected VALUE|EXPRESSION, got {t!r}"]
         if "value" not in loc and "expression" not in loc:
             return [f"{comp_key}.properties.{prop}.location: missing both `value` and `expression`"]
+        # The runtime reads a DIFFERENT key per type (StoreContext.ts:136-141):
+        # VALUE -> loc.value, EXPRESSION -> loc.expression. A mismatched pair
+        # resolves to undefined, the property is dropped, and no listener is
+        # registered, so the component renders blank and never updates. This is
+        # invisible in the stored JSON, so name it precisely.
+        if t == "EXPRESSION" and "expression" not in loc:
+            return [
+                f"{comp_key}.properties.{prop}.location: type EXPRESSION but the value is "
+                f"under `value`. The runtime reads location.expression for EXPRESSION, so "
+                f"this renders blank. Rename the key to `expression` (or use type VALUE)."
+            ]
+        if t == "VALUE" and "value" not in loc:
+            return [
+                f"{comp_key}.properties.{prop}.location: type VALUE but the value is under "
+                f"`expression`. The runtime reads location.value for VALUE. Rename the key "
+                f"to `value` (or use type EXPRESSION)."
+            ]
         return []
     return [f"{comp_key}.properties.{prop}: missing both `value` and `location`"]
 
@@ -583,23 +766,72 @@ async def _execute_validate_page(params: dict[str, Any], context: dict[str, Any]
         # bindingPath* shape.
         violations.extend(_check_binding_paths(comp_key, comp))
 
-    # Event-fn name references in onClick/onChange/etc properties resolve.
+    # Event-fn references in onClick/onChange/etc must be the eventFunctions
+    # KEY, not the function's human name. The runtime does a direct map lookup
+    # (`pageDefinition.eventFunctions[onClick]`, e.g. Button.tsx / ToggleButton.tsx
+    # / RadioButton.tsx), so a name resolves to undefined and the handler is
+    # silently dead. This check used to accept name-or-key, which green-lit 22
+    # dead handlers across a whole generated app while reporting the pages valid.
     event_fns = page.get("eventFunctions") or {}
-    event_fn_names = {(v or {}).get("name") for v in event_fns.values() if isinstance(v, dict)}
-    event_fn_names.discard(None)
+    name_to_key = {
+        v["name"]: k
+        for k, v in event_fns.items()
+        if isinstance(v, dict) and isinstance(v.get("name"), str) and v["name"]
+    }
     event_fn_keys = set(event_fns.keys())
     for comp_key, comp in comp_def.items():
         if not isinstance(comp, dict):
             continue
-        for prop_name in ("onClick", "onChange", "onBlur", "onFocus", "onLoad", "onSubmit"):
+        for prop_name in c.EVENT_PROP_NAMES:
             v = (comp.get("properties") or {}).get(prop_name)
             if not isinstance(v, dict):
                 continue
             ref = v.get("value")
             if not isinstance(ref, str) or not ref:
                 continue
-            if ref not in event_fn_names and ref not in event_fn_keys:
-                violations.append(f"{comp_key}.{prop_name}: '{ref}' does not match any eventFunctions name or key")
+            if ref in event_fn_keys:
+                continue
+            if ref in name_to_key:
+                violations.append(
+                    f"{comp_key}.{prop_name}: '{ref}' is the event function's NAME. "
+                    f"The runtime looks events up by key, so this handler never fires. "
+                    f"Use the key instead: '{name_to_key[ref]}'."
+                )
+            else:
+                violations.append(
+                    f"{comp_key}.{prop_name}: '{ref}' does not match any eventFunctions key "
+                    f"(known keys: {sorted(event_fn_keys) or 'none'})"
+                )
+
+    # A page whose event functions are never reachable is almost always a wiring
+    # mistake: on-load handlers only run when page.properties.onLoadEvent names
+    # their key (Page.tsx:133 `eventFunctions[onLoadEvent]`).
+    on_load_ref = (page.get("properties") or {}).get("onLoadEvent")
+    if isinstance(on_load_ref, dict):
+        on_load_ref = on_load_ref.get("value")
+    if on_load_ref and on_load_ref not in event_fn_keys:
+        hint = (
+            f" Use the key instead: '{name_to_key[on_load_ref]}'."
+            if on_load_ref in name_to_key else ""
+        )
+        violations.append(
+            f"properties.onLoadEvent: '{on_load_ref}' is not an eventFunctions key.{hint}"
+        )
+    elif not on_load_ref:
+        for nm, key in name_to_key.items():
+            if nm.lower() in ("onload", "on_load", "pageload"):
+                violations.append(
+                    f"properties.onLoadEvent is not set, but event function '{nm}' "
+                    f"(key '{key}') looks like an on-load handler. Without onLoadEvent "
+                    f"it never runs, so the page fetches nothing. Set "
+                    f"properties.onLoadEvent to '{key}'."
+                )
+                break
+
+    wiring_violations, wiring_warnings = _check_wiring_reachability(page, name_to_key)
+    violations.extend(wiring_violations)
+    violations.extend(await _check_login_page_navigation(client, headers, ac, page))
+    violations.extend(_check_data_access_urls(page))
 
     if violations:
         body = "\n".join(f"- {v}" for v in violations[:200])
@@ -608,6 +840,11 @@ async def _execute_validate_page(params: dict[str, Any], context: dict[str, Any]
             success=False,
             error=f"Found {len(violations)} shape violation(s) on page '{name}':\n{body}{more}",
         )
+    warn_block = ""
+    if wiring_warnings:
+        warn_block = "\n\nWiring warnings (not fatal, but check each one):\n" + "\n".join(
+            f"- {w}" for w in wiring_warnings[:50]
+        )
     return ToolResult(
         success=True,
         summary=(
@@ -615,9 +852,227 @@ async def _execute_validate_page(params: dict[str, Any], context: dict[str, Any]
             f"{len(event_fns)} event functions, rootComponent='{root_key}'. "
             "(This is a STATIC structural check — it doesn't run the page in a browser, "
             "so semantic errors like 'this expression refers to Page.x but x is never set' "
-            "won't be caught here.)"
+            "won't be caught here.)" + warn_block
         ),
     )
+
+
+# How often each component type carries a bindingPath / an event prop, measured
+# over 120 real hand-built pages in the leadzump and appbuilder apps. Types are
+# listed only where the signal is unambiguous, so the check stays precise: a
+# noisy warning channel teaches the model to ignore the channel.
+#
+#   type            n     bind%  event%
+#   TextBox         563     96     31
+#   ArrayRepeater   393     95      0
+#   Dropdown        305     96     52
+#   Popup           236     98      0
+#   CheckBox        141     99     68
+#   Table            79     99     15
+#   Calendar         78     96     81
+#   RadioButton      71    100     87
+#   ToggleButton     68     97     76
+#   PhoneNumber      67     93     42
+#   TextArea         59     97     25
+#   FileSelector     42     98     64
+#   Button         1392      0     86
+#   Grid/Text/Image/Icon/TableColumn — 0% bound; never warn about these.
+_BINDING_REQUIRED_TYPES: frozenset[str] = frozenset({
+    "TextBox", "TextArea", "Dropdown", "CheckBox", "RadioButton", "ToggleButton",
+    "PhoneNumber", "Calendar", "FileSelector", "Table", "ArrayRepeater", "Popup",
+})
+_EVENT_EXPECTED_TYPES: frozenset[str] = frozenset({"Button"})
+
+
+async def _check_login_page_navigation(
+    client: Any, headers: dict[str, str], app_code: str, page: dict[str, Any]
+) -> list[str]:
+    """Flag any UIEngine.Navigate that targets the app's configured loginPage.
+
+    Navigating to the login page is always wrong on this platform. PageService
+    substitutes the login page's payload for any permissioned page an anonymous
+    user requests, leaving the URL alone, and UIEngine.Login then clears
+    Store.pageDefinition / Store.application so the SAME url re-renders as the
+    real page once auth lands.
+
+    The login page itself carries no permission, so it is the one url where that
+    re-render yields the login form again. A logout handler that sends the user
+    to /login therefore strands them at a url where signing in can never appear
+    to work. Six such handlers shipped in one generated app.
+    """
+    event_fns = page.get("eventFunctions") or {}
+    if not event_fns:
+        return []
+    try:
+        r = await client.get(
+            "/api/ui/applications", headers=headers,
+            params={"appCode": app_code, "size": 5},
+        )
+        rows = (r.data or {}).get("content") or [] if r.success and isinstance(r.data, dict) else []
+        login_page = next(
+            (
+                ((row.get("properties") or {}).get("loginPage") or "")
+                for row in rows
+                if isinstance(row, dict) and row.get("appCode") == app_code
+            ),
+            "",
+        )
+    except Exception:  # noqa: BLE001 - the check is best-effort
+        return []
+    if not login_page:
+        return []
+    targets = {f"/{login_page}", login_page, f"/page/{login_page}"}
+
+    violations: list[str] = []
+    for fn in event_fns.values():
+        if not isinstance(fn, dict):
+            continue
+        for step_name, step in (fn.get("steps") or {}).items():
+            if not isinstance(step, dict) or step.get("name") != "Navigate":
+                continue
+            for entry in ((step.get("parameterMap") or {}).get("linkPath") or {}).values():
+                val = entry.get("value") if isinstance(entry, dict) else None
+                if isinstance(val, str) and val.strip() in targets:
+                    violations.append(
+                        f"eventFunctions['{fn.get('name')}'].{step_name}: navigates to "
+                        f"'{val}', the app's configured loginPage. Never route to the login "
+                        f"page: it is the one url with no permission, so signing in there "
+                        f"re-renders the login form and the user is stuck. Navigate to the "
+                        f"protected page instead and let the backend serve login when "
+                        f"unauthenticated."
+                    )
+    return violations
+
+
+def _check_data_access_urls(page: dict[str, Any]) -> list[str]:
+    """Reject page-level calls to the raw data API and app-escaping absolute URLs.
+
+    Two distinct failures, both 404s that look like a missing storage:
+
+    1. `api/core/data/<storage>` from a page. Real apps never do this; data goes
+       through KIRun (`api/core/function/execute/<ns>/<name>`), and a storage
+       marked `onlyThruKIRun` refuses the data API outside a KIRun execution
+       (AppDataService.getStorageWithKIRunValidation returns empty -> 404).
+    2. A LEADING SLASH on a service URL. The app runs under
+       `/<appCode>/<clientCode>/page/`, so `/api/core/...` resolves against the
+       host root and escapes that context. Every real app uses `api/...`.
+    """
+    violations: list[str] = []
+    for fn in (page.get("eventFunctions") or {}).values():
+        if not isinstance(fn, dict):
+            continue
+        for step_name, step in (fn.get("steps") or {}).items():
+            if not isinstance(step, dict) or step.get("name") not in ("FetchData", "SendData"):
+                continue
+            for entry in ((step.get("parameterMap") or {}).get("url") or {}).values():
+                if not isinstance(entry, dict):
+                    continue
+                url = entry.get("value") or entry.get("expression")
+                if not isinstance(url, str) or not url.strip():
+                    continue
+                u = url.strip().strip("'\"")
+                where = f"eventFunctions['{fn.get('name')}'].{step_name}"
+                if "api/core/data/" in u:
+                    storage = u.split("api/core/data/", 1)[1].split("?")[0].strip("/") or "<storage>"
+                    violations.append(
+                        f"{where}: calls the raw data API '{u}'. A storage operation is a KIRun "
+                        f"BLOCK used as a STEP, never an HTTP call. Replace this step with "
+                        f"`CoreServices.Storage.ReadPage(storageName = \"{storage}\")` (rows at "
+                        f"Steps.<step>.output.result.content), or Create/Update/Delete for writes."
+                    )
+                elif "api/core/function/execute/" in u:
+                    violations.append(
+                        f"{where}: reaches a KIRun function over HTTP ('{u}'). KIRun functions are "
+                        f"BLOCKS you call as a STEP, not endpoints. Replace this step with the "
+                        f"block itself, e.g. "
+                        f"`readPage: CoreServices.Storage.ReadPage(storageName = \"<storage>\")` "
+                        f"reading rows from Steps.readPage.output.result.content, or "
+                        f"`<appCode>.<functionName>(...)` for your own server function."
+                    )
+                elif u.startswith("/api/"):
+                    violations.append(
+                        f"{where}: url '{u}' starts with '/', which resolves against the host root "
+                        f"and escapes the app path /<appCode>/<clientCode>/page/, so it 404s. "
+                        f"Use the relative form '{u.lstrip('/')}'."
+                    )
+    return violations
+
+
+def _check_wiring_reachability(
+    page: dict[str, Any], name_to_key: dict[str, str]
+) -> tuple[list[str], list[str]]:
+    """Find things that were created but never wired up, in BOTH directions.
+
+    Forward: a component placed on the page that nothing binds, so it cannot
+    read or write any state (a TextBox with no bindingPath sends the user's
+    typing nowhere).
+
+    Backward: an event function that no component prop and no page property
+    references, so it can never run. This direction is the one that has no
+    other signal at all — a dangling function looks exactly like a finished
+    one, which is how a generated app once shipped with all 22 handlers dead.
+
+    Returns (violations, warnings). Violations fail validation; warnings are
+    reported but tolerated, for the cases where the data shows a real minority
+    of legitimate exceptions.
+    """
+    violations: list[str] = []
+    warnings: list[str] = []
+    comp_def = page.get("componentDefinition") or {}
+    event_fns = page.get("eventFunctions") or {}
+
+    # ── Backward: which event-function keys does anything actually reference?
+    referenced: set[str] = set()
+    on_load = (page.get("properties") or {}).get("onLoadEvent")
+    if isinstance(on_load, dict):
+        on_load = on_load.get("value")
+    if isinstance(on_load, str) and on_load:
+        referenced.add(on_load)
+    for comp in comp_def.values():
+        if not isinstance(comp, dict):
+            continue
+        for prop_name in c.EVENT_PROP_NAMES:
+            v = (comp.get("properties") or {}).get(prop_name)
+            ref = v.get("value") if isinstance(v, dict) else v
+            if isinstance(ref, str) and ref:
+                referenced.add(ref)
+                # A name reference is reported separately; count the key it
+                # means so we don't also cry "unreachable" about the same fn.
+                if ref in name_to_key:
+                    referenced.add(name_to_key[ref])
+
+    for key, fn in event_fns.items():
+        if key in referenced:
+            continue
+        fn_name = (fn or {}).get("name") if isinstance(fn, dict) else None
+        violations.append(
+            f"eventFunctions['{key}']"
+            + (f" ('{fn_name}')" if fn_name else "")
+            + ": nothing references this function, so it can never run. Wire it to a "
+            "component event prop (onClick=<key>) or to page properties.onLoadEvent."
+        )
+
+    # ── Forward: components that should be wired but are not.
+    for comp_key, comp in comp_def.items():
+        if not isinstance(comp, dict):
+            continue
+        ctype = comp.get("type")
+        has_binding = any(
+            comp.get(f"bindingPath{sfx}") for sfx in ("", "2", "3", "4", "5", "6")
+        )
+        if ctype in _BINDING_REQUIRED_TYPES and not has_binding:
+            violations.append(
+                f"{comp_key} ({ctype}): no bindingPath, so it is not connected to any "
+                f"state. Nearly every {ctype} in a working app has one."
+            )
+        if ctype in _EVENT_EXPECTED_TYPES:
+            props = comp.get("properties") or {}
+            if not any(props.get(e) for e in c.EVENT_PROP_NAMES):
+                warnings.append(
+                    f"{comp_key} ({ctype}): no event handler, so clicking it does "
+                    f"nothing. Intentional only if it is purely decorative."
+                )
+    return violations, warnings
 
 
 validate_page_tool = ToolDefinition(
@@ -1011,17 +1466,34 @@ get_component_styles_tool = ToolDefinition(
 # ── add_component ────────────────────────────────────────────────────────
 
 
-async def _execute_add_component(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    page_name = (params.get("page_name") or "").strip()
-    parent_key = (params.get("parent_key") or "").strip()
-    component_type = (params.get("component_type") or "").strip()
-    if not page_name or not parent_key or not component_type:
-        return ToolResult(success=False, error="`page_name`, `parent_key`, `component_type` are required")
+def _prepare_component_item(item: dict[str, Any], label: str) -> tuple[dict[str, Any] | None, str | None]:
+    """Validate + coerce one component spec into p_ops.add_component kwargs.
 
-    raw_properties = params.get("properties")
+    Shared by add_component (one item) and add_components (a batch), so a
+    batch item gets exactly the catalog validation and auto-coercions a
+    single add does. `label` prefixes error text ("item 3 (Button): ...").
+    """
+    parent_key = str(item.get("parent_key") or "").strip()
+    component_type = str(item.get("component_type") or "").strip()
+    if not parent_key or not component_type:
+        return None, f"{label}`parent_key` and `component_type` are required"
+
+    # None = append after existing siblings (see p_ops.add_component); an
+    # explicit value is honoured; garbage is an item error, not an exception.
+    raw_order = item.get("display_order")
+    display_order: int | None
+    if raw_order is None or raw_order == "":
+        display_order = None
+    else:
+        try:
+            display_order = int(raw_order)
+        except (TypeError, ValueError):
+            return None, f"{label}display_order must be an integer, got {raw_order!r}"
+
+    raw_properties = item.get("properties")
     verr = _validate_properties(component_type, raw_properties)
     if verr:
-        return ToolResult(success=False, error=verr)
+        return None, f"{label}{verr}"
 
     # Auto-detect Page.x / Store.x strings in raw properties and wrap them
     # as expression-shape instead of literals — eliminates the failure mode
@@ -1033,36 +1505,153 @@ async def _execute_add_component(params: dict[str, Any], context: dict[str, Any]
     wrapped_properties = c.wrap_props_catalog_aware(component_type, coerced_properties, None) if coerced_properties else None
 
     # Inline style_properties: accept flat OR canonical shape; emit canonical.
-    style_props_in = params.get("style_properties")
-    coerced_styles, style_err = c.coerce_style_properties(style_props_in)
+    coerced_styles, style_err = c.coerce_style_properties(item.get("style_properties"))
     if style_err:
-        return ToolResult(success=False, error=f"style_properties: {style_err}")
+        return None, f"{label}style_properties: {style_err}"
 
     # binding_paths: bare strings allowed; auto-wrap.
-    raw_bindings = params.get("binding_paths")
-    coerced_bindings, bind_errs = c.coerce_binding_paths_map(raw_bindings)
+    coerced_bindings, bind_errs = c.coerce_binding_paths_map(item.get("binding_paths"))
     if bind_errs:
-        return ToolResult(success=False, error="binding_paths: " + "; ".join(bind_errs))
+        return None, f"{label}binding_paths: " + "; ".join(bind_errs)
 
-    key = (params.get("component_key") or "").strip() or str(uuid.uuid4())
+    key = str(item.get("component_key") or "").strip() or str(uuid.uuid4())
+    return {
+        "parent_key": parent_key,
+        "component_key": key,
+        "component_type": component_type,
+        "name": str(item.get("name") or component_type.lower()),
+        "properties": wrapped_properties,
+        "style_properties": coerced_styles,
+        "binding_paths": coerced_bindings,
+        "display_order": display_order,
+    }, None
+
+
+async def _execute_add_component(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    page_name = (params.get("page_name") or "").strip()
+    parent_key = (params.get("parent_key") or "").strip()
+    component_type = (params.get("component_type") or "").strip()
+    if not page_name or not parent_key or not component_type:
+        return ToolResult(success=False, error="`page_name`, `parent_key`, `component_type` are required")
+
+    prepared, perr = _prepare_component_item(params, "")
+    if perr:
+        return ToolResult(success=False, error=perr)
+    assert prepared is not None
 
     def mutate(page: dict[str, Any]) -> str | None:
-        return p_ops.add_component(
-            page,
-            parent_key=parent_key,
-            component_key=key,
-            component_type=component_type,
-            name=params.get("name") or component_type.lower(),
-            properties=wrapped_properties,
-            style_properties=coerced_styles,
-            binding_paths=coerced_bindings,
-            display_order=int(params.get("display_order") or 0),
-        )
+        return p_ops.add_component(page, **prepared)
 
     ok, err = await _load_save(page_name, context, params, mutate, params.get("message") or "Added component via CFA")
     if not ok:
         return ToolResult(success=False, error=err)
-    return ToolResult(success=True, summary=f"Added {component_type} '{key}' under '{parent_key}' on page '{page_name}'.")
+    return ToolResult(success=True, summary=f"Added {component_type} '{prepared['component_key']}' under '{parent_key}' on page '{page_name}'.")
+
+
+_ADD_COMPONENTS_MAX = 60
+
+
+async def _execute_add_components(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    page_name = (params.get("page_name") or "").strip()
+    items = params.get("components")
+    if not page_name or not isinstance(items, list) or not items:
+        return ToolResult(success=False, error="`page_name` and a non-empty `components` list are required")
+    if len(items) > _ADD_COMPONENTS_MAX:
+        return ToolResult(success=False, error=f"`components` has {len(items)} entries; max {_ADD_COMPONENTS_MAX} per call — split by section")
+
+    # Validate and coerce EVERY item before touching the page, and report all
+    # problems at once: a 20-item batch failing on one bad prop must not cost
+    # a turn per defect.
+    prepared_items: list[dict[str, Any]] = []
+    errors: list[str] = []
+    # Duplicate keys are judged on the raw items so a repeat is reported even
+    # when its first occurrence also failed some other check; otherwise the
+    # model fixes one defect, re-sends, and only then learns about the next.
+    seen_keys: set[str] = set()
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            errors.append(f"item {i}: must be an object")
+            continue
+        explicit_key = str(item.get("component_key") or "").strip()
+        if explicit_key:
+            if explicit_key in seen_keys:
+                errors.append(f"item {i}: duplicate component_key '{explicit_key}' in this batch")
+                continue
+            seen_keys.add(explicit_key)
+        label = f"item {i} ({item.get('component_type') or '?'}): "
+        try:
+            prepared, perr = _prepare_component_item(item, label)
+        except Exception as e:  # noqa: BLE001 — one malformed item must not abort the whole report
+            prepared, perr = None, f"{label}{type(e).__name__}: {e}"
+        if perr or prepared is None:
+            errors.append(perr or f"item {i}: invalid")
+            continue
+        prepared_items.append(prepared)
+    if errors:
+        return ToolResult(
+            success=False,
+            error=(
+                f"Nothing was added: {len(errors)} of {len(items)} items invalid. Fix ALL of them and re-send the whole batch:\n- "
+                + "\n- ".join(errors)
+            ),
+        )
+
+    def mutate(page: dict[str, Any]) -> str | None:
+        # In list order, so a parent added earlier in this batch resolves for
+        # a child later in it.
+        for i, spec in enumerate(prepared_items):
+            err = p_ops.add_component(page, **spec)
+            if err:
+                hint = (
+                    " Parents must appear BEFORE their children in `components` "
+                    "(a parent_key may be an earlier item's component_key)."
+                    if "parent" in err.lower() else ""
+                )
+                return f"item {i} ('{spec['component_key']}'): {err}{hint}"
+        return None
+
+    ok, err = await _load_save(
+        page_name, context, params, mutate,
+        params.get("message") or f"Added {len(prepared_items)} components via CFA",
+    )
+    if not ok:
+        return ToolResult(success=False, error=err)
+    listing = ", ".join(f"{s['component_key']}({s['component_type']}) under {s['parent_key']}" for s in prepared_items)
+    return ToolResult(
+        success=True,
+        summary=f"Added {len(prepared_items)} components to page '{page_name}' in one save: {listing}",
+    )
+
+
+add_components_tool = ToolDefinition(
+    name="add_components",
+    description="""Add MANY components to a page in ONE save. This is the normal way to build a new page or section: one call carries the container and all of its children. Use `add_component` only for a single late insertion.
+
+Each entry in `components` takes the same fields as add_component: `parent_key` (required), `component_type` (required), `component_key`, `name`, `properties`, `style_properties` (flat CSS dict), `binding_paths` (bare strings), `display_order`. List parents BEFORE their children — a child's `parent_key` may be the `component_key` of an earlier entry in the same call. Siblings render in LIST ORDER: each entry without `display_order` is appended after the parent's existing children, so you only need `display_order` to interleave with components that already exist.
+
+```
+add_components(page_name="route", components=[
+  {"parent_key": "root", "component_type": "Grid", "component_key": "card",
+   "style_properties": {"display": "flex", "flexDirection": "column", "gap": "12px", "padding": "16px"}},
+  {"parent_key": "card", "component_type": "Text", "component_key": "title", "properties": {"text": "Today's route"}},
+  {"parent_key": "card", "component_type": "ArrayRepeater", "component_key": "list",
+   "binding_paths": {"bindingPath": "Page.routeList"}},
+  {"parent_key": "list", "component_type": "Text", "component_key": "memberName", "properties": {"text": "Parent.name"}},
+])
+```
+
+Every entry is validated against the component catalog and auto-coerced exactly like add_component (expression strings, bare binding paths, flat styles) BEFORE anything is written; if any entry is invalid, nothing is added and ALL errors are returned together. Max 60 components per call — split a large page by section.""",
+    parameters=[
+        ToolParameter(name="page_name", type="string", description="Page to modify"),
+        ToolParameter(
+            name="components", type="array", items={"type": "object"},
+            description="Ordered list of component specs {parent_key, component_type, component_key?, name?, properties?, style_properties?, binding_paths?, display_order?}; parents before children",
+        ),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="message", type="string", required=False, description="Commit message"),
+    ],
+    execute=_execute_add_components,
+)
 
 
 add_component_tool = ToolDefinition(
@@ -1111,7 +1700,7 @@ Key rules:
 - `binding_paths` is for `bindingPath` / `bindingPath2`…`bindingPath6` ONLY (TextBox, Dropdown, ArrayRepeater, Table need them).
 - For BREAKPOINT-specific styles or pseudo-states (`:hover`), use `patch_component_styles` after the add. `add_component`'s inline shape is for the common single-breakpoint case.
 
-There's no bulk-add — call once per component. Each call is a single PATCH on the page.""",
+For a fresh page or a new section use `add_components` (one call carries the container and all children, one save). `add_component` is for a single late insertion.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page to modify"),
         ToolParameter(name="parent_key", type="string", description="Parent component key (use 'root' for page root)"),
@@ -1602,32 +2191,60 @@ def _merge_css_into_styleprops(
     style_props: dict[str, Any], css_props: dict[str, Any],
     breakpoint_str: str, sub_component: str, pseudo_state: str,
 ) -> list[str]:
-    """Merge a flat css_props map into a component's styleProperties in place
-    (reuse-or-create the rule for this pseudoState). Returns applied leaf keys.
-    Same wrapping logic as patch_component_styles, factored for bulk reuse."""
+    """Merge a flat css_props map into a component's styleProperties in place.
+
+    Modlix keys style rules by UUID, and a component carrying several
+    UNCONDITIONED rules for the same pseudoState silently loses all but the one
+    the platform happens to resolve last. Real prod pages bundle every leaf
+    under ONE UUID per (condition, pseudoState) scope, so we do the same.
+
+    That means collapsing, not merging-into-the-first. An earlier version found
+    the first matching rule and wrote into it, which is not enough: the
+    leftovers are still unconditioned, so one of THEM can be the one resolved
+    last and win. A component written by an older tool then keeps ignoring
+    everything set here, with nothing to show for it. Conditioned rules and
+    other pseudoStates are left alone; those merge cleanly on the platform side.
+
+    Returns the leaf keys applied.
+    """
     target_pseudo = pseudo_state or ""
     rule_key: str | None = None
+    merged_resolutions: dict[str, Any] = {}
+    absorbed: list[str] = []
+
     for rk, rv in style_props.items():
         if not isinstance(rv, dict) or rv.get("condition"):
             continue
-        if (rv.get("pseudoState") or "") == target_pseudo:
+        if (rv.get("pseudoState") or "") != target_pseudo:
+            continue
+        if rule_key is None:
             rule_key = rk
-            break
+        else:
+            absorbed.append(rk)
+        for bp, block in (rv.get("resolutions") or {}).items():
+            if not isinstance(block, dict):
+                continue
+            merged = dict(merged_resolutions.get(bp) or {})
+            merged.update(block)
+            merged_resolutions[bp] = merged
+
+    for rk in absorbed:
+        style_props.pop(rk, None)
+
     if rule_key is None:
         rule_key = uuid.uuid4().hex
-        style_props[rule_key] = {"resolutions": {}}
-        if pseudo_state:
-            style_props[rule_key]["pseudoState"] = pseudo_state
-    rule = dict(style_props[rule_key])
-    resolutions = dict(rule.get("resolutions") or {})
-    bp_block = dict(resolutions.get(breakpoint_str) or {})
+
+    bp_block = dict(merged_resolutions.get(breakpoint_str) or {})
     applied: list[str] = []
     for css_prop, css_value in css_props.items():
         leaf = c.make_css_prop_key(css_prop, sub_component, "")
         bp_block[leaf] = {"value": css_value}
         applied.append(leaf)
-    resolutions[breakpoint_str] = bp_block
-    rule["resolutions"] = resolutions
+    merged_resolutions[breakpoint_str] = bp_block
+
+    rule: dict[str, Any] = {"resolutions": merged_resolutions}
+    if pseudo_state:
+        rule["pseudoState"] = pseudo_state
     style_props[rule_key] = rule
     return applied
 
@@ -1969,32 +2586,11 @@ async def _execute_patch_component_styles(params: dict[str, Any], context: dict[
     existing = dict(comp)
     style_props = dict(existing.get("styleProperties") or {})
 
-    # Reuse-or-create a rule per (condition=∅, pseudoState).
-    target_pseudo = pseudo_state or ""
-    rule_key: str | None = None
-    for rk, rv in style_props.items():
-        if not isinstance(rv, dict) or rv.get("condition"):
-            continue
-        if (rv.get("pseudoState") or "") == target_pseudo:
-            rule_key = rk
-            break
-    if rule_key is None:
-        rule_key = uuid.uuid4().hex
-        style_props[rule_key] = {"resolutions": {}}
-        if pseudo_state:
-            style_props[rule_key]["pseudoState"] = pseudo_state
-
-    rule = dict(style_props[rule_key])
-    resolutions = dict(rule.get("resolutions") or {})
-    bp_block = dict(resolutions.get(breakpoint_str) or {})
-    applied: list[str] = []
-    for css_prop, css_value in css_props.items():
-        leaf = c.make_css_prop_key(css_prop, sub_component, "")
-        bp_block[leaf] = {"value": css_value}
-        applied.append(leaf)
-    resolutions[breakpoint_str] = bp_block
-    rule["resolutions"] = resolutions
-    style_props[rule_key] = rule
+    # One rule per (condition=∅, pseudoState) — see _merge_css_into_styleprops
+    # for why duplicates have to be collapsed rather than merged into.
+    applied = _merge_css_into_styleprops(
+        style_props, css_props, breakpoint_str, sub_component, pseudo_state,
+    )
     existing["styleProperties"] = style_props
 
     ok, err = await _patch_component_on_server(page_name, component_key, existing, context, params.get("message") or "Patched styles via CFA")
@@ -2145,6 +2741,7 @@ TOOLS: list[ToolDefinition] = [
     list_pages_tool,
     get_page_tool,
     create_page_tool,
+    create_pages_tool,
     update_page_tool,
     reset_page_composition_tool,
     replace_page_definition_tool,
@@ -2158,6 +2755,7 @@ TOOLS: list[ToolDefinition] = [
     get_component_styles_tool,
     # Composition (load-modify-save)
     add_component_tool,
+    add_components_tool,
     update_component_props_tool,
     set_styles_tool,
     delete_style_rule_tool,

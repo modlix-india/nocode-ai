@@ -428,6 +428,17 @@ delete_server_function_tool = ToolDefinition(
 
 
 _COMPILE_HINT_RULES: list[tuple[re.Pattern[str], str]] = [
+    # Must stay FIRST: the generic "expected ..." rule below also matches
+    # "Expected: RIGHT_PAREN" and would send the model looking for a missing
+    # GenerateEvent step instead of the real cause. In the Chit Fund run this
+    # error cost two turns and then pushed the model into hardcoding ids
+    # rather than fixing the expression.
+    (
+        # `and` / `or` are tokenised as IDENTIFIER, so a boolean expression in
+        # argument position fails with "Actual: IDENTIFIER (and)".
+        re.compile(r"Expected:?\s*(?:RIGHT_PAREN|RIGHT_BRACE|RIGHT_BRACKET|COMMA)[\s\S]*?Actual:?\s*(?:OPERATOR|EQUALS|IDENTIFIER\s*\((?:and|or)\))", re.IGNORECASE),
+        "Next step: an argument value that STARTS with a double-quoted string, true/false or null and then continues with an operator (`\"Store.x.\" + Parent.id`) is read as a plain literal, so the operator breaks the parse. Wrap the WHOLE expression in parentheses: `path = (\"Store.paidIds.\" + Parent.memberId)`. Fix only that expression; do not restructure the step or hardcode values to avoid it.",
+    ),
     (
         re.compile(r"(?:unknown|not\s+found|undefined)\s+(?:primitive|function|namespace)\W*(\w[\w.]*)", re.IGNORECASE),
         "Next step: call `get_kirun_primitive(namespace=\"<ns>\", name=\"<n>\")` on the named primitive to check the exact spelling + signature. The primitive is likely capitalised differently (e.g. `System.Math.Add`, not `system.math.add`) or lives in a different namespace.",
@@ -784,11 +795,35 @@ list_kirun_primitives_tool = ToolDefinition(
 )
 
 
+def _uiengine_primitive_result(name: str) -> ToolResult:
+    """Answer UIEngine.* lookups from the generated catalog.
+
+    The platform's /functions/repositoryFind does not know browser-side
+    builtins and returned a literal `null` for them (with success=True), so
+    the model could neither confirm a real function nor learn that a guessed
+    one does not exist.
+    """
+    sig = c.UIENGINE_SIGNATURES.get(name)
+    if sig is None:
+        known = ", ".join(sorted(c.UIENGINE_SIGNATURES))
+        return ToolResult(
+            success=False,
+            error=(
+                f"UIEngine.{name} does not exist. Browser-side UIEngine functions are: {known}. "
+                "For storage rows use FetchData (GET), SendData (POST/PUT) and DeleteData; "
+                "there is no UIEngine.Read/Create/Update/Delete."
+            ),
+        )
+    return ToolResult(success=True, summary=f"UIEngine.{name} (ui, browser-side builtin):\n{json.dumps(sig, indent=2)}")
+
+
 async def _execute_get_kirun_primitive(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     namespace = (params.get("namespace") or "").strip()
     name = (params.get("name") or "").strip()
     if not namespace or not name:
         return ToolResult(success=False, error="`namespace` and `name` are required")
+    if namespace == "UIEngine":
+        return _uiengine_primitive_result(name)
     runtime = (params.get("runtime") or "ui").strip().lower()
     if runtime not in ("ui", "core"):
         return ToolResult(success=False, error="`runtime` must be 'ui' or 'core'")

@@ -402,32 +402,137 @@ list_roles_tool = ToolDefinition(
 )
 
 
+# Client-scoped role names whose generated authority collides with a token the
+# platform itself gates on (@PreAuthorize across the security service). A
+# client-scoped role called "Owner" under any client literally becomes
+# Authorities.ROLE_Owner, the client-owner super-authority: assigning it hands
+# out client-admin powers. The Chit Fund run created exactly that role.
+_RESERVED_CLIENT_ROLE_AUTHORITIES: frozenset[str] = frozenset({
+    "Authorities.ROLE_Owner",
+    "Authorities.ROLE_Client_MANAGE",
+    "Authorities.ROLE_ClientManager",
+})
+
+
+async def _resolve_role_app(
+    params: dict[str, Any], context: dict[str, Any], client: Any, headers: dict[str, str],
+) -> tuple[str | None, str | None, ToolResult | None]:
+    """Decide which app (if any) a new role binds to.
+
+    Returns (app_id, app_code, error). Precedence: explicit `app_id` >
+    `client_scoped=true` > `app_code` (parameter, then the session app).
+    Every other modlix tool defaults to the session app; create_role used to
+    be the one that silently ignored it, which is how the Chit Fund build
+    ended up with client-scoped roles behind app-scoped page gates.
+    """
+    explicit_id = params.get("app_id")
+    if explicit_id:
+        # Never assume the session app here: an explicit id may belong to a
+        # different app, and echoing the session app's authority would hand
+        # the model a token the platform never bound. If app_code was ALSO
+        # given, make sure the two agree.
+        code = str(params.get("app_code") or "").strip()
+        if code:
+            from .app_admin import _find_security_app_by_code  # lazy: avoids an import cycle
+            row = await _find_security_app_by_code(client, headers, code)
+            if row and str(row.get("id")) != str(explicit_id):
+                return None, None, ToolResult(
+                    success=False,
+                    error=(
+                        f"app_id {explicit_id} does not belong to appCode '{code}' (that app's id is {row.get('id')}). "
+                        "Pass one or the other."
+                    ),
+                )
+        return str(explicit_id), (code or None), None
+    if params.get("client_scoped"):
+        return None, None, None
+    app_code = (params.get("app_code") or context.get("app_code") or "").strip()
+    if not app_code:
+        return None, None, None
+    from .app_admin import _find_security_app_by_code  # lazy: avoids an import cycle
+    row = await _find_security_app_by_code(client, headers, app_code)
+    if not row or row.get("id") is None:
+        return None, None, ToolResult(
+            success=False,
+            error=(
+                f"No active security app with appCode '{app_code}'. Run create_app first, "
+                "or pass client_scoped=true if you really want a client-level role."
+            ),
+        )
+    return str(row["id"]), app_code, None
+
+
 async def _execute_create_role(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     name = (params.get("name") or "").strip()
     if not name:
         return ToolResult(success=False, error="`name` is required")
+    client, headers = _client_and_headers(context)
+    app_id, app_code, err = await _resolve_role_app(params, context, client, headers)
+    if err is not None:
+        return err
+
+    # Mirror the platform's AuthoritiesNameUtil.makeRoleName so the caller
+    # sees the exact token pages/storages must reference. The platform never
+    # populates RoleV2.authority on the wire, so this is the only place the
+    # model can learn it.
+    authority = c.make_role_authority(name, app_code if app_id else None)
+    if app_id is None and authority in _RESERVED_CLIENT_ROLE_AUTHORITIES:
+        return ToolResult(
+            success=False,
+            error=(
+                f"A client-scoped role named '{name}' would carry {authority}, a platform-reserved "
+                "authority (client owner/manager powers). Scope it to your app instead: "
+                "create_role(name=..., app_code=<appcode>) gives Authorities.<APPCODE>.ROLE_" + name.replace(" ", "_") + "."
+            ),
+        )
+
     body: dict[str, Any] = {"name": name}
     if params.get("description"):
         body["description"] = params["description"]
-    if params.get("app_id"):
-        body["appId"] = params["app_id"]
+    if app_id:
+        body["appId"] = app_id
     if params.get("parent_role_id"):
         body["parentRoleId"] = params["parent_role_id"]
-    client, headers = _client_and_headers(context)
     r = await client.post("/api/security/rolev2", headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
     role_id = (r.data or {}).get("id", "?") if isinstance(r.data, dict) else "?"
-    return ToolResult(success=True, summary=f"Created role '{name}' (id={role_id}).")
+
+    if app_id:
+        scope = f"app={app_code}" if app_code else f"app_id={app_id}"
+        shown = authority if app_code else "Authorities.<APPCODE>.ROLE_" + name.replace(" ", "_")
+        return ToolResult(
+            success=True,
+            summary=(
+                f"Created role '{name}' (id={role_id}, authority={shown}, {scope}). "
+                "Use this exact token in page `permission` and component `visibility`. "
+                f"Grant it with assign_role(user_id=..., role_id={role_id}); provision at least one test user per role."
+            ),
+        )
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Created CLIENT-SCOPED role '{name}' (id={role_id}, authority={authority}). "
+            "It will NOT satisfy an Authorities.<APPCODE>.ROLE_ gate. If this role guards pages in an app, "
+            "re-create it with app_code=<appcode>."
+        ),
+    )
 
 
 create_role_tool = ToolDefinition(
     name="create_role",
-    description="Create a role. Authority string is auto-generated as Authorities.[APPCODE.]ROLE_<Name>.",
+    description=(
+        "Create a role. Defaults to APP-SCOPED for the session app (or `app_code`), producing the authority "
+        "Authorities.<APPCODE>.ROLE_<Name>, which is the only form an app's page/storage gates can match. "
+        "The result echoes the exact authority string: paste it into `permission` / `visibility`, never hand-write it. "
+        "Pass client_scoped=true only for a deliberate client-level role (Authorities.ROLE_<Name>)."
+    ),
     parameters=[
-        ToolParameter(name="name", type="string", description="Role display name"),
-        ToolParameter(name="description", type="string", required=False, description="What this role grants"),
-        ToolParameter(name="app_id", type="string", required=False, description="Bind to an app (omit = client-scoped)"),
+        ToolParameter(name="name", type="string", description="Role display name (spaces become underscores in the authority)"),
+        ToolParameter(name="description", type="string", required=False, description="What the role grants"),
+        ToolParameter(name="app_code", type="string", required=False, description="App to scope the role to; defaults to the session app. Resolved to the numeric security app id for you."),
+        ToolParameter(name="client_scoped", type="boolean", required=False, default=False, description="True = client-level role (Authorities.ROLE_<Name>); never satisfies an <APPCODE>.-prefixed gate. Reserved names (Owner, Client_MANAGE, ClientManager) are refused."),
+        ToolParameter(name="app_id", type="string", required=False, description="Escape hatch: numeric security app id (NOT a Mongo ObjectId). Prefer app_code."),
         ToolParameter(name="parent_role_id", type="string", required=False, description="Parent role for inheritance"),
     ],
     execute=_execute_create_role,
@@ -918,6 +1023,34 @@ delete_app_reg_entry_tool = ToolDefinition(
 # ── Profile creation ─────────────────────────────────────────────────────
 
 
+def _build_arrangement(params: dict[str, Any]) -> dict[str, Any]:
+    """Render `role_ids` into the platform's arrangement map.
+
+    ProfileDAO.getRoleIdsFromArrangements walks the arrangement values looking
+    for `roleId` on each entry (skipping `assignable: false`) and writes the
+    security_profile_role rows from it. An empty arrangement therefore yields a
+    profile that grants nothing, which in turn makes every app-scoped role in it
+    unassignable (UserService.assignRoleToUser -> hasAccessToRoles -> 403).
+    An explicit `arrangement` wins; `role_ids` is the friendly form.
+    """
+    explicit = params.get("arrangement")
+    if isinstance(explicit, dict) and explicit:
+        return explicit
+    role_ids = params.get("role_ids") or []
+    if isinstance(role_ids, (str, int)):
+        role_ids = [role_ids]
+    arrangement: dict[str, Any] = {}
+    for order, rid in enumerate(role_ids):
+        if rid is None or str(rid).strip() == "":
+            continue
+        arrangement[f"r{rid}"] = {
+            "roleId": int(str(rid).strip()),
+            "assignable": True,
+            "order": order,
+        }
+    return arrangement
+
+
 def _build_profile_body(name: str, app_id: str, params: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
     # The platform's hasReadAccess(appId, entity.clientId) runs BEFORE the late-fixup
     # that sets clientId from the caller. If clientId is null on the entity, the access
@@ -928,7 +1061,7 @@ def _build_profile_body(name: str, app_id: str, params: dict[str, Any], context:
         "name": name,
         "appId": app_id,
         "clientId": params.get("client_id") or context.get("client_id") or "1",
-        "arrangement": params.get("arrangement") or {},
+        "arrangement": _build_arrangement(params),
     }
     if params.get("description"):
         body["description"] = params["description"]
@@ -965,7 +1098,28 @@ async def _execute_create_profile(params: dict[str, Any], context: dict[str, Any
     r = await client.post("/api/security/app/profiles", headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created profile '{name}' (id={(r.data or {}).get('id', '?')}) for app_id={app_id} (clientId={body['clientId']}).")
+    granted = sorted(
+        v["roleId"] for v in (body["arrangement"] or {}).values()
+        if isinstance(v, dict) and v.get("roleId") is not None
+    )
+    if granted:
+        note = (
+            f" Grants role ids {granted}. Assign to a user with "
+            f"assign_profile(user_id, {(r.data or {}).get('id', '?')})."
+        )
+    else:
+        note = (
+            " WARNING: this profile grants NO roles, so it is inert and the app-scoped "
+            "roles it should carry stay unassignable (assign_role will 403). Re-create "
+            "it with role_ids=[...]."
+        )
+    return ToolResult(
+        success=True,
+        summary=(
+            f"Created profile '{name}' (id={(r.data or {}).get('id', '?')}) for "
+            f"app_id={app_id} (clientId={body['clientId']}).{note}"
+        ),
+    )
 
 
 create_profile_tool = ToolDefinition(
@@ -974,6 +1128,12 @@ create_profile_tool = ToolDefinition(
         "Create a profile (bundle of roles) for an app. Profiles are app-scoped and assigned to users via "
         "`assign_profile` (post-registration) OR via `add_app_reg_entry(kind=userProfile)` "
         "(auto-assigned on registration).\n\n"
+        "PASS `role_ids`. A profile with no roles is inert, and an app-scoped role that sits in no "
+        "profile can never be granted to anyone: `assign_role` fails the platform's "
+        "`hasAccessToRoles` check (which resolves roles THROUGH profiles) and returns "
+        "403 'role forbidden for the user'. So the working provisioning chain is: "
+        "create_role(app_code=...) -> create_profile(role_ids=[...]) -> assign_profile(user, profile). "
+        "Without role_ids the app's own role-gated pages are unreachable by every user.\n\n"
         "Endpoint: POST /api/security/app"
     ),
     parameters=[
@@ -981,6 +1141,22 @@ create_profile_tool = ToolDefinition(
         ToolParameter(name="app_id", type="string", description="security_app id this profile belongs to"),
         ToolParameter(name="description", type="string", required=False, description="Profile description"),
         ToolParameter(name="default_profile", type="boolean", required=False, description="Mark as default-on-registration"),
+        ToolParameter(
+            name="role_ids", type="array", required=False,
+            description=(
+                "Role ids this profile grants, e.g. [295, 296] from create_role. "
+                "Rendered into the platform's `arrangement` map for you."
+            ),
+        ),
+        ToolParameter(
+            name="arrangement", type="object", required=False,
+            description=(
+                "Raw platform arrangement map, for nested/ordered layouts. Shape: "
+                '{"<key>": {"roleId": 295, "assignable": true, "name": "Owner", '
+                '"subArrangements": {...}}}. Prefer role_ids unless you need nesting.'
+            ),
+        ),
+        ToolParameter(name="client_id", type="string", required=False, description="Owning client id (defaults to the session client)"),
     ],
     execute=_execute_create_profile,
 )

@@ -14,27 +14,91 @@ a minimal built-in catalog derived from the aicontext docs.
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
+_CATALOG_FILE_NAME = "component-catalog.json"
+
+
+def _default_local_catalog_path() -> Path | None:
+    """`<repo>/nocode-ui/ui-app/client/dist/component-catalog.json`, if present.
+
+    Resolved relative to this file so a dev box picks up the real generated
+    catalog with no configuration. Absent in prod, where only the CDN copy
+    exists, and that is the intended outcome there.
+    """
+    # app/agents/appbuilder/catalog.py → appbuilder → agents → app → <root>
+    install_root = Path(__file__).resolve().parents[3]
+    candidate = (
+        install_root.parent / "nocode-ui" / "ui-app" / "client" / "dist" / _CATALOG_FILE_NAME
+    )
+    return candidate if candidate.exists() else None
+
+
+def _resolve_local_catalog(configured: str) -> Path | None:
+    """A local catalog file from a configured path, or the default location.
+
+    Accepts the nocode-ui client dir, its `dist/` dir, or the JSON file itself,
+    because all three are things somebody reasonably types.
+    """
+    if not configured:
+        return _default_local_catalog_path()
+    base = Path(configured).expanduser()
+    if base.is_file() and base.name == _CATALOG_FILE_NAME:
+        return base
+    for tail in (f"dist/{_CATALOG_FILE_NAME}", _CATALOG_FILE_NAME):
+        candidate = base / tail
+        if candidate.exists():
+            return candidate
+    return None
+
 
 class ComponentCatalog:
     """Fetches and caches the component catalog."""
 
-    def __init__(self, catalog_url: str = "") -> None:
+    def __init__(self, catalog_url: str = "", local_path: str = "") -> None:
         self.catalog_url = catalog_url
+        self.local_path = local_path
         self._catalog: dict[str, Any] | None = None
 
     async def load(self) -> bool:
-        """Fetch catalog from CDN. Returns True if loaded successfully."""
+        """Load the catalog: CDN, or a local file, or the bundled fallback.
+
+        A local catalog built AFTER the CDN one wins. The CDN copy is only
+        republished by nocode-ui's CI, so a developer who edits component
+        properties and regenerates locally would otherwise keep validating
+        against a catalog that predates their change and see their new property
+        rejected as unknown. Comparing `generatedAt` gives the fresh build
+        precedence without anyone having to set a flag; when the CDN copy is
+        the newer of the two, nothing changes.
+
+        Returns True when a real catalog loaded, False when it fell back.
+        """
         if not self.catalog_url:
+            # No CDN configured. A local build is still much better than the
+            # 5-component stub, whose TextBox has zero properties — the agent
+            # cannot see designType/colorScheme and hand-styles everything.
+            if self._load_local(_resolve_local_catalog(self.local_path)):
+                return True
             logger.info("No catalog URL configured, using fallback catalog")
             self._catalog = _FALLBACK_CATALOG
             return True
+
+        # An explicit local path (or file:// URL) in the URL slot: use it as-is.
+        explicit = self.catalog_url
+        if explicit.startswith("file://"):
+            explicit = explicit[len("file://"):]
+        if not explicit.startswith(("http://", "https://")):
+            if self._load_local(Path(explicit).expanduser()):
+                return True
+            self._catalog = _FALLBACK_CATALOG
+            return False
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -42,12 +106,54 @@ class ComponentCatalog:
                 resp.raise_for_status()
                 self._catalog = resp.json()
                 component_count = len(self._catalog.get("components", {}))
-                logger.info(f"Loaded component catalog: {component_count} components from {self.catalog_url}")
+                logger.info(
+                    "Loaded component catalog: %s components from %s",
+                    component_count, self.catalog_url,
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Failed to load catalog from CDN: %s. Trying local.", e)
+            if self._load_local(_resolve_local_catalog(self.local_path)):
                 return True
-        except Exception as e:
-            logger.warning(f"Failed to load catalog from CDN: {e}. Using fallback.")
             self._catalog = _FALLBACK_CATALOG
             return False
+
+        newer = self._newer_local_catalog()
+        if newer is not None and self._load_local(newer):
+            logger.info("Local catalog is newer than the CDN copy; preferring it.")
+        return True
+
+    def _load_local(self, path: Path | None) -> bool:
+        """Read a catalog from disk into self._catalog. False on any problem."""
+        if path is None:
+            return False
+        try:
+            self._catalog = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            logger.warning("Failed to load catalog file %s: %s", path, e)
+            return False
+        count = len(self._catalog.get("components", {}))
+        logger.info("Loaded component catalog: %s components from file %s", count, path)
+        return True
+
+    def _newer_local_catalog(self) -> Path | None:
+        """A local catalog generated after the one just fetched, or None.
+
+        Both sides stamp `generatedAt` as ISO-8601, which sorts correctly as
+        text. A missing or unparseable stamp on either side means we cannot
+        tell, so the CDN copy stays.
+        """
+        path = _resolve_local_catalog(self.local_path)
+        if path is None:
+            return None
+        remote_stamp = (self._catalog or {}).get("generatedAt")
+        if not isinstance(remote_stamp, str):
+            return None
+        try:
+            local_stamp = json.loads(path.read_text(encoding="utf-8")).get("generatedAt")
+        except (OSError, ValueError) as e:
+            logger.warning("Local catalog at %s unreadable: %s", path, e)
+            return None
+        return path if isinstance(local_stamp, str) and local_stamp > remote_stamp else None
 
     def get_component_info(self, component_type: str) -> dict[str, Any]:
         """Get property definitions for a component type."""

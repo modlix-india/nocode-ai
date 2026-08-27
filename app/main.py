@@ -86,7 +86,9 @@ async def lifespan(app: FastAPI):
         logger.info("Appbuilder context loaded")
 
         logger.info("Loading component catalog (URL=%s) ...", settings.COMPONENT_CATALOG_URL or "(fallback)")
-        catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
+        catalog = ComponentCatalog(
+            settings.COMPONENT_CATALOG_URL, settings.COMPONENT_CATALOG_LOCAL_PATH,
+        )
         await catalog.load()
         set_catalog(catalog)  # register module-level singleton for tool helpers
         logger.info("Component catalog loaded: %d types", len(catalog.get_all_types()))
@@ -227,6 +229,10 @@ app.include_router(adzump2_router, prefix=f"{API_PREFIX}/adzump2", tags=["Adzump
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
 app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
+
+# Lore: curated, growing knowledge about each application we build.
+from app.services.lore.router import router as lore_router
+app.include_router(lore_router, prefix=f"{API_PREFIX}/lore", tags=["Lore"])
 
 # Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
 # Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.

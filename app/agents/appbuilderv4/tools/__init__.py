@@ -22,6 +22,10 @@ from app.agents.appbuilder.tools.kb_app import (
     commit_kb_update_tool,
 )
 
+# Lore — the accumulating side of app knowledge. Shared implementation in
+# app.services.lore.tools; v3 and v4 use the same five verbs.
+from app.services.lore.tools import LORE_TOOLS
+
 TOOLS = [
     code_run_tool,
     # Clone-loop tools. extract_site_assets is the unified recon: it does
@@ -39,4 +43,6 @@ TOOLS = [
     kb_app_list_sections_tool,
     propose_kb_update_tool,
     commit_kb_update_tool,
+    # Lore (MySQL, observation -> curation -> entry).
+    *LORE_TOOLS,
 ]
