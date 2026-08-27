@@ -115,26 +115,6 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
 
-    # ── AppBuilder v4 — code-first agent (1 tool, minimal persona) ─────
-    try:
-        from app.agents.appbuilderv4.agent import AppBuilderV4Agent
-        from app.agents.appbuilderv4.context import build_v4_context
-        from app.agents.appbuilderv4.tools import TOOLS as V4_TOOLS
-        from app.agents.appbuilderv4.router import set_appbuilderv4_agent
-
-        v4_context = build_v4_context()
-        await v4_context.load()
-        v4_agent = AppBuilderV4Agent(
-            context_builder=v4_context,
-            tools=V4_TOOLS,
-            provider=settings.APPBUILDER_PROVIDER,
-        )
-        set_appbuilderv4_agent(v4_agent)
-        logger.info(f"AppBuilderV4 Agent initialized with {len(V4_TOOLS)} tool(s)")
-    except Exception:
-        logger.exception("Failed to initialize AppBuilderV4 Agent")
-        logger.warning("AppBuilderV4 Agent will be unavailable")
-
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
     logger.info("=" * 60)
@@ -213,10 +193,6 @@ app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 # AppBuilder agent router
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
-
-# AppBuilder v4 (code-first) router — coexists with v3 until v4 proves out.
-from app.agents.appbuilderv4.router import router as appbuilderv4_router
-app.include_router(appbuilderv4_router, prefix=f"{API_PREFIX}/appbuilderv4", tags=["AppBuilderV4"])
 
 # Adzump agent router (chat + common routes + location geo-search typeahead)
 from app.agents.adzump.router import router as adzump_router

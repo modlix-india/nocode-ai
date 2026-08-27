@@ -2498,7 +2498,7 @@ patch_component_props(
 Hard rules:
 - EVERY value MUST be a ComponentProperty object (`{"value": ...}` or `{"location": {...}}`). Bare strings/booleans WILL be rejected.
 - Static literal → `{"value": "Submit"}`. Expression → `{"location": {"type": "EXPRESSION", "value": "Theme.primaryColor"}}`. NEVER mix them at the same level except for static-with-dynamic-override (advanced).
-- `visibility` is visible-when-true. To HIDE based on a condition, the expression must evaluate to false (the `not` keyword is NOT supported — invert the condition).""",
+- `visibility` is visible-when-true. To HIDE based on a condition, the expression must evaluate to false. The `not` keyword IS supported (`Operation.UNARY_LOGICAL_NOT`, evaluated by `LogicalNotOperator`), so `not Page.x` is a valid way to invert. `!` and `&&`/`||` are NOT — use `not`, `and`, `or`.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
         ToolParameter(name="component_key", type="string", description="Component key (find via `get_page_summary` or `search_page_components`)"),
