@@ -265,6 +265,30 @@ class StreamChunk:
     hits: list = field(default_factory=list)
 
 
+def flatten_system_blocks(system_prompt: Any) -> str:
+    """Flatten Anthropic-shape system content blocks into one string.
+
+    For providers with no native multi-block system field (OpenAI, DeepSeek,
+    MiniMax, Gemini), which need the blocks collapsed before the call.
+
+    Joined with a BLANK LINE, not a single space. The blocks are independent
+    markdown documents — persona + tool index, then the catalogs, then the
+    per-session context — and a space join welds each one's first heading onto
+    the previous one's last line (`...validate_kirun_text ## Component
+    Catalog`), costing the model the structure the headings exist to give it.
+
+    The separator is part of the cached prefix on every provider that does
+    automatic prefix caching, so it has to be stable and identical everywhere;
+    that is why this lives in one place instead of being re-spelled at each
+    call site.
+    """
+    if isinstance(system_prompt, list):
+        return "\n\n".join(
+            b.get("text", "") for b in system_prompt if b.get("type") == "text"
+        )
+    return system_prompt or ""
+
+
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
 
@@ -847,11 +871,7 @@ class OpenAIProvider(LLMProvider):
 
     def _extract_instructions(self, system_prompt: Any) -> str:
         """Extract plain text from system prompt (string or Anthropic content blocks)."""
-        if isinstance(system_prompt, list):
-            return " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
-            )
-        return system_prompt or ""
+        return flatten_system_blocks(system_prompt)
 
     def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert Anthropic tool format to Responses API flat format.
@@ -1459,12 +1479,7 @@ class DeepSeekProvider(LLMProvider):
         thinking = self._is_thinking_tier(model_tier)
 
         # --- Convert system prompt ---
-        if isinstance(system_prompt, list):
-            sys_text = " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
-            )
-        else:
-            sys_text = system_prompt
+        sys_text = flatten_system_blocks(system_prompt)
 
         full_messages: List[Dict[str, Any]] = [{"role": "system", "content": sys_text}]
 
@@ -1583,12 +1598,7 @@ class DeepSeekProvider(LLMProvider):
         import json as json_lib
         model = self.get_model(model_tier)
 
-        if isinstance(system_prompt, list):
-            sys_text = " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
-            )
-        else:
-            sys_text = system_prompt
+        sys_text = flatten_system_blocks(system_prompt)
 
         full_messages: List[Dict[str, Any]] = [{"role": "system", "content": sys_text}]
         for msg in messages:
@@ -1859,11 +1869,7 @@ class GeminiProvider(LLMProvider):
         return False
 
     def _extract_instructions(self, system_prompt: Any) -> str:
-        if isinstance(system_prompt, list):
-            return " ".join(
-                b.get("text", "") for b in system_prompt if b.get("type") == "text"
-            )
-        return system_prompt or ""
+        return flatten_system_blocks(system_prompt)
 
     def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Anthropic input_schema → Gemini FunctionDeclaration dict.

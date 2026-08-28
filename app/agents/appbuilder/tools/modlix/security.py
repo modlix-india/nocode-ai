@@ -660,21 +660,24 @@ build_authority_tool = ToolDefinition(
 
 
 async def _execute_export_security_app(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    application_code = (params.get("application_code") or "").strip()
-    if not application_code:
-        return ToolResult(success=False, error="`application_code` is required")
+    # `application_code` was this tool's original spelling and the only one of
+    # its kind across 149 app-code parameters; it is accepted as a fallback so
+    # an in-flight session that already fetched the old schema still dispatches.
+    app_code = (params.get("app_code") or params.get("application_code") or "").strip()
+    if not app_code:
+        return ToolResult(success=False, error="`app_code` is required")
     client, headers = _client_and_headers(context)
-    r = await client.get("/api/security/transports/makeTransport", headers=headers, params={"applicationCode": application_code})
+    r = await client.get("/api/security/transports/makeTransport", headers=headers, params={"applicationCode": app_code})
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Security bundle for app '{application_code}':\n{json.dumps(r.data, indent=2, default=str)}")
+    return ToolResult(success=True, summary=f"Security bundle for app '{app_code}':\n{json.dumps(r.data, indent=2, default=str)}")
 
 
 export_security_app_tool = ToolDefinition(
     name="export_security_app",
     description="Export an app's security setup (users, clients, roles, profiles) as a JSON bundle. Pass the result to a peer env's security createAndApply to clone the auth setup. Treat as sensitive — includes credentials/auth setup.",
     parameters=[
-        ToolParameter(name="application_code", type="string", description="appCode of the app to export from the security service"),
+        ToolParameter(name="app_code", type="string", description="appCode of the app to export from the security service"),
     ],
     execute=_execute_export_security_app,
 )

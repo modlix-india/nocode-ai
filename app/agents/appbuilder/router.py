@@ -7,7 +7,7 @@ Only the /chat endpoint with appbuilder-specific logic lives here.
 from __future__ import annotations
 
 import logging
-from typing import Optional, List
+from typing import Any, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -162,6 +162,48 @@ async def author_whatsapp_message(
         current_variants=body.currentVariants,
         language=body.language or "en",
         tone=body.tone or "",
+    )
+
+
+class VersionDiffRequest(BaseModel):
+    """Request for the workspace version-history compare step.
+
+    Both snapshots are sent by the caller. The service has no way to read an editor's
+    current state on its own, and the two documents together are what the comparison
+    needs, so the page posts them rather than the service fetching one of them back.
+    """
+
+    objectType: Optional[str] = ""
+    name: Optional[str] = ""
+    currentVersion: Optional[Any] = None
+    versionNumber: Optional[Any] = None
+    versionMessage: Optional[str] = ""
+    current: Optional[dict] = None
+    older: Optional[dict] = None
+
+
+@router.post("/version-diff")
+async def version_diff(
+    body: VersionDiffRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Say what separates a saved version from what is live, before anyone loads it over their work.
+
+    Stateless. The difference is computed exactly in Python and only that list goes to the
+    model, so the answer is grounded and the cost does not scale with document size.
+    """
+    from app.services.version_diff import summarise_version_diff
+
+    if body.older is None:
+        raise HTTPException(status_code=400, detail="older is required")
+
+    return await summarise_version_diff(
+        object_type=body.objectType or "",
+        name=body.name or "",
+        current_version=body.currentVersion,
+        version_number=body.versionNumber,
+        version_message=body.versionMessage or "",
+        current=body.current or {},
+        older=body.older,
     )
 
 

@@ -17,6 +17,7 @@ from app.core.session import BaseSession
 from app.core.context import BaseContext
 from app.agents.appbuilder.context import (
     HOT_TOOLS,
+    deferred_tool_names,
     extract_last_user_text,
     get_relevant_tool_details,
 )
@@ -54,6 +55,19 @@ class AppBuilderAgent(BaseAgent):
         self._api_catalog = api_catalog
         self._api_catalog_context = api_catalog.to_prompt_context() if api_catalog else ""
 
+        # Both catalogs are rendered ONCE here and never recomputed for the
+        # life of the process, so they belong in the cached prefix, not in the
+        # per-request tail that build_dynamic_context produces. They used to be
+        # appended there, which re-sent ~10.6K tokens uncached on every turn of
+        # every conversation (and, on providers that flatten the system blocks
+        # into one string, pushed them behind the per-session app/client line so
+        # they fell outside the shared prefix cache entirely).
+        static_extra = "\n\n---\n\n".join(
+            p for p in (self._catalog_context, self._api_catalog_context) if p
+        )
+        if static_extra:
+            context_builder.set_static_suffix(static_extra)
+
         # Deferred-schema surface (Phase 3): the LLM sees each tool's name +
         # one-liner description with empty parameters in the API `tools=` field,
         # and pulls full schemas on demand via `get_tool_schema`. The system
@@ -71,6 +85,17 @@ class AppBuilderAgent(BaseAgent):
             max_tokens=settings.AGENT_MAX_TOKENS,
             provider=provider,
             defer_schemas=True,
+        )
+
+        # Resolved once, after super().__init__ so the registry is settled.
+        # Intersected with the tools actually registered, so a name in a
+        # deferred family that this deployment filtered out (e.g. describe_image
+        # on a vision model) never lands in the withheld set.
+        registered = {t.name for t in (tools or [])}
+        self._deferred_tool_names = frozenset(deferred_tool_names() & registered)
+        logger.info(
+            "AppBuilder tool surface: %d advertised up front, %d deferred until first use",
+            len(registered) - len(self._deferred_tool_names), len(self._deferred_tool_names),
         )
 
     def _tool_to_advertised_schema(self, tool: Any) -> dict[str, Any]:
@@ -92,6 +117,25 @@ class AppBuilderAgent(BaseAgent):
         if tool.name in HOT_TOOLS:
             return tool.to_anthropic_tool()
         return super()._tool_to_advertised_schema(tool)
+
+    def withheld_tool_names(self, session: BaseSession) -> set[str]:
+        """Keep the deferred families out of `tools=` until the session wants them.
+
+        Advertising all 232 tools costs ~26K tokens on every turn of every
+        conversation, and whole families (messaging, the security admin tail,
+        image ops) go untouched in most of them.
+
+        A withheld tool stays discoverable — it is listed in the system prompt's
+        tool index and `search_tools` searches the full registry — so the LLM
+        finds it, calls `get_tool_schema`, and from that point it is in
+        `fetched_schemas` and advertised normally. One turn, once per session,
+        only for sessions that actually need the family.
+        """
+        deferred = self._deferred_tool_names
+        if not deferred:
+            return set()
+        fetched = session.context.get("fetched_schemas") or ()
+        return {name for name in deferred if name not in fetched}
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Extend BaseAgent's context with appbuilder-specific fields.
@@ -120,7 +164,9 @@ class AppBuilderAgent(BaseAgent):
         """Build per-request dynamic context.
 
         Includes: auth info, pre-flight app grounding, relevant tool group
-        details, component catalog, API catalog, and learned knowledge.
+        details, and learned knowledge. The component and API catalogs are
+        deliberately absent — they are process-static and live in the cached
+        static suffix instead.
         """
         parts: list[str] = []
 
@@ -153,11 +199,9 @@ class AppBuilderAgent(BaseAgent):
         if tool_details:
             parts.append(tool_details)
 
-        if self._catalog_context:
-            parts.append(self._catalog_context)
-
-        if self._api_catalog_context:
-            parts.append(self._api_catalog_context)
+        # The component + API catalogs are NOT appended here — they are static
+        # for the process lifetime and go into the context builder's cached
+        # static suffix (see __init__).
 
         # Learning loop: inject relevant knowledge from past sessions
         enhancement = await self._build_learning_enhancement(session)

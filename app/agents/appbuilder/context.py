@@ -20,6 +20,7 @@ asserts every ALL_TOOLS entry appears in the index.
 from __future__ import annotations
 
 import logging
+import textwrap
 from typing import Any
 
 from app.core.context import BaseContext
@@ -85,8 +86,29 @@ schema lists (e.g. `component_type`, not `type`; `app_code`, not `appCode`).
 - If you need a capability but aren't sure which tool offers it, search by keyword: \
 `search_tools(query="<keyword>", max_results=8)`; `get_tool_schema(name=...)` fetches one schema explicitly.
 
+Batch independent calls into ONE turn (CRITICAL — this is free speed):
+- You may emit SEVERAL tool_use blocks in a single turn, and they are executed \
+CONCURRENTLY. If you intend to make multiple calls and none of them depends on another's \
+output, put them ALL in the same turn instead of one per turn. Each turn is a full \
+round-trip to the model; four independent reads issued one-per-turn cost four round-trips \
+and buy nothing over issuing them together.
+- Batch these: `list_pages` + `list_themes` + `list_server_functions` while orienting; \
+`get_component` on three different keys you already know; `screenshot_page` on several pages; \
+`get_tool_schema` for every tool you know you are about to need.
+- Do NOT batch when one call's output feeds the next: `create_app` then `create_page` (the \
+page needs the app), `compile_kirun_text` then `save_function_from_text` (the save needs the \
+compile), `get_page` then `patch_component_props` on a key that read revealed. Sequence those.
+- NEVER put two WRITES to the SAME PAGE in one turn. `add_components`, `move_component`, \
+`remove_component` and `rename_component` each re-save the whole page document, so two of them \
+running together silently discard one set of changes — and both report success. One write per \
+page per turn; batch writes only across DIFFERENT pages. (Reads of the same page are fine, and \
+so is one write batched with reads of OTHER pages.)
+- When in doubt, ask whether you could write down every argument for call #2 BEFORE seeing \
+call #1's result. If yes, and they are not two writes to one page, batch them.
+
 Context efficiency (CRITICAL — you have a limited context window):
-- Be INCREMENTAL: read ONE thing, modify it, then move to the next. Do NOT read everything upfront.
+- Be INCREMENTAL about VOLUME, not about concurrency: read only what the current step needs, \
+but issue the reads that step needs together. Do NOT read everything upfront.
 - Do NOT read every component and event function on a page before making changes. \
 Read the page structure first, then read ONLY the specific component or event you need to modify.
 - When modifying a page, use the tree structure to identify the relevant component keys, \
@@ -670,6 +692,29 @@ HOT_TOOLS: frozenset[str] = frozenset({
 })
 
 
+# Tool families withheld from the per-turn `tools=` payload until the session
+# actually reaches for them. Every advertised tool is paid for on EVERY turn of
+# EVERY conversation, and these families are needed by a minority of sessions:
+# an app that never sends a notification pays for 28 messaging tools regardless.
+#
+# Withheld is NOT hidden. Each of these still appears by name in the system
+# prompt's tool index, and `search_tools` searches the full registry, so the LLM
+# can always find them. Fetching one with `get_tool_schema` records it in
+# `session.context["fetched_schemas"]`, and `AppBuilderAgent.withheld_tool_names`
+# stops withholding it from that point on — so the cost of a wrong guess here is
+# one turn, not a lost capability.
+#
+# HOT_TOOLS members are subtracted from this set at agent init: those are
+# pre-marked as fetched at session start, and their full schemas were measured
+# to earn their place. Deferring the long tail around them is the whole point.
+_DEFERRED_FAMILY_MODULES: tuple[str, ...] = (
+    "messaging",    # notifications, templates, connections, event definitions
+    "security",     # user/role/profile administration beyond the HOT few
+    "image_ops",    # crop / pad / recolor / favicon — asset work, not page work
+    "runtime",      # personalization inspection
+)
+
+
 # Tool names that are deliberately kept callable in ALL_TOOLS but hidden from
 # the LLM's tool index. The 6 legacy CRUD verbs + version-history tools +
 # lookup_api are retiring in favour of the named modlix tools and the
@@ -683,11 +728,43 @@ _INTENTIONALLY_HIDDEN: frozenset[str] = frozenset({
 })
 
 
+def deferred_tool_names() -> frozenset[str]:
+    """Names in `_DEFERRED_FAMILY_MODULES`, minus the ones that must stay hot.
+
+    Resolved lazily (not at import) because it reaches into the tool modules,
+    and `context` is imported before the registry on some boot paths.
+    """
+    import importlib  # noqa: PLC0415
+
+    names: set[str] = set()
+    for mod in _DEFERRED_FAMILY_MODULES:
+        try:
+            m = importlib.import_module(f"app.agents.appbuilder.tools.modlix.{mod}")
+        except ImportError:  # pragma: no cover — a family that isn't shipped yet
+            logger.warning("Deferred tool family '%s' not importable; not deferring it", mod)
+            continue
+        names.update(t.name for t in getattr(m, "TOOLS", []))
+    # Never withhold a tool whose schema we deliberately ship up front, and
+    # never withhold the discovery tools that make withholding recoverable.
+    return frozenset(names - set(HOT_TOOLS) - {"search_tools", "get_tool_schema"})
+
+
 def _build_tool_index() -> str:
-    """Render the advertised tool catalog as a grouped markdown listing.
+    """Render the advertised tool catalog as grouped NAME-ONLY listings.
 
     Pulled from `_GROUPS` (which sources from each module's TOOLS list), so
     the index is in sync with the actual surface on every boot.
+
+    Names only, deliberately. Every one of these tools is already in the API's
+    `tools=` payload carrying its own one-line description, so repeating the
+    descriptions here spent ~4.5K tokens of the fixed prefix restating what the
+    model is handed natively. What the flat `tools=` array CANNOT express is
+    which tools belong together — that grouping is the whole reason this index
+    still exists, so it is what survives.
+
+    Do not reintroduce per-tool prose here. If a tool's one-liner is not good
+    enough to steer on, fix the tool's own `description`: that reaches the model
+    through `tools=` AND through `search_tools`, instead of only here.
     """
     from app.agents.appbuilder.tools.registry import ALL_TOOLS  # noqa: PLC0415
 
@@ -698,25 +775,42 @@ def _build_tool_index() -> str:
         present = [n for n in names if n in by_name]
         if not present:
             continue
-        section_lines = [f"### {label}", ""]
-        for name in present:
-            tool = by_name[name]
-            desc = (tool.description or "").strip().split("\n", 1)[0]
-            # Cap each line so the catalog stays scannable. ~110 chars including
-            # the name + " — " prefix keeps lines readable in monospace UIs.
-            max_desc = max(40, 110 - len(name) - len(" — "))
-            if len(desc) > max_desc:
-                desc = desc[: max_desc - 1] + "…"
-            section_lines.append(f"- `{name}` — {desc}")
-        sections.append("\n".join(section_lines))
+        # Wrapped rather than one name per line: 222 bullets is 222 newlines of
+        # pure framing. Width chosen to stay readable in monospace UIs.
+        body = textwrap.fill(
+            ", ".join(f"`{n}`" for n in present),
+            width=100,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        sections.append(f"### {label}\n{body}")
 
     return "\n\n".join(sections)
 
 
 TOOL_GROUPS_SUMMARY = "\n\n## Available tools\n\n" + (
-    "Names + one-line summaries. Call `get_tool_schema(name=\"<tool>\")` for parameters before "
-    "first use; the schema caches for the session. Use `search_tools(query=\"<keyword>\")` to "
-    "discover by capability.\n\n"
+    "Grouped by capability. Each tool's own description and parameters come with the tool "
+    "definitions you already have — this index is only for finding your way to the right "
+    "group. Call `get_tool_schema(name=\"<tool>\")` for parameters before first use; the "
+    "schema caches for the session. Use `search_tools(query=\"<keyword>\")` to discover by "
+    "capability.\n\n"
+    # Replaying real sessions, the single biggest cause of a rejected first call
+    # was guessing between `name` and `<entity>_name` — and the model got it
+    # wrong in BOTH directions (`get_page(page_name=)`, then
+    # `list_page_event_functions(name=)`). The rule is consistent across all 56
+    # <verb>_<entity> tools (pinned by a test); it was just never written down.
+    "Some families listed below (notifications/templates/connections, user + role administration, "
+    "image editing, personalization) are NOT in your tool definitions until you ask for them — "
+    "most sessions never touch them. They are still fully available: call "
+    "`get_tool_schema(name=\"<tool>\")` once and the tool becomes callable for the rest of the "
+    "session. If a tool is named in this index but absent from your tool definitions, that is "
+    "why — fetch its schema, don't conclude it doesn't exist or invent a workaround.\n\n"
+    "**Parameter naming rule** (holds across the whole surface): a tool calls its OWN primary "
+    "entity `name`, and any CONTAINING entity `<entity>_name`. So `get_page(name=\"login\")` "
+    "reads a page, while `patch_component_props(page_name=\"login\", component_key=...)` edits "
+    "a component that lives ON a page, and `add_component(page_name=\"login\", name=\"card\")` "
+    "uses both at once. `app_code` is always the app; a bare `page` is always a zero-indexed "
+    "pagination number, never a page name.\n\n"
 ) + _build_tool_index() + "\n"
 
 # ── Per-group detailed reference (injected dynamically) ───────

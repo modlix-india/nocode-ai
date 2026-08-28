@@ -314,10 +314,12 @@ class BaseAgent:
             # Stream the turn + assemble the provider chunks into blocks. Mutates
             # assistant_text_parts (run-scoped) in place; always drains builtin
             # rows, even on a mid-stream raise. See _stream_turn.
-            # Withdraw quarantined tools — filtered COPY, never mutate self._anthropic_tools.
+            # Withdraw quarantined + withheld tools — filtered COPY, never
+            # mutate self._anthropic_tools.
+            withheld = self.withheld_tool_names(session) | quarantined
             call_tools = (
-                [t for t in self._anthropic_tools if t.get("name") not in quarantined]
-                if quarantined else None
+                [t for t in self._anthropic_tools if t.get("name") not in withheld]
+                if withheld else None
             )
             content_blocks, tool_use_blocks, stop_reason, usage, _text_chunk_count = (
                 await self._stream_turn(
@@ -1058,13 +1060,13 @@ class BaseAgent:
         else:
             context["progress"] = lambda _m: None
 
-        # Phase 3b: deferred-schema gate. When defer_schemas is on and the
-        # LLM calls a non-meta tool whose full schema hasn't been fetched
-        # yet, return a synthetic ToolResult with the schema inline + a
-        # retry instruction. The LLM sees the schema in the tool_result,
-        # then calls the tool again WITH valid args — by which time
-        # fetched_schemas contains its name (set below) so dispatch proceeds.
-        gate = self._gate_deferred_dispatch(tool_name, tool, context)
+        # Phase 3b: deferred-schema gate. When defer_schemas is on and the LLM
+        # calls a non-meta tool whose full schema hasn't been fetched yet, the
+        # arguments are checked against the declared schema: a well-formed call
+        # dispatches immediately (and is marked fetched), a malformed one gets a
+        # synthetic ToolResult carrying the violations + the schema inline, and
+        # the LLM re-calls with valid args.
+        gate = self._gate_deferred_dispatch(tool_name, tool, context, tool_input)
         if gate is not None:
             return gate
 
@@ -1171,11 +1173,95 @@ class BaseAgent:
             ),
         )
 
+    # JSON-Schema type name → the Python types that satisfy it. `bool` is
+    # excluded from the numeric entries on purpose: in Python `True` is an
+    # `int`, and letting a boolean through as a number is how a truthy flag
+    # silently becomes a count.
+    _JSON_TYPES: dict[str, tuple[type, ...]] = {
+        "string": (str,),
+        "integer": (int,),
+        "number": (int, float),
+        "boolean": (bool,),
+        "array": (list, tuple),
+        "object": (dict,),
+    }
+
+    @classmethod
+    def _schema_violations(cls, tool: ToolDefinition, tool_input: Any) -> list[str]:
+        """Why ``tool_input`` fails ``tool``'s declared parameters. [] = it passes.
+
+        Checks argument names, required-ness, declared types and enums. This is
+        a structural check, not a semantic one — it cannot tell a correct
+        page_name from a wrong one, only a call that is shaped like a valid call
+        from one that is not.
+        """
+        if not tool.parameters:
+            # Nothing declared to check against; treat any input as satisfying.
+            return []
+        if not isinstance(tool_input, dict):
+            return [f"expected an object of arguments, got {type(tool_input).__name__}"]
+
+        declared = {p.name: p for p in tool.parameters}
+        problems: list[str] = []
+
+        if not getattr(tool, "allow_unknown_params", False):
+            problems.extend(
+                f"unknown parameter '{k}'" for k in tool_input if k not in declared
+            )
+
+        for param in tool.parameters:
+            if param.name not in tool_input:
+                if param.required and param.default is None:
+                    problems.append(f"missing required parameter '{param.name}'")
+                continue
+            value = tool_input[param.name]
+            if value is None:
+                if param.required:
+                    problems.append(f"'{param.name}' is required but was null")
+                continue
+            allowed = cls._JSON_TYPES.get(param.type)
+            if allowed:
+                # The bool check comes FIRST and outside the isinstance test:
+                # `isinstance(True, int)` is True in Python, so a boolean sails
+                # through an int/float check unless it is rejected up front.
+                if param.type in ("integer", "number") and isinstance(value, bool):
+                    problems.append(f"'{param.name}' expects {param.type}, got boolean")
+                elif not isinstance(value, allowed):
+                    problems.append(
+                        f"'{param.name}' expects {param.type}, got {type(value).__name__}"
+                    )
+            if param.enum and isinstance(value, str) and value not in param.enum:
+                problems.append(
+                    f"'{param.name}' must be one of {param.enum}, got '{value}'"
+                )
+
+        return problems
+
+    def withheld_tool_names(self, session: BaseSession) -> set[str]:
+        """Tool names to leave OUT of this turn's advertised `tools=` payload.
+
+        Default: none. Subclasses override to keep a long tail of rarely-needed
+        tools out of the per-request payload, which every turn pays for.
+
+        A withheld tool is not unreachable. `search_tools` searches the full
+        registry from `context["tools"]`, not the advertised list, so the LLM
+        can still find it by keyword; fetching its schema with
+        `get_tool_schema` records it in `session.context["fetched_schemas"]`,
+        which an override consults to stop withholding it for the rest of the
+        session. Discovery costs one turn and then the tool behaves normally.
+
+        Withholding a tool the model cannot discover would be a silent
+        capability loss, so an override MUST leave it listed in the system
+        prompt's tool index.
+        """
+        return set()
+
     def _gate_deferred_dispatch(
         self,
         tool_name: str,
         tool: ToolDefinition,
         context: dict[str, Any],
+        tool_input: Any = None,
     ) -> ToolResult | None:
         """Return a synthetic schema-injection ToolResult, or None to dispatch.
 
@@ -1183,11 +1269,25 @@ class BaseAgent:
           - defer_schemas mode is on
           - The tool is NOT the router and NOT a meta tool
           - The tool's full schema isn't in session.context["fetched_schemas"]
+          - AND the arguments the LLM supplied do NOT already satisfy the
+            declared schema.
 
-        When all three hold, we return the schema inline as a successful
-        ToolResult and ALSO mark the tool as fetched — so the next call
-        dispatches normally. This is the same dance Claude Code itself uses
-        (see `claud-code/services/mcp/client.ts`).
+        That last condition is the point. This gate used to fire on the first
+        call to a tool unconditionally, without ever looking at the arguments —
+        so a model that guessed a simple signature correctly (`list_themes(
+        app_code="x")`) still burned a whole round-trip being told a schema it
+        had evidently already inferred. The bounce is only worth paying when the
+        guess was actually wrong; when the call validates, dispatch it and mark
+        the schema fetched, exactly as a successful `get_tool_schema` would.
+
+        This is what makes the `HOT_TOOLS` full-schema list mostly redundant:
+        its whole job was dodging a first-call bounce that no longer happens for
+        a well-formed call.
+
+        Validation is structural (names, required, types, enums) — it does not
+        vouch for the *meaning* of the arguments. It never did: on the retry the
+        model re-sends arguments this same check would have accepted, so nothing
+        that reaches execution here could not already reach it one turn later.
         """
         if not self._defer_schemas:
             return None
@@ -1204,7 +1304,23 @@ class BaseAgent:
         if isinstance(fetched, (list, set)) and tool_name in fetched:
             return None
 
-        # First call — inject the schema and tell the LLM to retry.
+        def _mark_fetched() -> None:
+            if isinstance(fetched, list):
+                if tool_name not in fetched:
+                    fetched.append(tool_name)
+            elif isinstance(fetched, set):
+                fetched.add(tool_name)
+
+        violations = self._schema_violations(tool, tool_input)
+        if not violations:
+            # The model got it right without being shown the schema. Record it
+            # as fetched so later calls skip this check too, and let it through.
+            _mark_fetched()
+            logger.debug("Deferred gate: '%s' validated on first call, dispatching", tool_name)
+            return None
+
+        # The guess was wrong — spend the round-trip, and say WHY as well as
+        # what the schema is, so the retry is informed rather than a re-guess.
         import json as _json
         anthropic_shape = tool.to_anthropic_tool()
         payload = {
@@ -1212,17 +1328,14 @@ class BaseAgent:
             "description": tool.description,
             "input_schema": anthropic_shape.get("input_schema", {"type": "object", "properties": {}}),
         }
-        if isinstance(fetched, list):
-            if tool_name not in fetched:
-                fetched.append(tool_name)
-        elif isinstance(fetched, set):
-            fetched.add(tool_name)
+        _mark_fetched()
         body = (
-            f"NOTE: '{tool_name}' was called before its full schema was fetched. "
-            "I'm injecting the schema below and marking it as fetched on this "
-            "session — re-call the tool now with arguments that match the "
-            "schema. Subsequent calls within this conversation will dispatch "
-            "immediately.\n\n"
+            f"NOTE: '{tool_name}' was called before its full schema was fetched, "
+            "and the arguments did not match it:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+            + "\n\nThe schema is below and is now marked fetched on this session "
+            "— re-call the tool with arguments that match it. Subsequent calls "
+            "within this conversation will dispatch immediately.\n\n"
             f"```json\n{_json.dumps(payload, indent=2, default=str)}\n```"
         )
         return ToolResult(success=True, summary=body)
