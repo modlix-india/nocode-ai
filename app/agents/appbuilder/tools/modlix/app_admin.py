@@ -660,7 +660,7 @@ def _flatten_vars(variables: Any) -> dict[str, Any]:
     return out
 
 
-def _canaries(before: dict[str, Any], touched: set[str], n: int = 8) -> list[str]:
+def _canaries(before: dict[str, Any], touched: set[str], n: int = 12) -> list[str]:
     """Variables the write does not mention, sampled to detect a dropped group.
 
     A bad theme write drops whole sections while the count still looks plausible, so
@@ -668,9 +668,12 @@ def _canaries(before: dict[str, Any], touched: set[str], n: int = 8) -> list[str
     hardcoded list: a hand-written probe name that never existed reports GONE for a
     variable nobody lost, which teaches you to ignore the check.
 
-    Stratified by breakpoint, because losing a whole breakpoint is one of the
-    failures being watched for, and sampling evenly over the sorted key list would
-    spend every pick inside whichever breakpoint sorts first.
+    One pick per breakpoint guaranteed, because losing a whole breakpoint is one of
+    the failures being watched for and sampling evenly over the sorted key list would
+    spend every pick inside whichever breakpoint sorts first. The rest are allocated
+    in proportion to size: a real theme is lopsided (appbuildertheme is 515 in ALL and
+    one each in three responsive breakpoints), and splitting evenly there would spend
+    3 of 4 picks guarding 3 variables while a dropped section inside ALL walked past.
     """
     by_bp: dict[str, list[str]] = {}
     for k in sorted(x for x in before if x not in touched):
@@ -678,10 +681,11 @@ def _canaries(before: dict[str, Any], touched: set[str], n: int = 8) -> list[str
     if not by_bp:
         return []
 
-    per = max(1, n // len(by_bp))
+    total = sum(len(v) for v in by_bp.values())
+    spare = max(0, n - len(by_bp))
     picked: list[str] = []
     for keys in by_bp.values():
-        take = min(per, len(keys))
+        take = min(1 + round(spare * len(keys) / total), len(keys))
         step = len(keys) / take
         picked.extend(keys[int(i * step)] for i in range(take))
     return picked

@@ -60,10 +60,11 @@ class Settings(BaseSettings):
 
     # Context limits for conversation tracking (reporting/metadata only — the
     # agent loop does NOT trim on this). 48000 dated from the 64K-context
-    # DeepSeek era; V4 models carry ≥128K, so report against that floor minus
-    # the output reservation. The 51K system prompt alone used to read as
-    # "context 100% full" on turn 1.
-    CONTEXT_LIMIT_DEFAULT: int = 112000  # 128K floor - 16K reserved for output
+    # DeepSeek era; 112000 assumed a 128K floor. DeepSeek V4 (pro, flash and
+    # flash-vision-exp alike) documents a 1M window, so report against that.
+    # The output reservation the old value subtracted is noise at this scale
+    # (AGENT_MAX_TOKENS is ~1.6% of the window).
+    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek V4: 1M context window
     
     # LLM Provider Selection
     # Options: "anthropic", "openai", or "deepseek"

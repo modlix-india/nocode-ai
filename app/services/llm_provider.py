@@ -1297,6 +1297,74 @@ def appbuilder_vision_capable() -> bool:
     return False
 
 
+def _openai_compatible_usage(usage: Any) -> dict[str, int]:
+    """Map an OpenAI-compatible `usage` object onto the Anthropic-shaped dict
+    the rest of the codebase speaks (input / output / cache_creation / cache_read).
+
+    DeepSeek reports context-cache accounting as `prompt_cache_hit_tokens` and
+    `prompt_cache_miss_tokens`, where **`prompt_tokens == hit + miss`** —
+    unlike Anthropic, whose `input_tokens` EXCLUDES cached reads. Mapping
+    `input_tokens = miss` and `cache_read_input_tokens = hit` restores the
+    Anthropic contract, so `input + cache_read` is the true context size on
+    every provider and nothing double-counts.
+
+    Billing is unaffected: `billing.weighted_tokens` sums all four keys, and
+    `miss + hit == prompt_tokens`, so the charged total is identical to the
+    old `input_tokens = prompt_tokens, cache_read = 0` mapping.
+
+    MiniMax (and any other OpenAI-compatible endpoint reached through
+    DeepSeekProvider) may not report the cache fields at all. When both are
+    absent we fall back to the whole prompt counting as uncached input, rather
+    than reading a missing field as zero and losing the count entirely.
+    """
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    hit = getattr(usage, "prompt_cache_hit_tokens", None)
+    miss = getattr(usage, "prompt_cache_miss_tokens", None)
+
+    if hit is None and miss is None:
+        input_tokens, cache_read = prompt_tokens, 0
+    else:
+        cache_read = hit or 0
+        # Trust an explicit miss; otherwise derive it so the two still sum to
+        # prompt_tokens even if only one field is present.
+        input_tokens = miss if miss is not None else max(prompt_tokens - cache_read, 0)
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": completion_tokens,
+        "cache_creation_input_tokens": 0,  # DeepSeek's cache is automatic; no explicit writes
+        "cache_read_input_tokens": cache_read,
+    }
+
+
+def _as_openai_image_part(block: dict) -> dict | None:
+    """Normalise one image block to an OpenAI `image_url` part, or None.
+
+    Accepts both shapes that reach the converter: Anthropic `image` blocks
+    (base64 or url source) from tool results, and already-OpenAI `image_url`
+    parts from `format_image_content`. Shared by the tool-result path and the
+    user-attachment path so the two cannot drift apart.
+    """
+    btype = block.get("type")
+    if btype == "image":
+        src = block.get("source") or {}
+        if src.get("type") == "base64" and src.get("data"):
+            media = src.get("media_type", "image/png")
+            return {
+                "type": "image_url",
+                "image_url": {"url": f"data:{media};base64,{src['data']}"},
+            }
+        if src.get("type") == "url" and src.get("url"):
+            return {"type": "image_url", "image_url": {"url": src["url"]}}
+    elif btype == "image_url":  # already OpenAI-shaped
+        iu = block.get("image_url")
+        url = iu.get("url") if isinstance(iu, dict) else iu
+        if url:
+            return {"type": "image_url", "image_url": {"url": url}}
+    return None
+
+
 def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
     """Split an Anthropic-shaped tool_result `content` into (text, image_parts).
 
@@ -1318,24 +1386,12 @@ def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
     for block in content:
         if not isinstance(block, dict):
             continue
-        btype = block.get("type")
-        if btype == "text":
+        if block.get("type") == "text":
             text_chunks.append(block.get("text", ""))
-        elif btype == "image":
-            src = block.get("source") or {}
-            if src.get("type") == "base64" and src.get("data"):
-                media = src.get("media_type", "image/png")
-                image_parts.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{media};base64,{src['data']}"},
-                })
-            elif src.get("type") == "url" and src.get("url"):
-                image_parts.append({"type": "image_url", "image_url": {"url": src["url"]}})
-        elif btype == "image_url":  # already OpenAI-shaped
-            iu = block.get("image_url")
-            url = iu.get("url") if isinstance(iu, dict) else iu
-            if url:
-                image_parts.append({"type": "image_url", "image_url": {"url": url}})
+            continue
+        part = _as_openai_image_part(block)
+        if part:
+            image_parts.append(part)
     return "\n".join(t for t in text_chunks if t), image_parts
 
 
@@ -1347,7 +1403,22 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
     those tool results — interleaving a user message between tool messages
     would violate the OpenAI tool-call message ordering. Plain text blocks
     become standalone user messages.
+
+    Images the USER attached (session.append_user_message stores them as
+    `[text, *image_blocks]`) are a different case from tool-result screenshots:
+    they belong to the same user turn as the text that asks about them, so they
+    ride inside that text message's content list rather than a follow-up
+    message. Without this branch they matched no `type` at all and were dropped
+    silently — the model answered "I don't have anything attached" while the UI
+    showed the thumbnail.
     """
+    attachment_parts: list[dict] = [
+        part
+        for item in content
+        if isinstance(item, dict) and item.get("type") in ("image", "image_url")
+        for part in [_as_openai_image_part(item)]
+        if part
+    ]
     pending_image_parts: list[dict] = []
     for item in content:
         if not isinstance(item, dict):
@@ -1361,7 +1432,18 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
             })
             pending_image_parts.extend(image_parts)
         elif item.get("type") == "text":
-            full_messages.append({"role": "user", "content": item["text"]})
+            if attachment_parts:
+                # Attach to the first text block, then fall back to plain
+                # string content for any further text in this turn.
+                full_messages.append({
+                    "role": "user",
+                    "content": [{"type": "text", "text": item["text"]}, *attachment_parts],
+                })
+                attachment_parts = []
+            else:
+                full_messages.append({"role": "user", "content": item["text"]})
+    if attachment_parts:  # attachments with no accompanying text
+        full_messages.append({"role": "user", "content": attachment_parts})
     if pending_image_parts:
         full_messages.append({
             "role": "user",
@@ -1444,12 +1526,7 @@ class DeepSeekProvider(LLMProvider):
         )
         return {
             "content": response.choices[0].message.content,
-            "usage": {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
-                "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
-            },
+            "usage": _openai_compatible_usage(response.usage),
             "model": model,
             "stop_reason": response.choices[0].finish_reason,
         }
@@ -1458,7 +1535,32 @@ class DeepSeekProvider(LLMProvider):
         return True
 
     def supports_prompt_caching(self) -> bool:
+        # DeepSeek DOES cache prompts, but implicitly — there are no
+        # cache_control markers to place the way Anthropic requires. This flag
+        # means "we manage cache markers", so False is right here for the same
+        # reason it is on Gemini. The hits themselves are reported and recorded;
+        # see _openai_compatible_usage.
         return False
+
+    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+        """Format a user attachment as an OpenAI-compatible `image_url` part.
+
+        Same shape `_split_tool_result_content` emits for screenshots, so the
+        attachment path and the tool_result path hand the model identical
+        blocks. Guarded on `supports_image_in_tool_result` because that is the
+        per-model "accepts image input" check: text-only V4 chat models reject
+        `image_url` parts with an opaque 400, so fail here with a clear reason
+        instead. MiniMax inherits this and pins the flag True class-wide.
+        """
+        if not self.supports_image_in_tool_result:
+            raise NotImplementedError(
+                f"Vision not supported by the configured {self.name} model "
+                f"({self.get_model(getattr(self.settings, 'AGENT_MODEL_TIER', 'balanced') or 'balanced')})"
+            )
+        return {
+            "type": "image_url",
+            "image_url": {"url": f"data:{media_type};base64,{base64_image}"},
+        }
 
     async def create_completion_with_tools(
         self,
@@ -1571,12 +1673,7 @@ class DeepSeekProvider(LLMProvider):
 
         result: Dict[str, Any] = {
             "content": content_blocks,
-            "usage": {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
-                "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
-            },
+            "usage": _openai_compatible_usage(response.usage),
             "model": model,
             "stop_reason": stop_reason,
         }
@@ -1685,10 +1782,10 @@ class DeepSeekProvider(LLMProvider):
                 # …) instead of hanging on an empty queue.
                 raise chunk.exc
             if hasattr(chunk, 'usage') and chunk.usage:
-                final_usage = {
-                    "input_tokens": chunk.usage.prompt_tokens or 0,
-                    "output_tokens": chunk.usage.completion_tokens or 0,
-                }
+                # This is the path the agent loop actually runs on, so the
+                # cache split has to be here too — not just on the
+                # non-streaming calls.
+                final_usage = _openai_compatible_usage(chunk.usage)
             if not chunk.choices:
                 continue
             delta = chunk.choices[0].delta
