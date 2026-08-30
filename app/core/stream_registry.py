@@ -70,34 +70,39 @@ def _apply(session_id: str, action: str, payload: dict[str, Any]) -> bool:
     return False
 
 
-async def signal(session_id: str, action: str, payload: dict[str, Any] | None = None) -> bool:
+async def signal(session_id: str, action: str, payload: dict[str, Any] | None = None) -> str:
     """Deliver a control signal to the stream serving `session_id`.
 
-    Returns True when a stream took it. A False from the local dictionary is
-    not proof the stream is gone: it may belong to a sibling worker, so the
-    signal is republished on Redis and this returns True optimistically. The
-    alternative is telling the user their approval failed when it worked.
+    Returns what actually happened, because the three cases are genuinely
+    different and callers must not conflate them:
+
+      "local"     — a stream on this worker took it. Definitely delivered.
+      "broadcast" — no local stream, so it went out on Redis for a sibling
+                    worker. Whether anything picked it up is unknowable from
+                    here; do not report this as success.
+      "missing"   — no local stream and no Redis, so there is nothing else it
+                    could have been. Definitely not delivered.
     """
     payload = payload or {}
     if _apply(session_id, action, payload):
-        return True
+        return "local"
 
     from app.services.redis_client import get_redis_client
 
     redis = await get_redis_client()
     if redis is None:
         # Single process, or Redis is down: the local miss is the real answer.
-        return False
+        return "missing"
 
     try:
         await redis.publish(
             _CHANNEL,
             json.dumps({"session_id": session_id, "action": action, "payload": payload}),
         )
-        return True
+        return "broadcast"
     except Exception:  # noqa: BLE001 — a control signal must never 500 the caller
         logger.warning("stream_registry: publish failed for %s/%s", session_id, action, exc_info=True)
-        return False
+        return "missing"
 
 
 async def _listen() -> None:

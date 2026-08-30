@@ -202,7 +202,13 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
         """
         await _assert_session_owner(body.session_id, auth)
         delivered = await stream_registry.signal(body.session_id, "stop")
-        return {"stopped": delivered, "session_id": body.session_id}
+        if delivered == "missing":
+            raise HTTPException(status_code=404, detail="No run in progress for this session")
+        return {
+            "stopped": delivered == "local",
+            "delivery": delivered,
+            "session_id": body.session_id,
+        }
 
     @router.post("/confirm")
     async def confirm_tool(
@@ -224,12 +230,17 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
                 "selected": body.selected,
             },
         )
-        if not delivered:
+        if delivered == "missing":
             # Nothing was waiting: the agent already timed out, or the run ended.
             raise HTTPException(
                 status_code=404, detail="No pending confirmation for this session"
             )
-        return {"resolved": True, "session_id": body.session_id}
+        return {
+            # Only a local hit proves a waiting confirmation actually took this.
+            "resolved": delivered == "local",
+            "delivery": delivered,
+            "session_id": body.session_id,
+        }
 
 
 async def _assert_session_owner(session_id: str, auth: AuthContext) -> None:
