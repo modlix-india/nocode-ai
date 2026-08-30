@@ -218,6 +218,10 @@ class AppBuilderAgent(BaseAgent):
     # Anything else in the payload is ignored: the caller is a page definition,
     # and an unrecognised key must not become prompt text by accident.
     _EDITOR_CONTEXT_FIELDS: tuple[tuple[str, str], ...] = (
+        # Surface goes first: it says what kind of thing the names below are, and
+        # without it "Invites" reads as a page name and sends the agent hunting
+        # with the page tools.
+        ("surface", "Screen"),
         ("active_object", "Looking at"),
         # Every open tab, the active one included, so "also" would be wrong.
         ("open_tabs", "Open tabs"),
@@ -227,6 +231,11 @@ class AppBuilderAgent(BaseAgent):
     # Each value is page-supplied, so a page bug (a whole tab record instead of a
     # name, say) must cost a truncated line rather than a blown-up prompt.
     _EDITOR_CONTEXT_MAX_CHARS = 400
+
+    # active_data is a serialised payload rather than a label, so it gets its own,
+    # larger allowance. The client already caps it; this is the backstop for a
+    # caller that does not.
+    _ACTIVE_DATA_MAX_CHARS = 8000
 
     def _build_editor_context(self, session: BaseSession) -> str:
         """Render what the caller's editor has open, when the caller is one.
@@ -251,13 +260,30 @@ class AppBuilderAgent(BaseAgent):
                 value = value[: self._EDITOR_CONTEXT_MAX_CHARS] + "..."
             lines.append(f"- {label}: {value}")
 
+        active_data = ctx.get("active_data")
+        if isinstance(active_data, str) and active_data.strip():
+            body = active_data.strip()[: self._ACTIVE_DATA_MAX_CHARS]
+            lines.append(
+                "- What that screen is currently showing. This is ONE PAGE of "
+                "results under the filters in force, not the whole set: trust a "
+                "total/totalElements count over the number of rows you can see, "
+                "and never tell the user a list is complete on the strength of "
+                f"this alone.\n{body}"
+            )
+
         if not lines:
             return ""
 
         return (
-            "What the user has open in the editor right now. Treat the object "
-            "they are looking at as the subject of anything they say without "
-            "naming a target.\n" + "\n".join(lines)
+            "What the user has open in front of them right now. Treat what they "
+            "are looking at as the subject of anything they say without naming a "
+            "target.\n\nThe screen contents below are already on the user's "
+            "screen, so answer questions about them directly rather than "
+            "re-fetching. Reach for a tool only for what is NOT here: anything "
+            "beyond the rows shown, or any change they ask you to make. Names on "
+            "this screen are not necessarily app objects, so do not feed them to "
+            "the page or storage tools without checking what they are first.\n"
+            + "\n".join(lines)
         )
 
     _NAMED_PAGE_REF_KEYS: tuple[str, ...] = (
