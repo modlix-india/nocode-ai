@@ -141,7 +141,8 @@ five slightly different input styles. Keep one design + scheme pairing consisten
 (all form inputs alike, all primary actions alike) rather than varying it per page.
 - CONSISTENCY LIVES IN THE THEME, NOT IN PER-COMPONENT STYLES. For an app (as opposed to a one-off \
 cloned landing page), anything that should look the same everywhere — input label spacing, fonts, \
-control heights, border and focus colours — belongs in `update_theme`, set ONCE. Patching the same \
+control heights, border and focus colours — belongs in the theme, set ONCE with \
+`patch_theme_variables`. Patching the same \
 property on component after component is how an app drifts: the six forms end up subtly different and \
 the next page you add misses the memo. Real production themes carry hundreds of per-component \
 variables named `<component><Property><Design><Variant>`, e.g. `textBoxMarginLabelDefaultPrimary`, \
@@ -412,7 +413,7 @@ makes each label collide with the field above it and the labels end up struck th
 previous input's bottom border. It looks fine in the JSON and is visibly broken on screen.
 
 FIX IT IN THE THEME, ONCE — not by patching each form's `gap`. Set the label-margin variables with
-`update_theme` so every input in the app is consistent:
+`patch_theme_variables` so every input in the app is consistent:
 `textBoxMarginLabelDefaultPrimary`, `dropdownMarginLabelDefaultPrimary`,
 `textAreaMarginLabelDefaultPrimary`, `phoneNumberMarginLabelDefaultPrimary`
 (each has Secondary/Tertiary/Quaternary/Quinary siblings; a value like `"0px 0px 6px 0px"` clears
@@ -656,7 +657,10 @@ HOT_TOOLS: frozenset[str] = frozenset({
     "create_page", "update_page",
     # Themes + styles (create_theme/create_style are clone entry points —
     # global colors + @keyframes animation docs)
-    "list_themes", "get_theme", "create_theme", "create_style",
+    # patch_theme_variables is the default path for every theme edit and its
+    # parameters are double-nested ({breakpoint: {name: value}}), the exact shape
+    # a stripped schema gets wrong on the first call.
+    "list_themes", "get_theme", "create_theme", "patch_theme_variables", "create_style",
     # Kirun authoring
     "compile_kirun_text", "save_function_from_text", "create_server_function",
     "decompile_function", "add_step", "update_step",
@@ -910,8 +914,12 @@ appType: "APP" (authenticated) or "SITE" (public-facing).""",
 
 Themes — design tokens by breakpoint:
 - `create_theme(name="main", variables={"ALL": {"primaryColor": "#3B82F6"}})`.
-- `update_theme(name="main", variables={...})` — REPLACES variables map; fetch with
-  `get_theme(name="main", max_chars=20000)` first to preserve unrelated breakpoints.
+- `patch_theme_variables(name="main", set_variables={"ALL": {...}}, remove_variables={"ALL": [...]})`
+  — THE DEFAULT for every theme edit. Names only what changes, leaves the rest alone, and
+  verifies afterwards that untouched variables survived. No need to fetch the theme first.
+- `update_theme(name="main", variables={...})` — REPLACES the entire variables map, so anything
+  omitted is DELETED. Refuses a write that would drop variables unless `confirm_drop=true`.
+  Only for installing a whole theme at once; for a few variables use patch_theme_variables.
 - MUST describe theme changes to the user before applying.
 
 Breakpoints: ALL, WIDE_SCREEN, DESKTOP_SCREEN[_ONLY|_SMALL], TABLET_LANDSCAPE_SCREEN[_ONLY|_SMALL],
@@ -1499,7 +1507,8 @@ _TOOL_NAME_TO_GROUP: dict[str, str] = {
         "set_app_page_reference", "whoami",
     ), "application_workflow"),
     **dict.fromkeys((
-        "list_themes", "get_theme", "create_theme", "update_theme", "delete_theme",
+        "list_themes", "get_theme", "create_theme", "update_theme",
+        "patch_theme_variables", "delete_theme",
         "list_styles", "get_style", "create_style", "update_style", "delete_style",
     ), "styling"),
     # functions + schemas + storages

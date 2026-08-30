@@ -640,10 +640,70 @@ whoami_tool = ToolDefinition(
 
 
 # ═════════════════════════════════════════════════════════════════════════
-#  THEMES (5 tools)
+#  THEMES (6 tools)
 # ═════════════════════════════════════════════════════════════════════════
 
 _THEMES_API = "/api/ui/themes"
+
+_ABSENT = object()
+
+
+def _flatten_vars(variables: Any) -> dict[str, Any]:
+    """{breakpoint: {name: value}} -> {'BREAKPOINT.name': value}, skipping malformed entries."""
+    out: dict[str, Any] = {}
+    if not isinstance(variables, dict):
+        return out
+    for bp, vars_ in variables.items():
+        if isinstance(vars_, dict):
+            for k, v in vars_.items():
+                out[f"{bp}.{k}"] = v
+    return out
+
+
+def _canaries(before: dict[str, Any], touched: set[str], n: int = 8) -> list[str]:
+    """Variables the write does not mention, sampled to detect a dropped group.
+
+    A bad theme write drops whole sections while the count still looks plausible, so
+    counting alone is not proof. Sampled from the document itself rather than from a
+    hardcoded list: a hand-written probe name that never existed reports GONE for a
+    variable nobody lost, which teaches you to ignore the check.
+
+    Stratified by breakpoint, because losing a whole breakpoint is one of the
+    failures being watched for, and sampling evenly over the sorted key list would
+    spend every pick inside whichever breakpoint sorts first.
+    """
+    by_bp: dict[str, list[str]] = {}
+    for k in sorted(x for x in before if x not in touched):
+        by_bp.setdefault(k.split(".", 1)[0], []).append(k)
+    if not by_bp:
+        return []
+
+    per = max(1, n // len(by_bp))
+    picked: list[str] = []
+    for keys in by_bp.values():
+        take = min(per, len(keys))
+        step = len(keys) / take
+        picked.extend(keys[int(i * step)] for i in range(take))
+    return picked
+
+
+def _verify_vars(saved: Any, expect_present: dict[str, Any], expect_absent: set[str],
+                 canaries: list[str]) -> list[str]:
+    """Post-write checks. Returns human-readable problems, empty when the write is clean."""
+    flat = _flatten_vars(saved)
+    problems = []
+    wrong = sorted(k for k, v in expect_present.items() if flat.get(k) != v)
+    if wrong:
+        problems.append(f"{len(wrong)} did not round-trip: {', '.join(wrong[:8])}")
+    still = sorted(k for k in expect_absent if k in flat)
+    if still:
+        problems.append(f"{len(still)} still present after removal: {', '.join(still[:8])}")
+    lost = [k for k in canaries if k not in flat]
+    if lost:
+        problems.append(
+            f"{len(lost)} of {len(canaries)} sampled untouched variables are GONE "
+            f"(a group was dropped): {', '.join(lost[:8])}")
+    return problems
 
 
 async def _execute_list_themes(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
@@ -772,24 +832,139 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     doc, err = await _find_by_name(client, headers, _THEMES_API, ac, name)
     if err or doc is None:
         return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
+
+    before = _flatten_vars(doc.get("variables"))
+    after = _flatten_vars(variables)
+    dropped = sorted(set(before) - set(after))
+    if dropped and not params.get("confirm_drop"):
+        return ToolResult(success=False, error=(
+            f"Refused: this would DELETE {len(dropped)} of {len(before)} existing variables "
+            f"in theme '{name}'.\n"
+            f"Would be lost: {', '.join(dropped[:12])}{' ...' if len(dropped) > 12 else ''}\n\n"
+            "`variables` replaces the whole map, it does not merge. To change a few "
+            "variables use patch_theme_variables. To replace the theme wholesale on "
+            "purpose, pass confirm_drop=true."
+        ))
+
     doc["variables"] = variables
     doc["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
     save = await client.put(f"{_THEMES_API}/{doc.get('id')}", headers=headers, json=doc)
     if not save.success:
         return ToolResult(success=False, error=save.error)
-    return ToolResult(success=True, summary=f"Updated theme '{name}'.")
+    saved = (save.data or {}).get("variables") or variables
+    problems = _verify_vars(saved, after, set(dropped), [])
+    line = (f"Updated theme '{name}' (v{(save.data or {}).get('version', '?')}, "
+            f"variables {len(before)} -> {len(_flatten_vars(saved))}"
+            f"{f', {len(dropped)} deleted' if dropped else ''}).")
+    return ToolResult(success=not problems,
+                      summary=line if not problems else line + "\n  ! " + "\n  ! ".join(problems),
+                      error=None if not problems else "; ".join(problems))
 
 
 update_theme_tool = ToolDefinition(
     name="update_theme",
-    description="Replace a theme's variables (full-replacement, not merge). Fetch with get_theme(max_chars=large) first if you want to preserve other breakpoints.",
+    description="Replace a theme's ENTIRE variables map (not a merge). Refuses if that would drop existing variables unless confirm_drop=true. To change a few variables use patch_theme_variables instead.",
     parameters=[
         ToolParameter(name="name", type="string", description="Theme name to update"),
-        ToolParameter(name="variables", type="object", description="Replacement per-breakpoint variable map"),
+        ToolParameter(name="variables", type="object", description="Replacement per-breakpoint variable map. This becomes the whole map; anything omitted is deleted."),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_UPDATE_MESSAGE),
+        ToolParameter(name="confirm_drop", type="boolean", required=False, default=False, description="Allow the write to delete existing variables that `variables` omits. Only for a deliberate wholesale replacement."),
     ],
     execute=_execute_update_theme,
+)
+
+
+async def _execute_patch_theme_variables(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    name = (params.get("name") or "").strip()
+    set_variables = params.get("set_variables") or {}
+    remove_variables = params.get("remove_variables") or {}
+    if not name:
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
+    if not set_variables and not remove_variables:
+        return ToolResult(success=False, error="pass set_variables and/or remove_variables")
+    if not isinstance(set_variables, dict) or not isinstance(remove_variables, dict):
+        return ToolResult(success=False, error="set_variables and remove_variables must be objects keyed by breakpoint")
+    for bp in list(set_variables) + list(remove_variables):
+        be = c.validate_breakpoint(bp)
+        if be:
+            return ToolResult(success=False, error=be)
+    ac = _resolve_app_code(params, context)
+    if not ac:
+        return _err_app_code()
+    client, headers = _client_and_headers(context)
+    doc, err = await _find_by_name(client, headers, _THEMES_API, ac, name)
+    if err or doc is None:
+        return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
+
+    before = doc.get("variables") or {}
+    before_flat = _flatten_vars(before)
+    merged = {bp: dict(v or {}) for bp, v in before.items() if isinstance(v, dict)}
+
+    added, changed, removed, missing = [], [], [], []
+    for bp, vars_ in set_variables.items():
+        target = merged.setdefault(bp, {})
+        for k, v in (vars_ or {}).items():
+            (changed if k in target else added).append(f"{bp}.{k}")
+            target[k] = v
+    for bp, names in remove_variables.items():
+        for n in names or []:
+            # Sentinel, not None: a variable stored as null is still a real removal,
+            # and `pop(n, None) is not None` would silently skip it.
+            if merged.get(bp, {}).pop(n, _ABSENT) is not _ABSENT:
+                removed.append(f"{bp}.{n}")
+            else:
+                missing.append(f"{bp}.{n}")
+
+    # Canaries have to be chosen BEFORE the write, from what the theme held then.
+    canaries = _canaries(before_flat, set(added) | set(changed) | set(removed))
+
+    doc["variables"] = merged
+    doc["message"] = params.get("message") or "Patched theme variables via CFA"
+    save = await client.put(f"{_THEMES_API}/{doc.get('id')}", headers=headers, json=doc)
+    if not save.success:
+        return ToolResult(success=False, error=save.error)
+
+    saved = (save.data or {}).get("variables") or merged
+    merged_flat = _flatten_vars(merged)
+    problems = _verify_vars(
+        saved,
+        {k: merged_flat[k] for k in (set(added) | set(changed)) if k in merged_flat},
+        set(removed),
+        canaries,
+    )
+
+    parts = [f"Patched theme '{name}' (v{(save.data or {}).get('version', '?')}, "
+             f"variables {len(before_flat)} -> {len(_flatten_vars(saved))})."]
+    for label, items in (("Added", added), ("Changed", changed), ("Removed", removed)):
+        if items:
+            parts.append(f"{label} {len(items)}: {', '.join(items[:8])}{' ...' if len(items) > 8 else ''}")
+    if missing:
+        parts.append(f"Not present, nothing removed ({len(missing)}): {', '.join(missing[:8])}")
+    if problems:
+        parts.append("! " + "\n! ".join(problems))
+    elif canaries:
+        parts.append(f"Verified: {len(canaries)} sampled untouched variables survived.")
+    return ToolResult(success=not problems, summary="\n".join(parts),
+                      error=None if not problems else "; ".join(problems))
+
+
+patch_theme_variables_tool = ToolDefinition(
+    name="patch_theme_variables",
+    description=(
+        "Add, change or delete individual theme variables without resending the rest. "
+        "Reads the theme, applies only your changes, writes it back, and verifies that "
+        "untouched variables survived. Prefer this over update_theme for every edit that "
+        "is not a wholesale theme replacement."
+    ),
+    parameters=[
+        ToolParameter(name="name", type="string", description="Theme name to patch"),
+        ToolParameter(name="set_variables", type="object", required=False, description="Per-breakpoint variables to add or overwrite, e.g. {'ALL': {'messagesOuterContainerTop': '98px'}}. Everything not named here is left untouched."),
+        ToolParameter(name="remove_variables", type="object", required=False, description="Per-breakpoint variable names to delete, e.g. {'ALL': ['messagesOuterContainerBottom']}. Applied after set_variables."),
+        ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Patched theme variables via CFA"),
+    ],
+    execute=_execute_patch_theme_variables,
 )
 
 
@@ -1184,8 +1359,9 @@ TOOLS: list[ToolDefinition] = [
     # apps (7)
     list_apps_tool, get_app_tool, create_app_tool, set_app_page_reference_tool,
     update_app_tool, delete_app_tool, whoami_tool,
-    # themes (5)
-    list_themes_tool, get_theme_tool, create_theme_tool, update_theme_tool, delete_theme_tool,
+    # themes (6)
+    list_themes_tool, get_theme_tool, create_theme_tool, update_theme_tool,
+    patch_theme_variables_tool, delete_theme_tool,
     # styles (5)
     list_styles_tool, get_style_tool, create_style_tool, update_style_tool, delete_style_tool,
     # uri_paths (5)
