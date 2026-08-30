@@ -53,6 +53,11 @@ async def lifespan(app: FastAPI):
         redis_client = await get_redis_client()
         if redis_client:
             logger.info("Redis connection established")
+            # Lets POST /stop and /confirm reach an agent run held by a sibling
+            # worker. Without it those only work when the request happens to
+            # land on the right one of the four.
+            from app.core.stream_registry import start_subscriber
+            await start_subscriber()
         else:
             logger.warning("Redis connection failed - rate limiting and caching disabled")
 
@@ -131,6 +136,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing SaasClient: {e}")
 
+
+    from app.core.stream_registry import stop_subscriber
+    await stop_subscriber()
 
     await close_redis()
 

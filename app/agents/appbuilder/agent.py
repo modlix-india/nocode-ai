@@ -178,6 +178,10 @@ class AppBuilderAgent(BaseAgent):
                 f"- App: {app_code}\n"
             )
 
+        editor = self._build_editor_context(session)
+        if editor:
+            parts.append(editor)
+
         # Pre-flight grounding: fetch app definition + top pages once per
         # session so the agent walks in knowing the structure. Saves 3-10
         # "list_pages" / "get_app" round-trips on most conversations.
@@ -209,6 +213,52 @@ class AppBuilderAgent(BaseAgent):
             parts.append(enhancement)
 
         return "\n\n".join(parts)
+
+    # Editor context fields the sidekick sends, in the order they read best.
+    # Anything else in the payload is ignored: the caller is a page definition,
+    # and an unrecognised key must not become prompt text by accident.
+    _EDITOR_CONTEXT_FIELDS: tuple[tuple[str, str], ...] = (
+        ("active_object", "Looking at"),
+        # Every open tab, the active one included, so "also" would be wrong.
+        ("open_tabs", "Open tabs"),
+        ("open_tab_ids", "Ids of the open objects"),
+    )
+
+    # Each value is page-supplied, so a page bug (a whole tab record instead of a
+    # name, say) must cost a truncated line rather than a blown-up prompt.
+    _EDITOR_CONTEXT_MAX_CHARS = 400
+
+    def _build_editor_context(self, session: BaseSession) -> str:
+        """Render what the caller's editor has open, when the caller is one.
+
+        Chats embedded in the appbuilder workspace/org shell send this so the
+        agent can answer about the object in front of the user without spending
+        a discovery round-trip on `list_pages` / `get_app` first.
+        """
+        ctx = session.context.get("editor_context")
+        if not isinstance(ctx, dict):
+            return ""
+
+        lines: list[str] = []
+        for field, label in self._EDITOR_CONTEXT_FIELDS:
+            value = ctx.get(field)
+            if not value or not isinstance(value, str):
+                continue
+            value = value.strip()
+            if not value:
+                continue
+            if len(value) > self._EDITOR_CONTEXT_MAX_CHARS:
+                value = value[: self._EDITOR_CONTEXT_MAX_CHARS] + "..."
+            lines.append(f"- {label}: {value}")
+
+        if not lines:
+            return ""
+
+        return (
+            "What the user has open in the editor right now. Treat the object "
+            "they are looking at as the subject of anything they say without "
+            "naming a target.\n" + "\n".join(lines)
+        )
 
     _NAMED_PAGE_REF_KEYS: tuple[str, ...] = (
         "defaultPage", "loginPage", "shellPage", "forbiddenPage",

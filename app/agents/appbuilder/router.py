@@ -83,6 +83,11 @@ class ChatRequest(BaseModel):
     # with the customer's live app (screenshot_page / drive_page /
     # call_as_app_user) is invoked. Other tools ignore it.
     app_user: Optional[AppUserAuth] = None
+    # What the caller's UI has open, for chats embedded in an editor (the
+    # appbuilder sidekick). Free-form, but the keys the agent renders are
+    # active_object, open_tabs and open_tab_ids. Lets the agent answer about
+    # the thing in front of the user without a discovery round-trip first.
+    editor_context: Optional[dict] = None
 
 
 class TemplateAiRequest(BaseModel):
@@ -219,6 +224,8 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
     session = BaseSession(agent_name="appbuilder")
     if body.app_code:
         session.context["app_code"] = body.app_code
+    if body.editor_context:
+        session.context["editor_context"] = body.editor_context
     # Pre-approve mutating tools for headless/harness callers (see agent loop).
     session.context["auto_confirm"] = body.auto_confirm
 
