@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from app.core.base_auth import require_auth_context
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
+from app.core import stream_registry
 from app.db.models import SessionListItem, SessionListResponse, SessionStatus
 from app.services.session_manager import get_session_manager
 from app.services.context_manager import get_context_manager
@@ -47,6 +48,19 @@ class ChatAttachment(BaseModel):
     name: str = ""
     mime_type: str = "image/png"
     data: Optional[str] = None  # base64-encoded file content
+
+
+class StopRequest(BaseModel):
+    """Request body for interrupting a running agent."""
+    session_id: str
+
+
+class ConfirmRequest(BaseModel):
+    """Request body for answering a tool confirmation the agent is blocked on."""
+    session_id: str
+    confirmation_id: str
+    approved: bool = False
+    selected: Optional[str] = None
 
 
 def create_common_routes(router: APIRouter, agent_name: str) -> None:
@@ -77,9 +91,15 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
         limit: int = 20,
         offset: int = 0,
         status: Optional[str] = None,
+        app_code: Optional[str] = None,
         auth: AuthContext = Depends(require_auth_context),
     ):
-        """List sessions for the current user."""
+        """List sessions for the current user.
+
+        `app_code` narrows the list to chats started against one app. Callers
+        embedded in a per-app surface (the appbuilder workspace sidekick) pass
+        it so each workspace has its own history rather than one shared pile.
+        """
         status_filter = SessionStatus(status) if status else None
         session_mgr = get_session_manager()
         sessions, total = await session_mgr.list_sessions(
@@ -87,6 +107,7 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             client_code=auth.client_code,
             agent_name=agent_name,
             status=status_filter,
+            app_code=app_code,
             limit=limit,
             offset=offset,
         )
@@ -169,6 +190,71 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             )
         return {"deleted": True, "session_id": session_id}
 
+    @router.post("/stop")
+    async def stop_session(
+        body: StopRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Ask the agent serving this session to stop at its next checkpoint.
+
+        The stream keeps running until the loop notices, so this returns as soon
+        as the signal is delivered rather than waiting for the run to unwind.
+        """
+        await _assert_session_owner(body.session_id, auth)
+        delivered = await stream_registry.signal(body.session_id, "stop")
+        if delivered == "missing":
+            raise HTTPException(status_code=404, detail="No run in progress for this session")
+        return {
+            "stopped": delivered == "local",
+            "delivery": delivered,
+            "session_id": body.session_id,
+        }
+
+    @router.post("/confirm")
+    async def confirm_tool(
+        body: ConfirmRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Answer a confirmation the agent is blocked on.
+
+        Without this the agent waits out its 120s timeout and then denies
+        itself, so every mutating tool call fails by default.
+        """
+        await _assert_session_owner(body.session_id, auth)
+        delivered = await stream_registry.signal(
+            body.session_id,
+            "confirm",
+            {
+                "confirmation_id": body.confirmation_id,
+                "approved": body.approved,
+                "selected": body.selected,
+            },
+        )
+        if delivered == "missing":
+            # Nothing was waiting: the agent already timed out, or the run ended.
+            raise HTTPException(
+                status_code=404, detail="No pending confirmation for this session"
+            )
+        return {
+            # Only a local hit proves a waiting confirmation actually took this.
+            "resolved": delivered == "local",
+            "delivery": delivered,
+            "session_id": body.session_id,
+        }
+
+
+async def _assert_session_owner(session_id: str, auth: AuthContext) -> None:
+    """Refuse to signal a session the caller does not own.
+
+    A session id is guessable enough that skipping this would let anyone
+    interrupt, or silently approve writes in, someone else's agent run.
+    """
+    session = await get_session_manager().get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != auth.user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
 
 def build_image_blocks(
     attachments: List[ChatAttachment],
@@ -209,6 +295,9 @@ def stream_agent_response(
     Works with any agent that implements `run(message, session, event_stream, ...)`.
     """
     event_stream = AgentEventStream()
+    # Published so a later POST /stop or /confirm can reach this run. Torn down
+    # in the generator's finally, whichever way the stream ends.
+    stream_registry.register(session.session_id, event_stream)
 
     async def run_agent():
         try:
@@ -242,6 +331,7 @@ def stream_agent_response(
             keepalive_task.cancel()
             if not task.done():
                 task.cancel()
+            stream_registry.unregister(session.session_id)
 
     return StreamingResponse(
         event_generator(),

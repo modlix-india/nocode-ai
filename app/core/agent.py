@@ -314,10 +314,12 @@ class BaseAgent:
             # Stream the turn + assemble the provider chunks into blocks. Mutates
             # assistant_text_parts (run-scoped) in place; always drains builtin
             # rows, even on a mid-stream raise. See _stream_turn.
-            # Withdraw quarantined tools — filtered COPY, never mutate self._anthropic_tools.
+            # Withdraw quarantined + withheld tools — filtered COPY, never
+            # mutate self._anthropic_tools.
+            withheld = self.withheld_tool_names(session) | quarantined
             call_tools = (
-                [t for t in self._anthropic_tools if t.get("name") not in quarantined]
-                if quarantined else None
+                [t for t in self._anthropic_tools if t.get("name") not in withheld]
+                if withheld else None
             )
             content_blocks, tool_use_blocks, stop_reason, usage, _text_chunk_count = (
                 await self._stream_turn(
@@ -532,6 +534,10 @@ class BaseAgent:
             assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
         await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
         await session.save_context()
+
+        # Lore: accumulate what was asked and what happened, so the app's
+        # knowledge grows without anyone remembering to write it down.
+        await self._observe_to_lore(session, user_message, assistant_summary)
 
         # (AI billing is charged per LLM call, immediately, inside the loop above.)
 
@@ -851,6 +857,15 @@ class BaseAgent:
         tool = self.tools.get(tool_name)
         display_name = tool.get_display_name() if tool else tool_name
 
+        # Remember which object the agent is working on, so the next turn can be
+        # handed what is known about it. Best-effort; a missed focus costs
+        # nothing, a wrong one would waste the reminder budget.
+        try:
+            from app.services.lore import context as _lore_ctx
+            _lore_ctx.note_focus(session, tool_name, tool_input)
+        except Exception:  # noqa: BLE001
+            pass
+
         await event_stream.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
         # Request user confirmation for mutating operations.
@@ -861,7 +876,12 @@ class BaseAgent:
         # _handlers.py) passes too. Interactive UI sessions leave auto_confirm
         # unset and keep the normal confirmation flow.
         if tool_name in self.CONFIRMATION_TOOLS and session.context.get("auto_confirm"):
-            if isinstance(tool_input, dict):
+            # Stamp only when the tool declares `confirmed` (create/update read
+            # it for their in-tool gate). copy/delete never read it, and an
+            # undeclared key would now be refused by _reject_unknown_params,
+            # turning every headless call to them into a rejection.
+            declares_confirmed = tool is not None and any(p.name == "confirmed" for p in tool.parameters)
+            if declares_confirmed and isinstance(tool_input, dict):
                 tool_input.setdefault("confirmed", True)
         elif tool_name in self.CONFIRMATION_TOOLS:
             confirmation_id = f"confirm_{tool_use_id}"
@@ -912,6 +932,10 @@ class BaseAgent:
         display_summary = result.summary or result.error or tool_content
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
+
+        # Lore: an edit is the strongest evidence a session produces. Recorded
+        # here rather than inside ~190 write tools, so nothing has to remember.
+        await self._observe_edit_to_lore(session, tool_name, tool_input, result)
 
         # audience: a tool whose summary targets the user ("user"/"both") has it
         # posted to chat AND persisted (append to the run-scoped parts the saved
@@ -1036,15 +1060,24 @@ class BaseAgent:
         else:
             context["progress"] = lambda _m: None
 
-        # Phase 3b: deferred-schema gate. When defer_schemas is on and the
-        # LLM calls a non-meta tool whose full schema hasn't been fetched
-        # yet, return a synthetic ToolResult with the schema inline + a
-        # retry instruction. The LLM sees the schema in the tool_result,
-        # then calls the tool again WITH valid args — by which time
-        # fetched_schemas contains its name (set below) so dispatch proceeds.
-        gate = self._gate_deferred_dispatch(tool_name, tool, context)
+        # Phase 3b: deferred-schema gate. When defer_schemas is on and the LLM
+        # calls a non-meta tool whose full schema hasn't been fetched yet, the
+        # arguments are checked against the declared schema: a well-formed call
+        # dispatches immediately (and is marked fetched), a malformed one gets a
+        # synthetic ToolResult carrying the violations + the schema inline, and
+        # the LLM re-calls with valid args.
+        gate = self._gate_deferred_dispatch(tool_name, tool, context, tool_input)
         if gate is not None:
             return gate
+
+        rejected = self._reject_unknown_params(tool, tool_input)
+        if rejected is not None:
+            self._remember_failed_call(context, tool_name, tool_input)
+            return rejected
+
+        repeat = self._reject_repeat_of_failed_call(context, tool_name, tool_input)
+        if repeat is not None:
+            return repeat
 
         try:
             result = await tool.execute(tool_input, context)
@@ -1061,11 +1094,174 @@ class BaseAgent:
         # the next call to that tool will pass the gate.
         return result
 
+    _FAILED_CALLS_KEY = "_failed_call_signatures"
+
+    @staticmethod
+    def _call_signature(tool_name: str, tool_input: Any) -> str | None:
+        """Stable signature for a (tool, args) pair, or None if unhashable."""
+        try:
+            return f"{tool_name}:{json.dumps(tool_input, sort_keys=True, default=str)}"
+        except Exception:  # noqa: BLE001
+            return None
+
+    @classmethod
+    def _remember_failed_call(cls, context: dict, tool_name: str, tool_input: Any) -> None:
+        sig = cls._call_signature(tool_name, tool_input)
+        if sig is None:
+            return
+        seen = context.setdefault(cls._FAILED_CALLS_KEY, {})
+        seen[sig] = seen.get(sig, 0) + 1
+
+    @classmethod
+    def _reject_repeat_of_failed_call(
+        cls, context: dict, tool_name: str, tool_input: Any
+    ) -> ToolResult | None:
+        """Refuse a call byte-identical to one already rejected this session.
+
+        Re-sending the exact same arguments cannot produce a different outcome,
+        but models do it anyway: one build run repeated an identical rejected
+        `get_page` five times, another repeated `get_tool_schema` and
+        `lore_brief` twice each. Each repeat costs a full turn and teaches the
+        model nothing. Say plainly that the arguments are unchanged so the next
+        attempt has to differ.
+        """
+        sig = cls._call_signature(tool_name, tool_input)
+        if sig is None:
+            return None
+        seen = context.get(cls._FAILED_CALLS_KEY) or {}
+        if sig not in seen:
+            return None
+        return ToolResult(
+            success=False,
+            error=(
+                f"These exact arguments to '{tool_name}' were already rejected this "
+                f"session, so re-sending them cannot succeed. Nothing was executed. "
+                f"Change the arguments, or call a different tool. If you are unsure "
+                f"of the parameter names, the rejection above lists the valid ones."
+            ),
+        )
+
+    @staticmethod
+    def _reject_unknown_params(tool: ToolDefinition, tool_input: Any) -> ToolResult | None:
+        """Refuse top-level argument names the tool does not declare.
+
+        Tools read params by name, so an undeclared key is silently ignored.
+        That is how create_role swallowed `app_code` in the Chit Fund run and
+        produced client-scoped roles behind app-scoped page gates. Judged only
+        when the tool declares parameters; a tool that intentionally accepts
+        free-form input opts out with `allow_unknown_params=True`.
+        """
+        if not isinstance(tool_input, dict) or not tool.parameters:
+            return None
+        if getattr(tool, "allow_unknown_params", False):
+            return None
+        declared = [p.name for p in tool.parameters]
+        unknown = [k for k in tool_input if k not in declared]
+        if not unknown:
+            return None
+        import difflib
+        described = []
+        for k in unknown:
+            close = difflib.get_close_matches(k, declared, n=1, cutoff=0.6)
+            described.append(f"'{k}'" + (f" (did you mean '{close[0]}'?)" if close else ""))
+        return ToolResult(
+            success=False,
+            error=(
+                f"Unknown parameter(s) for {tool.name}: {', '.join(described)}. "
+                f"Valid parameters: {', '.join(declared)}. Nothing was executed; "
+                "re-call with only valid parameter names."
+            ),
+        )
+
+    # JSON-Schema type name → the Python types that satisfy it. `bool` is
+    # excluded from the numeric entries on purpose: in Python `True` is an
+    # `int`, and letting a boolean through as a number is how a truthy flag
+    # silently becomes a count.
+    _JSON_TYPES: dict[str, tuple[type, ...]] = {
+        "string": (str,),
+        "integer": (int,),
+        "number": (int, float),
+        "boolean": (bool,),
+        "array": (list, tuple),
+        "object": (dict,),
+    }
+
+    @classmethod
+    def _schema_violations(cls, tool: ToolDefinition, tool_input: Any) -> list[str]:
+        """Why ``tool_input`` fails ``tool``'s declared parameters. [] = it passes.
+
+        Checks argument names, required-ness, declared types and enums. This is
+        a structural check, not a semantic one — it cannot tell a correct
+        page_name from a wrong one, only a call that is shaped like a valid call
+        from one that is not.
+        """
+        if not tool.parameters:
+            # Nothing declared to check against; treat any input as satisfying.
+            return []
+        if not isinstance(tool_input, dict):
+            return [f"expected an object of arguments, got {type(tool_input).__name__}"]
+
+        declared = {p.name: p for p in tool.parameters}
+        problems: list[str] = []
+
+        if not getattr(tool, "allow_unknown_params", False):
+            problems.extend(
+                f"unknown parameter '{k}'" for k in tool_input if k not in declared
+            )
+
+        for param in tool.parameters:
+            if param.name not in tool_input:
+                if param.required and param.default is None:
+                    problems.append(f"missing required parameter '{param.name}'")
+                continue
+            value = tool_input[param.name]
+            if value is None:
+                if param.required:
+                    problems.append(f"'{param.name}' is required but was null")
+                continue
+            allowed = cls._JSON_TYPES.get(param.type)
+            if allowed:
+                # The bool check comes FIRST and outside the isinstance test:
+                # `isinstance(True, int)` is True in Python, so a boolean sails
+                # through an int/float check unless it is rejected up front.
+                if param.type in ("integer", "number") and isinstance(value, bool):
+                    problems.append(f"'{param.name}' expects {param.type}, got boolean")
+                elif not isinstance(value, allowed):
+                    problems.append(
+                        f"'{param.name}' expects {param.type}, got {type(value).__name__}"
+                    )
+            if param.enum and isinstance(value, str) and value not in param.enum:
+                problems.append(
+                    f"'{param.name}' must be one of {param.enum}, got '{value}'"
+                )
+
+        return problems
+
+    def withheld_tool_names(self, session: BaseSession) -> set[str]:
+        """Tool names to leave OUT of this turn's advertised `tools=` payload.
+
+        Default: none. Subclasses override to keep a long tail of rarely-needed
+        tools out of the per-request payload, which every turn pays for.
+
+        A withheld tool is not unreachable. `search_tools` searches the full
+        registry from `context["tools"]`, not the advertised list, so the LLM
+        can still find it by keyword; fetching its schema with
+        `get_tool_schema` records it in `session.context["fetched_schemas"]`,
+        which an override consults to stop withholding it for the rest of the
+        session. Discovery costs one turn and then the tool behaves normally.
+
+        Withholding a tool the model cannot discover would be a silent
+        capability loss, so an override MUST leave it listed in the system
+        prompt's tool index.
+        """
+        return set()
+
     def _gate_deferred_dispatch(
         self,
         tool_name: str,
         tool: ToolDefinition,
         context: dict[str, Any],
+        tool_input: Any = None,
     ) -> ToolResult | None:
         """Return a synthetic schema-injection ToolResult, or None to dispatch.
 
@@ -1073,11 +1269,25 @@ class BaseAgent:
           - defer_schemas mode is on
           - The tool is NOT the router and NOT a meta tool
           - The tool's full schema isn't in session.context["fetched_schemas"]
+          - AND the arguments the LLM supplied do NOT already satisfy the
+            declared schema.
 
-        When all three hold, we return the schema inline as a successful
-        ToolResult and ALSO mark the tool as fetched — so the next call
-        dispatches normally. This is the same dance Claude Code itself uses
-        (see `claud-code/services/mcp/client.ts`).
+        That last condition is the point. This gate used to fire on the first
+        call to a tool unconditionally, without ever looking at the arguments —
+        so a model that guessed a simple signature correctly (`list_themes(
+        app_code="x")`) still burned a whole round-trip being told a schema it
+        had evidently already inferred. The bounce is only worth paying when the
+        guess was actually wrong; when the call validates, dispatch it and mark
+        the schema fetched, exactly as a successful `get_tool_schema` would.
+
+        This is what makes the `HOT_TOOLS` full-schema list mostly redundant:
+        its whole job was dodging a first-call bounce that no longer happens for
+        a well-formed call.
+
+        Validation is structural (names, required, types, enums) — it does not
+        vouch for the *meaning* of the arguments. It never did: on the retry the
+        model re-sends arguments this same check would have accepted, so nothing
+        that reaches execution here could not already reach it one turn later.
         """
         if not self._defer_schemas:
             return None
@@ -1094,7 +1304,23 @@ class BaseAgent:
         if isinstance(fetched, (list, set)) and tool_name in fetched:
             return None
 
-        # First call — inject the schema and tell the LLM to retry.
+        def _mark_fetched() -> None:
+            if isinstance(fetched, list):
+                if tool_name not in fetched:
+                    fetched.append(tool_name)
+            elif isinstance(fetched, set):
+                fetched.add(tool_name)
+
+        violations = self._schema_violations(tool, tool_input)
+        if not violations:
+            # The model got it right without being shown the schema. Record it
+            # as fetched so later calls skip this check too, and let it through.
+            _mark_fetched()
+            logger.debug("Deferred gate: '%s' validated on first call, dispatching", tool_name)
+            return None
+
+        # The guess was wrong — spend the round-trip, and say WHY as well as
+        # what the schema is, so the retry is informed rather than a re-guess.
         import json as _json
         anthropic_shape = tool.to_anthropic_tool()
         payload = {
@@ -1102,17 +1328,14 @@ class BaseAgent:
             "description": tool.description,
             "input_schema": anthropic_shape.get("input_schema", {"type": "object", "properties": {}}),
         }
-        if isinstance(fetched, list):
-            if tool_name not in fetched:
-                fetched.append(tool_name)
-        elif isinstance(fetched, set):
-            fetched.add(tool_name)
+        _mark_fetched()
         body = (
-            f"NOTE: '{tool_name}' was called before its full schema was fetched. "
-            "I'm injecting the schema below and marking it as fetched on this "
-            "session — re-call the tool now with arguments that match the "
-            "schema. Subsequent calls within this conversation will dispatch "
-            "immediately.\n\n"
+            f"NOTE: '{tool_name}' was called before its full schema was fetched, "
+            "and the arguments did not match it:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+            + "\n\nThe schema is below and is now marked fetched on this session "
+            "— re-call the tool with arguments that match it. Subsequent calls "
+            "within this conversation will dispatch immediately.\n\n"
             f"```json\n{_json.dumps(payload, indent=2, default=str)}\n```"
         )
         return ToolResult(success=True, summary=body)
@@ -1161,7 +1384,31 @@ class BaseAgent:
         _with_tail_reminder returns the messages unchanged.
         """
         reminder = await self.build_turn_reminder(session, turn)
+        lore_reminder = await self._lore_turn_context(session)
+        if lore_reminder:
+            reminder = f"{reminder}\n{lore_reminder}" if reminder else lore_reminder
         return self._with_tail_reminder(session.get_messages(), reminder)
+
+    async def _lore_turn_context(self, session: BaseSession) -> str:
+        """Small picture: what is known about the object now in focus.
+
+        Composed here rather than inside `build_turn_reminder` so subclasses
+        keep that hook pure, and so every agent gets this without opting in.
+        Pushed once per subject per session; repeating it every turn would
+        spend the whole reminder budget restating what was said three turns ago.
+        """
+        from app.config import settings as _settings
+        if not getattr(_settings, "LORE_ENABLED", True):
+            return ""
+        try:
+            from app.services.lore import context as _lore_ctx
+            subject = _lore_ctx.take_unsent_focus(session)
+            if not subject:
+                return ""
+            return await _lore_ctx.small_picture(session, subject)
+        except Exception:  # noqa: BLE001 — lore must never break a turn
+            logger.debug("lore: turn context skipped", exc_info=True)
+            return ""
 
     # ── setup hook · once per request → folded into the (cached) system prompt ──
     async def build_dynamic_context(self, session: BaseSession) -> str:
@@ -1197,6 +1444,168 @@ class BaseAgent:
         missing, ask this next"). ``turn`` is the 1-based agentic loop turn.
         """
         return ""
+
+    class _ScopeAuth:
+        """Minimal shape lore's access resolver needs."""
+
+        def __init__(self, client_code: str) -> None:
+            self.client_code = client_code
+
+    @staticmethod
+    def _lore_target(session: BaseSession) -> tuple[str, str] | None:
+        """(client_code, app_code) for lore writes, or None if lore is off.
+
+        Reads everything defensively: this runs on every tool call, and a
+        session shape it did not expect must yield "no lore", never an
+        exception in the middle of somebody's build.
+        """
+        from app.config import settings as _settings
+
+        if not _settings.LORE_ENABLED:
+            return None
+        auth = getattr(session, "auth", None)
+        client_code = getattr(auth, "client_code", "") if auth else ""
+        context = getattr(session, "context", None) or {}
+        app_code = (context.get("app_code") if isinstance(context, dict) else "") or (
+            getattr(auth, "app_code", "") if auth else ""
+        )
+        if not client_code or not app_code:
+            return None
+        return client_code, app_code
+
+    @staticmethod
+    async def _lore_should_curate(client_code: str, app_code: str) -> bool:
+        """Is there enough pending evidence to be worth an LLM curation pass?
+
+        Two triggers, either sufficient: app-wide volume, or depth about one
+        subject. The second exists because volume alone is the wrong unit —
+        a build touching thirty objects once each has learned less than one
+        that reworked a single page eight times, and only the second yields an
+        entry worth reading.
+        """
+        from app.config import settings as _settings
+        from app.services.lore import store as _store
+
+        app_threshold = int(_settings.LORE_AUTOCURATE_AT or 0)
+        subject_threshold = int(_settings.LORE_AUTOCURATE_SUBJECT_AT or 0)
+        if app_threshold <= 0 and subject_threshold <= 0:
+            return False
+
+        if app_threshold > 0 and await _store.count_pending(client_code, app_code) >= app_threshold:
+            return True
+        if subject_threshold > 0:
+            subject, count = await _store.busiest_pending_subject(client_code, app_code)
+            # "app" is the catch-all bucket, so depth there means nothing.
+            if subject and subject != "app" and count >= subject_threshold:
+                return True
+        return False
+
+    async def _observe_edit_to_lore(
+        self, session: BaseSession, tool_name: str, tool_input: Any, result: Any,
+    ) -> None:
+        """Record a successful definition write as an `edit` observation.
+
+        This is the path that carries real evidence. A chat turn is the agent
+        narrating what it believes it did; an edit is what the platform
+        actually accepted, and it names the object it happened to.
+
+        Best-effort in exactly the same way as the turn observer: an app being
+        built must never fail because its knowledge could not be recorded.
+        """
+        from app.config import settings as _settings
+
+        if not _settings.LORE_OBSERVE_EDITS:
+            return
+        target = self._lore_target(session)
+        if target is None:
+            return
+        client_code, app_code = target
+
+        try:
+            from app.services.lore import watch as _watch
+
+            fact = _watch.classify(
+                tool_name, tool_input,
+                summary=getattr(result, "summary", "") or "",
+                success=bool(getattr(result, "success", False)),
+            )
+            if fact is None:
+                return
+
+            from app.services.lore import access as _access
+            from app.services.lore import ingest as _ingest
+
+            scope = await _access.resolve_scope(self._ScopeAuth(client_code), app_code)
+            if not scope.can_write:
+                return
+
+            auth = getattr(session, "auth", None)
+            await _ingest.from_edit(
+                client_code, app_code,
+                object_type=fact.object_type,
+                object_name=fact.object_name,
+                action=fact.action,
+                subject=fact.subject,
+                detail=fact.detail,
+                actor=self.name,
+                user_id=int(getattr(auth, "user_id", 0) or 0),
+                meta={"tool": tool_name, "session_id": session.session_id},
+            )
+        except Exception:  # noqa: BLE001 — lore must never break a tool call
+            logger.debug("lore: edit observation skipped", exc_info=True)
+
+    async def _observe_to_lore(
+        self, session: BaseSession, user_message: str, assistant_summary: str,
+    ) -> None:
+        """Record this turn into the app's lore, and curate when it piles up.
+
+        Entirely best-effort: lore is a nice-to-have that must never affect a
+        user's turn, so every failure is swallowed at debug level. The curation
+        pass is fired as a background task rather than awaited for the same
+        reason — it involves an LLM call and the user is already done.
+        """
+        from app.config import settings as _settings
+
+        if not (_settings.LORE_ENABLED and _settings.LORE_OBSERVE_CHAT):
+            return
+        auth = getattr(session, "auth", None)
+        client_code = getattr(auth, "client_code", "") if auth else ""
+        app_code = (session.context.get("app_code") if session.context else "") or (
+            getattr(auth, "app_code", "") if auth else ""
+        )
+        if not client_code or not app_code:
+            return
+
+        try:
+            from app.services.lore import access as _access
+            from app.services.lore import curator as _curator
+            from app.services.lore import ingest as _ingest
+            from app.services.lore import store as _store
+
+            # Passive accumulation is still accumulation: an observation becomes
+            # an entry at the next curation pass, so it needs the same edit
+            # access a person would need to write one by hand.
+            scope = await _access.resolve_scope(self._ScopeAuth(client_code), app_code)
+            if not scope.can_write:
+                return
+
+            await _ingest.from_chat_turn(
+                client_code, app_code,
+                session_id=session.session_id,
+                agent_name=self.name,
+                user_message=user_message,
+                assistant_message=assistant_summary,
+                user_id=int(getattr(auth, "user_id", 0) or 0),
+            )
+
+            if await self._lore_should_curate(client_code, app_code):
+                task = asyncio.create_task(
+                    _curator.curate(client_code, app_code, trigger_source=f"turn:{self.name}")
+                )
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
+        except Exception:  # noqa: BLE001 — lore must never break a turn
+            logger.debug("lore: turn observation skipped", exc_info=True)
 
     async def _on_loop_complete(
         self, session: BaseSession, tool_call_log: list[dict[str, Any]],

@@ -6,7 +6,7 @@ originSessionId: 1a27fbb2-2155-4922-9aa8-e060acd706f6
 ---
 In `nocode-saas/entity-processor`, put `@PreAuthorize("hasAuthority('Authorities.ROLE_X')")` on the **service** method (the one with business logic), not on the controller endpoint.
 
-**Why:** Kiran corrected this directly — services are the business-logic gatekeepers, and other call paths (kirun reactive functions, internal service-to-service calls) bypass controllers entirely. Putting auth at the controller leaves those paths unprotected.
+**Why:** Services are the business-logic gatekeepers, and other call paths (kirun reactive functions, internal service-to-service calls) bypass controllers entirely. Putting auth at the controller leaves those paths unprotected.
 
 **How to apply:**
 - For any new write/mutation method in entity-processor that needs role-based gating, annotate the **service method** with `@PreAuthorize`.

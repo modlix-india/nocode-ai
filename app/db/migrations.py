@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 # Migration files directory (relative to project root)
 MIGRATIONS_DIR = Path(__file__).parent.parent.parent / "migrations"
 
+# The three characters MySQL quotes with. A semicolon between a matched pair
+# of these is data, not a statement terminator.
+_QUOTE_CHARS = ("'", '"', "`")
+
 
 def get_migration_files() -> List[Tuple[str, str, Path]]:
     """
@@ -80,6 +84,57 @@ async def get_applied_migrations() -> List[str]:
             return [row[0] for row in result]
 
 
+def _split_statements(sql: str) -> List[str]:
+    """Split SQL into statements on unquoted semicolons.
+
+    Tracks the three MySQL quoting characters (`'`, `"`, backtick) and both
+    escape forms inside them: a backslash escape (`\\'`) and a doubled quote
+    (`''`). Everything else is passed through untouched — this is a splitter,
+    not a parser, and it deliberately knows nothing about SQL grammar.
+    """
+    statements: List[str] = []
+    buf: List[str] = []
+    quote: Optional[str] = None
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        if quote:
+            consumed, quote = _scan_quoted(sql, i, quote, buf)
+            i += consumed
+            continue
+        if ch in _QUOTE_CHARS:
+            quote = ch
+            buf.append(ch)
+        elif ch == ";":
+            statements.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+    statements.append("".join(buf))
+    return [s.strip() for s in statements if s.strip()]
+
+
+def _scan_quoted(
+    sql: str, i: int, quote: str, buf: List[str]
+) -> Tuple[int, Optional[str]]:
+    """Consume one unit inside a quoted run. Returns (chars consumed, quote still open)."""
+    ch = sql[i]
+    nxt = sql[i + 1] if i + 1 < len(sql) else ""
+    # Backslash escape: the next character is literal whatever it is.
+    if ch == "\\" and nxt:
+        buf.append(ch)
+        buf.append(nxt)
+        return 2, quote
+    # A doubled quote is a literal quote, not the closing one.
+    if ch == quote and nxt == quote:
+        buf.append(ch)
+        buf.append(nxt)
+        return 2, quote
+    buf.append(ch)
+    return 1, (None if ch == quote else quote)
+
+
 async def apply_migration(version: str, description: str, file_path: Path) -> bool:
     """
     Apply a single migration file.
@@ -108,12 +163,15 @@ async def apply_migration(version: str, description: str, file_path: Path) -> bo
             comment_stripped_lines.append(line)
         sql_no_comments = "\n".join(comment_stripped_lines)
 
-        # Split by semicolons to execute multiple statements
-        statements = []
-        for stmt in sql_no_comments.split(";"):
-            clean_stmt = stmt.strip()
-            if clean_stmt:
-                statements.append(clean_stmt)
+        # Split on semicolons, but only ones that are actually statement
+        # terminators. A plain `.split(";")` cuts through quoted text, and a
+        # column COMMENT is quoted text people naturally write sentences in:
+        #     COMMENT '0-100 at LAST_CONFIRMED_AT; decayed at read time'
+        # split that way and MySQL gets half a CREATE TABLE plus a fragment,
+        # so the whole migration fails and is never recorded — silently, since
+        # the caller only logs. V13 (lore) shipped exactly that and its tables
+        # were never created by the runner.
+        statements = _split_statements(sql_no_comments)
 
         logger.info(f"Migration {version} has {len(statements)} statements to execute")
 
@@ -129,9 +187,19 @@ async def apply_migration(version: str, description: str, file_path: Path) -> bo
                             await cursor.execute(stmt)
                             logger.info(f"  [{i+1}/{len(statements)}] OK")
                         except Exception as e:
-                            # Skip "database exists" and "table exists" errors
+                            # Re-running a migration must be harmless. CREATE
+                            # says "already exists"; ALTER ... ADD COLUMN says
+                            # "duplicate column name" and ADD KEY says
+                            # "duplicate key name" — same situation, different
+                            # wording, and neither has an IF NOT EXISTS form in
+                            # MySQL 8. Treat all three as already-applied.
                             error_msg = str(e).lower()
-                            if "database exists" in error_msg or "already exists" in error_msg:
+                            if (
+                                "database exists" in error_msg
+                                or "already exists" in error_msg
+                                or "duplicate column name" in error_msg
+                                or "duplicate key name" in error_msg
+                            ):
                                 logger.debug(f"Skipping already existing object: {e}")
                                 continue
                             logger.error(f"Statement {i+1} failed: {stmt_preview}...")
