@@ -31,7 +31,7 @@ google-generativeai>=0.8.0
 
 # Kirun DSL compiler / decompiler — used by the modlix-mcp tool port for
 # function authoring. Provides DSLCompiler.compile/decompile/validate.
-kirun-py>=3.6.0
+kirun-py>=3.6.1
 
 # Eureka Client
 py-eureka-client==0.11.10
