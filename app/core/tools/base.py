@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable, Literal, Optional
+from typing import Any, Callable, Awaitable, ClassVar, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -89,9 +89,17 @@ class ToolResult:
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""
 
-    # Hard cap on tool result content sent to the LLM.
+    # Per-result cap on the content sent to the LLM; falls back to
+    # DEFAULT_MAX_RESULT_CHARS. Raise it for reads whose whole job is to hand the
+    # model one complete object (a decompiled function's DSL, say), where a half
+    # read is worse than useless: the model cannot tell which half is missing and
+    # reasons confidently about steps it never saw. Still a cap, not a bypass —
+    # one read must not be able to eat the whole context budget.
+    max_result_chars: int | None = None
+
+    # Default cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.
-    MAX_RESULT_CHARS: int = 4000
+    DEFAULT_MAX_RESULT_CHARS: ClassVar[int] = 4000
 
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM.
@@ -112,8 +120,15 @@ class ToolResult:
         text = primary or _data_text(self.data)
         if text is None:
             return "OK"
-        if len(text) > self.MAX_RESULT_CHARS:
-            return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
+        cap = self.max_result_chars or self.DEFAULT_MAX_RESULT_CHARS
+        if len(text) > cap:
+            # Say what was lost. A bare "[truncated]" leaves the model unable to
+            # judge whether it read enough, so it answers from the part it got.
+            return text[:cap] + (
+                f"\n\n... [truncated: {cap:,} of {len(text):,} chars shown, "
+                f"{len(text) - cap:,} cut. Do NOT answer from this partial read — "
+                f"use a narrower read to see the rest.]"
+            )
         return text
 
     # Cap on how many images a single tool result may forward to the LLM.
@@ -257,6 +272,12 @@ class ToolDefinition:
     elicit_mode: Literal["deferred", "blocking"] = "deferred"
     elicit_expects: Literal["single", "multi"] = "single"
 
+    # Opt-out of the dispatcher's unknown-parameter rejection (BaseAgent.
+    # _reject_unknown_params). Default False: an argument name the tool does
+    # not declare is an error, not something to silently ignore. Set True only
+    # for a tool that genuinely takes free-form top-level keys.
+    allow_unknown_params: bool = False
+
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""
         if self.display_name:
@@ -306,6 +327,11 @@ class ToolDefinition:
         }
         if required:
             schema["required"] = required
+        # Tell the model up front that undeclared keys are invalid; the
+        # dispatcher enforces the same rule at call time. (Gemini's schema
+        # whitelist strips this key, which is fine: enforcement is server-side.)
+        if properties and not self.allow_unknown_params:
+            schema["additionalProperties"] = False
 
         return {
             "name": self.name,

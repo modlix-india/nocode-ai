@@ -123,7 +123,23 @@
 - `validationCheck`, `onSubmit`
 
 ### Table
-- `data`, `columns`, `pagination`, `sortable`, `selectable`
+Table is a family, not a single component: `Table` + `TableColumns` /
+`TableColumn` / `TableGrid` / `TablePreviewGrid` / `TableRow` / `TableEmptyGrid`,
+driven by **seven** binding paths. Do not guess its props.
+
+- `bindingPath` data array (REQUIRED), `bindingPath2` selection,
+  `bindingPath3` page number, `bindingPath4` rows per page, `bindingPath5` mode,
+  `bindingPath6` sort, `bindingPath7` personalization
+- `tableDesign` (`_design0`.. `_design9`), `colorScheme`, `tableLayout`,
+  `displayMode`, `previewMode`, `offlineData`, `selectionType`, `multiSelect`,
+  `uniqueKey` (REQUIRED for selection / tree / personalization), `defaultSize`,
+  `perPageNumbers`, `totalPages`, `treeMode`, `childrenKey`
+- Cells vary per row ONLY via `Parent.<field>`. A literal `text.value` renders
+  the same string on every row, and that is the single most common Table bug.
+- Events: `onSelect`, `onPagination`, `onSort`, `onExpandEvent`
+
+Full model and recipes: `pattern_read('handle-tables')`.
+Failure modes: `platform_doc_read('table_gotchas')`.
 
 ### Carousel
 - `autoPlay`, `interval`, `showDots`, `showArrows`

@@ -132,6 +132,10 @@ class BaseSession:
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
         }
+        # What the model saw on the MOST RECENT call. Distinct from
+        # total_usage["input_tokens"], which is the sum over every call in the
+        # session — see get_usage_summary.
+        self._last_context_tokens: int = 0
         self._turn_count: int = 0
         self._db_session_created: bool = False
         # App-user identity — separate from self.auth. Used only by tools that
@@ -321,6 +325,16 @@ class BaseSession:
         """Add token usage from one LLM call to running totals."""
         for key in self.total_usage:
             self.total_usage[key] += usage.get(key, 0)
+        # Overwrite, never add: this call's input IS the conversation size.
+        #
+        # The cache_read term is required, not optional: every provider reports
+        # input_tokens EXCLUDING cached reads (Anthropic natively; DeepSeek via
+        # _openai_compatible_usage, which splits prompt_tokens into
+        # miss -> input and hit -> cache_read). Cached tokens are still tokens
+        # the model read, so they count toward context occupancy.
+        self._last_context_tokens = (
+            usage.get("input_tokens", 0) + usage.get("cache_read_input_tokens", 0)
+        )
 
     def get_usage_summary(self) -> dict[str, Any]:
         """Return a compact usage summary for the client.
@@ -330,10 +344,19 @@ class BaseSession:
         """
         input_t = self.total_usage["input_tokens"]
         output_t = self.total_usage["output_tokens"]
-        cache_read = self.total_usage["cache_read_input_tokens"]
+        cache_read_t = self.total_usage["cache_read_input_tokens"]
 
-        # Context used = input + cache_read (what the model "sees")
-        context_used = input_t + cache_read
+        # Context used is the size of the CURRENT conversation — the input of
+        # the most recent LLM call — not the sum of every call's input.
+        #
+        # The agent loop makes one LLM call per tool round-trip (up to
+        # max_turns), and each call re-sends the whole conversation. Summing
+        # their inputs therefore measures cumulative spend, not occupancy: a
+        # 26-iteration run showed 1.46M cumulative against a real context of
+        # 64K, so the bar pinned at 100% while the window was 6% full. Raising
+        # CONTEXT_LIMIT_DEFAULT (48K -> 112K, and now 1M) only delayed the
+        # pin, because the cumulative number grows without bound.
+        context_used = self._last_context_tokens
         from app.config import settings
         context_limit = settings.CONTEXT_LIMIT_DEFAULT
         context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
@@ -341,7 +364,13 @@ class BaseSession:
         return {
             "input_tokens": input_t,
             "output_tokens": output_t,
-            "total_tokens": input_t + output_t,
+            # Cached reads are billable tokens the model processed, so they
+            # belong in the total. Including them also keeps this number stable
+            # now that DeepSeek splits prompt_tokens into input + cache_read —
+            # without it, switching cache reporting on would have made the
+            # displayed total collapse overnight for no real reason.
+            "total_tokens": input_t + cache_read_t + output_t,
+            "cache_read_tokens": cache_read_t,
             "context_used": context_used,
             "context_limit": context_limit,
             "context_percent": min(context_percent, 100.0),

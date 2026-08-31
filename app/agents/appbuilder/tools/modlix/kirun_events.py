@@ -655,6 +655,70 @@ decompile_page_event_function_tool = ToolDefinition(
 # ── save_page_event_function_from_text ───────────────────────────────────
 
 
+def _find_unresolved_inline_expressions(steps: dict[str, Any]) -> list[str]:
+    """Find per-field expressions buried inside an object-literal parameter.
+
+    The DSL compiler encodes an expression written INSIDE an object literal as
+    `{"isExpression": true, "value": "<expr>"}`. Only a parameter declared
+    `Parameter.EXPRESSION` in its function signature ever evaluates that shape,
+    and the sole one in kirun is System.GenerateEvent's `results.value`.
+    Everywhere else - notably UIEngine.SendData's `payload`, which is
+    `Schema.ofAny` and goes straight to axios - the marker object is sent
+    verbatim, so the request body carries `{"isExpression": true, ...}` per
+    field and the server rejects it against the storage schema.
+
+    Real apps never do this: a SendData payload is ONE `type: EXPRESSION` entry
+    naming a single page path (verified across the leadzump/appbuilder pages).
+    Returns dotted locations of each offending field.
+    """
+    hits: list[str] = []
+
+    def walk(node: Any, path: str, inside_param: bool) -> None:
+        if isinstance(node, dict):
+            if inside_param and node.get("isExpression") is True:
+                hits.append(f"{path} = {node.get('value')!r}")
+                return
+            for k, v in node.items():
+                walk(v, f"{path}.{k}" if path else str(k), inside_param or k == "parameterMap")
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                walk(v, f"{path}[{i}]", inside_param)
+
+    for step_name, step in (steps or {}).items():
+        if not isinstance(step, dict):
+            continue
+        # System.GenerateEvent is the ONE function whose parameter is declared
+        # Parameter.EXPRESSION (GenerateEvent.ts results.value), so the marker
+        # shape is correct there and is exactly how every real server function
+        # returns a computed result. Flagging it would reject valid code.
+        if step.get("namespace") == "System" and step.get("name") == "GenerateEvent":
+            continue
+        walk(step, str(step_name), False)
+    return hits
+
+
+def _inline_expression_error(hits: list[str]) -> str:
+    shown = "\n".join(f"  - {h}" for h in hits[:12])
+    more = f"\n  ...(+{len(hits) - 12} more)" if len(hits) > 12 else ""
+    return (
+        f"{len(hits)} expression(s) are written inside an object literal, where they are "
+        f"NEVER evaluated:\n{shown}{more}\n\n"
+        "The compiler encodes those as {\"isExpression\": true, \"value\": \"...\"} and only "
+        "System.GenerateEvent evaluates that shape. UIEngine.SendData sends the payload "
+        "as-is, so the request body would contain those marker objects instead of values "
+        "and the server would reject it against the storage schema. Nothing was saved.\n\n"
+        "Build the object in page state first, then send it as ONE expression:\n"
+        "  - bind the form inputs to fields of a single object, e.g. Page.newGroup.name "
+        "and Page.newGroup.monthlyInstallment (set bindingPath on each input);\n"
+        "  - then: CoreServices.Storage.Create(storageName=\"chitgroup\", dataObject=Page.newGroup)\n"
+        "That is the shape every working app uses: payload is a single expression naming "
+        "one path, not an object literal with a computed value per field.\n\n"
+        "A storage write is a KIRun BLOCK used as a STEP, never an HTTP call: pages call "
+        "CoreServices.Storage.Create/Update/ReadPage directly as steps. api/core/data/... "
+        "and SendData to api/core/function/execute/... are both wrong for data."
+    )
+
+
 async def _execute_save_page_event_function_from_text(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     page_name = (params.get("page_name") or "").strip()
     event_name = (params.get("event_name") or "").strip()
@@ -667,7 +731,15 @@ async def _execute_save_page_event_function_from_text(params: dict[str, Any], co
     try:
         compiled = kirun_dsl.compile_text(text)
     except Exception as e:  # noqa: BLE001
-        return ToolResult(success=False, error=f"Compile error: {type(e).__name__}: {e}")
+        # Same hint layer compile_kirun_text / save_function_from_text use.
+        # This path returned the bare parser error, which is how the Chit
+        # Fund run burned two turns on one operator-in-argument mistake.
+        from .kirun import _hint_for_compile_error  # lazy: kirun.py does not import this module
+        raw = f"{type(e).__name__}: {e}"
+        return ToolResult(success=False, error=f"Compile error: {raw}\n\n{_hint_for_compile_error(raw)}")
+    dead_expr = _find_unresolved_inline_expressions(compiled.get("steps") or {})
+    if dead_expr:
+        return ToolResult(success=False, error=_inline_expression_error(dead_expr))
     inline_defn = {
         "name": event_name,
         "steps": compiled.get("steps") or {},
@@ -696,7 +768,26 @@ async def _execute_save_page_event_function_from_text(params: dict[str, Any], co
     if not ok:
         return ToolResult(success=False, error=err)
     verb = "Created" if is_new else "Updated"
-    return ToolResult(success=True, summary=f"{verb} event function '{event_name}' on page '{page_name}' (key={key}).")
+    # Spell out the key-not-name rule here: the runtime resolves event props by
+    # map key (`pageDefinition.eventFunctions[onClick]`), so wiring a button to
+    # '<event_name>' produces a handler that never fires. A whole generated app
+    # once shipped with all 22 handlers dead because this line only printed the
+    # key without saying what to do with it.
+    wiring = (
+        f"\n  key: {key}"
+        f"\n  Wire it with the KEY, not the name '{event_name}':"
+        f"\n    onClick={key!r}   (add_component / patch_component_props)"
+    )
+    if event_name.lower() in ("onload", "on_load", "pageload"):
+        wiring += (
+            f"\n  On-load handlers only run when the PAGE points at them: set "
+            f"page properties.onLoadEvent={key!r} (update_page), otherwise this "
+            f"function never executes and the page fetches nothing."
+        )
+    return ToolResult(
+        success=True,
+        summary=f"{verb} event function '{event_name}' on page '{page_name}'.{wiring}",
+    )
 
 
 save_page_event_function_from_text_tool = ToolDefinition(
@@ -709,20 +800,23 @@ Use this to wire button onClick, page onLoad, TextBox onChange, etc. Page event 
 
 The DSL shape is the same as a regular Kirun function (FUNCTION / NAMESPACE / PARAMETERS / EVENTS / LOGIC) — but page event functions cannot receive Arguments. They read from Store / Page / Parent contexts instead. The top-level FUNCTION/NAMESPACE/PARAMETERS/EVENTS in the DSL are ignored for inline use; only the LOGIC steps matter.
 
-Example DSL for an event that calls an API and toasts a message:
+Example DSL for an event that saves a storage row and toasts a message:
 ```
-FUNCTION handleSignIn
+FUNCTION saveMember
     NAMESPACE _
     LOGIC
-        call: UIEngine.HTTPRequest(method = "POST", url = "/api/security/authenticate", body = Page.user)
+        save: CoreServices.Storage.Create(storageName = "member", dataObject = Page.member)
             output
-                toast: UIEngine.Toast(message = "Signed in", level = "success") AFTER Steps.call.output
+                toast: UIEngine.Message(msg = "Member saved", type = "SUCCESS") AFTER Steps.save.output
+            error
+                fail: UIEngine.Message(msg = "Could not save", type = "ERROR") AFTER Steps.save.error
 ```
 
 Common pitfalls:
 - Page events cannot use `Arguments.X` — those don't exist. Use `Page.X` / `Store.X` / `Parent.X` instead.
-- The function's NAME in the DSL (`FUNCTION handleSignIn`) must match the `event_name` param.
-- Use `UIEngine.*` primitives for UI-side calls (HTTPRequest, Toast, SetStore, Navigate). NOT `System.*` ones (those are server-side).""",
+- The function's NAME in the DSL (`FUNCTION saveMember`) must match the `event_name` param.
+- Use `UIEngine.*` primitives for UI-side calls: FetchData (GET), SendData (POST/PUT), DeleteData, SetStore, Navigate, Message, Login, Logout, CopyTextToClipboard. NOT `System.*` ones (those are server-side). There is NO UIEngine.HTTPRequest / Toast / Read / Create / Update / Delete — `get_kirun_primitive(namespace="UIEngine", name=...)` lists the real set.
+- An argument value that starts with a double-quoted string and continues with an operator must be parenthesised: `path = ("Store.x." + Parent.id)`.""",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page to attach the event function to"),
         ToolParameter(name="event_name", type="string", description="Event function name (matches the inline `name` field)"),

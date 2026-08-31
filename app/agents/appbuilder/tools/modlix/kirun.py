@@ -41,6 +41,14 @@ from . import _page_ops as p_ops
 _UI_FN_API = "/api/ui/functions"
 _CORE_FN_API = "/api/core/functions"
 
+# Cap for decompiled DSL, well above the 4K default (see the ToolResult field).
+# Measured over the 526 functions on the platform: p50 1.5K, p90 7.1K, p95 12.9K.
+# 4K truncated 19% of them; 32K delivers all but 8 in a single call, and those 8
+# are paged via the `part` parameter rather than truncated.
+_DECOMPILE_MAX_CHARS = 32000
+# Headroom so the part header/footer can never push a full part into truncation.
+_PART_RESULT_CHARS = _DECOMPILE_MAX_CHARS + 1000
+
 # Recurring ToolParameter descriptions — extracted to constants because every
 # CRUD-shaped tool in this module shares them. The linter complained about
 # 17× duplication of "appCode; defaults to session" alone.
@@ -99,6 +107,17 @@ async def _fetch_function_by_name(
     return detail.data if isinstance(detail.data, dict) else {}, None
 
 
+def _namespace_of(full_name: Any) -> str:
+    """Namespace half of a "<namespace>.<localName>" function name.
+
+    Namespaces themselves contain dots (Authzump.sso.Login is local name `Login`
+    in namespace `Authzump.sso`), so this splits on the LAST dot.
+    """
+    if not isinstance(full_name, str) or "." not in full_name:
+        return ""
+    return full_name.rsplit(".", 1)[0]
+
+
 # ── Function CRUD (UI + server, parametrized by is_server flag) ──────────
 
 
@@ -112,12 +131,17 @@ async def _execute_list_functions_for(
         size = max(1, min(int(params.get("size") or 200), 1000))
     except (TypeError, ValueError):
         size = 200
-    namespace = params.get("namespace")
+    namespace = (params.get("namespace") or "").strip()
     client, headers = _client_and_headers(context)
     api = _fn_api(is_server)
-    request_params: dict[str, Any] = {"page": 0, "size": size, "appCode": ac}
-    if namespace:
-        request_params["namespace"] = namespace
+    # `namespace` is NOT sent to the API: no function document carries a top-level
+    # `namespace` field (it lives inside `definition`), so the server-side filter
+    # matched nothing and the tool silently reported an empty namespace. Filter
+    # here instead, off the name, which is always "<namespace>.<localName>" and
+    # was verified equal to definition.namespace for every function on the platform.
+    # Fetch wide when filtering so the match is not limited to the first page.
+    fetch_size = 1000 if namespace else size
+    request_params: dict[str, Any] = {"page": 0, "size": fetch_size, "appCode": ac}
     r = await client.get(api, headers=headers, params=request_params)
     if not r.success:
         return ToolResult(success=False, error=r.error)
@@ -128,6 +152,8 @@ async def _execute_list_functions_for(
         "version": x.get("version"),
         "clientCode": x.get("clientCode"),
     } for x in content]
+    if namespace:
+        rows = [x for x in rows if _namespace_of(x.get("name")) == namespace][:size]
     return ToolResult(
         success=True,
         summary=f"{_fn_kind(is_server)}s in app '{ac}' ({len(rows)}):\n{json.dumps(rows, indent=2, default=str)}",
@@ -166,6 +192,40 @@ list_server_functions_tool = ToolDefinition(
 )
 
 
+def _parameter_names(parameters: Any) -> list[str]:
+    """`parameters` is a Map<String, Parameter> keyed by name in the KIRun model.
+    A few older definitions carry a list of Parameter objects instead."""
+    if isinstance(parameters, dict):
+        return [
+            (v.get("parameterName") if isinstance(v, dict) else None) or k
+            for k, v in parameters.items()
+        ]
+    if isinstance(parameters, list):
+        return [
+            p.get("parameterName") if isinstance(p, dict) else str(p)
+            for p in parameters
+        ]
+    return []
+
+
+def _function_summary(fn: dict[str, Any]) -> dict[str, Any]:
+    defn = fn.get("definition")
+    if not isinstance(defn, dict):
+        defn = {}
+    events = defn.get("events")
+    steps = defn.get("steps")
+    return {
+        "id": fn.get("id"),
+        "name": fn.get("name"),
+        "namespace": defn.get("namespace") or fn.get("namespace"),
+        "version": fn.get("version"),
+        "clientCode": fn.get("clientCode"),
+        "stepCount": len(steps) if isinstance(steps, (dict, list)) else 0,
+        "events": list(events.keys()) if isinstance(events, dict) else [],
+        "parameters": _parameter_names(defn.get("parameters")),
+    }
+
+
 async def _execute_get_function_for(
     params: dict[str, Any], context: dict[str, Any], is_server: bool,
 ) -> ToolResult:
@@ -182,20 +242,17 @@ async def _execute_get_function_for(
     assert fn is not None
     include = (params.get("include") or "summary").strip()
     if include == "full":
-        return ToolResult(success=True, summary=json.dumps(fn, indent=2, default=str))
-    # summary
-    defn = fn.get("definition") or {}
-    summary = {
-        "id": fn.get("id"),
-        "name": fn.get("name"),
-        "namespace": defn.get("namespace") or fn.get("namespace"),
-        "version": fn.get("version"),
-        "clientCode": fn.get("clientCode"),
-        "stepCount": len(defn.get("steps") or {}),
-        "events": list((defn.get("events") or {}).keys()),
-        "parameters": [p.get("parameterName") for p in (defn.get("parameters") or [])],
-    }
-    return ToolResult(success=True, summary=json.dumps(summary, indent=2, default=str))
+        # Same paging as decompile_function: a 4K slice of a function's JSON is
+        # both unreadable and silently partial. Prefer decompile_function for
+        # reading logic; this stays for when the raw JSON is genuinely needed.
+        tool = "get_server_function" if is_server else "get_function"
+        return _paged_result(
+            json.dumps(fn, indent=2, default=str), name, params,
+            f'{tool}(name="{name}", include="full", part=%d)',
+        )
+    return ToolResult(
+        success=True, summary=json.dumps(_function_summary(fn), indent=2, default=str),
+    )
 
 
 async def _execute_get_function(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
@@ -213,6 +270,7 @@ get_function_tool = ToolDefinition(
         ToolParameter(name="name", type="string", description="Function name (Namespace.LocalName or just LocalName)"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="include", type="string", required=False, default="summary", description="summary | full"),
+        ToolParameter(name="part", type="integer", required=False, default=1, description="Which part of a large full read to return. Only needed when a previous result said 'part N of M'."),
     ],
     execute=_execute_get_function,
 )
@@ -225,6 +283,7 @@ get_server_function_tool = ToolDefinition(
         ToolParameter(name="name", type="string", description="Function name"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="include", type="string", required=False, default="summary", description="summary | full"),
+        ToolParameter(name="part", type="integer", required=False, default=1, description="Which part of a large full read to return. Only needed when a previous result said 'part N of M'."),
     ],
     execute=_execute_get_server_function,
 )
@@ -255,7 +314,7 @@ async def _execute_create_function_for(
         return err_result
     cc = _resolve_client_code(params, context)
     definition = params.get("definition") or {
-        "namespace": namespace, "name": name, "steps": {}, "events": {}, "parameters": [],
+        "namespace": namespace, "name": name, "steps": {}, "events": {}, "parameters": {},
     }
     # Ensure namespace+name are on the body
     definition.setdefault("namespace", namespace)
@@ -428,6 +487,17 @@ delete_server_function_tool = ToolDefinition(
 
 
 _COMPILE_HINT_RULES: list[tuple[re.Pattern[str], str]] = [
+    # Must stay FIRST: the generic "expected ..." rule below also matches
+    # "Expected: RIGHT_PAREN" and would send the model looking for a missing
+    # GenerateEvent step instead of the real cause. In the Chit Fund run this
+    # error cost two turns and then pushed the model into hardcoding ids
+    # rather than fixing the expression.
+    (
+        # `and` / `or` are tokenised as IDENTIFIER, so a boolean expression in
+        # argument position fails with "Actual: IDENTIFIER (and)".
+        re.compile(r"Expected:?\s*(?:RIGHT_PAREN|RIGHT_BRACE|RIGHT_BRACKET|COMMA)[\s\S]*?Actual:?\s*(?:OPERATOR|EQUALS|IDENTIFIER\s*\((?:and|or)\))", re.IGNORECASE),
+        "Next step: an argument value that STARTS with a double-quoted string, true/false or null and then continues with an operator (`\"Store.x.\" + Parent.id`) is read as a plain literal, so the operator breaks the parse. Wrap the WHOLE expression in parentheses: `path = (\"Store.paidIds.\" + Parent.memberId)`. Fix only that expression; do not restructure the step or hardcode values to avoid it.",
+    ),
     (
         re.compile(r"(?:unknown|not\s+found|undefined)\s+(?:primitive|function|namespace)\W*(\w[\w.]*)", re.IGNORECASE),
         "Next step: call `get_kirun_primitive(namespace=\"<ns>\", name=\"<n>\")` on the named primitive to check the exact spelling + signature. The primitive is likely capitalised differently (e.g. `System.Math.Add`, not `system.math.add`) or lives in a different namespace.",
@@ -564,6 +634,64 @@ format_kirun_text_tool = ToolDefinition(
 )
 
 
+def _split_dsl(text: str, size: int) -> list[str]:
+    """Split DSL text into <=size chunks on line boundaries.
+
+    A single line longer than `size` is emitted whole rather than cut: an over-long
+    line is one giant inline schema, and halving it produces invalid DSL either side.
+    """
+    parts: list[str] = []
+    current: list[str] = []
+    used = 0
+    for line in text.splitlines(keepends=True):
+        if current and used + len(line) > size:
+            parts.append("".join(current))
+            current, used = [], 0
+        current.append(line)
+        used += len(line)
+    if current:
+        parts.append("".join(current))
+    return parts or [text]
+
+
+def _clamp_part(raw: Any, total: int) -> int:
+    try:
+        part = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, min(part, total))
+
+
+def _paged_result(text: str, label: str, params: dict[str, Any], next_call: str) -> ToolResult:
+    """Return `text` whole, or as one numbered part with the call for the next.
+
+    Paging rather than truncating, because a truncated read of a function looks
+    complete: there is no other tool that can reach the tail, so the model would
+    answer from the fragment. `next_call` is a printf-style template taking the
+    next part number.
+    """
+    parts = _split_dsl(text, _DECOMPILE_MAX_CHARS)
+    if len(parts) == 1:
+        return ToolResult(success=True, summary=text, max_result_chars=_PART_RESULT_CHARS)
+
+    part = _clamp_part(params.get("part"), len(parts))
+    body = parts[part - 1]
+    head = (
+        f"[{label}: part {part} of {len(parts)}. Whole content is {len(text):,} chars; "
+        f"this part is {len(body):,}. Lines are never split across parts.]\n\n"
+    )
+    if part < len(parts):
+        tail = (
+            f"\n\n[End of part {part}. This is NOT the whole thing. To continue, call "
+            f"{next_call % (part + 1)}. Do not describe or edit it until you have read "
+            f"all {len(parts)} parts.]"
+        )
+    else:
+        tail = f"\n\n[End of part {part} of {len(parts)}. You have now read all of it.]"
+    return ToolResult(success=True, summary=head + body + tail,
+                      max_result_chars=_PART_RESULT_CHARS)
+
+
 async def _execute_decompile_function_for(
     params: dict[str, Any], context: dict[str, Any], is_server: bool,
 ) -> ToolResult:
@@ -582,11 +710,20 @@ async def _execute_decompile_function_for(
         text = await kirun_dsl.decompile_json(defn)
     except Exception as e:  # noqa: BLE001
         return ToolResult(success=False, error=f"Decompile error: {type(e).__name__}: {e}")
-    return ToolResult(success=True, summary=text)
+
+    # The point of a decompile is the WHOLE function: a DSL cut mid-step still
+    # reads as complete, so the model explains logic it never saw. 32K delivers
+    # 98.5% of the platform's functions in one call; the rest page.
+    srv = ", is_server=true" if is_server else ""
+    return _paged_result(
+        text, name, params, f'decompile_function(name="{name}"{srv}, part=%d)',
+    )
 
 
 async def _execute_decompile_function(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    return await _execute_decompile_function_for(params, context, is_server=False)
+    return await _execute_decompile_function_for(
+        params, context, is_server=bool(params.get("is_server", False)),
+    )
 
 
 decompile_function_tool = ToolDefinition(
@@ -605,11 +742,14 @@ To EDIT an existing function:
 - `decompile_function` to get its text → modify the text → `save_function_from_text` to round-trip back. This replaces the whole function in one shot.
 - For surgical step-level edits (add/remove/rewire one step), prefer `add_step`, `update_step`, `remove_step`, `set_dependencies` — those operate on the function's step map directly without rewriting other steps.
 
-Pass `is_server=True` to decompile a server (core-runtime) function. Default `false` targets the UI runtime where most app-level functions live.""",
+Pass `is_server=True` to decompile a server (core-runtime) function. Default `false` targets the UI runtime where most app-level functions live.
+
+Nearly every function returns whole in one call. A very large one (>32K of DSL) comes back in numbered parts: the result says "part 1 of N" and ends by telling you the exact call for the next part. When that happens, read EVERY part before describing or editing the function — a partial read looks complete and will make you explain steps you never saw.""",
     parameters=[
         ToolParameter(name="name", type="string", description="Function name (full Namespace.LocalName, e.g. 'MyApp.AddNumbers')"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="is_server", type="boolean", required=False, default=False, description="True → decompile a server (core) function instead"),
+        ToolParameter(name="part", type="integer", required=False, default=1, description="Which part to return, for a function too large to send at once. Only needed when a previous result said 'part N of M'."),
     ],
     execute=_execute_decompile_function,
 )
@@ -784,11 +924,35 @@ list_kirun_primitives_tool = ToolDefinition(
 )
 
 
+def _uiengine_primitive_result(name: str) -> ToolResult:
+    """Answer UIEngine.* lookups from the generated catalog.
+
+    The platform's /functions/repositoryFind does not know browser-side
+    builtins and returned a literal `null` for them (with success=True), so
+    the model could neither confirm a real function nor learn that a guessed
+    one does not exist.
+    """
+    sig = c.UIENGINE_SIGNATURES.get(name)
+    if sig is None:
+        known = ", ".join(sorted(c.UIENGINE_SIGNATURES))
+        return ToolResult(
+            success=False,
+            error=(
+                f"UIEngine.{name} does not exist. Browser-side UIEngine functions are: {known}. "
+                "For storage rows use FetchData (GET), SendData (POST/PUT) and DeleteData; "
+                "there is no UIEngine.Read/Create/Update/Delete."
+            ),
+        )
+    return ToolResult(success=True, summary=f"UIEngine.{name} (ui, browser-side builtin):\n{json.dumps(sig, indent=2)}")
+
+
 async def _execute_get_kirun_primitive(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     namespace = (params.get("namespace") or "").strip()
     name = (params.get("name") or "").strip()
     if not namespace or not name:
         return ToolResult(success=False, error="`namespace` and `name` are required")
+    if namespace == "UIEngine":
+        return _uiengine_primitive_result(name)
     runtime = (params.get("runtime") or "ui").strip().lower()
     if runtime not in ("ui", "core"):
         return ToolResult(success=False, error="`runtime` must be 'ui' or 'core'")

@@ -290,13 +290,14 @@ conversations:
       - create_storage
       - create_role
       - configure_app_for_customer_signup
-      - save_server_function_from_text
-      - create_page
-      - add_component
+      - save_function_from_text
       - save_page_event_function_from_text
       - update_app
       - propose_kb_update
       - commit_kb_update
+    must_call_any_of_groups:
+      - [create_page, create_pages]
+      - [add_component, add_components]
 
   - name: real-world-shopkeep
     description: |
@@ -324,13 +325,14 @@ conversations:
       - create_storage
       - create_role
       - configure_app_for_customer_signup
-      - save_server_function_from_text
-      - create_page
-      - add_component
+      - save_function_from_text
       - patch_component_props
       - update_app
       - propose_kb_update
       - commit_kb_update
+    must_call_any_of_groups:
+      - [create_page, create_pages]
+      - [add_component, add_components]
 
   - name: real-world-clone-linear
     description: |
@@ -351,10 +353,11 @@ conversations:
     must_call_tools:
       - create_app
       - screenshot_external_url
-      - create_page
-      - add_component
       - patch_component_styles
       - screenshot_page
+    must_call_any_of_groups:
+      - [create_page, create_pages]
+      - [add_component, add_components]
 
   - name: real-world-clone-stripe
     description: |
@@ -373,9 +376,10 @@ conversations:
     must_call_tools:
       - create_app
       - screenshot_external_url
-      - create_page
-      - add_component
       - create_style
+    must_call_any_of_groups:
+      - [create_page, create_pages]
+      - [add_component, add_components]
 
   - name: real-world-clone-vercel
     description: |
@@ -393,6 +397,7 @@ conversations:
     must_call_tools:
       - create_app
       - screenshot_external_url
-      - create_page
-      - add_component
       - create_style
+    must_call_any_of_groups:
+      - [create_page, create_pages]
+      - [add_component, add_components]
