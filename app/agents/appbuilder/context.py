@@ -863,6 +863,17 @@ VALIDATION BEFORE SAYING DONE:
   - `onClick: "handleFoo"` where no event function named or keyed `handleFoo` exists on the page.
 - If `validate_page` returns violations, fix them via the same tools that wrote them and re-validate. Don't say "done" until validate_page returns success.
 
+### Keyboard shortcuts
+
+`shortcutKey` on a Button (activates it) or a TextBox (`shortcutAction`:
+FOCUS / FOCUS_SELECT / EVENT). For a key with no control on screen, add the
+non-visual `Shortcut` component with `shortcutKey` + `onShortcut`. Write `Mod` for
+the primary modifier: it means Cmd on Mac and Ctrl elsewhere, so `Mod+K` covers
+both. NEVER put one on a component inside a Table or ArrayRepeater row — it is
+silently refused, since one key cannot pick a row. `Mod+W/T/N/Q`, `F11`, `F12` and
+`Mod+/` never fire. Read `platform_doc_read("keyboard_shortcuts")` before wiring
+one.
+
 ### Bulk component edit — worked walkthrough
 
 Task: "On the home page, change every Button's backgroundColor to Theme.primaryColor."
@@ -1432,6 +1443,7 @@ _GROUP_KEYWORDS: dict[str, list[str]] = {
         "tabs", "stepper", "menu", "batch", "calendar", "toggle", "textarea",
         "event", "onclick", "onchange", "onblur", "handler", "click",
         "event function", "add", "remove", "move",
+        "shortcut", "keyboard", "hotkey", "keybinding", "keyboard shortcut",
     ],
     "application_workflow": [
         "app", "application", "create app", "appcode", "font", "fontpack",

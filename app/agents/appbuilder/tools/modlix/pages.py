@@ -107,6 +107,9 @@ def _validate_properties(component_type: str, properties: dict[str, Any] | None)
         "visibility", "designType", "colorScheme", "bgColor", "background",
         "onClick", "onSubmit", "onChange", "onBlur", "onFocus", "onLoad",
         "linkPath", "pathsActiveFor", "label", "name", "key",
+        # Keyboard shortcuts. Mod = Cmd on Mac / Ctrl elsewhere.
+        "shortcutKey", "shortcutAction", "onShortcut",
+        "shortcutScope", "shortcutPriority", "shortcutGroup",
     }
     unknown = [k for k in properties.keys() if k not in known and k not in PLATFORM_SAFE]
     if unknown:

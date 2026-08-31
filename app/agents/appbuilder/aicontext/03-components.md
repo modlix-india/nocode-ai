@@ -170,3 +170,17 @@ For form components (TextBox, Dropdown, etc.):
 ## Common Properties (most components)
 
 `visibility`, `readOnly`, `onClick`, `linkPath`, `designType`, `colorScheme`
+
+## Keyboard Shortcuts
+
+Button and TextBox take `shortcutKey` (e.g. `Mod+S`, where `Mod` is Cmd on Mac and
+Ctrl elsewhere), plus `shortcutScope` (PAGE/GLOBAL/LOCAL), `shortcutPriority` and
+`shortcutGroup`. TextBox also takes `shortcutAction` (FOCUS/FOCUS_SELECT/EVENT)
+and `onShortcut`. For a key with no control on screen, use the non-visual
+`Shortcut` component with `shortcutKey` + `onShortcut`.
+
+Never put a shortcut on a component inside a Table or ArrayRepeater row: it is
+silently refused, because one key cannot say which row it meant.
+
+Full rules, reserved keys and how to display the key on screen:
+`platform_doc_read("keyboard_shortcuts")`.
