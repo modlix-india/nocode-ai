@@ -174,6 +174,7 @@ class SessionManager:
         client_code: str,
         agent_name: Optional[str] = None,
         status: Optional[SessionStatus] = None,
+        app_code: Optional[str] = None,
         limit: int = 20,
         offset: int = 0,
     ) -> Tuple[List[AiSession], int]:
@@ -184,6 +185,7 @@ class SessionManager:
             client_code: Filter by client code
             agent_name: Optional filter by agent name
             status: Optional filter by session status
+            app_code: Optional filter by the app the chat was started against
             limit: Max results (default 20)
             offset: Skip first N results (default 0)
 
@@ -191,7 +193,9 @@ class SessionManager:
             Tuple of (sessions list, total count)
         """
         if not is_pool_available():
-            return self._list_sessions_file(user_id, client_code, agent_name, limit, offset)
+            return self._list_sessions_file(
+                user_id, client_code, agent_name, limit, offset, app_code
+            )
 
         try:
             # Build WHERE clause dynamically
@@ -204,6 +208,9 @@ class SessionManager:
             if status:
                 conditions.append("STATUS = %s")
                 params.append(status.value)
+            if app_code:
+                conditions.append("APP_CODE = %s")
+                params.append(app_code)
 
             where_clause = " AND ".join(conditions)
 
@@ -545,11 +552,11 @@ class SessionManager:
         return self._dict_to_session(data)
 
     def _list_sessions_file(
-        self, user_id, client_code, agent_name, limit, offset,
+        self, user_id, client_code, agent_name, limit, offset, app_code=None,
     ) -> tuple[list[AiSession], int]:
         from app.db.file_store import get_file_store
         items, total = get_file_store().list_sessions(
-            user_id, client_code, agent_name, limit, offset,
+            user_id, client_code, agent_name, limit, offset, app_code,
         )
         return [self._dict_to_session(d) for d in items], total
 

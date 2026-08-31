@@ -41,6 +41,21 @@ from app.agents.appbuilder.tools.registry import ALL_TOOLS
 # ── Coverage: every ALL_TOOLS entry is accounted for ──────────────────────
 
 
+def _capability_filtered_names() -> set[str]:
+    """Names the index advertises but the registry drops for this deployment.
+
+    `_collect_group_tool_names()` reads each module's raw TOOLS list, while the
+    registry filters on top of it: `_filter_visual_tools` drops
+    `describe_image` when the AppBuilder model has native vision, since the
+    screenshot tools then attach the PNG itself. `_build_tool_index()` already
+    intersects with ALL_TOOLS, so such a name is absent from the rendered
+    prompt by design — not index drift.
+    """
+    from app.services.llm_provider import appbuilder_vision_capable
+
+    return {"describe_image"} if appbuilder_vision_capable() else set()
+
+
 def test_every_tool_is_advertised_or_intentionally_hidden() -> None:
     """The tool index + hidden set must cover ALL_TOOLS exactly.
 
@@ -54,7 +69,7 @@ def test_every_tool_is_advertised_or_intentionally_hidden() -> None:
     all_names = {t.name for t in ALL_TOOLS}
     covered = _ADVERTISED_NAMES | _INTENTIONALLY_HIDDEN
     missing = all_names - covered
-    extra = covered - all_names
+    extra = covered - all_names - _capability_filtered_names()
     assert not missing, (
         f"{len(missing)} tool(s) in ALL_TOOLS are not advertised in the system "
         f"prompt and not in _INTENTIONALLY_HIDDEN: {sorted(missing)}. Add them "
@@ -126,9 +141,15 @@ def test_no_tool_appears_in_multiple_groups() -> None:
 
 
 def test_tool_groups_summary_lists_every_advertised_tool() -> None:
-    """Every advertised tool name appears verbatim in the rendered catalog."""
+    """Every advertised tool name appears verbatim in the rendered catalog.
+
+    Excludes names the registry drops for this deployment: `_build_tool_index`
+    renders only tools present in ALL_TOOLS, so a capability-filtered name is
+    meant to be missing here (see `_capability_filtered_names`).
+    """
+    renderable = _ADVERTISED_NAMES - _capability_filtered_names()
     missing_from_render = [
-        name for name in sorted(_ADVERTISED_NAMES)
+        name for name in sorted(renderable)
         if f"`{name}`" not in TOOL_GROUPS_SUMMARY
     ]
     assert not missing_from_render, (
@@ -241,3 +262,182 @@ def test_appbuilder_agent_uses_defer_schemas_mode() -> None:
         "AppBuilderAgent constructor still passes `router_tool=...`. "
         "Phase 3 wired defer_schemas mode; the router was retired here."
     )
+
+
+# ── Prompt caching: process-static context must not ride in the tail ──────
+
+
+def test_catalogs_are_not_appended_to_dynamic_context() -> None:
+    """The component + API catalogs must stay OUT of build_dynamic_context.
+
+    They are rendered once in `__init__` and never recomputed, so appending
+    them to the per-request block re-sent ~10.6K tokens uncached on every
+    turn — and on providers that flatten the system blocks into one string it
+    pushed them behind the per-session app/client line, dropping them out of
+    the shared prefix cache entirely. They belong in the cached static suffix.
+    """
+    from app.agents.appbuilder.agent import AppBuilderAgent
+
+    source = inspect.getsource(AppBuilderAgent.build_dynamic_context)
+    for attr in ("_catalog_context", "_api_catalog_context"):
+        assert f"parts.append(self.{attr})" not in source, (
+            f"build_dynamic_context appends `self.{attr}` again. That context "
+            "is static for the process lifetime — register it with "
+            "`context_builder.set_static_suffix(...)` in __init__ instead, so "
+            "it lands in the cached prefix rather than the per-turn tail."
+        )
+
+    init_source = inspect.getsource(AppBuilderAgent.__init__)
+    assert "set_static_suffix" in init_source, (
+        "AppBuilderAgent.__init__ no longer registers the catalogs as a cached "
+        "static suffix — they would fall back into the uncached per-turn tail."
+    )
+
+
+def test_static_suffix_is_cached_and_precedes_dynamic() -> None:
+    """BaseContext must emit the suffix as a cached block BEFORE the dynamic one.
+
+    Providers cache a *prefix*, so a per-session block placed ahead of static
+    context ends the cacheable run and negates the whole point of the seam.
+    """
+    import asyncio
+
+    from app.core.context import BaseContext
+
+    ctx = BaseContext(static_prefix="PERSONA")
+    ctx.set_static_suffix("CATALOG")
+    asyncio.get_event_loop_policy().new_event_loop().run_until_complete(ctx.load())
+    blocks = ctx.build_system_prompt(dynamic_context="DYNAMIC")
+
+    texts = [b["text"] for b in blocks]
+    assert texts == ["PERSONA", "CATALOG", "DYNAMIC"], texts
+    assert "cache_control" in blocks[0], "static docs block lost its cache_control"
+    assert "cache_control" in blocks[1], (
+        "static suffix must carry cache_control — otherwise it is re-sent in "
+        "full on every turn, which is the bug this seam exists to fix."
+    )
+    assert "cache_control" not in blocks[2], (
+        "the dynamic block must stay uncached; caching per-session text "
+        "burns a breakpoint and never hits."
+    )
+
+
+def test_tool_index_carries_names_only_not_descriptions() -> None:
+    """The index groups tools; it must not restate their descriptions.
+
+    Every advertised tool is already in the API's `tools=` payload with its own
+    one-liner, so per-tool prose here is paid twice in the fixed prefix (it was
+    ~4.5K tokens). Grouping is the one thing the flat `tools=` array cannot
+    express, so grouping is what this index is for.
+    """
+    body = TOOL_GROUPS_SUMMARY.split("### ", 1)[1] if "### " in TOOL_GROUPS_SUMMARY else ""
+    assert body, "tool index rendered no group sections at all"
+    assert "` — " not in body, (
+        "the tool index is rendering `name` — description again. Per-tool prose "
+        "belongs on the tool's own `description` (which reaches the model via "
+        "tools= and search_tools), not duplicated into the system prompt."
+    )
+
+
+def test_tool_index_stays_small() -> None:
+    """A ceiling, so the index can't quietly regrow into a second catalog.
+
+    Names-only for ~222 tools measures ~1.4K tokens; 2.5K leaves room for new
+    tools and new groups while still failing loudly if prose returns.
+    """
+    approx_tokens = len(TOOL_GROUPS_SUMMARY) / 3.7
+    assert approx_tokens < 2500, (
+        f"tool index has grown to ~{approx_tokens:,.0f} tokens. It is paid on "
+        "every request of every conversation — check whether per-tool "
+        "descriptions crept back in."
+    )
+
+
+def test_tool_index_still_groups() -> None:
+    """Name-only rendering must not have flattened the groups away."""
+    assert TOOL_GROUPS_SUMMARY.count("### ") >= 8, (
+        "the tool index lost its group headings — that grouping is the only "
+        "thing it contributes over the raw tools= array"
+    )
+
+
+# ── Parameter naming convention ───────────────────────────────────────────
+
+
+_NAMED_ENTITIES = frozenset({
+    "page", "theme", "style", "storage", "schema", "function", "template",
+    "notification", "connection", "role", "profile", "app", "component",
+    "uri_path", "event_definition", "event_action", "server_function",
+    "page_event_function",
+})
+
+
+def test_primary_entity_is_always_called_name() -> None:
+    """A `<verb>_<entity>` tool must call its OWN entity `name`, not `<entity>_name`.
+
+    The rule holds across the surface today; this pins it. Replaying real
+    sessions, guessing between `name` and `<entity>_name` was the single biggest
+    cause of a rejected first call — the model erred in both directions — so a
+    tool that breaks the rule makes a genuinely confusing surface worse.
+    """
+    violations = []
+    for tool in ALL_TOOLS:
+        m = re.match(
+            r"^(get|create|update|delete|read|list|validate|replace|reset)_(.+)$",
+            tool.name,
+        )
+        if not m or m.group(2) not in _NAMED_ENTITIES:
+            continue
+        params = {p.name for p in tool.parameters}
+        own = f"{m.group(2)}_name"
+        if own in params and "name" not in params:
+            violations.append(f"{tool.name} uses `{own}` for its own entity")
+    assert not violations, (
+        "these tools name their own primary entity `<entity>_name` instead of "
+        f"`name`: {violations}"
+    )
+
+
+def test_app_code_has_one_spelling() -> None:
+    """149 parameters name the app; they must all spell it `app_code`.
+
+    `export_security_app` was the lone `application_code` holdout.
+    """
+    odd = [
+        t.name for t in ALL_TOOLS
+        if any(p.name in ("application_code", "appCode", "applicationCode")
+               for p in t.parameters)
+    ]
+    assert not odd, f"tools spelling the app code unconventionally: {odd}"
+
+
+def test_bare_page_parameter_is_always_pagination() -> None:
+    """A bare `page` must be a number, never a page name.
+
+    Both spellings coexisting for different meanings is fine; a bare `page`
+    holding a page NAME would make the whole rule unlearnable.
+    """
+    wrong = [
+        t.name for t in ALL_TOOLS
+        for p in t.parameters
+        if p.name == "page" and p.type not in ("integer", "number")
+    ]
+    assert not wrong, f"`page` is not a pagination number in: {wrong}"
+
+
+def test_naming_rule_is_stated_in_the_prompt() -> None:
+    """The rule must be written down, not just held by convention."""
+    assert "Parameter naming rule" in TOOL_GROUPS_SUMMARY
+    for marker in ("`name`", "app_code", "pagination"):
+        assert marker in TOOL_GROUPS_SUMMARY, f"naming rule no longer mentions {marker}"
+
+
+def test_static_suffix_defaults_to_absent() -> None:
+    """Agents that never register a suffix keep the original two-block shape."""
+    import asyncio
+
+    from app.core.context import BaseContext
+
+    ctx = BaseContext(static_prefix="PERSONA")
+    asyncio.get_event_loop_policy().new_event_loop().run_until_complete(ctx.load())
+    assert [b["text"] for b in ctx.build_system_prompt("DYN")] == ["PERSONA", "DYN"]

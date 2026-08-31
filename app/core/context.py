@@ -51,6 +51,24 @@ class BaseContext:
         self._doc_paths = [Path(p) for p in (doc_paths or [])]
         self._static_prefix = static_prefix
         self._cached_static_text: str | None = None
+        self._static_suffix: str = ""
+
+    def set_static_suffix(self, text: str) -> None:
+        """Register process-static text that only exists after construction.
+
+        For context that is fixed for the process lifetime but is fetched at
+        startup rather than read off disk in `load()` — the component catalog
+        and the API catalog, which arrive from the CDN after this object is
+        built. Without this seam the only place to put them is the per-request
+        dynamic context, where they ride OUTSIDE the cached prefix and are
+        re-sent in full on every turn of every conversation.
+
+        Emitted as its OWN cache_control block rather than concatenated onto
+        the docs, so republishing the catalog invalidates only its own suffix
+        and leaves the (much larger, much more stable) persona + tool index
+        cached.
+        """
+        self._static_suffix = text or ""
 
     async def load(self) -> None:
         """Load and cache static documentation from disk.
@@ -95,7 +113,11 @@ class BaseContext:
         `client.messages.create(system=[...])`.
 
         Block 1: Static docs with cache_control (large, cached).
-        Block 2: Dynamic context (small, changes per request).
+        Block 2: Static suffix with cache_control (startup-fetched, cached).
+        Block 3: Dynamic context (small, changes per request).
+
+        The two cached blocks MUST precede the dynamic one: providers cache a
+        prefix, so anything that varies per session ends the cacheable run.
 
         Args:
             dynamic_context: Per-request context (auth info, app state, etc.)
@@ -116,7 +138,15 @@ class BaseContext:
                 "cache_control": {"type": "ephemeral"},
             })
 
-        # Block 2: Dynamic context — small, changes per session
+        # Block 2: Startup-fetched static context — also cacheable
+        if self._static_suffix:
+            blocks.append({
+                "type": "text",
+                "text": self._static_suffix,
+                "cache_control": {"type": "ephemeral"},
+            })
+
+        # Block 3: Dynamic context — small, changes per session
         if dynamic_context:
             blocks.append({
                 "type": "text",

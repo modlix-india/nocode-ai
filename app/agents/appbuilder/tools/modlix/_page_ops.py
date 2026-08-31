@@ -223,14 +223,29 @@ def add_component(
     properties: dict[str, Any] | None = None,
     style_properties: dict[str, Any] | None = None,
     binding_paths: dict[str, Any] | None = None,
-    display_order: int = 0,
+    display_order: int | None = None,
 ) -> str | None:
-    """Insert a new component under parent_key. Returns error message or None."""
+    """Insert a new component under parent_key. Returns error message or None.
+
+    `display_order=None` appends after the parent's existing children (max
+    sibling displayOrder + 1). The runtime breaks displayOrder ties by key
+    name, so leaving every sibling at 0 renders them alphabetically rather
+    than in authoring order; that is exactly what a batch add would do
+    without this default.
+    """
     comp_def = page_data.setdefault("componentDefinition", {})
     if parent_key not in comp_def:
         return f"Parent '{parent_key}' not found"
     if component_key in comp_def:
         return f"Component '{component_key}' already exists"
+
+    if display_order is None:
+        sibling_orders = [
+            int(comp_def[k].get("displayOrder") or 0)
+            for k in (comp_def[parent_key].get("children") or {})
+            if k in comp_def
+        ]
+        display_order = (max(sibling_orders) + 1) if sibling_orders else 0
 
     comp: dict[str, Any] = {
         "key": component_key,
@@ -238,7 +253,7 @@ def add_component(
         "name": name or component_key,
         "displayOrder": display_order,
         "children": {},
-        "properties": _to_component_props(properties or {}),
+        "properties": _to_component_props(_resolve_events(page_data, properties)),
         "styleProperties": style_properties or {},
     }
     for k, v in (binding_paths or {}).items():
@@ -263,7 +278,9 @@ def update_component(
         return f"Component '{component_key}' not found"
     comp = comp_def[component_key]
     if properties:
-        comp.setdefault("properties", {}).update(_to_component_props(properties))
+        comp.setdefault("properties", {}).update(
+            _to_component_props(_resolve_events(page_data, properties))
+        )
     if style_properties:
         _deep_merge(comp.setdefault("styleProperties", {}), style_properties)
     if display_order is not None:
@@ -321,6 +338,14 @@ def move_component(
 
 
 # ── Component-property normalization ─────────────────────────────────────────
+
+
+def _resolve_events(page_data: dict[str, Any], props: dict[str, Any] | None) -> dict[str, Any]:
+    """Turn event props that name an event function into its key (see _conventions)."""
+    from . import _conventions as _c
+
+    resolved, _notes = _c.resolve_event_prop_refs(page_data, props or {})
+    return resolved
 
 
 def _to_component_props(props: dict[str, Any]) -> dict[str, Any]:

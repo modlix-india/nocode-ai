@@ -48,9 +48,22 @@ class ToModelContentTests(unittest.TestCase):
         self.assertEqual(r.to_tool_result_content(), "Error: boom")
 
     def test_long_text_truncates(self):
-        r = ToolResult(success=True, summary="x" * (ToolResult.MAX_RESULT_CHARS + 50))
+        over = ToolResult.DEFAULT_MAX_RESULT_CHARS + 50
+        r = ToolResult(success=True, summary="x" * over)
         out = r.to_tool_result_content()
-        self.assertTrue(out.endswith("[truncated — use more specific reads to see details]"))
+        self.assertIn("truncated", out)
+        self.assertIn(f"{ToolResult.DEFAULT_MAX_RESULT_CHARS:,} of {over:,} chars shown", out)
+        self.assertIn("50 cut", out)
+
+    def test_max_result_chars_overrides_the_default(self):
+        text = "x" * (ToolResult.DEFAULT_MAX_RESULT_CHARS + 50)
+        r = ToolResult(success=True, summary=text, max_result_chars=len(text))
+        self.assertEqual(r.to_tool_result_content(), text)   # whole thing, no marker
+
+    def test_override_still_truncates_beyond_its_own_cap(self):
+        r = ToolResult(success=True, summary="x" * 200, max_result_chars=100)
+        out = r.to_tool_result_content()
+        self.assertIn("100 of 200 chars shown", out)
 
 
 if __name__ == "__main__":

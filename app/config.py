@@ -58,8 +58,13 @@ class Settings(BaseSettings):
     MYSQL_PASSWORD: str = ""
     AI_TRACKING_ENABLED: bool = False  # Auto-enabled when MYSQL_URL is configured
 
-    # Context limits for conversation tracking
-    CONTEXT_LIMIT_DEFAULT: int = 48000  # Default context limit (64K - 16K reserved for output)
+    # Context limits for conversation tracking (reporting/metadata only — the
+    # agent loop does NOT trim on this). 48000 dated from the 64K-context
+    # DeepSeek era; 112000 assumed a 128K floor. DeepSeek V4 (pro, flash and
+    # flash-vision-exp alike) documents a 1M window, so report against that.
+    # The output reservation the old value subtracted is noise at this scale
+    # (AGENT_MAX_TOKENS is ~1.6% of the window).
+    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek V4: 1M context window
     
     # LLM Provider Selection
     # Options: "anthropic", "openai", or "deepseek"
@@ -82,7 +87,13 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_MODEL_FAST: str = "deepseek-v4-flash"   # DeepSeek V4 Flash (cheap tier)
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-pro" # DeepSeek V4 Pro (higher correctness on Kirun DSL per bench 2026-06-10)
+    # DeepSeek V4 Flash Vision (experimental) — the only DeepSeek model that
+    # accepts image input, so the AppBuilder can read its own screenshots
+    # natively instead of paying for a Gemini text description of each one.
+    # See _DEEPSEEK_VISION_MODELS in app/services/llm_provider.py: swapping this
+    # back to a text-only model (deepseek-v4-pro / -flash) automatically turns
+    # the multimodal tool_result path back off.
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-flash-vision-exp"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
@@ -112,6 +123,28 @@ class Settings(BaseSettings):
     # export/import etc.). Must be set per env; if empty the admin routes
     # return 503 — safer than allowing unauthenticated access.
     ADMIN_TOKEN: str = ""
+
+    # ── Lore ───────────────────────────────────────────────────────────
+    # Curated, growing knowledge about each application (app/services/lore).
+    # Requires the AI tracking database; silently no-ops without it.
+    LORE_ENABLED: bool = True
+    # Record every agent turn as an observation. Turning this off leaves the
+    # explicit lore_note tool and the HTTP surface working, and only stops
+    # the passive accumulation.
+    LORE_OBSERVE_CHAT: bool = True
+    # Record every successful definition write as an observation. This is the
+    # path that carries real evidence: a build makes hundreds of edits and
+    # about five turns, and an edit names the object it happened to.
+    LORE_OBSERVE_EDITS: bool = True
+    # Pending observations that trigger a background curation pass. 0 disables
+    # auto-curation (the /curate endpoint and the admin sweep still work).
+    LORE_AUTOCURATE_AT: int = 25
+    # ...or this many pending about a SINGLE subject, whichever comes first.
+    # An app-wide count is the wrong unit on its own: thirty scattered edits
+    # across thirty objects say less than eight against one page, and the
+    # second is what produces a good entry. Lower than the app threshold on
+    # purpose.
+    LORE_AUTOCURATE_SUBJECT_AT: int = 8
 
     # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
     # nocode-kirun live for code-reading tools. Per-instance mounted volume
@@ -178,10 +211,16 @@ class Settings(BaseSettings):
     AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
+    # Where nocode-ui's generated catalog lives, for a dev box. Accepts the
+    # client dir, its dist/ dir, or the JSON file. Empty auto-resolves to a
+    # sibling nocode-ui checkout. A local catalog whose `generatedAt` is newer
+    # than the CDN one wins, so regenerating after a component change takes
+    # effect without editing this.
+    COMPONENT_CATALOG_LOCAL_PATH: str = ""
     
     class Config:
         env_file = ".env"

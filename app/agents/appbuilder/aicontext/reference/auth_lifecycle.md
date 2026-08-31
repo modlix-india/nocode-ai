@@ -35,8 +35,8 @@ Two distinct lifetimes observed locally:
 - **~1 hour** (`iat → iat + 3600`): the normal browser-session token
   produced by logging into the app UI. These get refreshed by the SPA's
   background expiry watcher (`nocode-ui/.../index.tsx:95-114`).
-- **~1 year** (`iat → iat + 31_557_600`): a longer-TTL token Kiran's local
-  stack issues for tooling/automation (via `rememberMe: true` on the login).
+- **~1 year** (`iat → iat + 31_557_600`): a longer-TTL token issued for
+  tooling/automation (via `rememberMe: true` on the login).
   Practically equivalent in privileges but doesn't auto-refresh — and is
   still subject to the server-side invalidation above, so it's not a
   paste-once-forget solution.
@@ -76,8 +76,8 @@ Body: `{"userName": "...", "password": "...", "rememberMe": true}`
 
 Returns an array of `{userId, client: {id, code, name, ...}}` entries — one
 per (client) where this user is registered. **Username matching is
-case-insensitive** (confirmed by Kiran 2026-05-18): `Kiran@modlix.com` and
-`kiran@modlix.com` resolve to the same registration.
+case-insensitive** (confirmed 2026-05-18): `User@example.com` and
+`user@example.com` resolve to the same registration.
 
 If the array is empty → user has no account anywhere with that password.
 If length 1 → use directly. If > 1 → present a picker.
@@ -88,8 +88,8 @@ URL: `https://<gateway>/<appCode>/<clientCode>/page/api/security/authenticate`
 Body:
 ```json
 {
-  "userName": "Kiran@modlix.com",
-  "userId": 142,                    ← from Step 1
+  "userName": "user@example.com",
+  "userId": 1,                      ← from Step 1
   "identifierType": "EMAIL_ID",     ← REQUIRED, not optional
   "password": "Pass@1234",
   "rememberMe": true,

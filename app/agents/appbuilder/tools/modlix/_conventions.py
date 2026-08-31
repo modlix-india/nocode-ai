@@ -167,6 +167,51 @@ _EXPRESSION_REF_RE = re.compile(
 
 _STEPS_REF_RE = re.compile(r"\bSteps\.([A-Za-z_$][\w$]*)")
 
+# Component properties whose value must be an eventFunctions KEY. The browser
+# runtime resolves these with a direct map lookup
+# (`pageDefinition.eventFunctions[onClick]`), so a human function name silently
+# resolves to undefined and the handler never fires.
+EVENT_PROP_NAMES: tuple[str, ...] = (
+    "onClick", "onChange", "onBlur", "onFocus", "onLoad", "onSubmit",
+    "onEnter", "onSelect", "onSuccess", "onError", "onClear", "onSearch",
+    "onDoubleClick", "onHover", "onScrollReachedEnd",
+)
+
+
+def resolve_event_prop_refs(
+    page_data: dict[str, Any], properties: dict[str, Any] | None
+) -> tuple[dict[str, Any], list[str]]:
+    """Rewrite event props that carry a function NAME into its eventFunctions key.
+
+    Returns (properties, notes). Writing `onClick: "handleLogin"` is the natural
+    thing to do and reads correctly, but the runtime looks events up by key, so
+    it produces a dead handler that no validation used to catch. Resolve it here
+    so the natural form works, and report what was rewritten.
+    """
+    if not properties:
+        return properties or {}, []
+    event_fns = (page_data or {}).get("eventFunctions") or {}
+    name_to_key = {
+        v["name"]: k
+        for k, v in event_fns.items()
+        if isinstance(v, dict) and isinstance(v.get("name"), str) and v["name"]
+    }
+    if not name_to_key:
+        return properties, []
+    out = dict(properties)
+    notes: list[str] = []
+    for prop_name in EVENT_PROP_NAMES:
+        if prop_name not in out:
+            continue
+        raw = out[prop_name]
+        ref = raw.get("value") if isinstance(raw, dict) else raw
+        if not isinstance(ref, str) or ref in event_fns or ref not in name_to_key:
+            continue
+        key = name_to_key[ref]
+        out[prop_name] = {"value": key} if isinstance(raw, dict) else key
+        notes.append(f"{prop_name}: '{ref}' -> key '{key}'")
+    return out, notes
+
 
 def extract_expression_refs(expr: str) -> list[str]:
     """Return every <Prefix>.<path> reference found in an expression."""
@@ -357,19 +402,66 @@ def coerce_style_properties(raw: Any) -> tuple[dict[str, Any] | None, str | None
 # write {text: "Page.greeting"} and have it become the canonical
 # {text: {location: {type: "EXPRESSION", value: "Page.greeting"}}}.
 
+def normalize_location(loc: Any) -> Any:
+    """Repair one `location` dict into the shape the browser runtime reads.
+
+    StoreContext.getDataFromLocation (nocode-ui src/context/StoreContext.ts:136-141)
+    dispatches on `type` and reads a DIFFERENT key for each:
+
+        type VALUE       -> loc['value']        a bare path, e.g. "Page.email"
+        type EXPRESSION  -> loc['expression']   a computed expression
+
+    A location with `type: EXPRESSION` but only `value` set therefore resolves to
+    undefined: makePropertiesObject drops the property, the component renders
+    blank, and getPaths (src/components/util/getPaths.ts:245-251) also reads
+    `expression`, so no listener is registered and it never updates either.
+
+    That mis-shape is invisible at write time and fatal at runtime, so repair it
+    here rather than rejecting: move `value` to `expression` under type
+    EXPRESSION, and fill `value` from `expression` under type VALUE.
+    """
+    if not isinstance(loc, dict):
+        return loc
+    ltype = loc.get("type")
+    if ltype == "EXPRESSION" and "expression" not in loc and "value" in loc:
+        fixed = {k: v for k, v in loc.items() if k != "value"}
+        fixed["expression"] = loc["value"]
+        return fixed
+    if ltype == "VALUE" and "value" not in loc and "expression" in loc:
+        fixed = {k: v for k, v in loc.items() if k != "expression"}
+        fixed["value"] = loc["expression"]
+        return fixed
+    return loc
+
+
+def _normalize_prop_locations(prop: Any) -> Any:
+    """Apply normalize_location to a property wrapper's `location`, if any."""
+    if isinstance(prop, dict) and isinstance(prop.get("location"), dict):
+        out = dict(prop)
+        out["location"] = normalize_location(prop["location"])
+        return out
+    return prop
+
+
 def coerce_property_value(raw: Any) -> Any:
     """Wrap a single property value into Modlix's stored shape.
 
-    - Already-wrapped ({value: ...} or {location: ...}): passthrough
-    - String starting with a Modlix expression prefix: expression-shape
+    - Already-wrapped ({value: ...} or {location: ...}): passthrough, but with
+      any `location` repaired by normalize_location first.
+    - Bare Modlix path ("Page.email") or a computed expression containing one
+      ("(Page.a ?? 0) - Page.b"): {location:{type:EXPRESSION, expression:...}}.
+      The key is `expression`, not `value` (see normalize_location). Computed
+      expressions previously fell through to a literal, so the raw expression
+      text rendered on the page instead of its value.
     - Otherwise: literal {value: raw}
     """
     if isinstance(raw, dict) and ("value" in raw or "location" in raw):
-        return raw
+        return _normalize_prop_locations(raw)
     if isinstance(raw, str):
-        m = _BINDING_PATH_HEAD_RE.match(raw.strip())
-        if m and m.group(1) in EXPRESSION_PREFIXES:
-            return {"location": {"type": "EXPRESSION", "value": raw.strip()}}
+        text = raw.strip()
+        m = _BINDING_PATH_HEAD_RE.match(text)
+        if (m and m.group(1) in EXPRESSION_PREFIXES) or _EXPRESSION_REF_RE.search(text):
+            return {"location": {"type": "EXPRESSION", "expression": text}}
     return {"value": raw}
 
 
@@ -445,8 +537,12 @@ def unwrap_component_props(props: dict[str, Any]) -> dict[str, Any]:
 
 
 def make_expression_prop(expression: str) -> dict[str, Any]:
-    """Build the {location: {type: 'EXPRESSION', value: 'Page.x'}} form."""
-    return {"location": {"type": "EXPRESSION", "value": expression}}
+    """Build the {location: {type: 'EXPRESSION', expression: '...'}} form.
+
+    The key is `expression`, not `value`: under type EXPRESSION the runtime
+    reads location.expression (see normalize_location).
+    """
+    return {"location": {"type": "EXPRESSION", "expression": expression}}
 
 
 # ── Multi-valued property handling ────────────────────────────────────────────
@@ -819,27 +915,14 @@ KIRUN_NAMESPACES: dict[str, tuple[str, ...]] = {
 }
 
 # JS-only primitives executed by the browser-side Kirun runtime. The Java
-# runtime (core functions) does NOT have these.
-UIENGINE_PRIMITIVES: frozenset[str] = frozenset({
-    "SetStore",
-    "GetStore",
-    "Navigate",
-    "Login",
-    "Logout",
-    "Message",            # toasts / alerts
-    "ExecuteJSFunction",
-    "ObjectEntries",      # also exists in System.Object but used heavily here
-    "OpenModal",
-    "CloseModal",
-    "Reload",
-    "SetCookies",
-    "GetCookies",
-    "SendData",           # generic API request
-    "Read",               # storage read
-    "Create",             # storage create
-    "Update",             # storage update
-    "Delete",             # storage delete
-})
+# runtime (core functions) does NOT have these. GENERATED from
+# nocode-ui/ui-app/client/src/functions/all.ts by scripts/gen_uiengine_catalog.py
+# (see _uiengine_catalog.py). The hand-written list this replaced carried 11
+# names that never existed (Read/Create/Update/Delete/GetStore/OpenModal/...)
+# and hid FetchData, which is what pushed the agent into SetStore mock data.
+from ._uiengine_catalog import UIENGINE_SIGNATURES  # noqa: E402
+
+UIENGINE_PRIMITIVES: frozenset[str] = frozenset(UIENGINE_SIGNATURES)
 
 
 def is_core_runtime_compatible(namespace: str) -> bool:
@@ -1155,6 +1238,7 @@ __all__ = [
     "EXPRESSION_PREFIXES", "extract_expression_refs", "steps_referenced", "validate_expression",
     # Component properties
     "wrap_component_props", "unwrap_component_props", "make_expression_prop",
+    "normalize_location", "EVENT_PROP_NAMES", "resolve_event_prop_refs",
     "wrap_props_catalog_aware", "wrap_multi_valued",
     "is_multi_valued_shape", "is_multi_valued_property",
     "KNOWN_MULTI_VALUED_PROPS",
@@ -1163,7 +1247,7 @@ __all__ = [
     # dependentStatements
     "make_dependency_key", "make_dependent_statements", "active_dependencies",
     # Primitives
-    "KIRUN_NAMESPACES", "UIENGINE_PRIMITIVES",
+    "KIRUN_NAMESPACES", "UIENGINE_PRIMITIVES", "UIENGINE_SIGNATURES",
     "is_core_runtime_compatible", "validate_step_call",
     # Styles
     "BREAKPOINTS", "validate_breakpoint",

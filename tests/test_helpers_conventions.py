@@ -156,8 +156,14 @@ def test_wrap_unwrap_round_trip():
 
 
 def test_make_expression_prop_shape():
+    # The key under type EXPRESSION is `expression`, not `value`: the browser
+    # runtime reads location.expression for EXPRESSION and location.value for
+    # VALUE (StoreContext.ts getDataFromLocation). This test previously asserted
+    # the `value` form, which is why a whole generated app rendered every
+    # computed property blank. Real hand-built apps use EXPRESSION+expression
+    # 1371 times and EXPRESSION+value zero times.
     out = make_expression_prop("Page.user.email")
-    assert out == {"location": {"type": "EXPRESSION", "value": "Page.user.email"}}
+    assert out == {"location": {"type": "EXPRESSION", "expression": "Page.user.email"}}
 
 
 # ── value / expression refs ───────────────────────────────────────────────────
