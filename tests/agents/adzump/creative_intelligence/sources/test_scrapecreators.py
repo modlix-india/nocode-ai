@@ -72,6 +72,42 @@ class ToCreativeTests(unittest.TestCase):
         ad["snapshot"]["display_format"] = "MULTI_IMAGES"
         self.assertEqual(_to_creative(ad).media_type, "carousel")
 
+    def test_carousel_pulls_media_and_copy_from_cards(self):
+        # Live shape (verified 2026-09-01): carousel ads have empty top-level
+        # images/videos; each card carries its own media and copy.
+        ad = _ad()
+        ad["snapshot"].update({
+            "display_format": "MULTI_IMAGES",
+            "title": None, "cta_text": None, "link_url": None,
+            "body": None, "images": [], "videos": [],
+            "cards": [{
+                "title": "Villas Around a Waterfall",
+                "body": "Lakefront villas",
+                "cta_text": "Learn More",
+                "link_url": "https://purvasparklingspring.com",
+                "original_image_url": "https://cdn/card1.jpg",
+                "resized_image_url": "https://cdn/card1_small.jpg",
+                "video_hd_url": None,
+            }],
+        })
+        creative = _to_creative(ad)
+        self.assertEqual(creative.media_type, "carousel")
+        self.assertEqual(creative.source_asset_url, "https://cdn/card1.jpg")
+        self.assertEqual(creative.headline, "Villas Around a Waterfall")
+        self.assertEqual(creative.primary_text, "Lakefront villas")
+        self.assertEqual(creative.landing_url, "https://purvasparklingspring.com")
+
+    def test_video_in_card_maps_as_video(self):
+        ad = _ad()
+        ad["snapshot"].update({
+            "display_format": "VIDEO", "images": [], "videos": [],
+            "cards": [{"video_hd_url": "https://cdn/card_v.mp4",
+                       "video_preview_image_url": "https://cdn/card_v_poster.jpg"}],
+        })
+        creative = _to_creative(ad)
+        self.assertEqual(creative.source_asset_url, "https://cdn/card_v.mp4")
+        self.assertEqual(creative.poster_source_url, "https://cdn/card_v_poster.jpg")
+
     def test_null_fields_survive(self):
         ad = _ad()
         ad["snapshot"].update({"title": None, "cta_text": None, "body": None,

@@ -196,23 +196,45 @@ def _ads_of_the_advertiser(ads: list[dict], *, domain: str, name: str) -> list[d
 
 # -- Mapping: raw scrapecreators ad -> Creative --------------------------------
 
+def _image_url(item: dict) -> str:
+    return item.get("original_image_url") or item.get("resized_image_url") or ""
+
+
+def _video_url(item: dict) -> str:
+    return item.get("video_hd_url") or item.get("video_sd_url") or ""
+
+
 def _to_creative(raw: dict) -> Creative:
     snapshot = raw.get("snapshot") or {}
+    # Carousel/multi-image ads carry their media per CARD, not in the top-level
+    # images/videos arrays - scan both, cards last as the fallback.
+    cards = [c for c in (snapshot.get("cards") or []) if isinstance(c, dict)]
     videos = [v for v in (snapshot.get("videos") or []) if isinstance(v, dict)]
+    videos += [c for c in cards if _video_url(c)]
     images = [i for i in (snapshot.get("images") or []) if isinstance(i, dict)]
+    images += [c for c in cards if _image_url(c)]
 
     media_type = _DISPLAY_FORMAT_MEDIA.get(str(snapshot.get("display_format") or ""))
     if media_type is None:
         media_type = "video" if videos else "image"
 
     if media_type == "video" and videos:
-        source_asset = videos[0].get("video_hd_url") or videos[0].get("video_sd_url") or ""
+        source_asset = _video_url(videos[0])
         poster = videos[0].get("video_preview_image_url") or ""
     else:
-        first_image = images[0] if images else {}
-        source_asset = (first_image.get("original_image_url")
-                        or first_image.get("resized_image_url") or "")
+        source_asset = _image_url(images[0]) if images else ""
         poster = ""
+        if not source_asset and videos:
+            # display_format lied (e.g. MULTI_IMAGES with video-only cards) -
+            # a playable video beats an empty card the renderer would skip.
+            media_type = "video"
+            source_asset = _video_url(videos[0])
+            poster = videos[0].get("video_preview_image_url") or ""
+
+    first_card = cards[0] if cards else {}
+    card_body = first_card.get("body")
+    card_text = (card_body.get("text") if isinstance(card_body, dict)
+                 else card_body) or ""
 
     start, end = raw.get("start_date"), raw.get("end_date")
     days_running = 0
@@ -227,10 +249,10 @@ def _to_creative(raw: dict) -> Creative:
         media_type=media_type,
         source_asset_url=source_asset,
         poster_source_url=poster,
-        headline=snapshot.get("title") or "",
-        primary_text=(snapshot.get("body") or {}).get("text") or "",
-        cta=snapshot.get("cta_text") or "",
-        landing_url=snapshot.get("link_url") or "",
+        headline=snapshot.get("title") or first_card.get("title") or "",
+        primary_text=(snapshot.get("body") or {}).get("text") or card_text,
+        cta=snapshot.get("cta_text") or first_card.get("cta_text") or "",
+        landing_url=snapshot.get("link_url") or first_card.get("link_url") or "",
         platform="meta",
         publisher_platforms=raw.get("publisher_platform") or [],
         first_seen=_unix_to_iso(start),
