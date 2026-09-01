@@ -145,6 +145,11 @@ class BaseSession:
         # get_app_user_token() into a cached bearer token for the conversation.
         self._app_user_input: Optional[dict[str, Any]] = None
         self._app_user_token: Optional[str] = None
+        # Objects the caller has open and unsaved, as sent with this message. A
+        # plain attribute rather than a context key on purpose: context is
+        # persisted to CONTEXT_JSON and a page definition reaches 1.4MB. These are
+        # per-message anyway, so there is nothing to carry forward.
+        self.open_drafts: list[dict[str, Any]] = []
 
     def set_app_user(self, app_user: Optional[dict[str, Any]]) -> None:
         """Stash the app-user credentials from the ChatRequest.

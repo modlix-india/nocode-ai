@@ -570,6 +570,7 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         visuals_browser as _visuals_browser, image_ops as _image_ops,
         security as _security, app_admin as _app_admin,
         messaging as _messaging, runtime as _runtime,
+        draft_tools as _draft_tools,
     )
     from app.agents.appbuilder.tools.meta_tools import META_TOOLS as _meta_tools  # noqa: PLC0415
     from app.agents.appbuilder.tools.code_workspace import (  # noqa: PLC0415
@@ -594,6 +595,8 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         ("Per-app knowledge base (cfa_app_kb — propose-then-commit)", [t.name for t in _kb_app_tools]),
         ("Lore — what this app already knows (read before you change anything)",
          [t.name for t in _lore_tools]),
+        ("Draft surface — the review link, pending work, publish",
+         [t.name for t in _draft_tools.DRAFT_TOOLS]),
         ("Apps + themes + styles + URI paths", [t.name for t in _app_admin.TOOLS]),
         ("Pages + composition (component CRUD + binding/styling)", [t.name for t in _pages.TOOLS]),
         ("Components catalogue (types, schema, examples)", [t.name for t in _components.TOOLS]),

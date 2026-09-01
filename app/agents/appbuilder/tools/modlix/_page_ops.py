@@ -40,6 +40,7 @@ from typing import Any
 
 from app.core.tools.base import ToolResult
 from app.core.tools.http_client import SaasClient
+from . import _draft_surface as drafts
 
 API_PREFIX = "/api/ui/pages"
 
@@ -116,7 +117,15 @@ async def fetch_page_by_name(
         if not match:
             return None, f"Page '{page_name}' not found in app '{app_code}'."
 
-    detail = await client.get(f"{API_PREFIX}/{match['id']}", headers=headers)
+    # Read the draft when this turn is drafting, so the agent sees the work it
+    # did a moment ago rather than the last published version of it. The flag is
+    # read-through: no draft row means the live document comes back unchanged.
+    on = await drafts.active(client, headers, app_code)
+    detail = await client.get(
+        f"{API_PREFIX}/{match['id']}",
+        headers=headers,
+        params=drafts.params_with_draft(None, on),
+    )
     if detail.success:
         return detail.data, None
     err_text = detail.error or ""
@@ -141,14 +150,24 @@ async def save_page(
     body = {**page_data, "message": message or page_data.get("message", "")}
     object_client = body.get("clientCode", "")
 
+    on = await drafts.active(client, headers, body.get("appCode") or "")
+
     if object_client and object_client != user_client_code:
+        # Creating an override. Creation is never drafted: the backend would
+        # still write a real live document, and a Draft row keyed on a name that
+        # has no live counterpart has nothing to publish over.
         override = {k: v for k, v in body.items() if k != "id"}
         return await client.post(API_PREFIX, headers=headers, json=override)
 
     page_id = body.get("id")
     if not page_id:
         return ToolResult(success=False, error="save_page: page_data has no 'id' field.")
-    return await client.put(f"{API_PREFIX}/{page_id}", headers=headers, json=body)
+    return await client.put(
+        f"{API_PREFIX}/{page_id}",
+        headers=headers,
+        json=body,
+        params=drafts.params_with_draft(None, on),
+    )
 
 
 # ── Page construction ────────────────────────────────────────────────────────
