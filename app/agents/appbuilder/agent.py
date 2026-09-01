@@ -15,6 +15,8 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.core.context import BaseContext
+from app.core.tools.draft_registry import DraftEntry, DraftRegistry, open_drafts
+from app.agents.appbuilder.tools.modlix._draft_surface import draft_mode
 from app.agents.appbuilder.context import (
     HOT_TOOLS,
     deferred_tool_names,
@@ -137,6 +139,61 @@ class AppBuilderAgent(BaseAgent):
         fetched = session.context.get("fetched_schemas") or ()
         return {name for name in deferred if name not in fetched}
 
+    async def run(
+        self,
+        user_message: str,
+        session: BaseSession,
+        event_stream: Any,
+        image_blocks: list[dict[str, Any]] | None = None,
+        model_override: str | None = None,
+    ) -> None:
+        """Run one turn with the caller's open drafts in scope.
+
+        A chat embedded in an editor tells us which objects the user has open and
+        unsaved. For exactly those, tools read the user's copy and their writes are
+        held there instead of saved, so the change can be looked at before it is
+        committed. A caller that declares nothing (the plain chat page) holds
+        nothing and gets precisely the behaviour it always had; the registry is
+        still built, because it is also how a write that really happened gets
+        reported back.
+        """
+        draft_token = draft_mode.set(bool(session.context.get("draft_mode")))
+        declared = getattr(session, "open_drafts", None)
+        # Built even when the caller declares nothing, because it carries the
+        # event stream as well as the held objects. A turn with nothing declared
+        # still writes, and the surface that asked for the turn is still showing
+        # what was written; with no registry there was nobody to tell.
+        registry = DraftRegistry(session_id=session.session_id)
+        registry.stream = event_stream
+        if declared:
+            for d in declared:
+                # A caller may name the kind or the API it saves to. Resolving the
+                # second from the first here keeps that mapping in exactly one
+                # place, the same table the intercept matches against, so the two
+                # cannot disagree about what a path means.
+                kind = d.get("kind") or ""
+                if not kind and d.get("api"):
+                    kind = DraftRegistry.resolve(d["api"])[0] or ""
+                if not kind or not d.get("id"):
+                    logger.warning("ignoring an undeclarable open draft: %s", d.get("api") or d)
+                    continue
+                registry.declare(DraftEntry(
+                    kind=kind,
+                    id=str(d["id"]),
+                    name=d.get("name", ""),
+                    app_code=d.get("app_code", ""),
+                    doc=d.get("doc") or {},
+                    overlay=d.get("overlay"),
+                ))
+        token = open_drafts.set(registry)
+        try:
+            await super().run(
+                user_message, session, event_stream, image_blocks, model_override,
+            )
+        finally:
+            open_drafts.reset(token)
+            draft_mode.reset(draft_token)
+
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Extend BaseAgent's context with appbuilder-specific fields.
 
@@ -181,6 +238,14 @@ class AppBuilderAgent(BaseAgent):
         editor = self._build_editor_context(session)
         if editor:
             parts.append(editor)
+
+        drafts_note = self._build_open_drafts_context(session)
+        if drafts_note:
+            parts.append(drafts_note)
+
+        draft_note = await self._build_draft_surface_context(session)
+        if draft_note:
+            parts.append(draft_note)
 
         # Pre-flight grounding: fetch app definition + top pages once per
         # session so the agent walks in knowing the structure. Saves 3-10
@@ -284,6 +349,100 @@ class AppBuilderAgent(BaseAgent):
             "this screen are not necessarily app objects, so do not feed them to "
             "the page or storage tools without checking what they are first.\n"
             + "\n".join(lines)
+        )
+
+    async def _build_draft_surface_context(self, session: BaseSession) -> str:
+        """Tell the agent its edits are going somewhere the user has to approve.
+
+        Without this the agent reports work as done, and the user looks at the
+        live app and sees nothing. It also has to know the ordinary page URL
+        renders LIVE, or it screenshots its own change, sees the old page, and
+        starts debugging a problem that does not exist. That happened.
+        """
+        if not session.context.get("draft_mode"):
+            return ""
+
+        app_code = session.context.get("app_code") or (
+            session.auth.app_code if session.auth else ""
+        )
+        if not app_code:
+            return ""
+
+        from app.agents.appbuilder.tools.modlix import _draft_surface as ds
+        from app.core.tools.http_client import SaasClient
+        from app.config import settings
+
+        client = SaasClient(settings.GATEWAY_URL)
+        headers = self._draft_probe_headers(session)
+        if not await ds.supported(client, headers, app_code):
+            # Say nothing. Promising a review step this deployment cannot provide
+            # is worse than saying nothing, because the user would then look for
+            # a draft that does not exist and trust that live is untouched.
+            return ""
+
+        return (
+            "Your definition edits in this app go to its DRAFT surface, not live. "
+            "They are real and saved, but only visible on the draft surface until "
+            "someone publishes them.\n"
+            "- Tell the user their changes are ready for review, and give them the "
+            "draft link from `get_draft_link`.\n"
+            "- To LOOK at your own change, screenshot the draft host from "
+            "`get_draft_link`. The ordinary page URL renders the live app and will "
+            "not show your work, so a screenshot of it proves nothing.\n"
+            "- Never publish because you finished. `publish_app` needs the user to "
+            "ask for it.\n"
+            "- Creating an object is never drafted; a new page or storage exists "
+            "immediately. Only edits to existing definitions are held back."
+        )
+
+    @staticmethod
+    def _draft_probe_headers(session: BaseSession) -> dict[str, str]:
+        """Auth headers for a probe made outside a tool call.
+
+        Delegates to AuthContext rather than assembling a subset. An earlier
+        version built its own dict and left out X-Forwarded-Host, so the gateway
+        resolved the request against localhost, found no app, and answered 403 --
+        which the probe then read as "this deployment has no draft surface" and
+        quietly kept writing live.
+        """
+        return session.auth.to_headers() if session.auth else {}
+
+    @staticmethod
+    def _build_open_drafts_context(session: BaseSession) -> str:
+        """Tell the agent which of its writes will be saved and which will not.
+
+        This asymmetry is invisible from inside a tool call: every write returns
+        success either way. The agent is the only thing that can explain it to the
+        user, so it has to know. Getting this wrong in the confident direction is
+        the worst outcome available here: telling someone a theme change is
+        waiting for their approval when it went live across the whole app.
+        """
+        declared = getattr(session, "open_drafts", None)
+        if not declared:
+            return ""
+
+        # The workspace names the API rather than the kind, so fall back to it
+        # rather than printing a blank where the object type should be.
+        def _label(d: dict) -> str:
+            from app.core.tools.draft_registry import DraftRegistry
+
+            kind = d.get("kind") or (
+                DraftRegistry.resolve(d["api"])[0] if d.get("api") else None
+            )
+            return f"{kind or 'object'} '{d.get('name') or d.get('id')}'"
+
+        held = ", ".join(_label(d) for d in declared)
+        return (
+            "The user has these open in front of them, unsaved: " + held + ".\n"
+            "Your edits to those appear on their screen straight away but are NOT "
+            "saved. They review them and press Save themselves, so never tell them "
+            "to reload, and never claim you have saved one.\n"
+            "Everything else you touch IS saved the moment you touch it, including "
+            "creating and deleting. When you change something outside that list, "
+            "say which object it was and how far it reaches: a theme or style edit "
+            "changes every page in the app, and the user cannot undo it from here.\n"
+            "Listings still read saved state, so an unsaved rename will not show up "
+            "in list_pages or list_storages. That is expected, not a stale cache."
         )
 
     _NAMED_PAGE_REF_KEYS: tuple[str, ...] = (

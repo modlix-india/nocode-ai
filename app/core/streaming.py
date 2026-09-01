@@ -62,6 +62,8 @@ class AgentEventType(str, Enum):
     AGENT_FINISHED = "agent_finished"  # Sub-agent finished
     AGENT_USAGE = "agent_usage"  # Token usage update for an agent
     CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
+    DRAFT_PATCH = "draft_patch"  # A write held in the user's open draft, not saved
+    OBJECT_CHANGED = "object_changed"  # A write that really did save, so refetch it
 
 
 @dataclass
@@ -357,6 +359,65 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.FEEDBACK_REQUEST,
             data={"session_id": session_id, "turn_number": turn_number},
+        ))
+
+    async def emit_draft_patch(
+        self,
+        kind: str,
+        obj_id: str,
+        name: str,
+        app_code: str,
+        patch: dict[str, Any],
+    ) -> None:
+        """A write that was held in the user's open draft instead of saved.
+
+        The client applies this into the copy it already has on screen. For a page
+        the patch names the components that changed and the ones that went away;
+        for everything else it carries the whole document, which for a form's worth
+        of fields is smaller than describing the difference.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.DRAFT_PATCH,
+            data={
+                "kind": kind,
+                "id": obj_id,
+                "name": name,
+                "app_code": app_code,
+                "patch": patch,
+                "agent_id": current_agent_id.get(),
+            },
+        ))
+
+    async def emit_object_changed(
+        self,
+        kind: str,
+        obj_id: str,
+        name: str,
+        app_code: str,
+        operation: str,
+        draft: bool = False,
+    ) -> None:
+        """A write that really did reach the database.
+
+        Sent for objects the user does NOT have open, which is the case the rule
+        deliberately lets through. The client uses it to refresh anything on screen
+        that shows the object: most sharply, a theme edit made from the page editor,
+        which is saved app-wide and must still appear on the canvas.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.OBJECT_CHANGED,
+            data={
+                "kind": kind,
+                "id": obj_id,
+                "name": name,
+                "app_code": app_code,
+                "operation": operation,
+                # Which surface received it. The editor reads and saves the draft,
+                # so it has to refetch the same one, and the panel must not tell
+                # the user a drafted change is already live.
+                "draft": draft,
+                "agent_id": current_agent_id.get(),
+            },
         ))
 
     async def request_confirmation(

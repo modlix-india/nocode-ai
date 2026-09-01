@@ -313,8 +313,13 @@ def _append_properties(lines: list[str], props: list[dict]) -> None:
     """Append property names and enum values to output lines."""
     if not props:
         return
-    prop_names = [p.get("name", "?") for p in props[:20]]
-    lines.append(f"Properties: {', '.join(prop_names)}")
+    # A flat [:20] slice buried TextBox's shortcut props (indexes 38-43), so the
+    # agent saw `shortcutAction: [...]` enums with no property name to attach them
+    # to. Keep the cap for budget, but never let it drop a shortcut property.
+    names = [p.get("name", "?") for p in props]
+    head = names[:20]
+    tail = [n for n in names[20:] if n.startswith("shortcut") or n == "onShortcut"]
+    lines.append(f"Properties: {', '.join(head + tail)}")
     for p in props:
         enum_vals = p.get("enumValues", [])
         if enum_vals:

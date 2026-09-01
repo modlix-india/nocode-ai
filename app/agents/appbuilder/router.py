@@ -68,6 +68,30 @@ class AppUserAuth(BaseModel):
     password: Optional[str] = None
 
 
+class OpenDraft(BaseModel):
+    """One object the caller has open, unsaved.
+
+    A page arrives as `overlay`: the components that differ from the saved
+    version, because a real page reaches 1.4MB and shipping it whole on every
+    message would put megabytes on the wire to say "nothing has changed". A clean
+    page sends an empty overlay. Everything else is a form's worth of fields, so
+    it arrives whole in `doc`.
+    """
+
+    kind: str = ""
+    # The collection this object saves to, e.g. "/api/core/storages". An
+    # alternative to naming the kind, and the usual one: the workspace keeps the
+    # API on each tab but no kind name, and resolving one from the other on this
+    # side means the mapping lives only in the intercept's table.
+    api: str = ""
+    id: str
+    name: str = ""
+    app_code: str = ""
+    dirty: bool = False
+    doc: Optional[dict] = None
+    overlay: Optional[dict] = None
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
@@ -88,6 +112,18 @@ class ChatRequest(BaseModel):
     # active_object, open_tabs and open_tab_ids. Lets the agent answer about
     # the thing in front of the user without a discovery round-trip first.
     editor_context: Optional[dict] = None
+    # Objects the caller has open and unsaved. For exactly these, the agent reads
+    # the caller's copy and holds its writes there instead of saving, so the user
+    # can look at the change before committing it. Everything else is written
+    # normally. A caller that sends nothing (the plain chat page) gets exactly the
+    # behaviour it always had.
+    open_drafts: Optional[List[OpenDraft]] = None
+    # Send definition writes to the app's draft surface instead of live, so the
+    # user gets a reviewable copy and the agent can screenshot its own work.
+    # Off by default: turning it on silently would change where every existing
+    # caller's edits land, and the agent degrades to live writes anyway on a
+    # deployment that has no draft surface.
+    draft_mode: bool = False
 
 
 class TemplateAiRequest(BaseModel):
@@ -226,6 +262,13 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
         session.context["app_code"] = body.app_code
     if body.editor_context:
         session.context["editor_context"] = body.editor_context
+    session.context["draft_mode"] = body.draft_mode
+    if body.open_drafts:
+        # Kept as plain dicts on the session so the agent can build the registry
+        # when it has the event stream in hand. The documents themselves never go
+        # near session.context's persisted half: a page reaches 1.4MB and that
+        # column is not the place for it.
+        session.open_drafts = [d.model_dump() for d in body.open_drafts]
     # Pre-approve mutating tools for headless/harness callers (see agent loop).
     session.context["auto_confirm"] = body.auto_confirm
 

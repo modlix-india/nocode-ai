@@ -40,6 +40,7 @@ from . import _conventions as c
 from . import _kirun_dsl as kirun_dsl
 from . import _kirun_layout as kirun_layout
 from . import _page_ops as p_ops
+from . import _draft_surface as drafts
 
 
 # Shared constants — reduce description duplication.
@@ -138,7 +139,31 @@ async def _put_event(
     context: dict[str, Any], page_id: str, event_key: str,
     definition: dict[str, Any], expected_version: int, message: str,
 ) -> tuple[bool, str]:
+    """Save one page event function.
+
+    The `/events/{key}` route is live-only, like `/components/{key}`. While the
+    turn is drafting, using it would publish the handler to everyone the moment
+    it is written, so instead the whole page is read draft-first, the event
+    folded in, and written back through the drafting save path.
+    """
     client, headers = _client_and_headers(context)
+    app_code = context.get("app_code", "") or ""
+
+    if await drafts.active(client, headers, app_code):
+        got = await client.get(
+            f"{p_ops.API_PREFIX}/{page_id}",
+            headers=headers,
+            params=drafts.params_with_draft(None, True),
+        )
+        if not got.success or not isinstance(got.data, dict):
+            return False, got.error or f"Could not read page {page_id} to draft its event."
+        page = got.data
+        page.setdefault("eventFunctions", {})[event_key] = definition
+        save = await p_ops.save_page(
+            client, page, headers, context.get("client_code", "") or "", message=message,
+        )
+        return (True, "") if save.success else (False, save.error)
+
     body = {"definition": definition, "expectedEventVersion": expected_version, "message": message}
     r = await client.put(f"{p_ops.API_PREFIX}/{page_id}/events/{event_key}", headers=headers, json=body)
     if not r.success:
