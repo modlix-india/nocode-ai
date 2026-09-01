@@ -1,7 +1,7 @@
 # Implementation Notes: adzump competitor entries - verified URLs + typed CompetitorProfile
 
 Spec: http://localhost:8765/plans/adzump-competitor-profile-plan.html
-Progress: CP-1 done (`b212f59`) · CP-2 done · CP-3 waits on D-4
+Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 superseded by the source swap) · scrapecreators source done
 
 ## Decisions Not in the Spec
 
@@ -25,3 +25,15 @@ Progress: CP-1 done (`b212f59`) · CP-2 done · CP-3 waits on D-4
 - **`pageSize: 1`, top listing only**: with the locality bias and the name-similarity guard, taking one result keeps the call cheapest; scanning N listings for a better name match can be added later if rejects show up in logs (`places_url_rejected` lines make that measurable).
 - **Bias radius 50km**: metro-wide, and the API's documented cap. No-coords sessions still search, just unbiased - the name guard is the backstop.
 - **Evidence-URL fix has no unit test**: the `fetch_url or url` pick sits inline in `_shortlist_competitors`'s evidence loop; extracting a one-line helper to make it testable buys a tautology. Covered by the manual rerun (working expectation: linked cards) instead.
+
+### ScrapeCreators source (post-plan, Kailash's call 2026-09-01)
+
+- **Why**: adlibrary.com results were inconsistent (regional crawl lag; 1-of-5 fetch). scrapecreators.com scrapes Meta's real Ad Library: `is_active`/`start_date`/`end_date` are Meta's values, and search supports a country filter. Decisions taken via chips: default source NOW (adlibrary stays as `ADS_INTEL_SOURCE=adlibrary` fallback), status=ALL (full history; real `is_active` marks live ads).
+- **Keyword search needs advertiser selection**: unlike a company query, `/search/ads` mixes many pages. `_ads_of_the_advertiser` keeps exactly ONE page's ads: the page whose ads link to the competitor's domain (catches a parent-brand page advertising the project microsite), else the page whose name fuzzy-matches, else an honest empty fetch - a wrong advertiser's creatives must never enter the shared library. This replaces D-4 entirely: the fetch is name-driven, so CP-3's name-key fallback is moot.
+- **Exact phrase first, one unordered retry**: multi-word project names match junk with `keyword_unordered`; zero exact-phrase hits fall back once.
+- **Protocol grew `country: str = ""`**: threaded from `product_data.place.country_code` in `_fetch_stage`; adlibrary ignores it (no regional filter on that API).
+- **PAGE_LIMIT = 3 cursor pages** per search (each page is a metered credit); cap still `MAX_CREATIVES_PER_COMPETITOR = 60`.
+- **Video field names are best-effort**: the docs example had `videos: []`; the adapter reads `video_hd_url`/`video_sd_url`/`video_preview_image_url` (ScrapeCreators' documented Meta scrape shape). First live video fetch should be eyeballed; an unknown shape degrades to an empty asset URL, which the renderer already skips.
+- **Metrics are thin by design**: Meta's library exposes spend/impressions only for EU/political ads; only `estSpend` is mapped when present. The craft metric tiles omit zeros already.
+- **config.py commit dance**: the file is skip-worktree'd (local GATEWAY_URL override); the commit stages a crafted HEAD+settings blob so only the new settings land, then skip-worktree is restored.
+- **Not live-tested**: SCRAPECREATORS_API_KEY is not in variables.sh yet; Kailash adds it, then the real-estate session rerun validates end to end.

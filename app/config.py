@@ -187,6 +187,11 @@ class Settings(BaseSettings):
     # adlibrary.com ad-intelligence API - fetches competitor ad creatives.
     ADLIBRARY_API_KEY: str = ""  # Bearer key ("adl_...") - Business plan
     ADLIBRARY_BASE_URL: str = "https://adlibrary.com/api"
+    # scrapecreators.com - Meta Ad Library scrape; real is_active + country
+    # filter. The default creative source (adlibrary.com kept as fallback).
+    SCRAPECREATORS_API_KEY: str = ""
+    SCRAPECREATORS_BASE_URL: str = "https://api.scrapecreators.com"
+    ADS_INTEL_SOURCE: str = "scrapecreators"  # "scrapecreators" | "adlibrary"
     # Competitor-creative library scope.
     #   False (default, current): store under the logged-in client's own
     #     clientCode - simple, uses the user's JWT directly.
@@ -235,6 +240,8 @@ class Settings(BaseSettings):
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
             ("adzump", "adLibraryAPIKey"): "ADLIBRARY_API_KEY",
+            ("adzump", "scrapeCreatorsAPIKey"): "SCRAPECREATORS_API_KEY",
+            ("adzump", "adsIntelSource"): "ADS_INTEL_SOURCE",
         }
         
         for keys, attr in mappings.items():

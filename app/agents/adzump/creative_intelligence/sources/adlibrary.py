@@ -73,7 +73,8 @@ def _is_active(last_seen_unix: Any) -> bool:
 class AdLibrarySource:
     """``AdIntelligenceSource`` backed by adlibrary.com."""
 
-    async def fetch(self, *, domain: str, name: str) -> SourceFetch:
+    async def fetch(self, *, domain: str, name: str, country: str = "") -> SourceFetch:
+        # ``country`` unused: adlibrary.com's search has no regional filter.
         raw_ads = await self._fetch_ads(domain=domain, name=name)
         creatives = [self._to_creative(a) for a in raw_ads]
         first = raw_ads[0] if raw_ads else {}

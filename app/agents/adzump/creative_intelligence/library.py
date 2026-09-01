@@ -24,6 +24,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
+from app.config import settings
 from app.agents.adzump import _uploads
 from app.agents.adzump.creative_intelligence import store
 from app.agents.adzump.models import CompetitorProfile
@@ -35,6 +36,9 @@ from app.agents.adzump.creative_intelligence.models import (
     MAX_CREATIVES_PER_COMPETITOR,
 )
 from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibrarySource
+from app.agents.adzump.creative_intelligence.sources.scrapecreators import (
+    ScrapeCreatorsSource,
+)
 from app.agents.adzump.creative_intelligence.sources.base import (
     AdIntelligenceSource,
     SourceFetch,
@@ -54,7 +58,28 @@ MAX_VIDEOS_PER_COMPETITOR = 6
 # essence=None (stored + rendered all the same).
 ESSENCE_RECENCY_DAYS = 30
 
-_DEFAULT_SOURCE = AdLibrarySource()
+_SOURCES = {"scrapecreators": ScrapeCreatorsSource, "adlibrary": AdLibrarySource}
+_default_source_instance: object | None = None
+
+
+def _default_source():
+    """The configured vendor (settings.ADS_INTEL_SOURCE), built once. Unknown
+    values fall back to scrapecreators with a warning - never a crash."""
+    global _default_source_instance
+    if _default_source_instance is None:
+        chosen = (settings.ADS_INTEL_SOURCE or "scrapecreators").lower()
+        source_cls = _SOURCES.get(chosen)
+        if source_cls is None:
+            logger.warning("ADS_INTEL_SOURCE=%r unknown, using scrapecreators", chosen)
+            source_cls = ScrapeCreatorsSource
+        _default_source_instance = source_cls()
+    return _default_source_instance
+
+
+def _campaign_country(ctx: dict) -> str:
+    """ISO alpha-2 country of the campaign's confirmed place, or empty."""
+    product = (ctx.get("session_context") or {}).get("product_data") or {}
+    return ((product.get("place") or {}).get("country_code") or "").strip()
 
 
 def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
@@ -94,7 +119,7 @@ async def _fetch_stage(
     """The rate-limited half: cache check + source fetch. Returns
     ``(fetched, prior)`` - when ``fetched`` is None, ``prior`` IS the answer
     (cache hit, stale-serve on failure, or kept-prior on empty fetch)."""
-    src = source or _DEFAULT_SOURCE
+    src = source or _default_source()
 
     record = await store.get_competitor(key, ctx)
     if record and not force and not store.is_stale(record):
@@ -104,7 +129,8 @@ async def _fetch_stage(
     why = "forced" if force else ("stale" if record else "miss")
     logger.info("creative_intelligence: fetching key=%s reason=%s", key, why)
     try:
-        fetched = await src.fetch(domain=key, name=name)
+        fetched = await src.fetch(domain=key, name=name,
+                                  country=_campaign_country(ctx))
     except Exception as e:
         # AdLibraryError, transport errors, bad JSON - ANY source failure serves
         # stale rather than raising (the batch contract in the module docstring).

@@ -30,7 +30,11 @@ class SourceFetch(BaseModel):
 class AdIntelligenceSource(Protocol):
     """A vendor of competitor ad creatives. Query by brand ``name`` (the one mode
     every source supports); ``domain`` narrows/dedupes when the vendor exposes an
-    advertiser domain. Raises on non-recoverable failures (auth/credits) so the
-    library can serve stale rather than store an empty record."""
+    advertiser domain; ``country`` (ISO alpha-2, may be empty) scopes vendors
+    that support regional search. Raises on non-recoverable failures
+    (auth/credits) so the library can serve stale rather than store an empty
+    record."""
 
-    async def fetch(self, *, domain: str, name: str) -> SourceFetch: ...
+    async def fetch(
+        self, *, domain: str, name: str, country: str = ""
+    ) -> SourceFetch: ...

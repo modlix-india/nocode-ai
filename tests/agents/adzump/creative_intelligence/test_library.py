@@ -25,7 +25,7 @@ class FakeSource:
         self._exc = exc
         self.calls = 0
 
-    async def fetch(self, *, domain, name):
+    async def fetch(self, *, domain, name, country=""):
         self.calls += 1
         if self._exc is not None:
             raise self._exc
@@ -143,6 +143,18 @@ class LibraryTests(unittest.TestCase):
             self.assertIsNone(asyncio.run(library.creatives_for(
                 key="", name="x", ctx={}, source=FakeSource())))
 
+    def test_default_source_selection(self):
+        rows = [("scrapecreators", library.ScrapeCreatorsSource),
+                ("adlibrary", library.AdLibrarySource),
+                ("bogus", library.ScrapeCreatorsSource)]  # unknown -> default
+        for value, source_cls in rows:
+            with self.subTest(value):
+                library._default_source_instance = None
+                with mock.patch.object(library.settings, "ADS_INTEL_SOURCE", value):
+                    self.assertIsInstance(library._default_source(), source_cls)
+        library._default_source_instance = None
+        self.addCleanup(lambda: setattr(library, "_default_source_instance", None))
+
     def test_essence_ingest_wiring(self):
         with self.subTest("enrich sees only survivors; essences land in the ONE write"):
             enrich = FakeEnrich(essences={"a1": Essence(angle="lakeside living")})
@@ -258,7 +270,7 @@ class LibraryTests(unittest.TestCase):
             fetched_second = asyncio.Event()
 
             class GateSource(FakeSource):
-                async def fetch(self, *, domain, name):
+                async def fetch(self, *, domain, name, country=""):
                     if domain == "adidas.com":
                         fetched_second.set()
                     return await super().fetch(domain=domain, name=name)
