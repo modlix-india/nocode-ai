@@ -171,9 +171,15 @@ def _ads_of_the_advertiser(ads: list[dict], *, domain: str, name: str) -> list[d
         if not host:
             return False
         for ad in page_ads:
-            link_host = host_of((ad.get("snapshot") or {}).get("link_url") or "")
-            if link_host and host in link_host:
-                return True
+            snapshot = ad.get("snapshot") or {}
+            # Lead-gen ads carry link_url=fb.me; the real site rides in
+            # extra_links - scan both.
+            links = [snapshot.get("link_url") or ""]
+            links += [l for l in snapshot.get("extra_links") or [] if isinstance(l, str)]
+            for link in links:
+                link_host = host_of(link)
+                if link_host and host in link_host:
+                    return True
         return False
 
     name_compact = _compact(name)

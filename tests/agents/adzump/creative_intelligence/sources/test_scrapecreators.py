@@ -131,6 +131,17 @@ class AdvertiserSelectionTests(unittest.TestCase):
             ads, domain="purvasparklingspring.com", name="Purva Sparkling Springs")
         self.assertEqual({a["page_id"] for a in chosen}, {"dev"})
 
+    def test_leadgen_domain_match_via_extra_links(self):
+        # Live shape (2026-09-01): lead ads carry link_url=fb.me; the real
+        # site rides in snapshot.extra_links.
+        ad = _ad(page_id="dev", page_name="Some Renamed Page",
+                 link_url="http://fb.me/")
+        ad["snapshot"]["extra_links"] = ["https://fincity.com/privacypolicy2",
+                                         "https://purvasparklingspring.com/"]
+        chosen = _ads_of_the_advertiser(
+            [ad], domain="purvasparklingspring.com", name="Purva Sparkling Springs")
+        self.assertEqual({a["page_id"] for a in chosen}, {"dev"})
+
     def test_name_match_without_domain(self):
         ads = [_ad(page_id="junk", page_name="Springs Salon")] * 3 \
             + [_ad(page_id="own", page_name="Purva Sparkling Springs")]
