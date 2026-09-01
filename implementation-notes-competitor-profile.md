@@ -1,7 +1,7 @@
 # Implementation Notes: adzump competitor entries - verified URLs + typed CompetitorProfile
 
 Spec: http://localhost:8765/plans/adzump-competitor-profile-plan.html
-Progress: CP-1 done · next CP-2
+Progress: CP-1 done (`b212f59`) · CP-2 done · CP-3 waits on D-4
 
 ## Decisions Not in the Spec
 
@@ -16,3 +16,12 @@ Progress: CP-1 done · next CP-2
 - **Single-lookup heals legacy lists**: `_lookup_single_competitor` normalizes the whole stored list through the model on entry, so pre-model sessions carrying `product_name` entries are repaired the first time they are touched; the `product_name` fallback reads at `competitor.py:420/526` are deleted.
 - **creatives write-back is index-aligned**: `profiles` mirrors `competitors` by index (None for non-dict junk) so `competitors[i] = profile.to_stored()` can never land on the wrong entry when a list contains a malformed element.
 - **`creatives_for_all` now takes `list[CompetitorProfile]`**: the library's `competitor_identity` reads `.url`/`.name` typed; the phantom `comp.get("domain")` fallback (never written by anything) died with it. Both retirements are grep-locked in `test_competitor_profile.py`.
+
+### CP-2
+
+- **Places API (New) over legacy Text Search**: the legacy `/place/textsearch` endpoint needs a second Place Details call to get the website; `places:searchText` with a field mask (`places.displayName,places.websiteUri`) returns it in one call. Heads up: the Google key must have "Places API (New)" enabled - if lookups log `places_search non-200 ... 403`, that's the missing enablement, not a code bug.
+- **Adapter is a dumb lookup, guards live in discovery**: the plan sketched guards inside `find_business_website`; they landed in `_resolve_missing_urls` instead because both guards are discovery-owned concepts (`_normalize_name` fuzzy matching, `_is_aggregator_host` with the module's extra hosts). The adapter returns `{name, website}` or None, nothing else.
+- **Shared-host reject = the aggregator check**: `AGGREGATOR_HOSTS` in `_shared.py` already contains facebook/instagram/youtube etc., so a GBP whose website is a social page is rejected by the same predicate that rejects 99acres - no second host list to maintain.
+- **`pageSize: 1`, top listing only**: with the locality bias and the name-similarity guard, taking one result keeps the call cheapest; scanning N listings for a better name match can be added later if rejects show up in logs (`places_url_rejected` lines make that measurable).
+- **Bias radius 50km**: metro-wide, and the API's documented cap. No-coords sessions still search, just unbiased - the name guard is the backstop.
+- **Evidence-URL fix has no unit test**: the `fetch_url or url` pick sits inline in `_shortlist_competitors`'s evidence loop; extracting a one-line helper to make it testable buys a tautology. Covered by the manual rerun (working expectation: linked cards) instead.

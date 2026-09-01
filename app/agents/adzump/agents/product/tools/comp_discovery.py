@@ -113,6 +113,52 @@ def _is_aggregator_host(host: str) -> bool:
     return is_aggregator_host(host, _AGGREGATOR_EXTRA)
 
 
+def _listing_name_matches(candidate_name: str, listing_name: str) -> bool:
+    """Fuzzy same-business check between a candidate and a Places listing:
+    compact-normalized containment either way ("Lodha Azur" matches
+    "Lodha Azur by Lodha Group", not "Lodha Bellezza")."""
+    a = _normalize_name(candidate_name).replace(" ", "")
+    b = _normalize_name(listing_name).replace(" ", "")
+    return bool(a) and bool(b) and (a in b or b in a)
+
+
+async def _resolve_missing_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> None:
+    """Fill missing/aggregator candidate URLs from the Google Business Profile.
+
+    One locality-biased Places lookup per unresolved candidate, accepted only
+    when the listing name matches and the website is a real brand host - a
+    wrong URL is worse than none (it would poison the shared creative-library
+    key). Accepted URLs still pass the fetch-verify stage; rejects leave the
+    candidate untouched."""
+    from app.agents.adzump.adapters.google.maps import GoogleMapsClient
+
+    unresolved = [
+        c for c in candidates
+        if not _host_of(c.get("url")) or _is_aggregator_host(_host_of(c.get("url")))
+    ]
+    if not unresolved:
+        return
+    place = (session_ctx.get("product_data") or {}).get("place") or {}
+    lat, lng = place.get("lat"), place.get("lng")
+    maps = GoogleMapsClient()
+    for cand in unresolved:
+        listing = await maps.find_business_website(cand["name"], lat=lat, lng=lng)
+        if not listing:
+            continue
+        if not _listing_name_matches(cand["name"], listing["name"]):
+            logger.info("places_url_rejected: name mismatch %r vs listing %r",
+                        cand["name"], listing["name"])
+            continue
+        host = _host_of(listing["website"])
+        if not host or _is_aggregator_host(host):
+            logger.info("places_url_rejected: shared/aggregator host %s for %r",
+                        host, cand["name"])
+            continue
+        logger.info("places_url_resolved: %r -> %s", cand["name"], host)
+        cand["url"] = listing["website"]
+        cand["host"] = host
+
+
 def _score_code_signals(
     search_results: list[dict[str, Any]], primary_host: str,
     primary_name: str = "",
@@ -650,8 +696,14 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         if c["composite_score"] >= _SHORTLIST_MIN_COMPOSITE_SCORE
     ][:max_fetches + 4]  # take a few extra in case URL resolution fails for some
 
+    # URL resolution: candidates whose URL is missing or aggregator-hosted get
+    # one locality-biased Google Business Profile lookup. A resolved URL is NOT
+    # trusted - it joins the fetch-verify stage below like any search-derived
+    # URL. Nothing is ever guessed (the domain-pattern guesser is retired).
+    await _resolve_missing_urls(above_threshold, session_ctx)
+
     # Let ALL candidates with URLs through to the fetch stage - including
-    # Maps/aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
+    # aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
     # extracts the official URL from the page and re-fetches.
     fetch_candidates = [c for c in above_threshold if c.get("url")][:max_fetches]
 
@@ -721,8 +773,12 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     ]
     for c in verified:
         lines.append(f"### {c['name']}")
-        if c.get("url"):
-            lines.append(f"URL: {c['url']}")
+        # The VERIFIED url: fetch_url is the page we actually read (post
+        # aggregator-follow/redirects) - printing the original would hand the
+        # analyst an aggregator link that _clean_urls nulls downstream.
+        verified_url = c.get("fetch_url") or c.get("url")
+        if verified_url:
+            lines.append(f"URL: {verified_url}")
         fmt = bool(c.get("format_match"))
         buyer = bool(c.get("buyer_profile_match"))
         geo = bool(c.get("geo_match"))
