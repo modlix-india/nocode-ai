@@ -26,6 +26,7 @@ from typing import Awaitable, Callable
 
 from app.agents.adzump import _uploads
 from app.agents.adzump.creative_intelligence import store
+from app.agents.adzump.models import CompetitorProfile
 from app.agents.adzump.creative_intelligence.dedup import dedupe
 from app.agents.adzump.creative_intelligence.enrich import CreativeImage, EnrichCreatives
 from app.agents.adzump.creative_intelligence.models import (
@@ -56,12 +57,10 @@ ESSENCE_RECENCY_DAYS = 30
 _DEFAULT_SOURCE = AdLibrarySource()
 
 
-def competitor_identity(comp: dict) -> tuple[str, str]:
-    """Pull (key, name) from a competitor entry as produced by the analysis flow
-    (``{name, url, ...}``). ``key`` is the normalized domain; empty when the entry
-    has no usable URL/domain."""
-    url = comp.get("url") or comp.get("domain") or ""
-    return store.competitor_key(url), (comp.get("name") or "").strip()
+def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
+    """Pull (key, name) from a competitor profile. ``key`` is the normalized
+    domain; empty when the profile has no usable URL."""
+    return store.competitor_key(comp.url or ""), comp.name.strip()
 
 
 async def creatives_for(
@@ -151,7 +150,7 @@ async def _process_stage(
 
 
 async def creatives_for_all(
-    competitors: list[dict], ctx: dict, *, force: bool = False,
+    competitors: list[CompetitorProfile], ctx: dict, *, force: bool = False,
     source: AdIntelligenceSource | None = None,
     enrich: EnrichCreatives | None = None,
     on_resolved: Callable[[str, Competitor], Awaitable[None]] | None = None,

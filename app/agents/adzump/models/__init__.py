@@ -12,15 +12,21 @@ from app.agents.adzump.models.campaign_spec import (
     CampaignSpec,
     offer_state,
 )
+from app.agents.adzump.models.competitor_profile import (
+    CompetitorProfile,
+    competitor_profiles,
+)
 from app.agents.adzump.models.offer_state import OfferState
 from app.agents.adzump.models.place import Place
 
 __all__ = [
     "CampaignSpec",
+    "CompetitorProfile",
     "LEGACY_DECLINED_KEYS",
     "LEGACY_MARKER_TO_FIELD",
     "OFFER_FIELDS",
     "OfferState",
     "Place",
+    "competitor_profiles",
     "offer_state",
 ]

@@ -29,6 +29,7 @@ from app.agents.adzump.models import (
     LEGACY_MARKER_TO_FIELD,
     OFFER_FIELDS,
     OfferState,
+    competitor_profiles,
     offer_state,
 )
 from app.agents.adzump.platform import Platform
@@ -665,12 +666,11 @@ def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
         return True
     if (session_ctx.get("_field_asks") or {}).get("competitor_creatives", 0) >= 2:
         return True
-    competitive_raw = session_ctx.get("competitor_analysis")
-    competitors = (competitive_raw or {}).get("competitors") or []
-    if any(c.get("creatives") for c in competitors):
+    profiles = competitor_profiles(session_ctx)
+    if any(p.creatives for p in profiles):
         return True  # pre-marker sessions where creatives are already attached
-    named = [c for c in competitors if (c.get("name") or "").strip()]
-    return competitive_raw is not None and not named
+    named = [p for p in profiles if p.name.strip()]
+    return session_ctx.get("competitor_analysis") is not None and not named
 
 
 def _apply_field(

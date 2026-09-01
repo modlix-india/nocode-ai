@@ -16,6 +16,7 @@ from app.agents.adzump.creative_intelligence import library
 from app.agents.adzump.creative_intelligence.models import Competitor, Creative, Essence
 from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibraryError
 from app.agents.adzump.creative_intelligence.sources.base import SourceFetch
+from app.agents.adzump.models import CompetitorProfile
 
 
 class FakeSource:
@@ -121,8 +122,8 @@ class LibraryTests(unittest.TestCase):
                 return None, _record(age_days=1)  # cache hit
             with mock.patch.object(library, "_fetch_stage", new=fetch_one_bad):
                 results = asyncio.run(library.creatives_for_all(
-                    [{"name": "Bad", "url": "https://bad.com"},
-                     {"name": "Nike", "url": "https://nike.com"}], ctx={}))
+                    [CompetitorProfile(name="Bad", url="https://bad.com"),
+                     CompetitorProfile(name="Nike", url="https://nike.com")], ctx={}))
             self.assertEqual(list(results), ["nike.com"])
         with self.subTest("one failed PROCESS does not abort the batch"):
             async def bad_upsert(competitor, ctx):
@@ -134,8 +135,8 @@ class LibraryTests(unittest.TestCase):
                  mock.patch.object(library.store, "upsert_competitor",
                                    new=mock.AsyncMock(side_effect=bad_upsert)):
                 results = asyncio.run(library.creatives_for_all(
-                    [{"name": "Bad", "url": "https://bad.com"},
-                     {"name": "Nike", "url": "https://nike.com"}],
+                    [CompetitorProfile(name="Bad", url="https://bad.com"),
+                     CompetitorProfile(name="Nike", url="https://nike.com")],
                     ctx={}, source=FakeSource(creatives=[_ad("a1")])))
             self.assertEqual(list(results), ["nike.com"])
         with self.subTest("no key -> None"):
@@ -236,8 +237,8 @@ class LibraryTests(unittest.TestCase):
                  mock.patch.object(library.store, "get_competitor",
                                    new=mock.AsyncMock(return_value=None)):
                 results = asyncio.run(library.creatives_for_all(
-                    [{"name": "Cached", "url": "https://cached.com"},
-                     {"name": "Nike", "url": "https://nike.com"}],
+                    [CompetitorProfile(name="Cached", url="https://cached.com"),
+                     CompetitorProfile(name="Nike", url="https://nike.com")],
                     ctx={}, on_resolved=on_resolved))
             self.assertEqual(sorted(delivered), ["cached.com", "nike.com"])
             self.assertEqual(sorted(results), ["cached.com", "nike.com"])
@@ -247,7 +248,7 @@ class LibraryTests(unittest.TestCase):
             with mock.patch.object(library.store, "get_competitor",
                                    new=mock.AsyncMock(return_value=_record(age_days=1))):
                 results = asyncio.run(library.creatives_for_all(
-                    [{"name": "Nike", "url": "https://nike.com"}],
+                    [CompetitorProfile(name="Nike", url="https://nike.com")],
                     ctx={}, on_resolved=boom))
             self.assertEqual(list(results), ["nike.com"])
         with self.subTest("competitor N's processing overlaps competitor N+1's fetch"):
@@ -273,8 +274,8 @@ class LibraryTests(unittest.TestCase):
                 with mock.patch.object(library.store, "get_competitor",
                                        new=mock.AsyncMock(return_value=None)):
                     return await library.creatives_for_all(
-                        [{"name": "Nike", "url": "https://nike.com"},
-                         {"name": "Adidas", "url": "https://adidas.com"}],
+                        [CompetitorProfile(name="Nike", url="https://nike.com"),
+                         CompetitorProfile(name="Adidas", url="https://adidas.com")],
                         ctx={}, source=GateSource(creatives=[_ad("a1")]),
                         enrich=gated)
             results = asyncio.run(run())

@@ -113,47 +113,6 @@ def _is_aggregator_host(host: str) -> bool:
     return is_aggregator_host(host, _AGGREGATOR_EXTRA)
 
 
-async def _resolve_brand_url(name: str) -> str | None:
-    """Try to find a brand's official URL by guessing common domain patterns.
-
-    Tries ``brandname.com``, ``brandname.in``, ``brandname.co.in`` with a fast
-    HEAD request. Returns the first that responds with HTTP 2xx/3xx, or None.
-    Costs 0 LLM calls, runs in ~1-2s.
-    """
-    import re as _re
-    import httpx
-
-    # Normalize: "SNN Raj Viviente" → "snnrajviviente", "Sobha Galera" → "sobhagalera"
-    slug = _re.sub(r"[^a-z0-9]", "", name.lower())
-    if not slug or len(slug) < 3:
-        return None
-
-    # Also try with hyphens: "snn-raj-viviente"
-    slug_hyphen = _re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-
-    candidates = []
-    for s in dict.fromkeys([slug, slug_hyphen]):  # dedup, preserve order
-        for suffix in (".com", ".in", ".co.in"):
-            candidates.append(f"https://{s}{suffix}")
-            candidates.append(f"https://www.{s}{suffix}")
-
-    async with httpx.AsyncClient(
-        timeout=httpx.Timeout(4.0, connect=2.0),
-        follow_redirects=True,
-        verify=False,
-    ) as client:
-        for url in candidates:
-            try:
-                resp = await client.head(url)
-                if resp.status_code < 400:
-                    final_host = _host_of(str(resp.url))
-                    if final_host and not _is_aggregator_host(final_host):
-                        return str(resp.url)
-            except Exception:
-                continue
-    return None
-
-
 def _score_code_signals(
     search_results: list[dict[str, Any]], primary_host: str,
     primary_name: str = "",

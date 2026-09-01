@@ -12,7 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field as dc_field
 
 from app.core.session import BaseSession
-from app.agents.adzump.models import LEGACY_DECLINED_KEYS, OfferState, offer_state
+from app.agents.adzump.models import (
+    LEGACY_DECLINED_KEYS,
+    OfferState,
+    competitor_profiles,
+    offer_state,
+)
 from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_mapped_for,
@@ -73,7 +78,6 @@ class CampaignContext:
     def from_session(cls, session: BaseSession) -> "CampaignContext":
         ctx = session.context
         competitive_raw = ctx.get("competitor_analysis")
-        competitive = competitive_raw or {}
         # Sole writer (tools/location.py) stores the detected location string.
         pending_location = ctx.get("_pending_location_confirm") or None
         pe = ctx.get("_pending_elicitation") or {}
@@ -87,9 +91,7 @@ class CampaignContext:
             product=ctx.get("product_data") or {},
             product_profile=ctx.get("product_profile") or {},
             competitor_names=[
-                c.get("name")
-                for c in (competitive.get("competitors") or [])
-                if c.get("name")
+                p.name for p in competitor_profiles(ctx) if p.name
             ],
             # True iff `analyze_competitors` ran this session - even if it
             # found 0 verified competitors. This drops the "ask the question"

@@ -13,6 +13,8 @@ import logging
 import re
 from datetime import datetime, timezone
 
+from app.agents.adzump.models import CompetitorProfile
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,10 +31,14 @@ def render_competitors(
     CLOSED card still shows both; the body holds the detail key-values and,
     below them, the creatives (metric tiles + horizontal carousel)."""
     competitors = competitive.get("competitors") or []
-    valid: list[dict] = [
-        c
-        for c in competitors[:20]
-        if isinstance(c, dict) and (c.get("name") or "").strip()
+    valid = [
+        p
+        for p in (
+            CompetitorProfile.from_stored(c)
+            for c in competitors[:20]
+            if isinstance(c, dict)
+        )
+        if p.name.strip()
     ]
     if not valid:
         return
@@ -41,46 +47,42 @@ def render_competitors(
         blocks.append({"type": "divider"})
         blocks.append({"type": "heading", "text": "Competitors"})
 
-    for c in valid:
+    for p in valid:
         detail: list[dict] = []
-        if c.get("location"):
-            detail.append({"key": "Location", "value": str(c["location"])})
-        key_usps = c.get("key_usps") or []
-        if isinstance(key_usps, list) and key_usps:
+        if p.location:
+            detail.append({"key": "Location", "value": p.location})
+        if p.key_usps:
             detail.append(
-                {"key": "USPs", "value": ", ".join(str(u) for u in key_usps[:3])}
+                {"key": "USPs", "value": ", ".join(str(u) for u in p.key_usps[:3])}
             )
-        if c.get("why_competitor"):
-            detail.append({"key": "Why", "value": str(c["why_competitor"])})
-        if c.get("weakness"):
-            detail.append({"key": "Gap", "value": str(c["weakness"])})
+        if p.why_competitor:
+            detail.append({"key": "Why", "value": p.why_competitor})
+        if p.weakness:
+            detail.append({"key": "Gap", "value": p.weakness})
 
         children: list[dict] = []
         if detail:
             children.append({"type": "key_value", "items": detail})
-        creatives = c.get("creatives") or []
-        if creatives:
+        if p.creatives:
             render_competitor_creatives(
-                children, creatives,
-                c.get("totalCreatives", 0), c.get("activeCreatives", 0),
+                children, p.creatives, p.total_creatives, p.active_creatives,
             )
         if not children:
             continue
 
         card: dict = {
             "type": "collapsible",
-            "summary": c.get("name") or "?",
+            "summary": p.name,
             "children": children,
         }
         # Header metadata - stays visible when the card is closed.
-        if c.get("url"):
-            card["summary_url"] = str(c["url"])
-        if creatives:
-            total = int(c.get("totalCreatives") or 0)
-            card["badge"] = f"{total} ad" + ("" if total == 1 else "s")
-        elif "creatives" in c:
+        if p.url:
+            card["summary_url"] = p.url
+        if p.creatives:
+            card["badge"] = f"{p.total_creatives} ad" + ("" if p.total_creatives == 1 else "s")
+        elif p.creatives is not None:
             # Fetched, but the ad library had none - say so explicitly. An
-            # UNfetched competitor (no "creatives" key) stays badge-less:
+            # UNfetched competitor (creatives is None) stays badge-less:
             # absence of a fetch must never read as "runs no ads".
             card["badge"] = "No ads found"
         blocks.append(card)

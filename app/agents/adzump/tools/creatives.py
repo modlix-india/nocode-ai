@@ -19,7 +19,7 @@ import logging
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
 from app.agents.adzump import creative_intelligence as ci
-from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.models import CompetitorProfile, OfferState, offer_state
 from app.agents.adzump.platform import is_meta
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
@@ -120,39 +120,48 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
     # fetch takes minutes end-to-end, and the customer should watch ads land
     # one competitor at a time, not stare at a spinner until the last one.
     business = session_ctx.get("product_data") or {}
-    comps_by_key: dict[str, list[dict]] = {}  # several entries can share a domain
-    for comp in competitors:
-        key, _name = ci.competitor_identity(comp)
+    # Index-aligned with `competitors` so the write-back lands on the right entry.
+    profiles = [
+        CompetitorProfile.from_stored(c) if isinstance(c, dict) else None
+        for c in competitors
+    ]
+    keyed_indices: dict[str, list[int]] = {}  # several entries can share a domain
+    for i, profile in enumerate(profiles):
+        if profile is None:
+            continue
+        key, _name = ci.competitor_identity(profile)
         if key:
-            comps_by_key.setdefault(key, []).append(comp)
+            keyed_indices.setdefault(key, []).append(i)
 
     total_creatives = 0
     resolved = 0
 
     async def _on_resolved(key: str, record) -> None:
         nonlocal total_creatives, resolved
-        comps = comps_by_key.get(key)
-        if not comps:
+        indices = keyed_indices.get(key)
+        if not indices:
             return
         dumped = record.model_dump(by_alias=True)
-        for comp in comps:
-            comp["creatives"] = dumped["creatives"]
-            comp["totalCreatives"] = dumped["totalCreatives"]
-            comp["activeCreatives"] = dumped["activeCreatives"]
+        for i in indices:
+            profile = profiles[i]
+            profile.creatives = dumped["creatives"]
+            profile.total_creatives = dumped["totalCreatives"]
+            profile.active_creatives = dumped["activeCreatives"]
+            competitors[i] = profile.to_stored()
         total_creatives += dumped["totalCreatives"]
         resolved += 1
         await emit_progress(
             context,
             f"{record.name or key}: {dumped['totalCreatives']} ads "
-            f"({resolved}/{len(comps_by_key)} competitors)…",
+            f"({resolved}/{len(keyed_indices)} competitors)…",
         )
         await rerender_craft(session_ctx, context, business,
                              spec.get("platform") or "")
 
     try:
         results = await ci.creatives_for_all(
-            competitors, context, force=force, enrich=_essence_enrich(context),
-            on_resolved=_on_resolved)
+            [p for p in profiles if p is not None], context, force=force,
+            enrich=_essence_enrich(context), on_resolved=_on_resolved)
     except Exception as e:
         logger.warning("fetch_competitor_creatives failed: %s: %s",
                        type(e).__name__, str(e)[:200])

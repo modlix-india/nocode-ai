@@ -11,6 +11,7 @@ import logging
 from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.models import CompetitorProfile
 from app.agents.adzump.tools.campaign_data import (
     clear_competitor_decline,
     pending_creatives_fetch_steer,
@@ -48,6 +49,19 @@ def _is_bad_url(url: str) -> bool:
 def _normalize_name(s: str) -> str:
     """Lowercase + strip non-alphanumerics for name-similarity comparisons."""
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+
+
+def _normalize_entries(competitive: dict) -> None:
+    """Round-trip every entry through CompetitorProfile so the stored shape is
+    the model's contract (folds the legacy product_name key into name)."""
+    comps = competitive.get("competitors")
+    if not isinstance(comps, list):
+        return
+    competitive["competitors"] = [
+        CompetitorProfile.from_stored(c).to_stored()
+        for c in comps
+        if isinstance(c, dict)
+    ]
 
 
 def _clean_urls(competitive: dict) -> int:
@@ -319,6 +333,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             raise RuntimeError("Agent produced no usable JSON")
 
         competitive = output.competitive
+        _normalize_entries(competitive)
 
         # Post-processing: clean aggregator URLs, filter self-references.
         _clean_urls(competitive)
@@ -408,7 +423,9 @@ async def _lookup_single_competitor(
     _run_start = _time.monotonic()
 
     competitive = session_ctx.setdefault("competitor_analysis", {"competitors": []})
-    competitors_list: list[dict] = competitive.setdefault("competitors", [])
+    competitive.setdefault("competitors", [])
+    _normalize_entries(competitive)  # heals legacy product_name entries in place
+    competitors_list: list[dict] = competitive["competitors"]
     skipped: list[dict] = []
 
     # ── Removals ──
@@ -417,9 +434,9 @@ async def _lookup_single_competitor(
         names_to_remove = {_normalize(n) for n in remove.split(",") if n.strip()}
         kept: list[dict] = []
         for c in competitors_list:
-            cname = _normalize(c.get("name") or c.get("product_name") or "")
+            cname = _normalize(c.get("name") or "")
             if cname in names_to_remove:
-                removed_names.append(c.get("name") or c.get("product_name") or "?")
+                removed_names.append(c.get("name") or "?")
             else:
                 kept.append(c)
         competitive["competitors"] = kept
@@ -482,9 +499,17 @@ async def _lookup_single_competitor(
                 pass
 
         if output.competitive and output.competitive.get("competitors"):
-            new_competitors = output.competitive["competitors"]
+            raw_new = output.competitive["competitors"]
         elif output.product:
-            new_competitors = [output.product]
+            # Business-shaped dict (product_name, not name); from_stored folds it.
+            raw_new = [output.product]
+        else:
+            raw_new = []
+        new_competitors = [
+            CompetitorProfile.from_stored(c).to_stored()
+            for c in raw_new
+            if isinstance(c, dict)
+        ]
 
         skipped = (output.competitive or {}).get("skipped") or []
 
@@ -523,7 +548,7 @@ async def _lookup_single_competitor(
     if removed_names:
         parts.append(f"Removed: {', '.join(removed_names)}")
     if new_competitors:
-        names = [c.get("product_name") or c.get("name") or "?" for c in new_competitors]
+        names = [c.get("name") or "?" for c in new_competitors]
         parts.append(f"Added: {', '.join(names)}")
     if skipped:
         skip_lines = [
