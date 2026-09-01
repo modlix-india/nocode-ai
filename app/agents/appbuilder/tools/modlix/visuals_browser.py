@@ -237,15 +237,51 @@ async def _resolve_identity(
 
 
 def _build_url(app_code: str, client_code: str, page_name: str,
-               path_segments: list[str] | None, query: str | None) -> str:
+               path_segments: list[str] | None, query: str | None,
+               host_override: str | None = None) -> str:
     from app.config import settings
-    gateway = settings.GATEWAY_URL.rstrip("/")
+    gateway = (host_override or settings.GATEWAY_URL).rstrip("/")
     url = f"{gateway}/{app_code}/{client_code}{_PAGE_PATH_SEGMENT}{page_name}"
     if path_segments:
         url += "/" + "/".join(str(s).strip("/") for s in path_segments if s)
     if query:
         url += "?" + str(query).lstrip("?")
     return url
+
+
+async def _draft_host_headers(
+    context: dict[str, Any], app_code: str, draft: bool,
+) -> tuple[dict[str, str] | None, str | None]:
+    """Extra request headers that make the gateway serve the DRAFT surface.
+
+    The surface is chosen by hostname, and the gateway derives that hostname from
+    `X-Forwarded-Host` when present. Sending the header rather than navigating to
+    the draft host means this works without the draft name resolving in DNS,
+    which it does not on a developer machine (/etc/hosts cannot wildcard).
+
+    Returns (headers, error). (None, None) means "not drafting, carry on".
+    """
+    if not draft:
+        return None, None
+
+    from . import _draft_surface as ds
+    from app.core.tools.http_client import SaasClient
+    from app.config import settings
+
+    client = context.get("saas_client") or SaasClient(settings.GATEWAY_URL)
+    headers = context.get("headers", {}) or {}
+    if not await ds.supported(client, headers, app_code):
+        return None, (
+            f"This deployment has no draft surface, so there is no draft of "
+            f"'{app_code}' to render. Screenshot the live page instead."
+        )
+    url, err = await ds.ensure_draft_url(client, headers, app_code)
+    if err or not url:
+        return None, err or f"No draft link for '{app_code}'."
+
+    host = url.split("://", 1)[-1].rstrip("/")
+    return {"X-Forwarded-Host": host, "X-Forwarded-Proto": "https",
+            "X-Forwarded-Port": "443"}, None
 
 
 # ── Capture wiring ───────────────────────────────────────────────────────
@@ -335,6 +371,12 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     if idl_err:
         return ToolResult(success=False, error=idl_err)
 
+    draft_headers, draft_err = await _draft_host_headers(
+        context, ac, bool(params.get("draft")),
+    )
+    if draft_err:
+        return ToolResult(success=False, error=draft_err)
+
     url = _build_url(ac, cc, page_name, params.get("path_segments"), params.get("query"))
 
     try:
@@ -358,6 +400,8 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
             ctx = await browser.new_context(viewport={"width": width, "height": height}, ignore_https_errors=True)
+            if draft_headers:
+                await ctx.set_extra_http_headers(draft_headers)
             if identity is not None:
                 tok, exp = identity
                 script = (
@@ -496,6 +540,7 @@ screenshot_page_tool = ToolDefinition(
         ToolParameter(name="page_name", type="string", description=_DESC_PAGE_NAME),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
+        ToolParameter(name="draft", type="boolean", required=False, default=False, description="Render the app's DRAFT surface. Set this to look at unpublished changes, including your own: the live page will not show them."),
         ToolParameter(name="username", type="string", required=False, description="One-shot end-user login (with password)"),
         ToolParameter(name="password", type="string", required=False, description="Password for the username login"),
         ToolParameter(name="anonymous", type="boolean", required=False, default=False, description="Skip auth — public/login page capture"),

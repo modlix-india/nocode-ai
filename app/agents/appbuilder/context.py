@@ -570,6 +570,7 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         visuals_browser as _visuals_browser, image_ops as _image_ops,
         security as _security, app_admin as _app_admin,
         messaging as _messaging, runtime as _runtime,
+        draft_tools as _draft_tools,
     )
     from app.agents.appbuilder.tools.meta_tools import META_TOOLS as _meta_tools  # noqa: PLC0415
     from app.agents.appbuilder.tools.code_workspace import (  # noqa: PLC0415
@@ -594,6 +595,8 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         ("Per-app knowledge base (cfa_app_kb — propose-then-commit)", [t.name for t in _kb_app_tools]),
         ("Lore — what this app already knows (read before you change anything)",
          [t.name for t in _lore_tools]),
+        ("Draft surface — the review link, pending work, publish",
+         [t.name for t in _draft_tools.DRAFT_TOOLS]),
         ("Apps + themes + styles + URI paths", [t.name for t in _app_admin.TOOLS]),
         ("Pages + composition (component CRUD + binding/styling)", [t.name for t in _pages.TOOLS]),
         ("Components catalogue (types, schema, examples)", [t.name for t in _components.TOOLS]),
@@ -862,6 +865,17 @@ VALIDATION BEFORE SAYING DONE:
   - `children: {x: true}` where x doesn't exist in componentDefinition.
   - `onClick: "handleFoo"` where no event function named or keyed `handleFoo` exists on the page.
 - If `validate_page` returns violations, fix them via the same tools that wrote them and re-validate. Don't say "done" until validate_page returns success.
+
+### Keyboard shortcuts
+
+`shortcutKey` on a Button (activates it) or a TextBox (`shortcutAction`:
+FOCUS / FOCUS_SELECT / EVENT). For a key with no control on screen, add the
+non-visual `Shortcut` component with `shortcutKey` + `onShortcut`. Write `Mod` for
+the primary modifier: it means Cmd on Mac and Ctrl elsewhere, so `Mod+K` covers
+both. NEVER put one on a component inside a Table or ArrayRepeater row — it is
+silently refused, since one key cannot pick a row. `Mod+W/T/N/Q`, `F11`, `F12` and
+`Mod+/` never fire. Read `platform_doc_read("keyboard_shortcuts")` before wiring
+one.
 
 ### Bulk component edit — worked walkthrough
 
@@ -1432,6 +1446,7 @@ _GROUP_KEYWORDS: dict[str, list[str]] = {
         "tabs", "stepper", "menu", "batch", "calendar", "toggle", "textarea",
         "event", "onclick", "onchange", "onblur", "handler", "click",
         "event function", "add", "remove", "move",
+        "shortcut", "keyboard", "hotkey", "keybinding", "keyboard shortcut",
     ],
     "application_workflow": [
         "app", "application", "create app", "appcode", "font", "fontpack",

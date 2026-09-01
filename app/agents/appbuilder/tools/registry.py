@@ -54,6 +54,7 @@ from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURIT
 from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
 from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
 from app.agents.appbuilder.tools.modlix.runtime import TOOLS as _MODLIX_RUNTIME_TOOLS
+from app.agents.appbuilder.tools.modlix.draft_tools import DRAFT_TOOLS as _MODLIX_DRAFT_TOOLS
 from app.agents.appbuilder.tools.template_author import TEMPLATE_AUTHOR_TOOLS
 from app.agents.appbuilder.tools.meta_tools import META_TOOLS
 from app.agents.appbuilder.tools.code_workspace import CODE_WORKSPACE_TOOLS as WORKSPACE_TOOLS
@@ -79,7 +80,8 @@ def _filter_visual_tools(tools: list[ToolDefinition]) -> list[ToolDefinition]:
 
 
 MODLIX_TOOLS: list[ToolDefinition] = (
-    list(_MODLIX_INFRA_TOOLS)
+    list(_MODLIX_DRAFT_TOOLS)
+    + list(_MODLIX_INFRA_TOOLS)
     + list(_MODLIX_COMPONENT_TOOLS)
     + list(_MODLIX_PAGE_TOOLS)
     + list(_MODLIX_KIRUN_TOOLS)
