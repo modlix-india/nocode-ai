@@ -22,6 +22,7 @@ from app.agents.adzump._shared import (
     is_aggregator_host,
     primary_screenshot_url,
 )
+from app.agents.adzump.competitor_urls import resolve_project_url
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,17 @@ def _is_bad_url(url: str) -> bool:
 def _normalize_name(s: str) -> str:
     """Lowercase + strip non-alphanumerics for name-similarity comparisons."""
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+
+
+async def _resolve_final_entry_urls(competitors: list, session_ctx: dict) -> None:
+    """CP-4: settle every entry's URL at the project level - analyst names are
+    clean here (unlike candidate-stage SEO titles), so the GBP-backed ladder
+    matches well. Sequential on purpose: entries share the session lookup memo."""
+    for comp in competitors:
+        if isinstance(comp, dict) and comp.get("name"):
+            comp["url"] = await resolve_project_url(
+                comp["name"], comp.get("url"), session_ctx
+            )
 
 
 def _normalize_entries(competitive: dict) -> None:
@@ -335,9 +347,13 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
         competitive = output.competitive
         _normalize_entries(competitive)
 
-        # Post-processing: clean aggregator URLs, filter self-references.
+        # Post-processing: clean aggregator URLs, filter self-references,
+        # then settle each entry's URL at the project level (CP-4).
         _clean_urls(competitive)
         _filter_self_references(business, competitive, primary_url=url)
+        await _resolve_final_entry_urls(
+            competitive.get("competitors") or [], session_ctx
+        )
 
         session_ctx["competitor_analysis"] = competitive
         # F26 - fresh analysis ran (even if 0 found): a prior decline is void.
@@ -513,6 +529,7 @@ async def _lookup_single_competitor(
 
         skipped = (output.competitive or {}).get("skipped") or []
 
+        await _resolve_final_entry_urls(new_competitors, session_ctx)
         competitors_list.extend(new_competitors)
         # F26 - competitors were ADDED by name → a prior decline is void. (Not on
         # a pure removal: zeroing the list isn't a reversal of the decline.)

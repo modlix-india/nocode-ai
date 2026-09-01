@@ -1,7 +1,7 @@
 # Implementation Notes: adzump competitor entries - verified URLs + typed CompetitorProfile
 
 Spec: http://localhost:8765/plans/adzump-competitor-profile-plan.html
-Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 superseded by the source swap) · scrapecreators source done
+Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 superseded by the source swap) · scrapecreators source done · D-5 done (`1528b6a`) · CP-4 done
 
 ## Decisions Not in the Spec
 
@@ -45,3 +45,17 @@ Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 su
 - **Dead-GBP fallback lives in `_fetch_one_for_shortlist`**: one retry with `search_url` when the GBP site fails to fetch, so the inversion can never lose a competitor the old ladder would have kept. The retried candidate's `url` is rewritten so evidence/dedup see the URL that actually verified.
 - **`_dedupe_resolved_hosts` after resolution**: scoring-time dedup ran on pre-Places URLs; two candidates can now land on one GBP site. First (= highest composite score) wins.
 - **Same-host listings swap nothing**: no pointless `search_url` crumbs when GBP agrees with search.
+
+### CP-4: project-level URLs (D-6/D-7 taken as the doc's recommendations; the /visual-implement go covers them)
+
+- **D-6 refined during implementation - the doc's rule as written contradicted its own example**: "any distinctive token appears in host+path" would PASS `sobha.com` for Sobha Magnus via the brand token "sobha", and PASS `propsoch.com/sobha-magnus` via the path slug - the doc says both must fail. The implemented rule: distinctive tokens EXCLUDE the leading brand token (it matches the developer's own root, proving nothing), and a token counts in the HOST always (dedicated microsite) but in the PATH only when the host is brand-owned (leading brand token prefix-matches the host). A project slug on a third-party host proves the page is ABOUT the project, not the project's page. All four doc examples plus both counterexamples are locked in `test_competitor_urls.py`.
+- **"Campaign city tokens" became campaign ADDRESS tokens**: `Place` has no city field; the stoplist uses all tokens of `place.address` instead - broader, and exactly the intent (Bannerghatta, Bengaluru, road names all stop counting as distinctive). A name that is entirely brand+generic+address tokens ("Godrej Bannerghatta") has no distinctive tokens, so no URL can pass the token test - such an entry always rides the GBP/extraction rungs.
+- **The memo stores the RAW listing, guards run per caller**: `_places_website_cache` maps normalized name to the unguarded `{name, website}`-or-None. Guards are cheap and both stages apply the same ones today, but caching post-guard verdicts would silently couple the stages' acceptance policies.
+- **Liveness: HEAD with one GET retry on 403/405/501**: many live sites reject HEAD (or bot-looking requests); a strict HEAD-2xx would dump a good microsite to keep-best. Redirects followed - a microsite redirecting to /home is alive. The rung-2 liveness result is reused at rung 4 (no double HEAD of a dead site).
+- **Final-entry pass is sequential, not gathered**: entries share the session memo dict; concurrent resolution of same-brand entries could double-spend lookups on a race. 6-8 entries after a multi-minute sub-agent run - the wall-clock cost is noise.
+- **Guards moved with their true home, comp_discovery keeps aliases**: `normalize_business_name`, `listing_name_matches`, `is_aggregator_url_host`, `parse_official_url` now live in `competitor_urls.py`; comp_discovery aliases them back to its `_`-prefixed internal names so its scoring/dedup call sites and existing tests stay untouched.
+- **Single-lookup add path resolves only the NEW entries**: existing list members were settled when they entered; re-running them would be memo-cheap but pointless churn per add.
+- **Aggregator current_url is scrubbed at ladder entry (critic catch)**: `_clean_urls` only runs on the full-analysis path; on the add-by-name path a model-emitted 99acres URL would have survived every guard-miss return and settled as the entry URL. The ladder nulls it up front, which also stops the token test short-circuiting on a third-party subdomain like `lodha-azur.99acres.com`.
+- **Dead-GBP-site short-circuit**: a project-specific-but-dead listing site used to fall through to rung 3 and burn a 20s fetch of the dead site to reach the same keep-best outcome; it now returns current_url immediately.
+- **No alias layer (critic catch)**: the first cut aliased the moved guards back to comp_discovery's old `_`-names; that is two names per concept and `_normalize_name` collided with a different-semantics `_normalize_name` in tools/competitor.py. comp_discovery now uses the public names directly, and the guards' lock tests moved to `test_competitor_urls.py` with them. The now-impossible "GBP agrees with search" skip in `_resolve_urls` (its candidates are missing/aggregator-only, a guard-passing listing host can never equal them) was deleted.
+- **`is_aggregator_or_google_host`**: renamed from `is_aggregator_url_host` - it takes a host, and the name should say what widens the shared check (google.com for Maps citation URLs), not restate the argument wrongly.

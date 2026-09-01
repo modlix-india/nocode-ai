@@ -17,14 +17,16 @@ from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import (
     emit_progress,
     host_of,
-    is_aggregator_host,
+)
+from app.agents.adzump.competitor_urls import (
+    cached_business_listing,
+    is_aggregator_or_google_host,
+    listing_name_matches,
+    normalize_business_name,
+    parse_official_url,
 )
 
 logger = logging.getLogger(__name__)
-
-# Extends the shared AGGREGATOR_HOSTS with google.com - covers Maps citation
-# URLs that show up in search results (google.com/maps/search/<brand>).
-_AGGREGATOR_EXTRA: frozenset[str] = frozenset({"google.com"})
 
 
 # Composite tool: reads stashed web_search results → scores candidates (code
@@ -38,33 +40,6 @@ _SHORTLIST_CLASSIFIER_OPENAI_MODEL = "gpt-4o-mini"
 _SHORTLIST_DEFAULT_MAX_FETCHES = 8
 _SHORTLIST_MIN_COMPOSITE_SCORE = 3  # raised from 2 after reweight (Phase A)
 _SHORTLIST_FETCH_TIMEOUT_SEC = 20.0
-
-
-_NAME_SUFFIX_STRIPS = (
-    " pvt ltd", " pvt. ltd.", " private limited", " ltd", " ltd.",
-    " inc", " inc.", " llc", " gmbh", " corporation", " corp.", " corp",
-    " co.", " company", " group",
-)
-
-
-def _normalize_name(name: str) -> str:
-    """Canonicalise a brand name for dedup. Lowercase, strip punctuation and
-    common business-type suffixes."""
-    import re as _re
-    s = (name or "").lower().strip()
-    # Drop suffixes
-    for suf in _NAME_SUFFIX_STRIPS:
-        if s.endswith(suf):
-            s = s[: -len(suf)].strip()
-    # Strip non-alphanumeric (keep spaces)
-    s = _re.sub(r"[^a-z0-9\s]", " ", s)
-    s = _re.sub(r"\s+", " ", s).strip()
-    return s
-
-
-# Local aliases over the shared helpers. ``_is_aggregator_host`` extends the
-# shared set with google.com (Maps citation URLs) - specific to this tool.
-_host_of = host_of
 
 
 # Whole-word markers - a token equal to one of these signals a sub-city
@@ -109,55 +84,37 @@ def _is_specific_geography(geo_text: str | None) -> bool:
     return False
 
 
-def _is_aggregator_host(host: str) -> bool:
-    return is_aggregator_host(host, _AGGREGATOR_EXTRA)
-
-
-def _listing_name_matches(candidate_name: str, listing_name: str) -> bool:
-    """Fuzzy same-business check between a candidate and a Places listing:
-    compact-normalized containment either way ("Lodha Azur" matches
-    "Lodha Azur by Lodha Group", not "Lodha Bellezza")."""
-    a = _normalize_name(candidate_name).replace(" ", "")
-    b = _normalize_name(listing_name).replace(" ", "")
-    return bool(a) and bool(b) and (a in b or b in a)
-
-
 async def _resolve_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> None:
-    """Places-first URL resolution (D-5): EVERY candidate gets one locality-
-    biased Google Business Profile lookup, and a listing that passes the guards
-    (name match + real brand host) WINS over the search-derived URL - the GBP
-    website is business-curated and, for project-style businesses, the
-    dedicated microsite (search tends to surface parent-brand category pages).
+    """Candidate-stage URL fill (D-5, scoped back by CP-4): only candidates
+    with a MISSING or aggregator URL get the locality-biased Google Business
+    Profile lookup - candidate names here are often junk SEO page titles that
+    can't pass the name guard, so a good search URL is left alone; the
+    final-entry ladder (competitor_urls.resolve_project_url) revisits it with
+    the clean analyst name.
 
-    The search URL survives as ``search_url`` - the fetch stage retries with it
-    when the GBP site turns out dead - and a guard miss keeps it as ``url``
-    exactly as before, so the floor is today's behavior. A wrong URL is worse
-    than none (it would poison the shared creative-library key); accepted URLs
-    still pass fetch-verify."""
-    from app.agents.adzump.adapters.google.maps import GoogleMapsClient
-
-    if not candidates:
-        return
-    place = (session_ctx.get("product_data") or {}).get("place") or {}
-    lat, lng = place.get("lat"), place.get("lng")
-    maps = GoogleMapsClient()
+    A displaced search URL survives as ``search_url`` - the fetch stage retries
+    with it when the GBP site turns out dead - and a guard miss keeps it as
+    ``url`` exactly as before, so the floor is the pre-Places behavior. A wrong
+    URL is worse than none (it would poison the shared creative-library key);
+    accepted URLs still pass fetch-verify."""
     for cand in candidates:
-        listing = await maps.find_business_website(cand["name"], lat=lat, lng=lng)
+        url_host = host_of(cand.get("url"))
+        if url_host and not is_aggregator_or_google_host(url_host):
+            continue
+        listing = await cached_business_listing(cand["name"], session_ctx)
         if not listing:
             continue
-        if not _listing_name_matches(cand["name"], listing["name"]):
+        if not listing_name_matches(cand["name"], listing["name"]):
             logger.info("places_url_rejected: name mismatch %r vs listing %r",
                         cand["name"], listing["name"])
             continue
-        host = _host_of(listing["website"])
-        if not host or _is_aggregator_host(host):
+        host = host_of(listing["website"])
+        if not host or is_aggregator_or_google_host(host):
             logger.info("places_url_rejected: shared/aggregator host %s for %r",
                         host, cand["name"])
             continue
-        if host == _host_of(cand.get("url")):
-            continue  # GBP agrees with search - nothing to swap
         logger.info("places_url_resolved: %r -> %s (search had %s)",
-                    cand["name"], host, _host_of(cand.get("url")) or "nothing")
+                    cand["name"], host, host_of(cand.get("url")) or "nothing")
         if cand.get("url"):
             cand["search_url"] = cand["url"]
         cand["url"] = listing["website"]
@@ -171,7 +128,7 @@ def _dedupe_resolved_hosts(candidates: list[dict[str, Any]]) -> list[dict[str, A
     seen_hosts: set[str] = set()
     kept: list[dict[str, Any]] = []
     for cand in candidates:
-        host = _host_of(cand.get("url"))
+        host = host_of(cand.get("url"))
         if host and host in seen_hosts:
             logger.info("shortlist_dedup_resolved: dropped %r (same host %s)",
                         cand["name"], host)
@@ -195,7 +152,7 @@ def _score_code_signals(
     Self-reference detection uses both host (cityville.in) AND name fuzzy match
     (``Valmark CityVille`` ≈ ``Valmark City Ville``).
     """
-    primary_name_norm = _normalize_name(primary_name)
+    primary_name_norm = normalize_business_name(primary_name)
     merged: dict[str, dict[str, Any]] = {}
 
     for search in search_results:
@@ -207,13 +164,13 @@ def _score_code_signals(
             if not name:
                 continue
             url = cand.get("url") or None
-            host = _host_of(url)
+            host = host_of(url)
             # Prefer URL host as dedup key (same site = same brand); fall back
             # to normalized name so we still merge when the URL is missing.
             # Use brand name for dedup when URL is an aggregator/citation
             # (e.g. google.com/maps) - all such URLs share the same host,
             # which would incorrectly merge unrelated brands into one entry.
-            key = host if (host and not _is_aggregator_host(host)) else _normalize_name(name)
+            key = host if (host and not is_aggregator_or_google_host(host)) else normalize_business_name(name)
             if not key:
                 continue
             entry = merged.get(key)
@@ -244,10 +201,10 @@ def _score_code_signals(
     for entry in merged.values():
         freq_bonus = max(0, len(entry["seen_in"]) - 1)
         host = entry["host"]
-        is_aggregator = _is_aggregator_host(host)
+        is_aggregator = is_aggregator_or_google_host(host)
         # Self-reference: match on host OR fuzzy name overlap.
         # Compare with spaces stripped too ("cityville" vs "city ville").
-        name_norm = _normalize_name(entry["name"])
+        name_norm = normalize_business_name(entry["name"])
         name_compact = name_norm.replace(" ", "")
         primary_compact = primary_name_norm.replace(" ", "")
         is_primary = (
@@ -425,7 +382,7 @@ async def _classify_candidates(
     for item in data.get("classifications") or []:
         if not isinstance(item, dict):
             continue
-        name_key = _normalize_name(str(item.get("name") or ""))
+        name_key = normalize_business_name(str(item.get("name") or ""))
         if not name_key:
             continue
         out[name_key] = {
@@ -449,21 +406,6 @@ _FETCH_QUESTION_TEMPLATE = (
     "they operate, what's their pricing or business model, and what stands out "
     "(trust signals, differentiators, target customer)?"
 )
-
-
-def _parse_official_url(answer: str) -> str | None:
-    """Pull 'OFFICIAL_URL: <url>' out of a fetch answer. Returns None if
-    missing, 'none', or not a valid-looking http(s) URL."""
-    import re as _re
-    m = _re.search(r"OFFICIAL_URL:\s*(\S+)", answer or "", flags=_re.IGNORECASE)
-    if not m:
-        return None
-    url = m.group(1).strip().rstrip(".,;")
-    if not url or url.lower() == "none":
-        return None
-    if not (url.startswith("http://") or url.startswith("https://")):
-        return None
-    return url
 
 
 async def _fetch_one_for_shortlist(
@@ -505,9 +447,9 @@ async def _fetch_one_for_shortlist(
         # once with the search-derived URL it displaced, rather than dropping a
         # competitor we'd have kept before the inversion.
         search_url = candidate.get("search_url") or ""
-        if search_url and _host_of(search_url) != _host_of(url):
+        if search_url and host_of(search_url) != host_of(url):
             logger.info("shortlist_fetch_fallback: %s dead, retrying %s",
-                        _host_of(url), _host_of(search_url))
+                        host_of(url), host_of(search_url))
             url = search_url
             candidate = {**candidate, "url": search_url}
             result = await _one(url)
@@ -521,12 +463,12 @@ async def _fetch_one_for_shortlist(
     # If the first URL turned out to be an aggregator, try once to follow the
     # brand's official URL extracted from the aggregator page content.
     if is_aggregator:
-        official_url = _parse_official_url(answer)
+        official_url = parse_official_url(answer)
         # Guard against redirect loops: the extracted URL must differ from the
         # one we just fetched, AND not itself be an aggregator.
-        if official_url and _host_of(official_url) and _host_of(official_url) != _host_of(url) \
-                and not _is_aggregator_host(_host_of(official_url)):
-            logger.info("shortlist_fetch_redirect: %s → %s", _host_of(url), _host_of(official_url))
+        if official_url and host_of(official_url) and host_of(official_url) != host_of(url) \
+                and not is_aggregator_or_google_host(host_of(official_url)):
+            logger.info("shortlist_fetch_redirect: %s → %s", host_of(url), host_of(official_url))
             followup = await _one(official_url)
             if followup is not None and not followup.get("_err"):
                 fa = followup.get("answer") or ""
@@ -669,7 +611,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     business_brief = session_ctx.get("product_profile") or {}
     profile_summary = business_brief.get("summary") or ""
     primary_url = business_brief.get("url") or ""
-    primary_host = _host_of(primary_url)
+    primary_host = host_of(primary_url)
 
     # Layer A: code signals.
     await emit_progress(context, "Scoring candidates…")
@@ -690,7 +632,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     # See _CLASSIFIER_PROMPT for the vertical-agnostic definitions.
     specific_geo = _is_specific_geography(profile_summary)
     for cand in pre_filtered:
-        key = _normalize_name(cand["name"])
+        key = normalize_business_name(cand["name"])
         sig = classifications.get(key) or {}
         cand["format_match"] = bool(sig.get("format_match"))
         cand["buyer_profile_match"] = bool(sig.get("buyer_profile_match"))

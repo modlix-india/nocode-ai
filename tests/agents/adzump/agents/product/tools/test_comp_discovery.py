@@ -1,6 +1,6 @@
-"""comp_discovery helpers: _normalize_name (brand dedup), _is_specific_geography
-(geo hard-floor), _listing_name_matches + _resolve_urls (Places-first, D-5) +
-the dead-GBP fetch fallback."""
+"""comp_discovery helpers: _is_specific_geography (geo hard-floor),
+_resolve_urls (candidate-stage URL fill, D-5 scoped by CP-4) + the dead-GBP
+fetch fallback. The GBP guards' own tests live in test_competitor_urls.py."""
 from __future__ import annotations
 
 import asyncio
@@ -10,26 +10,9 @@ from unittest import mock
 from app.agents.adzump.agents.product.tools.comp_discovery import (
     _dedupe_resolved_hosts,
     _fetch_one_for_shortlist,
-    _listing_name_matches,
-    _normalize_name,
     _is_specific_geography,
     _resolve_urls,
 )
-
-
-class NormalizeNameLock(unittest.TestCase):
-
-    def test_brand_canonicalisation(self):
-        cases = [
-            ("Valmark CityVille", "valmark cityville"),
-            ("Sumadhura Group", "sumadhura"),            # " group" suffix stripped
-            ("Puravankara Pvt Ltd", "puravankara"),      # " pvt ltd" stripped
-            ("Sattva-Songbird", "sattva songbird"),      # punctuation → space
-            ("  Sobha  ", "sobha"),                      # strip + collapse
-        ]
-        for raw, expected in cases:
-            with self.subTest(raw=raw):
-                self.assertEqual(_normalize_name(raw), expected)
 
 
 class IsSpecificGeographyLock(unittest.TestCase):
@@ -47,31 +30,15 @@ class IsSpecificGeographyLock(unittest.TestCase):
                 self.assertFalse(_is_specific_geography(geo))
 
 
-class ListingNameMatchTests(unittest.TestCase):
-    def test_match_rows(self):
-        rows = [
-            ("exact", "Lodha Azur", "Lodha Azur", True),
-            ("listing has suffix", "Lodha Azur", "Lodha Azur by Lodha Group", True),
-            ("spacing/case noise", "Purva Sparkling Springs",
-             "PURVA Sparkling-Springs", True),
-            ("different project, same brand", "Lodha Azur", "Lodha Bellezza", False),
-            ("unrelated", "Sobha Galera", "Prestige Falcon City", False),
-            ("empty listing", "Lodha Azur", "", False),
-        ]
-        for label, candidate, listing, expected in rows:
-            with self.subTest(label):
-                self.assertIs(_listing_name_matches(candidate, listing), expected)
-
-
 class ResolveUrlsTests(unittest.TestCase):
-    """Places-first resolution (D-5): every candidate gets one GBP lookup and a
-    guard-passing listing WINS over the search URL; a wrong or shared-host
-    listing never lands (a bad URL would poison the shared creative-library
-    key); a guard miss keeps the search URL - the floor is the old behavior."""
+    """Candidate-stage URL fill (D-5, scoped back by CP-4): only MISSING or
+    aggregator URLs spend a GBP lookup (junk SEO titles rarely pass the name
+    guard; the final-entry ladder revisits with clean names); a guard-passing
+    listing WINS, a wrong or shared-host listing never lands (a bad URL would
+    poison the shared creative-library key), a guard miss keeps the URL."""
 
-    SESSION = {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
-
-    def _run(self, candidates, listing):
+    def _run(self, candidates, listing, session=None):
+        session = session or {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
         client = mock.Mock()
         listings = listing if isinstance(listing, list) else [listing]
         client.find_business_website = mock.AsyncMock(side_effect=listings)
@@ -79,13 +46,12 @@ class ResolveUrlsTests(unittest.TestCase):
             "app.agents.adzump.adapters.google.maps.GoogleMapsClient",
             return_value=client,
         ):
-            asyncio.run(_resolve_urls(candidates, self.SESSION))
+            asyncio.run(_resolve_urls(candidates, session))
         return client
 
-    def test_gbp_wins_over_search_url_keeping_it_as_fallback(self):
+    def test_gbp_fills_missing_and_displaces_aggregator_urls(self):
         candidates = [
-            {"name": "Purva Sparkling Springs",
-             "url": "https://www.puravankara.com/villas-in-bannerghatta-road"},
+            {"name": "Purva Sparkling Springs", "url": "https://99acres.com/x"},
             {"name": "Lodha Azur", "url": None},
         ]
         client = self._run(candidates, [
@@ -94,19 +60,33 @@ class ResolveUrlsTests(unittest.TestCase):
             {"name": "Lodha Azur", "website": "https://lodhagroup.com/azur"},
         ])
         self.assertEqual(candidates[0]["url"], "https://purvasparklingspring.com/")
-        self.assertEqual(candidates[0]["search_url"],
-                         "https://www.puravankara.com/villas-in-bannerghatta-road")
+        self.assertEqual(candidates[0]["search_url"], "https://99acres.com/x")
         self.assertEqual(candidates[1]["url"], "https://lodhagroup.com/azur")
         self.assertNotIn("search_url", candidates[1])  # nothing displaced
         self.assertEqual(client.find_business_website.await_count, 2)
         kwargs = client.find_business_website.await_args.kwargs
         self.assertEqual((kwargs["lat"], kwargs["lng"]), (12.9, 77.6))
 
-    def test_same_host_listing_swaps_nothing(self):
-        candidates = [{"name": "Sobha", "url": "https://sobha.com/galera"}]
-        self._run(candidates, {"name": "Sobha", "website": "https://www.sobha.com"})
-        self.assertEqual(candidates[0]["url"], "https://sobha.com/galera")
-        self.assertNotIn("search_url", candidates[0])
+    def test_good_search_url_spends_no_lookup(self):
+        candidates = [
+            {"name": "Purva Sparkling Springs",
+             "url": "https://www.puravankara.com/villas-in-bannerghatta-road"},
+        ]
+        client = self._run(candidates, [])
+        self.assertEqual(candidates[0]["url"],
+                         "https://www.puravankara.com/villas-in-bannerghatta-road")
+        self.assertEqual(client.find_business_website.await_count, 0)
+
+    def test_memo_spends_one_lookup_per_name(self):
+        session = {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
+        listing = {"name": "Lodha Azur", "website": "https://lodhagroup.com/azur"}
+        first = [{"name": "Lodha Azur", "url": None}]
+        client = self._run(first, [listing], session=session)
+        self.assertEqual(client.find_business_website.await_count, 1)
+        repeat = [{"name": "Lodha Azur", "url": None}]
+        client = self._run(repeat, [], session=session)  # memo hit - no call
+        self.assertEqual(client.find_business_website.await_count, 0)
+        self.assertEqual(repeat[0]["url"], "https://lodhagroup.com/azur")
 
     def test_guard_misses_keep_the_search_url(self):
         rows = [
