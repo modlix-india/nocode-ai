@@ -50,6 +50,7 @@ from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 from . import _conventions as c
 from . import _page_ops as p_ops
+from . import _draft_surface as drafts
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -107,6 +108,9 @@ def _validate_properties(component_type: str, properties: dict[str, Any] | None)
         "visibility", "designType", "colorScheme", "bgColor", "background",
         "onClick", "onSubmit", "onChange", "onBlur", "onFocus", "onLoad",
         "linkPath", "pathsActiveFor", "label", "name", "key",
+        # Keyboard shortcuts. Mod = Cmd on Mac / Ctrl elsewhere.
+        "shortcutKey", "shortcutAction", "onShortcut",
+        "shortcutScope", "shortcutPriority", "shortcutGroup",
     }
     unknown = [k for k in properties.keys() if k not in known and k not in PLATFORM_SAFE]
     if unknown:
@@ -2187,6 +2191,26 @@ NOT the right tool when each component needs a DIFFERENT properties patch (e.g. 
 # ── bulk_patch_component_styles ──────────────────────────────────────────
 
 
+def _as_component_property(css_value: Any) -> dict[str, Any]:
+    """Normalise one CSS leaf to Modlix's ComponentProperty shape.
+
+    A style leaf is `{"value": "24px"}` or `{"location": {...}}`. This used to
+    wrap unconditionally, but the tool's own documented input is the wrapped form
+    already, so following the documentation produced `{"value": {"value": "24px"}}`.
+    The platform stores that happily and the renderer then reads an object where
+    it wants a string, so the style silently does nothing: fonts, colours and
+    backgrounds set through this tool never appeared, with no error anywhere to
+    say why. Expression-bound leaves were broken the same way.
+
+    Accepting both shapes is the fix rather than picking one, because both are in
+    use: `add_component` passes leaves already wrapped, and a model reading the
+    parameter description may reasonably pass a bare scalar.
+    """
+    if isinstance(css_value, dict) and ("value" in css_value or "location" in css_value):
+        return css_value
+    return {"value": css_value}
+
+
 def _merge_css_into_styleprops(
     style_props: dict[str, Any], css_props: dict[str, Any],
     breakpoint_str: str, sub_component: str, pseudo_state: str,
@@ -2238,7 +2262,7 @@ def _merge_css_into_styleprops(
     applied: list[str] = []
     for css_prop, css_value in css_props.items():
         leaf = c.make_css_prop_key(css_prop, sub_component, "")
-        bp_block[leaf] = {"value": css_value}
+        bp_block[leaf] = _as_component_property(css_value)
         applied.append(leaf)
     merged_resolutions[breakpoint_str] = bp_block
 
@@ -2391,7 +2415,16 @@ async def _patch_component_on_server(
     page_name: str, component_key: str, updated_comp: dict[str, Any],
     context: dict[str, Any], message: str,
 ) -> tuple[bool, str]:
-    """PATCH /api/ui/pages/{id}/components/{key} on the platform."""
+    """PATCH /api/ui/pages/{id}/components/{key} on the platform.
+
+    In draft mode this does NOT use the surgical endpoint. That route is
+    live-only: it mutates the stored document in place and has no draft
+    counterpart, so calling it while the turn is drafting would publish the
+    change to everyone while the agent reports it as waiting for review. Instead
+    the fetched page (already read draft-first) gets the component folded in and
+    goes back through `save_page`, which carries the draft flag. Slower by a
+    whole-document write, and correct.
+    """
     ac, err_result = _resolve_app_code({}, context)
     if err_result:
         return False, err_result.error
@@ -2400,6 +2433,14 @@ async def _patch_component_on_server(
     if err:
         return False, err
     assert page is not None
+
+    if await drafts.active(client, headers, ac):
+        page.setdefault("componentDefinition", {})[component_key] = updated_comp
+        save = await p_ops.save_page(
+            client, page, headers, _resolve_client_code({}, context), message=message,
+        )
+        return (True, "") if save.success else (False, save.error)
+
     page_id = page.get("id")
     if not page_id:
         return False, "Fetched page has no id"
