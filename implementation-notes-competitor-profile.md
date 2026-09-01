@@ -36,4 +36,12 @@ Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 su
 - **Video field names are best-effort**: the docs example had `videos: []`; the adapter reads `video_hd_url`/`video_sd_url`/`video_preview_image_url` (ScrapeCreators' documented Meta scrape shape). First live video fetch should be eyeballed; an unknown shape degrades to an empty asset URL, which the renderer already skips.
 - **Metrics are thin by design**: Meta's library exposes spend/impressions only for EU/political ads; only `estSpend` is mapped when present. The craft metric tiles omit zeros already.
 - **config.py commit dance**: the file is skip-worktree'd (local GATEWAY_URL override); the commit stages a crafted HEAD+settings blob so only the new settings land, then skip-worktree is restored.
-- **Not live-tested**: SCRAPECREATORS_API_KEY is not in variables.sh yet; Kailash adds it, then the real-estate session rerun validates end to end.
+- **Not live-tested**: SCRAPECREATORS_API_KEY is not in variables.sh yet; Kailash adds it, then the real-estate session rerun validates end to end. (Superseded: validated live 2026-09-01, resolved=2, 18 images + 5 videos rehosted, 13/13 essences.)
+
+### D-5: Places-first URL resolution (Kailash's call 2026-09-01)
+
+- **Why the inversion**: three live data points showed fetch-verified search URLs carrying the wrong identity anyway - a parent-brand category page (puravankara.com/villas-in-bannerghatta-road for Purva Sparkling Springs), a lead-gen microsite (shriramnewlaunch.com for Shriram), and developer homepages colliding as library keys. Verification proves a page is real, not official; the GBP website field is business-curated.
+- **Floor is the old behavior**: a guard miss (name mismatch, shared host, no listing, same host as search) changes nothing; only a guard-PASSING different-host listing swaps in, and the displaced URL stays as `search_url`.
+- **Dead-GBP fallback lives in `_fetch_one_for_shortlist`**: one retry with `search_url` when the GBP site fails to fetch, so the inversion can never lose a competitor the old ladder would have kept. The retried candidate's `url` is rewritten so evidence/dedup see the URL that actually verified.
+- **`_dedupe_resolved_hosts` after resolution**: scoring-time dedup ran on pre-Places URLs; two candidates can now land on one GBP site. First (= highest composite score) wins.
+- **Same-host listings swap nothing**: no pointless `search_url` crumbs when GBP agrees with search.

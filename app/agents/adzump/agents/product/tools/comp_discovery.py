@@ -122,26 +122,26 @@ def _listing_name_matches(candidate_name: str, listing_name: str) -> bool:
     return bool(a) and bool(b) and (a in b or b in a)
 
 
-async def _resolve_missing_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> None:
-    """Fill missing/aggregator candidate URLs from the Google Business Profile.
+async def _resolve_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> None:
+    """Places-first URL resolution (D-5): EVERY candidate gets one locality-
+    biased Google Business Profile lookup, and a listing that passes the guards
+    (name match + real brand host) WINS over the search-derived URL - the GBP
+    website is business-curated and, for project-style businesses, the
+    dedicated microsite (search tends to surface parent-brand category pages).
 
-    One locality-biased Places lookup per unresolved candidate, accepted only
-    when the listing name matches and the website is a real brand host - a
-    wrong URL is worse than none (it would poison the shared creative-library
-    key). Accepted URLs still pass the fetch-verify stage; rejects leave the
-    candidate untouched."""
+    The search URL survives as ``search_url`` - the fetch stage retries with it
+    when the GBP site turns out dead - and a guard miss keeps it as ``url``
+    exactly as before, so the floor is today's behavior. A wrong URL is worse
+    than none (it would poison the shared creative-library key); accepted URLs
+    still pass fetch-verify."""
     from app.agents.adzump.adapters.google.maps import GoogleMapsClient
 
-    unresolved = [
-        c for c in candidates
-        if not _host_of(c.get("url")) or _is_aggregator_host(_host_of(c.get("url")))
-    ]
-    if not unresolved:
+    if not candidates:
         return
     place = (session_ctx.get("product_data") or {}).get("place") or {}
     lat, lng = place.get("lat"), place.get("lng")
     maps = GoogleMapsClient()
-    for cand in unresolved:
+    for cand in candidates:
         listing = await maps.find_business_website(cand["name"], lat=lat, lng=lng)
         if not listing:
             continue
@@ -154,9 +154,32 @@ async def _resolve_missing_urls(candidates: list[dict[str, Any]], session_ctx: d
             logger.info("places_url_rejected: shared/aggregator host %s for %r",
                         host, cand["name"])
             continue
-        logger.info("places_url_resolved: %r -> %s", cand["name"], host)
+        if host == _host_of(cand.get("url")):
+            continue  # GBP agrees with search - nothing to swap
+        logger.info("places_url_resolved: %r -> %s (search had %s)",
+                    cand["name"], host, _host_of(cand.get("url")) or "nothing")
+        if cand.get("url"):
+            cand["search_url"] = cand["url"]
         cand["url"] = listing["website"]
         cand["host"] = host
+
+
+def _dedupe_resolved_hosts(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Post-resolution host dedup: two candidates can resolve to the same GBP
+    website (dedup at scoring ran on the pre-Places URLs). Keeps the first -
+    the list arrives sorted by composite score."""
+    seen_hosts: set[str] = set()
+    kept: list[dict[str, Any]] = []
+    for cand in candidates:
+        host = _host_of(cand.get("url"))
+        if host and host in seen_hosts:
+            logger.info("shortlist_dedup_resolved: dropped %r (same host %s)",
+                        cand["name"], host)
+            continue
+        if host:
+            seen_hosts.add(host)
+        kept.append(cand)
+    return kept
 
 
 def _score_code_signals(
@@ -478,7 +501,19 @@ async def _fetch_one_for_shortlist(
     url = candidate.get("url") or ""
     result = await _one(url)
     if result is None or result.get("_err"):
-        return {**candidate, "fetch_status": "failed", "fetch_error": (result or {}).get("_err", "unknown")}
+        # Places-first fallback (D-5): the GBP website was dead/blocked - retry
+        # once with the search-derived URL it displaced, rather than dropping a
+        # competitor we'd have kept before the inversion.
+        search_url = candidate.get("search_url") or ""
+        if search_url and _host_of(search_url) != _host_of(url):
+            logger.info("shortlist_fetch_fallback: %s dead, retrying %s",
+                        _host_of(url), _host_of(search_url))
+            url = search_url
+            candidate = {**candidate, "url": search_url}
+            result = await _one(url)
+        if result is None or result.get("_err"):
+            return {**candidate, "fetch_status": "failed",
+                    "fetch_error": (result or {}).get("_err", "unknown")}
 
     answer = result.get("answer") or ""
     is_aggregator = answer.strip().upper().startswith("TYPE: AGGREGATOR")
@@ -696,11 +731,12 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         if c["composite_score"] >= _SHORTLIST_MIN_COMPOSITE_SCORE
     ][:max_fetches + 4]  # take a few extra in case URL resolution fails for some
 
-    # URL resolution: candidates whose URL is missing or aggregator-hosted get
-    # one locality-biased Google Business Profile lookup. A resolved URL is NOT
+    # Places-first URL resolution (D-5): every candidate gets one GBP lookup;
+    # a guard-passing listing wins over the search URL. A resolved URL is NOT
     # trusted - it joins the fetch-verify stage below like any search-derived
     # URL. Nothing is ever guessed (the domain-pattern guesser is retired).
-    await _resolve_missing_urls(above_threshold, session_ctx)
+    await _resolve_urls(above_threshold, session_ctx)
+    above_threshold = _dedupe_resolved_hosts(above_threshold)
 
     # Let ALL candidates with URLs through to the fetch stage - including
     # aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
