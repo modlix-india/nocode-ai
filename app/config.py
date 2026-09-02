@@ -223,6 +223,24 @@ class Settings(BaseSettings):
     # changing the default.
     CFA_HOT_TOOLS: str = "full"
 
+    # Conversation-history elision. There is NO context management on the
+    # OpenAI-compatible path: `context_management` is an Anthropic-only
+    # server-side beta, it is not configured for the AppBuilder, and the DeepSeek
+    # create call ignores the parameter. So history grows unbounded — the Chit
+    # Fund run reached context_percent 100 against a 112K window and hard-stopped
+    # with no closing summary, and per-turn latency rose from ~4.5s on short
+    # conversations to ~19s on the long ones purely from prefill growth.
+    #
+    # Old tool_result payloads are the bulk (4K each by default, 32K for
+    # decompiles, plus screenshot images). Once the history passes
+    # ELIDE_OVER_CHARS, results older than KEEP_RECENT_TURNS assistant turns are
+    # replaced by a short stub that keeps a head of the original text. Small
+    # results are left alone: they are cheap and often carry the ids the model
+    # still needs. Set ELIDE_OVER_CHARS to 0 to disable entirely.
+    AGENT_HISTORY_ELIDE_OVER_CHARS: int = 200_000   # ~50K tokens
+    AGENT_HISTORY_KEEP_RECENT_TURNS: int = 6
+    AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS: int = 1500
+
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider

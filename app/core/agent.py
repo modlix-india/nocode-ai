@@ -384,6 +384,23 @@ class BaseAgent:
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
+            # Keep the conversation inside the context window. Nothing else does:
+            # `context_management` is an Anthropic-only server-side beta, it is not
+            # configured here, and the OpenAI-compatible providers ignore the
+            # parameter — so on DeepSeek the history simply grew until the Chit
+            # Fund run sat at context_percent 100 and stopped with no summary.
+            # Below the threshold this is a single cheap size check per turn.
+            # Local import to match the rest of this module: app.config is
+            # imported lazily here because agent.py loads before it on some
+            # boot paths.
+            from app.config import settings as _cfg  # noqa: PLC0415
+
+            session.elide_old_tool_results(
+                keep_recent_turns=_cfg.AGENT_HISTORY_KEEP_RECENT_TURNS,
+                over_chars=_cfg.AGENT_HISTORY_ELIDE_OVER_CHARS,
+                min_result_chars=_cfg.AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS,
+            )
+
             effective_tier = override_model or self.model_tier
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
                        turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))

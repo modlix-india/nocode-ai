@@ -627,6 +627,22 @@ async def _run_one(
             metrics.failure_reason = f"turn {i + 1} raised {type(e).__name__}: {e}"
             break
 
+    # Close any Playwright session the conversation left open. The idle reaper
+    # only runs inside a tool call, so across 17 conversations x N runs the
+    # orphans accumulate: three sequential runs left enough Chromium processes
+    # alive to poison the third (shopkeep 5 turns instead of ~50, clone-linear
+    # 0 turns) and to hold the parent's stdout pipe open so the loop never
+    # advanced. Cheap and best-effort — a bench must not fail on cleanup.
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals_browser import (
+            close_all_browser_sessions,
+        )
+        closed = await close_all_browser_sessions()
+        if closed:
+            log.info("  closed %d browser session(s) after %s", closed, conv.name)
+    except Exception as e:  # noqa: BLE001
+        log.warning("  browser cleanup after %s failed: %s", conv.name, e)
+
     # Real turn accounting. `metrics.turns` used to be incremented once per USER
     # message, which reported 61 turns for a run that made 175 LLM round trips and
     # hid the fact that every single batch was one call wide. The agent appends

@@ -326,6 +326,114 @@ class BaseSession:
             "content": tool_results,
         })
 
+    _ELIDED_FLAG = "_elided"
+
+    @staticmethod
+    def _content_chars(content: Any) -> int:
+        """Rough char weight of one message's content, images included.
+
+        Images are counted by their base64 length because that is what actually
+        travels; a screenshot dwarfs any text block in the same result.
+        """
+        if isinstance(content, str):
+            return len(content)
+        if not isinstance(content, list):
+            return 0
+        total = 0
+        for block in content:
+            if isinstance(block, str):
+                total += len(block)
+            elif isinstance(block, dict):
+                total += len(block.get("text") or "")
+                inner = block.get("content")
+                if inner is not None and inner is not block:
+                    total += BaseSession._content_chars(inner)
+                src = block.get("source")
+                if isinstance(src, dict):
+                    total += len(src.get("data") or "")
+        return total
+
+    def history_chars(self) -> int:
+        """Total char weight of the conversation. Cheap stand-in for tokens."""
+        return sum(self._content_chars(m.get("content")) for m in self.messages
+                   if isinstance(m, dict))
+
+    def elide_old_tool_results(
+        self,
+        keep_recent_turns: int = 6,
+        over_chars: int = 200_000,
+        min_result_chars: int = 1500,
+    ) -> int:
+        """Shrink old tool_result payloads once history gets big. Returns chars freed.
+
+        Nothing happens below `over_chars`, so short conversations are untouched.
+        Above it, `tool_result` blocks older than the last `keep_recent_turns`
+        assistant turns have their content replaced by a stub that keeps a
+        200-char head of the original, and any image they carried is dropped.
+
+        Deliberately narrow:
+        - The block is REPLACED, never removed, because every `tool_use` needs a
+          matching `tool_result` or the next request is rejected.
+        - User messages and assistant text/reasoning are never touched: they are
+          small and they carry the plan.
+        - Results under `min_result_chars` are left alone. They are cheap and
+          usually the ones holding ids and keys the model still needs.
+        - Already-elided blocks are flagged so repeat passes are free.
+
+        The cost of getting this wrong is a re-fetch (one turn), not a wrong
+        answer, which is why the recent window is kept whole.
+        """
+        if over_chars <= 0 or self.history_chars() <= over_chars:
+            return 0
+
+        assistant_positions = [i for i, m in enumerate(self.messages)
+                               if isinstance(m, dict) and m.get("role") == "assistant"]
+        if len(assistant_positions) <= keep_recent_turns:
+            return 0
+        # Everything at or after this index belongs to the recent window.
+        cutoff = assistant_positions[-keep_recent_turns]
+
+        freed = 0
+        for msg in self.messages[:cutoff]:
+            if not isinstance(msg, dict) or msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if (not isinstance(block, dict)
+                        or block.get("type") != "tool_result"
+                        or block.get(self._ELIDED_FLAG)):
+                    continue
+                before = self._content_chars(block.get("content"))
+                if before < min_result_chars:
+                    continue
+                head = self._result_head(block.get("content"))
+                block["content"] = (
+                    f"{head}\n[… {before} chars elided from this earlier result to "
+                    f"keep the conversation inside the context window. Re-run the "
+                    f"tool if you need the rest.]"
+                )
+                block[self._ELIDED_FLAG] = True
+                freed += before - self._content_chars(block["content"])
+        if freed:
+            logger.info("Elided %d chars of old tool results (history now %d)",
+                        freed, self.history_chars())
+        return freed
+
+    @staticmethod
+    def _result_head(content: Any, limit: int = 200) -> str:
+        """First `limit` chars of a result's text, for the stub. Images yield ''."""
+        if isinstance(content, str):
+            return content[:limit]
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    return (block.get("text") or "")[:limit]
+                if isinstance(block, str):
+                    return block[:limit]
+        return ""
+
     def accumulate_usage(self, usage: dict[str, Any]) -> None:
         """Add token usage from one LLM call to running totals."""
         for key in self.total_usage:

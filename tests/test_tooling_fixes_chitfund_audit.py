@@ -10,6 +10,7 @@ model, so these lock the corrected behaviour at the tool boundary.
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 
 import pytest
@@ -204,16 +205,40 @@ def test_uiengine_catalog_has_real_functions_and_no_fabricated_ones():
         assert fake not in c.UIENGINE_PRIMITIVES, f"{fake} does not exist in nocode-ui"
 
 
-def test_uiengine_catalog_matches_nocode_ui_checkout():
-    """Drift guard: regenerate with scripts/gen_uiengine_catalog.py when this fails."""
+def test_uiengine_catalog_carries_no_function_nocode_ui_lacks():
+    """Drift guard, asymmetric on purpose.
+
+    STALE (the catalog names a function `all.ts` does not export) is the bug this
+    catalog was generated to kill: the hand-written set carried 11 names that
+    never existed, the agent asked for `UIEngine.Read`, got null, and fell back
+    to SetStore mock data on every page. That direction MUST fail.
+
+    MISSING (`all.ts` exports something the catalog has not picked up yet) is
+    harmless — the agent simply does not reach for it. It is also the normal
+    state whenever the nocode-ui checkout sits on a UI feature branch, which is
+    most of the time; asserting equality turned every such branch into a red
+    nocode-ai suite and, worse, invited a regenerate that would bake an
+    UNRELEASED function into the catalog. That is the stale bug arriving by the
+    front door. Regenerate from a released nocode-ui, never from a feature
+    branch: `python scripts/gen_uiengine_catalog.py`.
+    """
     all_ts = Path(__file__).resolve().parents[2] / "nocode-ui" / "ui-app" / "client" / "src" / "functions" / "all.ts"
     if not all_ts.exists():
         pytest.skip("nocode-ui checkout not present next to nocode-ai")
     exported = set(re.findall(r"from\s+'\./(\w+)'", all_ts.read_text(encoding="utf-8")))
-    assert exported == set(c.UIENGINE_SIGNATURES), (
-        f"catalog drift: missing={sorted(exported - set(c.UIENGINE_SIGNATURES))} "
-        f"stale={sorted(set(c.UIENGINE_SIGNATURES) - exported)}"
+    stale = sorted(set(c.UIENGINE_SIGNATURES) - exported)
+    assert not stale, (
+        f"catalog names {stale}, which nocode-ui does not export. The agent will "
+        f"be told these exist and get null back. Regenerate the catalog."
     )
+    missing = sorted(exported - set(c.UIENGINE_SIGNATURES))
+    if missing:
+        warnings.warn(
+            f"UIEngine catalog is behind the local nocode-ui checkout: {missing}. "
+            f"Harmless (the agent just won't use them). Regenerate ONLY if these "
+            f"are released, not merely present on a feature branch.",
+            stacklevel=2,
+        )
 
 
 @pytest.mark.asyncio
@@ -410,6 +435,27 @@ def test_persona_quotes_the_real_turn_limit():
     assert 'type="Grid"' not in AGENT_PERSONA and "type=TextBox" not in AGENT_PERSONA, (
         "recipes must use component_type; `type` is not a parameter and is now rejected"
     )
+
+
+def test_persona_budgets_are_denominated_in_turns_not_calls():
+    """A call-denominated budget actively discourages batching.
+
+    The research cap used to read "AT MOST 3 read calls before your first
+    write", so the model spent it one call at a time: 3 turns for 3 reads, the
+    worst possible shape. A batch costs one turn whatever its width, so the
+    budget has to be counted in messages or the prompt argues against the thing
+    the batching rule asks for. Measured before this change: 1.22 calls/turn
+    with 63 of ~130 turns still carrying exactly one call.
+    """
+    from app.agents.appbuilder.context import AGENT_PERSONA
+    assert "AT MOST 2 research MESSAGES" in AGENT_PERSONA
+    assert "AT MOST 3 read/list/get/search calls" not in AGENT_PERSONA
+    # It must say WHY, or the model has no reason to widen the batch.
+    assert "costs the same" in AGENT_PERSONA
+    assert "make the first look WIDE" in AGENT_PERSONA
+    # And the per-message budget must not re-introduce a call count.
+    assert "≤10 TURNS per user message" in AGENT_PERSONA
+    assert "≤15 tool calls per user message" not in AGENT_PERSONA
 
 
 def test_persona_teaches_parallel_batching_with_its_two_exceptions():
