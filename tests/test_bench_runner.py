@@ -414,7 +414,13 @@ def test_failure_class_pulls_exception_name() -> None:
 
 
 def test_failure_class_handles_non_exception_reason() -> None:
-    assert bp._failure_class("missing required tools: ['list_pages']") == "missing required tools"
+    # This used to classify as "missing required tools" and count toward the
+    # cascade breaker. It is the oracle's own verdict that the agent ran and did
+    # not do the work — a measurement, not an upstream fault — so it must not
+    # abort the remaining conversations. See the circuit-breaker tests below.
+    assert bp._failure_class("missing required tools: ['list_pages']") is None
+    # A genuine upstream fault in the same shape still classifies.
+    assert bp._failure_class("ConnectError: gateway refused") == "ConnectError"
 
 
 def test_failure_class_handles_none_and_empty() -> None:
@@ -508,3 +514,122 @@ def test_circuit_breaker_does_not_trip_on_unclassifiable_reason() -> None:
     consec, cls, abort = bp._update_circuit_breaker(_metric(False, None), consec, cls)
     # Even multiple Nones in a row don't trip the breaker — no class to match.
     assert abort is False
+
+
+# ─── Turn accounting ────────────────────────────────────────────────────────
+#
+# These guard the metric the whole bench is read through. It previously counted
+# USER messages and reported 61 turns for a run that made 175 LLM round trips,
+# which is how a run where the model never once batched two calls together got
+# recorded as "1 turn, 8 tool calls" and read as healthy.
+
+
+def _assistant(*blocks):
+    return {"role": "assistant", "content": list(blocks)}
+
+
+def _tool_use(name="list_pages"):
+    return {"type": "tool_use", "id": "tu_1", "name": name, "input": {}}
+
+
+def _text(t="ok"):
+    return {"type": "text", "text": t}
+
+
+def test_assistant_turns_counts_llm_round_trips_not_user_messages():
+    history = [
+        {"role": "user", "content": "build me a page"},
+        _assistant(_tool_use()),
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "tu_1"}]},
+        _assistant(_tool_use()),
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "tu_1"}]},
+        _assistant(_text("done")),
+    ]
+    # One user instruction, three LLM calls.
+    assert bp._assistant_turns(history) == 3
+
+
+def test_assistant_turns_on_empty_history_is_zero():
+    assert bp._assistant_turns([]) == 0
+
+
+def test_turn_batch_sizes_reports_one_entry_per_tool_using_turn():
+    history = [
+        _assistant(_tool_use("a"), _tool_use("b"), _tool_use("c")),
+        _assistant(_text("thinking out loud")),          # no tools: not a batch
+        _assistant(_tool_use("d")),
+    ]
+    assert bp._turn_batch_sizes(history) == [3, 1]
+
+
+def test_turn_batch_sizes_all_ones_is_the_no_batching_signature():
+    history = [_assistant(_tool_use()) for _ in range(5)]
+    sizes = bp._turn_batch_sizes(history)
+    assert sizes == [1, 1, 1, 1, 1]
+    assert max(sizes) == 1  # what the baseline run actually looked like
+
+
+def test_turn_batch_sizes_tolerates_string_content_and_junk():
+    history = [
+        {"role": "assistant", "content": "plain string, no blocks"},
+        {"role": "user", "content": [_tool_use()]},   # user side never counts
+        "not a dict at all",
+        _assistant(_tool_use()),
+    ]
+    assert bp._turn_batch_sizes(history) == [1]
+
+
+def test_provider_block_surfaces_turns_and_batching():
+    rows = [
+        bp.BenchMetrics(
+            provider="deepseek", conversation="c1", converged=True,
+            turns=9, tool_calls_total=8, max_tools_per_turn=1, single_tool_turns=8,
+        ),
+    ]
+    out = "\n".join(bp._render_provider_block("deepseek", rows))
+    assert "LLM turns: 9 for 8 tool calls" in out
+    assert "0.89 calls/turn" in out
+    assert "8 single-call turns, widest batch 1" in out
+
+
+# ─── Circuit breaker vs oracle verdicts ─────────────────────────────────────
+#
+# The breaker exists to stop an auth/gateway cascade from burning the corpus.
+# It was also counting the oracle's own "the agent didn't do the work" verdicts,
+# so two ordinary non-convergences aborted the run — and the last four
+# conversations (shopkeep + three clone runs, the heaviest in the corpus and the
+# closest to a real one-shot app build) were skipped on every run ever recorded.
+
+
+def test_oracle_verdicts_are_not_cascade_classes():
+    for reason in (
+        "missing required tools: ['patch_component_props']",
+        "none-of-group called: [['get_page_summary', 'get_page']]",
+        "must_succeed_on_kirun=true but no successful Kirun compile/save",
+        "must_succeed_on_kb_write=true but no successful KB commit",
+    ):
+        assert bp._failure_class(reason) is None, reason
+
+
+def test_infrastructure_failures_are_still_cascade_classes():
+    assert bp._failure_class("AuthenticationError: 401 invalid x-api-key") == "AuthenticationError"
+    assert bp._failure_class("ConnectError: gateway down") == "ConnectError"
+    assert bp._failure_class("Agent error: RateLimitError: slow down") == "RateLimitError"
+
+
+def test_two_oracle_failures_in_a_row_do_not_abort_the_run():
+    consec, cls, abort = bp._update_circuit_breaker(
+        _metric(False, "missing required tools: ['a']"), 0, None)
+    assert abort is False
+    consec, cls, abort = bp._update_circuit_breaker(
+        _metric(False, "missing required tools: ['b']"), consec, cls)
+    assert abort is False, "the four heaviest conversations must still get to run"
+
+
+def test_two_auth_failures_in_a_row_still_abort():
+    consec, cls, abort = bp._update_circuit_breaker(
+        _metric(False, "AuthenticationError: 401"), 0, None)
+    assert abort is False
+    consec, cls, abort = bp._update_circuit_breaker(
+        _metric(False, "AuthenticationError: 401"), consec, cls)
+    assert abort is True
