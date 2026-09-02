@@ -240,6 +240,15 @@ class Settings(BaseSettings):
     AGENT_HISTORY_ELIDE_OVER_CHARS: int = 200_000   # ~50K tokens
     AGENT_HISTORY_KEEP_RECENT_TURNS: int = 6
     AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS: int = 1500
+    # Screenshots are the real bulk and need a MUCH shorter window than text.
+    # Measured: a light-12 run reached 721,910 chars of history while the text
+    # pass reclaimed 5,405, because the weight was images sitting inside the
+    # 6-turn text window. One screenshot is 100-500KB of base64 and it is paid
+    # again on every turn it survives, while the model has already read it and
+    # written down what it saw. Kept small, but never zero: the visual critique
+    # loop (screenshot -> patch -> screenshot -> compare) needs the previous
+    # shot. The newest image is always kept regardless of this number.
+    AGENT_HISTORY_KEEP_IMAGES_TURNS: int = 3
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.

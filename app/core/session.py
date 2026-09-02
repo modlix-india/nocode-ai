@@ -358,11 +358,73 @@ class BaseSession:
         return sum(self._content_chars(m.get("content")) for m in self.messages
                    if isinstance(m, dict))
 
+    @staticmethod
+    def _is_image(block: Any) -> bool:
+        return isinstance(block, dict) and block.get("type") in ("image", "image_url")
+
+    def _drop_old_images(self, keep_turns: int) -> int:
+        """Replace screenshots outside the recent window with a text note.
+
+        Images dominate history weight — a single screenshot is 100-500KB of
+        base64, re-sent on every subsequent turn — and they need a far shorter
+        window than text: the model looked at the shot when it arrived and wrote
+        down what it saw, so the pixels stop earning their place almost at once.
+
+        The newest image is always kept even when `keep_turns` would drop it, so
+        the screenshot -> patch -> screenshot -> compare loop always has the shot
+        it just took.
+        """
+        positions = [i for i, m in enumerate(self.messages)
+                     if isinstance(m, dict) and m.get("role") == "assistant"]
+        if len(positions) <= keep_turns:
+            return 0
+        cutoff = positions[-keep_turns]
+
+        # Find the newest image anywhere, so it can be spared.
+        newest: tuple[int, int, int] | None = None
+        for mi, msg in enumerate(self.messages):
+            content = msg.get("content") if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for bi, block in enumerate(content):
+                if self._is_image(block):
+                    newest = (mi, bi, -1)
+                elif isinstance(block, dict) and isinstance(block.get("content"), list):
+                    for ii, inner in enumerate(block["content"]):
+                        if self._is_image(inner):
+                            newest = (mi, bi, ii)
+
+        freed = 0
+
+        def _swap(container: list, idx: int, at: tuple) -> int:
+            if newest is not None and at == newest:
+                return 0
+            weight = self._content_chars([container[idx]])
+            container[idx] = {"type": "text",
+                              "text": "[screenshot dropped from history — "
+                                      "take a fresh one if you need to look again]"}
+            return weight
+
+        for mi, msg in enumerate(self.messages[:cutoff]):
+            content = msg.get("content") if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for bi, block in enumerate(list(content)):
+                if self._is_image(block):
+                    freed += _swap(content, bi, (mi, bi, -1))
+                elif isinstance(block, dict) and isinstance(block.get("content"), list):
+                    inner_list = block["content"]
+                    for ii, inner in enumerate(list(inner_list)):
+                        if self._is_image(inner):
+                            freed += _swap(inner_list, ii, (mi, bi, ii))
+        return freed
+
     def elide_old_tool_results(
         self,
         keep_recent_turns: int = 6,
         over_chars: int = 200_000,
         min_result_chars: int = 1500,
+        keep_images_turns: int = 3,
     ) -> int:
         """Shrink old tool_result payloads once history gets big. Returns chars freed.
 
@@ -388,12 +450,19 @@ class BaseSession:
 
         assistant_positions = [i for i, m in enumerate(self.messages)
                                if isinstance(m, dict) and m.get("role") == "assistant"]
+        freed = 0
         if len(assistant_positions) <= keep_recent_turns:
-            return 0
+            # Too few turns for the TEXT window to have anything behind it. The
+            # image pass still runs: its window is much shorter, and a short
+            # conversation carrying several screenshots is exactly the case that
+            # blew up before (721,910 chars of history, 5,405 reclaimed).
+            freed += self._drop_old_images(keep_images_turns)
+            if freed:
+                logger.info("Elided %d chars of history (now %d)", freed, self.history_chars())
+            return freed
         # Everything at or after this index belongs to the recent window.
         cutoff = assistant_positions[-keep_recent_turns]
 
-        freed = 0
         for msg in self.messages[:cutoff]:
             if not isinstance(msg, dict) or msg.get("role") != "user":
                 continue
@@ -416,9 +485,9 @@ class BaseSession:
                 )
                 block[self._ELIDED_FLAG] = True
                 freed += before - self._content_chars(block["content"])
+        freed += self._drop_old_images(keep_images_turns)
         if freed:
-            logger.info("Elided %d chars of old tool results (history now %d)",
-                        freed, self.history_chars())
+            logger.info("Elided %d chars of history (now %d)", freed, self.history_chars())
         return freed
 
     @staticmethod

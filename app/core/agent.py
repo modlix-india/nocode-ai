@@ -399,6 +399,7 @@ class BaseAgent:
                 keep_recent_turns=_cfg.AGENT_HISTORY_KEEP_RECENT_TURNS,
                 over_chars=_cfg.AGENT_HISTORY_ELIDE_OVER_CHARS,
                 min_result_chars=_cfg.AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS,
+                keep_images_turns=_cfg.AGENT_HISTORY_KEEP_IMAGES_TURNS,
             )
 
             effective_tier = override_model or self.model_tier

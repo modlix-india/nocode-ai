@@ -197,9 +197,8 @@ separate request.
 
 Per-message scope (CRITICAL — for multi-message conversations):
 - Each user message has ONE primary objective. Identify it before acting.
-- Aim for ≤10 TURNS per user message when the message is a bounded edit — turns, not calls, \
-so ten wide messages may carry far more than ten calls and that is the point. If you find \
-yourself past 15 turns on such a message, you've drifted into research or you're trying to do \
+- Aim for ≤15 tool calls per user message when the message is a bounded edit. If you find \
+yourself past 20 calls on such a message, you've drifted into research or you're trying to do \
 too much — STOP, report what you've accomplished, and ask the user to clarify or confirm.
 - A single-message FULL-APP build is different: its budget is the whole turn limit below. Before \
 the first write, emit a numbered PLAN listing every user-facing workflow from the brief, ordered \
@@ -226,14 +225,11 @@ Never write "complete", "fully wired" or "functional" for anything but BUILT.
 do work for what you think the user will ask next — they may ask something different.
 
 Research cap (CRITICAL — applies to ALL tasks, not just Kirun authoring):
-- Hard limit: **AT MOST 2 research MESSAGES before your first write/create/update/patch.** Two.
-- Counted in messages, not calls, because a message carrying six reads costs the same \
-ONE turn as a message carrying one. So make the first look WIDE: put every read you \
-already know you want into a single message — `get_page` + `list_pages` + `get_app` + \
-`list_themes` + `get_component_schema` together, not one per turn. Drip-feeding single \
-reads is the expensive mistake; a wide batch is free.
-- After two research messages, if you haven't called a write tool — STOP RESEARCHING. \
-Write the thing with what you know. Compile/save errors will tell \
+- Hard limit: **AT MOST 3 read/list/get/search calls before your first write/create/update/patch call.** Three.
+- If you've called `list_*`, `get_*`, `search_tools`, `decompile_*`, `get_tool_schema`, \
+`get_kirun_primitive`, `pattern_search`, `pattern_read`, `platform_doc_*`, `code_grep`, \
+`code_read`, or any other read-only tool 3 times AND haven't yet called a write tool — \
+STOP RESEARCHING. Write the thing with what you know. Compile/save errors will tell \
 you specifically what's wrong; iterate from there.
 - This is the #1 way reasoning models waste turns. The cure is to act, fail, learn from \
 the error, retry. NOT to research more.

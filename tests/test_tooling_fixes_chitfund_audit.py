@@ -437,25 +437,36 @@ def test_persona_quotes_the_real_turn_limit():
     )
 
 
-def test_persona_budgets_are_denominated_in_turns_not_calls():
-    """A call-denominated budget actively discourages batching.
+def test_persona_research_cap_stays_call_denominated():
+    """Turn-denominating the budgets was tried, measured, and reverted.
 
-    The research cap used to read "AT MOST 3 read calls before your first
-    write", so the model spent it one call at a time: 3 turns for 3 reads, the
-    worst possible shape. A batch costs one turn whatever its width, so the
-    budget has to be counted in messages or the prompt argues against the thing
-    the batching rule asks for. Measured before this change: 1.22 calls/turn
-    with 63 of ~130 turns still carrying exactly one call.
+    The theory was sound: "AT MOST 3 read calls before your first write" is a
+    CALL budget, so the model spends it one call per turn — 3 turns for 3 reads,
+    the worst shape — while a batch of six reads costs the same single turn.
+    Re-denominating it to "AT MOST 2 research MESSAGES ... make the first look
+    WIDE" should therefore have been free.
+
+    It was not. Measured on the light-12 subset, four runs before against three
+    after:
+
+        turns per run   before [73, 70, 68, 69] mean 70.0
+                        after  [72, 78, 77]     mean 75.7   (+8.1%)
+        calls per run   before mean 82.8  ->  after mean 102.0
+        real-world-taskmate   before [44, 48, 52] mean 48  ->  after 60
+
+    Batches did get wider (calls/turn 1.18 -> 1.35). The model simply did more
+    total work to reach the same place. Widening the research window bought more
+    research, not less.
+
+    This test pins the ORIGINAL wording so the change is not made again without
+    new evidence. The batching rule itself stays — that one is measured at -32%
+    turns and is asserted separately below.
     """
     from app.agents.appbuilder.context import AGENT_PERSONA
-    assert "AT MOST 2 research MESSAGES" in AGENT_PERSONA
-    assert "AT MOST 3 read/list/get/search calls" not in AGENT_PERSONA
-    # It must say WHY, or the model has no reason to widen the batch.
-    assert "costs the same" in AGENT_PERSONA
-    assert "make the first look WIDE" in AGENT_PERSONA
-    # And the per-message budget must not re-introduce a call count.
-    assert "≤10 TURNS per user message" in AGENT_PERSONA
-    assert "≤15 tool calls per user message" not in AGENT_PERSONA
+    assert "AT MOST 3 read/list/get/search calls" in AGENT_PERSONA
+    assert "≤15 tool calls per user message" in AGENT_PERSONA
+    assert "AT MOST 2 research MESSAGES" not in AGENT_PERSONA, "reverted: +8.1% turns"
+    assert "≤10 TURNS per user message" not in AGENT_PERSONA, "reverted: +8.1% turns"
 
 
 def test_persona_teaches_parallel_batching_with_its_two_exceptions():

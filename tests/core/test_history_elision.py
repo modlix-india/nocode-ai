@@ -166,3 +166,95 @@ def test_the_loop_calls_it_every_turn():
     # Must sit with the turn increment, not after the LLM call, or the turn that
     # overflows the window is the one that pays for it.
     assert src.index("turn += 1") < src.index("elide_old_tool_results")
+
+
+# ── images: the actual bulk ─────────────────────────────────────────────────
+#
+# The first cut of this elision reclaimed 5,405 chars from a history of 721,910.
+# The text pass was working; the weight was screenshots sitting inside the
+# 6-turn text window. A screenshot is 100-500KB of base64 re-sent on every
+# subsequent turn, while the model read it once and wrote down what it saw — so
+# images need their own, much shorter window.
+
+
+def _img(data_len=50_000):
+    return {"type": "image", "source": {"type": "base64", "data": "D" * data_len}}
+
+
+def _shot_session(n_turns: int) -> BaseSession:
+    s = BaseSession(agent_name="test")
+    s.messages = [{"role": "user", "content": "clone this page"}]
+    for i in range(n_turns):
+        s.messages.append({"role": "assistant", "content": [
+            {"type": "tool_use", "id": f"t{i}", "name": "screenshot_page", "input": {}}]})
+        s.messages.append({"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": f"t{i}", "content": [
+                {"type": "text", "text": "captured"}, _img()]}]})
+    return s
+
+
+def _count_images(s: BaseSession) -> int:
+    n = 0
+    for m in s.messages:
+        c = m.get("content") if isinstance(m, dict) else None
+        if not isinstance(c, list):
+            continue
+        for b in c:
+            if isinstance(b, dict):
+                if b.get("type") == "image":
+                    n += 1
+                elif isinstance(b.get("content"), list):
+                    n += sum(1 for i in b["content"]
+                             if isinstance(i, dict) and i.get("type") == "image")
+    return n
+
+
+def test_old_screenshots_are_dropped_and_that_is_where_the_weight_is():
+    s = _shot_session(10)
+    before_imgs, before_chars = _count_images(s), s.history_chars()
+    freed = s.elide_old_tool_results(over_chars=100_000, keep_images_turns=3)
+    assert _count_images(s) < before_imgs
+    # The point of the retune: this must reclaim a large share, not 1%.
+    assert freed > before_chars * 0.4, f"only reclaimed {freed} of {before_chars}"
+
+
+def test_the_newest_screenshot_is_always_kept():
+    """screenshot -> patch -> screenshot -> compare needs the shot just taken."""
+    s = _shot_session(12)
+    s.elide_old_tool_results(over_chars=10_000, keep_images_turns=1)
+    assert _count_images(s) >= 1
+
+
+def test_short_screenshot_conversations_keep_every_image():
+    s = _shot_session(2)
+    before = _count_images(s)
+    s.elide_old_tool_results(over_chars=100_000, keep_images_turns=3)
+    assert _count_images(s) == before
+
+
+def test_a_dropped_image_leaves_a_note_saying_how_to_recover():
+    s = _shot_session(10)
+    s.elide_old_tool_results(over_chars=100_000, keep_images_turns=3)
+    texts = [i.get("text", "") for m in s.messages
+             if isinstance(m.get("content"), list) for b in m["content"]
+             if isinstance(b, dict) and isinstance(b.get("content"), list)
+             for i in b["content"] if isinstance(i, dict)]
+    assert any("screenshot dropped" in t for t in texts)
+    assert any("take a fresh one" in t for t in texts)
+
+
+def test_images_are_dropped_even_when_text_elision_finds_nothing():
+    """The exact observed failure: all results recent/small, history still huge."""
+    s = _shot_session(10)
+    # every tool_result's TEXT is tiny, so the text pass has nothing to do
+    freed = s.elide_old_tool_results(
+        over_chars=100_000, keep_recent_turns=99, min_result_chars=10**9,
+        keep_images_turns=3)
+    assert freed > 0
+
+
+def test_image_drop_still_respects_the_size_gate():
+    s = _shot_session(10)
+    before = _count_images(s)
+    assert s.elide_old_tool_results(over_chars=0, keep_images_turns=1) == 0
+    assert _count_images(s) == before

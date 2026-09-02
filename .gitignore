@@ -218,3 +218,6 @@ scripts/bench_results
 # page analyzer run artifacts (screenshots/analysis.json) - local only
 runs/
 *.pid
+# Function/definition corpus pulled from prod Mongo. Read-only export, but it
+# is production customer data and must never be committed.
+corpus/

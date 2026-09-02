@@ -70,6 +70,10 @@ def main() -> int:
     ap.add_argument("--show", type=int, default=12, help="How many worst-covered pages to list")
     ap.add_argument("--dsl-root", default="app/agents/appbuilder/aicontext/patterns",
                     help="Root of .dsl files for the logic report; empty to skip")
+    ap.add_argument("--min-uses", type=int, default=5,
+                    help="Times a subtree must recur to count as a template")
+    ap.add_argument("--min-size", type=int, default=3,
+                    help="Components a subtree must have to be worth templating")
     args = ap.parse_args()
 
     pages = load_pages(args.root)
@@ -129,6 +133,7 @@ def main() -> int:
     _style_report(args.root)
     if args.dsl_root:
         _dsl_report(args.dsl_root)
+    _subtree_report(args.root, args.min_uses, args.min_size)
     return 0
 
 
@@ -261,6 +266,121 @@ def _dsl_report(root: str) -> None:
     print(f"  functions using at least one step no other function uses: "
           f"{novel}/{len(per_file)} ({novel / len(per_file) * 100:.0f}%)")
     print("  most-used steps:", ", ".join(f"{c}({n})" for c, n in calls.most_common(8)))
+
+
+
+
+# ── Subtree templates ───────────────────────────────────────────────────────
+
+
+def _pages_with_trees(root: str):
+    """Yield (label, componentDefinition) for every page carrying a tree."""
+    for path in glob.glob(os.path.join(root, "**", "*.json"), recursive=True):
+        try:
+            with open(path) as fh:
+                doc = json.load(fh)
+        except (ValueError, OSError):
+            continue
+        for d in (doc if isinstance(doc, list) else [doc]):
+            if not isinstance(d, dict):
+                continue
+            cd = d.get("componentDefinition")
+            if isinstance(cd, dict) and cd:
+                yield f"{d.get('appCode', '?')}/{d.get('name', os.path.basename(path))}", cd
+
+
+def _roots(cd: dict) -> list[str]:
+    """Keys that are nobody's child."""
+    childed = set()
+    for c in cd.values():
+        if isinstance(c, dict) and isinstance(c.get("children"), dict):
+            childed.update(k for k, v in c["children"].items() if v)
+    return [k for k in cd if k not in childed]
+
+
+def _subtree_sig(cd: dict, key: str, memo: dict, size: dict) -> str:
+    """Canonical signature of the subtree rooted at `key`, and its size.
+
+    Children are sorted so that two sections differing only in the ORDER of
+    equivalent siblings still match — a template library wants the shape, not
+    the shuffle. Property VALUES are excluded for the same reason values are
+    excluded from the component signature: they are what the caller supplies.
+    """
+    if key in memo:
+        return memo[key]
+    node = cd.get(key)
+    if not isinstance(node, dict):
+        memo[key], size[key] = "?", 1
+        return "?"
+    kids = node.get("children")
+    kid_keys = [k for k, v in kids.items() if v and k in cd] if isinstance(kids, dict) else []
+    parts = sorted(_subtree_sig(cd, k, memo, size) for k in kid_keys)
+    total = 1 + sum(size[k] for k in kid_keys)
+    sig = node.get("type") or "?"
+    if parts:
+        sig += "(" + ",".join(parts) + ")"
+    memo[key], size[key] = sig, total
+    return sig
+
+
+def _subtree_report(root: str, min_uses: int, min_size: int) -> None:
+    """How much of the corpus is recombination of recurring SUBTREES.
+
+    The per-component numbers above say the shape vocabulary is tiny, but a
+    template library is made of sections, not single components. This asks the
+    question a `build_section(spec)` tool actually depends on: take every subtree
+    that recurs at least `min_uses` times and has at least `min_size`
+    components, then greedily cover each page with the largest ones that match.
+    The covered share is what a library could emit without inventing anything.
+
+    Greedy top-down is deliberate: a matched subtree is emitted whole, so its
+    descendants are not separately templated.
+    """
+    pages = list(_pages_with_trees(root))
+    if not pages:
+        return
+    counts: collections.Counter = collections.Counter()
+    per_page = []
+    for label, cd in pages:
+        memo: dict = {}
+        size: dict = {}
+        for r in _roots(cd):
+            _subtree_sig(cd, r, memo, size)
+        for k in cd:
+            if k not in memo:
+                _subtree_sig(cd, k, memo, size)
+        counts.update(memo[k] for k in cd if size.get(k, 1) >= min_size)
+        per_page.append((label, cd, memo, size))
+
+    library = {sig for sig, n in counts.items() if n >= min_uses}
+    total_comps = sum(len(cd) for _, cd, _, _ in per_page)
+
+    covered = 0
+    for _, cd, memo, size in per_page:
+        stack = list(_roots(cd)) or list(cd)
+        while stack:
+            k = stack.pop()
+            node = cd.get(k)
+            if not isinstance(node, dict):
+                continue
+            if memo.get(k) in library:
+                covered += size.get(k, 1)      # emitted whole, don't descend
+                continue
+            kids = node.get("children")
+            if isinstance(kids, dict):
+                stack.extend(kk for kk, v in kids.items() if v and kk in cd)
+
+    print()
+    print(f"Subtree templates — recurring >= {min_uses}x, >= {min_size} components")
+    print(f"  distinct subtrees of that size : {len(counts):,}")
+    print(f"  qualifying as templates        : {len(library):,}")
+    print(f"  components coverable by them   : {covered:,} / {total_comps:,} "
+          f"({covered / total_comps * 100:.1f}%)")
+    print("  most reused sections:")
+    for sig, n in counts.most_common(8):
+        depth = sig.count("(")
+        width = sig.count(",") + 1
+        print(f"    {n:5d}x  {sig[:74]}{'…' if len(sig) > 74 else ''}  (~{width} parts, depth {depth})")
 
 
 if __name__ == "__main__":
