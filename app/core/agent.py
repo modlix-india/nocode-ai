@@ -46,6 +46,88 @@ from app.services.llm_provider import get_llm_provider
 logger = logging.getLogger(__name__)
 
 
+
+class _ToolBlockAssembler:
+    """Assembles streaming `tool_use` blocks, keyed by tool id.
+
+    Providers interleave a PARALLEL batch differently. The OpenAI-compatible
+    chat-completions path (DeepSeek, MiniMax) emits every `tool_use_start`
+    first, and only afterwards the arguments and ends, each keyed by id. A
+    single in-flight slot therefore kept only the LAST call of a batch, paired
+    it with the FIRST call's arguments, and silently dropped the rest — which is
+    why a 13-conversation bench recorded 147 tool calls across 175 turns with no
+    batch ever wider than one, while the same model returns 3 parallel calls
+    when asked outside the stream (scripts/probe_parallel_tool_calls.py).
+
+    Anthropic and the non-streaming fallback stream one tool at a time and send
+    argument deltas with NO id, so an id-less delta or end applies to the most
+    recently started block that has not ended yet.
+    """
+
+    def __init__(self) -> None:
+        self._open: dict[str, dict[str, Any]] = {}   # insertion-ordered
+        self._last: str | None = None
+        self._synthetic = 0
+
+    def __bool__(self) -> bool:
+        """True while any tool block is still open."""
+        return bool(self._open)
+
+    def start(self, tool_id: str, tool_name: str) -> None:
+        key = tool_id or ""
+        if not key or key in self._open:
+            # Providers may omit the id, or repeat one across a batch. Neither
+            # may collapse two distinct calls into one block.
+            self._synthetic += 1
+            key = f"{key}#{self._synthetic}"
+        self._open[key] = {
+            "type": "tool_use",
+            "id": tool_id or key,
+            "name": tool_name,
+            "input": {},
+            "_input_json": "",
+        }
+        self._last = key
+
+    def _resolve(self, tool_id: str) -> str | None:
+        if tool_id and tool_id in self._open:
+            return tool_id
+        if tool_id:
+            # An id we never opened: match on the block's reported id, which can
+            # differ from the synthetic key.
+            for key, blk in self._open.items():
+                if blk.get("id") == tool_id:
+                    return key
+        if self._last in self._open:
+            return self._last
+        return next(reversed(list(self._open)), None) if self._open else None
+
+    def delta(self, tool_id: str, fragment: str) -> None:
+        key = self._resolve(tool_id)
+        if key is None:
+            return
+        self._open[key]["_input_json"] += fragment
+
+    def end(self, tool_id: str) -> dict[str, Any] | None:
+        """Close a block and return it ready for the message, or None."""
+        key = self._resolve(tool_id)
+        if key is None:
+            return None
+        block = self._open.pop(key)
+        if self._last == key:
+            self._last = next(reversed(list(self._open)), None) if self._open else None
+        raw = block.pop("_input_json", "") or "{}"
+        try:
+            block["input"] = json.loads(raw)
+        except (ValueError, json.JSONDecodeError):
+            block["input"] = {}
+        return block
+
+    def reset(self) -> None:
+        self._open.clear()
+        self._last = None
+
+
 class BaseAgent:
     """Base class for all agentic loops.
 
@@ -302,6 +384,24 @@ class BaseAgent:
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
+            # Keep the conversation inside the context window. Nothing else does:
+            # `context_management` is an Anthropic-only server-side beta, it is not
+            # configured here, and the OpenAI-compatible providers ignore the
+            # parameter — so on DeepSeek the history simply grew until the Chit
+            # Fund run sat at context_percent 100 and stopped with no summary.
+            # Below the threshold this is a single cheap size check per turn.
+            # Local import to match the rest of this module: app.config is
+            # imported lazily here because agent.py loads before it on some
+            # boot paths.
+            from app.config import settings as _cfg  # noqa: PLC0415
+
+            session.elide_old_tool_results(
+                keep_recent_turns=_cfg.AGENT_HISTORY_KEEP_RECENT_TURNS,
+                over_chars=_cfg.AGENT_HISTORY_ELIDE_OVER_CHARS,
+                min_result_chars=_cfg.AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS,
+                keep_images_turns=_cfg.AGENT_HISTORY_KEEP_IMAGES_TURNS,
+            )
+
             effective_tier = override_model or self.model_tier
             logger.info("Turn %d/%d: calling LLM (model_tier=%s, max_tokens=%d, tools=%d)",
                        turn, self.max_turns, effective_tier, self.max_tokens, len(self._anthropic_tools))
@@ -396,9 +496,24 @@ class BaseAgent:
                     self.force_serial_on_elicitation,
                 )
 
+            # Same-document writes in one batch must not race. Before the
+            # parallel-tool-assembly fix a batch collapsed to a single call, so
+            # this could never happen; now that batches really do dispatch
+            # concurrently, two writes to one page would both fetch it, both
+            # mutate their own copy and both save, losing an edit silently.
+            # The persona tells the model not to do this; this is the guarantee.
+            write_collision = self._batch_write_collision(tool_use_blocks)
+            if write_collision:
+                logger.warning(
+                    "serialising turn %d batch: %s all rewrite %s; parallel saves "
+                    "would drop an edit", turn,
+                    [tb.get("name", "?") for tb in tool_use_blocks], write_collision,
+                )
+
             run_serial = (
                 len(tool_use_blocks) == 1
                 or (self.force_serial_on_elicitation and batch_has_elicitation)
+                or bool(write_collision)
             )
             if run_serial:
                 tool_result_blocks = []
@@ -580,7 +695,7 @@ class BaseAgent:
         content_blocks: list[dict[str, Any]] = []
         tool_use_blocks: list[dict[str, Any]] = []
         current_text = ""
-        current_tool: dict[str, Any] | None = None
+        tool_blocks = _ToolBlockAssembler()
         stop_reason = "end_turn"
         usage: dict[str, Any] = {}
         text_chunks = 0
@@ -630,27 +745,16 @@ class BaseAgent:
                             content_blocks.append({"type": "text", "text": cleaned})
                             assistant_text_parts.append(cleaned)
                         current_text = ""
-                    current_tool = {
-                        "type": "tool_use",
-                        "id": chunk.tool_id,
-                        "name": chunk.tool_name,
-                        "input": {},
-                    }
+                    tool_blocks.start(chunk.tool_id, chunk.tool_name)
 
                 elif chunk.type == "tool_input_delta":
-                    if current_tool:
-                        current_tool["_input_json"] = current_tool.get("_input_json", "") + chunk.tool_input_json
+                    tool_blocks.delta(chunk.tool_id, chunk.tool_input_json)
 
                 elif chunk.type == "tool_use_end":
-                    if current_tool:
-                        raw = current_tool.pop("_input_json", "{}")
-                        try:
-                            current_tool["input"] = json.loads(raw)
-                        except (ValueError, json.JSONDecodeError):
-                            current_tool["input"] = {}
-                        content_blocks.append(current_tool)
-                        tool_use_blocks.append(current_tool)
-                        current_tool = None
+                    finished = tool_blocks.end(chunk.tool_id)
+                    if finished is not None:
+                        content_blocks.append(finished)
+                        tool_use_blocks.append(finished)
 
                 elif chunk.type == "message_complete":
                     # Authoritative assembled content from the provider
@@ -663,7 +767,7 @@ class BaseAgent:
                             chunk.blocks, assistant_text_parts,
                         )
                         current_text = ""
-                        current_tool = None
+                        tool_blocks.reset()
 
                 elif chunk.type == "done":
                     stop_reason = chunk.stop_reason or "end_turn"
@@ -1236,6 +1340,39 @@ class BaseAgent:
                 )
 
         return problems
+
+    def write_conflict_key(self, tool_name: str, tool_input: Any) -> str | None:
+        """Identity of the document this call will read-modify-write, or None.
+
+        Two calls in one parallel batch that return the SAME key would both fetch
+        the document, both mutate their own copy and both save it, so the later
+        save silently discards the earlier edit. `_batch_write_collision` uses
+        this to fall back to serial dispatch for exactly those batches.
+
+        Default None means "this agent does not know which of its tools mutate",
+        so nothing is serialised and behaviour is unchanged. An agent that knows
+        its tool surface overrides this; core deliberately holds no table of
+        another layer's tools.
+        """
+        return None
+
+    def _batch_write_collision(self, tool_use_blocks: list[dict[str, Any]]) -> str | None:
+        """The first document two calls in this batch would both rewrite, or None.
+
+        Read-only calls (key None) never collide, so a batch of six reads plus one
+        write still runs fully parallel. Only a genuine same-document pair forces
+        serial dispatch, which keeps the batching win on the case the persona
+        actively encourages: patches to DIFFERENT pages in one message.
+        """
+        seen: set[str] = set()
+        for tb in tool_use_blocks:
+            key = self.write_conflict_key(tb.get("name") or "", tb.get("input") or {})
+            if key is None:
+                continue
+            if key in seen:
+                return key
+            seen.add(key)
+        return None
 
     def withheld_tool_names(self, session: BaseSession) -> set[str]:
         """Tool names to leave OUT of this turn's advertised `tools=` payload.

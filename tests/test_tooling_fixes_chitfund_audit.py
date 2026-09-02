@@ -10,6 +10,7 @@ model, so these lock the corrected behaviour at the tool boundary.
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 
 import pytest
@@ -204,16 +205,40 @@ def test_uiengine_catalog_has_real_functions_and_no_fabricated_ones():
         assert fake not in c.UIENGINE_PRIMITIVES, f"{fake} does not exist in nocode-ui"
 
 
-def test_uiengine_catalog_matches_nocode_ui_checkout():
-    """Drift guard: regenerate with scripts/gen_uiengine_catalog.py when this fails."""
+def test_uiengine_catalog_carries_no_function_nocode_ui_lacks():
+    """Drift guard, asymmetric on purpose.
+
+    STALE (the catalog names a function `all.ts` does not export) is the bug this
+    catalog was generated to kill: the hand-written set carried 11 names that
+    never existed, the agent asked for `UIEngine.Read`, got null, and fell back
+    to SetStore mock data on every page. That direction MUST fail.
+
+    MISSING (`all.ts` exports something the catalog has not picked up yet) is
+    harmless — the agent simply does not reach for it. It is also the normal
+    state whenever the nocode-ui checkout sits on a UI feature branch, which is
+    most of the time; asserting equality turned every such branch into a red
+    nocode-ai suite and, worse, invited a regenerate that would bake an
+    UNRELEASED function into the catalog. That is the stale bug arriving by the
+    front door. Regenerate from a released nocode-ui, never from a feature
+    branch: `python scripts/gen_uiengine_catalog.py`.
+    """
     all_ts = Path(__file__).resolve().parents[2] / "nocode-ui" / "ui-app" / "client" / "src" / "functions" / "all.ts"
     if not all_ts.exists():
         pytest.skip("nocode-ui checkout not present next to nocode-ai")
     exported = set(re.findall(r"from\s+'\./(\w+)'", all_ts.read_text(encoding="utf-8")))
-    assert exported == set(c.UIENGINE_SIGNATURES), (
-        f"catalog drift: missing={sorted(exported - set(c.UIENGINE_SIGNATURES))} "
-        f"stale={sorted(set(c.UIENGINE_SIGNATURES) - exported)}"
+    stale = sorted(set(c.UIENGINE_SIGNATURES) - exported)
+    assert not stale, (
+        f"catalog names {stale}, which nocode-ui does not export. The agent will "
+        f"be told these exist and get null back. Regenerate the catalog."
     )
+    missing = sorted(exported - set(c.UIENGINE_SIGNATURES))
+    if missing:
+        warnings.warn(
+            f"UIEngine catalog is behind the local nocode-ui checkout: {missing}. "
+            f"Harmless (the agent just won't use them). Regenerate ONLY if these "
+            f"are released, not merely present on a feature branch.",
+            stacklevel=2,
+        )
 
 
 @pytest.mark.asyncio
@@ -398,7 +423,11 @@ def test_persona_quotes_the_real_turn_limit():
     from app.agents.appbuilder.context import AGENT_PERSONA
     from app.config import settings
     assert "__MAX_TURNS__" not in AGENT_PERSONA
-    assert f"hard turn limit is {settings.MAX_AGENT_TURNS} tool calls" in AGENT_PERSONA
+    # The limit is spent per TURN, not per tool call — a batched message spends one
+    # turn however many calls it carries. The persona used to say "tool calls",
+    # which taught the model the two were the same thing.
+    assert f"hard turn limit is {settings.MAX_AGENT_TURNS} TURNS" in AGENT_PERSONA
+    assert f"{settings.MAX_AGENT_TURNS} tool calls" not in AGENT_PERSONA
     assert "DO NOT pass `app_id`" not in AGENT_PERSONA, "the roles guidance that contradicted the page gates"
     assert "defaultTheme: ..." not in AGENT_PERSONA, "dead key; runtime reads properties.themes"
     assert "__SOFT_TURNS__" not in AGENT_PERSONA
@@ -406,6 +435,54 @@ def test_persona_quotes_the_real_turn_limit():
     assert 'type="Grid"' not in AGENT_PERSONA and "type=TextBox" not in AGENT_PERSONA, (
         "recipes must use component_type; `type` is not a parameter and is now rejected"
     )
+
+
+def test_persona_research_cap_stays_call_denominated():
+    """Turn-denominating the budgets was tried, measured, and reverted.
+
+    The theory was sound: "AT MOST 3 read calls before your first write" is a
+    CALL budget, so the model spends it one call per turn — 3 turns for 3 reads,
+    the worst shape — while a batch of six reads costs the same single turn.
+    Re-denominating it to "AT MOST 2 research MESSAGES ... make the first look
+    WIDE" should therefore have been free.
+
+    It was not. Measured on the light-12 subset, four runs before against three
+    after:
+
+        turns per run   before [73, 70, 68, 69] mean 70.0
+                        after  [72, 78, 77]     mean 75.7   (+8.1%)
+        calls per run   before mean 82.8  ->  after mean 102.0
+        real-world-taskmate   before [44, 48, 52] mean 48  ->  after 60
+
+    Batches did get wider (calls/turn 1.18 -> 1.35). The model simply did more
+    total work to reach the same place. Widening the research window bought more
+    research, not less.
+
+    This test pins the ORIGINAL wording so the change is not made again without
+    new evidence. The batching rule itself stays — that one is measured at -32%
+    turns and is asserted separately below.
+    """
+    from app.agents.appbuilder.context import AGENT_PERSONA
+    assert "AT MOST 3 read/list/get/search calls" in AGENT_PERSONA
+    assert "≤15 tool calls per user message" in AGENT_PERSONA
+    assert "AT MOST 2 research MESSAGES" not in AGENT_PERSONA, "reverted: +8.1% turns"
+    assert "≤10 TURNS per user message" not in AGENT_PERSONA, "reverted: +8.1% turns"
+
+
+def test_persona_teaches_parallel_batching_with_its_two_exceptions():
+    """A bench of 13 conversations made 147 tool calls in 175 turns, every batch
+    exactly one call wide, while the provider emits parallel calls happily when
+    asked (scripts/probe_parallel_tool_calls.py). The persona never asked."""
+    from app.agents.appbuilder.context import AGENT_PERSONA
+    assert "BATCH INDEPENDENT CALLS" in AGENT_PERSONA
+    assert "costs ONE turn" in AGENT_PERSONA
+    # Both exceptions must survive any future rewording: batching two writes to
+    # one page loses an edit, and a call that needs another's output cannot go
+    # in the same message.
+    assert "never put two writes to the SAME page in one batch" in AGENT_PERSONA
+    assert "only fill in from another call's result" in AGENT_PERSONA
+    # And it must point at the single-call alternative rather than just forbidding.
+    assert "add_components" in AGENT_PERSONA
 
 
 # ── review follow-ups (adversarial review of the fixes, 2026-08-26) ─────────

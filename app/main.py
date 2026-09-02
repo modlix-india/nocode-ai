@@ -136,6 +136,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing SaasClient: {e}")
 
+    # Close persistent Playwright sessions. The idle reaper only runs inside a
+    # tool call, so a worker that stops taking calls (redeploy, restart, OOM)
+    # would otherwise orphan its Chromium children indefinitely.
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals_browser import (
+            close_all_browser_sessions,
+        )
+        closed = await close_all_browser_sessions()
+        if closed:
+            logger.info(f"Closed {closed} browser session(s)")
+    except Exception as e:
+        logger.error(f"Error closing browser sessions: {e}")
+
 
     from app.core.stream_registry import stop_subscriber
     await stop_subscriber()

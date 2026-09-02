@@ -107,6 +107,30 @@ async def _reap_idle_sessions() -> list[str]:
     return stale
 
 
+async def close_all_browser_sessions() -> int:
+    """Close every live persistent session. Returns how many were closed.
+
+    Called from the FastAPI lifespan shutdown. Without it, a worker that exits
+    (redeploy, restart, OOM kill) leaves its Chromium children orphaned: the
+    reaper below only runs lazily inside a tool call, so nothing reaps a session
+    once the process stops taking calls. Observed locally as Chromium processes
+    surviving three sequential bench runs, one of them spinning 31% CPU and
+    holding the parent's stdout pipe open.
+
+    Best-effort and never raises: shutdown must not be blocked by a browser that
+    is already gone.
+    """
+    if not _sessions:
+        return 0
+    count = len(_sessions)
+    for sid in list(_sessions):
+        sess = _sessions.pop(sid, None)
+        if sess is not None:
+            await _close_session(sess)
+    logger.info("Closed %d browser session(s) on shutdown", count)
+    return count
+
+
 # ── Identity ─────────────────────────────────────────────────────────────
 
 
@@ -359,6 +383,9 @@ async def _new_session(
 
 
 async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    # Reap here too, not just in drive_page: a conversation that only
+    # screenshots would otherwise hold an idle session for the whole run.
+    await _reap_idle_sessions()
     page_name = (params.get("page_name") or "").strip()
     if not page_name:
         return ToolResult(success=False, error="`page_name` is required")

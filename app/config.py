@@ -210,6 +210,46 @@ class Settings(BaseSettings):
     MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
     AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
 
+    # Which tools ship a FULL schema in the per-turn tools[] payload.
+    #   "full" — the curated HOT_TOOLS set (64 tools, ~19.6K tok/turn).
+    #   "off"  — none; every tool ships the stripped shape and reaches
+    #            execution through _gate_deferred_dispatch's argument
+    #            validation, which dispatches a well-formed guess immediately.
+    # HOT_TOOLS existed to dodge a first-call synthetic retry that the
+    # argument-validating gate made unnecessary; measured, the full set costs
+    # 15,031 tokens more than the same tools stripped (the docstring's "3-5K"
+    # is a 3-5x understatement) and occupies 13% of DeepSeek's 112K window.
+    # "off" is the A/B arm that prices what that buys. Bench both before
+    # changing the default.
+    CFA_HOT_TOOLS: str = "full"
+
+    # Conversation-history elision. There is NO context management on the
+    # OpenAI-compatible path: `context_management` is an Anthropic-only
+    # server-side beta, it is not configured for the AppBuilder, and the DeepSeek
+    # create call ignores the parameter. So history grows unbounded — the Chit
+    # Fund run reached context_percent 100 against a 112K window and hard-stopped
+    # with no closing summary, and per-turn latency rose from ~4.5s on short
+    # conversations to ~19s on the long ones purely from prefill growth.
+    #
+    # Old tool_result payloads are the bulk (4K each by default, 32K for
+    # decompiles, plus screenshot images). Once the history passes
+    # ELIDE_OVER_CHARS, results older than KEEP_RECENT_TURNS assistant turns are
+    # replaced by a short stub that keeps a head of the original text. Small
+    # results are left alone: they are cheap and often carry the ids the model
+    # still needs. Set ELIDE_OVER_CHARS to 0 to disable entirely.
+    AGENT_HISTORY_ELIDE_OVER_CHARS: int = 200_000   # ~50K tokens
+    AGENT_HISTORY_KEEP_RECENT_TURNS: int = 6
+    AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS: int = 1500
+    # Screenshots are the real bulk and need a MUCH shorter window than text.
+    # Measured: a light-12 run reached 721,910 chars of history while the text
+    # pass reclaimed 5,405, because the weight was images sitting inside the
+    # 6-turn text window. One screenshot is 100-500KB of base64 and it is paid
+    # again on every turn it survives, while the model has already read it and
+    # written down what it saw. Kept small, but never zero: the visual critique
+    # loop (screenshot -> patch -> screenshot -> compare) needs the previous
+    # shot. The newest image is always kept regardless of this number.
+    AGENT_HISTORY_KEEP_IMAGES_TURNS: int = 3
+
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider

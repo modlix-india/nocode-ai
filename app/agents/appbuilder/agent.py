@@ -18,7 +18,7 @@ from app.core.context import BaseContext
 from app.core.tools.draft_registry import DraftEntry, DraftRegistry, open_drafts
 from app.agents.appbuilder.tools.modlix._draft_surface import draft_mode
 from app.agents.appbuilder.context import (
-    HOT_TOOLS,
+    effective_hot_tools,
     deferred_tool_names,
     extract_last_user_text,
     get_relevant_tool_details,
@@ -26,6 +26,80 @@ from app.agents.appbuilder.context import (
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+# ── Same-document write collisions ──────────────────────────────────────────
+#
+# Which tools READ a document, mutate it in memory and save it back. Two of
+# these in one parallel batch, aimed at the same document, both fetch the same
+# version and the later save discards the earlier edit — `_load_save`
+# (pages.py) has no version check, and `save_page` PUTs the whole document.
+#
+# This was unreachable while the stream assembler collapsed every batch to one
+# call. Now that batches genuinely dispatch through `asyncio.gather`, it is
+# reachable, so `BaseAgent._batch_write_collision` serialises those batches.
+# Creates are deliberately absent: two creates of one name is a loud backend
+# conflict, not a silent lost edit.
+#
+# family → the document kind, so `update_page(name="home")` and
+# `update_theme(name="home")` do not look like the same document.
+# The tuple is the identity parameters in priority order.
+_RMW_TOOLS: dict[str, tuple[str, tuple[str, ...]]] = {}
+
+
+def _register_rmw(family: str, identity: tuple[str, ...], *names: str) -> None:
+    for n in names:
+        _RMW_TOOLS[n] = (family, identity)
+
+
+# Page composition — the big one; every one of these goes through `_load_save`.
+_register_rmw(
+    "page", ("page_name",),
+    "add_component", "add_components", "patch_component_props",
+    "patch_component_styles", "bulk_patch_component_props",
+    "bulk_patch_component_styles", "remove_component", "move_component",
+    "rename_component", "set_styles", "set_bindings",
+    "patch_component_bindings", "update_component_props",
+    "remove_component_styles", "delete_style_rule", "set_app_page_reference",
+)
+# Same page document, addressed by `name` instead.
+_register_rmw(
+    "page", ("name", "page_name"),
+    "update_page", "replace_page_definition", "reset_page_composition",
+)
+# Page EVENT functions live inside the page document, so they collide with
+# page composition edits too — hence the same "page" family.
+_register_rmw(
+    "page", ("page_name",),
+    "create_page_event_function", "save_page_event_function_from_text",
+    "delete_page_event_function", "add_event_step", "update_event_step",
+    "remove_event_step", "set_event_step_dependencies",
+)
+# Kirun functions.
+_register_rmw(
+    "function", ("function_name", "name"),
+    "add_step", "update_step", "remove_step", "set_dependencies",
+)
+_register_rmw(
+    "function", ("name", "function_name"),
+    "update_function", "update_server_function", "save_function_from_text",
+)
+# One-document-per-name objects.
+_register_rmw("theme", ("name",), "update_theme", "patch_theme_variables")
+_register_rmw("style", ("name",), "update_style")
+_register_rmw("storage", ("name",), "update_storage")
+_register_rmw("schema", ("name",), "update_schema")
+_register_rmw("template", ("name",), "update_template", "update_template_part")
+_register_rmw("notification", ("name",), "update_notification",
+              "set_notification_channel_part")
+_register_rmw("connection", ("name",), "update_connection")
+_register_rmw("event_definition", ("name",), "update_event_definition")
+_register_rmw("event_action", ("name",), "update_event_action")
+_register_rmw("uri_path", ("name",), "update_uri_path")
+# The app document itself. `update_app`/`set_app_property` rewrite properties,
+# and `configure_app_for_customer_signup` writes through the same document.
+_register_rmw("app", ("name", "app_code"), "update_app", "set_app_property",
+              "configure_app_for_customer_signup")
 
 
 class AppBuilderAgent(BaseAgent):
@@ -103,7 +177,7 @@ class AppBuilderAgent(BaseAgent):
     def _tool_to_advertised_schema(self, tool: Any) -> dict[str, Any]:
         """Override BaseAgent's deferred-schema renderer for hot tools.
 
-        Tools in `HOT_TOOLS` ship with their FULL Anthropic-shape schema in the
+        Tools in `effective_hot_tools()` ship their FULL Anthropic-shape schema in the
         tools[] payload (not the stripped {"type":"object","properties":{}} the
         deferred pattern uses for the long tail). Reason: the synthetic-retry
         round-trip on first-time calls was costing 1 extra LLM turn per unique
@@ -113,12 +187,38 @@ class AppBuilderAgent(BaseAgent):
         Trade-off: ~3-5K extra tokens in the system-prompt prefix per session.
         DeepSeek's automatic prefix caching makes that a one-time cost.
 
-        For tools NOT in HOT_TOOLS, defer to BaseAgent's stripped form — the
+        For tools outside that set, defer to BaseAgent's stripped form — the
         long-tail tools still go through search_tools / get_tool_schema.
         """
-        if tool.name in HOT_TOOLS:
+        if tool.name in effective_hot_tools():
             return tool.to_anthropic_tool()
         return super()._tool_to_advertised_schema(tool)
+
+    def write_conflict_key(self, tool_name: str, tool_input: Any) -> str | None:
+        """See `BaseAgent.write_conflict_key`. None for anything not in `_RMW_TOOLS`.
+
+        An identity that cannot be resolved from the arguments yields a
+        family-wide wildcard rather than None, so two same-family mutations with
+        unreadable targets serialise instead of racing. `app_code` is part of the
+        key because the same page name in two apps is two documents; a missing
+        one resolves to the session app identically for every call in a batch, so
+        the empty placeholder compares correctly.
+        """
+        entry = _RMW_TOOLS.get(tool_name)
+        if entry is None:
+            return None
+        family, identity_params = entry
+        if not isinstance(tool_input, dict):
+            return f"{family}:*:*"
+        target = ""
+        for name in identity_params:
+            value = tool_input.get(name)
+            if isinstance(value, str) and value.strip():
+                target = value.strip()
+                break
+        app = tool_input.get("app_code")
+        app = app.strip() if isinstance(app, str) and app.strip() else ""
+        return f"{family}:{target or '*'}:{app}"
 
     def withheld_tool_names(self, session: BaseSession) -> set[str]:
         """Keep the deferred families out of `tools=` until the session wants them.
@@ -197,20 +297,21 @@ class AppBuilderAgent(BaseAgent):
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Extend BaseAgent's context with appbuilder-specific fields.
 
-        ALSO pre-marks every HOT_TOOLS member in `fetched_schemas` so the
+        ALSO pre-marks every hot tool in `fetched_schemas` so the
         dispatch gate at `_gate_deferred_dispatch` passes on first call —
         matching the full-schema advertisement above. The schema is already
         in the LLM's tools[] payload, so a synthetic retry would be pure
         overhead.
         """
         ctx = super().build_tool_context(session)
+        hot = effective_hot_tools()
         fetched = ctx.get("fetched_schemas")
         if isinstance(fetched, list):
-            for name in HOT_TOOLS:
+            for name in hot:
                 if name not in fetched:
                     fetched.append(name)
         elif isinstance(fetched, set):
-            fetched.update(HOT_TOOLS)
+            fetched.update(hot)
         if session.auth:
             ctx["app_code"] = session.context.get("app_code") or session.auth.app_code
             ctx["client_code"] = session.auth.client_code
