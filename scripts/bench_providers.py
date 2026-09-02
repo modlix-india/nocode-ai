@@ -66,6 +66,17 @@ log = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
+# Provider keys live in .env (app/config.py reads it via pydantic's env_file).
+# The key precheck below reads os.environ, so without this the bench refuses to
+# run on a machine where the app itself starts fine. Existing env vars win, so
+# an explicit `export DEEPSEEK_API_KEY=...` still overrides the file.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(_REPO_ROOT / ".env", override=False)
+except ImportError:  # python-dotenv is in requirements; degrade instead of dying
+    pass
+
 
 @dataclass
 class Conversation:
@@ -97,7 +108,10 @@ class BenchMetrics:
     """Per-(provider, conversation) result row."""
     provider: str
     conversation: str
-    turns: int = 0
+    turns: int = 0              # LLM round trips (assistant messages) — the real cost driver
+    user_messages: int = 0      # conversation length: how many user turns were fed
+    max_tools_per_turn: int = 0  # largest parallel tool_use batch the model emitted
+    single_tool_turns: int = 0   # tool-using turns that carried exactly ONE call
     tool_calls_total: int = 0
     tool_calls_succeeded: int = 0
     schema_fetches: int = 0
@@ -321,6 +335,43 @@ def _make_observer():
             await super().emit_done(session_id, usage)
 
     return BenchObserver
+
+
+# ─── Turn accounting ────────────────────────────────────────────────────────
+
+
+def _assistant_turns(messages: list) -> int:
+    """LLM round trips in a conversation history.
+
+    One assistant message per LLM response, so this is the count of times the
+    model was actually called — the number that multiplies by the per-turn
+    prefix and that the turn limit is spent on.
+    """
+    return sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "assistant")
+
+
+def _turn_batch_sizes(messages: list) -> list[int]:
+    """Tool-use blocks per assistant turn, for turns that used tools.
+
+    The length of this list is the number of tool-using turns; each value is how
+    many calls the model packed into that one message. All ones means the model
+    is not batching at all, and every independent call is costing a full round
+    trip through the whole prefix.
+    """
+    sizes: list[int] = []
+    for m in messages:
+        if not isinstance(m, dict) or m.get("role") != "assistant":
+            continue
+        content = m.get("content")
+        if not isinstance(content, list):
+            continue
+        n = sum(
+            1 for b in content
+            if isinstance(b, dict) and b.get("type") == "tool_use"
+        )
+        if n:
+            sizes.append(n)
+    return sizes
 
 
 # ─── Convergence oracle ─────────────────────────────────────────────────────
@@ -571,10 +622,37 @@ async def _run_one(
         log.info("  turn %d/%d: %s", i + 1, len(conv.messages), msg[:80])
         try:
             await agent.run(user_message=msg, session=session, event_stream=observer)
-            metrics.turns += 1
+            metrics.user_messages += 1
         except Exception as e:  # noqa: BLE001
             metrics.failure_reason = f"turn {i + 1} raised {type(e).__name__}: {e}"
             break
+
+    # Close any Playwright session the conversation left open. The idle reaper
+    # only runs inside a tool call, so across 17 conversations x N runs the
+    # orphans accumulate: three sequential runs left enough Chromium processes
+    # alive to poison the third (shopkeep 5 turns instead of ~50, clone-linear
+    # 0 turns) and to hold the parent's stdout pipe open so the loop never
+    # advanced. Cheap and best-effort — a bench must not fail on cleanup.
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals_browser import (
+            close_all_browser_sessions,
+        )
+        closed = await close_all_browser_sessions()
+        if closed:
+            log.info("  closed %d browser session(s) after %s", closed, conv.name)
+    except Exception as e:  # noqa: BLE001
+        log.warning("  browser cleanup after %s failed: %s", conv.name, e)
+
+    # Real turn accounting. `metrics.turns` used to be incremented once per USER
+    # message, which reported 61 turns for a run that made 175 LLM round trips and
+    # hid the fact that every single batch was one call wide. The agent appends
+    # exactly one assistant message per LLM response, and the tool_use blocks in
+    # it ARE the parallel batch, so both numbers come straight from the history
+    # with no agent-side instrumentation.
+    _batches = _turn_batch_sizes(session.get_messages())
+    metrics.turns = _assistant_turns(session.get_messages())
+    metrics.max_tools_per_turn = max(_batches) if _batches else 0
+    metrics.single_tool_turns = sum(1 for b in _batches if b == 1)
 
     # Capture token usage
     usage = session.total_usage or {}
@@ -596,6 +674,17 @@ async def _run_one(
     return metrics
 
 
+# Oracle verdicts — the bench's own judgement that a run did not do the work.
+# These are measurements, never cascades, so they must not trip the breaker.
+# Matched as prefixes of the classified head so a reworded verdict keeps working.
+_ORACLE_VERDICT_PREFIXES: tuple = (
+    "missing required tools",
+    "none-of-group called",
+    "must_succeed_on_kirun",
+    "must_succeed_on_kb_write",
+)
+
+
 def _failure_class(reason: Optional[str]) -> Optional[str]:
     """Extract the leading exception class (or marker) from a failure_reason.
 
@@ -610,12 +699,22 @@ def _failure_class(reason: Optional[str]) -> Optional[str]:
     a cascade — likely a single upstream cause hitting every conversation
     (auth wall, gateway down, quota exceeded). Aborting the rest of the
     provider's runs saves time + noise.
+
+    An ORACLE verdict is not a cascade and returns None. "missing required
+    tools" means the agent ran and did not do the work, which is a result, not
+    an infrastructure fault — and it is exactly the result a bench exists to
+    record. Counting it tripped the breaker after two ordinary non-convergences
+    and skipped the last four conversations (shopkeep + the three clone runs) on
+    every run ever recorded, which are the heaviest in the corpus and the
+    closest in shape to the one-shot app build the whole exercise is about.
     """
     if not reason:
         return None
     # Strip the "Agent error: " prefix the agent loop prepends on top-level errors.
     body = reason.removeprefix("Agent error: ")
     head = body.split(":", 1)[0].strip()
+    if head.startswith(_ORACLE_VERDICT_PREFIXES):
+        return None
     return head or None
 
 
@@ -676,8 +775,10 @@ async def _run_provider(
         m = await _execute_one(provider_name, conv, args)
         rows.append(m)
         log.info(
-            "  %s × %s: converged=%s, %d tool calls, %d turns, %.1fs",
-            provider_name, conv.name, m.converged, m.tool_calls_total, m.turns, m.wall_seconds,
+            "  %s × %s: converged=%s, %d tool calls in %d turns "
+            "(max %d/turn, %d single-call), %.1fs",
+            provider_name, conv.name, m.converged, m.tool_calls_total, m.turns,
+            m.max_tools_per_turn, m.single_tool_turns, m.wall_seconds,
         )
 
         consecutive, cascade_class, should_abort = _update_circuit_breaker(
@@ -835,9 +936,19 @@ def _render_provider_block(name: str, rows: list[BenchMetrics]) -> list[str]:
     kirun_ok = sum(r.kirun_compiles_succeeded for r in rows)
     kb_t = sum(r.kb_writes_total for r in rows)
     kb_ok = sum(r.kb_writes_succeeded for r in rows)
+    total_turns = sum(r.turns for r in rows)
+    total_calls = sum(r.tool_calls_total for r in rows)
+    single = sum(r.single_tool_turns for r in rows)
+    widest = max((r.max_tools_per_turn for r in rows), default=0)
+    # `single` vs total turns is the headline: when every tool-using turn carries
+    # exactly one call, the model is not batching at all and each independent
+    # call pays a full round trip through the entire prefix.
     lines = [
         f"## {name}",
         f"- converged: {converged}/{len(rows)}",
+        f"- LLM turns: {total_turns} for {total_calls} tool calls "
+        f"({total_calls / total_turns:.2f} calls/turn)" if total_turns else "- LLM turns: 0",
+        f"- parallel batching: {single} single-call turns, widest batch {widest}",
         f"- total wall: {total_secs:.1f}s",
         f"- tokens: {total_in:,} in + {total_out:,} out",
         f"- Kirun compile pass-rate: {kirun_ok}/{kirun_t}" if kirun_t else "- Kirun: no compile attempts",
