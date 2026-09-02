@@ -210,6 +210,19 @@ class Settings(BaseSettings):
     MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
     AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
 
+    # Which tools ship a FULL schema in the per-turn tools[] payload.
+    #   "full" — the curated HOT_TOOLS set (64 tools, ~19.6K tok/turn).
+    #   "off"  — none; every tool ships the stripped shape and reaches
+    #            execution through _gate_deferred_dispatch's argument
+    #            validation, which dispatches a well-formed guess immediately.
+    # HOT_TOOLS existed to dodge a first-call synthetic retry that the
+    # argument-validating gate made unnecessary; measured, the full set costs
+    # 15,031 tokens more than the same tools stripped (the docstring's "3-5K"
+    # is a 3-5x understatement) and occupies 13% of DeepSeek's 112K window.
+    # "off" is the A/B arm that prices what that buys. Bench both before
+    # changing the default.
+    CFA_HOT_TOOLS: str = "full"
+
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider

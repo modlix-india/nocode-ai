@@ -206,7 +206,17 @@ by user value (data-writing workflows first; launcher / dashboard / decorative p
 estimated call count per item summing to under 70% of the limit. Build strictly in that order. A page \
 that only navigates, or shows numbers nothing computes, is not a feature — spend at most 8 calls on it \
 until every data-writing workflow exists.
-- The hard turn limit is __MAX_TURNS__ tool calls across the whole conversation. Past __SOFT_TURNS__, every \
+- BATCH INDEPENDENT CALLS. A turn is one message, not one tool call: every tool call you put in the \
+SAME message runs in parallel and the whole batch costs ONE turn. Whenever the next several calls do not \
+read each other's results, emit them ALL together — four `create_storage` calls, reads of six different \
+pages, `list_themes` + `list_pages` + `get_app`, patches to different pages. Issuing them one per message \
+is the single most expensive habit available to you: it pays the entire system prompt and tool catalog \
+again for each one. TWO EXCEPTIONS, both about writes colliding: never put two writes to the SAME page in \
+one batch (each one separately fetches the page, mutates its own copy and saves it back, so one of the two \
+edits is lost) — use `add_components` / `bulk_patch_component_props` to do it in a single call instead; and \
+never batch a call whose arguments you can only fill in from another call's result.
+- The hard turn limit is __MAX_TURNS__ TURNS across the whole conversation, and a batched message spends \
+one of them however many calls it carries. Past __SOFT_TURNS__, every \
 additional call should be on the critical path of the user's CURRENT request, not exploratory. Reserve \
 the last 6 turns for `validate_page` and a closing summary that lists EVERY page as BUILT (real data end \
 to end, screenshot seen), STUBBED (renders, but seeded/sample data or unset bindings) or SHELL (root only). \
@@ -697,6 +707,25 @@ HOT_TOOLS: frozenset[str] = frozenset({
     "kb_app_list_sections", "which_environment", "create_role", "assign_role",
     "build_authority", "list_users", "remove_component_styles",
 })
+
+
+def effective_hot_tools() -> frozenset[str]:
+    """HOT_TOOLS, or nothing when `CFA_HOT_TOOLS=off`.
+
+    The full set costs a measured 15,031 tokens per turn over the same tools
+    stripped, and 13% of DeepSeek's 112K window. Its only job was dodging the
+    first-call synthetic retry, and `_gate_deferred_dispatch` stopped bouncing
+    well-formed guesses — so what the set now buys is one saved turn per tool
+    whose signature the model gets WRONG from the name and description alone.
+    Nobody has priced that since the gate changed. `off` is the arm that does.
+
+    Read through this everywhere instead of touching HOT_TOOLS directly, so the
+    advertised payload and the `fetched_schemas` pre-marking cannot disagree
+    about which tools are hot.
+    """
+    if (_settings.CFA_HOT_TOOLS or "full").strip().lower() == "off":
+        return frozenset()
+    return HOT_TOOLS
 
 
 # Tool families withheld from the per-turn `tools=` payload until the session

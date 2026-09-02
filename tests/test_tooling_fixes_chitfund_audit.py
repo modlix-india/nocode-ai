@@ -398,7 +398,11 @@ def test_persona_quotes_the_real_turn_limit():
     from app.agents.appbuilder.context import AGENT_PERSONA
     from app.config import settings
     assert "__MAX_TURNS__" not in AGENT_PERSONA
-    assert f"hard turn limit is {settings.MAX_AGENT_TURNS} tool calls" in AGENT_PERSONA
+    # The limit is spent per TURN, not per tool call — a batched message spends one
+    # turn however many calls it carries. The persona used to say "tool calls",
+    # which taught the model the two were the same thing.
+    assert f"hard turn limit is {settings.MAX_AGENT_TURNS} TURNS" in AGENT_PERSONA
+    assert f"{settings.MAX_AGENT_TURNS} tool calls" not in AGENT_PERSONA
     assert "DO NOT pass `app_id`" not in AGENT_PERSONA, "the roles guidance that contradicted the page gates"
     assert "defaultTheme: ..." not in AGENT_PERSONA, "dead key; runtime reads properties.themes"
     assert "__SOFT_TURNS__" not in AGENT_PERSONA
@@ -406,6 +410,22 @@ def test_persona_quotes_the_real_turn_limit():
     assert 'type="Grid"' not in AGENT_PERSONA and "type=TextBox" not in AGENT_PERSONA, (
         "recipes must use component_type; `type` is not a parameter and is now rejected"
     )
+
+
+def test_persona_teaches_parallel_batching_with_its_two_exceptions():
+    """A bench of 13 conversations made 147 tool calls in 175 turns, every batch
+    exactly one call wide, while the provider emits parallel calls happily when
+    asked (scripts/probe_parallel_tool_calls.py). The persona never asked."""
+    from app.agents.appbuilder.context import AGENT_PERSONA
+    assert "BATCH INDEPENDENT CALLS" in AGENT_PERSONA
+    assert "costs ONE turn" in AGENT_PERSONA
+    # Both exceptions must survive any future rewording: batching two writes to
+    # one page loses an edit, and a call that needs another's output cannot go
+    # in the same message.
+    assert "never put two writes to the SAME page in one batch" in AGENT_PERSONA
+    assert "only fill in from another call's result" in AGENT_PERSONA
+    # And it must point at the single-call alternative rather than just forbidding.
+    assert "add_components" in AGENT_PERSONA
 
 
 # ── review follow-ups (adversarial review of the fixes, 2026-08-26) ─────────
