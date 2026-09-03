@@ -579,6 +579,11 @@ _EFFECTS = {
     "called": lambda c, s: c.name == s.get("tool"),
 }
 
+# Absence assertions, checked separately because `_check_effects` looks for at
+# least one call that satisfies each effect, and "nobody called this" cannot be
+# expressed that way.
+_ABSENCE_EFFECTS = {"not_called"}
+
 
 def _check_effects(effects: list[dict], calls: list["ToolCall"]) -> Optional[str]:
     """Every declared effect must be achieved by at least one SUCCESSFUL call.
@@ -590,6 +595,12 @@ def _check_effects(effects: list[dict], calls: list["ToolCall"]) -> Optional[str
     unmet = []
     for spec in effects:
         name = spec.get("effect")
+        if name in _ABSENCE_EFFECTS:
+            # Absence counts ANY call, failed ones included: a tool that was
+            # reached for and errored was still redundant work.
+            if any(c.name == spec.get("tool") for c in calls):
+                unmet.append(f"{spec} (but it WAS called)")
+            continue
         fn = _EFFECTS.get(name)
         if fn is None:
             unmet.append(f"{spec} (unknown effect '{name}')")

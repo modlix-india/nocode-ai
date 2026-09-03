@@ -69,6 +69,6 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
             if a.type == "image" and a.data
         ]
 
-    return stream_agent_response(
+    return await stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )

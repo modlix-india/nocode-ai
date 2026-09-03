@@ -12,6 +12,61 @@ from app.core.tools.http_client import SaasClient
 
 _NAME_RE = re.compile(r"^[a-zA-Z]+$")
 
+# Re-exported so tool modules import their app-scope keys from one place. The
+# definitions live in core because the session, the run loop and per-app
+# services (KB, lore) all key off them too — see `app.core.session`.
+from app.core.session import FOCUS_APP_KEY, SEEN_APPS_KEY  # noqa: E402
+
+
+def resolve_app_code(params: dict, context: dict) -> str:
+    """The app a tool call actually targets.
+
+    Order: the explicit ``app_code`` argument, then the session's focus app,
+    then the app the chat request opened with.
+
+    The focus step is the fix for a real production failure. A session started
+    from appbuilder's own page carries ``app_code="appbuilder"`` for its whole
+    life, because nothing used to move it. An agent told "build a CRM" would
+    create the `crm` app, build its pages with an explicit ``app_code``, then
+    drop that optional argument on a later patch — and the call resolved to
+    `appbuilder`, where those pages do not exist. One batch of 13 parallel
+    patches died that way in a single message. Preferring the app writes have
+    been landing in makes the omission harmless instead of fatal.
+
+    Reads deliberately do not set the focus (see
+    ``AppBuilderAgent.note_tool_outcome``), so reading another app's page as an
+    example cannot hijack where the next edit goes.
+    """
+    explicit = (params.get("app_code") or "").strip() if isinstance(params, dict) else ""
+    if explicit:
+        return explicit
+    focus = (context.get(FOCUS_APP_KEY) or "").strip() if isinstance(context, dict) else ""
+    if focus:
+        return focus
+    return (context.get("app_code") or "").strip() if isinstance(context, dict) else ""
+
+
+def app_scope_hint(context: dict, app_code: str) -> str:
+    """Suffix for a "not found in app X" error, naming other candidate apps.
+
+    Empty unless this session has written to an app other than the one that was
+    searched — in which case the omission of ``app_code`` is the likeliest
+    explanation for the miss, and saying so saves the agent a guess.
+    """
+    if not isinstance(context, dict):
+        return ""
+    others = [
+        a for a in (context.get(SEEN_APPS_KEY) or [])
+        if isinstance(a, str) and a and a != app_code
+    ]
+    if not others:
+        return ""
+    listed = ", ".join(f"'{a}'" for a in others)
+    return (
+        f" This session has also written to {listed}. If you meant one of those,"
+        " pass `app_code` explicitly; it is not inferred from the object name."
+    )
+
 
 def require_app_code(context: dict) -> tuple[str, ToolResult | None]:
     """Extract appCode from context, returning an error if missing.

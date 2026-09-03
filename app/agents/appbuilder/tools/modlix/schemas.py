@@ -27,7 +27,7 @@ from . import _conventions as c
 
 
 # Shared param-description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_COMMIT_MSG = "Commit message"
 _DESC_RUNTIME = "'ui' or 'core' — most app schemas live in 'core'"
@@ -43,7 +43,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     if not ac:
         return "", ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
     return ac, None
@@ -1014,7 +1015,8 @@ async def _execute_read_storage_rows(params: dict[str, Any], context: dict[str, 
     storage_name = (params.get("storage_name") or "").strip()
     if not storage_name:
         return ToolResult(success=False, error="`storage_name` is required")
-    app_code = (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code(params, context)
     if not app_code:
         return ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
     client_code = (params.get("client_code") or context.get("client_code") or "SYSTEM").strip()

@@ -129,6 +129,16 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down...")
 
+    # Agent runs deliberately outlive the request that started them, so they
+    # have to be torn down here, since nothing else is holding them. Their sessions
+    # are left PROCESSING with a stale heartbeat, which is how a client tells a
+    # run that died from one still working.
+    try:
+        from app.core.run_manager import shutdown as shutdown_runs
+        await shutdown_runs()
+    except Exception as e:
+        logger.error(f"Error stopping agent runs: {e}")
+
     # Close SaasClient (HTTP connection pool)
     try:
         from app.agents.appbuilder.tools._shared import close_saas_client

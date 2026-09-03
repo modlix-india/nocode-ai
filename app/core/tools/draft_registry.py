@@ -8,16 +8,26 @@ the user could look at what it did and decide.
 
 This module is the fix, and it is one rule:
 
-    Hold writes for exactly the objects the client declares open.
+    Hold writes for exactly the objects the client declares open
+    AND that the server cannot draft for us.
     Write everything else straight through.
 
-No confirmation tier, no per-kind policy, no inspecting the browser URL. The
-principle underneath is that a surface declares only the objects it has a review
-UI for. The page editor has a canvas for the page, so the page is declared; it has
-no theme editor, so the theme is not, and a theme edit made from there saves like
-any other write. Workspace has a theme pane, so with a theme tab open the same edit
-is held. "Held" and "reviewable" are therefore the same set by construction, which
-is why the rule needs no exceptions. A surface that declares nothing (the plain `ai`
+The second line is the 2026-09-03 change, and it is worth being precise about
+why. Holding a write in the browser buys review, but it costs three things: the
+change is not in the database, so `screenshot_page` cannot see it and the agent
+looking at its own work sees nothing; it lives in one tab, so it is gone if that
+tab is; and the surgical part-of-an-object endpoints have to be re-implemented
+here, against a copy, to apply it. The server's draft surface has none of those
+costs. So anything the server will draft is now written there instead, and the
+open tab REFETCHES the draft, which is exactly what the page editor already does.
+
+What is left holding is what the server has no draft for: the security objects
+behind the org console. A profile, a role, a department has no `Draft` row
+available at any price, so the browser is the only place a change to one can wait
+for someone to look at it.
+
+Either way the principle underneath is unchanged: a surface declares only the
+objects it has a review UI for. A surface that declares nothing (the plain `ai`
 chat page) gets exactly today's behaviour, with no special case anywhere.
 
 Two independent decisions compose in `resolve()` and `entry()`, and neither infers
@@ -54,6 +64,17 @@ logger = logging.getLogger(__name__)
 # they all share is the only thing that works.
 open_drafts: ContextVar["DraftRegistry | None"] = ContextVar("open_drafts", default=None)
 
+# True when this turn's writes to draftable objects should go to the server's
+# draft surface. Decided once, in the agent, from what the caller asked for AND
+# what the deployment actually supports, because a deployment that predates the
+# draft work accepts `?draft=true` and performs an ordinary live update.
+#
+# It lives here rather than in the appbuilder agent's `_draft_surface` because
+# the choke point that has to read it is in core, and core must not import from
+# an agent. `_draft_surface.active()` reads the same flag, so the tools and the
+# choke point cannot disagree about where a write went.
+drafting: ContextVar[bool] = ContextVar("drafting", default=False)
+
 
 # API path prefix -> object kind. Explicit rather than pattern-matched: the whole
 # objection to deriving behaviour from URLs is that URLs are a weak signal, and the
@@ -80,7 +101,42 @@ PATH_KINDS: dict[str, str] = {
     "/api/core/functions": "serverfunction",
     "/api/core/eventDefinitions": "eventdefinition",
     "/api/core/eventActions": "eventaction",
+    # Security objects. Present so the org console's open records can be held
+    # and reported, NOT because they draft: see DRAFTABLE_KINDS below.
+    "/api/security/app/profiles": "profile",
+    "/api/security/profiles": "profile",
+    "/api/security/rolev2": "role",
+    "/api/security/users": "user",
+    "/api/security/clients": "client",
+    "/api/security/departments": "department",
+    "/api/security/designations": "designation",
 }
+
+# Which of those the backend will hold in a `Draft` row for review.
+#
+# `isDraftable()` is true for all eight `ui` services and all eleven
+# `commons-core` ones, and false for everything in `security`: a profile, a role
+# or a user has no draft surface at all. That split is the whole reason this set
+# exists, because it decides WHERE a write goes:
+#
+#   draftable     -> the server's draft, and the open tab refetches it. The
+#                    change is real, reviewable, and visible to a screenshot.
+#   not draftable -> held in the browser and streamed back as a patch, which is
+#                    the only review step available when the server has none.
+#
+# Getting this wrong in either direction is a data-loss bug. Adding a kind that
+# does not really draft sends the user's work live while the agent reports it as
+# pending; leaving out one that does keeps it trapped in a browser tab where a
+# screenshot cannot see it.
+DRAFTABLE_KINDS: frozenset[str] = frozenset({
+    "page", "theme", "style", "uripath", "function", "schema", "application",
+    "storage", "connection", "template", "notification", "serverfunction",
+    "eventdefinition", "eventaction",
+})
+
+
+def is_draftable(kind: str | None) -> bool:
+    return bool(kind) and kind in DRAFTABLE_KINDS
 
 # Trailing segments that are operations on a collection, not object ids. A path
 # ending in one of these is not an object call at all, so it resolves to nothing:
@@ -286,6 +342,35 @@ def registry() -> DraftRegistry | None:
     """
     reg = open_drafts.get()
     return reg if reg else None
+
+
+async def announce_change(
+    kind: str,
+    obj_id: str = "",
+    name: str = "",
+    app_code: str = "",
+    operation: str = "UPDATE",
+) -> None:
+    """Report a write the choke point could not recognise as one.
+
+    The intercept decides "was this a write?" from the HTTP verb, which is right
+    for the definition APIs and wrong for a corner of the security service that
+    performs mutations over GET: `/users/{id}/assignRole/{roleId}` changes the
+    user and answers 200 to a GET. Nothing about the request says so, so the
+    surface showing that user was never told, and the org console sat on a list
+    that no longer matched the database.
+
+    Tools that reach one of those call this instead. Deliberately explicit: a
+    guess based on the path would have to encode which GETs are really writes,
+    and being wrong in either direction is worse than being asked.
+    """
+    reg = announcer()
+    if reg is None or reg.stream is None or not kind:
+        return
+    await reg.stream.emit_object_changed(
+        kind=kind, obj_id=obj_id, name=name, app_code=app_code,
+        operation=operation, draft=False,
+    )
 
 
 def announcer() -> DraftRegistry | None:

@@ -18,9 +18,8 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import List, Optional
+from typing import AsyncIterator, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -28,8 +27,8 @@ from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context
 from app.core.session import BaseSession, AuthContext
-from app.core.streaming import AgentEventStream
-from app.core import stream_registry
+from app.core.streaming import AgentEvent
+from app.core import run_manager, stream_registry
 from app.db.models import SessionListItem, SessionListResponse, SessionStatus
 from app.services.session_manager import get_session_manager
 from app.services.context_manager import get_context_manager
@@ -61,6 +60,11 @@ class ConfirmRequest(BaseModel):
     confirmation_id: str
     approved: bool = False
     selected: Optional[str] = None
+
+
+class AttachRequest(BaseModel):
+    """Request body for rejoining a run already in progress."""
+    session_id: str
 
 
 def create_common_routes(router: APIRouter, agent_name: str) -> None:
@@ -210,6 +214,41 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             "session_id": body.session_id,
         }
 
+    @router.get("/runs")
+    async def list_runs(
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Which of this user's sessions have an agent still working.
+
+        Asked on load, so a client that was disconnected (a refresh, a closed
+        panel, a switch to another session) can rejoin the turn instead of
+        showing a finished-looking chat that is still being written.
+        """
+        runs = await run_manager.list_live_runs(auth.user_id, agent_name=agent_name)
+        return {"runs": runs}
+
+    @router.post("/attach")
+    async def attach_run(
+        body: AttachRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Rejoin a run in progress: replays the turn so far, then streams live.
+
+        The whole turn is replayed every time rather than resumed from a
+        cursor, and the client rebuilds the message from what arrives. Text
+        deltas are coalesced in the buffer, so there is no stable cursor into
+        them to resume from. See `run_manager`.
+        """
+        await _assert_session_owner(body.session_id, auth)
+        events = await run_manager.subscribe(body.session_id)
+        if events is None:
+            # Nothing to rejoin: it finished long enough ago to have been
+            # forgotten, or its worker died. The client falls back to history.
+            raise HTTPException(
+                status_code=404, detail="No run to attach to for this session"
+            )
+        return sse_response(events)
+
     @router.post("/confirm")
     async def confirm_tool(
         body: ConfirmRequest,
@@ -283,55 +322,29 @@ def build_image_blocks(
     return blocks if blocks else None
 
 
-def stream_agent_response(
-    agent,
-    message: str,
-    session: BaseSession,
-    image_blocks: list[dict] | None = None,
-    model_override: str | None = None,
-) -> StreamingResponse:
-    """Create SSE streaming response for an agent run.
+def sse_response(events: AsyncIterator[AgentEvent]) -> StreamingResponse:
+    """Wrap a stream of agent events as an SSE response.
 
-    Works with any agent that implements `run(message, session, event_stream, ...)`.
+    Losing this response does NOT end the run behind it: the generator only
+    unsubscribes (`run_manager.AgentRun.subscribe` cleans up in its own
+    finally), and the agent goes on working for whoever attaches next. That is
+    the difference between closing a panel and pressing Stop, and it used to be
+    lost: a disconnect cancelled the agent task mid-tool and the turn was
+    written to history as "[Stopped by user]".
     """
-    event_stream = AgentEventStream()
-    # Published so a later POST /stop or /confirm can reach this run. Torn down
-    # in the generator's finally, whichever way the stream ends.
-    stream_registry.register(session.session_id, event_stream)
-
-    async def run_agent():
-        try:
-            await agent.run(
-                message, session, event_stream,
-                image_blocks, model_override=model_override,
-            )
-        except Exception as e:
-            logger.exception("Agent run failed")
-            await event_stream.emit_error(str(e))
-            await event_stream.emit_done(session_id=session.session_id)
-
-    async def keepalive():
-        try:
-            while True:
-                await asyncio.sleep(15)
-                await event_stream.emit_keepalive()
-        except asyncio.CancelledError:
-            pass
 
     async def event_generator():
-        task = asyncio.create_task(run_agent())
-        keepalive_task = asyncio.create_task(keepalive())
         try:
-            async for event in event_stream.events():
+            async for event in events:
                 yield event.to_sse()
-        except asyncio.CancelledError:
-            task.cancel()
-            raise
         finally:
-            keepalive_task.cancel()
-            if not task.done():
-                task.cancel()
-            stream_registry.unregister(session.session_id)
+            # Close the subscription explicitly. A disconnect cancels this
+            # generator and leaves the one underneath suspended at its yield,
+            # so waiting for the garbage collector to run its cleanup would
+            # leave the run fanning events out to a queue nobody reads.
+            # Unsubscribing is synchronous, so this cannot be interrupted by
+            # the cancellation already in flight.
+            await events.aclose()
 
     return StreamingResponse(
         event_generator(),
@@ -342,3 +355,37 @@ def stream_agent_response(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+async def stream_agent_response(
+    agent,
+    message: str,
+    session: BaseSession,
+    image_blocks: list[dict] | None = None,
+    model_override: str | None = None,
+) -> StreamingResponse:
+    """Start a detached agent run and stream it back.
+
+    Works with any agent that implements `run(message, session, event_stream, ...)`.
+
+    Raises:
+        HTTPException 409: a run is already in flight for this session. The
+            client is expected to POST /attach to that run instead of starting
+            a second one, because two agents interleaving tool calls and history
+            writes on one session corrupts both.
+    """
+    try:
+        run = await run_manager.start_run(
+            agent, message, session, image_blocks, model_override,
+        )
+    except run_manager.RunAlreadyActive as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "A run is already in progress for this session",
+                "session_id": e.session_id,
+                "run_id": e.run_id,
+            },
+        ) from e
+
+    return sse_response(run.subscribe())

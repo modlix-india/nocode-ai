@@ -53,7 +53,7 @@ _SESSION_IDLE_TTL_SECONDS = 600
 
 
 # Param description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_PAGE_NAME = "Page name to render (e.g. 'homeTwo')"
 
@@ -389,7 +389,8 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     page_name = (params.get("page_name") or "").strip()
     if not page_name:
         return ToolResult(success=False, error="`page_name` is required")
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     cc = params.get("client_code") or context.get("client_code", "") or ""
     if not ac:
         return ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
@@ -758,7 +759,8 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
         return ToolResult(success=False, error="`page_name` is required")
     if not isinstance(actions, list) or not actions:
         return ToolResult(success=False, error="`actions` (non-empty list) is required")
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     cc = params.get("client_code") or context.get("client_code", "") or ""
     if not ac:
         return ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
