@@ -64,6 +64,12 @@ class AgentEventType(str, Enum):
     CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
     DRAFT_PATCH = "draft_patch"  # A write held in the user's open draft, not saved
     OBJECT_CHANGED = "object_changed"  # A write that really did save, so refetch it
+    # Bracket the events a reattaching client is being shown for the second
+    # time (see run_manager). Between the two it rebuilds the message on
+    # screen and suppresses anything that acts on the world rather than
+    # describing it, so a `complete` that redirects the page fires once only.
+    REPLAY_START = "replay_start"
+    REPLAY_END = "replay_end"
 
 
 @dataclass
@@ -99,6 +105,11 @@ class AgentEventStream:
         self._pending_confirmations: dict[str, asyncio.Future[dict[str, Any]]] = {}
         # Cancellation flag — set by POST /stop, checked by the agent loop
         self._cancelled = False
+        # Set by the first emit_done. The run wrapper closes the stream in a
+        # finally so a crashed agent still terminates every attached client,
+        # which means done is reached twice on the ordinary path; a second
+        # sentinel would sit in the queue forever behind the first.
+        self._closed = False
 
     # ── Cancellation ─────────────────────────────────────────────
 
@@ -256,8 +267,15 @@ class AgentEventStream:
             data={"message": message},
         ))
 
+    @property
+    def is_closed(self) -> bool:
+        return self._closed
+
     async def emit_done(self, session_id: str = "", usage: dict[str, Any] | None = None) -> None:
-        """Emit done event and close the stream."""
+        """Emit done event and close the stream. Idempotent; see `_closed`."""
+        if self._closed:
+            return
+        self._closed = True
         await self._queue.put(AgentEvent(
             event=AgentEventType.DONE,
             data={

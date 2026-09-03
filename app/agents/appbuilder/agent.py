@@ -10,13 +10,25 @@ Extends BaseAgent with:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.core.context import BaseContext
-from app.core.tools.draft_registry import DraftEntry, DraftRegistry, open_drafts
+from app.core.tools.draft_registry import (
+    DraftEntry,
+    DraftRegistry,
+    drafting,
+    is_draftable,
+    open_drafts,
+)
 from app.agents.appbuilder.tools.modlix._draft_surface import draft_mode
+from app.agents.appbuilder.tools._shared import (
+    FOCUS_APP_KEY,
+    SEEN_APPS_KEY,
+    app_scope_hint,
+)
 from app.agents.appbuilder.context import (
     effective_hot_tools,
     deferred_tool_names,
@@ -26,6 +38,11 @@ from app.agents.appbuilder.context import (
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Pulls the app out of a "... not found in app 'X'." tool error, so the
+# cross-app hint can say which OTHER apps were candidates. See
+# `AppBuilderAgent.annotate_tool_error`.
+_APP_IN_ERROR_RE = re.compile(r"not found in app '([^']*)'")
 
 
 # ── Same-document write collisions ──────────────────────────────────────────
@@ -100,6 +117,36 @@ _register_rmw("uri_path", ("name",), "update_uri_path")
 # and `configure_app_for_customer_signup` writes through the same document.
 _register_rmw("app", ("name", "app_code"), "update_app", "set_app_property",
               "configure_app_for_customer_signup")
+
+
+# Tools whose success moves the session's focus app (see `note_tool_outcome`).
+# Every read-modify-write tool qualifies, plus the creates and deletes that
+# `_RMW_TOOLS` deliberately omits: for collision detection a create is not a
+# lost-update hazard, but for "which app is this session actually building" a
+# create is the single strongest signal there is.
+#
+# Deliberately excluded, despite taking an `app_code`: the `build_*` helpers
+# (`build_authority` and the two asset-URL builders) compute a string and write
+# nothing, and `generate_image` produces a file rather than app definition work.
+# None of them is evidence about where the next edit belongs.
+_FOCUS_MOVING_TOOLS: frozenset[str] = frozenset(_RMW_TOOLS) | frozenset({
+    "create", "update", "delete",
+    "create_app", "create_page", "create_pages", "delete_page",
+    "build_page_from_url", "discard_page_draft", "publish_app",
+    "create_connection", "delete_connection",
+    "create_event_action", "delete_event_action",
+    "create_event_definition", "delete_event_definition",
+    "create_function", "delete_function",
+    "create_server_function", "delete_server_function",
+    "create_notification", "delete_notification",
+    "create_schema", "delete_schema",
+    "create_storage", "delete_storage",
+    "create_style", "delete_style",
+    "create_template", "delete_template",
+    "create_theme", "delete_theme",
+    "create_uri_path", "delete_uri_path",
+    "create_role", "add_app_reg_entry", "upload_static_asset",
+})
 
 
 class AppBuilderAgent(BaseAgent):
@@ -194,6 +241,100 @@ class AppBuilderAgent(BaseAgent):
             return tool.to_anthropic_tool()
         return super()._tool_to_advertised_schema(tool)
 
+    @staticmethod
+    def _effective_app_code(session: BaseSession) -> str:
+        """The app this session is working in, as the tools see it.
+
+        Mirrors `tools._shared.resolve_app_code` for a call that passes no
+        explicit `app_code`: focus app first, then the app the request opened
+        with. Everything the agent *tells the model* about the current app has
+        to agree with where the tools will actually write, or the prompt and the
+        dispatcher disagree — which is precisely the failure this fixes.
+        """
+        focus = (session.context.get(FOCUS_APP_KEY) or "").strip()
+        if focus:
+            return focus
+        request_app = session.context.get("app_code") or ""
+        return request_app or (session.auth.app_code if session.auth else "")
+
+    def note_tool_outcome(
+        self,
+        tool_name: str,
+        tool_input: Any,
+        result: Any,
+        session: BaseSession,
+    ) -> None:
+        """Move the session's focus app when a write lands in a named app.
+
+        A session opened from appbuilder's own page carries
+        ``app_code="appbuilder"`` from the chat request, and until this hook
+        existed nothing ever changed it. So an agent asked to build a CRM would
+        create the `crm` app, build its pages with an explicit ``app_code``, and
+        then drop that optional argument on the next patch — which resolved back
+        to `appbuilder`, where none of those pages exist. In one production
+        session a single message fired 13 parallel `patch_component_props` calls
+        that all died on `Page 'leads' not found in app 'appbuilder'`.
+
+        Once a write to app X succeeds, X is where the work is, so X becomes the
+        default for calls that omit ``app_code``. Only writes count: reading
+        another app's page as a reference must not hijack where the next edit
+        goes. Failed calls do not count either — a 404 against the wrong app is
+        the symptom, not evidence about intent.
+        """
+        if tool_name not in _FOCUS_MOVING_TOOLS:
+            return
+        if not getattr(result, "success", False):
+            return
+        if not isinstance(tool_input, dict):
+            return
+        app = tool_input.get("app_code")
+        app = app.strip() if isinstance(app, str) else ""
+        if not app:
+            return
+
+        written = session.context.setdefault(SEEN_APPS_KEY, [])
+        if isinstance(written, list) and app not in written:
+            written.append(app)
+
+        if session.context.get(FOCUS_APP_KEY) == app:
+            return
+        session.context[FOCUS_APP_KEY] = app
+        # The grounding block names an app and lists its pages, so it is stale
+        # once it describes an app we are no longer in. Drop it here so the next
+        # turn refetches, but only on a genuine change: the first write to the
+        # app the request already opened with sets a focus without moving one.
+        # An unset marker means the cache predates this key (a session restored
+        # from the DB), and there is no way to tell what it describes — drop it.
+        if session.context.get("_preflight_grounding_app") != app:
+            session.context.pop("_preflight_grounding", None)
+        logger.info(
+            "session %s: focus app -> '%s' (after %s)",
+            session.session_id or "?", app, tool_name,
+        )
+
+    def annotate_tool_error(
+        self,
+        tool_name: str,
+        tool_input: Any,
+        result: Any,
+        session: BaseSession,
+    ) -> str | None:
+        """Name the other candidate apps when an object is missing from this one.
+
+        Fires only on a "not found in app 'X'" miss where this session has
+        written to some app other than X. That combination is almost always a
+        dropped `app_code` rather than a genuinely absent object, and the tool
+        raising the error has no way to know it — only the session does.
+        """
+        error = getattr(result, "error", "") or ""
+        if "not found in app" not in error:
+            return None
+        searched = _APP_IN_ERROR_RE.search(error)
+        return app_scope_hint(
+            {SEEN_APPS_KEY: session.context.get(SEEN_APPS_KEY) or []},
+            searched.group(1) if searched else "",
+        ) or None
+
     def write_conflict_key(self, tool_name: str, tool_input: Any) -> str | None:
         """See `BaseAgent.write_conflict_key`. None for anything not in `_RMW_TOOLS`.
 
@@ -286,13 +427,51 @@ class AppBuilderAgent(BaseAgent):
                     overlay=d.get("overlay"),
                 ))
         token = open_drafts.set(registry)
+        drafting_token = drafting.set(await self._drafting_now(session))
         try:
             await super().run(
                 user_message, session, event_stream, image_blocks, model_override,
             )
         finally:
+            drafting.reset(drafting_token)
             open_drafts.reset(token)
             draft_mode.reset(draft_token)
+
+    async def _drafting_now(self, session: BaseSession) -> bool:
+        """Settle once, before any tool runs, where this turn's writes go.
+
+        Every write in the turn reads this, so it cannot be decided per call:
+        two tools disagreeing would put half a change in the draft and half of
+        it live. Deciding it here also means the probe happens once instead of
+        on every save.
+
+        Never assumed. `?draft=true` is an ordinary query parameter, and a
+        deployment that predates the draft surface neither rejects nor honours
+        it: Spring drops what it does not know and performs an ordinary live
+        update. So the answer is no unless the deployment is asked and answers.
+        """
+        if not session.context.get("draft_mode"):
+            return False
+
+        app_code = session.context.get("app_code") or (
+            session.auth.app_code if session.auth else ""
+        )
+        if not app_code:
+            return False
+
+        from app.agents.appbuilder.tools.modlix import _draft_surface as ds
+        from app.core.tools.http_client import SaasClient
+        from app.config import settings
+
+        try:
+            return await ds.supported(
+                SaasClient(settings.GATEWAY_URL),
+                self._draft_probe_headers(session),
+                app_code,
+            )
+        except Exception:  # noqa: BLE001 - a probe must never take the turn down
+            logger.warning("draft support probe failed, writes stay live", exc_info=True)
+            return False
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Extend BaseAgent's context with appbuilder-specific fields.
@@ -315,6 +494,11 @@ class AppBuilderAgent(BaseAgent):
         if session.auth:
             ctx["app_code"] = session.context.get("app_code") or session.auth.app_code
             ctx["client_code"] = session.auth.client_code
+        # Where writes have actually been landing, and every app they touched.
+        # `resolve_app_code` prefers the focus over `app_code` above; the seen
+        # list only feeds the "did you mean another app?" hint on a miss.
+        ctx[FOCUS_APP_KEY] = session.context.get(FOCUS_APP_KEY, "")
+        ctx[SEEN_APPS_KEY] = session.context.get(SEEN_APPS_KEY, [])
         ctx["session_context"] = session.context
         return ctx
 
@@ -329,7 +513,7 @@ class AppBuilderAgent(BaseAgent):
         parts: list[str] = []
 
         if session.auth:
-            app_code = session.context.get("app_code") or session.auth.app_code
+            app_code = self._effective_app_code(session)
             parts.append(
                 f"Current session:\n"
                 f"- Client: {session.auth.client_code}\n"
@@ -524,27 +708,57 @@ class AppBuilderAgent(BaseAgent):
 
         # The workspace names the API rather than the kind, so fall back to it
         # rather than printing a blank where the object type should be.
-        def _label(d: dict) -> str:
-            from app.core.tools.draft_registry import DraftRegistry
-
-            kind = d.get("kind") or (
-                DraftRegistry.resolve(d["api"])[0] if d.get("api") else None
+        def _kind_of(d: dict) -> str:
+            return d.get("kind") or (
+                DraftRegistry.resolve(d["api"])[0] if d.get("api") else ""
             )
-            return f"{kind or 'object'} '{d.get('name') or d.get('id')}'"
 
-        held = ", ".join(_label(d) for d in declared)
-        return (
-            "The user has these open in front of them, unsaved: " + held + ".\n"
-            "Your edits to those appear on their screen straight away but are NOT "
-            "saved. They review them and press Save themselves, so never tell them "
-            "to reload, and never claim you have saved one.\n"
+        def _label(d: dict) -> str:
+            return f"{_kind_of(d) or 'object'} '{d.get('name') or d.get('id')}'"
+
+        # Two different fates, and the agent has to be able to tell the user
+        # which one their change got. An object the server will draft is written
+        # there and the tab refetches it; one it will not is kept in the browser
+        # and waits for a Save that only the user can press.
+        to_draft = [d for d in declared if drafting.get() and is_draftable(_kind_of(d))]
+        to_browser = [d for d in declared if d not in to_draft]
+        dirty_drafted = [d for d in to_draft if d.get("dirty")]
+
+        lines: list[str] = []
+        if to_browser:
+            lines.append(
+                "The user has these open in front of them, unsaved: "
+                + ", ".join(_label(d) for d in to_browser) + ".\n"
+                "Your edits to those appear on their screen straight away but are NOT "
+                "saved. They review them and press Save themselves, so never tell them "
+                "to reload, and never claim you have saved one."
+            )
+        if to_draft:
+            lines.append(
+                "These are open in a tab that reads this app's DRAFT: "
+                + ", ".join(_label(d) for d in to_draft) + ".\n"
+                "Your edits to those go to the draft and the tab refreshes itself, so "
+                "the user sees them without reloading. They are saved, but only on the "
+                "draft surface until somebody publishes."
+            )
+        if dirty_drafted:
+            lines.append(
+                "Careful: "
+                + ", ".join(_label(d) for d in dirty_drafted)
+                + " has edits the user has typed and not saved, and you cannot see "
+                "them -- you are reading the draft, they are in the browser. Editing "
+                "it now would give them a version of their object without their own "
+                "work in it. Ask them to save first."
+            )
+        lines.append(
             "Everything else you touch IS saved the moment you touch it, including "
-            "creating and deleting. When you change something outside that list, "
-            "say which object it was and how far it reaches: a theme or style edit "
-            "changes every page in the app, and the user cannot undo it from here.\n"
-            "Listings still read saved state, so an unsaved rename will not show up "
+            "creating and deleting. When you change something the user does not have "
+            "open, say which object it was and how far it reaches: a theme or style "
+            "edit changes every page in the app.\n"
+            "Listings read live state, so a drafted or unsaved rename will not show up "
             "in list_pages or list_storages. That is expected, not a stale cache."
         )
+        return "\n".join(lines)
 
     _NAMED_PAGE_REF_KEYS: tuple[str, ...] = (
         "defaultPage", "loginPage", "shellPage", "forbiddenPage",
@@ -647,13 +861,19 @@ class AppBuilderAgent(BaseAgent):
         """
         if not session.auth:
             return ""
-        app_code = session.context.get("app_code") or session.auth.app_code
+        app_code = self._effective_app_code(session)
         if not app_code:
             return ""
+        # Keyed by app, not just present/absent. The block names the app and
+        # lists its pages, so a cache that outlived a focus change would keep
+        # telling the model it is in `appbuilder` looking at TestPage3 while its
+        # own tools write to `crm`. `note_tool_outcome` evicts on the move; this
+        # is the belt to that braces, and covers a focus set any other way.
         cached = session.context.get("_preflight_grounding")
-        if isinstance(cached, str):
+        if isinstance(cached, str) and session.context.get("_preflight_grounding_app") == app_code:
             return cached
 
+        session.context["_preflight_grounding_app"] = app_code
         app_obj, page_names = await self._fetch_grounding(session, app_code)
         if not app_obj and not page_names:
             session.context["_preflight_grounding"] = ""

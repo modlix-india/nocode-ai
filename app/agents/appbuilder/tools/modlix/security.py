@@ -135,8 +135,15 @@ get_user_tool = ToolDefinition(
 async def _user_action_call(
     context: dict[str, Any], method: str, path: str, json_body: dict[str, Any] | None,
     success_msg: str,
+    user_id: str = "",
 ) -> ToolResult:
-    """Shared shape for user-mutation calls (assign/remove role, etc.)."""
+    """Shared shape for user-mutation calls (assign/remove role, etc.).
+
+    Several of these are GETs that mutate: `/users/{id}/assignRole/{roleId}`
+    changes the user and answers 200 to a GET. The HTTP choke point reports a
+    write by its verb, so it cannot see these, and the org console showing that
+    user went on showing the state from before. Announced explicitly here.
+    """
     client, headers = _client_and_headers(context)
     if method == "GET":
         r = await client.get(path, headers=headers)
@@ -146,6 +153,10 @@ async def _user_action_call(
         r = await client.patch(path, headers=headers, json=json_body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
+    if method == "GET" and user_id:
+        from app.core.tools import draft_registry as drafts
+
+        await drafts.announce_change(kind="user", obj_id=user_id)
     return ToolResult(success=True, summary=success_msg)
 
 
@@ -154,7 +165,7 @@ async def _execute_assign_role(params: dict[str, Any], context: dict[str, Any]) 
     role_id = (params.get("role_id") or "").strip()
     if not user_id or not role_id:
         return ToolResult(success=False, error="`user_id` and `role_id` are required")
-    return await _user_action_call(context, "GET", f"/api/security/users/{user_id}/assignRole/{role_id}", None, f"Assigned role {role_id} to user {user_id}.")
+    return await _user_action_call(context, "GET", f"/api/security/users/{user_id}/assignRole/{role_id}", None, f"Assigned role {role_id} to user {user_id}.", user_id=user_id)
 
 
 assign_role_tool = ToolDefinition(
@@ -173,7 +184,7 @@ async def _execute_remove_role(params: dict[str, Any], context: dict[str, Any]) 
     role_id = (params.get("role_id") or "").strip()
     if not user_id or not role_id:
         return ToolResult(success=False, error="`user_id` and `role_id` are required")
-    return await _user_action_call(context, "GET", f"/api/security/users/{user_id}/removeRole/{role_id}", None, f"Removed role {role_id} from user {user_id}.")
+    return await _user_action_call(context, "GET", f"/api/security/users/{user_id}/removeRole/{role_id}", None, f"Removed role {role_id} from user {user_id}.", user_id=user_id)
 
 
 remove_role_tool = ToolDefinition(
@@ -192,7 +203,7 @@ async def _execute_assign_profile(params: dict[str, Any], context: dict[str, Any
     profile_id = (params.get("profile_id") or "").strip()
     if not user_id or not profile_id:
         return ToolResult(success=False, error="`user_id` and `profile_id` are required")
-    return await _user_action_call(context, "GET", f"/api/security/users/{user_id}/assignProfile/{profile_id}", None, f"Assigned profile {profile_id} to user {user_id}.")
+    return await _user_action_call(context, "GET", f"/api/security/users/{user_id}/assignProfile/{profile_id}", None, f"Assigned profile {profile_id} to user {user_id}.", user_id=user_id)
 
 
 assign_profile_tool = ToolDefinition(
@@ -446,7 +457,8 @@ async def _resolve_role_app(
         return str(explicit_id), (code or None), None
     if params.get("client_scoped"):
         return None, None, None
-    app_code = (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code(params, context)
     if not app_code:
         return None, None, None
     from .app_admin import _find_security_app_by_code  # lazy: avoids an import cycle

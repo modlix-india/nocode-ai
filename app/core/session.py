@@ -68,6 +68,28 @@ async def _resolve_app_user_id(
     return user_id
 
 
+# Session-context keys for app scope.
+#
+# `app_code` is the app the chat request opened with and never changes.
+# FOCUS_APP_KEY is the app a write most recently landed in, and it wins: a
+# session opened on appbuilder that goes on to build `crm` is working in `crm`,
+# and everything scoped per-app (tool targets, pre-flight grounding, the KB,
+# lore) has to agree about that. An agent that never sets it is unaffected.
+FOCUS_APP_KEY = "focus_app_code"
+SEEN_APPS_KEY = "written_app_codes"
+
+
+def session_app_code(session: "BaseSession") -> str:
+    """The app a session is working in: focus app, else the request app."""
+    context = getattr(session, "context", None) or {}
+    focus = context.get(FOCUS_APP_KEY) if isinstance(context, dict) else ""
+    if isinstance(focus, str) and focus.strip():
+        return focus.strip()
+    request_app = context.get("app_code") if isinstance(context, dict) else ""
+    auth = getattr(session, "auth", None)
+    return request_app or (getattr(auth, "app_code", "") if auth else "") or ""
+
+
 @dataclass
 class AuthContext:
     """Authentication context passed from the HTTP request.
@@ -807,6 +829,33 @@ class BaseSession:
             logger.warning(f"Failed to create DB session: {e}")
             self.session_id = f"{self.auth.client_code}_{uuid.uuid4().hex[:8]}"
 
+    def _clear_focus_on_app_switch(self, prior_request_app: str | None) -> None:
+        """Drop a persisted focus app when the user has navigated to another app.
+
+        The focus (see FOCUS_APP_KEY) outranks the request's `app_code`, which is
+        what makes a session follow the app it is building. That must not outlive
+        the user opening a different app in the workspace: their explicit
+        selection beats an inference drawn from earlier writes.
+
+        The test is a CHANGE in the request app between turns, not a difference
+        between the request app and the focus. Asking a follow-up from the same
+        place sends the same `app_code` as before and means nothing new, so the
+        focus survives — otherwise turn two of "build me a CRM" would snap
+        straight back to `appbuilder` and undo the fix.
+        """
+        incoming = self.context.get("app_code")
+        if not incoming or not prior_request_app or incoming == prior_request_app:
+            return
+        dropped = self.context.pop(FOCUS_APP_KEY, None)
+        # The grounding block names an app, so it goes with the focus.
+        self.context.pop("_preflight_grounding", None)
+        self.context.pop("_preflight_grounding_app", None)
+        if dropped:
+            logger.info(
+                "session %s: request app %s -> %s, dropping focus '%s'",
+                self.session_id, prior_request_app, incoming, dropped,
+            )
+
     async def _load_existing_session(self) -> None:
         """Load conversation history from an existing session."""
         try:
@@ -822,7 +871,9 @@ class BaseSession:
                 if session.context_json:
                     try:
                         db_context = json.loads(session.context_json)
+                        prior_request_app = db_context.get("app_code")
                         self.context = {**db_context, **self.context}
+                        self._clear_focus_on_app_switch(prior_request_app)
                     except (json.JSONDecodeError, TypeError):
                         logger.warning(f"Invalid context_json for session {self.session_id}")
 

@@ -174,12 +174,20 @@ async def save_page(
 
 
 def new_page_skeleton(name: str, app_code: str, client_code: str, title: str | None = None) -> dict[str, Any]:
-    """Return a minimal page JSON ready to POST to /api/ui/pages."""
+    """Return a minimal page JSON ready to POST to /api/ui/pages.
+
+    A readable `title` is set in BOTH places a title can live, because for a new
+    page they should agree and each has a bad default on its own: the builder
+    would show the camelCase name on the tab, and the browser tab would show it
+    too. They are different fields with different meanings (see `update_page`),
+    so anything that later changes one of them changes only that one.
+    """
     root_key = "root"
     return {
         "name": name,
         "appCode": app_code,
         "clientCode": client_code,
+        **({"title": title} if title else {}),
         "rootComponent": root_key,
         "componentDefinition": {
             root_key: {

@@ -44,7 +44,7 @@ from . import _draft_surface as drafts
 
 
 # Shared constants — reduce description duplication.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_PAGE_NAME = "Page that owns the event function"
 _DESC_EVENT_REF = "Event function name (the `name` field) or UUID key"
 _DESC_COMMIT_MSG = "Commit message"
@@ -59,7 +59,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     if not ac:
         return "", ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
     return ac, None

@@ -33,7 +33,7 @@ from . import _page_ops as p_ops
 
 
 # Shared param-description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 
 
@@ -43,7 +43,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     if not ac:
         return "", ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
     return ac, None
