@@ -78,6 +78,19 @@ except ImportError:  # python-dotenv is in requirements; degrade instead of dyin
     pass
 
 
+@dataclass(frozen=True)
+class ToolCall:
+    """One dispatched tool call, with the arguments the model actually sent.
+
+    The observer used to keep only (name, ok), which is why the oracle could
+    only ever assert which tool ran. Keeping `args` is what lets it assert what
+    the run achieved.
+    """
+    name: str
+    args: dict
+    ok: bool
+
+
 @dataclass
 class Conversation:
     """One bench conversation. Comes from bench_corpus.yaml."""
@@ -92,6 +105,16 @@ class Conversation:
     # doesn't penalize a valid alternative path. Goes alongside
     # `must_call_tools` — both must be satisfied if both are set.
     must_call_any_of_groups: list[list[str]] = field(default_factory=list)
+    # Outcome assertions, evaluated over (tool, ARGUMENTS) rather than tool
+    # names. Prefer these: `must_call_tools` asserts the route, not the result,
+    # and it has been wrong in both directions. It demanded
+    # `bulk_patch_component_props` for "change every Button's backgroundColor",
+    # which is a STYLE, so an agent reaching correctly for
+    # `bulk_patch_component_styles` failed. And it demanded
+    # `patch_component_styles` on a page being built, though `add_components`
+    # now carries `style_properties` inline, so the better route also failed.
+    # An effect is satisfied by ANY tool that actually achieves it. See _EFFECTS.
+    must_achieve: list[dict] = field(default_factory=list)
     must_succeed_on_kirun: bool = False
     must_succeed_on_kb_write: bool = False
     # Optional setup actions run BEFORE the user-message loop. Each entry is
@@ -219,6 +242,10 @@ def _load_corpus(path: Path) -> list[Conversation]:
                 list(group) for group in (entry.get("must_call_any_of_groups") or [])
                 if group
             ],
+            must_achieve=[
+                dict(effect) for effect in (entry.get("must_achieve") or [])
+                if isinstance(effect, dict) and effect.get("effect")
+            ],
             must_succeed_on_kirun=bool(entry.get("must_succeed_on_kirun")),
             must_succeed_on_kb_write=bool(entry.get("must_succeed_on_kb_write")),
             setup_actions=[
@@ -302,12 +329,28 @@ def _make_observer():
         def __init__(self) -> None:
             super().__init__()
             self.tool_calls: list[tuple[str, bool]] = []  # (name, success)
+            self.calls: list[ToolCall] = []               # + the arguments sent
+            self._pending: dict[str, tuple[str, dict]] = {}
             self.errors: list[str] = []
             self.cancelled = False
+
+        async def emit_tool_start(self, tool_name, tool_input, tool_use_id="", display_name=""):
+            # Arguments arrive on start and the outcome on result, so they are
+            # paired by tool_use_id. Without the arguments the oracle can only
+            # assert which tool ran, never what the run achieved.
+            await super().emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
+            self._pending[tool_use_id] = (
+                tool_name, tool_input if isinstance(tool_input, dict) else {},
+            )
 
         async def emit_tool_result(self, tool_name, success, summary, tool_use_id=""):
             await super().emit_tool_result(tool_name, success, summary, tool_use_id)
             self.tool_calls.append((tool_name, bool(success)))
+            # Fall back to an empty arg map rather than dropping the call: a
+            # parallel batch can interleave, and a call with unknown arguments
+            # must still count toward tool-name assertions and the metrics.
+            _name, args = self._pending.pop(tool_use_id, (tool_name, {}))
+            self.calls.append(ToolCall(tool_name, args, bool(success)))
 
         async def emit_error(self, message):
             # The agent loop catches top-level exceptions and emits them as
@@ -392,7 +435,174 @@ def _check_any_of_groups(
     return f"none-of-group called: {unsatisfied}"
 
 
+# ─── Outcome effects ────────────────────────────────────────────────────────
+#
+# An effect asks "did the run achieve X", not "did it call tool Y". The tool
+# surface has several routes to most outcomes, and the route-based oracle was
+# wrong in both directions on real runs:
+#
+#   * `bulk-style-update` ("change every Button's backgroundColor") demanded
+#     `bulk_patch_component_props`. backgroundColor is a STYLE, so an agent
+#     correctly reaching for `bulk_patch_component_styles` was marked failed.
+#   * `end-to-end-new-page` demanded `patch_component_styles`, but
+#     `add_components` now carries `style_properties` inline, so building the
+#     page the better way in one call also failed.
+#
+# Where a tool carries the thing an effect looks for. Styles live under
+# `css_props` on the patch tools and `style_properties` on set/add.
+_STYLE_ARG_KEYS = ("css_props", "style_properties")
+_PROP_ARG_KEYS = ("properties",)
+
+_FUNCTION_AUTHORING_TOOLS = frozenset({
+    "create_page_event_function", "save_page_event_function_from_text",
+    "add_event_step", "update_event_step",
+    "create_function", "save_function_from_text", "create_server_function",
+    "save_server_function_from_text", "add_step", "update_step",
+    "compile_kirun_text",
+})
+_SCREENSHOT_TOOLS = frozenset({"screenshot_page", "screenshot_external_url"})
+_PAGE_CREATE_TOOLS = frozenset({"create_page", "create_pages"})
+_COMPONENT_ADD_TOOLS = frozenset({"add_component", "add_components"})
+
+
+def _iter_component_specs(args: dict) -> list[dict]:
+    """Every component spec a call carries, whether singular or batched.
+
+    `add_component` is one spec at the top level; `add_components` nests a list
+    under `components`. Flattening here means an effect never has to care which
+    of the two the agent used — which was half the original oracle's problem.
+    """
+    specs = []
+    if isinstance(args.get("components"), list):
+        specs.extend(c for c in args["components"] if isinstance(c, dict))
+    if any(k in args for k in ("component_type", "properties", "style_properties")):
+        specs.append(args)
+    return specs
+
+
+def _dicts_under(args: dict, keys: tuple[str, ...]) -> list[dict]:
+    """Collect the {name: value} maps a call carries under any of `keys`.
+
+    Looks at the call's own arguments AND at each nested component spec, so a
+    style set inline on `add_components` counts the same as one applied later
+    by `patch_component_styles`.
+    """
+    out = []
+    for src in [args] + _iter_component_specs(args):
+        for k in keys:
+            v = src.get(k)
+            if isinstance(v, dict):
+                out.append(v)
+    return out
+
+
+def _target_type(args: dict, spec: dict) -> Optional[str]:
+    """The component type a call targets, when the arguments reveal it.
+
+    Returns None when the call addresses a component by key or by an opaque
+    filter — the type is then genuinely unknowable from the arguments, and the
+    effect check treats that as "cannot disprove" rather than a failure. That
+    bias is deliberate: this oracle's failures have been false negatives, and a
+    false pass is visible in the transcript while a false fail silently
+    discredits a good run.
+    """
+    t = spec.get("component_type") or spec.get("type")
+    if isinstance(t, str):
+        return t
+    f = args.get("filter")
+    if isinstance(f, dict):
+        ft = f.get("type") or f.get("component_type")
+        if isinstance(ft, str):
+            return ft
+    if isinstance(f, str):
+        return f
+    return None
+
+
+def _src_sets(src: dict, args: dict, keys: tuple[str, ...],
+              wanted: Optional[str], on_type: Optional[str]) -> bool:
+    """Does one argument source set `wanted` under any of `keys`, on `on_type`?"""
+    for k in keys:
+        m = src.get(k)
+        if not isinstance(m, dict):
+            continue
+        if wanted and wanted not in m:
+            continue
+        if not wanted and not m:
+            continue
+        found = _target_type(args, src) if on_type else None
+        if on_type and found is not None and found != on_type:
+            continue
+        return True
+    return False
+
+
+def _effect_sets_named(call: "ToolCall", spec: dict, keys: tuple[str, ...]) -> bool:
+    """Shared body for sets_style / sets_property."""
+    wanted = spec.get("property")
+    on_type = spec.get("on_type")
+    return any(
+        _src_sets(src, call.args, keys, wanted, on_type)
+        for src in [call.args] + _iter_component_specs(call.args)
+    )
+
+
+def _effect_creates_page(call: "ToolCall", spec: dict) -> bool:
+    if call.name not in _PAGE_CREATE_TOOLS:
+        return False
+    wanted = spec.get("name")
+    if not wanted:
+        return True
+    names = [call.args.get("name")]
+    if isinstance(call.args.get("pages"), list):
+        names += [p.get("name") for p in call.args["pages"] if isinstance(p, dict)]
+    return any(isinstance(n, str) and n.lower() == wanted.lower() for n in names)
+
+
+def _effect_adds_components(call: "ToolCall", spec: dict) -> bool:
+    if call.name not in _COMPONENT_ADD_TOOLS:
+        return False
+    wanted = spec.get("type")
+    if not wanted:
+        return True
+    return any(s.get("component_type") == wanted for s in _iter_component_specs(call.args))
+
+
+# effect name → predicate over a single successful call
+_EFFECTS = {
+    "sets_style": lambda c, s: _effect_sets_named(c, s, _STYLE_ARG_KEYS),
+    "sets_property": lambda c, s: _effect_sets_named(c, s, _PROP_ARG_KEYS),
+    "creates_page": _effect_creates_page,
+    "adds_components": _effect_adds_components,
+    "authors_function": lambda c, s: c.name in _FUNCTION_AUTHORING_TOOLS,
+    "screenshots": lambda c, s: c.name in _SCREENSHOT_TOOLS,
+    "called": lambda c, s: c.name == s.get("tool"),
+}
+
+
+def _check_effects(effects: list[dict], calls: list["ToolCall"]) -> Optional[str]:
+    """Every declared effect must be achieved by at least one SUCCESSFUL call.
+
+    Failed calls do not count: an agent that tried the right thing and got an
+    error has not achieved the outcome, which is exactly the distinction the
+    tool-name oracle could not make.
+    """
+    unmet = []
+    for spec in effects:
+        name = spec.get("effect")
+        fn = _EFFECTS.get(name)
+        if fn is None:
+            unmet.append(f"{spec} (unknown effect '{name}')")
+            continue
+        if not any(fn(c, spec) for c in calls if c.ok):
+            unmet.append(spec)
+    if unmet:
+        return f"effects not achieved: {unmet}"
+    return None
+
+
 def _convergence(conv: Conversation, metrics: BenchMetrics, tool_calls: list[tuple[str, bool]],
+                 calls: Optional[list["ToolCall"]] = None,
                  ) -> tuple[bool, Optional[str]]:
     """Decide whether a run satisfies the conversation's contract.
 
@@ -408,6 +618,13 @@ def _convergence(conv: Conversation, metrics: BenchMetrics, tool_calls: list[tup
     group_failure = _check_any_of_groups(conv.must_call_any_of_groups, called_names)
     if group_failure:
         return False, group_failure
+
+    # Outcome assertions. Checked last so a conversation carrying both kinds
+    # reports the cruder route failure first, which is easier to act on.
+    if conv.must_achieve:
+        effect_failure = _check_effects(conv.must_achieve, calls or [])
+        if effect_failure:
+            return False, effect_failure
 
     if conv.must_succeed_on_kirun:
         succeeded = any(
@@ -664,7 +881,9 @@ async def _run_one(
     for k, v in classified.items():
         setattr(metrics, k, v)
 
-    converged, oracle_reason = _convergence(conv, metrics, observer.tool_calls)
+    converged, oracle_reason = _convergence(
+        conv, metrics, observer.tool_calls, getattr(observer, "calls", None),
+    )
     metrics.converged = converged
     if not converged:
         metrics.failure_reason = _resolve_failure_reason(
@@ -680,6 +899,7 @@ async def _run_one(
 _ORACLE_VERDICT_PREFIXES: tuple = (
     "missing required tools",
     "none-of-group called",
+    "effects not achieved",
     "must_succeed_on_kirun",
     "must_succeed_on_kb_write",
 )
