@@ -16,7 +16,13 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.core.context import BaseContext
-from app.core.tools.draft_registry import DraftEntry, DraftRegistry, open_drafts
+from app.core.tools.draft_registry import (
+    DraftEntry,
+    DraftRegistry,
+    drafting,
+    is_draftable,
+    open_drafts,
+)
 from app.agents.appbuilder.tools.modlix._draft_surface import draft_mode
 from app.agents.appbuilder.tools._shared import (
     FOCUS_APP_KEY,
@@ -421,13 +427,51 @@ class AppBuilderAgent(BaseAgent):
                     overlay=d.get("overlay"),
                 ))
         token = open_drafts.set(registry)
+        drafting_token = drafting.set(await self._drafting_now(session))
         try:
             await super().run(
                 user_message, session, event_stream, image_blocks, model_override,
             )
         finally:
+            drafting.reset(drafting_token)
             open_drafts.reset(token)
             draft_mode.reset(draft_token)
+
+    async def _drafting_now(self, session: BaseSession) -> bool:
+        """Settle once, before any tool runs, where this turn's writes go.
+
+        Every write in the turn reads this, so it cannot be decided per call:
+        two tools disagreeing would put half a change in the draft and half of
+        it live. Deciding it here also means the probe happens once instead of
+        on every save.
+
+        Never assumed. `?draft=true` is an ordinary query parameter, and a
+        deployment that predates the draft surface neither rejects nor honours
+        it: Spring drops what it does not know and performs an ordinary live
+        update. So the answer is no unless the deployment is asked and answers.
+        """
+        if not session.context.get("draft_mode"):
+            return False
+
+        app_code = session.context.get("app_code") or (
+            session.auth.app_code if session.auth else ""
+        )
+        if not app_code:
+            return False
+
+        from app.agents.appbuilder.tools.modlix import _draft_surface as ds
+        from app.core.tools.http_client import SaasClient
+        from app.config import settings
+
+        try:
+            return await ds.supported(
+                SaasClient(settings.GATEWAY_URL),
+                self._draft_probe_headers(session),
+                app_code,
+            )
+        except Exception:  # noqa: BLE001 - a probe must never take the turn down
+            logger.warning("draft support probe failed, writes stay live", exc_info=True)
+            return False
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Extend BaseAgent's context with appbuilder-specific fields.
@@ -664,27 +708,57 @@ class AppBuilderAgent(BaseAgent):
 
         # The workspace names the API rather than the kind, so fall back to it
         # rather than printing a blank where the object type should be.
-        def _label(d: dict) -> str:
-            from app.core.tools.draft_registry import DraftRegistry
-
-            kind = d.get("kind") or (
-                DraftRegistry.resolve(d["api"])[0] if d.get("api") else None
+        def _kind_of(d: dict) -> str:
+            return d.get("kind") or (
+                DraftRegistry.resolve(d["api"])[0] if d.get("api") else ""
             )
-            return f"{kind or 'object'} '{d.get('name') or d.get('id')}'"
 
-        held = ", ".join(_label(d) for d in declared)
-        return (
-            "The user has these open in front of them, unsaved: " + held + ".\n"
-            "Your edits to those appear on their screen straight away but are NOT "
-            "saved. They review them and press Save themselves, so never tell them "
-            "to reload, and never claim you have saved one.\n"
+        def _label(d: dict) -> str:
+            return f"{_kind_of(d) or 'object'} '{d.get('name') or d.get('id')}'"
+
+        # Two different fates, and the agent has to be able to tell the user
+        # which one their change got. An object the server will draft is written
+        # there and the tab refetches it; one it will not is kept in the browser
+        # and waits for a Save that only the user can press.
+        to_draft = [d for d in declared if drafting.get() and is_draftable(_kind_of(d))]
+        to_browser = [d for d in declared if d not in to_draft]
+        dirty_drafted = [d for d in to_draft if d.get("dirty")]
+
+        lines: list[str] = []
+        if to_browser:
+            lines.append(
+                "The user has these open in front of them, unsaved: "
+                + ", ".join(_label(d) for d in to_browser) + ".\n"
+                "Your edits to those appear on their screen straight away but are NOT "
+                "saved. They review them and press Save themselves, so never tell them "
+                "to reload, and never claim you have saved one."
+            )
+        if to_draft:
+            lines.append(
+                "These are open in a tab that reads this app's DRAFT: "
+                + ", ".join(_label(d) for d in to_draft) + ".\n"
+                "Your edits to those go to the draft and the tab refreshes itself, so "
+                "the user sees them without reloading. They are saved, but only on the "
+                "draft surface until somebody publishes."
+            )
+        if dirty_drafted:
+            lines.append(
+                "Careful: "
+                + ", ".join(_label(d) for d in dirty_drafted)
+                + " has edits the user has typed and not saved, and you cannot see "
+                "them -- you are reading the draft, they are in the browser. Editing "
+                "it now would give them a version of their object without their own "
+                "work in it. Ask them to save first."
+            )
+        lines.append(
             "Everything else you touch IS saved the moment you touch it, including "
-            "creating and deleting. When you change something outside that list, "
-            "say which object it was and how far it reaches: a theme or style edit "
-            "changes every page in the app, and the user cannot undo it from here.\n"
-            "Listings still read saved state, so an unsaved rename will not show up "
+            "creating and deleting. When you change something the user does not have "
+            "open, say which object it was and how far it reaches: a theme or style "
+            "edit changes every page in the app.\n"
+            "Listings read live state, so a drafted or unsaved rename will not show up "
             "in list_pages or list_storages. That is expected, not a stale cache."
         )
+        return "\n".join(lines)
 
     _NAMED_PAGE_REF_KEYS: tuple[str, ...] = (
         "defaultPage", "loginPage", "shellPage", "forbiddenPage",

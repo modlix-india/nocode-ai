@@ -141,6 +141,10 @@ class SaasClient:
             held = await self._serve_from_draft(method, path, json, headers)
             if held is not None:
                 return held
+            refused = self._refuse_live_only(method, path)
+            if refused is not None:
+                return refused
+            params = self._draft_params(method, path, params)
 
         client = self._get_client()
         url = path if path.startswith("/") else f"/{path}"
@@ -206,6 +210,73 @@ class SaasClient:
                 error=f"Unexpected error: {type(e).__name__}: {e}",
             )
 
+    # ── Routing writes to the server's draft ────────────────────
+
+    # Verbs that read or replace a whole object, which are the two the draft
+    # surface understands. A collection POST is a CREATE and is deliberately
+    # absent: the backend would still write a real live document, and a Draft
+    # row keyed on a name with no live counterpart has nothing to publish over.
+    _DRAFTABLE_VERBS = {"GET", "PUT"}
+
+    def _draft_params(
+        self, method: str, path: str, params: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """Add `?draft=true` to a whole-object read or write while drafting.
+
+        Here rather than at the twenty-four call sites that PUT, for the reason
+        the intercept below is also here: twenty-four edits are twenty-four
+        chances to miss one, and a missed one writes LIVE while the agent tells
+        the user their change is waiting for review. Confidently wrong about
+        where someone's work went is the exact failure the draft surface exists
+        to remove, so it must not be reintroduced by an unconverted tool.
+
+        Only a call that names one object is flagged. A collection listing is
+        left alone: the draft surface has no opinion about lists, and a flag the
+        backend ignores would read as support that is not there.
+        """
+        if not drafts.drafting.get():
+            return params
+        if method.upper() not in self._DRAFTABLE_VERBS:
+            return params
+        kind, obj_id, sub = drafts.DraftRegistry.resolve(path)
+        if not drafts.is_draftable(kind) or not obj_id or sub:
+            return params
+        out = dict(params or {})
+        out.setdefault("draft", "true")
+        return out
+
+    def _refuse_live_only(self, method: str, path: str) -> ToolResult | None:
+        """Refuse a part-of-an-object write that cannot be drafted.
+
+        `PATCH /pages/{id}/components/{key}` and `PUT /pages/{id}/events/{name}`
+        take no draft parameter: they mutate the stored document in place, and
+        there is no draft counterpart to send them to. Calling one while the
+        turn is drafting publishes the change to everyone the moment it is
+        written, while every other write in the same turn waits for review.
+
+        The page tools already avoid these two routes when drafting and do a
+        whole-document read-modify-write instead. This is the guard for
+        everything else: a tool that has not been converted, or a route added
+        later, fails loudly here rather than leaking silently.
+        """
+        if not drafts.drafting.get():
+            return None
+        if method.upper() not in _MUTATING:
+            return None
+        kind, obj_id, sub = drafts.DraftRegistry.resolve(path)
+        if not sub or not drafts.is_draftable(kind) or not obj_id:
+            return None
+
+        logger.warning("refused %s %s: no draft counterpart for this partial write", method, path)
+        return ToolResult(
+            success=False,
+            error=(
+                f"{method} {path} writes part of an object directly and has no draft "
+                f"counterpart, so it would go live while this turn's other changes wait "
+                f"for review. Use a tool that reads the whole object and saves it back."
+            ),
+        )
+
     # ── The open-draft intercept ────────────────────────────────
 
     async def _serve_from_draft(
@@ -232,6 +303,16 @@ class SaasClient:
             return None
 
         verb = method.upper()
+
+        # The server will draft this one, so the browser is the wrong place to
+        # keep it: the write goes to the draft (see `_draft_params`) and the tab
+        # showing it refetches. Reads follow the same surface, which means the
+        # agent stops seeing edits the user has typed and not saved. That cost
+        # is deliberate and is the same trade the page editor already makes:
+        # saving is cheap now, because it saves to the draft, so the answer is
+        # to save first rather than to hold the write.
+        if drafts.is_draftable(kind) and drafts.drafting.get():
+            return None
 
         if obj_id and sub:
             return await self._serve_sub_resource(reg, kind, obj_id, sub, verb, path, body, headers)

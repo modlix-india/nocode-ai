@@ -436,12 +436,12 @@ IMPORTANT — page name rules:
 - Must be unique within the app. If a page with the same name exists, this fails — use a different name or call `update_page` to modify the existing one.
 - The name is the URL slug (the path component the user types) AND the internal reference. Keep it short + meaningful.
 
-The optional `title` is the browser tab text. Defaults to the page name if omitted; set it explicitly to a human-readable phrase when the page name is camelCase (`title="Contact Us"` for `name="contactUs"`).""",
+The optional `title` is the page's readable display name, and on a new page it is set as the browser tab text too. Give it whenever the page name is camelCase (`title="Contact Us"` for `name="contactUs"`), or both the builder tab and the browser tab read `contactUs`. Afterwards the two are separate fields: `update_page(title=...)` changes the display name, `update_page(browser_title=...)` the tab text.""",
     parameters=[
         ToolParameter(name="name", type="string", description="Page name (letters/digits only — used as URL slug + internal key)"),
         ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to the app this session is working in"),
         ToolParameter(name="client_code", type="string", required=False, description="Owning clientCode"),
-        ToolParameter(name="title", type="string", required=False, description="Browser title; defaults to name. Set for camelCase page names ('Contact Us' for 'contactUs')."),
+        ToolParameter(name="title", type="string", required=False, description="Readable display name, used for the builder tab AND the browser tab on a new page. Set it for camelCase page names ('Contact Us' for 'contactUs')."),
         ToolParameter(name="permission", type="string", required=False, description="Access rule, e.g. 'Authorities.Logged_IN' or 'Authorities.Logged_IN and Authorities.<APPCODE>.ROLE_<Name>'. Omit for a public page (login, landing)."),
         ToolParameter(name="properties", type="object", required=False, description="Extra page-level properties merged over the skeleton (title is set from `title`)"),
         ToolParameter(name="message", type="string", required=False, description="Commit message"),
@@ -460,9 +460,20 @@ async def _execute_update_page(params: dict[str, Any], context: dict[str, Any]) 
 
     def mutate(page: dict[str, Any]) -> str | None:
         changed: list[str] = []
+        # Two different titles, and they are not interchangeable. `title` is the
+        # display name every overridable object carries, and it is what the
+        # builder shows on the tab, in the tree and in the Title box of the
+        # object's form. `properties.title` is the text in the browser tab.
+        # `title` used to write the browser one, so "change this page's title"
+        # drafted a change the user could not see anywhere they were looking.
         if params.get("title") is not None:
-            page.setdefault("properties", {}).setdefault("title", {})["name"] = {"value": params["title"]}
+            page["title"] = params["title"]
             changed.append("title")
+        if params.get("browser_title") is not None:
+            page.setdefault("properties", {}).setdefault("title", {})["name"] = {
+                "value": params["browser_title"]
+            }
+            changed.append("properties.title")
         if params.get("description") is not None:
             page["description"] = params["description"]
             changed.append("description")
@@ -485,10 +496,21 @@ async def _execute_update_page(params: dict[str, Any], context: dict[str, Any]) 
 
 update_page_tool = ToolDefinition(
     name="update_page",
-    description="Update page-level metadata (title, description, properties, permission). For component changes use the composition tools.",
+    description=(
+        "Update page-level metadata (title, description, properties, permission). "
+        "For component changes use the composition tools.\n\n"
+        "TWO TITLES, do not conflate them:\n"
+        "- `title` is the page's display name, the alternate name every overridable "
+        "object carries. It is what the builder shows on the tab, in the object tree "
+        "and in the Title box of the page's form. This is what 'the title of this "
+        "page' means to someone working in the builder.\n"
+        "- `browser_title` is the text in the browser tab (`properties.title`). Only "
+        "set it when the user is talking about the tab, the window or SEO."
+    ),
     parameters=[
         ToolParameter(name="name", type="string", description="Page name to update"),
-        ToolParameter(name="title", type="string", required=False, description="New browser title"),
+        ToolParameter(name="title", type="string", required=False, description="Display name shown on the builder tab and in the tree. NOT the browser tab text."),
+        ToolParameter(name="browser_title", type="string", required=False, description="Text in the browser tab (properties.title). NOT the builder display name."),
         ToolParameter(name="description", type="string", required=False, description="Page description"),
         ToolParameter(name="properties", type="object", required=False, description="Page-level properties to merge"),
         ToolParameter(name="permission", type="string", required=False, description="Required permission to view"),

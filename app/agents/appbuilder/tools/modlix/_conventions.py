@@ -1152,6 +1152,22 @@ def validate_component_type(type_name: str) -> str | None:
 # version (whole-doc optimistic lock), message (commit message).
 # Pages additionally carry componentVersions and eventFunctionVersions for
 # per-element locks used by PATCH /api/ui/pages/{id}/components/{key}.
+#
+# They also all carry `name` and `title`, and the difference matters:
+#
+#   name  -- the identity. Everything that references the object does so by
+#            this name, so it is effectively immutable once anything points at
+#            it. For a page it is also the URL slug.
+#   title -- the alternate name, for display only. Nothing references it, so it
+#            is safe to change at any time, and it is what the builder shows on
+#            a tab, in the object tree and in the Title box of the object's
+#            form. "Rename this for humans" means this field.
+#
+# A page has a THIRD thing that sounds like a title and is not one:
+# `properties.title` ({name: {value}, append: {value}}) is the text in the
+# browser tab. Only reach for it when the user is talking about the tab, the
+# window or SEO. Writing it when they meant the display name drafts a change
+# they cannot see anywhere they are looking, which reads as a failed edit.
 
 def is_override_doc(doc: dict[str, Any]) -> bool:
     """True if the entity is an override of a parent (baseClientCode is set)."""
