@@ -229,12 +229,18 @@ class ProductAgent(BaseAgent):
             max_turns=ANALYST_MAX_TURNS,
             max_tokens=ANALYST_MAX_TOKENS,
             provider=ANALYST_PROVIDER,
+            # Trigger sits ABOVE the full search payload (7 queries of server
+            # results ride the transcript at ~30-80k tokens) and web_search
+            # results are excluded outright: they are the competitor-judgment
+            # evidence, and clearing them mid-run silently starves the final
+            # turns (panel finding B1, 2026-09-02).
             context_management={
                 "edits": [{
                     "type": "clear_tool_uses_20250919",
-                    "trigger": {"type": "input_tokens", "value": 15000},
+                    "trigger": {"type": "input_tokens", "value": 100000},
                     "keep": {"type": "tool_uses", "value": 2},
                     "clear_at_least": {"type": "input_tokens", "value": 30000},
+                    "exclude_tools": ["web_search"],
                 }],
             },
         )
