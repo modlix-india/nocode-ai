@@ -582,13 +582,20 @@ def _extract_search_results_from_history(
     ]
 
 
-async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
-    """Score stashed search candidates, filter, parallel-fetch top-K, drop failures."""
-    max_fetches = int(params.get("max_fetches") or _SHORTLIST_DEFAULT_MAX_FETCHES)
-    max_fetches = max(1, min(max_fetches, 12))
+# ── The three shortlist stages (CP-6 pre-split, PR-2) ──────────────────────
+# extract (code facts) and fetch-verify (code enforcement) are keepers - they
+# become the extract_candidates / fetch_candidates tools at the CP-6 cutover.
+# _rank_for_fetch is the judgment middle the cutover deletes: the agent, which
+# reads the full search content in its own context, takes over the picking.
 
-    session_ctx = context.get("session_context") or {}
-    research_state = session_ctx.setdefault("_research_state", {})
+
+async def _extract_candidates(context: dict, session_ctx: dict,
+                              research_state: dict) -> list[dict[str, Any]] | ToolResult:
+    """Stage 1 - code facts only: harvest search hits (transcript fallback),
+    dedupe, flag aggregator/primary, count cross-query frequency, assign the
+    stable IDs (B2) the analyst's final JSON cites (code joins ID -> verified
+    URL post-parse; the model never transcribes URLs). Returns a ToolResult
+    error when no search results exist."""
     search_results: list[dict] = research_state.get("search_results") or []
 
     # Anthropic server-side web_search doesn't stash results in session_context
@@ -607,31 +614,36 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
             error="No search results available - run web_search first, then call shortlist_competitors.",
         )
 
-    # Profile + primary-host context for scoring.
     business_brief = session_ctx.get("product_profile") or {}
-    profile_summary = business_brief.get("summary") or ""
-    primary_url = business_brief.get("url") or ""
-    primary_host = host_of(primary_url)
-
-    # Layer A: code signals.
-    await emit_progress(context, "Scoring candidates…")
+    primary_host = host_of(business_brief.get("url") or "")
     product_name = (session_ctx.get("product_data") or {}).get("product_name", "")
+
+    await emit_progress(context, "Scoring candidates…")
     scored = _score_code_signals(search_results, primary_host, primary_name=product_name)
     # Filter only self-references. Aggregator-URL candidates are kept - they go
     # through URL resolution + aggregator-follow fetch to recover their real URLs.
-    pre_filtered = [c for c in scored if not c["is_primary"]]
+    candidates = [c for c in scored if not c["is_primary"]]
+    for i, cand in enumerate(candidates, start=1):
+        cand["cid"] = f"C{i}"
+    return candidates
 
-    # Layer B: one batched classifier call.
-    await emit_progress(context,f"Classifying {len(pre_filtered)} candidates…")
-    classifications = await _classify_candidates(pre_filtered, profile_summary)
+
+async def _rank_for_fetch(candidates: list[dict[str, Any]], profile_summary: str,
+                          specific_geo: bool, max_fetches: int,
+                          context: dict) -> list[dict[str, Any]]:
+    """Stage 2 - THE JUDGMENT MIDDLE (dies at the CP-6 cutover): batched
+    classifier + composite weights + geo hard-floor + threshold decide who
+    spends fetch budget. Mutates candidates in place with the signal fields
+    (geo_floored marks hard-floor exclusions for the shadow table)."""
+    await emit_progress(context, f"Classifying {len(candidates)} candidates…")
+    classifications = await _classify_candidates(candidates, profile_summary)
 
     # Composite score - weights prioritize location + buyer-pool over
     # granular format. Format becomes a tie-breaker instead of a gate.
     # Rationale: a luxury apartment at the same price on the same road
     # IS a competitor for a villament; a villa in the wrong city is NOT.
     # See _CLASSIFIER_PROMPT for the vertical-agnostic definitions.
-    specific_geo = _is_specific_geography(profile_summary)
-    for cand in pre_filtered:
+    for cand in candidates:
         key = normalize_business_name(cand["name"])
         sig = classifications.get(key) or {}
         cand["format_match"] = bool(sig.get("format_match"))
@@ -645,38 +657,45 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
             + 1 * int(cand["price_match"])
             + 1 * int(cand["format_match"])           # format is tie-breaker
         )
+    cand_count_classified = len(classifications)
 
     # Geo hard-floor: for geo-bound profiles (specific road/neighborhood),
     # exclude candidates that miss BOTH geo_match AND buyer_profile_match -
     # they aren't competing for the same buyer pool. They can still appear
     # via ALTERNATIVE (not a full drop) but won't dominate DIRECT.
+    rankable = candidates
     if specific_geo:
-        geo_excluded = [
-            c for c in pre_filtered
-            if not c["geo_match"] and not c["buyer_profile_match"]
-        ]
-        pre_filtered = [
-            c for c in pre_filtered
-            if c["geo_match"] or c["buyer_profile_match"]
-        ]
-        if geo_excluded:
+        rankable = []
+        floored = 0
+        for c in candidates:
+            if c["geo_match"] or c["buyer_profile_match"]:
+                rankable.append(c)
+            else:
+                c["geo_floored"] = True
+                floored += 1
+        if floored:
             logger.info(
                 "shortlist_geo_floor: excluded %d wrong-geo+wrong-buyer candidates "
-                "(specific geography detected in profile)",
-                len(geo_excluded),
+                "(specific geography detected in profile)", floored,
             )
 
-    # Rank + filter for fetch.
-    pre_filtered.sort(key=lambda c: c["composite_score"], reverse=True)
-    above_threshold = [
-        c for c in pre_filtered
+    rankable.sort(key=lambda c: c["composite_score"], reverse=True)
+    logger.info("shortlist_ranked: candidates=%d classified=%d specific_geo=%s",
+                len(rankable), cand_count_classified, specific_geo)
+    return [
+        c for c in rankable
         if c["composite_score"] >= _SHORTLIST_MIN_COMPOSITE_SCORE
-    ][:max_fetches + 4]  # take a few extra in case URL resolution fails for some
+    ][:max_fetches + 4]  # a few extra in case URL resolution fails for some
 
-    # Places-first URL resolution (D-5): every candidate gets one GBP lookup;
-    # a guard-passing listing wins over the search URL. A resolved URL is NOT
-    # trusted - it joins the fetch-verify stage below like any search-derived
-    # URL. Nothing is ever guessed (the domain-pattern guesser is retired).
+
+async def _fetch_verified(above_threshold: list[dict[str, Any]], max_fetches: int,
+                          session_ctx: dict, context: dict) -> list[dict[str, Any]]:
+    """Stage 3 - code enforcement: GBP URL fill, host dedup, parallel
+    fetch-verify with aggregator-follow. Returns the fetched candidates with
+    ``fetch_status`` set; empty when nothing had a fetchable URL."""
+    # Places URL resolution (D-5/CP-4 scope): missing/aggregator URLs get one
+    # GBP lookup; a guard-passing listing wins. A resolved URL is NOT trusted -
+    # it joins fetch-verify like any search-derived URL. Nothing is guessed.
     await _resolve_urls(above_threshold, session_ctx)
     above_threshold = _dedupe_resolved_hosts(above_threshold)
 
@@ -684,23 +703,84 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     # aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
     # extracts the official URL from the page and re-fetches.
     fetch_candidates = [c for c in above_threshold if c.get("url")][:max_fetches]
-
     if not fetch_candidates:
-        scored_count = len(pre_filtered)
+        return []
+
+    await emit_progress(context, f"Fetching {len(fetch_candidates)} competitor pages in parallel…")
+    return await asyncio.gather(
+        *(_fetch_one_for_shortlist(c) for c in fetch_candidates),
+        return_exceptions=False,
+    )
+
+
+def _log_candidate_table(candidates: list[dict[str, Any]],
+                         fetched: list[dict[str, Any]]) -> None:
+    """Shadow table (CP-6 PR-2): one structured line per run capturing every
+    candidate's facts, classifier signals, and outcome. This is the eval
+    feedstock for the cutover gate - real sessions get hand-labeled from it,
+    and agent picks are later compared against these composite picks."""
+    status_by_cid = {c.get("cid"): c.get("fetch_status") for c in fetched}
+    rows = []
+    for c in candidates:
+        outcome = status_by_cid.get(c["cid"])
+        if outcome is None:
+            if c.get("geo_floored"):
+                outcome = "geo_floored"
+            elif c.get("composite_score", 0) < _SHORTLIST_MIN_COMPOSITE_SCORE:
+                outcome = "below_threshold"
+            else:
+                outcome = "not_fetched"
+        rows.append({
+            "cid": c["cid"], "name": c["name"], "host": c.get("host") or "",
+            "seen_in": len(c.get("seen_in") or []),
+            "agg": bool(c.get("is_aggregator")),
+            "code": c.get("code_score", 0),
+            "fmt": bool(c.get("format_match")), "buyer": bool(c.get("buyer_profile_match")),
+            "geo": bool(c.get("geo_match")), "price": bool(c.get("price_match")),
+            "score": c.get("composite_score", 0),
+            "outcome": outcome,
+        })
+    logger.info("shortlist_candidate_table: %s", json.dumps(rows, ensure_ascii=False))
+
+
+async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
+    """Facade over the three stages: extract (code facts) -> rank (judgment
+    middle) -> fetch-verify (code enforcement) -> evidence block."""
+    max_fetches = int(params.get("max_fetches") or _SHORTLIST_DEFAULT_MAX_FETCHES)
+    max_fetches = max(1, min(max_fetches, 12))
+
+    session_ctx = context.get("session_context") or {}
+    research_state = session_ctx.setdefault("_research_state", {})
+
+    candidates = await _extract_candidates(context, session_ctx, research_state)
+    if isinstance(candidates, ToolResult):
+        return candidates
+
+    profile_summary = (session_ctx.get("product_profile") or {}).get("summary") or ""
+    specific_geo = _is_specific_geography(profile_summary)
+    above_threshold = await _rank_for_fetch(
+        candidates, profile_summary, specific_geo, max_fetches, context)
+
+    if not above_threshold:
+        _log_candidate_table(candidates, [])
         return ToolResult(
             success=False,
             error=(
-                f"No candidates passed filter: {scored_count} scored, 0 above threshold "
+                f"No candidates passed filter: {len(candidates)} scored, 0 above threshold "
                 f"(min composite score {_SHORTLIST_MIN_COMPOSITE_SCORE}) with a valid URL."
             ),
         )
 
-    # Parallel fetch.
-    await emit_progress(context,f"Fetching {len(fetch_candidates)} competitor pages in parallel…")
-    fetched = await asyncio.gather(
-        *(_fetch_one_for_shortlist(c) for c in fetch_candidates),
-        return_exceptions=False,
-    )
+    fetched = await _fetch_verified(above_threshold, max_fetches, session_ctx, context)
+    _log_candidate_table(candidates, fetched)
+    if not fetched:
+        return ToolResult(
+            success=False,
+            error=(
+                f"No candidates passed filter: {len(candidates)} scored, 0 above threshold "
+                f"(min composite score {_SHORTLIST_MIN_COMPOSITE_SCORE}) with a valid URL."
+            ),
+        )
 
     # Partition by status.
     verified = [c for c in fetched if c.get("fetch_status") == "ok"]
@@ -708,26 +788,16 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     fetch_fails = [c for c in fetched if c.get("fetch_status") == "failed"]
 
     logger.info(
-        "shortlist_competitors: scored=%d classified=%d fetched=%d dropped=%d "
-        "(aggregator=%d fetch_fail=%d) specific_geo=%s "
-        "signals=(fmt=%d buyer=%d geo=%d price=%d)",
-        len(pre_filtered), len(classifications), len(fetched),
+        "shortlist_competitors: scored=%d fetched=%d dropped=%d "
+        "(aggregator=%d fetch_fail=%d) specific_geo=%s",
+        len(candidates), len(fetched),
         len(aggregator_drops) + len(fetch_fails),
         len(aggregator_drops), len(fetch_fails),
         specific_geo,
-        sum(1 for c in pre_filtered if c.get("format_match")),
-        sum(1 for c in pre_filtered if c.get("buyer_profile_match")),
-        sum(1 for c in pre_filtered if c.get("geo_match")),
-        sum(1 for c in pre_filtered if c.get("price_match")),
     )
 
-    # Stable IDs (B2): the analyst references evidence entries by ID in its
-    # final JSON; code joins ID -> verified URL post-parse. The model never
-    # transcribes URLs - models corrupt them, IDs are exact.
-    for i, cand in enumerate(verified, start=1):
-        cand["cid"] = f"C{i}"
-
-    # Stash verified list for downstream visibility + the post-parse URL join.
+    # Stash verified list (cid-keyed, from _extract_candidates) for downstream
+    # visibility + the post-parse URL join (B2).
     research_state["verified_competitors"] = verified
 
     # Build evidence block.
@@ -735,7 +805,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         lines = [
             "## Shortlist Competitors - ALL FETCHES FAILED OR WERE AGGREGATORS",
             "",
-            f"Scored {len(pre_filtered)} candidates, fetched top {len(fetched)}, "
+            f"Scored {len(candidates)} candidates, fetched top {len(fetched)}, "
             f"kept 0. ({len(aggregator_drops)} were aggregators, {len(fetch_fails)} failed).",
             "",
             "Write the final JSON with an empty competitors array and a note in `notes` "
@@ -750,7 +820,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     lines: list[str] = [
         f"## Verified Competitors ({len(verified)})",
         "",
-        f"Scored {len(pre_filtered)} candidates; fetched top {len(fetched)}; "
+        f"Scored {len(candidates)} candidates; fetched top {len(fetched)}; "
         f"kept {len(verified)} after dropping {len(aggregator_drops)} aggregators "
         f"and {len(fetch_fails)} fetch failures.",
         "",
