@@ -130,6 +130,7 @@ def _dedupe_resolved_hosts(candidates: list[dict[str, Any]]) -> list[dict[str, A
     for cand in candidates:
         host = host_of(cand.get("url"))
         if host and host in seen_hosts:
+            cand["dropped_dup_host"] = True  # shadow-table outcome marker
             logger.info("shortlist_dedup_resolved: dropped %r (same host %s)",
                         cand["name"], host)
             continue
@@ -341,8 +342,9 @@ async def _classify_via_openai(payload_json: str) -> dict:
 async def _classify_candidates(
     candidates: list[dict[str, Any]], profile_summary: str,
 ) -> dict[str, dict[str, bool]]:
-    """One batched call classifying every candidate on the three
-    semantic signals. Returns ``{normalized_name: {format_match, geo_match, price_match}}``.
+    """One batched call classifying every candidate on the four semantic
+    signals. Returns ``{normalized_name: {format_match, buyer_profile_match,
+    geo_match, price_match}}``.
 
     Provider selection: ``SHORTLIST_CLASSIFIER_PROVIDER`` env - ``anthropic``
     (default) uses Claude Haiku, ``openai`` keeps the legacy gpt-4o-mini path.
@@ -589,13 +591,14 @@ def _extract_search_results_from_history(
 # reads the full search content in its own context, takes over the picking.
 
 
-async def _extract_candidates(context: dict, session_ctx: dict,
-                              research_state: dict) -> list[dict[str, Any]] | ToolResult:
+async def _extract_candidates(context: dict,
+                              session_ctx: dict) -> list[dict[str, Any]] | ToolResult:
     """Stage 1 - code facts only: harvest search hits (transcript fallback),
     dedupe, flag aggregator/primary, count cross-query frequency, assign the
     stable IDs (B2) the analyst's final JSON cites (code joins ID -> verified
     URL post-parse; the model never transcribes URLs). Returns a ToolResult
     error when no search results exist."""
+    research_state = session_ctx.setdefault("_research_state", {})
     search_results: list[dict] = research_state.get("search_results") or []
 
     # Anthropic server-side web_search doesn't stash results in session_context
@@ -703,6 +706,12 @@ async def _fetch_verified(above_threshold: list[dict[str, Any]], max_fetches: in
     # aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
     # extracts the official URL from the page and re-fetches.
     fetch_candidates = [c for c in above_threshold if c.get("url")][:max_fetches]
+    fetch_cids = {c["cid"] for c in fetch_candidates}
+    for c in above_threshold:  # shadow-table outcome markers
+        if not c.get("url"):
+            c["no_url"] = True
+        elif c["cid"] not in fetch_cids:
+            c["over_fetch_cap"] = True
     if not fetch_candidates:
         return []
 
@@ -718,7 +727,10 @@ def _log_candidate_table(candidates: list[dict[str, Any]],
     """Shadow table (CP-6 PR-2): one structured line per run capturing every
     candidate's facts, classifier signals, and outcome. This is the eval
     feedstock for the cutover gate - real sessions get hand-labeled from it,
-    and agent picks are later compared against these composite picks."""
+    and agent picks are later compared against these composite picks.
+    ``host`` is the SEARCH-derived host (pre-GBP; a displaced one is read back
+    from ``search_url``). Every drop keeps its distinct reason - a host-dedup
+    duplicate must not be labeled like a budget-race loser."""
     status_by_cid = {c.get("cid"): c.get("fetch_status") for c in fetched}
     rows = []
     for c in candidates:
@@ -728,10 +740,17 @@ def _log_candidate_table(candidates: list[dict[str, Any]],
                 outcome = "geo_floored"
             elif c.get("composite_score", 0) < _SHORTLIST_MIN_COMPOSITE_SCORE:
                 outcome = "below_threshold"
+            elif c.get("dropped_dup_host"):
+                outcome = "dup_host"
+            elif c.get("no_url"):
+                outcome = "no_url"
+            elif c.get("over_fetch_cap"):
+                outcome = "over_fetch_cap"
             else:
-                outcome = "not_fetched"
+                outcome = "over_rank_cap"  # above threshold, cut by the +4 slice
         rows.append({
-            "cid": c["cid"], "name": c["name"], "host": c.get("host") or "",
+            "cid": c["cid"], "name": c["name"],
+            "host": host_of(c.get("search_url")) or c.get("host") or "",
             "seen_in": len(c.get("seen_in") or []),
             "agg": bool(c.get("is_aggregator")),
             "code": c.get("code_score", 0),
@@ -752,7 +771,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context") or {}
     research_state = session_ctx.setdefault("_research_state", {})
 
-    candidates = await _extract_candidates(context, session_ctx, research_state)
+    candidates = await _extract_candidates(context, session_ctx)
     if isinstance(candidates, ToolResult):
         return candidates
 
@@ -777,8 +796,8 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         return ToolResult(
             success=False,
             error=(
-                f"No candidates passed filter: {len(candidates)} scored, 0 above threshold "
-                f"(min composite score {_SHORTLIST_MIN_COMPOSITE_SCORE}) with a valid URL."
+                f"{len(above_threshold)} candidates passed the threshold but none "
+                "had a fetchable URL after resolution and host dedup."
             ),
         )
 
@@ -788,9 +807,11 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     fetch_fails = [c for c in fetched if c.get("fetch_status") == "failed"]
 
     logger.info(
-        "shortlist_competitors: scored=%d fetched=%d dropped=%d "
+        "shortlist_competitors: scored=%d geo_floored=%d fetched=%d dropped=%d "
         "(aggregator=%d fetch_fail=%d) specific_geo=%s",
-        len(candidates), len(fetched),
+        len(candidates),
+        sum(1 for c in candidates if c.get("geo_floored")),
+        len(fetched),
         len(aggregator_drops) + len(fetch_fails),
         len(aggregator_drops), len(fetch_fails),
         specific_geo,

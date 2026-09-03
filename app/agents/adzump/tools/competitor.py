@@ -254,10 +254,10 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     # "same business" and discovers nothing. Drop any query name matching the
     # subject so a subject-only query falls through to real discovery.
     if query:
-        subject = _normalize(product_name)
+        subject = _normalize_name(product_name)
         query = ", ".join(
             n.strip() for n in query.split(",")
-            if n.strip() and _normalize(n) != subject
+            if n.strip() and _normalize_name(n) != subject
         )
     if query or remove:
         if auth is None:
@@ -473,10 +473,10 @@ async def _lookup_single_competitor(
     # ── Removals ──
     removed_names: list[str] = []
     if remove:
-        names_to_remove = {_normalize(n) for n in remove.split(",") if n.strip()}
+        names_to_remove = {_normalize_name(n) for n in remove.split(",") if n.strip()}
         kept: list[dict] = []
         for c in competitors_list:
-            cname = _normalize(c.get("name") or "")
+            cname = _normalize_name(c.get("name") or "")
             if cname in names_to_remove:
                 removed_names.append(c.get("name") or "?")
             else:
@@ -607,11 +607,6 @@ async def _lookup_single_competitor(
         summary=". ".join(parts),
         audience="both",
     )
-
-
-def _normalize(name: str) -> str:
-    """Lowercase + strip non-alphanumerics for name comparison."""
-    return "".join(ch for ch in (name or "").lower() if ch.isalnum())
 
 
 # ── Tool definition ───────────────────────────────────────────────────
