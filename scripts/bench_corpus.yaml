@@ -109,13 +109,18 @@ conversations:
       to wire it onto the button. Catches providers that try to inline
       event logic instead of authoring a named event function, AND those
       that author the function but never wire it.
+      Asserted as outcomes: a function was authored, and something wired an
+      `onMouseEnter` prop. `patch_component_props` was the only accepted wiring
+      route, though `update_component_props` and `bulk_patch_component_props`
+      reach the same end state.
     messages:
       - "On the login page, add an onMouseEnter handler to the 'Sign In' button that calls a new event function 'showSignInHint' which toasts the message 'Click to sign in'. Wire the event function as the button's onMouseEnter prop."
-    must_call_tools:
-      - patch_component_props
+    must_achieve:
+      - effect: authors_function
+      - effect: sets_property
+        property: onMouseEnter
     must_call_any_of_groups:
       - [get_page, get_page_summary, search_page_components, get_component]
-      - [create_page_event_function, save_page_event_function_from_text]
 
   # ── C6: storage definition + data query. Tests the data-vs-definition split.
   - name: storage-define-then-query
@@ -157,12 +162,19 @@ conversations:
 
       Note: NO get_page/get_page_summary requirement — filter-based bulk
       patch (`{"type": "Button"}`) doesn't need component keys, so reading
-      the page first is wasted work. An efficient agent goes straight to
-      bulk_patch_component_props.
+      the page first is wasted work.
+
+      This asserted `bulk_patch_component_props` and was WRONG: backgroundColor
+      is a style, so an agent correctly reaching for
+      `bulk_patch_component_styles` was marked failed. It failed on every run of
+      2026-09-02 for that reason. What matters is that every Button ends up with
+      that backgroundColor, by whichever route.
     messages:
       - "On the home page, change every Button's backgroundColor to Theme.primaryColor."
-    must_call_tools:
-      - bulk_patch_component_props
+    must_achieve:
+      - effect: sets_style
+        property: backgroundColor
+        on_type: Button
 
   # ── C9: KB propose-then-commit. The headline test for the multi-turn confirm flow.
   - name: kb-write-with-confirmation
@@ -229,10 +241,14 @@ conversations:
         AppBuilderAgent._build_preflight_grounding) auto-injects the app
         summary into the system prompt, so calling get_app is now
         redundant work.
-      - Composition allows either add_component (incremental) OR
-        replace_page_definition (one big call to set the whole tree).
-        Both are valid paths; an efficient agent may pick the latter
-        for a brand-new page since there's nothing to surgically patch.
+      - Asserted as outcomes, because the route-based version was wrong twice
+        over. It demanded `patch_component_styles`, though `add_components`
+        carries `style_properties` inline, so styling the page in one call
+        failed. And its composition group listed `add_component` /
+        `replace_page_definition` but omitted `add_components`, which is now
+        the preferred tool — that is exactly how run 2 of 2026-09-02 failed
+        with "none-of-group called". Any route that ends with the page created,
+        components on it, a style set and a screenshot taken now passes.
 
       Setup deletes ContactCFA so the agent always starts from a clean
       slate. Prior runs that succeeded leave the page populated; the next
@@ -246,12 +262,12 @@ conversations:
       - "I want a new page called 'ContactCFA' on this app. It needs a form with name, email, phone, and message; submitting should call a server function we'll define later."
       - "Use the brand theme — primaryColor for the submit button, default text styling for the inputs."
       - "Looks good. Take a screenshot to confirm."
-    must_call_tools:
-      - create_page
-      - patch_component_styles
-      - screenshot_page
-    must_call_any_of_groups:
-      - [add_component, replace_page_definition]
+    must_achieve:
+      - effect: creates_page
+        name: ContactCFA
+      - effect: adds_components
+      - effect: sets_style
+      - effect: screenshots
 
 # ─────────────────────────────────────────────────────────────────────────
   # real_world_proof — five end-to-end build conversations sourced from

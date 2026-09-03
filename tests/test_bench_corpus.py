@@ -30,6 +30,34 @@ def _load() -> list[dict]:
     return (raw or {}).get("conversations") or []
 
 
+def _tools_covered_by_effects(effects: list[dict]) -> set[str]:
+    """Which tools an outcome assertion could be satisfied by.
+
+    Only for the capability-coverage check below — the oracle itself never
+    reasons in terms of tool names. Sourced from the oracle's own frozensets so
+    a tool added to one is seen by the other.
+    """
+    import sys
+
+    scripts = str(_REPO_ROOT / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import bench_providers as bp
+
+    by_effect = {
+        "authors_function": bp._FUNCTION_AUTHORING_TOOLS,
+        "screenshots": bp._SCREENSHOT_TOOLS,
+        "creates_page": bp._PAGE_CREATE_TOOLS,
+        "adds_components": bp._COMPONENT_ADD_TOOLS,
+    }
+    covered: set[str] = set()
+    for spec in effects:
+        covered |= set(by_effect.get(spec.get("effect"), ()))
+        if spec.get("effect") == "called" and spec.get("tool"):
+            covered.add(spec["tool"])
+    return covered
+
+
 def test_corpus_yaml_parses() -> None:
     """The corpus file must parse and contain at least one conversation."""
     convs = _load()
@@ -94,6 +122,12 @@ def test_corpus_covers_minimum_surface() -> None:
         # for that capability area (the agent's free to pick equivalents).
         for group in c.get("must_call_any_of_groups") or []:
             all_required.update(group)
+        # Outcome assertions count too. A conversation that asserts
+        # `authors_function` still covers page-event-function authoring even
+        # though it no longer names a specific tool — that is the whole point of
+        # moving off tool identity. The tool sets come from the oracle itself so
+        # the two cannot drift apart.
+        all_required.update(_tools_covered_by_effects(c.get("must_achieve") or []))
     missing = {label: tool for label, tool in required_anchors.items() if tool not in all_required}
     assert not missing, (
         "Bench corpus lost coverage for these capability areas (anchor tool "

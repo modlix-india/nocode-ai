@@ -221,3 +221,6 @@ runs/
 # Function/definition corpus pulled from prod Mongo. Read-only export, but it
 # is production customer data and must never be committed.
 corpus/
+
+# Bench token minted against the LOCAL gateway. Never commit a credential.
+.local-bench.jwt
