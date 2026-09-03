@@ -87,7 +87,17 @@ async def supported(client: Any, headers: dict[str, str], app_code: str) -> bool
 
 
 async def active(client: Any, headers: dict[str, str], app_code: str) -> bool:
-    """Should this turn's definition writes carry `?draft=true`?"""
+    """Should this turn's definition writes carry `?draft=true`?
+
+    Reads the decision the agent already made for the turn when there is one,
+    so a tool and the HTTP choke point can never disagree about where a write
+    went. Falls back to deciding for itself, which is what a headless caller and
+    the tests get.
+    """
+    from app.core.tools import draft_registry as core_drafts
+
+    if core_drafts.drafting.get():
+        return True
     return wanted() and await supported(client, headers, app_code)
 
 

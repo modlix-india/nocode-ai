@@ -104,7 +104,11 @@ def test_corpus_covers_minimum_surface() -> None:
     this fires.
     """
     required_anchors = {
-        "page-CRUD": "list_pages",
+        # Any page read counts. `list_pages` was the marker until preflight
+        # grounding made calling it redundant — `list-pages-in-app` now asserts
+        # the OPPOSITE, that the agent does not waste a round trip on it. The
+        # capability is still covered, by `read-page-structure`.
+        "page-CRUD": {"list_pages", "get_page", "get_page_summary"},
         "kirun-DSL": "compile_kirun_text",
         "page-event-function": "create_page_event_function",
         "storage-data-readonly": "count_storage_rows",
@@ -128,7 +132,11 @@ def test_corpus_covers_minimum_surface() -> None:
         # moving off tool identity. The tool sets come from the oracle itself so
         # the two cannot drift apart.
         all_required.update(_tools_covered_by_effects(c.get("must_achieve") or []))
-    missing = {label: tool for label, tool in required_anchors.items() if tool not in all_required}
+    missing = {
+        label: anchor for label, anchor in required_anchors.items()
+        # An anchor is either one tool name or a set of interchangeable ones.
+        if not (({anchor} if isinstance(anchor, str) else set(anchor)) & all_required)
+    }
     assert not missing, (
         "Bench corpus lost coverage for these capability areas (anchor tool "
         f"no longer in any must_call_tools or any group): {missing}. Add a "

@@ -301,7 +301,8 @@ def test_migrated_corpus_entries_declare_only_known_effects():
     assert migrated, "the three proven-wrong conversations should be migrated"
     for conv in migrated:
         for spec in conv.must_achieve:
-            assert spec["effect"] in bp._EFFECTS, f"{conv.name}: {spec}"
+            known = spec["effect"] in bp._EFFECTS or spec["effect"] in bp._ABSENCE_EFFECTS
+            assert known, f"{conv.name}: {spec}"
 
 
 def test_bulk_style_update_would_now_pass_the_run_that_failed_it():
@@ -313,3 +314,45 @@ def test_bulk_style_update_would_now_pass_the_run_that_failed_it():
         "css_props": {"backgroundColor": "<Theme.primaryColor>"}})]
     ok, reason = _converged(conv, calls)
     assert ok, reason
+
+
+# ── absence assertions ─────────────────────────────────────────────────────
+#
+# `_build_preflight_grounding` puts the app definition and top page names into
+# the system prompt to replace "get_app + list_pages + search_page_components
+# (3-10 round-trips)". Live on 2026-09-03 the agent answered "what pages exist"
+# in one turn with zero tool calls — exactly right — and the route-based oracle
+# failed it for not calling `list_pages`. Nothing guarded that optimisation, so
+# the assertion is now inverted.
+
+
+NO_LIST_PAGES = [{"effect": "not_called", "tool": "list_pages"}]
+
+
+def test_not_calling_the_redundant_tool_passes():
+    ok, reason = _converged(_conv(must_achieve=NO_LIST_PAGES), [])
+    assert ok, reason
+
+
+def test_calling_the_redundant_tool_fails():
+    ok, reason = _converged(_conv(must_achieve=NO_LIST_PAGES), [_call("list_pages")])
+    assert not ok
+    assert "WAS called" in reason
+
+
+def test_a_failed_redundant_call_still_counts_against_it():
+    """Reaching for it and erroring was still a wasted round trip."""
+    ok, _ = _converged(_conv(must_achieve=NO_LIST_PAGES), [_call("list_pages", ok=False)])
+    assert not ok
+
+
+def test_other_tools_do_not_trip_an_absence_assertion():
+    calls = [_call("get_page"), _call("screenshot_page")]
+    assert _converged(_conv(must_achieve=NO_LIST_PAGES), calls)[0]
+
+
+def test_absence_and_presence_assertions_compose():
+    conv = _conv(must_achieve=NO_LIST_PAGES + [{"effect": "screenshots"}])
+    assert not _converged(conv, [_call("list_pages"), _call("screenshot_page")])[0]
+    assert not _converged(conv, [])[0]
+    assert _converged(conv, [_call("screenshot_page")])[0]

@@ -37,14 +37,26 @@ conversations:
   # ── C1: smallest possible end-to-end. Confirms the deferred dance works.
   - name: list-pages-in-app
     description: |
-      "List the pages in my app" — the smallest possible end-to-end. Tests
-      that the agent (a) understands "my app" means the session's app_code,
-      (b) reaches search_tools / get_tool_schema if needed to find list_pages,
-      (c) actually invokes the tool rather than answering from memory.
+      "List the pages in my app" — now an EFFICIENCY guard, inverted from what
+      it originally asserted.
+
+      It used to require `list_pages`. `_build_preflight_grounding` fetches the
+      app definition and top page names once per session precisely to replace
+      "get_app + list_pages + search_page_components (3-10 round-trips)", so the
+      names are already in the system prompt and calling `list_pages` to answer
+      this is redundant work. Live on 2026-09-03 the agent answered in ONE turn
+      with ZERO tool calls — the ideal behaviour — and the old assertion failed
+      it. The grounding optimisation had nothing guarding it; now this does, and
+      a regression that breaks grounding shows up as the agent reaching for the
+      tool again.
+
+      Caveat: an agent that answered nothing at all would also pass, since both
+      make zero calls. The turns column is where that would show.
     messages:
       - "What pages exist in the current app?"
-    must_call_tools:
-      - list_pages
+    must_achieve:
+      - effect: not_called
+        tool: list_pages
 
   # ── C2: read a specific page's structure. Tests component-tree summarization.
   - name: read-page-structure

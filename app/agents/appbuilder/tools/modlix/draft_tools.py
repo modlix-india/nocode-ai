@@ -24,7 +24,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple:
 
 
 def _app_code(params: dict[str, Any], context: dict[str, Any]) -> str:
-    return (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    return resolve_app_code(params, context)
 
 
 def _unsupported(app_code: str) -> ToolResult:
@@ -83,7 +84,7 @@ get_draft_link_tool = ToolDefinition(
         "page URL renders the LIVE app and will not show them."
     ),
     parameters=[
-        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to the app this session is working in"),
     ],
     execute=_execute_get_draft_link,
 )
@@ -117,7 +118,7 @@ list_pending_changes_tool = ToolDefinition(
     name="list_pending_changes",
     description="Everything in this app that is drafted and not yet published, grouped by object type.",
     parameters=[
-        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to the app this session is working in"),
     ],
     execute=_execute_list_pending_changes,
 )
@@ -158,7 +159,7 @@ publish_app_tool = ToolDefinition(
         "asked to ship it."
     ),
     parameters=[
-        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to the app this session is working in"),
         ToolParameter(name="confirmed", type="boolean", required=False, default=False, description="The user explicitly asked to publish"),
     ],
     execute=_execute_publish_app,
@@ -193,7 +194,7 @@ discard_page_draft_tool = ToolDefinition(
     description="Throw away a page's unpublished changes and go back to what is live.",
     parameters=[
         ToolParameter(name="page_name", type="string", description="Page name"),
-        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to session"),
+        ToolParameter(name="app_code", type="string", required=False, description="appCode; defaults to the app this session is working in"),
     ],
     execute=_execute_discard_page_draft,
 )
