@@ -446,7 +446,8 @@ async def _resolve_role_app(
         return str(explicit_id), (code or None), None
     if params.get("client_scoped"):
         return None, None, None
-    app_code = (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code(params, context)
     if not app_code:
         return None, None, None
     from .app_admin import _find_security_app_by_code  # lazy: avoids an import cycle

@@ -51,7 +51,17 @@ def _apply(session_id: str, action: str, payload: dict[str, Any]) -> bool:
         return False
 
     if action == "stop":
-        stream.cancel()
+        # Prefer the run: it sets the same cancelled flag and then hard-cancels
+        # if the flag goes unnoticed, which is what a stop pressed during a
+        # slow tool call needs. Nothing else may end a run early: a client
+        # that merely disconnects must leave it alone.
+        from app.core import run_manager
+
+        run = run_manager.get_local_run(session_id)
+        if run is not None:
+            run.request_stop()
+        else:
+            stream.cancel()
         return True
 
     if action == "confirm":

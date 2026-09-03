@@ -35,7 +35,7 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.core.streaming import AgentEventStream, current_agent_id
-from app.core.session import BaseSession
+from app.core.session import BaseSession, session_app_code
 from app.core.context import BaseContext
 from app.services import billing
 from app.core.builtin_tools import (
@@ -1192,6 +1192,21 @@ class BaseAgent:
                 error=f"Tool execution error: {type(e).__name__}: {e}",
             )
 
+        try:
+            self.note_tool_outcome(tool_name, tool_input, result, session)
+        except Exception:  # noqa: BLE001
+            # Bookkeeping only. A hook defect must not fail a call that worked.
+            logger.exception(f"note_tool_outcome failed for {tool_name}")
+
+        if not result.success:
+            try:
+                note = self.annotate_tool_error(tool_name, tool_input, result, session)
+            except Exception:  # noqa: BLE001
+                logger.exception(f"annotate_tool_error failed for {tool_name}")
+                note = None
+            if note and note not in (result.error or ""):
+                result.error = f"{result.error or ''}{note}"
+
         # If the dispatched tool was get_tool_schema, the LLM has just
         # fetched a schema — meta_tools' execute already marked it on
         # ctx["fetched_schemas"] (which is aliased to session.context), so
@@ -1340,6 +1355,43 @@ class BaseAgent:
                 )
 
         return problems
+
+    def note_tool_outcome(
+        self,
+        tool_name: str,
+        tool_input: Any,
+        result: ToolResult,
+        session: BaseSession,
+    ) -> None:
+        """Observe a completed tool call to update cross-cutting session state.
+
+        Called once per dispatch, after the tool returns. The point is to let an
+        agent learn something from an outcome that no individual tool should have
+        to report: a hundred tools should not each remember to write down which
+        app the work actually landed in.
+
+        Default is a no-op — core holds no opinion about another layer's tools.
+        Exceptions raised here are swallowed by the caller: a bookkeeping hook
+        must never turn a successful tool call into a failure.
+        """
+
+    def annotate_tool_error(
+        self,
+        tool_name: str,
+        tool_input: Any,
+        result: ToolResult,
+        session: BaseSession,
+    ) -> str | None:
+        """Extra sentence to append to a failed tool's error, or None.
+
+        The failure text a tool writes knows only what that tool was asked to
+        do. Session-level knowledge that would explain the failure ("you have
+        been writing to a different app all along") lives up here, so this is
+        where it gets attached.
+
+        Default None. Like `note_tool_outcome`, exceptions are swallowed.
+        """
+        return None
 
     def write_conflict_key(self, tool_name: str, tool_input: Any) -> str | None:
         """Identity of the document this call will read-modify-write, or None.
@@ -1602,10 +1654,9 @@ class BaseAgent:
             return None
         auth = getattr(session, "auth", None)
         client_code = getattr(auth, "client_code", "") if auth else ""
-        context = getattr(session, "context", None) or {}
-        app_code = (context.get("app_code") if isinstance(context, dict) else "") or (
-            getattr(auth, "app_code", "") if auth else ""
-        )
+        # Lore is knowledge ABOUT an app, so it belongs to the app the session
+        # is actually building, not the one it happened to open from.
+        app_code = session_app_code(session)
         if not client_code or not app_code:
             return None
         return client_code, app_code
@@ -1707,9 +1758,7 @@ class BaseAgent:
             return
         auth = getattr(session, "auth", None)
         client_code = getattr(auth, "client_code", "") if auth else ""
-        app_code = (session.context.get("app_code") if session.context else "") or (
-            getattr(auth, "app_code", "") if auth else ""
-        )
+        app_code = session_app_code(session)
         if not client_code or not app_code:
             return
 

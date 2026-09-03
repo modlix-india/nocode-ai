@@ -51,7 +51,10 @@ def _resolve_tenant(context: dict[str, Any]) -> tuple[str, str, str | None]:
         client_code = auth.client_code
     elif headers.get("clientCode"):
         client_code = headers["clientCode"]
-    app_code = context.get("app_code") or (auth.app_code if auth else "") or ""
+    # The KB is per-app knowledge, so it follows the app the session is actually
+    # building — otherwise notes taken while building `crm` land in `appbuilder`.
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code({}, context) or (auth.app_code if auth else "") or ""
     if not client_code or not app_code:
         return client_code, app_code, (
             "Missing tenant context. The session needs a JWT (clientCode) and "

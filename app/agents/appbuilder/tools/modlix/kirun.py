@@ -51,8 +51,8 @@ _PART_RESULT_CHARS = _DECOMPILE_MAX_CHARS + 1000
 
 # Recurring ToolParameter descriptions — extracted to constants because every
 # CRUD-shaped tool in this module shares them. The linter complained about
-# 17× duplication of "appCode; defaults to session" alone.
-_DESC_APP_CODE = "appCode; defaults to session"
+# 17× duplication of "appCode; defaults to the app this session is working in" alone.
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_COMMIT_MSG = "Commit message"
 _DESC_FN_NAME = "Full function name (Namespace.LocalName)"
@@ -75,7 +75,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     if not ac:
         return "", ToolResult(
             success=False,
