@@ -52,6 +52,31 @@ def _normalize_name(s: str) -> str:
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
 
 
+def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
+    """B2: the analyst cites shortlist evidence by competitor_id; the verified
+    URL (the page fetch-verify actually read) attaches here by ID join. A
+    model-written url is discarded whenever the ID resolves - models corrupt
+    URLs, IDs are exact. Unknown IDs keep the entry as-is (today's path)."""
+    verified = (session_ctx.get("_research_state") or {}).get(
+        "verified_competitors") or []
+    url_by_cid = {
+        v["cid"]: (v.get("fetch_url") or v.get("url"))
+        for v in verified
+        if isinstance(v, dict) and v.get("cid")
+    }
+    for comp in competitive.get("competitors") or []:
+        if not isinstance(comp, dict):
+            continue
+        cid = comp.pop("competitor_id", None)
+        if not cid:
+            continue
+        if cid in url_by_cid:
+            comp["url"] = url_by_cid[cid]
+        else:
+            logger.warning("competitor_id_unknown: %r for %r (valid: %s)",
+                           cid, comp.get("name"), sorted(url_by_cid) or "none")
+
+
 async def _resolve_final_entry_urls(competitors: list, session_ctx: dict) -> None:
     """CP-4: settle every entry's URL at the project level - analyst names are
     clean here (unlike candidate-stage SEO titles), so the GBP-backed ladder
@@ -346,6 +371,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
 
         competitive = output.competitive
         _normalize_entries(competitive)
+        _join_verified_urls(competitive, session_ctx)
 
         # Post-processing: clean aggregator URLs, filter self-references,
         # then settle each entry's URL at the project level (CP-4).

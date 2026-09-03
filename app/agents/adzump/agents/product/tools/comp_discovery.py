@@ -721,7 +721,13 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
         sum(1 for c in pre_filtered if c.get("price_match")),
     )
 
-    # Stash verified list for downstream visibility.
+    # Stable IDs (B2): the analyst references evidence entries by ID in its
+    # final JSON; code joins ID -> verified URL post-parse. The model never
+    # transcribes URLs - models corrupt them, IDs are exact.
+    for i, cand in enumerate(verified, start=1):
+        cand["cid"] = f"C{i}"
+
+    # Stash verified list for downstream visibility + the post-parse URL join.
     research_state["verified_competitors"] = verified
 
     # Build evidence block.
@@ -751,6 +757,7 @@ async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
     ]
     for c in verified:
         lines.append(f"### {c['name']}")
+        lines.append(f"ID: {c['cid']}")
         # The VERIFIED url: fetch_url is the page we actually read (post
         # aggregator-follow/redirects) - printing the original would hand the
         # analyst an aggregator link that _clean_urls nulls downstream.

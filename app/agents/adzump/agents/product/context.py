@@ -106,7 +106,7 @@ Read `shortlist_competitors`' evidence block. Each competitor has a `SEGMENT:` l
 ## Hard rules
 
 - **Ground every competitor name in evidence from `shortlist_competitors`.** Only include brands that appear in the tool's verified list. Do not re-add candidates the tool dropped.
-- **Official-domain URLs only.** Use the URL exactly as returned by `shortlist_competitors`. If a candidate's URL is missing there, use `null` in the JSON.
+- **Never write competitor URLs.** Copy each competitor's `ID:` line from the shortlist evidence into `competitor_id` and set `url` to null - the system attaches the verified URL by ID. IDs are exact; hand-copied URLs get corrupted.
 - **Required pipeline**: 7 `web_search` queries (5 discovery + 2 review) followed by ONE `shortlist_competitors` call. Do not skip either step.
 - **If `shortlist_competitors` returns an empty verified list**, write the final JSON with `competitors: []` and add a `notes` entry explaining no candidates could be verified (rather than making competitors up).
 - **Do NOT write prose outside the final JSON block.**
@@ -135,7 +135,8 @@ Schema with hard caps:
     "competitors": [
       {
         "name": "string",
-        "url": "https://official-domain-or-null",
+        "competitor_id": "string - the ID from the shortlist evidence (e.g. 'C3')",
+        "url": null,
         "business_type": "string (specific format, ≤10 words)",
         "location": "string",
         "pricing": "string or null",
