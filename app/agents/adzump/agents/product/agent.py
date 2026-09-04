@@ -1,7 +1,8 @@
 """ProductAgent - sub-agent for deep business + competitor analysis.
 
 Lives behind the ``analyze_business`` tool exposed to the AdPilot chat agent.
-Runs a tool loop (scrape_url + Anthropic built-in web_search + shortlist)
+Runs a tool loop (scrape_url + Anthropic built-in web_search + candidate
+extract/judge/fetch)
 against Claude Sonnet 4.6, then returns a structured JSON analysis.
 
 Design notes:
@@ -55,7 +56,7 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
     primary_screenshot = primary_screenshot_url(product_data)
 
     # search_results entries are {query, candidates:[{name, url, ...}]} -
-    # the shape shortlist_competitors stashes (see comp_discovery.py).
+    # the shape extract_candidates stashes (see comp_discovery.py).
     search_snippets: list[str] = []
     for search in research_state.get("search_results") or []:
         if not isinstance(search, dict):
@@ -256,7 +257,7 @@ class ProductAgent(BaseAgent):
         """Expose session state to analyst tools (for craft sharing + history access)."""
         ctx = super().build_tool_context(session)
         ctx["session_context"] = session.context
-        # shortlist_competitors pulls candidates out of Anthropic
+        # extract_candidates pulls candidates out of Anthropic
         # web_search_tool_result blocks, which live only in message history.
         ctx["session_messages"] = session.get_messages
         # v9 live-test fix (2026-05-22): AssetPickerAgent.pick() needs the

@@ -1,19 +1,48 @@
-"""comp_discovery helpers: _is_specific_geography (geo hard-floor),
-_resolve_urls (candidate-stage URL fill, D-5 scoped by CP-4) + the dead-GBP
-fetch fallback. The GBP guards' own tests live in test_competitor_urls.py."""
+"""comp_discovery: the extract_candidates fact table, the fetch_candidates ID
+enforcement, _is_specific_geography (the geography FLAG), and _resolve_urls
+(candidate-stage URL fill, D-5 scoped by CP-4) + the dead-GBP fetch fallback.
+The GBP guards' own tests live in test_competitor_urls.py."""
 from __future__ import annotations
 
 import asyncio
 import unittest
 from unittest import mock
 
+from app.agents.adzump.agents.product.tools import comp_discovery
 from app.agents.adzump.agents.product.tools.comp_discovery import (
     _dedupe_resolved_hosts,
-    _fetch_one_for_shortlist,
+    _extract_candidates,
+    _fetch_candidates,
+    _fetch_one_candidate,
     _is_specific_geography,
+    _merge_candidate_facts,
     _resolve_urls,
-    _score_code_signals,
 )
+
+
+def _context(search_results=None) -> dict:
+    return {"session_context": {
+        "product_profile": {"url": "https://cityville.in",
+                            "summary": "Luxury villaments on Bannerghatta Road"},
+        "product_data": {"product_name": "Valmark CityVille",
+                         "place": {"lat": 12.9, "lng": 77.6}},
+        "_research_state": {"search_results": search_results or []},
+    }}
+
+
+def _searches() -> list[dict]:
+    return [
+        {"query": "q1", "candidates": [
+            {"name": "Purva Sparkling Springs",
+             "url": "https://purvasparklingspring.com/"},
+            {"name": "Valmark CityVille", "url": "https://cityville.in/"},
+        ]},
+        {"query": "q2", "candidates": [
+            {"name": "Purva Sparkling Springs",
+             "url": "https://purvasparklingspring.com/"},
+            {"name": "Lodha Azur", "url": "https://99acres.com/lodha-azur"},
+        ]},
+    ]
 
 
 class IsSpecificGeographyLock(unittest.TestCase):
@@ -37,11 +66,11 @@ class SelfReferenceBrandHostTests(unittest.TestCase):
     valmark.in surfaced for a Valmark CityVille campaign). Leading brand token
     only - a locality word in the product name must not condemn strangers."""
 
-    def _score(self, primary_name, candidate_name, candidate_url):
+    def _facts(self, primary_name, candidate_name, candidate_url):
         results = [{"query": "q1", "candidates": [
             {"name": candidate_name, "url": candidate_url}]}]
-        return _score_code_signals(results, primary_host="cityville.in",
-                                   primary_name=primary_name)[0]
+        return _merge_candidate_facts(results, primary_host="cityville.in",
+                                      primary_name=primary_name)[0]
 
     def test_rows(self):
         rows = [
@@ -55,8 +84,130 @@ class SelfReferenceBrandHostTests(unittest.TestCase):
         ]
         for label, primary, cand_name, cand_url, expected in rows:
             with self.subTest(label):
-                self.assertIs(self._score(primary, cand_name, cand_url)
+                self.assertIs(self._facts(primary, cand_name, cand_url)
                               ["is_primary"], expected)
+
+
+class ExtractCandidatesTests(unittest.TestCase):
+    """The tool returns facts only - IDs, hosts, frequency, flags - and holds
+    URL custody in the session pool. Judgment is the agent's."""
+
+    def _run(self, search_results):
+        context = _context(search_results)
+        result = asyncio.run(_extract_candidates({}, context))
+        return result, context["session_context"]["_research_state"]
+
+    def test_table_facts_ids_and_pool_custody(self):
+        result, research_state = self._run(_searches())
+        self.assertTrue(result.success)
+        pool = research_state["candidate_pool"]
+        self.assertEqual(set(pool), {"C1", "C2"})
+        # Facts in the table: seen-in count, aggregator flag; NO full URLs.
+        self.assertIn("C1 | Purva Sparkling Springs | purvasparklingspring.com "
+                      "| 2/2 | -", result.summary)
+        self.assertIn("aggregator-hosted", result.summary)  # Lodha on 99acres
+        self.assertNotIn("https://", result.summary)
+        # URL custody stays in the pool for fetch_candidates.
+        self.assertEqual(pool["C1"]["url"], "https://purvasparklingspring.com/")
+
+    def test_self_reference_excluded_and_surfaced(self):
+        result, research_state = self._run(_searches())
+        self.assertNotIn("Valmark CityVille |", result.summary)
+        self.assertIn("Excluded as the client's own business: Valmark CityVille",
+                      result.summary)
+        self.assertNotIn("Valmark CityVille",
+                         [c["name"] for c in
+                          research_state["candidate_pool"].values()])
+
+    def test_geography_flag_for_micro_market_profiles(self):
+        result, _ = self._run(_searches())  # profile says "Bannerghatta Road"
+        self.assertIn("Geography flag", result.summary)
+
+    def test_piped_title_cannot_shift_table_columns(self):
+        result, _ = self._run([{"query": "q1", "candidates": [
+            {"name": "Sobha Magnus | Luxury Flats\nBannerghatta",
+             "url": "https://sobha.com/magnus"}]}])
+        self.assertIn("C1 | Sobha Magnus / Luxury Flats Bannerghatta "
+                      "| sobha.com | 1/1 | -", result.summary)
+
+    def test_no_search_results_errors(self):
+        result, _ = self._run([])
+        self.assertFalse(result.success)
+        self.assertIn("web_search first", result.error)
+
+
+class FetchCandidatesTests(unittest.TestCase):
+    """ID enforcement: unknown IDs and over-budget picks are evidence-bearing
+    errors; verified evidence accumulates across calls (already-verified IDs
+    skip re-fetch); the evidence block carries no SEGMENT hints."""
+
+    def _run(self, ids, context, fetch_status="ok"):
+        async def fake_fetch(candidate):
+            return {**candidate, "fetch_status": fetch_status,
+                    "fetch_answer": "TYPE: BRAND\nGood page",
+                    "fetch_url": candidate.get("url")}
+        with mock.patch.object(comp_discovery, "_resolve_urls",
+                               new=mock.AsyncMock()), \
+             mock.patch.object(comp_discovery, "_fetch_one_candidate",
+                               new=fake_fetch):
+            return asyncio.run(_fetch_candidates({"ids": ids}, context))
+
+    def _prepared_context(self):
+        context = _context(_searches())
+        asyncio.run(_extract_candidates({}, context))
+        return context
+
+    def test_verifies_picked_ids_and_stashes_evidence(self):
+        context = self._prepared_context()
+        result = self._run(["C1"], context)
+        self.assertTrue(result.success)
+        self.assertIn("### Purva Sparkling Springs", result.summary)
+        self.assertIn("ID: C1", result.summary)
+        self.assertNotIn("SEGMENT", result.summary)
+        verified = context["session_context"]["_research_state"]["verified_competitors"]
+        self.assertEqual([c["cid"] for c in verified], ["C1"])
+
+    def test_id_enforcement_rows(self):
+        context = self._prepared_context()
+        rows = [
+            ("unknown id", ["C1", "C9"], "Unknown candidate IDs: C9"),
+            ("no ids", [], "Pass the candidate IDs"),
+        ]
+        for label, ids, error_part in rows:
+            with self.subTest(label):
+                result = self._run(ids, context)
+                self.assertFalse(result.success)
+                self.assertIn(error_part, result.error)
+
+    def test_over_budget_picks_error(self):
+        context = _context([{"query": "q1", "candidates": [
+            {"name": f"Project {i}", "url": f"https://project{i}.com/"}
+            for i in range(14)]}])
+        asyncio.run(_extract_candidates({}, context))
+        result = self._run([f"C{i}" for i in range(1, 15)], context)
+        self.assertFalse(result.success)
+        self.assertIn("over the fetch budget", result.error)
+
+    def test_no_pool_errors(self):
+        result = self._run(["C1"], _context(_searches()))
+        self.assertFalse(result.success)
+        self.assertIn("extract_candidates first", result.error)
+
+    def test_second_call_accumulates_and_skips_verified(self):
+        context = self._prepared_context()
+        self._run(["C1"], context)
+        result = self._run(["C1", "C2"], context)
+        self.assertIn("Already verified earlier, not re-fetched: C1",
+                      result.summary)
+        verified = context["session_context"]["_research_state"]["verified_competitors"]
+        self.assertEqual({c["cid"] for c in verified}, {"C1", "C2"})
+
+    def test_nothing_verified_is_honest_and_recoverable(self):
+        context = self._prepared_context()
+        result = self._run(["C1"], context, fetch_status="failed")
+        self.assertTrue(result.success)
+        self.assertIn("NOTHING VERIFIED", result.summary)
+        self.assertIn("ONCE more with different IDs", result.summary)
 
 
 class ResolveUrlsTests(unittest.TestCase):
@@ -156,7 +307,7 @@ class FetchFallbackTests(unittest.TestCase):
             "app.agents.adzump.agents.product.adapters.web_fetch_adapter.fetch_and_answer",
             new=fake_fetch,
         ):
-            return asyncio.run(_fetch_one_for_shortlist(candidate))
+            return asyncio.run(_fetch_one_candidate(candidate))
 
     def test_dead_gbp_url_falls_back_to_search_url(self):
         result = self._fetch(

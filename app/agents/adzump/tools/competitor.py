@@ -54,7 +54,7 @@ def _normalize_name(s: str) -> str:
 
 
 def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
-    """B2: the analyst cites shortlist evidence by competitor_id; the verified
+    """B2: the analyst cites fetch_candidates evidence by competitor_id; the verified
     URL (the page fetch-verify actually read) attaches here by ID join. A
     model-written url is discarded whenever the ID resolves - models corrupt
     URLs, IDs are exact. Unknown IDs keep the entry as-is (today's path)."""
@@ -465,13 +465,13 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 "These target expert/media content for authority signal.\n"
                 "2) Issue SEVEN `web_search` calls - one per query. The server runs each "
                 "search and returns results inline.\n"
-                "3) After ALL searches complete, call `shortlist_competitors()` in the SAME "
-                "response. It scores, classifies, filters aggregators, fetches the top 6-8 "
-                "in parallel, drops fetch failures, and returns a verified evidence block.\n"
+                "3) After ALL searches complete, call `extract_candidates()`, judge every "
+                "row yourself (one-line PICK/SKIP verdict each, per your system prompt's "
+                "Step 4 rules), then call `fetch_candidates` with the 6-8 strongest IDs.\n"
                 "4) FINAL MESSAGE must be a SINGLE ```json fenced block per the schema "
-                "in your system prompt. Include ONLY direct head-to-head competitors - "
-                "skip anything the shortlist marked ADJACENT or ALTERNATIVE. Transcribe "
-                "from the shortlist evidence; do not re-add anything it dropped. "
+                "in your system prompt. Include ONLY direct head-to-head competitors "
+                "per your own Step 5 judgment, grounded in the fetch_candidates "
+                "evidence - do not re-add anything that failed to verify. "
                 "No prose outside the JSON."
             ),
         )
@@ -746,7 +746,7 @@ analyze_competitors = ToolDefinition(
     name="analyze_competitors",
     description=(
         "Competitive analysis via the Product Analyst agent. Four modes: "
-        "(1) No params: full competitor discovery (7 web searches + shortlist). "
+        "(1) No params: full competitor discovery (7 web searches + candidate judging). "
         "(2) query=names: look up specific competitors by name. "
         "(3) remove=names: drop competitors the user rejected. "
         "(4) set_url: when the USER provides or corrects a competitor's "

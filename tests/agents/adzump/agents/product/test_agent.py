@@ -3,7 +3,7 @@
 Regression for PR #91 B3: the salvage read looked up `search_results_merged`,
 a key with zero writers, so the record promised "search evidence is attached"
 and attached nothing. It must read `search_results` - the {query, candidates}
-entries shortlist_competitors stashes in `_research_state`.
+entries extract_candidates stashes in `_research_state`.
 """
 import unittest
 
