@@ -15,15 +15,14 @@ from typing import Any
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.workflow import CampaignContext
-from app.agents.adzump.prompt_sections import account_display
+from app.agents.adzump.prompt_sections import account_display, website_display
+from app.agents.adzump.tools.campaign_data import campaign_spec_complete
 
 
 async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Render the review card for the user. Refuses while the spec is
     incomplete - the completeness gate is campaign_data's, shared with the
     review hint, so the card and the prescription can never disagree."""
-    from app.agents.adzump.tools.campaign_data import campaign_spec_complete
-
     session = context.get("_session")
     if session is None:
         return ToolResult(success=False, error="No session available.")
@@ -61,16 +60,11 @@ def render_summary_card(cctx: CampaignContext) -> str:
         return account_display(spec.get(field), cctx.account_names,
                                spec.get("platform"))
 
-    website = (
-        cctx.product_profile.get("url")
-        or (cctx.product.get("pages_analyzed") or [None])[0]
-        or "-"
-    )
     lines = [
         "Here's your campaign summary:",
         "",
         f"  - **Product**: {cctx.product.get('product_name') or '-'}",
-        f"  - **Website**: {website}",
+        f"  - **Website**: {website_display(cctx)}",
         f"  - **Location**: {spec.get('location') or '-'}",
         f"  - **Platform**: {spec.get('platform') or '-'}",
         f"  - **Duration**: {spec.get('duration') or '-'}",

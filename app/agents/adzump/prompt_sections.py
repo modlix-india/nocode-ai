@@ -26,14 +26,8 @@ def _state_section(cctx: CampaignContext) -> str:
     else:
         lines.append("- Product: - (need URL)")
 
-    # Surface the analyzed URL so the review summary can include it
-    # without the LLM hunting for it across nested structures.
-    url = (
-        cctx.product_profile.get("url")
-        or (cctx.product.get("pages_analyzed") or [None])[0]
-        or ""
-    )
-    if url:
+    url = website_display(cctx)
+    if url != "-":
         lines.append(f"- Website: {url}")
 
     if cctx.competitor_names:
@@ -96,7 +90,11 @@ def _user_said_section(last_user: str) -> str:
 
 def _missing_section(missing: list[str]) -> str:
     if not missing:
-        return "\n## What's still missing\n(nothing - ready for review & publish)"
+        # Reachable exactly when a step is WAITING (its ask is on screen and
+        # blocks completion) - never claim review-readiness here or the
+        # review-over-open-ask behavior the ready gate kills leaks back in.
+        return ("\n## What's still missing\n(nothing to ask - an answer is "
+                "pending on screen; wait for the user's reply)")
     # Render each pending item with its full prescription. Top-1 is
     # marked as the immediate next action; the rest let the LLM keep
     # going within the same agentic-loop turn (e.g. after storing
@@ -149,6 +147,17 @@ def _how_to_respond_section() -> str:
         "tool; your visible reply is natural prose only. NEVER write a tool "
         "name or `tool(...)` call syntax into the chat."
     )
+
+def website_display(cctx: CampaignContext) -> str:
+    """The analyzed business URL - the ONE fallback chain (profile url ->
+    first analyzed page -> '-') shared by the State block and the review card
+    so the two renderings can never drift."""
+    return (
+        cctx.product_profile.get("url")
+        or (cctx.product.get("pages_analyzed") or [None])[0]
+        or "-"
+    )
+
 
 def account_display(
     acct_id: str | None, account_names: dict, platform_value: str | None,

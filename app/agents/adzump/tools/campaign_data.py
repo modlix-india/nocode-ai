@@ -117,7 +117,7 @@ _USER_TEXT_FIELDS = {
 # dependents are now stale and must be cleared. Without this a Google→Meta
 # switch leaks the old platform's account ids into the launch payload
 # (business_storage builds `accounts` straight from spec), and the forward-only
-# the journey engine never re-asks a field that still looks "set". Keyed by the
+# journey engine never re-asks a field that still looks "set". Keyed by the
 # field that changed → the fields it invalidates.
 _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "platform": (
@@ -382,7 +382,6 @@ async def _set_campaign_spec(
         return ToolResult(success=False, error="No session context available.")
 
     spec = session_ctx.setdefault("campaign_spec", {})
-    set_at = session_ctx.setdefault("_spec_set_at", {})
 
     # Filter: allowed fields, non-empty, value differs from stored. Normalize
     # account-like fields on both sides so display-form echoes ("446-197-2633"

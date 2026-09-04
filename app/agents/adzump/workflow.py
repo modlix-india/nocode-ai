@@ -11,6 +11,7 @@ module.
 from __future__ import annotations
 
 from dataclasses import dataclass, field as dc_field
+from typing import Callable
 
 from app.core.session import BaseSession
 from app.agents.adzump.models import (
@@ -24,8 +25,6 @@ from app.agents.adzump.platform import (
     is_mapped_for,
     is_meta as _platform_is_meta,
 )
-from typing import Callable
-
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
     competitor_creatives_offer_resolved,
@@ -452,7 +451,14 @@ NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", steps=(
     Step("competitor_creatives", requires=("product",),
          applies=lambda cctx: cctx.is_meta,
          done=lambda cctx: cctx.competitor_creatives_offer_resolved,
-         ready=lambda cctx: cctx.pending_ask_field != "competitor_creatives",
+         # An open rail waits on the reply - EXCEPT once the Yes landed as
+         # ACCEPTED (a capture can store it before the answered rail is
+         # reaped): the fetch is owed NOW, exactly as the retired chain
+         # ordered its branches.
+         ready=lambda cctx: (
+             cctx.pending_ask_field != "competitor_creatives"
+             or offer_state(cctx.spec, "competitor_creatives")
+             is OfferState.ACCEPTED),
          prescribe=_prescribe_competitor_creatives),
     Step("duration", requires=("product",),
          done=lambda cctx: bool(cctx.spec.get("duration")),

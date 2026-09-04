@@ -167,10 +167,28 @@ class JourneyEngineTests(unittest.TestCase):
         # Everything set except the creatives offer, whose ask is ON SCREEN:
         # the step is waiting - never re-prescribed, but the journey is NOT
         # complete, so review cannot fire over an unanswered ask (the retired
-        # if-chain prescribed review here).
+        # if-chain prescribed review here). The missing-section prompt must
+        # not claim review-readiness either.
+        from app.agents.adzump.prompt_sections import _missing_section
         cctx = make_cctx({**META_DONE, "ig_page": "ig-7"}, product=SAAS,
                          pending_ask="competitor_creatives")
         self.assertEqual(missing_list(NEW_CAMPAIGN, cctx), [])
+        section = _missing_section([])
+        self.assertNotIn("review", section)
+        self.assertIn("pending on screen", section)
+
+    def test_accepted_answer_beats_the_open_rail(self):
+        # A capture can store ACCEPTED while the rail is still open (cctx is
+        # built before the answered rail is reaped): the fetch is owed NOW -
+        # the waiting gate must not swallow the said-YES prescription (the
+        # retired chain checked ACCEPTED before the rail, in that order).
+        cctx = make_cctx(
+            {**META_DONE, "ig_page": "ig-7", "competitor_creatives": "accepted"},
+            product=SAAS, competitor_names=["Rival"],
+            pending_ask="competitor_creatives")
+        missing = missing_list(NEW_CAMPAIGN, cctx)
+        self.assertEqual(len(missing), 1)
+        self.assertIn("fetch_competitor_creatives", missing[0])
 
     def test_upstream_ask_hides_dependents(self):
         # No product: every later step requires it, so the URL ask is the
