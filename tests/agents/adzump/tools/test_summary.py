@@ -4,10 +4,8 @@ every bullet present across the three platform variants, IDs verbatim (never
 from __future__ import annotations
 
 import asyncio
-import types
 import unittest
 
-from app.agents.adzump.next_action import CampaignContext
 from app.agents.adzump.tools.summary import (
     _show_campaign_summary,
     render_summary_card,

@@ -3,13 +3,13 @@
 Pure text builders: each renders one ``##`` section of the turn reminder
 (State / User just said / What's still missing / How to respond) from the
 typed ``CampaignContext`` or plain values. No I/O, no session access -
-split out of agent.py alongside next_action.py.
+split out of agent.py alongside workflow.py.
 """
 
 from __future__ import annotations
 
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.next_action import CampaignContext
+from app.agents.adzump.workflow import CampaignContext
 from app.agents.adzump.platform import Platform
 
 

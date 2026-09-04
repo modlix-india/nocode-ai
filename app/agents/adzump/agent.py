@@ -10,7 +10,7 @@ into the **dynamic context**. Each turn renders:
 
 The static system prompt carries persona + non-negotiable rules only. The
 workflow tree (``_next_action`` over a typed ``CampaignContext``) lives in
-``next_action.py``; the section renderers live in ``prompt_sections.py``.
+``workflow.py``; the section renderers live in ``prompt_sections.py``.
 This module keeps the BaseAgent overrides and the turn-start capture rails
 (tagged answers, prose declines, elicitation resume).
 """
@@ -23,7 +23,7 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.agents.adzump.context import build_adzump_context
-from app.agents.adzump.next_action import CampaignContext, _next_action
+from app.agents.adzump.workflow import CampaignContext, _next_action
 from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.observability import log_turn_decision
 from app.agents.adzump.platform import is_mapped_for

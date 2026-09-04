@@ -14,7 +14,7 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.next_action import CampaignContext
+from app.agents.adzump.workflow import CampaignContext
 from app.agents.adzump.prompt_sections import account_display
 
 

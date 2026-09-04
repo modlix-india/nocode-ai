@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from app.agents.adzump.next_action import CampaignContext, _next_action
+from app.agents.adzump.workflow import CampaignContext, _next_action
 from app.agents.adzump.tools.launch import _launch_campaign
 from tests.agents.adzump._fixtures import SAAS, make_cctx, make_session
 
