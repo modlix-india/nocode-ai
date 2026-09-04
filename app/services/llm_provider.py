@@ -1524,8 +1524,15 @@ class DeepSeekProvider(LLMProvider):
             self.client.chat.completions.create,
             model=model, max_tokens=max_tokens, messages=full_messages,
         )
+        message = response.choices[0].message
+        # Surface reasoning_content. A V4 reasoning model can spend the whole
+        # output budget thinking and return `content` of None with
+        # finish_reason "length" — indistinguishable from "the model had
+        # nothing to say" unless the caller can see where the tokens went.
+        # Lore's curator hit exactly this and produced zero entries for weeks.
         return {
-            "content": response.choices[0].message.content,
+            "content": message.content,
+            "reasoning_content": getattr(message, "reasoning_content", None),
             "usage": _openai_compatible_usage(response.usage),
             "model": model,
             "stop_reason": response.choices[0].finish_reason,

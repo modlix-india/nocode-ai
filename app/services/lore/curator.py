@@ -17,6 +17,7 @@ produces nothing is a normal outcome, not a failure.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -27,8 +28,10 @@ from app.services.lore import store
 from app.services.lore.models import (
     ENTRY_KIND_HELP,
     ENTRY_KINDS,
+    SUBJECT_TYPES,
     Entry,
     Observation,
+    looks_durable,
     normalise_subject,
 )
 from app.services.llm_provider import get_llm_provider
@@ -44,9 +47,32 @@ BATCH_SIZE = 60
 # rather than re-creating what is already known.
 CONTEXT_ENTRIES = 120
 
-# Cheapest tier that can follow the schema. Curation runs in the background and
-# is called often; it should never be the expensive path.
-MODEL_TIER = "fast"
+# The tier and budget come from settings; these are the fallbacks.
+#
+# This was hardcoded to `MODEL_TIER = "fast"` with `max_tokens=4000`, and that
+# combination is what produced 267 observations and zero entries. On the real
+# curation prompt a V4 reasoning model spends ~20k characters thinking before
+# it emits anything, blows through 4000 output tokens, and returns
+# finish_reason "length" with `content` of None. `parse_operations("")`
+# short-circuits to `[]` before it can even log a warning, and the old `curate`
+# then marked the whole batch curated. Measured: the same prompt at 16000
+# tokens needs 5,289 completion tokens and yields 7 operations.
+MODEL_TIER = "balanced"
+MAX_TOKENS = 16000
+
+# Per-kind ceiling on one batch. An app-wide "oldest 60" is the wrong unit when
+# a chat observation averages ~960 characters and an edit ~250: sixty chat rows
+# overflow the render budget on their own and starve the edit evidence, which
+# is the half that names an object.
+BATCH_KIND_QUOTA: dict[str, int] = {
+    "manual": 60,   # someone wrote it down deliberately
+    "run": 40,      # a real failure
+    "edit": 40,     # the richest evidence a build produces
+    "doc": 20,
+    "review": 20,
+    "inventory": 4,
+    "chat": 8,
+}
 
 
 SYSTEM_PROMPT = f"""You curate a knowledge base about ONE software application.
@@ -62,6 +88,16 @@ nothing.
 
 ENTRY KINDS — pick exactly one per entry:
 {chr(10).join(f"  {k}: {v}" for k, v in ENTRY_KIND_HELP.items())}
+
+SUBJECT — what the entry is about. Either the exact string `app` for something
+true of the whole application, or `<type>:<name>` where <type> is one of:
+{", ".join(SUBJECT_TYPES)}
+Use the name as it appears in the observations. Do NOT invent a type: a subject
+whose type is not in that list is filed as `app` and the specificity is lost,
+because these are the same types the editing tools produce and the only ones
+anything looks knowledge up by. If a fact is about a component, a prop or a
+concept with no object of its own, use `app` and say what it applies to in the
+body.
 
 OPERATIONS you may return:
   add      a fact that is not already recorded. Needs kind, subject, title, body.
@@ -159,8 +195,18 @@ def redact(text: str) -> str:
     return out
 
 
-def _render_observations(observations: Sequence[Observation], budget: int = 24000) -> str:
+def _render_observations(
+    observations: Sequence[Observation], budget: int = 24000,
+) -> tuple[str, list[int]]:
+    """Render a batch, and report which observations actually fitted.
+
+    Returning the ids is what lets `curate` mark only what the model was shown.
+    Previously the budget silently dropped the tail of a batch and the caller
+    marked every row curated anyway, so on a chat-heavy batch roughly 60% of
+    the observations were consumed without ever reaching the model.
+    """
     lines: list[str] = []
+    rendered: list[int] = []
     used = 0
     for obs in observations:
         body = redact(obs.body).strip()
@@ -171,11 +217,41 @@ def _render_observations(observations: Sequence[Observation], budget: int = 2400
             f"source={obs.source} seen={obs.seen_count}x\n{body}"
         )
         if used + len(block) > budget:
-            lines.append(f"…[{len(observations) - len(lines)} more observations not shown this pass]")
+            lines.append(
+                f"…[{len(observations) - len(rendered)} more observations not shown this pass]"
+            )
             break
         lines.append(block)
+        rendered.append(obs.id)
         used += len(block)
-    return "\n\n".join(lines)
+    return "\n\n".join(lines), rendered
+
+
+def select_batch(
+    observations: Sequence[Observation], batch_size: int = BATCH_SIZE,
+) -> list[Observation]:
+    """Choose a batch, per-kind quota first, oldest first within a kind.
+
+    Pure so it can be tested without a DB. Two jobs: stop one noisy kind from
+    filling the window, and drop chat rows that carry no durable claim. The
+    second half applies to rows ALREADY in the table, which is what makes the
+    existing backlog of narration harmless without deleting anything.
+    """
+    taken: dict[str, int] = {}
+    out: list[Observation] = []
+    for obs in observations:
+        if len(out) >= batch_size:
+            break
+        quota = BATCH_KIND_QUOTA.get(obs.kind, 10)
+        if taken.get(obs.kind, 0) >= quota:
+            continue
+        # A deliberate note is never filtered on content: someone chose to
+        # write it, and that is the whole basis of its standing.
+        if obs.kind == "chat" and not looks_durable(obs.body):
+            continue
+        out.append(obs)
+        taken[obs.kind] = taken.get(obs.kind, 0) + 1
+    return out
 
 
 def _render_existing(entries: Sequence[Entry], budget: int = 12000) -> str:
@@ -209,27 +285,36 @@ def build_user_prompt(
     app_code: str,
     observations: Sequence[Observation],
     existing: Sequence[Entry],
-) -> str:
-    return (
+) -> tuple[str, list[int]]:
+    """The user turn, plus the ids of the observations it actually contains."""
+    rendered_text, rendered_ids = _render_observations(observations)
+    prompt = (
         f"Application: {app_code}\n\n"
         f"=== KNOWLEDGE ALREADY RECORDED ===\n{_render_existing(existing)}\n\n"
-        f"=== NEW OBSERVATIONS ===\n{_render_observations(observations)}\n\n"
+        f"=== NEW OBSERVATIONS ===\n{rendered_text}\n\n"
         "Return the JSON object of operations."
     )
+    return prompt, rendered_ids
 
 
 # ── Response parsing ─────────────────────────────────────────────────────
 
 
-def parse_operations(raw: str) -> list[dict[str, Any]]:
-    """Pull the operations list out of a model response.
+def parse_response(raw: str) -> tuple[list[dict[str, Any]], str]:
+    """Pull the operations out of a model response, and say what happened.
 
-    Tolerates a code fence and leading prose because small models add both;
-    refuses to guess beyond that. A response we cannot parse yields no
-    operations, which leaves the observations pending for the next pass.
+    The reason is the point of this function. `parse_operations` returned a
+    bare `[]` for four completely different situations — an empty response, a
+    response with no JSON in it, malformed JSON, and a well-formed empty
+    operations list — and the caller treated all four as "the model had nothing
+    to say". Only the last of those is a normal outcome; the first three are
+    failures that should not consume the batch.
+
+    Returns `(operations, reason)` where reason is "" on success and otherwise
+    one of empty-response | no-json | json-error | empty-operations.
     """
-    if not raw:
-        return []
+    if not raw or not raw.strip():
+        return [], "empty-response"
     text = raw.strip()
 
     fence = re.search(r"```(?:json)?\s*(.+?)```", text, re.S)
@@ -240,17 +325,24 @@ def parse_operations(raw: str) -> list[dict[str, Any]]:
         start = text.find("{")
         end = text.rfind("}")
         if start == -1 or end <= start:
-            return []
+            logger.warning("lore curator: no JSON object in a %d-char response", len(raw))
+            return [], "no-json"
         text = text[start:end + 1]
 
     try:
         parsed = json.loads(text)
     except ValueError:
         logger.warning("lore curator: unparseable model response (%d chars)", len(raw))
-        return []
+        return [], "json-error"
 
     ops = parsed.get("operations") if isinstance(parsed, dict) else parsed
-    return [op for op in (ops or []) if isinstance(op, dict)]
+    kept = [op for op in (ops or []) if isinstance(op, dict)]
+    return kept, ("" if kept else "empty-operations")
+
+
+def parse_operations(raw: str) -> list[dict[str, Any]]:
+    """Backwards-compatible wrapper. Prefer `parse_response`."""
+    return parse_response(raw)[0]
 
 
 # ── Operation application ────────────────────────────────────────────────
@@ -310,7 +402,10 @@ async def apply_operations(
     Every path here is defensive on purpose: this runs unattended against a
     store that people will later trust as documentation.
     """
-    counters = {"added": 0, "confirmed": 0, "revised": 0, "retired": 0, "rejected": 0}
+    counters = {
+        "added": 0, "confirmed": 0, "revised": 0, "retired": 0,
+        "rejected": 0, "contradicted": 0,
+    }
 
     for op in operations:
         kind_of_op = str(op.get("op") or "").strip().lower()
@@ -441,12 +536,27 @@ async def curate(
     if await store.has_open_run(client_code, app_code):
         return {"status": "skipped", "reason": "a curation pass is already running for this app"}
 
-    pending = await store.pending_observations(client_code, app_code, limit=batch_size)
+    # Over-fetch, then let select_batch apply the per-kind quota and drop chat
+    # rows with no durable claim. Fetching exactly batch_size would mean the
+    # quota could only ever shrink a batch, never fill it with better rows.
+    candidates = await store.pending_observations(
+        client_code, app_code, limit=min(400, batch_size * 3),
+        max_attempts=settings.LORE_MAX_CURATION_ATTEMPTS,
+    )
+    pending = select_batch(candidates, batch_size)
     if not pending:
-        return {"status": "idle", "reason": "no uncurated observations", "considered": 0}
+        return {
+            "status": "idle",
+            "reason": ("no uncurated observations" if not candidates
+                       else "nothing in the queue carries a durable claim"),
+            "considered": 0,
+            "skipped_as_noise": len(candidates),
+        }
 
     run_id = await store.open_run(client_code, app_code, trigger_source)
     counters: dict[str, int] = {"considered": len(pending)}
+    diagnostics: dict[str, Any] = {"attempts": 0}
+    rendered_ids: list[int] = []
     error = ""
 
     try:
@@ -459,34 +569,155 @@ async def curate(
             chain, app_code, status="active", limit=CONTEXT_ENTRIES,
         )
         provider = get_llm_provider(provider_name or settings.APPBUILDER_PROVIDER)
-        response = await provider.create_completion(
-            system_prompt=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": build_user_prompt(app_code, pending, existing)}],
-            model_tier=MODEL_TIER,
-            max_tokens=4000,
+        tier = getattr(settings, "LORE_CURATOR_TIER", MODEL_TIER) or MODEL_TIER
+        max_tokens = int(getattr(settings, "LORE_CURATOR_MAX_TOKENS", MAX_TOKENS) or MAX_TOKENS)
+        prompt, rendered_ids = build_user_prompt(app_code, pending, existing)
+        diagnostics["rendered"] = len(rendered_ids)
+        messages = [{"role": "user", "content": prompt}]
+
+        logger.info(
+            "lore curator: %s/%s starting — %d pending, %d rendered, %d existing, tier=%s",
+            client_code, app_code, len(pending), len(rendered_ids), len(existing), tier,
         )
-        operations = parse_operations(response.get("content") or "")
+
+        operations, reason, response = [], "", {}
+        # One repair retry, and only for a recoverable shape. A reasoning model
+        # that ran out of budget mid-thought gets more room; one that returned
+        # prose gets told to return only JSON. Anything else is not worth a
+        # second call.
+        for attempt in (1, 2):
+            diagnostics["attempts"] = attempt
+            # Bounded on purpose. The provider clients set no timeout, and
+            # this runs as a detached background task, so an unbounded call
+            # means one hung connection stops curating that app forever.
+            response = await asyncio.wait_for(
+                provider.create_completion(
+                    system_prompt=SYSTEM_PROMPT,
+                    messages=messages,
+                    model_tier=tier,
+                    max_tokens=max_tokens,
+                ),
+                timeout=settings.LORE_CURATOR_TIMEOUT_SECONDS,
+            )
+            raw = response.get("content") or ""
+            reasoning = response.get("reasoning_content") or ""
+            stop = str(response.get("stop_reason") or "")
+            diagnostics.update({
+                "response_chars": len(raw),
+                "reasoning_chars": len(reasoning),
+                "stop_reason": stop[:32],
+                "model": str(response.get("model") or "")[:64],
+            })
+            if settings.LORE_KEEP_RAW_RESPONSE:
+                diagnostics["raw_response"] = redact(raw)[:60000]
+
+            operations, reason = parse_response(raw)
+            if not reason or reason == "empty-operations" or attempt == 2:
+                break
+
+            if stop == "length" and not raw:
+                # The whole budget went on reasoning and nothing was emitted.
+                # This is the failure that produced zero entries for weeks; it
+                # is silent unless someone looks at reasoning_chars.
+                logger.warning(
+                    "lore curator: %s/%s model emitted no content — %d reasoning chars, "
+                    "stop=length. Retrying with double the budget.",
+                    client_code, app_code, len(reasoning),
+                )
+                max_tokens = min(max_tokens * 2, 32000)
+            else:
+                logger.warning(
+                    "lore curator: %s/%s unusable response (%s). Retrying once.",
+                    client_code, app_code, reason,
+                )
+                messages = messages + [
+                    {"role": "assistant", "content": raw[:4000]},
+                    {"role": "user", "content":
+                        "That was not valid JSON. Return only the JSON object of "
+                        "operations, with no prose and no code fence."},
+                ]
+
+        diagnostics["ops_returned"] = len(operations)
+        if reason and reason != "empty-operations":
+            # Do NOT consume the batch. The model never gave us an answer, so
+            # these observations have not been considered — only attempted.
+            error = f"unusable-response:{reason}"
+            logger.error(
+                "lore curator: %s/%s produced nothing usable (%s) after %d attempt(s); "
+                "%d observations left pending",
+                client_code, app_code, reason, diagnostics["attempts"], len(rendered_ids),
+            )
+            await store.bump_curation_attempts(rendered_ids)
+            # `finally` closes the run row; returning from inside `try` still
+            # runs it, so do not close it twice here.
+            return {
+                "status": "error", "run_id": run_id, "error": error, **counters,
+            }
+
         applied = await apply_operations(
             client_code, app_code, operations,
             batch_ids={o.id for o in pending},
-            # Only this client's own entries are writable. An inherited entry
-            # belongs to the app owner: the curator may read it, and a PERSON
-            # may override it, but an unattended pass must not.
-            known_entry_ids={e.id for e in existing if e.client_code == client_code},
+            # Only this client's own entries are writable, and never a
+            # committed one. Two exclusions, for two different reasons:
+            #
+            # An INHERITED entry belongs to the app owner: the curator may read
+            # it, and a PERSON may override it, but an unattended pass must not.
+            #
+            # A SEEDED entry (`seed_source` set) was written by hand and
+            # reviewed, which is the whole basis of its reliability. Pinning
+            # would also protect it, but pinning silences `standing` — a
+            # contradiction against a pinned entry is recorded and then
+            # rendered invisible — so most seeded rows are deliberately left
+            # unpinned. Without this exclusion an unattended pass could revise
+            # or retire hand-authored knowledge on the strength of a few
+            # observations, which is exactly what committing it was meant to
+            # prevent. The curator can still ADD alongside it, and still
+            # CONTRADICT it, which is the honest way to disagree.
+            known_entry_ids={
+                e.id for e in existing
+                if e.client_code == client_code and not e.seed_source
+            },
             updated_by=updated_by,
         )
         counters.update(applied)
 
-        # Mark them curated whatever happened. An observation that produced no
-        # entry has still been considered; leaving it pending would make every
-        # later pass re-read the same uninformative rows forever.
-        await store.mark_observations_curated([o.id for o in pending])
+        # Mark only what the model was actually shown. A row the render budget
+        # dropped has not been considered by anything and must stay pending.
+        # CURATION_ATTEMPTS on the same rows is what stops a row the model
+        # keeps declining from re-entering every batch forever.
+        await store.mark_observations_curated(rendered_ids)
+        await store.bump_curation_attempts(rendered_ids)
 
+        logger.info(
+            "lore curator: %s/%s done — added=%d confirmed=%d revised=%d retired=%d "
+            "rejected=%d contradicted=%d from %d ops (%d chars, %d reasoning, stop=%s)",
+            client_code, app_code, counters.get("added", 0), counters.get("confirmed", 0),
+            counters.get("revised", 0), counters.get("retired", 0),
+            counters.get("rejected", 0), counters.get("contradicted", 0),
+            diagnostics.get("ops_returned", 0), diagnostics.get("response_chars", 0),
+            diagnostics.get("reasoning_chars", 0), diagnostics.get("stop_reason"),
+        )
+
+    except asyncio.TimeoutError:
+        error = f"model-timeout:{settings.LORE_CURATOR_TIMEOUT_SECONDS}s"
+        logger.error(
+            "lore curator: %s/%s model call exceeded %ds; %d observations left pending",
+            client_code, app_code, settings.LORE_CURATOR_TIMEOUT_SECONDS, len(rendered_ids),
+        )
+        if rendered_ids:
+            await store.bump_curation_attempts(rendered_ids)
+    except asyncio.CancelledError:
+        # A fire-and-forget pass killed by process shutdown. Close the row so it
+        # reads as cancelled rather than being left open like run 3 was.
+        error = "cancelled"
+        await store.close_run(run_id, counters, error, diagnostics=diagnostics)
+        raise
     except Exception as exc:  # noqa: BLE001 — a curation failure must not surface to a user turn
         error = f"{type(exc).__name__}: {exc}"
         logger.exception("lore curator failed for %s/%s", client_code, app_code)
     finally:
-        await store.close_run(run_id, counters, error)
+        if error != "cancelled":
+            await store.close_run(run_id, counters, error, diagnostics=diagnostics)
 
     return {
         "status": "error" if error else "ok",

@@ -1,0 +1,258 @@
+# Lore seed — marketingai / SYSTEM
+#
+# Hand-authored from modlix-apps/marketingai_SYSTEM/{INDEX,SECURITY,BACKEND}.md
+# and the backend-adzump docs. Page names checked against the live `ui`
+# definitions on 2026-09-04 (88 pages, 17 functions).
+#
+# adzump2_SYSTEM/ is deliberately NOT a source for this file: it describes a
+# separate closed-loop optimiser project and there is no `adzump2` app code, so
+# anything from it would be a plan recorded as a fact.
+
+format: lore_transport/v1
+app_code: marketingai
+client_code: SYSTEM
+source: seed:marketingai/v1
+resolved: false
+
+entries:
+
+  # ── purpose ──────────────────────────────────────────────────────────
+  - key: purpose-thin-control-surface
+    kind: purpose
+    subject: app
+    confidence: 95
+    pinned: true
+    title: MarketingAI is a thin AI-assisted control surface over Meta and Google Ads
+    tags: [product, architecture]
+    body: |
+      The app lets someone run paid advertising on Meta and Google Ads with AI
+      assistance for the parts that are tedious: keywords, creatives, assets,
+      predictions.
+
+      It is a control surface, not a system of record. The authoritative
+      campaign data lives on the ad platforms and is fetched and mutated live
+      through server functions on every view. Understanding that one sentence
+      explains most of the app's behaviour, including why screens are slow and
+      why nothing here can be trusted while a platform is unreachable.
+
+  - key: constraint-storages-hold-only-derived-state
+    kind: constraint
+    subject: app
+    confidence: 90
+    pinned: true
+    title: The app's own storages hold only auxiliary and derived state
+    tags: [architecture, data]
+    body: |
+      The app-scoped storage collections hold caches, AI suggestions, chat
+      sessions, onboarding preferences and integration state. They never hold
+      the authoritative campaign, ad set or ad record.
+
+      So a bug that shows stale numbers is almost always a caching or fetch
+      problem, and "fixing" it by writing campaign data into a storage would
+      create a second source of truth that immediately diverges from the
+      platform. Do not add one.
+
+  # ── glossary ─────────────────────────────────────────────────────────
+  - key: glossary-the-two-hierarchies
+    kind: glossary
+    subject: app
+    confidence: 90
+    pinned: true
+    title: Meta and Google name the same four levels differently
+    tags: [domain, glossary]
+    body: |
+      The app is organised around the ad-platform hierarchies, and the two
+      platforms disagree on names for the same levels:
+
+      - account: Meta Ad Account, Google Customer or MCC login-customer
+      - campaign: both call it Campaign, but the objective and type vocabularies differ
+      - middle level: Meta Ad Set (budget, schedule, audience, placements),
+        Google Ad Group (keywords, targeting)
+      - ad: both have Ad plus creative assets, but Meta's is an image, video or
+        carousel creative and Google's is headlines, descriptions and sitelinks
+
+      Most list pages map one level and most setup pages edit one level, so
+      knowing which level a page belongs to tells you most of what it does.
+
+  - key: glossary-lead-form-is-meta-only
+    kind: glossary
+    subject: app
+    confidence: 85
+    title: Instant lead forms are a Meta concept with no Google equivalent
+    tags: [domain, leads]
+    body: |
+      Meta lead forms (instant forms) are a first-class object in this app,
+      with their own list and preview surfaces. Google has no equivalent: it
+      uses lead-form extensions and landing pages instead. Any feature designed
+      around lead forms is therefore a Meta-only feature by nature, not by
+      omission.
+
+  - key: glossary-two-function-namespaces
+    kind: glossary
+    subject: app
+    confidence: 90
+    title: MarketingAI.* wraps Meta; Google.* wraps Google Ads plus the AI layer
+    tags: [functions, naming]
+    body: |
+      Server functions split cleanly by platform. `MarketingAI.*` wraps the
+      Meta Graph API: accounts, pages, lead forms, targeting and interest
+      search, audiences, media upload and hashing, pixels, creative preview,
+      lead detail pull and webhook verification. `Google.*` wraps the Google Ads
+      API plus the AI layer: account fetch, ad operations, keyword planning and
+      generation, targeting resources, performance prediction, and AI creative
+      and asset generation.
+
+      So the namespace tells you which platform a function talks to, and the AI
+      generation work lives on the Google side.
+
+  # ── constraints and security ─────────────────────────────────────────
+  - key: constraint-single-tenant-no-roles
+    kind: constraint
+    subject: app
+    confidence: 90
+    pinned: true
+    title: Single tenant, no levelType, no app roles; Logged_IN is the only authority
+    tags: [security, tenancy]
+    body: |
+      Every page is under the SYSTEM client. There is no `levelType`, there are
+      no app profiles or roles, and `Authorities.Logged_IN` is the only
+      authority string used anywhere in the app.
+
+      This is a real constraint rather than an oversight to fix casually: a
+      feature that needs to distinguish two kinds of user cannot express that
+      today, and adding the first role means deciding the whole model.
+
+  - key: convention-wrapshell-marks-authenticated
+    kind: convention
+    subject: app
+    confidence: 85
+    title: wrapShell true means authenticated; the permission field is inconsistent
+    tags: [security, chrome]
+    body: |
+      Authenticated pages set `wrapShell: true` and render inside `shell`;
+      public pages set it false or omit it. The per-page `permission` field is
+      applied inconsistently — some authenticated pages declare
+      `Authorities.Logged_IN` and others leave it null and rely on the shell
+      wrap alone.
+
+      So `wrapShell` is the reliable signal for whether a page is meant to be
+      authenticated, and the absence of a `permission` value is not evidence
+      that a page is public.
+
+  - key: decision-functional-gating-not-role-gating
+    kind: decision
+    subject: page:shell
+    confidence: 85
+    title: Navigation is gated by what you connected, not by what you are
+    tags: [navigation, decision]
+    body: |
+      Whether the Google or the Meta campaign navigation appears is decided by
+      whether the user has connected that platform's ad account, resolved in
+      the shell's onLoad. It is functional gating, not role gating.
+
+      This follows from having no roles at all, and it is a better fit for the
+      product: the question "can I see Google campaigns" really is "have I
+      connected Google". But it means navigation state depends on remote
+      account data, so a platform outage changes what the menu shows.
+
+  # ── integrations ─────────────────────────────────────────────────────
+  - key: integration-leadgen-webhook-is-server-side
+    kind: integration
+    subject: app
+    confidence: 90
+    pinned: true
+    title: The Meta lead-gen webhook is wired server-side and appears in no page
+    tags: [leads, webhooks]
+    body: |
+      Two open URI paths are registered on the app. The lead-gen one is the
+      back-end Meta webhook: Facebook posts new instant-form leads to it, a
+      verification function does the subscribe handshake, and a lead-detail
+      function pulls the payload. It is referenced by no page JSON at all.
+
+      So searching the page definitions for how leads arrive will find nothing
+      and give the wrong impression that the path is dead. It is wired
+      server-side on purpose.
+
+  - key: integration-leads-land-as-leadzump-deals
+    kind: integration
+    subject: app
+    confidence: 85
+    title: Lead forms are linked to LeadZump so submissions become CRM deals
+    tags: [leads, leadzump, crm]
+    body: |
+      The UI-driven lead path creates Meta lead forms and links each one to the
+      LeadZump CRM through the entity-processor integration endpoint, targeting
+      LeadZump's campaign intake. Submitted leads land as LeadZump deals. The
+      CRM connection itself is managed through the integration-management
+      surface, whose connect and disconnect state lives in a storage.
+
+      A change to LeadZump's campaign intake contract is therefore a change to
+      this app's lead delivery.
+
+  - key: gotcha-lead-access-copies-a-page-id
+    kind: gotcha
+    subject: page:leadAccess
+    confidence: 80
+    title: The lead-access copy button copies a Facebook Page ID, not a webhook URL
+    tags: [leads, ui]
+    body: |
+      `leadAccess` subscribes the business's Facebook pages for lead access,
+      and its copy button copies the Facebook **Page ID**. It is easy to read
+      as copying a webhook URL to paste into Meta, which it is not. Anyone
+      debugging lead delivery who assumes otherwise will look in the wrong
+      place.
+
+  - key: integration-sso-passes-appcode
+    kind: integration
+    subject: app
+    confidence: 80
+    title: Sign-in runs through Authzump and passes the appCode explicitly
+    tags: [auth, sso]
+    body: |
+      Authentication uses Authzump social login with the platform's login and
+      logout engine functions, and logout requests an SSO logout. The login
+      page passes `appCode: "marketingai"` explicitly, so a copy of this page
+      into another app will authenticate against the wrong app until that value
+      is changed.
+
+  # ── gotchas ──────────────────────────────────────────────────────────
+  - key: gotcha-integrate-accounts-is-misspelt
+    kind: gotcha
+    subject: app
+    confidence: 85
+    title: The account-connection page name is misspelt as intergrateAccounts
+    tags: [naming]
+    body: |
+      The page that connects ad accounts is named `intergrateAccounts`, with
+      the transposition. It is the real name, verified in the live definitions,
+      and navigation and references depend on it. Renaming it means updating
+      every reference, so do not correct the spelling in passing.
+
+  - key: gotcha-ai-suggestions-are-persisted
+    kind: gotcha
+    subject: app
+    confidence: 75
+    title: AI suggestions are persisted for reuse, so a stale one can reappear
+    tags: [ai, caching]
+    body: |
+      AI-generated keywords, creatives and assets are written to storage so
+      they can be reused rather than regenerated. That makes the app cheaper
+      and faster, and it means a suggestion generated against an older campaign
+      state can resurface later looking current. When a suggestion seems wrong
+      for the campaign, check when it was generated before assuming the
+      generator is at fault.
+
+  - key: howto-adding-a-platform-feature
+    kind: howto
+    subject: app
+    confidence: 75
+    title: How to add a feature that touches both ad platforms
+    tags: [howto]
+    body: |
+      Decide which hierarchy level it belongs to first, because that decides
+      which pages change. Then write it twice: a `MarketingAI.*` function for
+      the Meta shape and a `Google.*` one for the Google shape, because the two
+      platforms' objects are not interchangeable at any level. Expect the
+      feature to be Meta-only if it depends on instant lead forms. Finally
+      check the shell's connection-based navigation gating, or the new surface
+      will be unreachable for users who connected only one platform.

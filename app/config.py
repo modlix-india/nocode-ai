@@ -146,6 +146,49 @@ class Settings(BaseSettings):
     # purpose.
     LORE_AUTOCURATE_SUBJECT_AT: int = 8
 
+    # The tier curation runs on. This used to be hardcoded to "fast", which is
+    # what produced 267 observations and zero entries on the first instance:
+    # the cheap reasoning model spent its whole output budget thinking and
+    # emitted no content at all, so every pass parsed an empty string. Keep it
+    # separate from APPBUILDER_PROVIDER's tier — curation is rare (once per ~25
+    # observations) and is the hardest single inference in the system.
+    LORE_CURATOR_TIER: str = "balanced"
+    # Output budget for one curation pass. Must leave room for a reasoning
+    # model to think AND then emit the operations JSON: measured 20k chars of
+    # reasoning plus 2.7k of content for a two-observation batch, which needs
+    # ~5.3k completion tokens. 4000 was the old value and was never enough.
+    LORE_CURATOR_MAX_TOKENS: int = 16000
+    # Store the redacted model response on the run row. Off in production; on
+    # for a debugging window. Always passes through curator.redact first — a
+    # raw model response is exactly where a leaked token would land.
+    LORE_KEEP_RAW_RESPONSE: bool = False
+    # Give up on an observation the model has declined this many times. Without
+    # this a row the curator will never use re-enters every batch forever.
+    LORE_MAX_CURATION_ATTEMPTS: int = 3
+    # Hard ceiling on one curation model call. The provider clients carry no
+    # timeout of their own, and curation runs as a detached background task, so
+    # without this a hung connection blocks that app's curation forever and
+    # leaves the run row open (observed: a pass stuck 67 minutes on zero CPU).
+    LORE_CURATOR_TIMEOUT_SECONDS: int = 240
+
+    # Record the agent's own narration as an observation. Off by default: the
+    # first 192 chat observations produced zero entries, and the assistant half
+    # is self-description ("I'm an expert application builder...") that the
+    # curator's own rules can never turn into durable knowledge.
+    LORE_OBSERVE_AGENT_NARRATION: bool = False
+    # Record an app object inventory once per session.
+    LORE_OBSERVE_INVENTORY: bool = True
+    # Record failures of tools that EXECUTE rather than edit. Repeated
+    # identical failures collapse by fingerprint, which is the gotcha signal.
+    LORE_OBSERVE_RUNS: bool = True
+    # Put constraints/gotchas for a subject in front of the model in the SAME
+    # turn as the first write to it, rather than on the next turn.
+    LORE_ADVISE_BEFORE_EDITS: bool = True
+    # Budget for the app briefing folded into the system prompt. Raised from
+    # the old hardcoded 2600 because a seeded app has ~60 app-level entries and
+    # 2600 chars renders only 10-12 of them.
+    LORE_BIG_PICTURE_BUDGET: int = 3800
+
     # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
     # nocode-kirun live for code-reading tools. Per-instance mounted volume
     # in prod (/var/cfa/workspace); local dev falls back to siblings of

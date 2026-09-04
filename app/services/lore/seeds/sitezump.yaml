@@ -1,0 +1,258 @@
+# Lore seed — sitezump / SYSTEM
+#
+# Hand-authored from modlix-apps/sitezump_SYSTEM/{INDEX,SECURITY,BACKEND,
+# GAP_ANALYSIS}.md. Page and property names checked against the live `ui`
+# definitions on 2026-09-04 (55 pages, sso3=true).
+#
+# GAP_ANALYSIS.md is treated as mixed: its section on what SiteZump already has
+# is fact and is cited; the ranked recommendations after it are proposals and
+# are not recorded as anything but the one `howto` below.
+#
+# No secret VALUE appears in this file. Where a hardcoded credential exists,
+# the entry says so and says where, because that is the durable fact someone
+# needs; the value itself belongs in a rotation ticket, not in a knowledge base
+# every agent reads.
+
+format: lore_transport/v1
+app_code: sitezump
+client_code: SYSTEM
+source: seed:sitezump/v1
+resolved: false
+
+entries:
+
+  - key: purpose-app-that-makes-apps
+    kind: purpose
+    subject: app
+    confidence: 95
+    pinned: true
+    title: SiteZump is an app that makes apps
+    tags: [product, architecture]
+    body: |
+      SiteZump is the product customers use to generate and edit their own
+      websites. The thing it generates is a full Modlix application of type
+      SITE, with its own security registration and its own `application`,
+      `page` and `style` definitions.
+
+      The consequence people miss: SiteZump holds no copy of a customer's site
+      and has no entity of its own representing one. A site *is* a Modlix app,
+      and the site list is a query against the platform's own applications
+      endpoint filtered on `appType = SITE`.
+
+  - key: glossary-currentapp-is-the-link
+    kind: glossary
+    subject: app
+    confidence: 90
+    pinned: true
+    title: Store.currentApp is the only link to the site being edited
+    tags: [glossary, runtime]
+    body: |
+      At runtime `Store.currentApp` is what says which customer site the
+      screens are acting on. There is no foreign key and no owning record;
+      `AppTemplateMapping` keeps provenance about which template a generated
+      app came from, and nothing more. So a screen that loses `currentApp`
+      does not fail loudly, it acts on the wrong app or on none.
+
+  - key: convention-no-rest-connections
+    kind: convention
+    subject: app
+    confidence: 90
+    title: Every HTTP call is a direct platform call; the two connections are mail
+    tags: [integration, conventions]
+    body: |
+      SiteZump has no REST connections. Every HTTP call is a direct
+      `UIEngine.FetchData` or `SendData` against a platform endpoint from the
+      page layer. The only two backend connections, `mail` and
+      `mailforservice`, are both SMTP and are used by the email server
+      functions. A new integration here should expect to be written as a page
+      call, not as a connection.
+
+  - key: decision-private-draft-model
+    kind: decision
+    subject: page:editPage
+    confidence: 90
+    title: The page editor uses its own draft store, not the platform draft surface
+    tags: [drafts, editor]
+    body: |
+      `editPage` saves work in progress to the app's own `PageStorage` storage,
+      one row per page keyed by page id, and publishes by copying a small fixed
+      set of fields onto the live page. It deliberately does not use the
+      platform's draft surface.
+
+      This matters when reasoning about anything draft-shaped in this app: the
+      platform's draft endpoints, draft versions and 412 conflict behaviour do
+      not apply here, and a change to the platform's draft machinery will not
+      change how SiteZump saves.
+
+  - key: convention-two-site-creation-paths
+    kind: convention
+    subject: app
+    confidence: 85
+    title: A site is created blank or from a template, and templates are the pitch
+    tags: [templates, provisioning]
+    body: |
+      Blank creation registers the application and then creates a home page, a
+      style and the UI application definition. Template creation is a single
+      call carrying a transport definition URL that points at the template's
+      `.modl` archive, and the platform's own transport machinery imports the
+      whole app. The template path is the one the product actually pitches, so
+      it is the path that has to keep working.
+
+  - key: glossary-pagestorage-is-the-draft-store
+    kind: glossary
+    subject: app
+    confidence: 85
+    title: PageStorage is the draft store, not a page catalogue
+    tags: [glossary, storages]
+    body: |
+      Of the nine app-scoped storages, `PageStorage` is the page-editor draft
+      store: one row per page being edited. It is not an inventory of the
+      customer's pages. `templateStorage` holds the template catalogue with a
+      zip URL per template, `onboarding`'s mere existence is the once-only gate
+      for the post-signup survey, and `BookAcallDetails` / `ContactUsDetails`
+      hold form submissions.
+
+  - key: constraint-five-authorities-only
+    kind: constraint
+    subject: app
+    confidence: 85
+    title: The page layer checks five authorities and no more
+    tags: [auth, security]
+    body: |
+      The whole page layer gates on `Logged_IN`, `ROLE_Application_READ`,
+      `ROLE_User_READ`, `ROLE_Profile_READ` and `STATIC_Files_PATH`, plus
+      `ROLE_Owner` on one menu. If a new screen needs a distinction those five
+      cannot express, that is a decision to make deliberately rather than by
+      inventing a sixth authority in one page.
+
+  - key: constraint-no-tenancy-split
+    kind: constraint
+    subject: app
+    confidence: 85
+    title: There is no levelType tenancy split in this app
+    tags: [tenancy, security]
+    body: |
+      Unlike the CRM apps, SiteZump has no `levelType` anywhere and no
+      owner-versus-partner split. What varies between users is
+      `Store.currentApp`, the client's `typeCode`, and whether the user is
+      their own client. Reasoning about this app as if it had a tenancy
+      dimension will produce guards that do nothing.
+
+  - key: gotcha-three-pages-are-not-gated
+    kind: gotcha
+    subject: app
+    confidence: 85
+    title: analytics, formData and icons are reachable without a permission gate
+    tags: [security, gaps]
+    body: |
+      26 pages carry a page-level permission expression. Three that arguably
+      need one do not: `analytics`, which injects arbitrary script into
+      published sites, `formData`, which shows submitted form data, and
+      `icons`. Treat these as known-open rather than intentionally public, and
+      do not copy their (absent) gating as a pattern.
+
+  - key: gotcha-hardcoded-verify-token
+    kind: gotcha
+    subject: page:leadConfiguration
+    confidence: 90
+    pinned: true
+    title: leadConfiguration contains a hardcoded shared secret in its definition
+    tags: [security, secrets]
+    body: |
+      The `leadConfiguration` page definition carries a hardcoded shared
+      verification token as a literal value. A secret in a page definition is
+      readable by anyone who can read the definition and travels with every
+      export and transport of this app.
+
+      The value is deliberately not recorded here. It needs rotating and moving
+      out of the definition; until then, assume it is compromised and do not
+      add a second one by following the same pattern.
+
+  - key: gotcha-frameancestors-wildcard
+    kind: gotcha
+    subject: app
+    confidence: 85
+    title: CSP frameAncestors is a wildcard and the policy editor cannot see it
+    tags: [security, csp]
+    body: |
+      The app's CSP sets `frameAncestors` to `*`, so published sites can be
+      framed by anyone. The in-app CSP policy editor does not surface that
+      directive, which means the setting cannot be found or fixed from the UI
+      and has to be changed on the application definition directly.
+
+  - key: integration-razorpay-runtime-injected
+    kind: integration
+    subject: app
+    confidence: 85
+    title: Razorpay Checkout is injected at runtime, with a server webhook
+    tags: [payments, razorpay]
+    body: |
+      Payments use Razorpay: the Checkout script is injected at runtime rather
+      than bundled, the Orders API is called for order creation, and a server
+      webhook confirms. The surfaces are `buyTokens` and `receiptDownload`. A
+      runtime-injected script means payment breaks in any environment where
+      that host is blocked, and the CSP has to allow it.
+
+  - key: integration-thumbnails-via-url2image
+    kind: integration
+    subject: app
+    confidence: 80
+    title: Site and page thumbnails come from the url2image service
+    tags: [thumbnails, assets]
+    body: |
+      Site cards, template cards and publish previews get their images from the
+      `urlimage.sitezump.ai` service through a `/url2image/` path. It renders a
+      URL to an image, so a thumbnail that looks wrong usually means the page
+      it points at is failing to render for an anonymous visitor, not that the
+      thumbnail pipeline is broken.
+
+  - key: integration-sso3-is-the-auth-backbone
+    kind: integration
+    subject: app
+    confidence: 85
+    title: Auth runs through Authzump with sso3 enabled
+    tags: [auth, sso]
+    body: |
+      `properties.sso3` is true and authentication runs through the Authzump
+      SSO backbone, across the sign-in, register and forgot-password surfaces,
+      with Google and Meta as social options. Verified against the live
+      definition on 2026-09-04.
+
+  - key: integration-leads-become-leadzump-tickets
+    kind: integration
+    subject: app
+    confidence: 80
+    title: Captured leads become LeadZump tickets
+    tags: [leads, leadzump]
+    body: |
+      Leads captured by a generated site flow into LeadZump and become CRM
+      tickets, configured through `leadConfiguration` and surfaced in
+      `leadTracker`, which is an app dependency. So a change to LeadZump's
+      intake contract is a change to SiteZump's lead capture.
+
+  - key: gotcha-analytics-configured-but-invisible
+    kind: gotcha
+    subject: app
+    confidence: 80
+    title: PostHog analytics is configured but no screen shows it to a customer
+    tags: [analytics, gaps]
+    body: |
+      The application definition configures PostHog with autocapture,
+      pageviews, page-leaves, consent and session replay with inputs masked,
+      and Microsoft Clarity is injected through a code part. None of it is
+      surfaced to a customer on any page. So a customer asking "where are my
+      analytics" is asking for a screen that does not exist, not for a setting
+      that is switched off.
+
+  - key: howto-where-to-start-changing-this-app
+    kind: howto
+    subject: app
+    confidence: 80
+    title: Deduplicate the chrome before migrating any styling
+    tags: [howto, refactor]
+    body: |
+      The footer is copied across nine pages. Doing the styling migration
+      before deduplicating the chrome means migrating the same components nine
+      times, so adopting SubPage for the shared chrome comes first. The ranked
+      list of what to change lives in `GAP_ANALYSIS.md`; the ordering
+      constraint here is the part worth remembering.
