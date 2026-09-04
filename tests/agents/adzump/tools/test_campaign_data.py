@@ -368,7 +368,7 @@ class ClearAffirmativeReplyTableTests(unittest.TestCase):
 
 
 class CreativesOfferResolvedTests(unittest.TestCase):
-    """The ONE predicate behind _next_action's offer gate and the review gate."""
+    """The ONE predicate behind the creatives step's offer gate and the review gate."""
 
     def test_table(self):
         from app.agents.adzump.tools.campaign_data import (
@@ -415,7 +415,7 @@ class CreativesOfferResolvedTests(unittest.TestCase):
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────
 class WantsCompetitorCreativesTests(unittest.TestCase):
     """The ONE consent predicate behind fetch_competitor_creatives' hard gate
-    and _next_action's said-yes prescription - they must never disagree."""
+    and the creatives step's said-yes prescription - they must never disagree."""
 
     def test_table(self):
         from app.agents.adzump.tools.campaign_data import wants_competitor_creatives

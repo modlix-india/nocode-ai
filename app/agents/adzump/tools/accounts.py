@@ -378,7 +378,7 @@ async def _fetch_meta_ig_accounts(params: dict, context: dict) -> ToolResult:
         return ToolResult(success=False, error=_META_NOT_CONNECTED)
 
     # v3 · F3 - Instagram is OPTIONAL. Store the fetch result as DATA ([] when
-    # none are linked) so _next_action won't re-prescribe this fetch every turn
+    # none are linked) so the instagram step won't re-prescribe this fetch every turn
     # (the cityville no-escape loop) - slice 1d: data, not a marker.
     sc = context.get("session_context")
     if sc is not None:

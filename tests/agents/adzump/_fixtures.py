@@ -90,7 +90,7 @@ def make_cctx(
     field_asks: dict | None = None,
     pending_location: str | None = None,
 ) -> CampaignContext:
-    """A `CampaignContext` for `_next_action` / prescription tests."""
+    """A `CampaignContext` for `missing_list` / prescription tests."""
     return CampaignContext(
         product=dict(product if product is not None else RE),
         product_profile={},

@@ -5,11 +5,11 @@ into the **dynamic context**. Each turn renders:
 
 1. ``## State`` - what's collected, with provenance ("just set" / "set N turns ago").
 2. ``## User just said`` - last user message verbatim.
-3. ``## What's still missing`` - ordered list from ``_next_action``.
+3. ``## What's still missing`` - ordered list from the journey engine.
 4. ``## How to respond`` - 6-case priority rule for the LLM.
 
 The static system prompt carries persona + non-negotiable rules only. The
-workflow tree (``_next_action`` over a typed ``CampaignContext``) lives in
+journey engine (``missing_list`` over a typed ``CampaignContext``) lives in
 ``workflow.py``; the section renderers live in ``prompt_sections.py``.
 This module keeps the BaseAgent overrides and the turn-start capture rails
 (tagged answers, prose declines, elicitation resume).
@@ -23,7 +23,7 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.agents.adzump.context import build_adzump_context
-from app.agents.adzump.workflow import CampaignContext, _next_action
+from app.agents.adzump.workflow import NEW_CAMPAIGN, CampaignContext, missing_list
 from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.observability import log_turn_decision
 from app.agents.adzump.platform import is_mapped_for
@@ -427,7 +427,7 @@ class AdzumpAgent(BaseAgent):
         prose_declined = self._record_prose_decline(session, cctx, last_user, turn)
         if prose_declined:
             cctx = CampaignContext.from_session(session)
-        missing = _next_action(cctx)
+        missing = missing_list(NEW_CAMPAIGN, cctx)
         uploads = self._uploaded_assets_section(session)
         resume = self._resume_elicitation_section(session, turn)
 

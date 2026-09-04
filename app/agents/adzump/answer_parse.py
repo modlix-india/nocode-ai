@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-# Real-estate detection mirrors CampaignContext.is_real_estate / _next_action's
+# Real-estate detection mirrors CampaignContext.is_real_estate / the budget step's
 # currency pick (agent.py). Kept here (not imported from agent.py) to avoid a
 # circular import - campaign_data + agent both import this module.
 _RE_KEYWORDS = (
@@ -45,7 +45,7 @@ _SUFFIX_AFTER = re.compile(r"\s*(k|l|lac|lakh|cr|crore|m|mn)\b", re.I)
 
 
 def currency_for(session_ctx: dict | None) -> str:
-    """₹ for real-estate sessions, else $ - matches _next_action's chip presets."""
+    """₹ for real-estate sessions, else $ - matches the budget step's chip presets."""
     bt = ((session_ctx or {}).get("product_data") or {}).get("business_type", "")
     return "₹" if any(kw in bt.lower() for kw in _RE_KEYWORDS) else "$"
 

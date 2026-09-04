@@ -1,6 +1,6 @@
 """AdzumpAgent orchestration seams: _capture_tagged_answer,
-_resume_elicitation_section, _record_prose_decline, _next_action (workflow tree
-incl. the Instagram-optional branch), get_pending_suggestions, _advance_chip,
+_resume_elicitation_section, _record_prose_decline, the journey engine
+(incl. the Instagram-optional branch), get_pending_suggestions, _advance_chip,
 CampaignContext.from_session.
 
 Run:
@@ -14,8 +14,9 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.agent import (
-    AdzumpAgent, CampaignContext, _next_action,
+    AdzumpAgent, CampaignContext,
 )
+from app.agents.adzump.workflow import NEW_CAMPAIGN, missing_list
 from tests.agents.adzump._fixtures import (
     RE, SAAS, elicitation, make_cctx, make_session,
 )
@@ -45,7 +46,7 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
             "parent_account": "P", "account": "A", "fb_page": "F", "ig_page": "I"}
 
     def _offer_lines(self, spec_extra=None, **kw):
-        m = _next_action(make_cctx({**self.META, **(spec_extra or {})},
+        m = missing_list(NEW_CAMPAIGN, make_cctx({**self.META, **(spec_extra or {})},
                                    product=SAAS, **kw))
         return [x for x in m if "competitor creatives" in x]
 
@@ -113,7 +114,7 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
 
     def test_offer_is_suppressed_when_resolved(self):
         # Declined/fetched/moot resolution is computed by the shared predicate
-        # (covered in test_campaign_data); _next_action only honours the flag.
+        # (covered in test_campaign_data); the creatives step only honours the flag.
         cases = [
             ("offer resolved", make_cctx(dict(self.META), product=SAAS,
                                          competitor_names=["R"], attempted=True,
@@ -124,7 +125,7 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
         ]
         for name, cctx in cases:
             with self.subTest(case=name):
-                m = _next_action(cctx)
+                m = missing_list(NEW_CAMPAIGN, cctx)
                 self.assertFalse(any("competitor creatives" in x for x in m))
 
 
@@ -157,21 +158,21 @@ class InstagramOptionalTests(unittest.TestCase):
                 self.assertEqual(
                     _field_traceable("instagram", "declined", user, ctx), expected)
 
-    def test_next_action_offers_ig_once(self):
+    def test_journey_offers_ig_once(self):
         # regression: F3 (Instagram optional)
-        m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS))
+        m = missing_list(NEW_CAMPAIGN, make_cctx(dict(self.META_FULL), product=SAAS))
         self.assertTrue(any("fetch_meta_ig_accounts" in x for x in m))
 
-    def test_next_action_skip_cue_declines(self):
+    def test_journey_skip_cue_declines(self):
         # regression: F3 (Instagram optional)
-        m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS,
+        m = missing_list(NEW_CAMPAIGN, make_cctx(dict(self.META_FULL), product=SAAS,
                                    last_user="skip insta page"))
         self.assertTrue(any('instagram="declined"' in x for x in m))
         self.assertFalse(any("fetch_meta_ig_accounts" in x for x in m))
 
-    def test_next_action_offered_does_not_refetch(self):
+    def test_journey_offered_does_not_refetch(self):
         # regression: F3 (Instagram optional) / v5 (fetch≠render)
-        m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS,
+        m = missing_list(NEW_CAMPAIGN, make_cctx(dict(self.META_FULL), product=SAAS,
                                    last_user="proceed", ig_fetched=True))
         # The offered-branch may *name* the tool in a "do NOT call it again"
         # instruction - discriminate on the offer-branch's prescription syntax,
@@ -189,7 +190,7 @@ class InstagramOptionalTests(unittest.TestCase):
         # (from_session derives creatives_resolved from the declined flag).
         spec = {**self.META_FULL, "ig_page_declined": "true",
                 "competitor_creatives_declined": "true"}
-        m = _next_action(make_cctx(spec, product=SAAS, creatives_resolved=True))
+        m = missing_list(NEW_CAMPAIGN, make_cctx(spec, product=SAAS, creatives_resolved=True))
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
 
@@ -376,7 +377,7 @@ class RefusedSlotEscapeTests(unittest.TestCase):
             with self.subTest(field):
                 cctx = make_cctx({"platform": "Google Ads"}, attempted=True,
                                  field_asks={field: 3})
-                line = next(x for x in _next_action(cctx) if x.startswith(field))
+                line = next(x for x in missing_list(NEW_CAMPAIGN, cctx) if x.startswith(field))
                 self.assertIn("want to go with that?", line)
                 self.assertIn("type your own", line)
                 self.assertIn('"answer":', line)           # explicit-click chip
@@ -385,13 +386,13 @@ class RefusedSlotEscapeTests(unittest.TestCase):
         # Below the threshold: the normal chip ask.
         cctx = make_cctx({"platform": "Google Ads"}, attempted=True,
                          field_asks={"duration": 2})
-        line = next(x for x in _next_action(cctx) if x.startswith("duration"))
+        line = next(x for x in missing_list(NEW_CAMPAIGN, cctx) if x.startswith("duration"))
         self.assertIn("How long should the campaign run?", line)
 
 
 # ── F20 · review/publish prescription must not leak tool-call syntax ────────
 def _full_google_cctx():
-    # "full" = every _next_action gate satisfied, so review & publish is the
+    # "full" = every journey step satisfied, so review & publish is the
     # only prescription left. The geo gate checks the nested platform handle
     # on target_areas (platform.is_mapped_for).
     spec = {
@@ -411,7 +412,7 @@ def _full_google_cctx():
 class ReviewPublishPrescriptionTests(unittest.TestCase):
     def test_review_publish_has_no_raw_tool_call_syntax(self):
         # regression: F20 (review/publish prescription leak)
-        missing = _next_action(_full_google_cctx())
+        missing = missing_list(NEW_CAMPAIGN, _full_google_cctx())
         review = next((m for m in missing if "review & publish" in m), None)
         self.assertIsNotNone(review, f"review&publish should appear; got: {missing}")
         # F20: the live leak was the model echoing this prescription's copyable
@@ -510,11 +511,11 @@ def _untagged_present_options(missing: list[str]) -> list[str]:
 class PrescriptionAuditTests(unittest.TestCase):
     def test_data_asks_are_tagged(self):
         # regression: D9 (every data-ask present_options carries field=)
-        missing = _next_action(make_cctx({}))
+        missing = missing_list(NEW_CAMPAIGN, make_cctx({}))
         self.assertEqual(_untagged_present_options(missing), [])
         self.assertTrue(any('field "platform"' in m for m in missing))
         # platform set → competitor + duration + budget asks render
-        missing = _next_action(make_cctx({"platform": "Google Ads"}))
+        missing = missing_list(NEW_CAMPAIGN, make_cctx({"platform": "Google Ads"}))
         self.assertEqual(_untagged_present_options(missing), [])
         joined = "\n".join(missing)
         self.assertIn('field "competitive_analysis"', joined)

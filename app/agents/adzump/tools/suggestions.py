@@ -120,7 +120,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     # screen bumps its count. Consumers: the creatives resolved predicate
     # (asked twice unanswered = settled, so a digression resurfaces an offer at
     # most ONCE and review is never held hostage) and the refused-required-slot
-    # escape in _next_action (R12: repeated misses → "help me pick" chips).
+    # escape in the duration/budget steps (R12: repeated misses → "help me pick" chips).
     if field:
         counted = LEGACY_MARKER_TO_FIELD.get(field, field)
         asks = session_ctx.setdefault("_field_asks", {})

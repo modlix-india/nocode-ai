@@ -494,7 +494,7 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
             "summary": d.get("summary", ""),
         })
         # place already carries restored coords+country (_record_to_business).
-        # Restore spec.location so _next_action skips a fresh confirm_location.
+        # Restore spec.location so the location step skips a fresh confirm_location.
         stored_address = ((d.get("campaign") or {}).get("location") or {}).get("address") or ""
         if stored_address:
             session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)

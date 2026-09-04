@@ -117,7 +117,7 @@ _USER_TEXT_FIELDS = {
 # dependents are now stale and must be cleared. Without this a Google→Meta
 # switch leaks the old platform's account ids into the launch payload
 # (business_storage builds `accounts` straight from spec), and the forward-only
-# `_next_action` never re-asks a field that still looks "set". Keyed by the
+# the journey engine never re-asks a field that still looks "set". Keyed by the
 # field that changed → the fields it invalidates.
 _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "platform": (
@@ -144,7 +144,7 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
 
 # v3 · F3 - phrases that mean "skip linking Instagram, run Facebook-only".
 # Consulted by the instagram-decline traceability rule (chip-click text like
-# "Continue with Facebook only") and by _next_action (typed "skip insta",
+# "Continue with Facebook only") and by the instagram step (typed "skip insta",
 # "lets do it later"). Kept narrow + scoped to the IG-pending branch.
 _IG_SKIP_PHRASES = (
     "facebook only",
@@ -238,7 +238,7 @@ _CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)
 def wants_competitor_creatives(text: str) -> bool:
     """True when the user's latest message clearly asks for competitor ads.
     The ONE consent predicate shared by fetch_competitor_creatives' hard gate
-    and _next_action's said-yes prescription, so the prescription never tells
+    and the creatives step's said-yes prescription, so the prescription never tells
     the model to call a tool whose gate would refuse."""
     lu = (text or "").strip().lower()
     if not lu or is_clear_decline_reply(lu):
@@ -646,7 +646,7 @@ def clear_competitor_decline(session_ctx: dict) -> bool:
 
 def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
     """The Meta creative-inspiration offer is settled: don't re-ask, don't block
-    review on it. The ONE predicate shared by `_next_action`'s offer gate and
+    review on it. The ONE predicate shared by the creatives step's offer gate and
     `_review_hint_if_complete`, so the prescription and the completeness gate can
     never disagree. Resolved when:
       declined - the user said no to creatives, or to competitive analysis
@@ -786,7 +786,7 @@ def campaign_spec_complete(spec: dict, session_ctx: dict) -> bool:
         return False
 
     # Meta: the competitor-creatives offer must be resolved once - fetched,
-    # declined, or moot. The SAME predicate _next_action's offer gate uses, so
+    # declined, or moot. The SAME predicate the creatives step's offer gate uses, so
     # "complete" here never disagrees with an offer the prescription still asks.
     if is_meta and not competitor_creatives_offer_resolved(spec, session_ctx):
         return False

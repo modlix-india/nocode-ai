@@ -1,18 +1,18 @@
-"""Slice-0 invariant suite - characterizes EXISTING _next_action behavior.
+"""The journey engine's invariant suite (S0-1..S0-7 + S3).
 
-Hard gate for the dependency rework (HLD/LLD doc §5.4, S0-1..S0-7): these lock
-today's behavior BEFORE any behavior slice lands, so every later PR (enum
-offers, marker deletion, engine conversion) is judged against this referee.
-Asserts are behavior-not-bytes (D6): membership, order, tool named - never
-prose wording. Invariant #6 goes through the REAL ``from_session`` lenient
-path with raw legacy dicts, not the ``make_cctx`` fixture shortcut.
+The S0 rows were written against the retired if-chain and passed UNCHANGED
+across the slice-3 conversion - they are the equivalence referee (D6:
+membership, order, tool named - never prose wording). Invariant #6 goes
+through the REAL ``from_session`` lenient path with raw legacy dicts, not the
+``make_cctx`` fixture shortcut. S3 adds the registry-discipline lint and the
+engine's one deliberate semantic: waiting (an ask in flight) blocks review.
 """
 from __future__ import annotations
 
 import asyncio
 import unittest
 
-from app.agents.adzump.workflow import CampaignContext, _next_action
+from app.agents.adzump.workflow import NEW_CAMPAIGN, CampaignContext, missing_list
 from app.agents.adzump.tools.launch import _launch_campaign
 from tests.agents.adzump._fixtures import SAAS, make_cctx, make_session
 
@@ -50,7 +50,7 @@ class NextActionInvariants(unittest.TestCase):
         ]
         for label, cctx, prefix in rows:
             with self.subTest(label):
-                self.assertIsNone(_entry(_next_action(cctx), prefix))
+                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, cctx), prefix))
 
     # S0-2 · decline honored through the REAL from_session/predicate wiring
     def test_decline_honored_from_raw_session(self):
@@ -69,7 +69,7 @@ class NextActionInvariants(unittest.TestCase):
             with self.subTest(label):
                 session = make_session(spec=spec, product=SAAS, **extra)
                 cctx = CampaignContext.from_session(session)
-                self.assertIsNone(_entry(_next_action(cctx), prefix))
+                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, cctx), prefix))
 
     # S0-3 · chip asks invite typing; no Custom chip is ever prescribed (D13)
     def test_chip_asks_invite_typing_no_custom_chip(self):
@@ -77,7 +77,7 @@ class NextActionInvariants(unittest.TestCase):
             with self.subTest(field):
                 cctx = make_cctx({"platform": "Google Ads"}, product=SAAS,
                                  attempted=True)
-                line = _entry(_next_action(cctx), field)
+                line = _entry(missing_list(NEW_CAMPAIGN, cctx), field)
                 self.assertIsNotNone(line)
                 self.assertIn("type your own", line)
                 self.assertNotIn("Custom", line)
@@ -93,7 +93,7 @@ class NextActionInvariants(unittest.TestCase):
                 cctx = make_cctx(
                     {"platform": "Meta", "competitor_creatives": "accepted"},
                     product=SAAS, competitor_names=names, last_user="Yes")
-                line = _entry(_next_action(cctx), "competitor creatives")
+                line = _entry(missing_list(NEW_CAMPAIGN, cctx), "competitor creatives")
                 self.assertIsNotNone(line)
                 self.assertIn(tool, line)
                 self.assertNotIn("offer it ONCE", line)
@@ -110,7 +110,7 @@ class NextActionInvariants(unittest.TestCase):
         ]
         for label, cctx in rows:
             with self.subTest(label):
-                missing = _next_action(cctx)
+                missing = missing_list(NEW_CAMPAIGN, cctx)
                 self.assertEqual(len(missing), 1)
                 block = missing[0]
                 self.assertTrue(block.startswith("review & publish"))
@@ -131,7 +131,7 @@ class NextActionInvariants(unittest.TestCase):
         )
         cctx = CampaignContext.from_session(session)
         self.assertTrue(cctx.competitor_creatives_offer_resolved)
-        missing = _next_action(cctx)
+        missing = missing_list(NEW_CAMPAIGN, cctx)
         self.assertEqual(len(missing), 1)
         self.assertTrue(missing[0].startswith("review & publish"))
 
@@ -140,7 +140,7 @@ class NextActionInvariants(unittest.TestCase):
         cctx = make_cctx(
             {"platform": "Google Ads", "duration": "30 days",
              "competitive_analysis_declined": "true"}, product=SAAS)
-        missing = _next_action(cctx)
+        missing = missing_list(NEW_CAMPAIGN, cctx)
         self.assertIsNotNone(_entry(missing, "budget"))
         self.assertIsNone(_entry(missing, "competitive analysis"))
 
@@ -157,6 +157,43 @@ class NextActionInvariants(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertNotIn("missing required fields", result.error)
         self.assertIn("launch confirmation", result.error)
+
+
+class JourneyEngineTests(unittest.TestCase):
+    """S3 · the engine semantics the if-chain could not express, plus the
+    registry-discipline lint."""
+
+    def test_waiting_ask_blocks_review(self):
+        # Everything set except the creatives offer, whose ask is ON SCREEN:
+        # the step is waiting - never re-prescribed, but the journey is NOT
+        # complete, so review cannot fire over an unanswered ask (the retired
+        # if-chain prescribed review here).
+        cctx = make_cctx({**META_DONE, "ig_page": "ig-7"}, product=SAAS,
+                         pending_ask="competitor_creatives")
+        self.assertEqual(missing_list(NEW_CAMPAIGN, cctx), [])
+
+    def test_upstream_ask_hides_dependents(self):
+        # No product: every later step requires it, so the URL ask is the
+        # ONLY line (the old early-return, now expressed as dependencies).
+        missing = missing_list(NEW_CAMPAIGN, make_cctx({}, product={}))
+        self.assertEqual(len(missing), 1)
+        self.assertIn("analyze_product", missing[0])
+
+    def test_registry_discipline(self):
+        names = [step.name for step in NEW_CAMPAIGN.steps]
+        self.assertEqual(len(names), len(set(names)), "step names must be unique")
+        seen: set[str] = set()
+        for step in NEW_CAMPAIGN.steps:
+            for required in step.requires:
+                self.assertIn(required, seen,
+                              f"{step.name} requires {required} which is not "
+                              "an earlier step")
+            seen.add(step.name)
+        # launch.py's required-field set must be journey steps (offers aren't
+        # in it - declines never block launch).
+        launch_required = {"platform", "duration", "budget",
+                           "parent_account", "account"}
+        self.assertTrue(launch_required <= set(names))
 
 
 if __name__ == "__main__":
