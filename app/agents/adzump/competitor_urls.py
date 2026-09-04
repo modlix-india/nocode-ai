@@ -73,10 +73,17 @@ async def resolve_project_url(
 
     listing = await cached_business_listing(name, session_ctx)
     website = ""
-    if listing and listing_name_matches(name, listing["name"]):
-        listing_host = host_of(listing["website"])
-        if listing_host and not is_aggregator_or_google_host(listing_host):
-            website = listing["website"]
+    if listing:
+        if not listing_name_matches(name, listing["name"]):
+            logger.info("project_url_rejected: name mismatch %r vs listing %r (%s)",
+                        name, listing["name"], listing["website"])
+        else:
+            listing_host = host_of(listing["website"])
+            if listing_host and not is_aggregator_or_google_host(listing_host):
+                website = listing["website"]
+            else:
+                logger.info("project_url_rejected: shared/aggregator host %s for %r",
+                            listing_host, name)
     if not website:
         logger.info("project_url_kept: %r no guard-passing GBP listing (%s)",
                     name, current_url or "no url")

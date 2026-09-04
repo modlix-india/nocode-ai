@@ -183,6 +183,22 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertEqual(fetched.logo_url, "https://cdn/logo.jpg")
         self.assertEqual(fetched.platform_ids, {"page_id": "p1"})
 
+    def test_unmatched_exact_hits_still_retry_unordered(self):
+        # Live 2026-09-04: 'Nambiar Villas' exact-phrase returned 2 broker ads
+        # (zero attributed) and the retry never fired - escalation must key on
+        # attributed ads, not raw hits.
+        broker = _ad(page_id="junk", page_name="Bangalore Property Deals")
+        real = _ad(page_id="own", page_name="Nambiar Villas Bannerghatta")
+        source = self._source_with_pages([
+            {"searchResults": [broker, broker], "cursor": ""},
+            {"searchResults": [broker, real], "cursor": ""},
+        ])
+        fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas"))
+        self.assertEqual([c["search_type"] for c in self.calls],
+                         ["keyword_exact_phrase", "keyword_unordered"])
+        self.assertEqual(fetched.resolved_name, "Nambiar Villas Bannerghatta")
+        self.assertEqual(len(fetched.creatives), 1)
+
     def test_cursor_pagination_stops_without_cursor(self):
         source = self._source_with_pages([
             {"searchResults": [_ad()], "cursor": "next"},

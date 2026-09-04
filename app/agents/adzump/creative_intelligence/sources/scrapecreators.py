@@ -67,8 +67,25 @@ class ScrapeCreatorsSource:
             raise ScrapeCreatorsError(
                 "scrapecreators needs a brand name - the search is keyword-based."
             )
-        ads = await self._search_all(name=name, country=country)
-        page_ads = _ads_of_the_advertiser(ads, domain=domain, name=name)
+        # Escalate on ZERO ATTRIBUTED ads, not zero raw hits: exact-phrase can
+        # return a couple of junk mentions and previously that suppressed the
+        # unordered retry, missing the advertiser's real ads whose text has the
+        # words in another order (live 2026-09-04: 'Nambiar Villas' exact got 2
+        # broker ads -> matched 0 -> stop, while unordered finds the page).
+        ads: list[dict] = []
+        page_ads: list[dict] = []
+        for search_type in ("keyword_exact_phrase", "keyword_unordered"):
+            ads = await self._search_paged(name=name, country=country,
+                                           search_type=search_type)
+            page_ads = _ads_of_the_advertiser(ads, domain=domain, name=name)
+            if page_ads:
+                break
+            if ads:
+                logger.info(
+                    "scrapecreators_no_advertiser_match: name=%r type=%s "
+                    "pages_seen=%s", name, search_type,
+                    sorted({str(a.get("page_name") or "?") for a in ads})[:8],
+                )
         creatives = [_to_creative(a) for a in page_ads[:MAX_CREATIVES_PER_COMPETITOR]]
         first = page_ads[0] if page_ads else {}
         snapshot = first.get("snapshot") or {}
@@ -80,16 +97,6 @@ class ScrapeCreatorsSource:
         )
 
     # -- HTTP -----------------------------------------------------------------
-
-    async def _search_all(self, *, name: str, country: str) -> list[dict]:
-        """Exact-phrase search first (multi-word project names match junk
-        unordered); one unordered retry when it finds nothing."""
-        ads = await self._search_paged(name=name, country=country,
-                                       search_type="keyword_exact_phrase")
-        if not ads:
-            ads = await self._search_paged(name=name, country=country,
-                                           search_type="keyword_unordered")
-        return ads
 
     async def _search_paged(self, *, name: str, country: str,
                             search_type: str) -> list[dict]:
