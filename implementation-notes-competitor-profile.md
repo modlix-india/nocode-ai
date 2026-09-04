@@ -1,7 +1,7 @@
 # Implementation Notes: adzump competitor entries - verified URLs + typed CompetitorProfile
 
 Spec: http://localhost:8765/plans/adzump-competitor-profile-plan.html
-Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 superseded by the source swap) · scrapecreators source done · D-5 done (`1528b6a`) · CP-4 done
+Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 superseded by the source swap) · scrapecreators source done · D-5 done (`1528b6a`) · CP-4 done (`daeeecf`)
 
 ## Decisions Not in the Spec
 
@@ -59,3 +59,28 @@ Progress: CP-1 done (`b212f59`) · CP-2 done (`08a62ae`) · CP-3 dropped (D-4 su
 - **Dead-GBP-site short-circuit**: a project-specific-but-dead listing site used to fall through to rung 3 and burn a 20s fetch of the dead site to reach the same keep-best outcome; it now returns current_url immediately.
 - **No alias layer (critic catch)**: the first cut aliased the moved guards back to comp_discovery's old `_`-names; that is two names per concept and `_normalize_name` collided with a different-semantics `_normalize_name` in tools/competitor.py. comp_discovery now uses the public names directly, and the guards' lock tests moved to `test_competitor_urls.py` with them. The now-impossible "GBP agrees with search" skip in `_resolve_urls` (its candidates are missing/aggregator-only, a guard-passing listing host can never equal them) was deleted.
 - **`is_aggregator_or_google_host`**: renamed from `is_aggregator_url_host` - it takes a host, and the name should say what widens the shared check (google.com for Maps citation URLs), not restate the argument wrongly.
+
+### Live-session fixes (2026-09-04, Nambiar/Purva test loop)
+
+- **Mashup names banned at the source + defused in code**: the analyst prompt now demands one project per entry, proper name only; `normalize_business_name` strips parenthetical glosses FIRST so "Nambiar Villas (Nambiar Bannerghatta Villas)" can't smuggle a duplicated brand token past the D-6 brand exclusion onto a dead clone domain.
+- **Self never a competitor**: `_score_code_signals`-era self-detection gained the client's leading brand token in the candidate HOST (valmark.in under an SEO title) - name match alone can't catch it.
+- **Session-level creatives cache**: profiles with `creatives is not None` skip re-fetch unless forced; the SYSTEM store 404 (still pending in nocode-saas) was the only cache before, so every turn re-spent ScrapeCreators credits.
+- **User URL pins (`set_url` mode)**: "Name | URL" specs verify (reachable, non-portal, page-is-about-name via fetch_and_answer MATCH question, post-redirect portal check) then pin with `url_source=user` + creative triad reset; rejections carry user-facing reasons. Pins bypass ladder and judge.
+- **Attributed-ads escalation**: scrapecreators exact-phrase -> unordered retry keys on ATTRIBUTED ads, not raw hits (2 broker mentions used to suppress the retry that finds the real page).
+- **Mention tier**: when no page attributes, up to `MENTION_ADS_CAP=15` unattributed project-relevant broker ads ship WITHOUT page identity (Kailash: broker creative is useful inspiration; pre-launch projects often have no official page).
+- **Broker-TLD prior**: hosts not plain .com/.in (.co.in counts as suspect) never settle as an entry's official URL - ladder entry scrub + GBP listing guard; user pins bypass. Kailash's ~90% prior for Indian real estate clone swarms.
+
+### CP-6: shortlist reshape - agent judges, tools gather + enforce
+
+- **PR-0 (`d98e9bb`)**: context-editing trigger 15k -> 100k + `exclude_tools: ["web_search"]` - clearing was evicting the very evidence the reshape hands the agent.
+- **PR-1 (`45be4cf`)**: evidence IDs C1..Cn + `competitor_id` in the final JSON + post-parse URL join - the model never transcribes URLs.
+- **PR-2 (`befe4ae`)**: internal extract/rank/fetch split + per-run shadow candidate table.
+- **PR-3 (`f5ddc75` + `900a17e` cleanup)**: the cutover. `extract_candidates` (fact table: ID, name, host, seen-in, aggregator flag; URL custody stays in session) + `fetch_candidates(ids)` (ID validation, GBP fill, host dedup, parallel fetch-verify, cross-call evidence accumulation). Deleted with no runtime fallback: Haiku classifier, composite weights, threshold, geo hard-floor as a drop (now a table flag + prompt rule), SEGMENT hints. Prompt Steps 4-5 rewritten with per-row PICK/SKIP verdicts. Shipped ahead of the eval gate on Kailash's "build now, test everything later" - the eval validates retroactively. Critic catches folded in: pipe/newline-safe table cells, history-wins-over-stash search harvesting (rerun staleness), shadow-table marker bleed gated on this call's picks.
+
+### CP-5 v2: official-URL identity judge (`c190f3a`, shadow mode)
+
+- **Seam decision (pending Kailash's formal confirm, built to the review's recommendation)**: `LLMProvider.create_structured_completion` (Anthropic `output_config` json_schema - anthropic floor bumped to >=0.100.0; OpenAI Responses strict json_schema; empty output raises so retry fires) wrapped by `services/structured_call.py` (one retry + usage log). Not an agent-loop tool: identity resolution must run unconditionally.
+- **Evidence, no decisions**: search URL + GBP top-3 (`find_business_listings` replaces `find_business_website`; ONE memoized Places call serves ladder + judge via `cached_business_listings`) + one session-memoized page extraction + concurrent liveness, provenance-labeled. Aggregator/broker-TLD hosts never become evidence - they ship as negative-evidence notes (subsuming the TLD prior into the judge is a later step). The ladder's name guard does NOT run on evidence: name equivalence (the Nambiar word-order class) is the judge's job.
+- **Enforcement**: index-keyed join, row-count + entry_id echo (one whole re-ask then all link-less); picks must exist and be alive (one single-entry re-ask with the candidate removed, then null - code never picks next-best); low confidence -> link-less; `thin_evidence` abstain -> one targeted extraction + single re-judge, bounded. `canonical_name` logged, never applied. `judge_entry_urls` never raises - shadow mode structurally cannot break the shipped ladder path.
+- **Modes**: `COMPETITOR_URL_JUDGE_MODE` env (call-time read; not in config.py, which is skip-worktree pinned): shadow default (ladder decides, `url_judge_divergence` logged), active (judge decides, failures honestly link-less), off. Ladder deletion waits for the eval gate.
+- **Eval fixtures not built yet**: `url_judge_decision` log lines carry PROMPT_VERSION + full evidence for replay; hand-labeling starts from live shadow sessions. B3 (encrypted web_search replay) still open but does not block this judge - its evidence is code-gathered, not search-block-dependent.
