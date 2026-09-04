@@ -139,6 +139,14 @@ def normalise_subject(subject: str | None) -> str:
 
     Unrecognised shapes collapse to "app" rather than raising: a bad subject
     should degrade to app-level knowledge, never lose the observation.
+
+    The type must be one of SUBJECT_TYPES. That list used to be declared and
+    never checked, and the cost was real: a curation pass invented `form:`,
+    `contracts:`, `preview:` and `contactform:` types, which are unreachable
+    from every read path. `lore_about` and the per-turn push both key off the
+    subject a TOOL CALL produces, and those only ever use the real types, so an
+    invented one files knowledge where nothing will look for it. App-level is
+    less specific but it is at least in the briefing.
     """
     if not subject:
         return "app"
@@ -149,8 +157,9 @@ def normalise_subject(subject: str | None) -> str:
         kind, _, name = s.partition(":")
         kind = kind.strip().lower()
         name = name.strip()
-        if kind and name:
-            s = f"{kind}:{name}"
+        if not kind or not name or kind not in SUBJECT_TYPES:
+            return "app"
+        s = f"{kind}:{name}"
     s = s[:MAX_SUBJECT]
     return s if _SUBJECT_RE.match(s) else "app"
 
@@ -359,6 +368,12 @@ class Entry:
     superseded_by: int | None = None
     # Set when this entry overrides a base-client entry for this client only.
     base_entry_id: int | None = None
+    # Stable identity across environments, and which transport document wrote
+    # it. Set for a row that came from a committed seed file or an import; NULL
+    # for anything a person or the curator authored here. A sync-mode import
+    # uses the difference to decide what it may retire.
+    seed_key: str | None = None
+    seed_source: str | None = None
     # Filled at read time by store.resolve_overrides: did this come from a
     # client above the caller in the app's inheritance chain?
     inherited: bool = False
@@ -396,6 +411,8 @@ class Entry:
             status=row.get("STATUS") or "active",
             superseded_by=(int(row["SUPERSEDED_BY"]) if row.get("SUPERSEDED_BY") else None),
             base_entry_id=(int(row["BASE_ENTRY_ID"]) if row.get("BASE_ENTRY_ID") else None),
+            seed_key=(row.get("SEED_KEY") or None),
+            seed_source=(row.get("SEED_SOURCE") or None),
             source_count=int(row.get("SOURCE_COUNT") or 1),
             version=int(row.get("VERSION") or 1),
             pinned=bool(row.get("PINNED")),
@@ -452,6 +469,10 @@ class Entry:
             d["superseded_by"] = self.superseded_by
         if self.base_entry_id:
             d["overrides"] = self.base_entry_id
+        if self.seed_source:
+            # Lets a UI say "from this app's committed knowledge" — the
+            # provenance benefit of a pin without the immunity cost.
+            d["seed_source"] = self.seed_source
         if self.contradicted_by:
             d["contradicted_by"] = self.contradicted_by
         if self.standing:
@@ -459,3 +480,66 @@ class Entry:
         if self.subject_changed_at:
             d["subject_changed_at"] = str(self.subject_changed_at)
         return d
+
+
+# ── Durability of a piece of text ────────────────────────────────────────
+#
+# Lives here, in the pure module, because both `ingest` (filtering what gets
+# written) and `curator` (filtering what gets shown to the model) need it, and
+# `ingest` already imports from `curator` so the dependency cannot go the other
+# way.
+#
+# The motivating measurement: the first 192 chat observations produced zero
+# entries. Nearly all of them were either the agent describing itself or the
+# user issuing a build instruction. An instruction is already recorded far
+# better by the `edit` observation that resulted from it — "set the description
+# of carouselTest" tells you nothing that the edit does not, and it crowds out
+# the batch. What is worth keeping is the declarative aside: the reason, the
+# rule, the correction.
+
+_IMPERATIVE_OPENERS: frozenset[str] = frozenset({
+    "add", "apply", "build", "change", "check", "create", "delete", "deploy",
+    "do", "draw", "edit", "enable", "disable", "fix", "generate", "give",
+    "go", "implement", "include", "insert", "list", "make", "move", "open",
+    "put", "remove", "rename", "replace", "run", "set", "show", "style",
+    "swap", "switch", "try", "update", "use", "write",
+})
+
+_DECLARATIVE_MARKERS: tuple[str, ...] = (
+    "must", "never", "always", "cannot", "can't", "does not", "doesn't",
+    "is not", "isn't", "because", "the reason", "we decided", "we chose",
+    "convention", "by design", "note that", "remember", "prefer", "instead of",
+    "beware", "careful", "gotcha", "trap", "turns out", "the point is",
+    "so that", "which is why", "only works", "will break", "breaks if",
+    "required", "not allowed", "on purpose", "deliberately",
+)
+
+
+def looks_durable(text: str | None) -> bool:
+    """Could this text plausibly carry knowledge worth keeping?
+
+    A cheap, deterministic pre-filter — not a judgement about quality. The
+    curator still decides what becomes an entry; this only keeps the batch from
+    filling with build instructions that the `edit` observations already record.
+
+    Returns True when the text carries a declarative marker, False when it
+    opens as an imperative, and False when it does neither (the safe default:
+    an observation that says nothing recognisable is not worth a slot).
+    """
+    if not text:
+        return False
+    stripped = text.strip()
+    if len(stripped) < 40:
+        return False
+    lowered = stripped.lower()
+
+    # A declarative marker wins outright, even inside an instruction — "set it
+    # to X because Y breaks otherwise" carries the reason, which is the point.
+    if any(marker in lowered for marker in _DECLARATIVE_MARKERS):
+        return True
+
+    first = re.split(r"[^a-z']+", lowered, maxsplit=1)[0]
+    if first in _IMPERATIVE_OPENERS:
+        return False
+
+    return False

@@ -706,6 +706,12 @@ HOT_TOOLS: frozenset[str] = frozenset({
     "platform_doc_list", "platform_doc_read", "pattern_search", "pattern_read",
     "kb_app_list_sections", "which_environment", "create_role", "assign_role",
     "build_authority", "list_users", "remove_component_styles",
+    # Lore — `lore_brief` is documented as the once-per-task opener and
+    # `lore_search` as the "before you decide" verb, so both were paying a
+    # first-call schema bounce in every session. The other four lore verbs stay
+    # cold: they are called by a minority of sessions and the full hot set
+    # already costs a measured 15,031 tokens per turn.
+    "lore_brief", "lore_search",
 })
 
 
@@ -1223,6 +1229,46 @@ events (tasks usually `CALL_CORE_FUNCTION` referencing a server function).
 URI paths (`/api/ui/uripaths`): REST routes binding HTTP methods to Kirun functions.
 `list_uri_paths`, `create_uri_path(name, path_string, path_definitions={GET: {...}})`.""",
 
+    "lore": """\
+## Lore — what this app already knows — Detailed Reference
+
+Typed claims about ONE application: why it is the way it is, what must hold, what trap
+someone already hit. Distinct from the pattern corpus (cross-app exemplars, read with
+`pattern_search`) and from the per-app KB (six narrative sections, read with `kb_app_*`).
+An app briefing is already folded into your system prompt; these tools are for what the
+briefing did not fit.
+
+Read:
+- `lore_brief(subject=None, budget=6000)` — the briefing. Once per task, not per turn;
+  you have already been given the app-level one. Pass `subject` for one object.
+- `lore_search(query, kinds=[...])` — before you decide something. If lore already
+  recorded a decision, follow it or say plainly that you disagree and ask.
+- `lore_about(subject="page:foo")` — before editing an object you did not create.
+
+Write — and the distinction matters:
+- `lore_add(kind, title, body, subject)` — the user STATED a fact. Lands immediately as a
+  pinned entry, no curation wait. Use this when someone tells you how the app works.
+- `lore_note(text, subject)` — you SAW something. Becomes evidence; the curator decides
+  whether it is durable. Use this when you discovered a trap rather than being told a rule.
+- `lore_correct(entry_id, correction)` — an existing entry is wrong. Omit `correction` to
+  retire it.
+
+Kinds are a fixed vocabulary, one per entry:
+__LORE_KINDS__
+
+Subject is `app`, or `<type>:<name>` where type is one of:
+__LORE_SUBJECT_TYPES__
+An unrecognised type is filed as `app` and the specificity is lost, so use the real object
+names. A fact about a prop or a concept with no object of its own is `app`.
+
+Two things worth knowing about what you read back. A `status` entry ages (14-day
+half-life) and an `owner` entry ages slowly (180 days); nothing else expires with time —
+entries lose standing through supersession, contradiction and a changed subject, and one
+marked `contested` or `unverified` is telling you a person should settle it. An entry
+marked as confirmed by a person outranks one the curator derived.
+
+""",
+
     "kb_and_workspace": """\
 ## Per-app KB + code workspace — Detailed Reference
 
@@ -1466,9 +1512,32 @@ Anti-patterns specific to cloning:
 - Passing `screenshot_page` an external URL — that tool builds a Modlix URL internally and will 404. Use `screenshot_external_url` for source captures.""",
 }
 
+# Render lore's vocabulary from `models.py` rather than restating it here, so a
+# new entry kind or subject type cannot leave the prompt describing a taxonomy
+# the service no longer has.
+def _lore_detail_filled(text: str) -> str:
+    from app.services.lore.models import (  # noqa: PLC0415
+        ENTRY_KIND_HELP, SUBJECT_TYPES,
+    )
+    kinds = "\n".join(f"  {k}: {v}" for k, v in ENTRY_KIND_HELP.items())
+    return (text
+            .replace("__LORE_KINDS__", kinds)
+            .replace("__LORE_SUBJECT_TYPES__", ", ".join(SUBJECT_TYPES)))
+
+
+TOOL_GROUP_DETAILS["lore"] = _lore_detail_filled(TOOL_GROUP_DETAILS["lore"])
+
+
 # ── Relevance keywords per group ──────────────────────────────
 
 _GROUP_KEYWORDS: dict[str, list[str]] = {
+    "lore": [
+        "why", "why was", "why did", "rationale", "reason", "the reason",
+        "already decided", "previous decision", "who decided", "established",
+        "gotcha", "trap", "pitfall", "constraint", "must not", "never do",
+        "glossary", "what does it mean here", "tribal", "lore",
+        "what do we know", "is it safe to change",
+    ],
     "page_operations": [
         "page", "pages", "component", "button", "text", "grid", "layout",
         "textbox", "dropdown", "checkbox", "radio", "image", "icon", "table",
@@ -1533,6 +1602,10 @@ _MAX_DETAIL_GROUPS = 2
 # walking each detail group's representative tool names; far less brittle
 # than the old object_type peek (which only fired for the retired router).
 _TOOL_NAME_TO_GROUP: dict[str, str] = {
+    **dict.fromkeys((
+        "lore_brief", "lore_search", "lore_about",
+        "lore_add", "lore_note", "lore_correct",
+    ), "lore"),
     # page authoring
     **dict.fromkeys((
         "list_pages", "get_page", "create_page", "create_pages", "update_page", "delete_page",

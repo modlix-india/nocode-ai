@@ -37,7 +37,7 @@ BRIEF_CAPS: dict[str, int] = {
     "purpose": 3,
     "constraint": 8,
     "convention": 8,
-    "glossary": 10,
+    "glossary": 14,
     "integration": 6,
     "gotcha": 6,
     "howto": 5,
@@ -97,28 +97,38 @@ async def brief(
     subject: str | None = None,
     budget: int = BRIEF_BUDGET,
     include_unverified: bool = True,
+    kinds: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """A markdown briefing on an app, or on one object inside it.
 
     Returns {"markdown": str, "entry_count": int, "truncated": bool, ...}.
     An app with no entries yields an honest empty briefing rather than an error:
     "lore knows nothing about this app yet" is useful information.
+
+    `kinds` narrows the briefing to those entry kinds. That exists so a caller
+    can render the non-negotiable half (purpose and constraints) under its own
+    budget, before anything else can crowd it out — see context.big_picture.
     """
     subject = normalise_subject(subject) if subject else None
     app_code = scope.app_code
+    wanted = tuple(kinds) if kinds else None
     entries = await store.list_entries(
         scope.read_chain, app_code, subject=subject, status="active", limit=400,
     )
     await store.annotate_standing(entries)
+    if wanted:
+        entries = [e for e in entries if e.kind in wanted]
     if not include_unverified:
         entries = [e for e in entries if e.effective_confidence >= UNVERIFIED_BELOW]
 
-    scope = f"`{subject}`" if subject else f"app `{app_code}`"
+    # Shadows the LoreScope parameter from here down, deliberately kept as a
+    # separate name so a later reader does not mistake it for the scope.
+    what = f"`{subject}`" if subject else f"app `{app_code}`"
     if not entries:
         return {
             "markdown": (
                 f"# {app_code}\n\n"
-                f"Lore has nothing recorded about {scope} yet. "
+                f"Lore has nothing recorded about {what} yet. "
                 "Knowledge accumulates as the app is built and discussed; "
                 "you can also write something down directly with a note."
             ),
@@ -149,7 +159,11 @@ async def brief(
         shown, held_back = group[:cap], max(0, len(group) - cap)
         section: list[str] = [f"## {_KIND_HEADINGS.get(kind, kind.title())}", ""]
         for entry in shown:
-            body = entry.body.strip()
+            # Indent EVERY line of the body, not just the first. A multi-line
+            # markdown body under a bullet loses its association with the
+            # bullet otherwise, which is how a briefing ends up reading as one
+            # run-on paragraph.
+            body = "\n  ".join(entry.body.strip().splitlines())
             subj = "" if subject or entry.subject == "app" else f" `{entry.subject}`"
             section.append(f"- **{entry.title}**{subj}{_mark(entry)}  \n  {body}")
         # Say what was left out rather than quietly presenting a partial list as

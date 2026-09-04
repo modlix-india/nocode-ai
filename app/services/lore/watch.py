@@ -137,6 +137,80 @@ def action_for(tool_name: str) -> str | None:
     return None
 
 
+# Tools whose write target is a CHILD of the subject, not the subject itself.
+#
+# This exists because of a false claim lore was recording. `remove_component_styles`
+# starts with `remove_`, so `action_for` returns "delete" — correct about the
+# TOOL. But the subject of the observation is the PAGE, so `from_edit` rendered
+# it as "appbuilder deleted page `ContactCFA`", when the call removed ten style
+# leaves from one component and the page is very much still there. An app's
+# permanent knowledge cannot carry statements like that.
+#
+# `action_for` is deliberately left alone: its answer is true of the tool, and
+# a test pins it. What changes is the verb recorded against the subject.
+#
+# Explicit rather than pattern-matched, for the reason this module's own
+# docstring gives: being wrong here writes noise into an app's knowledge
+# forever, and a prefix rule cannot tell `delete_page` from `delete_style_rule`.
+_CHILD_SCOPED_TOOLS: frozenset[str] = frozenset({
+    # components on a page
+    "add_component", "add_components", "remove_component", "rename_component",
+    "move_component", "copy_component_subtree",
+    "update_component_props", "patch_component_props", "bulk_patch_component_props",
+    "patch_component_styles", "bulk_patch_component_styles", "remove_component_styles",
+    "patch_component_bindings", "set_bindings", "set_styles",
+    # steps inside a function
+    "add_step", "remove_step", "update_step", "set_dependencies",
+    "add_event_step", "remove_event_step", "update_event_step",
+    "set_event_step_dependencies",
+    # event functions attached to a page
+    "create_page_event_function", "delete_page_event_function",
+    "save_page_event_function_from_text",
+    # parts of a larger definition
+    "delete_style_rule", "set_notification_channel_part", "update_template_part",
+    "patch_theme_variables",
+})
+
+# The parameter that names the child, and the noun to render it with.
+_CHILD_PARAMS: tuple[tuple[str, str], ...] = (
+    ("component_key", "component"),
+    ("step_name", "step"),
+    ("rule_id", "style rule"),
+    ("variable", "theme variable"),
+    ("channel", "channel"),
+    ("part", "part"),
+    ("function_name", "event function"),
+    ("event_name", "event"),
+)
+
+
+def action_on_subject(tool_name: str, tool_action: str) -> str:
+    """The verb to record against the SUBJECT of a child-scoped call.
+
+    Removing a component from a page updates the page. Deleting the page
+    deletes it. `action_for` answers the first question about the tool; this
+    answers the second about the subject.
+    """
+    if tool_name in _CHILD_SCOPED_TOOLS:
+        return "update"
+    return tool_action
+
+
+def _child_for(tool_name: str, params: dict[str, Any]) -> str:
+    """The child this call touched, for the observation body. "" when none.
+
+    An unnamed child yields "" rather than a placeholder: the tool name is
+    already in the detail line, so inventing "part of it" adds nothing.
+    """
+    if tool_name not in _CHILD_SCOPED_TOOLS:
+        return ""
+    for key, noun in _CHILD_PARAMS:
+        value = params.get(key)
+        if isinstance(value, str) and value.strip():
+            return f"{noun} `{value.strip()}`"
+    return ""
+
+
 def _subject_for(tool_name: str, params: dict[str, Any]) -> str | None:
     """The object this call is about, as `<type>:<name>`, or "app", or None."""
     subject = subject_from_tool_call(tool_name, params)
@@ -204,10 +278,17 @@ def classify(
     else:
         object_type, object_name = "application", str(params.get("app_code") or "app")
 
+    child = _child_for(tool_name, params)
+    detail = _detail_for(tool_name, params, summary)
+    if child:
+        # Name the thing that was actually changed, so the body cannot be read
+        # as a claim about the subject as a whole.
+        detail = f"{action} of {child}; {detail}"
+
     return EditFact(
         object_type=object_type,
         object_name=object_name,
-        action=action,
+        action=action_on_subject(tool_name, action),
         subject=subject,
-        detail=_detail_for(tool_name, params, summary),
+        detail=detail,
     )

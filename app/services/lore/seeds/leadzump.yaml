@@ -1,0 +1,310 @@
+# Lore seed — leadzump / SYSTEM
+#
+# Hand-authored from modlix-apps/leadzump_SYSTEM/{INDEX,SECURITY}.md and the
+# per-area page docs. Page names checked against the live `ui` definitions on
+# 2026-09-04 (101 pages, 16 functions).
+#
+# Not recorded: page ids, component counts, event-function step counts. The
+# per-page "Key facts" tables in those docs are almost entirely that, and it is
+# all derivable from the definitions and stale on the next edit. dealProfile.md
+# alone would have yielded forty such rows; it yields three real ones.
+
+format: lore_transport/v1
+app_code: leadzump
+client_code: SYSTEM
+source: seed:leadzump/v1
+resolved: false
+
+entries:
+
+  # ── purpose ──────────────────────────────────────────────────────────
+  - key: purpose-real-estate-crm
+    kind: purpose
+    subject: app
+    confidence: 95
+    pinned: true
+    title: LeadZump is a real-estate CRM that works a lead to a booked visit
+    tags: [product, crm]
+    body: |
+      LeadZump is the CRM sales teams use to work an inbound property enquiry
+      through a pipeline to a site visit and a booking. Everything else in the
+      app — products, pipelines, partners, WhatsApp, calling, inventory — exists
+      to serve that one path.
+
+  - key: purpose-two-audiences-owner-and-partner
+    kind: purpose
+    subject: app
+    confidence: 90
+    pinned: true
+    title: One app serves both the owner organisation and its channel partners
+    tags: [product, tenancy]
+    body: |
+      The same application serves the developer or brokerage that owns the
+      pipeline and the external channel partners who bring it business. Those
+      two see different surfaces of the same data, which is why almost every
+      access question in this app resolves to which of the two you are.
+
+  # ── glossary: the load-bearing one ───────────────────────────────────
+  - key: glossary-owner-is-lead-ticket-is-deal
+    kind: glossary
+    subject: app
+    confidence: 95
+    pinned: true
+    title: Owner means Lead; Ticket means Deal
+    tags: [domain, naming]
+    body: |
+      The CRM is a parent-child pair, and this is the single most important
+      thing to know about the app.
+
+      `Owner` (endpoints `owners/*`) is the person or lead. The UI calls it
+      Lead, Account or Contact, and the `leads` and `leadProfile` pages operate
+      on it. `Ticket` (endpoints `tickets/*`) is one sales opportunity against
+      an Owner via `ownerId`, tied to a Product and a pipeline stage and
+      status; the UI calls it Deal or Opportunity, and `deals`, `dealProfile`
+      and `dealsBp` operate on it. One Owner has many Tickets.
+
+  - key: gotcha-lead-deal-naming-mismatch
+    kind: gotcha
+    subject: app
+    confidence: 95
+    pinned: true
+    title: The authorities say Lead and Deal; the endpoints say owners and tickets
+    tags: [domain, naming, authorities]
+    body: |
+      Authorities are `ROLE_Lead_*` and `ROLE_Deal_*`, but the entities behind
+      them are `owners` and `tickets`. Searching for "lead" will not find the
+      endpoint and searching for "owner" will not find the authority, so a
+      change that looks complete on one side of that seam usually is not.
+
+      `leadProfile` shows a lead's child deals as Tickets filtered by
+      `ownerId`, and can delete them.
+
+  - key: glossary-product-and-template
+    kind: glossary
+    subject: app
+    confidence: 85
+    title: A Product is a project; a Product Template is the reusable pipeline
+    tags: [domain, pipeline]
+    body: |
+      A `Product` is the project or inventory a deal is about. It carries a
+      public capture form, a walk-in URL and rule sets. A `Product Template` is
+      the reusable blueprint of pipeline stages and statuses plus the
+      assignment, round-up, duplicate and expiry rules, instantiated into
+      products. So changing how a pipeline behaves for future projects means
+      changing the template, not the product.
+
+  - key: glossary-stages-and-statuses
+    kind: glossary
+    subject: app
+    confidence: 85
+    title: A pipeline is ordered stages, each with child statuses
+    tags: [domain, pipeline]
+    body: |
+      Each product or template defines ordered stages and, per stage, child
+      statuses. A deal moves through these; a stage or status change is
+      confirmable and notifies. Stage is therefore a two-level concept
+      everywhere in this app, and code that treats it as one flat list will be
+      wrong about the child level.
+
+  - key: glossary-sources-and-subsources
+    kind: glossary
+    subject: app
+    confidence: 80
+    title: Sources and sub-sources are the lead-origin taxonomy
+    tags: [domain, attribution]
+    body: |
+      The origin of a lead is recorded as a source and sub-source, configured
+      in `sourceConfiguration` and used as a filter almost everywhere as well
+      as on intake. It is the app's own taxonomy, distinct from the campaign
+      and ad identifiers that arrive with a paid lead.
+
+  - key: glossary-partner-is-a-separate-client
+    kind: glossary
+    subject: app
+    confidence: 85
+    title: A channel partner is a separate client, not a user role
+    tags: [domain, tenancy, partners]
+    body: |
+      An external channel partner is modelled as its own client, gated by
+      `ROLE_Partner_*`, with its own portal surface. It is not a role on a user
+      inside the owner's client. That is why partner access questions are
+      tenancy questions rather than permission questions.
+
+  # ── constraints ──────────────────────────────────────────────────────
+  - key: constraint-leveltype-decides-the-surface
+    kind: constraint
+    subject: app
+    confidence: 90
+    pinned: true
+    title: levelType decides which app surface a signed-in user sees
+    tags: [tenancy, security]
+    body: |
+      `Store.auth.client.levelType` is `CLIENT` for the owner organisation and
+      `CUSTOMER` for a business partner, and that value selects the surface.
+      This is the app's primary tenancy dimension and it is true by
+      construction, not by convention.
+
+  - key: constraint-enforcement-is-layered
+    kind: constraint
+    subject: app
+    confidence: 85
+    title: Access is enforced in four layers, and the runtime check is one of them
+    tags: [security, auth]
+    body: |
+      Enforcement is page-load guards of the form
+      `Logged_IN and ROLE_X_READ`, then component visibility and lock icons,
+      then shell navigation gating, then a runtime `managerPermission` check on
+      the partner pages. A screen is only as gated as its weakest layer, and
+      hiding a control is not the same as refusing the action behind it.
+
+  - key: constraint-read-assigned-is-not-read
+    kind: constraint
+    subject: app
+    confidence: 85
+    title: ROLE_Deal_READ_ASSIGNED and ROLE_Deal_READ are different powers
+    tags: [security, authorities]
+    body: |
+      The deal authorities separate `READ` from `READ_ASSIGNED`, alongside
+      `CREATE`, `UPDATE`, `DELETE` and `TRANSFER`. Someone with
+      `READ_ASSIGNED` may see only their own deals. Treating the two as
+      interchangeable is how an agent ends up able to see another agent's
+      pipeline.
+
+  # ── decisions ────────────────────────────────────────────────────────
+  - key: convention-eager-query-for-lists
+    kind: convention
+    subject: app
+    confidence: 90
+    title: Lists read through eager/query with a condition tree
+    tags: [api, conventions]
+    body: |
+      Both core entities are served by `POST .../eager/query`, which takes a
+      multi-slot AND/OR condition tree, and by `.../code/{code}` for a single
+      record read or update. Most reads route through the entity-processor
+      service. A new list screen should use `eager/query` rather than inventing
+      a filter endpoint.
+
+  - key: convention-deal-actions-refetch-after-write
+    kind: convention
+    subject: page:dealProfile
+    confidence: 85
+    title: A deal action ends by re-fetching the deal and its activity log
+    tags: [conventions, consistency]
+    body: |
+      Almost every mutating action on the deal workspace is gated behind
+      `ROLE_Deal_UPDATE` and finishes by re-fetching the deal record and the
+      activity timeline, so the screen stays consistent with what the server
+      now believes. A new action that writes and does not re-fetch will leave
+      the screen stale in a way that looks like a save failure.
+
+  - key: decision-dealprofile-is-the-action-surface
+    kind: decision
+    subject: page:dealProfile
+    confidence: 80
+    title: dealProfile is the single deal workspace, deliberately dense
+    tags: [architecture, editor]
+    body: |
+      Rather than splitting a deal across several screens, `dealProfile` is one
+      workspace: a left-hand deal-info panel with inline-editable fields and
+      the stage rail, and a right-hand tabbed area for overview, activity,
+      notes, tasks, sales, WhatsApp and calls, with a parallel mobile layout.
+      It is the most action-heavy page in the app by a wide margin, which is
+      why changes here are riskier than they look.
+
+  # ── integrations ─────────────────────────────────────────────────────
+  - key: integration-open-lead-webhooks
+    kind: integration
+    subject: app
+    confidence: 90
+    pinned: true
+    title: Inbound leads arrive on unauthenticated open endpoints
+    tags: [leads, webhooks, security]
+    body: |
+      Campaign leads from Meta and Google arrive at
+      `/api/open/tickets/req/campaigns` and website and landing-page capture at
+      `/api/open/tickets/req/website/**`. Both are unauthenticated by design,
+      and server functions turn the payload into Owners, Tickets and
+      notifications. The public `walkInForm` and `scheduleCall` pages also
+      create records unauthenticated, protected only by an OTP step.
+
+      So validation, de-duplication and abuse protection have to live
+      server-side on these paths. There is no logged-in user to check.
+
+  - key: integration-whatsapp-in-deal
+    kind: integration
+    subject: app
+    confidence: 85
+    title: WhatsApp messaging is per-client and window-bound
+    tags: [whatsapp, messaging]
+    body: |
+      In-deal WhatsApp uses the platform message service, with per-client
+      Business connection details held in the `ClientWhatsappDetails` storage
+      and templates managed separately. The 24-hour reply window governs when a
+      free-form message may be sent instead of a template, which is a business
+      rule embedded in a vendor constraint rather than an app setting.
+
+  - key: integration-exotel-click-to-call
+    kind: integration
+    subject: app
+    confidence: 80
+    title: Calling and call logs run through Exotel
+    tags: [calls, exotel]
+    body: |
+      Click-to-call and call logging go through Exotel via the platform message
+      service, surfaced on the deal workspace's calls tab and in the call
+      settings and reporting screens. Call records are evidence attached to a
+      deal, so a gap in call logs reads to a sales manager as a gap in activity.
+
+  - key: integration-rim-inventory
+    kind: integration
+    subject: app
+    confidence: 80
+    title: Project and unit inventory comes from the separate rim app
+    tags: [inventory, rim]
+    body: |
+      Project and unit inventory, cost sheets and bookings live in the separate
+      real-estate inventory app `rim`, mapped to LeadZump products through the
+      `mappingDetails` storage and surfaced on `inventoryScreen`. A booking
+      therefore spans two applications, and the mapping is the thing that
+      breaks first.
+
+  - key: integration-bp-onboarding-storages
+    kind: integration
+    subject: app
+    confidence: 75
+    title: Partner onboarding is configured per owner and stored separately
+    tags: [partners, onboarding]
+    body: |
+      The business-partner onboarding flow is driven by `BpConfiguration` —
+      per-owner verification toggles, required documents, terms, privacy and
+      branding — with a partner's submitted KYC data in
+      `BpOnBoardingDetails`. So what a partner is asked for is a per-owner
+      configuration decision, not a fixed form.
+
+  # ── howto / status ───────────────────────────────────────────────────
+  - key: howto-tracing-a-lead-end-to-end
+    kind: howto
+    subject: app
+    confidence: 80
+    title: How to trace where a lead came from and what happened to it
+    tags: [howto, debugging]
+    body: |
+      Start from the Owner record, not the Deal: the person arrived once and
+      may have several deals. Check the source and sub-source for the app's own
+      origin taxonomy, and the campaign identifiers copied onto the Ticket for
+      paid attribution. Then read the deal's activity timeline, which every
+      mutating action appends to, and the call and WhatsApp tabs for contact
+      evidence. If the lead arrived on an open webhook, the server function
+      that created it is where any silent rejection happened.
+
+  - key: gotcha-cxintegration-storage-is-misspelt
+    kind: gotcha
+    subject: app
+    confidence: 80
+    title: The CX integration storage name is misspelt and must stay that way
+    tags: [naming, storages]
+    body: |
+      The external-CRM integration settings live in a storage named
+      `CXIntegeration`, with the misspelling. It is the real name and code has
+      to use it; correcting the spelling would be a data migration, not a
+      rename. Do not "fix" it in passing.
