@@ -131,8 +131,14 @@ async def cached_business_listing(name: str, session_ctx: dict) -> dict | None:
 
 def normalize_business_name(name: str) -> str:
     """Canonicalise a business name for matching/dedup. Lowercase, strip
-    punctuation and common business-type suffixes."""
+    parenthetical glosses, punctuation, and common business-type suffixes.
+    Parentheticals go FIRST (CP-5 v2 step 13): analysts emit "Purva Sparkling
+    Springs (Puravankara)" - the gloss is a developer credit, not identity,
+    and its tokens defeat the D-6 brand exclusion (live 2026-09-04: a
+    duplicated brand token inside "(...)" short-circuited the ladder onto a
+    dead clone domain)."""
     s = (name or "").lower().strip()
+    s = re.sub(r"\([^)]*\)", " ", s)
     for suffix in _NAME_SUFFIX_STRIPS:
         if s.endswith(suffix):
             s = s[: -len(suffix)].strip()

@@ -31,6 +31,10 @@ class NormalizeNameLock(unittest.TestCase):
             ("Puravankara Pvt Ltd", "puravankara"),      # " pvt ltd" stripped
             ("Sattva-Songbird", "sattva songbird"),      # punctuation → space
             ("  Sobha  ", "sobha"),                      # strip + collapse
+            # Parenthetical glosses die (CP-5 v2 step 13): developer credits
+            # and duplicated brand tokens must not leak into matching/tokens.
+            ("Purva Sparkling Springs (Puravankara)", "purva sparkling springs"),
+            ("Nambiar Villas (Nambiar Bannerghatta Villas)", "nambiar villas"),
         ]
         for raw, expected in cases:
             with self.subTest(raw=raw):
@@ -72,6 +76,11 @@ class ProjectSpecificTokenTests(unittest.TestCase):
              "https://propsoch.com/sobha-magnus", False),
             ("generic-word-only name never specific", "Sobha Villas",
              "https://sobhavillas.com/", False),
+            # Live 2026-09-04: the duplicated brand token inside "(...)" must
+            # not make a clone domain "project-specific" and skip the ladder.
+            ("parenthetical brand dup never short-circuits",
+             "Nambiar Villas (Nambiar Bannerghatta Villas)",
+             "https://nambiarbannerghattaroad.co.in/", False),
         ]
         for label, name, url, expected in rows:
             with self.subTest(label):

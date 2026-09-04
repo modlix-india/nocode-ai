@@ -7,6 +7,7 @@ renders a rich craft panel in the UI.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from urllib.parse import urlparse
 
@@ -80,12 +81,119 @@ def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
 async def _resolve_final_entry_urls(competitors: list, session_ctx: dict) -> None:
     """CP-4: settle every entry's URL at the project level - analyst names are
     clean here (unlike candidate-stage SEO titles), so the GBP-backed ladder
-    matches well. Sequential on purpose: entries share the session lookup memo."""
+    matches well. Sequential on purpose: entries share the session lookup memo.
+    A user-pinned URL (url_source=user) is the highest-trust evidence and is
+    never overridden."""
     for comp in competitors:
-        if isinstance(comp, dict) and comp.get("name"):
-            comp["url"] = await resolve_project_url(
-                comp["name"], comp.get("url"), session_ctx
+        if not isinstance(comp, dict) or not comp.get("name"):
+            continue
+        if comp.get("url_source") == "user":
+            continue
+        comp["url"] = await resolve_project_url(
+            comp["name"], comp.get("url"), session_ctx
+        )
+
+
+_URL_VERIFY_QUESTION = (
+    "FIRST line: write 'MATCH: YES' if this page is the official website or a "
+    "dedicated official page for '{name}', or 'MATCH: NO' if it is something "
+    "else (a different project, a broker/lead-gen page, a directory, a parked "
+    "domain).\n"
+    "SECOND line: one short sentence saying what this page actually is."
+)
+
+
+async def _verify_competitor_url(name: str, url: str) -> tuple[str, str]:
+    """Verify a user-provided competitor URL before it becomes the entry's
+    identity (it keys the shared creative library): reachable, not a
+    portal/platform, and the page is actually about {name}. Returns
+    (verified_url, "") on success or ("", reason) - the reason is user-facing."""
+    from app.agents.adzump.agents.product.adapters.web_fetch_adapter import (
+        fetch_and_answer,
+    )
+
+    url = (url or "").strip()
+    if not host_of(url):
+        return "", f"'{url}' is not a valid website URL."
+    if _is_bad_url(url):
+        return "", (
+            f"{host_of(url)} is a portal/platform, not a competitor's own "
+            "site - share the project's official website instead."
+        )
+    try:
+        result = await asyncio.wait_for(
+            fetch_and_answer(url, _URL_VERIFY_QUESTION.format(name=name)),
+            timeout=25.0,
+        )
+    except Exception:
+        result = None
+    if not isinstance(result, dict) or result.get("status") != "ok":
+        return "", f"Couldn't reach {url} - the site didn't respond."
+    final_url = result.get("url") or url
+    if _is_bad_url(final_url):
+        return "", f"{url} redirects to a portal ({host_of(final_url)}) - not an official site."
+    answer = (result.get("answer") or "").strip()
+    if answer.upper().startswith("MATCH: YES"):
+        return final_url, ""
+    page_is = answer.split("\n", 1)[1].strip() if "\n" in answer else ""
+    return "", (
+        f"{url} doesn't look like {name}'s official page"
+        + (f" - {page_is}" if page_is else "")
+        + ". Share the correct URL and I'll update it."
+    )
+
+
+def _find_competitor(competitive: dict, name: str) -> dict | None:
+    """Fuzzy entry lookup for user-referenced names (containment either way -
+    'Purva' finds 'Purva Sparkling Springs')."""
+    target = _normalize_name(name)
+    if not target:
+        return None
+    for comp in competitive.get("competitors") or []:
+        if isinstance(comp, dict):
+            comp_norm = _normalize_name(comp.get("name") or "")
+            if comp_norm and (target in comp_norm or comp_norm in target):
+                return comp
+    return None
+
+
+async def _apply_url_updates(
+    set_url: str, competitive: dict,
+) -> tuple[list[str], list[str]]:
+    """Pin user-provided URLs onto entries: 'Name | URL' (';'-separated for
+    several). A verified URL becomes the entry's identity (url_source=user -
+    the ladder never overrides it) and the entry's creatives reset so the next
+    fetch runs under the corrected identity. Returns (acks, rejections), both
+    user-facing."""
+    acks: list[str] = []
+    rejections: list[str] = []
+    for spec in (set_url or "").split(";"):
+        spec = spec.strip()
+        if not spec:
+            continue
+        if "|" not in spec:
+            rejections.append(f"Couldn't parse '{spec}' - expected 'Name | URL'.")
+            continue
+        name, url = (part.strip() for part in spec.split("|", 1))
+        entry = _find_competitor(competitive, name)
+        if entry is None:
+            rejections.append(
+                f"No competitor named '{name}' in the list - add it first "
+                "(query), then set its URL."
             )
+            continue
+        entry_name = entry.get("name") or name
+        verified_url, reason = await _verify_competitor_url(entry_name, url)
+        if not verified_url:
+            rejections.append(reason)
+            continue
+        entry["url"] = verified_url
+        entry["url_source"] = "user"
+        for stale in ("creatives", "totalCreatives", "activeCreatives"):
+            entry.pop(stale, None)
+        logger.info("competitor_url_user_set: %r -> %s", entry_name, verified_url)
+        acks.append(f"{entry_name}: website verified and updated to {verified_url}")
+    return acks, rejections
 
 
 def _normalize_entries(competitive: dict) -> None:
@@ -246,9 +354,10 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
     if not url:
         url = (business.get("pages_analyzed") or [None])[0] or ""
 
-    # Focused add/remove by name.
+    # Focused add/remove/URL-pin by name.
     query = (params.get("query") or "").strip()
     remove = (params.get("remove") or "").strip()
+    set_url = (params.get("set_url") or "").strip()
     # The model sometimes passes the SUBJECT product's own name as the query on
     # the fetch->"analyze first"->retry path; looking that up just skips it as
     # "same business" and discovers nothing. Drop any query name matching the
@@ -259,12 +368,13 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             n.strip() for n in query.split(",")
             if n.strip() and _normalize_name(n) != subject
         )
-    if query or remove:
+    if query or remove or set_url:
         if auth is None:
             return ToolResult(success=False, error="Authentication required.")
         return await _lookup_single_competitor(
             query,
             remove,
+            set_url,
             product_name,
             product_summary,
             url,
@@ -444,6 +554,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
 async def _lookup_single_competitor(
     query: str,
     remove: str,
+    set_url: str,
     product_name: str,
     product_summary: str,
     primary_url: str,
@@ -453,12 +564,14 @@ async def _lookup_single_competitor(
     session_ctx: dict,
     context: dict,
 ) -> ToolResult:
-    """Add and/or remove specific competitors by name.
+    """Add, remove, and/or pin URLs for specific competitors by name.
 
     - `remove`: comma-separated names to drop from competitor_analysis.
     - `query`: comma-separated names to look up via ProductAgent and add.
-    After changes, the craft panel is rebuilt in full if any removals happened,
-    or appended to if only additions.
+    - `set_url`: user-provided 'Name | URL' pins, verified then applied
+      (runs after additions so add-with-URL works in one call).
+    After changes, the craft panel is rebuilt in full if any removals or URL
+    pins happened, or appended to if only additions.
     """
     import time as _time
 
@@ -562,8 +675,21 @@ async def _lookup_single_competitor(
         if new_competitors and clear_competitor_decline(session_ctx):
             logger.info("competitor_decline_cleared: competitors added by name")
 
+    # ── User-provided URL pins (after additions, so add-with-URL works) ──
+    url_acks: list[str] = []
+    url_rejections: list[str] = []
+    if set_url:
+        url_acks, url_rejections = await _apply_url_updates(set_url, competitive)
+
     # ── Nothing happened ──
-    if not removed_names and not new_competitors and not skipped:
+    if not removed_names and not new_competitors and not skipped and not url_acks:
+        if url_rejections:
+            return ToolResult(
+                success=False,
+                error="URL not updated: " + " ".join(url_rejections)
+                + " Relay this to the user.",
+                display_error=url_rejections[0],
+            )
         return ToolResult(
             success=False,
             error=f"Could not find information about '{query}'. Ask the user for a URL.",
@@ -573,8 +699,9 @@ async def _lookup_single_competitor(
     business = session_ctx.get("product_data") or {}
     craft_id = session_ctx.get("craft_id", "")
     if stream and craft_id:
-        if removed_names:
-            # Full rebuild - append=False replaces the panel entirely.
+        if removed_names or url_acks:
+            # Full rebuild - append=False replaces the panel entirely (a URL
+            # pin changes an existing card's link, appending can't fix that).
             await _emit_final_craft(
                 stream,
                 craft_id,
@@ -593,6 +720,10 @@ async def _lookup_single_competitor(
     if new_competitors:
         names = [c.get("name") or "?" for c in new_competitors]
         parts.append(f"Added: {', '.join(names)}")
+    if url_acks:
+        parts.append(f"Updated: {'; '.join(url_acks)}")
+    if url_rejections:
+        parts.append(f"Not updated: {' '.join(url_rejections)}")
     if skipped:
         skip_lines = [
             f"{s.get('name', '?')} ({s.get('reason', 'not a direct competitor')})"
@@ -614,12 +745,14 @@ async def _lookup_single_competitor(
 analyze_competitors = ToolDefinition(
     name="analyze_competitors",
     description=(
-        "Competitive analysis via the Product Analyst agent. Three modes: "
+        "Competitive analysis via the Product Analyst agent. Four modes: "
         "(1) No params: full competitor discovery (7 web searches + shortlist). "
         "(2) query=names: look up specific competitors by name. "
         "(3) remove=names: drop competitors the user rejected. "
-        "query and remove can be combined in a single call when the user both "
-        "adds and discards competitors in the same message."
+        "(4) set_url: when the USER provides or corrects a competitor's "
+        "website, verify and pin it (never edit a URL any other way - there "
+        "is no other way). Modes combine in one call: user says 'add X, their "
+        "site is Y' -> query='X' + set_url='X | Y'."
     ),
     display_name="Analyze Competitors",
     parameters=[
@@ -639,6 +772,19 @@ analyze_competitors = ToolDefinition(
             name="remove",
             type="string",
             description="Competitor name(s) to remove from the list, comma-separated (e.g. 'Birla Trimaya, Some Other'). Use when the user says a competitor isn't relevant. Can be combined with query in the same call.",
+            required=False,
+        ),
+        ToolParameter(
+            name="set_url",
+            type="string",
+            description=(
+                "USER-provided website for a competitor, format 'Name | https://url' "
+                "(';'-separated for several). The URL is verified (reachable, not a "
+                "portal, page is actually about that competitor) before it is pinned; "
+                "on success the entry's creatives reset so the next fetch uses the "
+                "corrected site, on failure the result carries a rejection reason to "
+                "relay to the user. Only for URLs the user stated - never guess one."
+            ),
             required=False,
         ),
     ],

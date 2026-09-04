@@ -106,6 +106,7 @@ Read `shortlist_competitors`' evidence block. Each competitor has a `SEGMENT:` l
 ## Hard rules
 
 - **Ground every competitor name in evidence from `shortlist_competitors`.** Only include brands that appear in the tool's verified list. Do not re-add candidates the tool dropped.
+- **One project per entry, proper name only.** `name` is the project's own name exactly as the market knows it (e.g. "Purva Sparkling Springs", "Sobha Magnus") - never a developer prefix ("Puravankara – ..."), never two projects glued with "/" or "&", never a parenthetical gloss ("(Puravankara)", "(Bannerghatta Road)"). Two projects = two entries. Everything downstream (Google Business lookup, ad-library search, advertiser matching) keys on this name; a mashup name breaks all of it.
 - **Cite shortlist evidence by ID, don't copy its URLs.** When your evidence came from `shortlist_competitors`, put the entry's `ID:` line into `competitor_id` and set `url` to null - the system attaches the verified URL by ID (IDs are exact; hand-copied URLs get corrupted). When looking up businesses by name WITHOUT shortlist evidence, write the URL you verified and omit `competitor_id`.
 - **Required pipeline**: 7 `web_search` queries (5 discovery + 2 review) followed by ONE `shortlist_competitors` call. Do not skip either step.
 - **If `shortlist_competitors` returns an empty verified list**, write the final JSON with `competitors: []` and add a `notes` entry explaining no candidates could be verified (rather than making competitors up).
@@ -134,7 +135,7 @@ Schema with hard caps:
   "competitive": {
     "competitors": [
       {
-        "name": "string",
+        "name": "string - the project's own proper name, ONE project per entry (see hard rules)",
         "competitor_id": "string - the ID from the shortlist evidence (e.g. 'C3')",
         "url": null,
         "business_type": "string (specific format, ≤10 words)",
