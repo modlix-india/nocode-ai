@@ -73,25 +73,18 @@ class ScrapeCreatorsSource:
             raise ScrapeCreatorsError(
                 "scrapecreators needs a brand name - the search is keyword-based."
             )
-        # Escalate on ZERO ATTRIBUTED ads, not zero raw hits: exact-phrase can
-        # return a couple of junk mentions and previously that suppressed the
-        # unordered retry, missing the advertiser's real ads whose text has the
-        # words in another order (live 2026-09-04: 'Nambiar Villas' exact got 2
-        # broker ads -> matched 0 -> stop, while unordered finds the page).
-        ads: list[dict] = []
-        page_ads: list[dict] = []
-        for search_type in ("keyword_exact_phrase", "keyword_unordered"):
-            ads = await self._search_paged(name=name, country=country,
-                                           search_type=search_type)
-            page_ads = _ads_of_the_advertiser(ads, domain=domain, name=name)
-            if page_ads:
-                break
-            if ads:
-                logger.info(
-                    "scrapecreators_no_advertiser_match: name=%r type=%s "
-                    "pages_seen=%s", name, search_type,
-                    sorted({str(a.get("page_name") or "?") for a in ads})[:8],
-                )
+        # No search_type param - the API default matching casts the widest net
+        # (Kailash 2026-09-04: exact_phrase-first missed word-order variants
+        # and pre-launch projects known mostly through broker phrasing; the
+        # attribution + mention-tier stages below handle the extra noise).
+        ads = await self._search_paged(name=name, country=country)
+        page_ads = _ads_of_the_advertiser(ads, domain=domain, name=name)
+        if ads and not page_ads:
+            logger.info(
+                "scrapecreators_no_advertiser_match: name=%r pages_seen=%s",
+                name,
+                sorted({str(a.get("page_name") or "?") for a in ads})[:8],
+            )
         if page_ads:
             first = page_ads[0]
             snapshot = first.get("snapshot") or {}
@@ -116,13 +109,12 @@ class ScrapeCreatorsSource:
 
     # -- HTTP -----------------------------------------------------------------
 
-    async def _search_paged(self, *, name: str, country: str,
-                            search_type: str) -> list[dict]:
+    async def _search_paged(self, *, name: str, country: str) -> list[dict]:
         ads: list[dict] = []
         cursor = ""
         for _ in range(PAGE_LIMIT):
             data = await self._search_page(name=name, country=country,
-                                           search_type=search_type, cursor=cursor)
+                                           cursor=cursor)
             ads.extend(data.get("searchResults") or [])
             cursor = data.get("cursor") or ""
             if not cursor or len(ads) >= MAX_CREATIVES_PER_COMPETITOR:
@@ -130,14 +122,15 @@ class ScrapeCreatorsSource:
         return ads
 
     async def _search_page(self, *, name: str, country: str,
-                           search_type: str, cursor: str) -> dict:
+                           cursor: str) -> dict:
         key = settings.SCRAPECREATORS_API_KEY
         if not key:
             raise ScrapeCreatorsError("SCRAPECREATORS_API_KEY is not configured")
 
         params: dict[str, Any] = {
             "query": name,
-            "search_type": search_type,
+            # No search_type: the API's default matching. exact_phrase missed
+            # word-order variants; forcing unordered is redundant with default.
             "status": "ALL",  # full creative history; is_active marks the live ones
             "trim": "true",
         }
@@ -166,8 +159,8 @@ class ScrapeCreatorsSource:
                 f"scrapecreators.com search failed: {resp.status_code} {resp.text[:200]}")
         data = resp.json()
         logger.info(
-            "scrapecreators_search: query=%r type=%s got=%d credits_left=%s",
-            name, search_type, len(data.get("searchResults") or []),
+            "scrapecreators_search: query=%r got=%d credits_left=%s",
+            name, len(data.get("searchResults") or []),
             data.get("credits_remaining"),
         )
         return data

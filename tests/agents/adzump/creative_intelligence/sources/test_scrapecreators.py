@@ -160,28 +160,52 @@ class SearchPolicyTests(unittest.TestCase):
         source = ScrapeCreatorsSource()
         self.calls: list[dict] = []
 
-        async def fake_page(*, name, country, search_type, cursor):
-            self.calls.append({"search_type": search_type, "country": country,
-                               "cursor": cursor})
+        async def fake_page(*, name, country, cursor):
+            self.calls.append({"country": country, "cursor": cursor})
             return pages.pop(0)
 
         source._search_page = fake_page
         return source
 
-    def test_exact_phrase_first_then_unordered_retry(self):
+    def test_one_default_search_attributes_the_advertiser(self):
+        # No search_type is ever sent (Kailash 2026-09-04): the API default
+        # casts the widest net; exact_phrase missed word-order variants.
         source = self._source_with_pages([
-            {"searchResults": [], "cursor": ""},
             {"searchResults": [_ad()], "cursor": ""},
         ])
         fetched = asyncio.run(source.fetch(
             domain="", name="Purva Sparkling Springs", country="IN"))
-        self.assertEqual([c["search_type"] for c in self.calls],
-                         ["keyword_exact_phrase", "keyword_unordered"])
+        self.assertEqual(len(self.calls), 1)
         self.assertEqual(self.calls[0]["country"], "IN")
         self.assertEqual(len(fetched.creatives), 1)
         self.assertEqual(fetched.resolved_name, "Purva Sparkling Springs")
         self.assertEqual(fetched.logo_url, "https://cdn/logo.jpg")
         self.assertEqual(fetched.platform_ids, {"page_id": "p1"})
+
+    def test_no_search_type_param_reaches_the_api(self):
+        captured: dict = {}
+
+        class _Resp:
+            status_code = 200
+            def json(self):
+                return {"searchResults": [], "cursor": ""}
+
+        class _Client:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *a):
+                return False
+            async def get(self, url, headers=None, params=None):
+                captured.update(params or {})
+                return _Resp()
+
+        with mock.patch.object(scrapecreators.settings,
+                               "SCRAPECREATORS_API_KEY", "k"), \
+             mock.patch.object(scrapecreators.httpx, "AsyncClient",
+                               return_value=_Client()):
+            asyncio.run(ScrapeCreatorsSource().fetch(domain="", name="X"))
+        self.assertNotIn("search_type", captured)
+        self.assertEqual(captured.get("query"), "X")
 
     def test_mention_tier_ships_unattributed_ads_without_identity(self):
         # No attributable page anywhere (all broker ads) -> the ads still ship
@@ -189,7 +213,6 @@ class SearchPolicyTests(unittest.TestCase):
         brokers = [_ad(page_id=f"b{i}", page_name=f"Broker {i}")
                    for i in range(scrapecreators.MENTION_ADS_CAP + 5)]
         source = self._source_with_pages([
-            {"searchResults": [], "cursor": ""},
             {"searchResults": brokers, "cursor": ""},
         ])
         fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas X"))
@@ -197,22 +220,6 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertEqual(fetched.resolved_name, "")
         self.assertEqual(fetched.logo_url, "")
         self.assertEqual(fetched.platform_ids, {})
-
-    def test_unmatched_exact_hits_still_retry_unordered(self):
-        # Live 2026-09-04: 'Nambiar Villas' exact-phrase returned 2 broker ads
-        # (zero attributed) and the retry never fired - escalation must key on
-        # attributed ads, not raw hits.
-        broker = _ad(page_id="junk", page_name="Bangalore Property Deals")
-        real = _ad(page_id="own", page_name="Nambiar Villas Bannerghatta")
-        source = self._source_with_pages([
-            {"searchResults": [broker, broker], "cursor": ""},
-            {"searchResults": [broker, real], "cursor": ""},
-        ])
-        fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas"))
-        self.assertEqual([c["search_type"] for c in self.calls],
-                         ["keyword_exact_phrase", "keyword_unordered"])
-        self.assertEqual(fetched.resolved_name, "Nambiar Villas Bannerghatta")
-        self.assertEqual(len(fetched.creatives), 1)
 
     def test_cursor_pagination_stops_without_cursor(self):
         source = self._source_with_pages([
