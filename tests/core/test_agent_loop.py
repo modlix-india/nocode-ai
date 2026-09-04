@@ -117,5 +117,36 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(texts, ["\n\nFound 2 competitors: Sobha, Prestige.\n\n"], aud)
 
 
+class DeferredElicitationBreakTests(unittest.TestCase):
+    """A FAILED elicitation is not an elicitation: the loop must continue so
+    the model reads the tool's corrective error and re-calls in the same turn
+    (live 2026-09-04: refused present_options + break = silent dead-end loop)."""
+
+    def _entry(self, **overrides) -> dict:
+        entry = {"tool": "present_options", "success": True,
+                 "kind": "elicitation", "elicit_mode": "deferred",
+                 "elicited": False}
+        entry.update(overrides)
+        return entry
+
+    def test_rows(self):
+        rows = [
+            ("successful static elicitation breaks", self._entry(), True),
+            ("FAILED elicitation never breaks",
+             self._entry(success=False), False),
+            ("successful runtime signal breaks",
+             self._entry(kind="tool", elicited=True), True),
+            ("failed runtime signal never breaks",
+             self._entry(kind="tool", elicited=True, success=False), False),
+            ("blocking elicitation excluded",
+             self._entry(elicit_mode="blocking"), False),
+            ("plain tool never breaks", self._entry(kind="tool"), False),
+        ]
+        for label, entry, expected in rows:
+            with self.subTest(label):
+                self.assertIs(
+                    BaseAgent._is_deferred_elicitation(entry), expected)
+
+
 if __name__ == "__main__":
     unittest.main()

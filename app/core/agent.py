@@ -720,7 +720,15 @@ class BaseAgent:
         """True if a completed tool was a deferred elicitation — either by
         static declaration (kind='elicitation', elicit_mode='deferred') or by
         a runtime signal (ToolResult.data['elicited']=True, e.g. analyze_product
-        when assets are missing). Blocking elicitations are excluded."""
+        when assets are missing). Blocking elicitations are excluded.
+
+        A FAILED call is never an elicitation: nothing was asked, and the
+        tool's corrective error exists precisely so the model re-calls in the
+        SAME turn (e.g. present_options' self-healing refusal). Breaking on it
+        would end the turn with silence and re-fire forever (live 2026-09-04:
+        gpt-4o's answer-less options refused → elicitation_break → dead loop)."""
+        if not log_entry.get("success"):
+            return False
         static = (
             log_entry.get("kind") == "elicitation"
             and log_entry.get("elicit_mode") == "deferred"
