@@ -203,7 +203,7 @@ class InstagramOptionalTests(unittest.TestCase):
                     "competitor_creatives_declined": "true"}
         hint = _review_hint_if_complete(answered, {"product_data": SAAS})
         self.assertNotEqual(hint, "")
-        self.assertIn("not linked (Facebook only)", hint)
+        self.assertIn("show_campaign_summary", hint)  # card is code-rendered
 
     def test_review_gate_waits_for_creatives_offer_resolution(self):
         # Meta review also waits on the competitor-creatives offer: declined,

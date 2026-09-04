@@ -741,20 +741,20 @@ def _apply_field(
     return (True, field)
 
 
-def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
-    """If every required campaign-spec field is now set, return a string that
-    instructs the LLM to render the review summary on this same turn.
-    Otherwise return ''."""
+def campaign_spec_complete(spec: dict, session_ctx: dict) -> bool:
+    """Every required campaign-spec field is set - the ONE completeness gate,
+    shared by the post-write review hint and show_campaign_summary's refusal,
+    so the card and the prescription can never disagree."""
     platform = Platform.from_value(spec.get("platform"))
     if platform is None:
-        return ""
+        return False
     is_google = platform is Platform.GOOGLE
     is_meta = platform is Platform.META
 
     # Real-estate? location is required. Otherwise location is optional.
     business_type = (session_ctx.get("product_data") or {}).get("business_type") or ""
     if is_real_estate(business_type) and not spec.get("location"):
-        return ""
+        return False
 
     if not (
         spec.get("duration")
@@ -762,7 +762,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
         and spec.get("parent_account")
         and spec.get("account")
     ):
-        return ""
+        return False
 
     # Google: competitive analysis must have been attempted OR declined.
     if is_google:
@@ -770,7 +770,7 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
             session_ctx.get("competitor_analysis") is None
             and offer_state(spec, "competitive_analysis") is not OfferState.DECLINED
         ):
-            return ""
+            return False
 
     # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) - but it must have
     # been OFFERED, i.e. an ig_page was picked OR Instagram declined. This
@@ -783,47 +783,29 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
             or offer_state(spec, "instagram") is OfferState.DECLINED
         )
     ):
-        return ""
+        return False
 
     # Meta: the competitor-creatives offer must be resolved once - fetched,
     # declined, or moot. The SAME predicate _next_action's offer gate uses, so
     # "complete" here never disagrees with an offer the prescription still asks.
     if is_meta and not competitor_creatives_offer_resolved(spec, session_ctx):
-        return ""
+        return False
+    return True
 
-    meta_extra = ""
-    if is_meta:
-        meta_extra = (
-            "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-        )
-        meta_extra += (
-            "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-            if spec.get("ig_page")
-            else "\n  - **Instagram Account**: not linked (Facebook only)"
-        )
+
+def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
+    """If every required campaign-spec field is now set, return the review
+    prescription for this same turn (the start-of-turn reminder doesn't know
+    about the field just stored). The card itself is CODE-rendered - slice 2."""
+    if not campaign_spec_complete(spec, session_ctx):
+        return ""
     return (
-        "\n\nALL CAMPAIGN FIELDS ARE NOW SET. Do NOT call any other tool yet. "
-        "Render this exact markdown summary on this turn - copy values VERBATIM "
-        "from the `## State` block in the system prompt (do not rephrase, do "
-        "not drop fields, do not replace IDs with placeholders like 'Linked' "
-        "or 'Connected'):\n\n"
-        "Here's your campaign summary:\n\n"
-        "  - **Product**: <product name from State>\n"
-        "  - **Website**: <website URL from State>\n"
-        "  - **Location**: <location from State>\n"
-        "  - **Platform**: <platform from State>\n"
-        "  - **Duration**: <duration from State>\n"
-        "  - **Daily Budget**: <budget from State>\n"
-        "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
-        "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
-        f"{meta_extra}\n"
-        "  - **Competitors**: <comma-separated names from State, or 'none "
-        "analyzed', or 'declined' if competitive analysis was declined>\n\n"
-        'Then call `present_options(question="Ready to launch the campaign?", '
-        'options=["Yes, launch", "No, make changes"])`. EVERY bullet must '
-        "be present. **On the user's 'Yes, launch' reply, call "
-        "`launch_campaign()` (no params) - that's the one tool that persists "
-        "the campaign.**"
+        "\n\nALL CAMPAIGN FIELDS ARE NOW SET. Call `show_campaign_summary()` "
+        "NOW - it renders the summary card for the user from stored state; "
+        "NEVER write the summary yourself. Then use the present_options tool "
+        'to ask "Ready to launch the campaign?" with chips Yes, launch / '
+        "No, make changes. On 'Yes, launch', call `launch_campaign()` (no "
+        "params) - the one tool that persists the campaign."
     )
 
 

@@ -379,39 +379,22 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 )
 
     if not missing:
-        meta_extra = ""
-        if cctx.is_meta:
-            meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"
-            meta_extra += (
-                "\n  - **Instagram Account**: <copy verbatim from State, including '(ID: …)'>"
-                if cctx.spec.get("ig_page")
-                else "\n  - **Instagram Account**: not linked (Facebook only)"
-            )
-        missing.append(
-            "review & publish - TWO separate steps this turn:\n"
-            "(1) Your TEXT reply is EXACTLY this markdown summary, with values copied "
-            "VERBATIM from the `## State` block above (do NOT rephrase, do NOT drop "
-            "fields, do NOT replace IDs with placeholders like 'Linked' or 'Connected', "
-            "do NOT abbreviate):\n\n"
-            "Here's your campaign summary:\n\n"
-            "  - **Product**: <product name from State>\n"
-            "  - **Website**: <website URL from State>\n"
-            "  - **Location**: <location from State>\n"
-            "  - **Platform**: <platform from State>\n"
-            "  - **Duration**: <duration from State>\n"
-            "  - **Daily Budget**: <budget from State>\n"
-            "  - **Manager / Business Account**: <copy verbatim from State, including '(ID: …)'>\n"
-            "  - **Ad Account**: <copy verbatim from State, including '(ID: …)'>"
-            f"{meta_extra}\n"
-            "  - **Competitors**: <comma-separated names from State, or 'none analyzed' "
-            "if competitor_analysis_attempted is true with empty list, or 'declined' "
-            "if competitive analysis was declined>\n\n"
-            "EVERY bullet must be present - do not omit any.\n"
-            "(2) THEN, separately, use the present_options tool to ask \"Ready to launch "
-            "the campaign?\" with chips: Yes, launch / No, make changes. When the user "
-            "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the one "
-            "tool that persists the campaign. These are tools to CALL - never type "
-            "tool-call syntax into your reply, only the markdown summary above is text."
-        )
+        missing.append(_REVIEW_PRESCRIPTION)
 
     return missing
+
+
+# Slice 2 · the review card is CODE-rendered (tools/summary.py) - the model
+# stopped being a template engine; this two-step prescription replaced the
+# 35-line "reproduce VERBATIM" template.
+_REVIEW_PRESCRIPTION = (
+    "review & publish - TWO tool calls this turn:\n"
+    "(1) call `show_campaign_summary()` - it renders the campaign summary "
+    "card for the user from stored state. NEVER write the summary yourself; "
+    "a brief lead-in line (\"Everything's set - here's the plan:\") is fine.\n"
+    "(2) THEN use the present_options tool to ask \"Ready to launch the "
+    "campaign?\" with chips: Yes, launch / No, make changes. When the user "
+    "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the "
+    "one tool that persists the campaign. These are tools to CALL - never "
+    "type tool-call syntax into your reply."
+)

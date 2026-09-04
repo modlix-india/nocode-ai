@@ -98,31 +98,26 @@ class NextActionInvariants(unittest.TestCase):
                 self.assertIn(tool, line)
                 self.assertNotIn("offer it ONCE", line)
 
-    # S0-5 · review block structure across the three platform variants
+    # S0-5 → S2 · the review prescription is two tool calls; the card itself
+    # is CODE-rendered (tools/summary.py) - no VERBATIM template remains.
     def test_review_block_shape(self):
         rows = [
-            ("google", make_cctx(GOOGLE_DONE, product=SAAS, attempted=True),
-             ("**Platform**", "Ready to launch", "launch_campaign"),
-             ("**Facebook Page**", "**Instagram Account**")),
+            ("google", make_cctx(GOOGLE_DONE, product=SAAS, attempted=True)),
             ("meta+ig", make_cctx({**META_DONE, "ig_page": "ig-7"},
-                                  product=SAAS, creatives_resolved=True),
-             ("**Facebook Page**", "**Instagram Account**", "launch_campaign"),
-             ("not linked",)),
+                                  product=SAAS, creatives_resolved=True)),
             ("fb-only", make_cctx({**META_DONE, "ig_page_declined": "true"},
-                                  product=SAAS, creatives_resolved=True),
-             ("**Instagram Account**: not linked (Facebook only)",
-              "launch_campaign"), ()),
+                                  product=SAAS, creatives_resolved=True)),
         ]
-        for label, cctx, present, absent in rows:
+        for label, cctx in rows:
             with self.subTest(label):
                 missing = _next_action(cctx)
                 self.assertEqual(len(missing), 1)
                 block = missing[0]
                 self.assertTrue(block.startswith("review & publish"))
-                for token in present:
+                for token in ("show_campaign_summary", "Ready to launch",
+                              "launch_campaign"):
                     self.assertIn(token, block)
-                for token in absent:
-                    self.assertNotIn(token, block)
+                self.assertNotIn("VERBATIM", block)  # template engine is dead
 
     # S0-6 · in-flight legacy session resumes sanely through from_session
     def test_legacy_session_resume(self):

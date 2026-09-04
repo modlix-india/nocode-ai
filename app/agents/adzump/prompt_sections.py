@@ -150,6 +150,23 @@ def _how_to_respond_section() -> str:
         "name or `tool(...)` call syntax into the chat."
     )
 
+def account_display(
+    acct_id: str | None, account_names: dict, platform_value: str | None,
+) -> str:
+    """'{Name} (ID: {id})' for an account-like spec field - the ONE format
+    both the State block and the review card use, so an ID can never degrade
+    to a placeholder like 'Linked'. Google CIDs render dashed."""
+    if not acct_id:
+        return "-"
+    raw = str(acct_id)
+    display_id = raw
+    if Platform.from_value(platform_value) is Platform.GOOGLE \
+            and raw.isdigit() and len(raw) == 10:
+        display_id = f"{raw[:3]}-{raw[3:6]}-{raw[6:]}"
+    name = (account_names.get(raw) or "").strip()
+    return f"{name} (ID: {display_id})" if name else f"ID: {display_id}"
+
+
 def _ad_account_summary(spec: dict, account_names: dict) -> str:
     platform = Platform.from_value(spec.get("platform"))
     if platform is None:
@@ -171,18 +188,8 @@ def _ad_account_summary(spec: dict, account_names: dict) -> str:
         else "Ad Account"
     )
 
-    def pretty_id(acct_id: str) -> str:
-        raw = str(acct_id)
-        if is_google_platform and raw.isdigit() and len(raw) == 10:
-            return f"{raw[:3]}-{raw[3:6]}-{raw[6:]}"
-        return raw
-
     def fmt(acct_id: str | None) -> str:
-        if not acct_id:
-            return "-"
-        name = (account_names.get(str(acct_id)) or "").strip()
-        display_id = pretty_id(acct_id)
-        return f"{name} (ID: {display_id})" if name else f"ID: {display_id}"
+        return account_display(acct_id, account_names, spec.get("platform"))
 
     lines = [
         f"- {parent_label}: {fmt(spec.get('parent_account'))}",
