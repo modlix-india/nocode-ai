@@ -262,8 +262,6 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
         verified_url = c.get("fetch_url") or c.get("url")
         if verified_url:
             lines.append(f"URL: {verified_url}")
-        if c.get("summary"):
-            lines.append(f"Snippet: {c['summary']}")
         answer = (c.get("fetch_answer") or "").strip()
         if answer.upper().startswith("TYPE: BRAND"):
             answer = answer[len("TYPE: BRAND"):].lstrip(":\n ").strip()
@@ -340,20 +338,13 @@ def _merge_candidate_facts(
                     "name": name,
                     "url": url,
                     "host": host,
-                    "summary": str(cand.get("summary") or "").strip(),
-                    "relevance_note": str(cand.get("relevance_note") or "").strip(),
                     "seen_in": [],
                 }
                 merged[key] = entry
-            else:
-                # Fill missing fields from later occurrences.
-                if not entry["url"] and url:
-                    entry["url"] = url
-                    entry["host"] = host or entry["host"]
-                if not entry["summary"]:
-                    entry["summary"] = str(cand.get("summary") or "").strip()
-                if not entry["relevance_note"]:
-                    entry["relevance_note"] = str(cand.get("relevance_note") or "").strip()
+            elif not entry["url"] and url:
+                # Fill a missing URL from a later occurrence.
+                entry["url"] = url
+                entry["host"] = host or entry["host"]
             if query and query not in entry["seen_in"]:
                 entry["seen_in"].append(query)
 
@@ -527,8 +518,6 @@ async def _fetch_one_candidate(
                         "fetch_status": "ok",
                         "fetch_answer": fa,
                         "fetch_url": followup.get("url"),
-                        "fetch_title": followup.get("title"),
-                        "resolved_from": url,
                     }
         # First URL was aggregator and we couldn't resolve a better one → drop.
         return {**candidate, "fetch_status": "aggregator", "fetch_answer": answer}
@@ -538,7 +527,6 @@ async def _fetch_one_candidate(
         "fetch_status": "ok",
         "fetch_answer": answer,
         "fetch_url": result.get("url"),
-        "fetch_title": result.get("title"),
     }
 
 
@@ -576,12 +564,7 @@ def _parse_web_search_result_block(
         title = (item.get("title") or "").strip()
         if not title:
             continue
-        candidates.append({
-            "name": title,
-            "url": item.get("url"),
-            "summary": "",
-            "relevance_note": "",
-        })
+        candidates.append({"name": title, "url": item.get("url")})
     return candidates
 
 
