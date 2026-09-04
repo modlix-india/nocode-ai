@@ -106,6 +106,34 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
             self.assertFalse(result.success)
             self.assertNotIn("_competitor_creatives_fetched", ctx["session_context"])
 
+    def test_already_fetched_entries_are_skipped(self):
+        """Session-level cache: only the entry WITHOUT creatives is fetched
+        when one more competitor is added (live 2026-09-04: Purva re-spent
+        credits because the 404ing shared store was the only guard).
+        Fetched-empty ([] = honest 'No ads found') also skips."""
+        competitors = [
+            {"name": "Purva", "url": "https://purvasparklingspring.com",
+             "creatives": [{"creativeId": "a1"}], "totalCreatives": 1,
+             "activeCreatives": 1},
+            {"name": "Shriram", "url": "https://shriramnewlaunch.com",
+             "creatives": [], "totalCreatives": 0, "activeCreatives": 0},
+            {"name": "Nambiar", "url": "https://nambiarprojects.com"},
+        ]
+        result, fetch = _run(_ctx(competitors=competitors))
+        self.assertTrue(result.success)
+        fetched_names = [p.name for p in fetch.await_args.args[0]]
+        self.assertEqual(fetched_names, ["Nambiar"])
+
+    def test_all_fetched_short_circuits_without_spend(self):
+        competitors = [{"name": "Purva", "url": "https://x.com",
+                        "creatives": [], "totalCreatives": 0,
+                        "activeCreatives": 0}]
+        ctx = _ctx(competitors=competitors)
+        result, fetch = _run(ctx)
+        self.assertTrue(result.success)
+        fetch.assert_not_awaited()
+        self.assertTrue(ctx["session_context"]["_competitor_creatives_fetched"])
+
 
 if __name__ == "__main__":
     unittest.main()

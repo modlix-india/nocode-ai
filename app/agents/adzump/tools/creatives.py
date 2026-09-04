@@ -125,13 +125,31 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         CompetitorProfile.from_stored(c) if isinstance(c, dict) else None
         for c in competitors
     ]
+    # Session-level cache: an entry whose creatives already landed this session
+    # is skipped (its craft card is done; the shared store is the CROSS-session
+    # cache and must not be the only guard - while it's unavailable a re-run,
+    # e.g. adding one more competitor, must not re-spend credits on the rest).
+    # force re-fetches everyone.
+    fetchable: list = []
     keyed_indices: dict[str, list[int]] = {}  # several entries can share a domain
     for i, profile in enumerate(profiles):
         if profile is None:
             continue
+        if not force and profile.creatives is not None:
+            continue
         key, _name = ci.competitor_identity(profile)
         if key:
             keyed_indices.setdefault(key, []).append(i)
+            fetchable.append(profile)
+
+    if not fetchable:
+        session_ctx["_competitor_creatives_fetched"] = True
+        return ToolResult(
+            success=True,
+            data={"competitors": competitors},
+            summary="Creatives already fetched for every current competitor - nothing new to fetch.",
+            audience="both",
+        )
 
     total_creatives = 0
     resolved = 0
@@ -160,7 +178,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
 
     try:
         results = await ci.creatives_for_all(
-            [p for p in profiles if p is not None], context, force=force,
+            fetchable, context, force=force,
             enrich=_essence_enrich(context), on_resolved=_on_resolved)
     except Exception as e:
         logger.warning("fetch_competitor_creatives failed: %s: %s",

@@ -12,6 +12,7 @@ from app.agents.adzump.agents.product.tools.comp_discovery import (
     _fetch_one_for_shortlist,
     _is_specific_geography,
     _resolve_urls,
+    _score_code_signals,
 )
 
 
@@ -28,6 +29,34 @@ class IsSpecificGeographyLock(unittest.TestCase):
         for geo in ["Bengaluru", "Karnataka", "India", "", None]:
             with self.subTest(geo=geo):
                 self.assertFalse(_is_specific_geography(geo))
+
+
+class SelfReferenceBrandHostTests(unittest.TestCase):
+    """The client's own developer domain must never enter the competitor list,
+    even under an SEO title the name match can't catch (live 2026-09-04:
+    valmark.in surfaced for a Valmark CityVille campaign). Leading brand token
+    only - a locality word in the product name must not condemn strangers."""
+
+    def _score(self, primary_name, candidate_name, candidate_url):
+        results = [{"query": "q1", "candidates": [
+            {"name": candidate_name, "url": candidate_url}]}]
+        return _score_code_signals(results, primary_host="cityville.in",
+                                   primary_name=primary_name)[0]
+
+    def test_rows(self):
+        rows = [
+            ("developer root under SEO title", "Valmark CityVille",
+             "3 & 4 BHK Villaments in Bannerghatta Road",
+             "https://valmark.in/cityville", True),
+            ("locality token never condemns strangers", "Godrej Bannerghatta",
+             "Nambiar Villas", "https://nambiarbannerghattaroad.co.in/", False),
+            ("unrelated brand host stays", "Valmark CityVille",
+             "Sobha Magnus", "https://sobha.com/sobha-magnus", False),
+        ]
+        for label, primary, cand_name, cand_url, expected in rows:
+            with self.subTest(label):
+                self.assertIs(self._score(primary, cand_name, cand_url)
+                              ["is_primary"], expected)
 
 
 class ResolveUrlsTests(unittest.TestCase):

@@ -150,10 +150,17 @@ def _score_code_signals(
       +1 per search beyond the first the candidate appears in (frequency)
       +1 if URL host is distinct (not aggregator, not primary business)
 
-    Self-reference detection uses both host (cityville.in) AND name fuzzy match
-    (``Valmark CityVille`` ≈ ``Valmark City Ville``).
+    Self-reference detection uses host (cityville.in), name fuzzy match
+    (``Valmark CityVille`` ≈ ``Valmark City Ville``), AND the client's brand
+    token in the candidate host - the developer's own domain (valmark.in for a
+    Valmark CityVille campaign) must never enter the competitor list, even
+    under an SEO title the name match can't catch. Leading token only, same
+    convention as the D-6 brand exclusion: "Godrej Bannerghatta" contributes
+    "godrej", never the locality.
     """
     primary_name_norm = normalize_business_name(primary_name)
+    primary_brand = (primary_name_norm.split() or [""])[0]
+    primary_brand = primary_brand if len(primary_brand) > 3 else ""
     merged: dict[str, dict[str, Any]] = {}
 
     for search in search_results:
@@ -212,6 +219,7 @@ def _score_code_signals(
             (bool(primary_host) and host == primary_host)
             or (bool(primary_compact) and len(primary_compact) > 3
                 and (primary_compact in name_compact or name_compact in primary_compact))
+            or (bool(primary_brand) and primary_brand in (host or ""))
         )
         domain_bonus = 1 if (host and not is_aggregator and not is_primary) else 0
         entry["code_score"] = freq_bonus + domain_bonus
