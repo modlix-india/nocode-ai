@@ -26,7 +26,9 @@ import re
 from typing import Any
 
 from app.config import settings
+from app.config import settings
 from app.services.lore import access, retrieval
+from app.services.lore.models import BRIEF_ORDER
 from app.services.lore.access import LoreAccessError
 from app.services.lore.models import normalise_subject
 
@@ -34,8 +36,20 @@ logger = logging.getLogger(__name__)
 
 # Characters of app briefing folded into the system prompt. Big enough for the
 # rules and conventions of a real app, small enough not to crowd out the tool
-# catalogue.
-BIG_PICTURE_BUDGET = 2600
+# catalogue. Overridable by LORE_BIG_PICTURE_BUDGET.
+#
+# Raised from 2600 because that fitted 10-12 entries, and a seeded app carries
+# around 60 app-level ones: measured on `appbuilder`, a 6000-char brief rendered
+# 13 of 22 and reported truncated. Most of a hand-authored seed would have been
+# invisible to the agent unless it thought to call a tool.
+BIG_PICTURE_BUDGET = 3800
+
+# The half of the briefing that must never be the part the budget drops. A
+# constraint is the entry whose violation breaks the app, and purpose is what
+# makes the rest legible, so they are rendered first under their own budget and
+# everything else competes for what is left.
+RULES_KINDS: tuple[str, ...] = ("purpose", "constraint")
+RULES_SHARE = 0.38
 
 # Characters of per-object lore in a turn reminder. Deliberately tight: this
 # rides along on every turn while the focus holds.
@@ -68,7 +82,7 @@ def _identity(session: Any) -> tuple[str, str] | None:
     return client_code, app_code
 
 
-async def big_picture(session: Any, *, budget: int = BIG_PICTURE_BUDGET) -> str:
+async def big_picture(session: Any, *, budget: int | None = None) -> str:
     """The app briefing, for the system prompt. "" when there is nothing to say.
 
     Read access is checked like every other lore read: an agent must not narrate
@@ -80,20 +94,45 @@ async def big_picture(session: Any, *, budget: int = BIG_PICTURE_BUDGET) -> str:
     if not ident:
         return ""
     client_code, app_code = ident
+    if budget is None:
+        budget = int(getattr(settings, "LORE_BIG_PICTURE_BUDGET", BIG_PICTURE_BUDGET)
+                     or BIG_PICTURE_BUDGET)
 
     try:
         scope = await access.resolve_scope(_Auth(client_code), app_code)
         if not scope.can_read:
             return ""
-        result = await retrieval.brief(scope, budget=budget)
+        # Two passes with separate budgets. One pass ordered by BRIEF_ORDER
+        # would put purpose and constraints first and then let the budget cut
+        # somewhere in the middle, which is fine until an app has enough
+        # entries that the cut lands before the constraints are done.
+        rules_budget = max(600, int(budget * RULES_SHARE))
+        rules = await retrieval.brief(scope, budget=rules_budget, kinds=RULES_KINDS)
+        rest = await retrieval.brief(
+            scope, budget=budget - rules_budget,
+            kinds=tuple(k for k in BRIEF_ORDER if k not in RULES_KINDS),
+        )
     except LoreAccessError:
         return ""
     except Exception:  # noqa: BLE001 — never break a turn over lore
         logger.debug("lore: big-picture context skipped", exc_info=True)
         return ""
 
-    if not result.get("entry_count"):
+    if not rules.get("entry_count") and not rest.get("entry_count"):
         return ""
+
+    blocks: list[str] = []
+    if rules.get("entry_count"):
+        blocks.append(
+            "These are this app's purpose and its non-negotiable rules. "
+            "Breaking one of them breaks the app.\n\n" + rules["markdown"]
+        )
+    if rest.get("entry_count"):
+        blocks.append(rest["markdown"])
+    result = {
+        "entry_count": rules.get("entry_count", 0) + rest.get("entry_count", 0),
+        "markdown": "\n\n".join(blocks),
+    }
 
     inherited_note = ""
     if scope.is_override:
@@ -218,3 +257,87 @@ def take_unsent_focus(session: Any) -> str | None:
         return None
     sent.append(subject)
     return subject
+
+
+# ── Advice that arrives before the write, not after it ───────────────────
+
+# Session-context key for subjects already advised, mirroring FOCUS_SENT_KEY.
+ADVISED_KEY = "lore_advised"
+
+# Tight on purpose: this rides on a tool result, so it competes with the
+# result's own content for the model's attention.
+PRE_WRITE_BUDGET = 700
+
+# Only the kinds that would stop someone doing the wrong thing. A `purpose` or
+# a `glossary` entry is orientation and belongs in the system prompt; a
+# constraint, a trap or a convention is the thing you needed to know one line
+# before you wrote.
+PRE_WRITE_KINDS: tuple[str, ...] = ("constraint", "gotcha", "convention")
+
+
+async def pre_write_advice(
+    session: Any, tool_name: str, params: dict[str, Any] | None,
+) -> str:
+    """What this app already knows about the object being written, right now.
+
+    Lore is already consulted before execution — `note_focus` runs above the
+    dispatch — but the resulting `small_picture` is injected on the NEXT turn.
+    In a turn that issues many writes in parallel, that advice lands after every
+    one of them. This returns text to append to the offending tool's own result,
+    so the constraint is in front of the model inside the same turn.
+
+    Once per subject per session. Returns "" for anything that is not a write,
+    for app-level calls, and whenever lore has nothing specific to say — which
+    is most of the time, and costs one indexed query.
+
+    Deliberately advisory. Lore is a claim, not a permission system: `access.py`
+    is the thing that fails closed, and an entry that wrongly blocked an edit
+    would be the fastest way to get lore switched off.
+    """
+    if not _enabled() or not getattr(settings, "LORE_ADVISE_BEFORE_EDITS", False):
+        return ""
+    ident = _identity(session)
+    if not ident:
+        return ""
+    client_code, app_code = ident
+
+    try:
+        from app.services.lore import watch as _watch
+
+        # The same classifier the edit observer uses, so "is this a write" has
+        # one answer in this codebase rather than two.
+        fact = _watch.classify(tool_name, params, summary="", success=True)
+        if fact is None or fact.subject == "app":
+            return ""
+        subject = fact.subject
+
+        advised = session.context.get(ADVISED_KEY)
+        if not isinstance(advised, list):
+            advised = []
+        if subject in advised:
+            return ""
+
+        scope = await access.resolve_scope(_Auth(client_code), app_code)
+        if not scope.can_read:
+            return ""
+        result = await retrieval.brief(
+            scope, subject=subject, budget=PRE_WRITE_BUDGET, kinds=PRE_WRITE_KINDS,
+        )
+        # Record the subject as advised even when there was nothing to say, so a
+        # page with no lore is not re-queried on every write to it.
+        advised.append(subject)
+        session.context[ADVISED_KEY] = advised[-40:]
+        if not result.get("entry_count"):
+            return ""
+    except LoreAccessError:
+        return ""
+    except Exception:  # noqa: BLE001 — never break a tool call over lore
+        logger.debug("lore: pre-write advice skipped", exc_info=True)
+        return ""
+
+    return (
+        f"\n\n<lore subject=\"{subject}\">\n"
+        f"Before you change `{subject}` again — this is what this app already "
+        f"knows about it. Follow it, or say plainly that you disagree and why.\n\n"
+        f"{result['markdown']}\n</lore>"
+    )

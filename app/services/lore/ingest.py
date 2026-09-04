@@ -18,7 +18,8 @@ from typing import Any, Iterable, Sequence
 from app.db.connection import is_pool_available
 from app.services.lore import store
 from app.services.lore.curator import redact
-from app.services.lore.models import normalise_subject
+from app.config import settings
+from app.services.lore.models import looks_durable, normalise_subject
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +59,17 @@ async def from_chat_turn(
     subject: str = "app",
     user_id: int = 0,
 ) -> dict[str, Any]:
-    """Record one exchange in an agent session.
+    """Record one exchange in an agent session, when it carries a claim.
 
-    Both halves go in as separate observations: what was asked and what was
-    reported are different kinds of evidence, and the curator weights an
-    explicit user instruction more heavily than the agent's own narration.
+    Both halves used to go in unconditionally, and that is what filled the
+    first 267 rows with 192 chat observations that yielded nothing: the
+    assistant half is self-narration, and the user half is usually a build
+    instruction that the resulting `edit` observation records far better.
+
+    So the assistant half is off by default (`LORE_OBSERVE_AGENT_NARRATION`)
+    and the user half must carry a declarative marker to be worth a row. An
+    aside like "do it that way because the older runtime breaks otherwise" is
+    exactly what lore wants; "set the description to X" is not.
     """
     if not _enabled():
         return {"recorded": 0}
@@ -70,7 +77,11 @@ async def from_chat_turn(
     source = f"{agent_name}:session:{session_id}"[:160]
     payload: list[dict[str, Any]] = []
 
-    if user_message and len(user_message.strip()) >= MIN_CHAT_CHARS:
+    if (
+        user_message
+        and len(user_message.strip()) >= MIN_CHAT_CHARS
+        and looks_durable(user_message)
+    ):
         payload.append({
             "kind": "chat",
             "source": source,
@@ -80,7 +91,12 @@ async def from_chat_turn(
             "observed_by": user_id,
         })
 
-    if assistant_message and len(assistant_message.strip()) >= MIN_CHAT_CHARS:
+    if (
+        settings.LORE_OBSERVE_AGENT_NARRATION
+        and assistant_message
+        and len(assistant_message.strip()) >= MIN_CHAT_CHARS
+        and looks_durable(assistant_message)
+    ):
         payload.append({
             "kind": "chat",
             "source": source,

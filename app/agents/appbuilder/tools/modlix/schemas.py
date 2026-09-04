@@ -441,6 +441,7 @@ def _summarize_storage(s: dict[str, Any]) -> str:
         f"  version: {s.get('version')}",
         f"  clientCode: {s.get('clientCode')}",
         f"  flags: audited={s.get('isAudited')} versioned={s.get('isVersioned')} "
+        f"appLevel={s.get('isAppLevel')} "
         f"onlyThruKIRun={s.get('onlyThruKIRun')} generateEvents={s.get('generateEvents')}",
     ]
     for label, field in (("createAuth", "createAuth"), ("readAuth", "readAuth"),
@@ -486,6 +487,7 @@ async def _execute_list_storages(params: dict[str, Any], context: dict[str, Any]
         "triggers": sum(len(v or []) for v in (s.get("triggers") or {}).values()),
         "audited": s.get("isAudited"),
         "versioned": s.get("isVersioned"),
+        "appLevel": s.get("isAppLevel"),
     } for s in content]
     return ToolResult(success=True, summary=f"Storages in app '{ac}' ({len(rows)}):\n{json.dumps(rows, indent=2, default=str)}")
 
@@ -576,6 +578,7 @@ async def _execute_create_storage(params: dict[str, Any], context: dict[str, Any
         "name": name, "appCode": ac, "clientCode": cc, "schema": schema,
         "isAudited": bool(params.get("is_audited", True)),
         "isVersioned": bool(params.get("is_versioned", False)),
+        "isAppLevel": bool(params.get("is_app_level", False)),
         "onlyThruKIRun": bool(params.get("only_thru_kirun", False)),
         "generateEvents": bool(params.get("generate_events", False)),
         "message": params.get("message") or "Created storage via CFA",
@@ -618,6 +621,22 @@ create_storage_tool = ToolDefinition(
         ToolParameter(name="delete_auth", type="string", required=False, description=f"{_DESC_AUTHORITY_FMT} for DELETE"),
         ToolParameter(name="is_audited", type="boolean", required=False, default=True, description="Track created/updated by per row"),
         ToolParameter(name="is_versioned", type="boolean", required=False, default=False, description="Keep version history"),
+        ToolParameter(
+            name="is_app_level", type="boolean", required=False, default=False,
+            description=(
+                "App-level storage. It gates one thing: a per-client OVERRIDE of this DEFINITION "
+                "is refused unless the caller has app write access (StorageService.create). "
+                "It does NOT make the rows shared or app-wide. Row data stays scoped to the "
+                "clientCode header on every route, this flag set or not, verified on local by "
+                "writing under two client headers both ways and by running copyToDraft and "
+                "clear-rows per client. MongoAppDataService swaps in ca.getUrlClientCode() when "
+                "the flag is set, but JWTTokenFilter sets urlClientCode FROM that same header, "
+                "so the swap is a no-op wherever the header is present. So an app-level storage "
+                "still accumulates MANY clients' rows: one app runs from several URLs under "
+                "different client contexts, each landing in its own <CLIENT>_<app> database. "
+                "Anything that browses these rows needs a client picker regardless of this flag."
+            ),
+        ),
         ToolParameter(
             name="only_thru_kirun", type="boolean", required=False, default=False,
             description=(
@@ -694,6 +713,7 @@ async def _execute_update_storage(params: dict[str, Any], context: dict[str, Any
             changed.append(body_key)
     for opt_key, body_key in (
         ("is_audited", "isAudited"), ("is_versioned", "isVersioned"),
+        ("is_app_level", "isAppLevel"),
         ("only_thru_kirun", "onlyThruKIRun"), ("generate_events", "generateEvents"),
     ):
         v = params.get(opt_key)
@@ -726,6 +746,13 @@ update_storage_tool = ToolDefinition(
         ToolParameter(name="delete_auth", type="string", required=False, description=f"Replace {_DESC_AUTHORITY_FMT}"),
         ToolParameter(name="is_audited", type="boolean", required=False, description="Toggle audit"),
         ToolParameter(name="is_versioned", type="boolean", required=False, description="Toggle versioning"),
+        ToolParameter(
+            name="is_app_level", type="boolean", required=False,
+            description=(
+                "Toggle app-level: gates per-client OVERRIDES of this definition on app write "
+                "access. Row data stays scoped to the clientCode header regardless."
+            ),
+        ),
         ToolParameter(name="only_thru_kirun", type="boolean", required=False, description="Toggle REST-write block"),
         ToolParameter(name="generate_events", type="boolean", required=False, description="Toggle event emission"),
         ToolParameter(name="title", type="string", required=False, description="Replace title"),

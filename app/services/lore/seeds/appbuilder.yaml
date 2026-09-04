@@ -1,0 +1,330 @@
+# Lore seed — appbuilder / SYSTEM
+#
+# Hand-authored from modlix-apps/appbuilder_SYSTEM/{OVERVIEW,CONVENTIONS,INDEX,
+# SURFACE_MAP}.md, with every claim checked against the live definitions in the
+# `ui` database on 2026-09-04 (95 pages, 3 functions, 1 schema).
+#
+# What is deliberately NOT in here: page ids, component counts, root component
+# keys, event-function step counts. All of that is in the definitions already,
+# goes stale on the next edit, and would crowd out the claims that cannot be
+# derived. ROADMAP.md and IDE_PLAN.md are excluded entirely — they are plans,
+# and a plan recorded as a fact is worse than no entry.
+#
+# Pinned rows are the ones an edit to this app cannot falsify. Everything else
+# is left unpinned so contradiction and stale-subject standing keep working on
+# it; see docs/lore.md on why pinning hides a contradiction rather than
+# resolving it.
+
+format: lore_transport/v1
+app_code: appbuilder
+client_code: SYSTEM
+source: seed:appbuilder/v1
+resolved: false
+
+entries:
+
+  # ── purpose ──────────────────────────────────────────────────────────
+  - key: purpose-what-appbuilder-is
+    kind: purpose
+    subject: app
+    confidence: 95
+    pinned: true
+    title: App Builder is the Modlix builder, built in Modlix
+    tags: [product, dogfood]
+    body: |
+      `appbuilder` is the no-code application builder that Modlix users open to
+      create, edit and manage their own apps and sites: adding pages, placing
+      components, wiring Kirun functions, defining storages and publishing.
+
+      It is also the platform's own dogfood example, because App Builder is
+      itself a Modlix app. That second role is the reason changes here get
+      judged twice: it has to work, and it has to be the kind of thing you
+      would want someone to copy.
+
+  - key: purpose-two-audiences
+    kind: purpose
+    subject: app
+    confidence: 85
+    pinned: true
+    title: Three audiences, and non-developers are the constraint
+    tags: [product, users]
+    body: |
+      The app serves non-developers building business apps, developers using it
+      to scaffold before dropping to custom code, and internal teams
+      demonstrating the platform. The first group is the binding constraint on
+      every interface decision: an affordance that only makes sense to someone
+      who already knows the platform has failed at its main job.
+
+  # ── conventions ──────────────────────────────────────────────────────
+  - key: convention-page-naming
+    kind: convention
+    subject: app
+    confidence: 90
+    title: Pages are camelCase; the PascalCase ones are legacy
+    tags: [naming]
+    body: |
+      New pages are camelCase with a lower first letter — `editPage`, `appEdit`,
+      `storagetable`, `builderLanding`. The PascalCase pages that exist
+      (`Contact`, `ContactCFA`, `Permissions`, `TestPage*`) are legacy and must
+      not be matched for new work. There are both a `Permissions` and a
+      `permissions` page, which is the cost of having drifted once already.
+
+  - key: convention-function-naming
+    kind: convention
+    subject: app
+    confidence: 90
+    title: Functions are Namespace.functionName; System and UIEngine are reserved
+    tags: [naming, kirun]
+    body: |
+      Application functions are named `Namespace.functionName`. The `System.*`
+      and `UIEngine.*` namespaces are reserved for platform built-ins and must
+      never be used for app functions. Storages use PascalCase for the entity
+      name (`Section`, `CustomerData`); URIPaths are REST-style.
+
+  - key: convention-reuse-editors
+    kind: convention
+    subject: app
+    confidence: 85
+    title: Copy editPage for editors, apps for lists
+    tags: [reuse, patterns]
+    body: |
+      A new editor screen starts from `editPage`, `editFunction` or
+      `editStorage`: same shell, same component conventions, with the
+      right-hand pane swapped for the entity-specific editor. A new list screen
+      starts from `apps`, which already has search, filter, paginate, create
+      and bulk-action working. Reuse is the stated preference over duplication
+      here, and these are the two shapes worth copying.
+
+  - key: convention-workspace-panes-are-subpages
+    kind: convention
+    subject: page:workspace
+    confidence: 85
+    title: A workspace pane is a SubPage named by the tab record
+    tags: [workspace, ide]
+    body: |
+      The workspace is a tabbed shell. Each tab's editor is rendered by a
+      SubPage whose `pageName` is an expression reading the tab record's
+      `editorPage`, so adding a pane means adding a page plus a registry row —
+      not adding components to `workspace` itself. The pane pages are the
+      `ws*` family (`wsFields`, `wsFiles`, `wsStorage`, `wsBlog`, `wsSettings`
+      and the `wsSet*` faces).
+
+  - key: convention-authority-strings-constructed
+    kind: convention
+    subject: app
+    confidence: 85
+    title: Authority strings are constructed, never hand-written
+    tags: [auth, authorities]
+    body: |
+      Authority strings are built through the `make_role_authority`,
+      `make_profile_authority` and `make_permission_authority` helpers rather
+      than assembled by hand. Hand-built authority strings are the kind of
+      thing that looks right, passes review, and then silently never matches.
+
+  # ── constraints ──────────────────────────────────────────────────────
+  - key: constraint-never-write-tenant-mongo
+    kind: constraint
+    subject: app
+    confidence: 95
+    pinned: true
+    title: Never write to a per-tenant CLIENT_app mongo database
+    tags: [data, safety]
+    body: |
+      The per-tenant `<CLIENT>_<appCode>` mongo databases hold real customer
+      data and are read-only from this app's point of view. All writes go
+      through Kirun functions and the data API. This holds regardless of how
+      convenient a direct write looks, and it is true by construction rather
+      than by convention: there is no supported path that makes it safe.
+
+  - key: constraint-no-test-pages-in-production
+    kind: constraint
+    subject: app
+    confidence: 90
+    pinned: true
+    title: No test pages in appbuilder; monkbars is the playground
+    tags: [hygiene]
+    body: |
+      `TestPage*` and `test*` pages do not belong in the production appbuilder
+      app. The playground app is `monkbars`. Two legacy `TestPage` pages exist
+      as evidence of what happens when this is not held to.
+
+  - key: constraint-chrome-chain-references
+    kind: constraint
+    subject: app
+    confidence: 85
+    title: A new page in the chrome chain must update properties references
+    tags: [chrome, properties]
+    body: |
+      A new top-level page that belongs in the chrome chain is not finished
+      until `properties.defaultPage` and `properties.shellPage` are updated to
+      match. A page that is only reachable because something else happens to
+      point at it is a page that will be orphaned by the next change.
+
+  # ── glossary ─────────────────────────────────────────────────────────
+  - key: glossary-shell-page
+    kind: glossary
+    subject: app
+    confidence: 90
+    title: shellPage is the chrome; wrapShell false means full-bleed
+    tags: [chrome, glossary]
+    body: |
+      `shellPage` is the page that supplies the app's chrome, and most pages are
+      rendered wrapped inside it. A page with `wrapShell: false` renders
+      full-bleed instead, which is what the marketing-style landing pages do.
+      The wrapped path keys its context off the definition name, so wrapping
+      changes more than appearance.
+
+  - key: glossary-ws-pages
+    kind: glossary
+    subject: app
+    confidence: 90
+    title: The ws prefix means a workspace pane, wsSet a settings face
+    tags: [naming, workspace]
+    body: |
+      A page named `ws<Something>` is a workspace pane rendered inside the
+      `workspace` shell. A page named `wsSet<Something>` is one face of the
+      settings pane. `wsNotBuilt` and `wsSetNotBuilt` are the deliberate
+      placeholders shown where a surface is designed but not implemented, which
+      is why finding one is information rather than a bug.
+
+  - key: glossary-appedit-vs-workspace
+    kind: glossary
+    subject: app
+    confidence: 80
+    title: appEdit is the old mega-page, workspace is the IDE replacing it
+    tags: [workspace, history]
+    body: |
+      Two editing surfaces exist. `appEdit` is the older single mega-page with
+      many tabs, reached from the `apps` list. `workspace` is the tabbed IDE
+      shell that replaces it, with a navigation tree and SubPage panes. Both are
+      live; work on the editing experience belongs in `workspace` unless there
+      is a specific reason otherwise.
+
+  # ── decisions ────────────────────────────────────────────────────────
+  - key: decision-ide-wraps-react-editors
+    kind: decision
+    subject: page:workspace
+    confidence: 85
+    title: The IDE shell wraps the React editors rather than replacing them
+    tags: [ide, architecture]
+    body: |
+      The workspace shell is a shell rewrite only. The React editor components
+      (`PageEditor`, `KIRunEditor`, `SchemaBuilder`, `ThemeEditor`,
+      `TemplateEditor`) and the Modlix runtime are unchanged, and the new shell
+      wraps them. This was chosen so the IDE could ship incrementally without a
+      simultaneous rewrite of every editor, and it is why a pane is usually a
+      thin host around an existing component.
+
+  - key: decision-lore-has-no-screen
+    kind: status
+    subject: app
+    confidence: 85
+    pinned: true
+    title: Lore runs in nocode-ai but has no screen in the workspace yet
+    tags: [lore, ai]
+    body: |
+      The lore service — the per-app accumulated knowledge this entry is part of
+      — runs in `nocode-ai` and is used by the AppBuilder agent, which folds an
+      app briefing into its own system prompt. What does not exist is the
+      surface: there is no Lore row in the workspace tree and no page behind it.
+      The designed screen is kept as the spec in
+      `modlix-apps/appbuilder_SYSTEM/mockup/index.html`. Pinned because it is a
+      pointer someone will need and a `status` entry otherwise ages out in
+      fourteen days.
+
+  # ── gotchas ──────────────────────────────────────────────────────────
+  - key: gotcha-forbiddenpage-does-not-exist
+    kind: gotcha
+    subject: app
+    confidence: 90
+    title: properties.forbiddenPage names a page that does not exist
+    tags: [properties, auth, bug]
+    body: |
+      `properties.forbiddenPage` is set to `forbiddenPage`, and there is no page
+      by that name among the app's 95 pages. Anything relying on a redirect to
+      the forbidden page will not land anywhere useful. Verified against the
+      live definition on 2026-09-04; either the page needs creating or the
+      property needs repointing.
+
+  - key: gotcha-overview-doc-is-stale-on-defaultpage
+    kind: gotcha
+    subject: app
+    confidence: 90
+    title: The OVERVIEW doc is stale about defaultPage and loginPage
+    tags: [docs, properties]
+    body: |
+      `modlix-apps/appbuilder_SYSTEM/OVERVIEW.md` states `defaultPage: homeTwo`
+      and `loginPage: loginPage`. The live definition has
+      `defaultPage: builderLanding` and `loginPage: builderLanding`, and there
+      is no `homeTwo` page at all. Check the definition, not the folder, before
+      relying on any properties claim in these docs.
+
+  - key: gotcha-per-page-role-guards-live-in-onload
+    kind: gotcha
+    subject: app
+    confidence: 80
+    title: Per-page role guards live in onLoad, not in a page property
+    tags: [auth, events]
+    body: |
+      Anonymous access is gated by the shellPage chrome through
+      `properties.loginPage`. A guard for a specific role is not a page
+      property: it goes in that page's onLoad event function, which checks the
+      authority and redirects. So a page that looks unguarded in its definition
+      may still be guarded, and a page whose onLoad was rewritten may have lost
+      its guard without anything looking wrong.
+
+  # ── howto ────────────────────────────────────────────────────────────
+  - key: howto-add-a-workspace-pane
+    kind: howto
+    subject: page:workspace
+    confidence: 80
+    title: How to add a workspace pane
+    tags: [workspace, howto]
+    body: |
+      Four things, in order: create the pane page (`ws<Name>`); add a registry
+      row to the workspace bootstrap naming its `editorPage`; add an open-tab
+      event and a tree or footer row that fires it; and add the page to the
+      style and theme sweeps so its colours are theme-aware rather than
+      literal. A pane with no registry row is unreachable; a pane missing from
+      the sweeps looks wrong in the other theme only.
+
+  - key: howto-generators-own-these-pages
+    kind: howto
+    subject: app
+    confidence: 90
+    title: These pages are generated; edit the script, not the page
+    tags: [tooling, workspace]
+    body: |
+      The workspace pages are built by generator scripts in
+      `modlix-apps/appbuilder_SYSTEM/tools/` (`ws_settings.py`, `ws_data.py`,
+      `ws_draft.py`, `ws_new_page.py` and others). Those scripts own their
+      pages and patch `workspace` by naming what they touch, so an edit made
+      directly through the page tools is reverted the next time one runs. To
+      change a pane, change its script and re-run it.
+
+  # ── integrations ─────────────────────────────────────────────────────
+  - key: integration-ai-agent-is-the-prompt-component
+    kind: integration
+    subject: app
+    confidence: 85
+    title: The AI agent surface is the Prompt component talking to nocode-ai
+    tags: [ai, agent]
+    body: |
+      The in-app AI assistance is the `Prompt` component, which streams from
+      `/api/ai/appbuilder/chat` in the `nocode-ai` service over SSE. It carries
+      the editor context and the set of open drafts with each turn, so what the
+      agent knows about the current screen comes from the page, not from the
+      server guessing.
+
+  - key: integration-ai-routes-through-gateway
+    kind: integration
+    subject: app
+    confidence: 80
+    title: A page can call /api/ai/** directly through the gateway
+    tags: [ai, gateway]
+    body: |
+      The gateway routes `/api/ai/**` (and the same path nested under client and
+      app segments) to the `ai` service, and it fills the `appCode` and
+      `clientCode` headers only when they are blank. So a page's own FetchData
+      or SendData can call an AI endpoint directly with the logged-in token, and
+      supply its own headers. No proxy in core or ui is needed for this.
