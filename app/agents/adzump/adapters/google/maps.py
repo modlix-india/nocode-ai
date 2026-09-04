@@ -78,19 +78,20 @@ class GoogleMapsClient:
                 return None
         return None
 
-    async def find_business_website(
-        self, name: str, *, lat: float | None = None, lng: float | None = None
-    ) -> dict | None:
+    async def find_business_listings(
+        self, name: str, *, lat: float | None = None, lng: float | None = None,
+        page_size: int = 3,
+    ) -> list[dict]:
         """Google Business Profile lookup via Places Text Search (New).
 
-        Returns ``{"name", "website"}`` for the top listing matching ``name``,
-        biased to the given point when provided, or None when there is no
-        listing, the listing has no website, or the API is unavailable. The
-        caller owns acceptance (name similarity, host quality) - this is a
-        dumb lookup."""
+        Returns up to ``page_size`` listings matching ``name`` in ranking
+        order, biased to the given point when provided - each as
+        ``{"name", "website"}`` (website may be ""). Empty list when there is
+        no listing or the API is unavailable. The caller owns acceptance
+        (name similarity, host quality) - this is a dumb lookup."""
         if not self.api_key or not name.strip():
-            return None
-        body: dict = {"textQuery": name, "pageSize": 1}
+            return []
+        body: dict = {"textQuery": name, "pageSize": page_size}
         if lat is not None and lng is not None:
             body["locationBias"] = {"circle": {
                 "center": {"latitude": lat, "longitude": lng},
@@ -108,19 +109,18 @@ class GoogleMapsClient:
         except Exception as e:
             logger.warning("places_search failed for %r: %s: %s",
                            name, type(e).__name__, e)
-            return None
+            return []
         if response.status_code != 200:
             logger.warning("places_search non-200 for %r: %d %s",
                            name, response.status_code, response.text[:200])
-            return None
-        places = (response.json() or {}).get("places") or []
-        if not places:
-            return None
-        website = (places[0].get("websiteUri") or "").strip()
-        if not website:
-            return None
-        listing_name = ((places[0].get("displayName") or {}).get("text") or "").strip()
-        return {"name": listing_name, "website": website}
+            return []
+        return [
+            {
+                "name": ((place.get("displayName") or {}).get("text") or "").strip(),
+                "website": (place.get("websiteUri") or "").strip(),
+            }
+            for place in (response.json() or {}).get("places") or []
+        ]
 
     async def reverse_geocode(self, lat: float, lng: float) -> list[dict]:
         """Fetch reverse-geocoding candidate locations for coordinates."""

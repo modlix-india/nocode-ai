@@ -1,4 +1,4 @@
-"""GoogleMapsClient.find_business_website - the Places business-profile lookup."""
+"""GoogleMapsClient.find_business_listings - the Places business-profile lookup."""
 from __future__ import annotations
 
 import asyncio
@@ -21,39 +21,41 @@ def _client_returning(status_code: int, payload: dict):
     return ctx, stub
 
 
-class FindBusinessWebsiteTests(unittest.TestCase):
+class FindBusinessListingsTests(unittest.TestCase):
     def _lookup(self, status_code=200, payload=None, api_key="k", **kwargs):
         ctx, self.http = _client_returning(status_code, payload or {})
         with mock.patch.object(maps_module.httpx, "AsyncClient", return_value=ctx), \
              mock.patch.object(maps_module.settings, "GOOGLE_MAPS_API_KEY", api_key):
             return asyncio.run(
-                GoogleMapsClient().find_business_website("Lodha Azur", **kwargs))
+                GoogleMapsClient().find_business_listings("Lodha Azur", **kwargs))
 
-    def test_returns_listing_name_and_website(self):
-        result = self._lookup(payload={"places": [{
-            "displayName": {"text": "Lodha Azur"},
-            "websiteUri": "https://lodhagroup.com/azur",
-        }]})
-        self.assertEqual(result, {"name": "Lodha Azur",
-                                  "website": "https://lodhagroup.com/azur"})
+    def test_returns_ranked_listings_website_may_be_empty(self):
+        result = self._lookup(payload={"places": [
+            {"displayName": {"text": "Lodha Azur"},
+             "websiteUri": "https://lodhagroup.com/azur"},
+            {"displayName": {"text": "Lodha Azur Site Office"}},
+        ]})
+        self.assertEqual(result, [
+            {"name": "Lodha Azur", "website": "https://lodhagroup.com/azur"},
+            {"name": "Lodha Azur Site Office", "website": ""},
+        ])
 
-    def test_locality_bias_sent_when_coords_given(self):
+    def test_requests_top3_with_locality_bias(self):
         self._lookup(payload={"places": []}, lat=12.9, lng=77.6)
         body = self.http.post.await_args.kwargs["json"]
+        self.assertEqual(body["pageSize"], 3)
         center = body["locationBias"]["circle"]["center"]
         self.assertEqual((center["latitude"], center["longitude"]), (12.9, 77.6))
 
-    def test_none_rows(self):
+    def test_empty_rows(self):
         rows = [
             ("no api key", {"api_key": ""}),
             ("non-200", {"status_code": 403}),
             ("no listings", {"payload": {"places": []}}),
-            ("listing without website", {"payload": {"places": [
-                {"displayName": {"text": "Lodha Azur"}}]}}),
         ]
         for label, overrides in rows:
             with self.subTest(label):
-                self.assertIsNone(self._lookup(**overrides))
+                self.assertEqual(self._lookup(**overrides), [])
 
 
 if __name__ == "__main__":

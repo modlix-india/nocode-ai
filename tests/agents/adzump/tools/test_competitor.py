@@ -158,19 +158,61 @@ class ApplyUrlUpdatesTests(unittest.TestCase):
         self.assertIsNone(_find_competitor(competitive, "Lodha"))
 
 
-class UserPinnedUrlLadderTests(unittest.TestCase):
-    def test_ladder_never_overrides_a_user_pin(self):
-        pinned = {"name": "Nambiar Villas", "url": "https://real.example",
-                  "url_source": "user"}
-        unpinned = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
+class FinalEntryUrlModeTests(unittest.TestCase):
+    """User pins are never judged or laddered; shadow keeps ladder decisions
+    (judge only observes); active applies the judge's verdicts wholesale."""
+
+    def _resolve(self, competitors, *, mode, judgement=None):
+        from app.agents.adzump.competitor_identity import UrlJudgement
+        judgements = [judgement or UrlJudgement(status="no_evidence")
+                      for c in competitors if c.get("url_source") != "user"]
         with mock.patch.object(
             competitor, "resolve_project_url",
             new=mock.AsyncMock(return_value="https://ladder.example"),
-        ) as ladder:
-            asyncio.run(_resolve_final_entry_urls([pinned, unpinned], {}))
+        ) as ladder, mock.patch.object(
+            competitor, "judge_entry_urls",
+            new=mock.AsyncMock(return_value=judgements),
+        ) as judge, mock.patch.dict(
+            "os.environ", {"COMPETITOR_URL_JUDGE_MODE": mode},
+        ):
+            asyncio.run(_resolve_final_entry_urls(competitors, {}))
+        return ladder, judge
+
+    def test_pin_never_overridden_and_shadow_keeps_ladder(self):
+        pinned = {"name": "Nambiar Villas", "url": "https://real.example",
+                  "url_source": "user"}
+        unpinned = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
+        ladder, judge = self._resolve([pinned, unpinned], mode="shadow")
         self.assertEqual(pinned["url"], "https://real.example")
         self.assertEqual(unpinned["url"], "https://ladder.example")
         ladder.assert_awaited_once()
+        judge.assert_awaited_once()
+        self.assertNotIn(pinned, judge.await_args.args[0])  # pins never judged
+
+    def test_active_mode_applies_judge_verdict_without_ladder(self):
+        from app.agents.adzump.competitor_identity import UrlJudgement
+        entry = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
+        ladder, _ = self._resolve(
+            [entry], mode="active",
+            judgement=UrlJudgement(status="judged", url="https://judge.example",
+                                   picked_eid="E1", confidence="high"))
+        self.assertEqual(entry["url"], "https://judge.example")
+        ladder.assert_not_awaited()
+
+    def test_active_mode_judge_failure_means_link_less(self):
+        from app.agents.adzump.competitor_identity import UrlJudgement
+        entry = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
+        ladder, _ = self._resolve(
+            [entry], mode="active",
+            judgement=UrlJudgement(status="judge_failed"))
+        self.assertIsNone(entry["url"])
+        ladder.assert_not_awaited()
+
+    def test_off_mode_never_calls_the_judge(self):
+        entry = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
+        _, judge = self._resolve([entry], mode="off")
+        judge.assert_not_awaited()
+        self.assertEqual(entry["url"], "https://ladder.example")
 
 
 if __name__ == "__main__":

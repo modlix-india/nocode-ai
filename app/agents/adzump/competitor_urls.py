@@ -98,7 +98,7 @@ async def resolve_project_url(
         return current_url
 
     if _is_project_specific(website, name, session_ctx):
-        if await _is_alive(website):
+        if await is_alive(website):
             logger.info("project_url_resolved: %r -> %s (rung 2: GBP project site)",
                         name, website)
             return website
@@ -107,7 +107,7 @@ async def resolve_project_url(
                     name, current_url or "no url")
         return current_url
 
-    project_page = await _project_page_from_site(name, website)
+    project_page = await project_page_from_site(name, website, session_ctx)
     if project_page:
         logger.info("project_url_resolved: %r -> %s (rung 3: listing-site extraction)",
                     name, project_page)
@@ -115,7 +115,7 @@ async def resolve_project_url(
 
     # Rung 4 (D-7 keep-best): live GBP site beats a category/aggregator page;
     # a dead one keeps whatever the search stage found.
-    if await _is_alive(website):
+    if await is_alive(website):
         logger.info("project_url_resolved: %r -> %s (rung 4: live GBP site)",
                     name, website)
         return website
@@ -124,22 +124,34 @@ async def resolve_project_url(
     return current_url
 
 
-async def cached_business_listing(name: str, session_ctx: dict) -> dict | None:
-    """Locality-biased GBP lookup, memoized per session - both the candidate
-    stage (comp_discovery) and the final-entry ladder share the cache, misses
-    included, so a repeat round costs zero. Returns the RAW listing
-    (``{name, website}`` or None); acceptance guards run with each caller."""
+async def cached_business_listings(name: str, session_ctx: dict) -> list[dict]:
+    """Locality-biased GBP lookup, memoized per session - the candidate stage
+    (comp_discovery), the final-entry ladder, and the identity judge all share
+    one Places call per name, misses included. Returns the RAW top-3 listings
+    (``[{name, website}]``, website may be ""); acceptance guards run with
+    each caller. Concurrent first lookups for one name can both miss and both
+    call Places (benign: last write wins, cost of one duplicate call)."""
     from app.agents.adzump.adapters.google.maps import GoogleMapsClient
 
-    cache: dict = session_ctx.setdefault("_places_website_cache", {})
+    cache: dict = session_ctx.setdefault("_places_listings_cache", {})
     key = normalize_business_name(name)
     if key in cache:
         return cache[key]
     place = (session_ctx.get("product_data") or {}).get("place") or {}
-    listing = await GoogleMapsClient().find_business_website(
+    listings = await GoogleMapsClient().find_business_listings(
         name, lat=place.get("lat"), lng=place.get("lng"))
-    cache[key] = listing
-    return listing
+    cache[key] = listings
+    return listings
+
+
+async def cached_business_listing(name: str, session_ctx: dict) -> dict | None:
+    """The ladder's view of the lookup: the TOP listing when it has a website,
+    else None (a lower listing's website is weaker identity evidence than the
+    ranking says - the judge weighs those, the ladder never did)."""
+    listings = await cached_business_listings(name, session_ctx)
+    if listings and listings[0].get("website"):
+        return listings[0]
+    return None
 
 
 # ─── GBP acceptance guards (shared with the candidate stage) ───────────────
@@ -252,7 +264,7 @@ def _compact(text: str) -> str:
 
 # ─── Rung helpers ───────────────────────────────────────────────────────────
 
-async def _is_alive(url: str) -> bool:
+async def is_alive(url: str) -> bool:
     """Liveness only - content is GBP-trusted. HEAD, with one GET retry for
     servers that reject HEAD."""
     try:
@@ -267,25 +279,38 @@ async def _is_alive(url: str) -> bool:
         return False
 
 
-async def _project_page_from_site(name: str, listing_url: str) -> str | None:
-    """Rung 3: ask the GBP-listed site for its own {name} project page.
-    Same-host guarded - a cross-host answer is a hallucination or an outbound
-    link, either way not this site's project page. Not memoized (rare, and
-    the answer depends only on the fetched page)."""
+async def project_page_from_site(
+    name: str, listing_url: str, session_ctx: dict | None = None,
+) -> str | None:
+    """Ask a site for its own {name} project page (ladder rung 3; also judge
+    evidence). Same-host guarded - a cross-host answer is a hallucination or
+    an outbound link, either way not this site's project page. Session-
+    memoized by (host, name), misses included: in shadow mode the ladder and
+    the judge both ask, and the answer depends only on the fetched page."""
     from app.agents.adzump.agents.product.adapters.web_fetch_adapter import (
         fetch_and_answer,
     )
 
+    cache: dict | None = None
+    cache_key = ""
+    if session_ctx is not None:
+        cache = session_ctx.setdefault("_project_page_cache", {})
+        cache_key = f"{host_of(listing_url)}|{normalize_business_name(name)}"
+        if cache_key in cache:
+            return cache[cache_key]
+
+    project_page: str | None = None
     try:
         result = await asyncio.wait_for(
             fetch_and_answer(listing_url, _PROJECT_PAGE_QUESTION.format(name=name)),
             timeout=_EXTRACTION_TIMEOUT_SECONDS,
         )
     except Exception:
-        return None
-    if not isinstance(result, dict) or result.get("status") != "ok":
-        return None
-    project_page = parse_official_url(result.get("answer") or "")
-    if not project_page or host_of(project_page) != host_of(listing_url):
-        return None
+        result = None
+    if isinstance(result, dict) and result.get("status") == "ok":
+        extracted = parse_official_url(result.get("answer") or "")
+        if extracted and host_of(extracted) == host_of(listing_url):
+            project_page = extracted
+    if cache is not None:
+        cache[cache_key] = project_page
     return project_page

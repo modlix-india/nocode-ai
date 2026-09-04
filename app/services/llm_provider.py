@@ -318,7 +318,26 @@ class LLMProvider(ABC):
             - usage: Token usage info
         """
         pass
-    
+
+    async def create_structured_completion(
+        self,
+        system_prompt: str,
+        payload_json: str,
+        output_schema: Dict[str, Any],
+        model_tier: str = "fast",
+        max_tokens: int = 2048,
+    ) -> Dict[str, Any]:
+        """Single-turn completion constrained to a JSON schema.
+
+        Returns {"parsed": dict, "usage": {...}, "model": str}. Implemented for
+        Anthropic (output_config json_schema) and OpenAI (Responses text
+        format); other providers raise until they grow schema support. Feature
+        code must call this through services.structured_call, never directly -
+        that seam owns retry + usage logging.
+        """
+        raise NotImplementedError(
+            f"{self.name} does not support structured completions")
+
     @abstractmethod
     def supports_vision(self) -> bool:
         """Whether this provider supports vision/image inputs"""
@@ -526,7 +545,55 @@ class AnthropicProvider(LLMProvider):
             "model": model,
             "stop_reason": response.stop_reason
         }
-    
+
+    async def create_structured_completion(
+        self,
+        system_prompt: str,
+        payload_json: str,
+        output_schema: Dict[str, Any],
+        model_tier: str = "fast",
+        max_tokens: int = 2048,
+    ) -> Dict[str, Any]:
+        """Schema-constrained single turn via output_config json_schema."""
+        import json as json_lib
+        model = self.get_model(model_tier)
+        response = await asyncio.to_thread(
+            self.client.messages.create,
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": payload_json}],
+            output_config={
+                "format": {"type": "json_schema", "schema": output_schema},
+            },
+        )
+        parsed: Dict[str, Any] | None = None
+        for block in response.content:
+            if getattr(block, "type", None) != "text":
+                continue
+            block_parsed = getattr(block, "parsed_output", None)
+            if isinstance(block_parsed, dict):
+                parsed = block_parsed
+                break
+            text = getattr(block, "text", "") or ""
+            if text:
+                parsed = json_lib.loads(text)
+                break
+        if parsed is None:
+            # Truncation/refusal must look like a failure (so the caller's
+            # retry fires), never like a valid-but-empty answer.
+            raise ValueError(
+                f"no structured output in response (stop_reason="
+                f"{response.stop_reason})")
+        return {
+            "parsed": parsed,
+            "usage": {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            },
+            "model": model,
+        }
+
     async def create_completion_with_tools(
         self,
         system_prompt: Any,
@@ -1016,6 +1083,39 @@ class OpenAIProvider(LLMProvider):
             },
             "model": model,
             "stop_reason": "end_turn",
+        }
+
+    async def create_structured_completion(
+        self,
+        system_prompt: str,
+        payload_json: str,
+        output_schema: Dict[str, Any],
+        model_tier: str = "fast",
+        max_tokens: int = 2048,
+    ) -> Dict[str, Any]:
+        """Schema-constrained single turn via Responses API text format."""
+        import json as json_lib
+        model = self.get_model(model_tier)
+        response = await asyncio.to_thread(
+            self.client.responses.create,
+            model=model,
+            instructions=system_prompt,
+            input=[{"role": "user", "content": payload_json}],
+            max_output_tokens=max_tokens,
+            store=False,
+            text={"format": {"type": "json_schema", "name": "structured_output",
+                             "schema": output_schema, "strict": True}},
+        )
+        if not response.output_text:
+            # Truncation/refusal must fail loudly, not parse as {}.
+            raise ValueError("no structured output in response")
+        return {
+            "parsed": json_lib.loads(response.output_text),
+            "usage": {
+                "input_tokens": getattr(response.usage, 'input_tokens', 0),
+                "output_tokens": getattr(response.usage, 'output_tokens', 0),
+            },
+            "model": model,
         }
 
     async def create_completion_with_tools(

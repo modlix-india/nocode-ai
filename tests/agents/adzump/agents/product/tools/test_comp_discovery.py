@@ -221,7 +221,8 @@ class ResolveUrlsTests(unittest.TestCase):
         session = session or {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
         client = mock.Mock()
         listings = listing if isinstance(listing, list) else [listing]
-        client.find_business_website = mock.AsyncMock(side_effect=listings)
+        client.find_business_listings = mock.AsyncMock(
+            side_effect=[[l] if l else [] for l in listings])
         with mock.patch(
             "app.agents.adzump.adapters.google.maps.GoogleMapsClient",
             return_value=client,
@@ -243,8 +244,8 @@ class ResolveUrlsTests(unittest.TestCase):
         self.assertEqual(candidates[0]["search_url"], "https://99acres.com/x")
         self.assertEqual(candidates[1]["url"], "https://lodhagroup.com/azur")
         self.assertNotIn("search_url", candidates[1])  # nothing displaced
-        self.assertEqual(client.find_business_website.await_count, 2)
-        kwargs = client.find_business_website.await_args.kwargs
+        self.assertEqual(client.find_business_listings.await_count, 2)
+        kwargs = client.find_business_listings.await_args.kwargs
         self.assertEqual((kwargs["lat"], kwargs["lng"]), (12.9, 77.6))
 
     def test_good_search_url_spends_no_lookup(self):
@@ -255,17 +256,17 @@ class ResolveUrlsTests(unittest.TestCase):
         client = self._run(candidates, [])
         self.assertEqual(candidates[0]["url"],
                          "https://www.puravankara.com/villas-in-bannerghatta-road")
-        self.assertEqual(client.find_business_website.await_count, 0)
+        self.assertEqual(client.find_business_listings.await_count, 0)
 
     def test_memo_spends_one_lookup_per_name(self):
         session = {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
         listing = {"name": "Lodha Azur", "website": "https://lodhagroup.com/azur"}
         first = [{"name": "Lodha Azur", "url": None}]
         client = self._run(first, [listing], session=session)
-        self.assertEqual(client.find_business_website.await_count, 1)
+        self.assertEqual(client.find_business_listings.await_count, 1)
         repeat = [{"name": "Lodha Azur", "url": None}]
         client = self._run(repeat, [], session=session)  # memo hit - no call
-        self.assertEqual(client.find_business_website.await_count, 0)
+        self.assertEqual(client.find_business_listings.await_count, 0)
         self.assertEqual(repeat[0]["url"], "https://lodhagroup.com/azur")
 
     def test_guard_misses_keep_the_search_url(self):

@@ -23,6 +23,7 @@ from app.agents.adzump._shared import (
     is_aggregator_host,
     primary_screenshot_url,
 )
+from app.agents.adzump.competitor_identity import judge_entry_urls, judge_mode
 from app.agents.adzump.competitor_urls import resolve_project_url
 
 logger = logging.getLogger(__name__)
@@ -79,19 +80,46 @@ def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
 
 
 async def _resolve_final_entry_urls(competitors: list, session_ctx: dict) -> None:
-    """CP-4: settle every entry's URL at the project level - analyst names are
-    clean here (unlike candidate-stage SEO titles), so the GBP-backed ladder
-    matches well. Sequential on purpose: entries share the session lookup memo.
-    A user-pinned URL (url_source=user) is the highest-trust evidence and is
-    never overridden."""
-    for comp in competitors:
-        if not isinstance(comp, dict) or not comp.get("name"):
-            continue
-        if comp.get("url_source") == "user":
-            continue
-        comp["url"] = await resolve_project_url(
+    """Settle every entry's URL at the project level. A user-pinned URL
+    (url_source=user) is the highest-trust evidence and is never overridden.
+
+    CP-5 v2 migration modes (COMPETITOR_URL_JUDGE_MODE): shadow (default) -
+    the CP-4 ladder decides as shipped while the identity judge runs beside it
+    and divergences are logged for hand-labeling; active - the judge decides
+    (low confidence / no evidence / judge failure all mean honestly link-less,
+    no heuristic fallback); off - ladder only."""
+    eligible = [comp for comp in competitors
+                if isinstance(comp, dict) and comp.get("name")
+                and comp.get("url_source") != "user"]
+    if not eligible:
+        return
+
+    mode = judge_mode()
+    judgements = None
+    if mode in ("shadow", "active"):
+        judgements = await judge_entry_urls(eligible, session_ctx)
+
+    if mode == "active" and judgements is not None:
+        for comp, judgement in zip(eligible, judgements):
+            comp["url"] = judgement.url
+        return
+
+    # Ladder decides (shadow/off). Sequential on purpose: entries share the
+    # session lookup memo, and analyst names are clean here so GBP matches.
+    for i, comp in enumerate(eligible):
+        ladder_url = await resolve_project_url(
             comp["name"], comp.get("url"), session_ctx
         )
+        if judgements is not None:
+            judgement = judgements[i]
+            if (judgement.url or None) != (ladder_url or None):
+                logger.info(
+                    "url_judge_divergence: name=%r ladder=%s judge=%s "
+                    "confidence=%s status=%s reason=%s",
+                    comp["name"], ladder_url, judgement.url,
+                    judgement.confidence, judgement.status, judgement.reason,
+                )
+        comp["url"] = ladder_url
 
 
 _URL_VERIFY_QUESTION = (

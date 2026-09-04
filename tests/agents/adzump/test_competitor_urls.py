@@ -115,13 +115,14 @@ class BrokerStyleTldTests(unittest.TestCase):
 
 class LadderTests(unittest.TestCase):
     """The CP-4 rungs, each mocked at its seam: GBP via GoogleMapsClient,
-    liveness via _is_alive, extraction via fetch_and_answer."""
+    liveness via is_alive, extraction via fetch_and_answer."""
 
     def _resolve(self, name, current_url, *, listing, alive=True,
                  extraction_answer=None, session=None):
         session = session or _session()
         client = mock.Mock()
-        client.find_business_website = mock.AsyncMock(return_value=listing)
+        client.find_business_listings = mock.AsyncMock(
+            return_value=[listing] if listing else [])
 
         async def fake_fetch(url, question):
             if extraction_answer is None:
@@ -133,7 +134,7 @@ class LadderTests(unittest.TestCase):
             "app.agents.adzump.adapters.google.maps.GoogleMapsClient",
             return_value=client,
         ), mock.patch(
-            "app.agents.adzump.competitor_urls._is_alive",
+            "app.agents.adzump.competitor_urls.is_alive",
             new=mock.AsyncMock(return_value=alive),
         ), mock.patch(
             "app.agents.adzump.agents.product.adapters"
@@ -141,7 +142,7 @@ class LadderTests(unittest.TestCase):
             new=fake_fetch,
         ):
             result = asyncio.run(resolve_project_url(name, current_url, session))
-        self.gbp_calls = client.find_business_website.await_count
+        self.gbp_calls = client.find_business_listings.await_count
         return result
 
     def test_project_specific_current_url_short_circuits(self):
@@ -228,7 +229,7 @@ class ListingMemoTests(unittest.TestCase):
     def test_one_lookup_per_name_and_misses_memoized(self):
         session = _session()
         client = mock.Mock()
-        client.find_business_website = mock.AsyncMock(return_value=None)
+        client.find_business_listings = mock.AsyncMock(return_value=[])
         with mock.patch(
             "app.agents.adzump.adapters.google.maps.GoogleMapsClient",
             return_value=client,
@@ -237,8 +238,25 @@ class ListingMemoTests(unittest.TestCase):
                 result = asyncio.run(
                     cached_business_listing("Sobha Magnus", session))
         self.assertIsNone(result)
-        self.assertEqual(client.find_business_website.await_count, 1)
-        self.assertIn("sobha magnus", session["_places_website_cache"])
+        self.assertEqual(client.find_business_listings.await_count, 1)
+        self.assertIn("sobha magnus", session["_places_listings_cache"])
+
+    def test_top_listing_without_website_is_none_for_the_ladder(self):
+        # A lower listing's website must not masquerade as the top match.
+        session = _session()
+        client = mock.Mock()
+        client.find_business_listings = mock.AsyncMock(return_value=[
+            {"name": "Sobha Magnus", "website": ""},
+            {"name": "Sobha Magnus Broker Deals",
+             "website": "https://sobhamagnusdeals.com/"},
+        ])
+        with mock.patch(
+            "app.agents.adzump.adapters.google.maps.GoogleMapsClient",
+            return_value=client,
+        ):
+            result = asyncio.run(
+                cached_business_listing("Sobha Magnus", session))
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":
