@@ -11,6 +11,7 @@ from app.agents.adzump.competitor_urls import (
     _distinctive_tokens,
     _is_project_specific,
     cached_business_listing,
+    is_broker_style_tld,
     listing_name_matches,
     normalize_business_name,
     resolve_project_url,
@@ -91,6 +92,25 @@ class ProjectSpecificTokenTests(unittest.TestCase):
         tokens = _distinctive_tokens(
             "Godrej Bannerghatta", _session("Bannerghatta Road, Bengaluru"))
         self.assertEqual(tokens, [])
+
+
+class BrokerStyleTldTests(unittest.TestCase):
+    """Kailash's prior: not-plain-.com/.in hosts are broker clones ~90% of the
+    time in Indian real estate - never acceptable as an entry's official URL."""
+
+    def test_rows(self):
+        rows = [
+            ("nambiarvillasbannerghatta.co.in", True),   # .co.in swarm
+            ("nambiarbannerghatta.info", True),
+            ("prestigesouthernstar.live", True),
+            ("myanimelist.net:443", True),               # port stripped first
+            ("purvasparklingspring.com", False),
+            ("valmark.in", False),
+            ("", False),
+        ]
+        for host, expected in rows:
+            with self.subTest(host):
+                self.assertIs(is_broker_style_tld(host), expected)
 
 
 class LadderTests(unittest.TestCase):
@@ -187,6 +207,21 @@ class LadderTests(unittest.TestCase):
         result = self._resolve(
             "Lodha Azur", "https://lodha-azur.99acres.com/", listing=None)
         self.assertIsNone(result)
+
+    def test_broker_style_urls_never_become_official(self):
+        with self.subTest("broker current_url scrubbed to link-less"):
+            result = self._resolve(
+                "Nambiar Villas", "https://nambiarbannerghatta.info/",
+                listing=None)
+            self.assertIsNone(result)
+        with self.subTest("broker-domain GBP listing rejected, search URL kept"):
+            # Brokers claim GBP listings; a live .co.in on the listing is a
+            # claimed profile, not the project's identity.
+            result = self._resolve(
+                "Nambiar Villas", "https://propsoch.com/nambiar",
+                listing={"name": "Nambiar Villas Bannerghatta",
+                         "website": "https://nambiarvillasbannerghatta.co.in/"})
+            self.assertEqual(result, "https://propsoch.com/nambiar")
 
 
 class ListingMemoTests(unittest.TestCase):

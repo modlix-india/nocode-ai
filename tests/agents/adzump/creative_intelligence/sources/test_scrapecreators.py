@@ -183,6 +183,21 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertEqual(fetched.logo_url, "https://cdn/logo.jpg")
         self.assertEqual(fetched.platform_ids, {"page_id": "p1"})
 
+    def test_mention_tier_ships_unattributed_ads_without_identity(self):
+        # No attributable page anywhere (all broker ads) -> the ads still ship
+        # as the mention tier, capped, and WITHOUT claiming a page identity.
+        brokers = [_ad(page_id=f"b{i}", page_name=f"Broker {i}")
+                   for i in range(scrapecreators.MENTION_ADS_CAP + 5)]
+        source = self._source_with_pages([
+            {"searchResults": [], "cursor": ""},
+            {"searchResults": brokers, "cursor": ""},
+        ])
+        fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas X"))
+        self.assertEqual(len(fetched.creatives), scrapecreators.MENTION_ADS_CAP)
+        self.assertEqual(fetched.resolved_name, "")
+        self.assertEqual(fetched.logo_url, "")
+        self.assertEqual(fetched.platform_ids, {})
+
     def test_unmatched_exact_hits_still_retry_unordered(self):
         # Live 2026-09-04: 'Nambiar Villas' exact-phrase returned 2 broker ads
         # (zero attributed) and the retry never fired - escalation must key on

@@ -64,8 +64,11 @@ async def resolve_project_url(
     without spending a lookup.
     """
     current_url = (current_url or "").strip() or None
-    if current_url and is_aggregator_or_google_host(host_of(current_url)):
-        current_url = None  # an aggregator page can never be the entry's URL
+    if current_url and (is_aggregator_or_google_host(host_of(current_url))
+                        or is_broker_style_tld(host_of(current_url))):
+        # Aggregator pages and broker-style domains can never be the entry's
+        # official URL - honestly link-less beats a clone.
+        current_url = None
     if current_url and _is_project_specific(current_url, name, session_ctx):
         logger.info("project_url_kept: %r already project-specific (%s)",
                     name, current_url)
@@ -79,11 +82,16 @@ async def resolve_project_url(
                         name, listing["name"], listing["website"])
         else:
             listing_host = host_of(listing["website"])
-            if listing_host and not is_aggregator_or_google_host(listing_host):
-                website = listing["website"]
-            else:
+            if not listing_host or is_aggregator_or_google_host(listing_host):
                 logger.info("project_url_rejected: shared/aggregator host %s for %r",
                             listing_host, name)
+            elif is_broker_style_tld(listing_host):
+                # Brokers claim GBP listings for projects; a broker-style
+                # domain on the listing is a claimed profile, not identity.
+                logger.info("project_url_rejected: broker-style domain %s for %r",
+                            listing_host, name)
+            else:
+                website = listing["website"]
     if not website:
         logger.info("project_url_kept: %r no guard-passing GBP listing (%s)",
                     name, current_url or "no url")
@@ -164,6 +172,21 @@ def listing_name_matches(candidate_name: str, listing_name: str) -> bool:
 
 def is_aggregator_or_google_host(host: str) -> bool:
     return is_aggregator_host(host, _AGGREGATOR_EXTRA_HOSTS)
+
+
+def is_broker_style_tld(host: str) -> bool:
+    """Kailash's prior (2026-09-04): in Indian real estate ~90% of sites that
+    aren't plain .com/.in are broker lead-gen clones (.co.in, .info, .live
+    swarms around every launch: nambiarvillasbannerghatta.co.in,
+    nambiarbannerghatta.info). Such a host may not become an entry's OFFICIAL
+    URL - creatives still flow (the ad search is name-driven) and a user pin
+    (url_source=user) bypasses this entirely. A code-side prior the CP-6 judge
+    can subsume later."""
+    if not host:
+        return False
+    host = host.split(":", 1)[0]
+    return not (host.endswith(".com")
+                or (host.endswith(".in") and not host.endswith(".co.in")))
 
 
 def parse_official_url(answer: str) -> str | None:

@@ -32,6 +32,12 @@ logger = logging.getLogger(__name__)
 
 SEARCH_PATH = "/v1/facebook/adLibrary/search/ads"
 PAGE_LIMIT = 3  # cursor pages per search; each page is one metered credit
+# When NO page can be attributed as the advertiser, broker/reseller ads that
+# mention the project still ship as a fallback tier (Kailash 2026-09-04:
+# same-project broker creative is useful inspiration; an official page often
+# doesn't exist for pre-launch projects). Tighter cap - these are mixed pages,
+# and each creative costs vision-essence tokens downstream.
+MENTION_ADS_CAP = 15
 # display_format -> our media_type; anything unknown falls back by asset shape.
 _DISPLAY_FORMAT_MEDIA = {
     "VIDEO": "video",
@@ -86,14 +92,26 @@ class ScrapeCreatorsSource:
                     "pages_seen=%s", name, search_type,
                     sorted({str(a.get("page_name") or "?") for a in ads})[:8],
                 )
-        creatives = [_to_creative(a) for a in page_ads[:MAX_CREATIVES_PER_COMPETITOR]]
-        first = page_ads[0] if page_ads else {}
-        snapshot = first.get("snapshot") or {}
+        if page_ads:
+            first = page_ads[0]
+            snapshot = first.get("snapshot") or {}
+            return SourceFetch(
+                creatives=[_to_creative(a) for a in
+                           page_ads[:MAX_CREATIVES_PER_COMPETITOR]],
+                resolved_name=first.get("page_name") or "",
+                logo_url=snapshot.get("page_profile_picture_url") or "",
+                platform_ids={"page_id": first.get("page_id")} if first.get("page_id") else {},
+            )
+        # Mention tier: no attributable page - ship broker/reseller ads that
+        # matched the project keywords, WITHOUT claiming a page identity
+        # (no resolved_name/logo/page_id - these are ads ABOUT the project,
+        # from mixed pages, not the competitor's own creative strategy).
+        if ads:
+            logger.info("scrapecreators_mention_tier: name=%r shipping %d of %d "
+                        "unattributed ads", name, min(len(ads), MENTION_ADS_CAP),
+                        len(ads))
         return SourceFetch(
-            creatives=creatives,
-            resolved_name=first.get("page_name") or "",
-            logo_url=snapshot.get("page_profile_picture_url") or "",
-            platform_ids={"page_id": first.get("page_id")} if first.get("page_id") else {},
+            creatives=[_to_creative(a) for a in ads[:MENTION_ADS_CAP]],
         )
 
     # -- HTTP -----------------------------------------------------------------
