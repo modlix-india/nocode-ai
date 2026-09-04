@@ -1041,6 +1041,17 @@ class BaseAgent:
         # here rather than inside ~190 write tools, so nothing has to remember.
         await self._observe_edit_to_lore(session, tool_name, tool_input, result)
 
+        # ...and the other direction. `note_focus` above already told lore what
+        # is being worked on, but the resulting per-turn reminder is injected on
+        # the NEXT turn — so in a turn that issues twenty writes at once, the
+        # advice arrives after all twenty. Appending it to this tool's own
+        # result puts the constraint in front of the model inside the same turn,
+        # before the next write in the block. Advisory only; it never blocks.
+        if result.success:
+            advice = await self._lore_pre_write_advice(session, tool_name, tool_input)
+            if advice:
+                tool_content = f"{tool_content}{advice}"
+
         # audience: a tool whose summary targets the user ("user"/"both") has it
         # posted to chat AND persisted (append to the run-scoped parts the saved
         # turn is built from, so it survives refresh). The model writes only a
@@ -1052,6 +1063,9 @@ class BaseAgent:
         # Learning loop: track tool errors for pitfall detection
         if not result.success:
             await self._on_tool_error(tool_name, tool_input, result.error or "Unknown error")
+            await self._observe_failure_to_lore(
+                session, tool_name, tool_input, result.error or "Unknown error",
+            )
 
         # Multimodal tool_result: when the active provider accepts image
         # content blocks inside `tool_result.content` (Anthropic does), forward
@@ -1741,6 +1755,73 @@ class BaseAgent:
             )
         except Exception:  # noqa: BLE001 — lore must never break a tool call
             logger.debug("lore: edit observation skipped", exc_info=True)
+
+    # Tools that EXECUTE rather than edit. A repeated failure from one of these
+    # is the shape of a real gotcha — the observation fingerprint collapses
+    # repeats into SEEN_COUNT, which is what tells the curator it keeps
+    # happening. Successes are deliberately not observed: a function that ran
+    # fine is not knowledge, and the volume would swamp the batch quotas.
+    _RUN_OBSERVED_TOOLS: frozenset[str] = frozenset({
+        "execute_function", "validate_page", "validate_kirun_text",
+        "compile_kirun_text", "query_storage_rows", "drive_page",
+        "screenshot_page", "call_as_app_user",
+    })
+
+    async def _lore_pre_write_advice(
+        self, session: BaseSession, tool_name: str, tool_input: Any,
+    ) -> str:
+        """Constraints and traps for the object this write just touched."""
+        from app.config import settings as _settings
+
+        if not _settings.LORE_ENABLED:
+            return ""
+        try:
+            from app.services.lore import context as _lore_context
+
+            return await _lore_context.pre_write_advice(session, tool_name, tool_input)
+        except Exception:  # noqa: BLE001 — lore must never break a tool call
+            logger.debug("lore: pre-write advice skipped", exc_info=True)
+            return ""
+
+    async def _observe_failure_to_lore(
+        self, session: BaseSession, tool_name: str, tool_input: Any, error: str,
+    ) -> None:
+        """Record the failure of a tool that ran something, as a `run` observation."""
+        from app.config import settings as _settings
+
+        if not getattr(_settings, "LORE_OBSERVE_RUNS", False):
+            return
+        if tool_name not in self._RUN_OBSERVED_TOOLS:
+            return
+        target = self._lore_target(session)
+        if target is None:
+            return
+        client_code, app_code = target
+
+        try:
+            from app.services.lore import access as _access
+            from app.services.lore import context as _lore_context
+            from app.services.lore import ingest as _ingest
+
+            scope = await _access.resolve_scope(self._ScopeAuth(client_code), app_code)
+            if not scope.can_write:
+                return
+
+            subject = "app"
+            if isinstance(tool_input, dict):
+                subject = _lore_context.subject_from_tool_call(tool_name, tool_input) or "app"
+
+            auth = getattr(session, "auth", None)
+            await _ingest.from_run(
+                client_code, app_code,
+                what=tool_name,
+                outcome=str(error)[:2000],
+                subject=subject,
+                failed=True,
+                user_id=int(getattr(auth, "user_id", 0) or 0),
+            )
+        except Exception:  # noqa: BLE001 — lore must never break a tool call
+            logger.debug("lore: run observation skipped", exc_info=True)
 
     async def _observe_to_lore(
         self, session: BaseSession, user_message: str, assistant_summary: str,

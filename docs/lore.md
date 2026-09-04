@@ -219,6 +219,32 @@ POST /api/ai/lore/backfill/app-kb  {app_code}
 
 ### Pinning
 
+**Pinning costs more than it looks.** `Entry.standing` returns `None` for a
+pinned entry, so `retrieval._mark` never renders one as `contested` or
+`unverified`, and `effective_confidence` returns early — which means a
+contradiction against a pinned entry is *recorded and then rendered invisible*,
+and `gaps` can never surface it either, because a pinned entry never becomes
+low-confidence. When `apply_operations` tries to supersede a pinned entry it
+falls back to writing a `contradicts` link, and that link has no visible effect.
+
+So a pinned entry does not merely resist correction; it resists being flagged as
+suspect. The only routes back are a human `PATCH` or `lore_correct`.
+
+The test is therefore **not** "is this important" but **"could an edit to this
+app falsify it?"** Pin `purpose`, and pin the constraints that are true by
+construction. Do not pin a behavioural constraint scoped to a page or a flow,
+even though it is the same kind — those are the claims an edit is most likely to
+falsify, and the stale-subject mark is the signal you would be switching off.
+The seeded files pin 3-6 rows out of 15-22. A second reason to be sparing:
+`_rank` sorts on `pinned` as a hard first key, so pinning everything makes the
+flag stop discriminating and is indistinguishable from pinning nothing, except
+that the curator is now locked out.
+
+Seeded rows carry `SEED_SOURCE`, which gives a reader the provenance benefit of
+a pin — a person wrote this down deliberately — without the immunity cost.
+
+
+
 Pinning protects an entry from **the curator**, not from people. A person who
 wrote something down may edit or retire it freely; `revise_entry` and
 `set_entry_status` take `force=True` on the human paths and the curator never
@@ -312,10 +338,25 @@ page, and only the second yields an entry worth reading. `curate` refuses to
 run concurrently with itself for the same app, so a busy build cannot stack
 passes.
 
-**Not yet wired:** `ingest.from_inventory` and `ingest.from_run` exist and are
-tested, but nothing calls them. Inventory snapshots would answer "what is in
-this app", and run outcomes would answer "what actually happens when you use
-it". Both are real gaps, not deliberate omissions.
+**Inventory — `_observe_inventory_to_lore`, once per session.** Hung off the
+AppBuilder agent's preflight grounding, which already fetches the app definition
+and page names once per session, so it costs no extra call. The value is not the
+list — the definitions hold that — but that the curator can tell a claim about
+`page:foo` from a claim about something that no longer exists. Unchanged
+snapshots collapse by fingerprint, so a quiet app accumulates nothing.
+
+**Failures — `_observe_failure_to_lore`, on a failed tool call.** Restricted to
+the eight tools that *execute* rather than edit (`execute_function`,
+`validate_page`, `query_storage_rows`, `drive_page` and so on), and only on
+failure. A repeated identical failure collapses into `SEEN_COUNT`, which is the
+shape of a real gotcha. Successes are deliberately not recorded: a function that
+ran fine is not knowledge, and the volume would swamp the batch quotas.
+
+**Batch composition.** `curator.select_batch` is pure and applies a per-kind
+quota — `manual` and `run` effectively unlimited, `edit` 40, `doc` 20, `chat` 8 —
+and drops chat rows that carry no declarative marker. It runs over rows
+*already in the table*, not only new writes, which is what makes an existing
+backlog of narration harmless without deleting anything.
 
 Settings:
 
@@ -326,6 +367,16 @@ Settings:
 | `LORE_OBSERVE_EDITS` | `true` | Record every successful definition write. This is the path that carries real evidence |
 | `LORE_AUTOCURATE_AT` | `25` | Pending observations app-wide that trigger a pass. `0` disables |
 | `LORE_AUTOCURATE_SUBJECT_AT` | `8` | ...or this many about one subject, whichever comes first |
+| `LORE_OBSERVE_AGENT_NARRATION` | `false` | Record the agent's own summary. Off because the first 192 chat observations produced zero entries |
+| `LORE_OBSERVE_INVENTORY` | `true` | One object-inventory snapshot per session |
+| `LORE_OBSERVE_RUNS` | `true` | Record failures of tools that execute rather than edit |
+| `LORE_CURATOR_TIER` | `balanced` | Curation's own tier. Was hardcoded `fast`, which is what produced zero entries |
+| `LORE_CURATOR_MAX_TOKENS` | `16000` | Output budget. Must leave room for a reasoning model to think *and* emit |
+| `LORE_CURATOR_TIMEOUT_SECONDS` | `240` | Bounds one model call. The provider clients set no timeout of their own |
+| `LORE_MAX_CURATION_ATTEMPTS` | `3` | Drop an observation the model has declined this many times |
+| `LORE_KEEP_RAW_RESPONSE` | `false` | Store the redacted model response on the run row, for a debugging window |
+| `LORE_BIG_PICTURE_BUDGET` | `3800` | Briefing size in the system prompt. 2600 rendered only 10-12 entries |
+| `LORE_ADVISE_BEFORE_EDITS` | `true` | Append a subject's constraints and traps to the first write to it, in the same turn |
 
 Lore needs the AI tracking database (`AI_TRACKING_ENABLED`). Without it every
 write silently no-ops rather than raising.
@@ -360,6 +411,168 @@ also exposed as `POST /backfill/app-kb`) and **never writes to it**.
 Schema: `migrations/V13__Lore.sql` + `V14__Lore_Overrides.sql`. Tests:
 `tests/test_lore.py` (110, no database and no LLM required).
 
+## Why it produced nothing for its first three weeks
+
+Worth recording in full, because the shape of the failure is more instructive
+than the fix.
+
+Measured on 2026-09-04: **267 observations, zero entries.** Seven curation runs,
+each considering 25-44 observations, each recording `ENTRIES_ADDED=0` with
+`ERROR` null. Four things were wrong at once, and the schema could not tell them
+apart.
+
+**The cause was `max_tokens=4000`.** Curation ran on `model_tier="fast"`, which
+under DeepSeek resolves to a V4 reasoning model. On the real curation prompt that
+model spends roughly 20,000 characters thinking before it emits anything, blows
+through a 4,000-token output budget, and returns `finish_reason: "length"` with
+`content` of `None`. `parse_operations("")` short-circuits to `[]` **before** its
+own `logger.warning`, so the failure emitted nothing at all. The same prompt at
+16,000 tokens needs 5,289 completion tokens and yields seven operations.
+
+Three things made that invisible for three weeks:
+
+1. **The run row could not express it.** `apply_operations` counted `rejected`
+   and `contradicted`; `close_run` dropped both. A run where the model returned
+   nothing and a run where every operation was refused wrote identical rows.
+   `V15__Lore_Curation_Diagnostics.sql` adds `OBS_RENDERED`, `OPS_RETURNED`,
+   `ENTRIES_REJECTED`, `RESPONSE_CHARS`, `REASONING_CHARS`, `STOP_REASON`,
+   `MODEL` and `ATTEMPTS`. `REASONING_CHARS` beside a zero `RESPONSE_CHARS` is
+   the fingerprint of this exact failure.
+2. **Every pass burned its own evidence.** `curate` marked the whole batch
+   curated regardless of outcome — the comment said an observation that produced
+   no entry "has still been considered", which was true of the ones the model
+   saw and false of the rest. The render budget of 24,000 characters against a
+   chat-heavy batch meant roughly 60% of a batch never reached the model and was
+   consumed anyway. 165 observations were spent for nothing. Now only the
+   rendered ids are marked, a parse failure marks nothing, and
+   `CURATION_ATTEMPTS` (not `CURATED_AT`) breaks the loop for a row the model
+   keeps declining.
+3. **The input was mostly not knowledge.** 192 of 267 observations were `chat`,
+   and nearly all were either the agent describing itself ("I'm an expert
+   application builder…") or a build instruction that the resulting `edit`
+   observation already recorded far better. `models.looks_durable` now filters
+   those at ingest *and* inside `select_batch`, so the existing backlog is
+   harmless without deleting anything. `LORE_OBSERVE_AGENT_NARRATION` is off by
+   default.
+
+Two smaller defects found on the way, both worth knowing:
+
+- **`watch.py` was recording false claims.** `remove_component_styles` starts
+  with `remove_`, so it classified as `delete`, and the subject of the
+  observation is the page — producing *"appbuilder deleted page `ContactCFA`"*
+  for a call that removed ten style leaves from one component.
+  `action_on_subject` now distinguishes the verb that is true of the *tool* from
+  the verb that is true of the *subject*; `action_for` is unchanged, because its
+  answer was never the wrong one.
+- **`SUBJECT_TYPES` was declared and never enforced.** A curation pass invented
+  `form:`, `contracts:`, `preview:` and `contactform:` subjects, none of which
+  any read path can reach: `lore_about` and the per-turn push key off the
+  subject a *tool call* produces, and those only ever use the real types.
+  `normalise_subject` now enforces the list, and the curator prompt names it.
+
+And one robustness hole that only showed itself under repair: **the provider call
+had no timeout.** A curation pass was observed stuck for 67 minutes on zero CPU,
+holding its run row open. Curation is a detached background task, so an unbounded
+call means one hung connection stops curating that app forever.
+`LORE_CURATOR_TIMEOUT_SECONDS` bounds it.
+
+## Seeds and transport
+
+Lore for the flagship apps is **hand-authored and committed**, not extracted by a
+model, under `app/services/lore/seeds/<app>.yaml`. Four apps are seeded:
+`appbuilder`, `leadzump`, `marketingai`, `sitezump`. `cxapp` deliberately is not:
+its only documentation is a v2 specification for an app code that does not
+exist, and seeding a plan as a fact into a live app is worse than leaving it
+empty.
+
+A seed file **is** a transport document — same format, same parser, same
+validation gate — so seeding an app is just an import, and the seeds are
+exercised by every import test rather than living in a code path nothing else
+uses. They sit inside `app/` because the Dockerfile ships only `app/`,
+`scripts/` and `migrations/`.
+
+`app/services/lore/transport.py` has four functions: `parse` (pure), `export`,
+`plan` (reads only, decides everything) and `apply`. The `plan`/`apply` split is
+what lets a screen show someone what an upload would do before it writes.
+
+**The per-client delta resolution is not implemented there.** It already existed:
+`store.edit_in_scope` forks-or-revises depending on whether the caller owns the
+row, `store.retire_in_scope` writes a tombstone versus a retirement, and
+`store.resolve_overrides` walks the chain base-first. The importer's only job is
+to match a document row to a database row and decide which of those to call, and
+it must never write merge SQL of its own.
+
+Identity is `SEED_KEY`, not `BODY_HASH` (V16). `BODY_HASH` is the dedupe key and
+changes whenever the wording does, so matching on it would import an edited entry
+as a new row and leave the stale one standing beside it. The fork and tombstone
+paths both carry the key across, or a re-import would fail to match an override
+and create a second fork beside the first.
+
+Four refusals, each protecting something specific:
+
+- **`resolved: true` is refused.** A flattened export imported into a client turns
+  every inherited row into an owned copy and breaks the override model.
+- **`mode="replace"` is not implemented.** One import could wipe a client's
+  curated knowledge and the only undo is `lore_entry_history`.
+- **`supersedes` links are not portable.** They carry a local `SUPERSEDED_BY`
+  pointer, so importing one asserts history that did not happen here.
+- **`id`, `version`, `source_count`, `sources` and every timestamp are never
+  imported.** Observation ids are local to an instance; honouring them would
+  attach an entry to an unrelated observation, which is the provenance corruption
+  `_clean_sources` exists to prevent.
+
+One rule that is easy to get wrong: **an inherited row that is identical to the
+document is skipped, not forked.** Forking an identical body gives that client a
+private copy of something it already inherits, and the owner's later corrections
+stop reaching it — which is how importing one shared seed into every client
+quietly destroys the inheritance it was meant to use.
+
+Two surfaces: `GET /api/ai/lore/export` and `POST /api/ai/lore/import`
+(`dry_run` defaults to true), both on the caller's JWT behind `_write_scope`
+rather than on the admin token, because a browser cannot hold `ADMIN_TOKEN`
+safely. The CLI is `scripts/lore_transport.py`, which reuses
+`access.resolve_scope` — it works without a token because the security service's
+`applications/internal/**` routes are permitAll — and skips only
+`require_write()`, with `--client` mandatory as the compensating control.
+
+### Authoring a seed
+
+Seven rules, from what went wrong while writing the first four:
+
+1. **No definition restatement.** No page ids, component counts, root component
+   keys or step counts. The per-page "Key facts" tables in the source docs are
+   almost entirely that. It is already in the definitions, stale on the next
+   edit, and it crowds out what cannot be derived. `dealProfile.md` would have
+   yielded forty such rows; it yielded three real ones.
+2. **No plans.** Anything phrased as should, will, propose, gap, roadmap or TBD
+   is not a fact. `ROADMAP.md` and `IDE_PLAN.md` are excluded outright.
+3. **Verify every non-`app` subject against the live definitions.** This caught
+   a real error: `appbuilder`'s own `OVERVIEW.md` says `defaultPage: homeTwo`,
+   and there is no `homeTwo` page — the live value is `builderLanding`. It also
+   turned up that `properties.forbiddenPage` names a page that does not exist,
+   which became an entry.
+4. **No platform generalities.** "Modlix pages have 16 breakpoints" is not an
+   entry; "this app only styles three of them, by convention" is.
+5. **No secret values.** One entry records that a hardcoded shared secret exists
+   in a page definition and where, because that is the durable fact someone
+   needs. The value is not in the file. A seed is read by every agent working on
+   the app; it is not a vault.
+6. **A `decision` must contain the why.** Without it, it is a `convention`.
+7. **`owner` = 0.** Nothing in the source documentation supports an owner claim,
+   and `owner` is one of the two kinds that ages, so an invented one decays into
+   a puzzle.
+
+Roughly 60 app-level entries per app is the target: `BRIEF_CAPS` sums to 63, so
+that is the most a full-app briefing will ever render. Do **not** write one entry
+per page — `leadzump` documents 86 pages, and subject-scoped entries surface
+through `lore_about` and the per-turn push exactly when an agent touches that
+object, which is why that count can safely exceed 63.
+
+`tests/test_lore_seeds.py` gates the files on merge. The subject check is the one
+that earns its keep: `normalise_subject` degrades an unrecognised subject to
+`app` silently, so a typo would file an entry where nothing will ever look for
+it.
+
 ## Things deliberately not done yet
 
 - **No embeddings.** Retrieval is MySQL fulltext with a LIKE fallback for short
@@ -372,6 +585,21 @@ Schema: `migrations/V13__Lore.sql` + `V14__Lore_Overrides.sql`. Tests:
 - **No cross-app lore.** Every read is scoped to one (client, app). Platform-
   wide patterns belong in the platform KB, not here. `known_apps()` exists for
   admin listing only.
+- **`review` has no producer.** It stays in `OBSERVATION_KINDS` as a reserved
+  slot. Nothing in the system captures "the user said that was wrong", and
+  adding an adapter with no caller is how `from_inventory` and `from_run` came
+  to be written and never called for three weeks. Wire it when a thumbs-down
+  on a turn exists.
+- **`draft` has no writer.** It stays in `ENTRY_STATUSES`, is accepted by
+  `add_entry`, and is excluded from every read path — which makes it the right
+  shape for a review queue if one is ever needed. The hand-authored seeds did
+  not need one: a person wrote them and a person read the diff.
+- **No screen.** The lore service, its HTTP surface and its transport all run,
+  and the agent uses them. There is no Lore pane in the AppBuilder workspace
+  and no knowledge line on the object editors. The designed screen is kept as
+  the spec at `modlix-apps/appbuilder_SYSTEM/mockup/index.html`; note that its
+  per-kind "half-life" labels are the one thing in it that is wrong, since that
+  model was abandoned (see above).
 - **No contradiction detection beyond what the curator notices in one batch.**
   Two entries that disagree but were curated in different passes will both
   stand. `gaps` surfaces low-confidence entries so a person can arbitrate.

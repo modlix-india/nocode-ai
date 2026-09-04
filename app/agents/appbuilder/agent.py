@@ -880,7 +880,47 @@ class AppBuilderAgent(BaseAgent):
             return ""
         text = self._format_grounding(app_code, app_obj, page_names)
         session.context["_preflight_grounding"] = text
+        # Free ride for lore's inventory observer: this is already the one
+        # place per session where the app's shape is fetched, so recording it
+        # costs no extra API call. Unchanged snapshots collapse by fingerprint,
+        # so a quiet app does not accumulate rows. `from_inventory` had been
+        # written and tested with no caller at all.
+        await self._observe_inventory_to_lore(session, app_code, page_names)
         return text
+
+    async def _observe_inventory_to_lore(
+        self, session: BaseSession, app_code: str, page_names: Any,
+    ) -> None:
+        """Record what objects this app has, once per session, as evidence.
+
+        The value is not the list itself — the definitions hold that. It is
+        that the curator can tell a claim about `page:foo` from a claim about
+        something that no longer exists.
+        """
+        from app.config import settings as _settings
+
+        if not getattr(_settings, "LORE_OBSERVE_INVENTORY", False):
+            return
+        names = [str(n) for n in (page_names or []) if n]
+        if not names:
+            return
+        try:
+            from app.services.lore import access as _access
+            from app.services.lore import ingest as _ingest
+
+            client_code = (getattr(session.auth, "client_code", "") or "").strip()
+            if not client_code:
+                return
+            scope = await _access.resolve_scope(self._ScopeAuth(client_code), app_code)
+            if not scope.can_write:
+                return
+            await _ingest.from_inventory(
+                client_code, app_code,
+                objects={"page": names},
+                user_id=int(getattr(session.auth, "user_id", 0) or 0),
+            )
+        except Exception:  # noqa: BLE001 — lore must never break a turn
+            logger.debug("lore: inventory observation skipped", exc_info=True)
 
     async def _build_learning_enhancement(self, session: BaseSession) -> str:
         """Retrieve and format learned knowledge for prompt injection."""

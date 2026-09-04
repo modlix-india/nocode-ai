@@ -31,7 +31,8 @@ _OBS_COLS = """ID, CLIENT_CODE, APP_CODE, KIND, SOURCE, SUBJECT, BODY, META,
                SEEN_COUNT, OBSERVED_BY, OBSERVED_AT, LAST_SEEN_AT, CURATED_AT"""
 
 _ENTRY_COLS = """ID, CLIENT_CODE, APP_CODE, KIND, SUBJECT, TITLE, BODY, TAGS,
-                 CONFIDENCE, STATUS, SUPERSEDED_BY, BASE_ENTRY_ID, SOURCE_COUNT,
+                 CONFIDENCE, STATUS, SUPERSEDED_BY, BASE_ENTRY_ID, SEED_KEY,
+                 SEED_SOURCE, SOURCE_COUNT,
                  BODY_HASH, VERSION, PINNED, CREATED_BY, UPDATED_BY,
                  FIRST_SEEN_AT, LAST_CONFIRMED_AT, UPDATED_AT"""
 
@@ -114,7 +115,7 @@ async def record_observations(
 
 
 async def pending_observations(
-    client_code: str, app_code: str, limit: int = 60,
+    client_code: str, app_code: str, limit: int = 60, *, max_attempts: int = 3,
 ) -> list[Observation]:
     """Observations the curator has not yet processed, oldest first.
 
@@ -122,13 +123,35 @@ async def pending_observations(
     so a later correction supersedes an earlier claim rather than racing it.
     """
     limit = max(1, min(limit, 400))
+    # CURATION_ATTEMPTS is the loop-breaker. An observation the model has been
+    # shown `max_attempts` times without it yielding anything is dropped from
+    # the queue rather than marked curated: those two states mean different
+    # things, and CURATED_AT is read by annotate_standing.
     rows = await execute_query(
         f"""SELECT {_OBS_COLS} FROM lore_observation
              WHERE CLIENT_CODE=%s AND APP_CODE=%s AND CURATED_AT IS NULL
+               AND CURATION_ATTEMPTS < %s
           ORDER BY ID ASC LIMIT %s""",
-        (client_code, app_code, limit),
+        (client_code, app_code, max_attempts, limit),
     )
     return [Observation.from_row(r) for r in (rows or [])]
+
+
+async def bump_curation_attempts(ids: Sequence[int]) -> int:
+    """Record that these observations were shown to the model.
+
+    Called for the rows a pass actually rendered, whether or not the pass
+    produced anything. Separate from mark_observations_curated so a failed
+    pass can leave rows pending without them re-entering every batch forever.
+    """
+    if not ids:
+        return 0
+    marks = ",".join(["%s"] * len(ids))
+    return int(await execute_query(
+        f"UPDATE lore_observation SET CURATION_ATTEMPTS = CURATION_ATTEMPTS + 1 "
+        f"WHERE ID IN ({marks})",
+        tuple(int(i) for i in ids),
+    ) or 0)
 
 
 async def mark_observations_curated(ids: Sequence[int]) -> int:
@@ -198,6 +221,8 @@ async def add_entry(
     created_by: int = 0,
     source_ids: Sequence[int] = (),
     base_entry_id: int | None = None,
+    seed_key: str | None = None,
+    seed_source: str | None = None,
 ) -> dict[str, Any]:
     """Insert a new entry under `client_code`, or confirm the identical one.
 
@@ -228,12 +253,13 @@ async def add_entry(
         """INSERT INTO lore_entry
                (CLIENT_CODE, APP_CODE, KIND, SUBJECT, TITLE, BODY, TAGS,
                 CONFIDENCE, STATUS, SOURCE_COUNT, BODY_HASH, PINNED,
-                CREATED_BY, UPDATED_BY, BASE_ENTRY_ID)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                CREATED_BY, UPDATED_BY, BASE_ENTRY_ID, SEED_KEY, SEED_SOURCE)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
         (client_code, app_code, kind, subject, title[:240], body,
          _json_or_none(tags or []), max(0, min(100, int(confidence))), status,
          max(1, len(source_ids) or 1), bh, 1 if pinned else 0,
-         created_by, created_by, base_entry_id),
+         created_by, created_by, base_entry_id,
+         (seed_key or None), (seed_source or None)),
     )
     await link_sources(int(entry_id), source_ids)
     return {"id": int(entry_id), "created": True}
@@ -399,6 +425,11 @@ async def edit_in_scope(
         pinned=True,
         created_by=updated_by,
         base_entry_id=entry.id,
+        # Carry the identity across the fork. Without this the override has a
+        # NULL key, the next import fails to match it, and a second fork lands
+        # beside the first.
+        seed_key=entry.seed_key,
+        seed_source=entry.seed_source,
     )
     await add_link(result["id"], entry.id, "supersedes")
     return {"action": "forked", "id": result["id"], "overrides": entry.id}
@@ -432,6 +463,7 @@ async def retire_in_scope(
         subject=entry.subject, tags=entry.tags, confidence=entry.confidence,
         status="retired", pinned=True, created_by=updated_by,
         base_entry_id=entry.id,
+        seed_key=entry.seed_key, seed_source=entry.seed_source,
     )
     return {"action": "hidden", "id": result["id"], "overrides": entry.id}
 
@@ -810,16 +842,34 @@ async def open_run(client_code: str, app_code: str, trigger_source: str) -> int:
     return int(run_id)
 
 
-async def close_run(run_id: int, counters: dict[str, int], error: str = "") -> None:
+async def close_run(
+    run_id: int, counters: dict[str, int], error: str = "",
+    *, diagnostics: dict[str, Any] | None = None,
+) -> None:
+    """Finish a run row, including why it produced what it produced.
+
+    `rejected` and `contradicted` used to be counted by apply_operations and
+    then dropped here, which is what made a zero-entry pass indistinguishable
+    from an all-rejected one. Everything the caller counts is now stored.
+    """
+    d = diagnostics or {}
     await execute_query(
         """UPDATE lore_curation_run
-              SET FINISHED_AT=CURRENT_TIMESTAMP, OBS_CONSIDERED=%s,
-                  ENTRIES_ADDED=%s, ENTRIES_REVISED=%s, ENTRIES_CONFIRMED=%s,
-                  ENTRIES_RETIRED=%s, ERROR=%s
+              SET FINISHED_AT=CURRENT_TIMESTAMP, OBS_CONSIDERED=%s, OBS_RENDERED=%s,
+                  OPS_RETURNED=%s, ENTRIES_ADDED=%s, ENTRIES_REVISED=%s,
+                  ENTRIES_CONFIRMED=%s, ENTRIES_RETIRED=%s, ENTRIES_REJECTED=%s,
+                  ENTRIES_CONTRADICTED=%s, RESPONSE_CHARS=%s, REASONING_CHARS=%s,
+                  STOP_REASON=%s, MODEL=%s, ATTEMPTS=%s, RAW_RESPONSE=%s, ERROR=%s
             WHERE ID=%s""",
-        (counters.get("considered", 0), counters.get("added", 0),
+        (counters.get("considered", 0), d.get("rendered", 0),
+         d.get("ops_returned", 0), counters.get("added", 0),
          counters.get("revised", 0), counters.get("confirmed", 0),
-         counters.get("retired", 0), (error or None) and error[:1024], run_id),
+         counters.get("retired", 0), counters.get("rejected", 0),
+         counters.get("contradicted", 0), d.get("response_chars", 0),
+         d.get("reasoning_chars", 0), (d.get("stop_reason") or None),
+         (d.get("model") or None), d.get("attempts", 1),
+         (d.get("raw_response") or None),
+         (error or None) and error[:1024], run_id),
     )
 
 
@@ -841,8 +891,11 @@ async def has_open_run(client_code: str, app_code: str, stale_minutes: int = 15)
 
 async def recent_runs(client_code: str, app_code: str, limit: int = 10) -> list[dict[str, Any]]:
     rows = await execute_query(
-        """SELECT ID, TRIGGER_SOURCE, OBS_CONSIDERED, ENTRIES_ADDED, ENTRIES_REVISED,
-                  ENTRIES_CONFIRMED, ENTRIES_RETIRED, STARTED_AT, FINISHED_AT, ERROR
+        """SELECT ID, TRIGGER_SOURCE, OBS_CONSIDERED, OBS_RENDERED, OPS_RETURNED,
+                  ENTRIES_ADDED, ENTRIES_REVISED, ENTRIES_CONFIRMED, ENTRIES_RETIRED,
+                  ENTRIES_REJECTED, ENTRIES_CONTRADICTED, RESPONSE_CHARS,
+                  REASONING_CHARS, STOP_REASON, MODEL, ATTEMPTS,
+                  STARTED_AT, FINISHED_AT, ERROR
              FROM lore_curation_run
             WHERE CLIENT_CODE=%s AND APP_CODE=%s
          ORDER BY ID DESC LIMIT %s""",

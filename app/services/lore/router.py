@@ -13,16 +13,20 @@ caller's client and the app they name. There is no cross-tenant read.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import (
+    APIRouter, Depends, File, Form, Header, HTTPException, Query, Response,
+    UploadFile,
+)
 from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.core.base_auth import require_auth_context
 from app.core.session import AuthContext
-from app.services.lore import access, curator, ingest, retrieval, store
+from app.services.lore import access, curator, ingest, retrieval, store, transport
 from app.services.lore.access import LoreAccessError, LoreScope
 from app.services.lore.models import (
     ENTRY_KIND_HELP,
@@ -121,6 +125,12 @@ async def list_entries(
         subject=normalise_subject(subject) if subject else None,
         status=status, limit=limit,
     )
+    # Every other read path annotates standing; this one did not, so the list
+    # reported contradicted_by=0 and no standing at all, and its
+    # effective_confidence disagreed with the same entry's number in search
+    # results. This is the pane's main read, and contested/unverified is the
+    # whole replacement for the abandoned half-life model.
+    await store.annotate_standing(entries)
     return {
         "count": len(entries),
         "entries": [e.to_dict() for e in entries],
@@ -517,4 +527,160 @@ async def get_known_apps(
     return {
         "known": await store.known_apps(limit=limit),
         "needing_curation": await store.apps_needing_curation(min_pending=1, limit=limit),
+    }
+
+
+# ── Transport: download and upload ───────────────────────────────────────
+#
+# On the JWT rather than the admin token. A browser cannot hold ADMIN_TOKEN
+# safely, and admin routes are excluded from the builder surface by policy —
+# `promote_app_kb.py`-style cross-env promotion is a script caller, and a
+# person uploading a file from a screen is not.
+#
+# Using `_write_scope` is also what makes the per-client delta resolution
+# automatic rather than special-cased: a client with edit access on somebody
+# else's app gets FORKS, and the app's owner gets base rewrites, purely because
+# `store.edit_in_scope` reads `scope.owns(...)`. Nothing here has to know which
+# case it is in.
+
+
+class ImportRequest(BaseModel):
+    app_code: str
+    document: Any = Field(..., description="A lore_transport/v1 document, or its YAML/JSON text")
+    mode: Literal["merge", "sync"] = "merge"
+    # The screen calls this twice: once to show what would happen, then once to
+    # do it. That is the whole reason plan and apply are separate.
+    dry_run: bool = True
+
+
+@router.get("/export")
+async def export_lore(
+    app_code: str = Query(...),
+    resolved: bool = Query(
+        False,
+        description="Flatten the inheritance chain into one list. An export like this, "
+                    "imported into another client, turns every inherited entry into an "
+                    "owned copy and breaks the override model. Ask for it deliberately.",
+    ),
+    status: str = Query("active"),
+    auth: AuthContext = Depends(require_auth_context),
+) -> Response:
+    """Download what this client knows about an app, as a transport document."""
+    scope = await _read_scope(auth, app_code)
+    document = await transport.export(scope, resolved=resolved, status=status)
+    body = json.dumps(document, indent=2, ensure_ascii=False, default=str)
+    filename = f"lore_{scope.app_code}_{scope.client_code}.json"
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/import/file")
+async def import_lore_file(
+    app_code: str = Form(...),
+    mode: Literal["merge", "sync"] = Form("merge"),
+    file: UploadFile = File(...),
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """Upload a transport document and get back the plan. Writes nothing.
+
+    Separate from `POST /import` because a browser file picker posts multipart,
+    not JSON, and mixing the two on one route makes both harder to read. This
+    one is preview-only by design: it returns the plan AND the parsed document,
+    so the screen can show what would happen and then apply it through
+    `POST /import` with `dry_run: false` — without asking the person to pick
+    the same file twice.
+    """
+    scope = await _write_scope(auth, app_code)
+    raw = await file.read()
+    if len(raw) > 4_000_000:
+        raise HTTPException(status_code=413, detail="that file is too large to be lore")
+    try:
+        doc = transport.parse(raw.decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise HTTPException(
+            status_code=400, detail="the file is not UTF-8 text",
+        ) from exc
+    except transport.TransportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if doc.app_code != scope.app_code:
+        raise HTTPException(
+            status_code=400,
+            detail=f"that file is for app '{doc.app_code}', not '{scope.app_code}'",
+        )
+    try:
+        plan_obj = await transport.plan(scope, doc, mode=mode)
+    except transport.TransportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "dry_run": True,
+        "filename": file.filename,
+        "plan": plan_obj.to_dict(),
+        # Echoed back so the apply does not need the file again.
+        "document": {
+            "format": transport.FORMAT,
+            "app_code": doc.app_code,
+            "client_code": doc.client_code,
+            "source": doc.source,
+            "resolved": doc.resolved,
+            "entries": [
+                {
+                    "key": e.key, "kind": e.kind, "subject": e.subject,
+                    "title": e.title, "body": e.body, "tags": e.tags,
+                    "confidence": e.confidence, "pinned": e.pinned,
+                    "status": e.status,
+                    **({"overrides_key": e.overrides_key} if e.overrides_key else {}),
+                }
+                for e in doc.entries
+            ],
+        },
+        "scope": scope.to_dict(),
+    }
+
+
+@router.post("/import")
+async def import_lore(
+    body: ImportRequest,
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """Preview or apply a transport document against this client's lore.
+
+    With `dry_run` (the default) nothing is written and the response is the
+    plan: what would be added, revised, forked as this client's override,
+    retired, or skipped. That preview is the point — a blind import into an app
+    where this client has overridden entries would silently clobber deliberate
+    local knowledge.
+    """
+    scope = await _write_scope(auth, body.app_code)
+    try:
+        doc = transport.parse(body.document)
+    except transport.TransportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if doc.app_code != scope.app_code:
+        raise HTTPException(
+            status_code=400,
+            detail=f"the document is for app '{doc.app_code}', not '{scope.app_code}'",
+        )
+
+    try:
+        plan_obj = await transport.plan(scope, doc, mode=body.mode)
+    except transport.TransportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if body.dry_run:
+        return {"dry_run": True, "plan": plan_obj.to_dict(), "scope": scope.to_dict()}
+
+    counters = await transport.apply(
+        scope, doc, plan_obj, updated_by=(auth.user_id or 0),
+    )
+    return {
+        "dry_run": False,
+        "applied": counters,
+        "plan": plan_obj.to_dict(),
+        "scope": scope.to_dict(),
     }
