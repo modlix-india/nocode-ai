@@ -1170,3 +1170,88 @@ async def test_nothing_is_pushed_by_default(monkeypatch):
 
     monkeypatch.setattr(lore_context.access, "resolve_scope", _boom)
     assert await lore_context.big_picture(_FakeSession()) == ""
+
+
+# ── search says what it did NOT match ────────────────────────────────────
+
+
+def test_question_words_are_not_content_terms():
+    """"how are phone numbers stored" was answered with an entry about partner
+    onboarding, matching entirely on `stored`. The question words are what let
+    a full-text match drift onto whatever shares them."""
+    from app.services.lore.retrieval import _content_terms
+
+    assert _content_terms("how are phone numbers stored") == ["phone", "numbers", "stored"]
+    assert _content_terms("what did we decide about stages") == ["decide", "stages"]
+    assert _content_terms("") == []
+    # Identifiers survive intact; they are the most identifying thing a query has.
+    assert "dealsoptimized" in _content_terms("where is dealsOptimized used")
+
+
+def test_term_coverage_reads_title_body_and_subject():
+    from app.services.lore.models import Entry
+    from app.services.lore.retrieval import _term_coverage
+
+    entry = Entry(
+        id=1, client_code="SYSTEM", app_code="leadzump", kind="gotcha",
+        subject="page:dealsOptimized", title="A fork that shares component UUIDs",
+        body="It is deals with the overlays pruned.",
+    )
+    assert _term_coverage(entry, ["fork", "uuids"]) == ["fork", "uuids"]
+    assert _term_coverage(entry, ["dealsoptimized"]) == ["dealsoptimized"]   # subject
+    assert _term_coverage(entry, ["whatsapp"]) == []
+
+
+@pytest.mark.asyncio
+async def test_search_drops_entries_matching_no_content_term(monkeypatch):
+    """A search about pipeline stages returned an entry on forked pages at
+    4.76 with zero terms in common. Whatever it scored, it is not an answer."""
+    from app.services.lore import retrieval
+    from app.services.lore.models import Entry
+
+    good = Entry(id=1, client_code="SYSTEM", app_code="a", kind="glossary",
+                 subject="app", title="Stages and statuses",
+                 body="A pipeline is ordered stages.")
+    unrelated = Entry(id=2, client_code="SYSTEM", app_code="a", kind="gotcha",
+                      subject="app", title="A fork sharing component keys",
+                      body="Nothing to do with the question.")
+
+    async def _search_entries(*a, **kw):
+        return [(unrelated, 9.9), (good, 1.0)]   # the noise scores higher
+
+    async def _annotate(entries):
+        return list(entries)
+
+    monkeypatch.setattr(retrieval.store, "search_entries", _search_entries)
+    monkeypatch.setattr(retrieval.store, "annotate_standing", _annotate)
+
+    result = await retrieval.search(_scope(client="SYSTEM", chain=("SYSTEM",)), "stages")
+    assert [r["id"] for r in result["results"]] == [1]
+    assert result["missing_terms"] == []
+
+
+@pytest.mark.asyncio
+async def test_search_reports_terms_no_entry_mentions(monkeypatch):
+    """The signal that results are about something else, however good the
+    scores look. This is what the tool leads its summary with."""
+    from app.services.lore import retrieval
+    from app.services.lore.models import Entry
+
+    entry = Entry(id=1, client_code="SYSTEM", app_code="a", kind="integration",
+                  subject="app", title="Onboarding is stored separately",
+                  body="Partner config lives in its own storage.")
+
+    async def _search_entries(*a, **kw):
+        return [(entry, 4.76)]
+
+    async def _annotate(entries):
+        return list(entries)
+
+    monkeypatch.setattr(retrieval.store, "search_entries", _search_entries)
+    monkeypatch.setattr(retrieval.store, "annotate_standing", _annotate)
+
+    result = await retrieval.search(
+        _scope(client="SYSTEM", chain=("SYSTEM",)), "how are phone numbers stored")
+    assert result["count"] == 1
+    assert result["results"][0]["matched_terms"] == ["stored"]
+    assert result["missing_terms"] == ["phone", "numbers"]

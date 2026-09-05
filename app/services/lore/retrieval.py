@@ -13,6 +13,8 @@ job; this module only ever hands it `scope.read_chain`.
 
 from __future__ import annotations
 
+import re
+
 import logging
 from typing import Any, Sequence
 
@@ -267,6 +269,39 @@ async def index(
     }
 
 
+# Words that carry no signal in a question and drag a full-text match toward
+# whatever entry happens to share them. "how are phone numbers stored" was
+# answered with "Partner onboarding is configured per owner and stored
+# separately", scoring 4.76 — the match was entirely on `stored`.
+_QUESTION_NOISE: frozenset[str] = frozenset({
+    "a", "about", "an", "and", "any", "anything", "are", "as", "at", "be",
+    "before", "by", "can", "could", "did", "do", "does", "for", "from", "get",
+    "has", "have", "how", "i", "if", "in", "is", "it", "know", "me", "my",
+    "need", "of", "on", "or", "our", "should", "so", "some", "tell", "than",
+    "that", "the", "their", "them", "then", "there", "these", "they", "this",
+    "to", "us", "use", "using", "was", "we", "what", "when", "where", "which",
+    "who", "why", "will", "with", "would", "you", "your",
+})
+
+# A result scoring below this share of the best one is the long tail, not an
+# answer. Measured: a good query leaves a clear leader (9.5 alone, or 9.6 then
+# 5.7), while the tail on a thematic query sits at 0.563 against a 2.906 top —
+# about 19%. 0.35 cuts the tail and keeps the second real hit.
+_TAIL_SHARE = 0.35
+
+
+def _content_terms(query: str) -> list[str]:
+    """The words in a query that could actually identify an entry."""
+    words = re.findall(r"[A-Za-z][A-Za-z0-9_]{1,}", query.lower())
+    return [w for w in words if w not in _QUESTION_NOISE]
+
+
+def _term_coverage(entry: Entry, terms: Sequence[str]) -> list[str]:
+    """Which of those words this entry genuinely contains."""
+    hay = f"{entry.title}\n{entry.body}\n{entry.subject}".lower()
+    return [t for t in terms if t in hay]
+
+
 async def search(
     scope: Any,
     query: str,
@@ -278,6 +313,21 @@ async def search(
 
     Results are re-ranked by decayed confidence as well as text score, so a
     stale but lexically perfect match does not beat a current one.
+
+    The interesting part is what this reports when it has NOT found something.
+    MySQL natural-language mode returns any row sharing any term, ranked by
+    tf-idf, and on a corpus of a few dozen entries that means a question about
+    something the app has never recorded still comes back with a confident
+    row. Neither an absolute score floor nor a top-to-second ratio separates
+    that case: the bad query measured 4.76 with a 1.6x lead, the good one 9.6
+    with a 1.7x lead.
+
+    What does separate them is which words matched. So the result now carries
+    `missing_terms` — the content words of the query that appear in no entry at
+    all — and the tool says so plainly. "No entry mentions: phone" is the
+    honest answer to "how are phone numbers stored" in an app that has never
+    written that down, and it is far more useful than a partner-onboarding
+    entry that happens to contain the word "stored".
     """
     query = (query or "").strip()
     if not query:
@@ -289,24 +339,62 @@ async def search(
         allowed = set(kinds)
         scored = [(e, s) for e, s in scored if e.kind in allowed]
 
+    terms = _content_terms(query)
+
+    # How many of the query's meaningful words an entry actually contains is a
+    # better relevance signal than tf-idf alone on a corpus this small, and it
+    # is the one that fixes the motivating case: for "how are phone numbers
+    # stored", tf-idf put an entry matching only `stored` above two that
+    # matched `phone`, because `stored` was the rarer word in this corpus.
     def combined(pair: tuple[Entry, float]) -> float:
         entry, text_score = pair
-        # Text relevance dominates; confidence breaks ties and demotes stale hits.
-        return text_score * 2.0 + entry.effective_confidence / 100.0 + (0.5 if entry.pinned else 0.0)
+        coverage = len(_term_coverage(entry, terms)) / len(terms) if terms else 0.0
+        return (
+            coverage * 6.0            # dominant: did it mention what was asked about
+            + text_score * 2.0        # then lexical relevance
+            + entry.effective_confidence / 100.0
+            + (0.5 if entry.pinned else 0.0)
+        )
+
+    # An entry containing none of the query's content words is not an answer,
+    # whatever it scored. Full-text will happily return one — a search about
+    # pipeline stages returned an entry on forked pages with zero terms in
+    # common, at 4.76.
+    if terms:
+        scored = [(e, sc) for e, sc in scored if _term_coverage(e, terms)]
 
     scored.sort(key=combined, reverse=True)
+
+    # Cut the long tail relative to the best hit rather than at a fixed score:
+    # scores are tf-idf over this app's corpus, so they are not comparable
+    # between apps or even between queries.
+    if scored:
+        best = max(s for _, s in scored) or 0.0
+        if best > 0:
+            scored = [(e, s) for e, s in scored if s >= best * _TAIL_SHARE]
     top = scored[:limit]
+
+    covered: set[str] = set()
+    results = []
+    for entry, score in top:
+        hit = _term_coverage(entry, terms)
+        covered.update(hit)
+        results.append({
+            **entry.to_dict(),
+            "text_score": round(score, 4),
+            "matched_terms": hit,
+        })
+    missing = [t for t in terms if t not in covered]
 
     return {
         "query": query,
-        "count": len(top),
-        "results": [
-            {
-                **entry.to_dict(),
-                "text_score": round(score, 4),
-            }
-            for entry, score in top
-        ],
+        "count": len(results),
+        "terms": terms,
+        # Content words of the query that appear in NO returned entry. A
+        # non-empty list here is the signal that the results are about
+        # something else, however good their scores look.
+        "missing_terms": missing,
+        "results": results,
     }
 
 

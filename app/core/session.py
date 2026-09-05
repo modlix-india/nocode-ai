@@ -107,6 +107,15 @@ class AuthContext:
     user_id: int
     app_code: str
     access_app_code: str = "appbuilder"
+    # The caller's own client level relative to the app: CLIENT (the owner org),
+    # CUSTOMER (a business partner), CONSUMER, OWNER. Read straight off the
+    # security context — LeadZump ships two products in one app split on exactly
+    # this, so an agent that serves only the owner side needs it at the router.
+    client_level_type: str = ""
+    # The caller's display name. LeadZump's `…AndSN` server functions take a
+    # notification payload naming who acted, and the security context is the
+    # only place it is available without a second lookup.
+    user_name: str = ""
     forwarded_host: str = "localhost"
     forwarded_port: str = "80"
     path_prefix: str = ""  # Standalone mode: URL prefix e.g. /appbuilder/SYSTEM/page

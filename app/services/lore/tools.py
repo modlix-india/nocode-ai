@@ -149,19 +149,40 @@ async def _search(params: dict[str, Any], context: dict[str, Any]) -> ToolResult
         limit=int(params.get("limit") or 12),
         kinds=kinds if isinstance(kinds, list) else None,
     )
+    missing = result.get("missing_terms") or []
     if not result["count"]:
         return ToolResult(
             success=True, data=result,
-            summary=f"Nothing recorded about “{query}” in this app.",
+            summary=(
+                f"Nothing recorded about “{query}” in this app. "
+                "Call lore_index to see everything it does know."
+            ),
         )
+
+    # The warning goes FIRST, because it changes how the results below should
+    # be read. Full-text match on a few dozen entries will always return the
+    # row that shares the most common word, so a confident-looking answer to a
+    # question the app has never recorded is the normal failure here, not an
+    # unusual one.
+    head = ""
+    if missing:
+        words = ", ".join(f"`{t}`" for t in missing)
+        head = (
+            f"CAUTION: no entry in this app mentions {words}. The matches below "
+            f"share other words with your query and may be about something else "
+            f"entirely. Check them against what you actually asked, and use "
+            f"lore_index if you want to see what is really recorded.\n\n"
+        )
+
     lines = [
-        f"#{r['id']} [{r['kind']}] {r['subject']} · confidence {r['effective_confidence']}\n"
+        f"#{r['id']} [{r['kind']}] {r['subject']} · confidence {r['effective_confidence']}"
+        f" · matched {', '.join(r.get('matched_terms') or []) or 'nothing specific'}\n"
         f"  {r['title']}\n  {r['body'][:400]}"
         for r in result["results"]
     ]
     return ToolResult(
         success=True, data=result,
-        summary=f"{result['count']} match(es) for “{query}”:\n\n" + "\n\n".join(lines),
+        summary=head + f"{result['count']} match(es) for “{query}”:\n\n" + "\n\n".join(lines),
     )
 
 
