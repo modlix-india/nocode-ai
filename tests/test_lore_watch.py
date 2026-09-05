@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.lore.watch import EditFact, action_for, classify
+from app.services.lore.watch import EditFact, action_for, classify, is_cosmetic
 
 
 # ── Reads must never look like edits ─────────────────────────────────────
@@ -191,3 +191,53 @@ def test_the_core_page_authoring_tools_are_all_observed():
     for name in must_observe:
         assert name in registry, f"{name} vanished from the registry"
         assert action_for(name) is not None, f"{name} is no longer observed"
+
+
+# ── styling churn is rationed, not treated as evidence ───────────────────
+
+
+def test_component_styling_is_marked_cosmetic():
+    """35 of 81 real edit observations were component style patches, the
+    largest single category, and none can become knowledge: `watch` records
+    style KEY NAMES and not values, so the claim is "marginBottom was set on
+    nameInput" — true, and true of something else tomorrow."""
+    for tool in ("patch_component_styles", "bulk_patch_component_styles",
+                 "remove_component_styles", "set_styles"):
+        fact = classify(
+            tool, {"page_name": "ContactCFA", "component_key": "nameInput"},
+            summary="styled", success=True,
+        )
+        assert fact is not None, tool
+        assert fact.cosmetic is True, tool
+
+
+def test_style_and_theme_definitions_are_not_cosmetic():
+    """Changing what the design system IS is exactly the claim lore wants,
+    so the definition-level verbs stay substantive."""
+    for tool in ("patch_theme_variables", "create_style", "update_style",
+                 "delete_style_rule", "update_theme"):
+        assert is_cosmetic(tool) is False, tool
+
+
+def test_structure_and_props_are_not_cosmetic():
+    for tool in ("add_components", "remove_component", "patch_component_props",
+                 "save_page_event_function_from_text"):
+        assert is_cosmetic(tool) is False, tool
+
+
+def test_cosmetic_edits_are_still_recorded_so_staleness_still_fires():
+    """They are rationed in the BATCH, not dropped at ingest.
+
+    `store.annotate_standing` derives `subject_changed_at` from a subject's
+    newest `edit` observation, and that is what marks an entry unverified when
+    the thing it describes moves. A heavily restyled page must not look
+    untouched, so `classify` still returns a fact.
+    """
+    fact = classify(
+        "patch_component_styles",
+        {"page_name": "dealProfile", "component_key": "stageRail"},
+        summary="styled", success=True,
+    )
+    assert fact is not None
+    assert fact.subject == "page:dealProfile"
+    assert fact.action == "update"

@@ -123,6 +123,9 @@ class EditFact:
     action: str
     subject: str
     detail: str
+    # Styling applied to a component, as opposed to a change of substance.
+    # Recorded, then rationed: see _COSMETIC_TOOLS.
+    cosmetic: bool = False
 
 
 def action_for(tool_name: str) -> str | None:
@@ -182,6 +185,38 @@ _CHILD_PARAMS: tuple[tuple[str, str], ...] = (
     ("function_name", "event function"),
     ("event_name", "event"),
 )
+
+
+# Component styling. Measured across 81 edit observations, 35 of them — the
+# largest single category — were style patches on components, and none of them
+# can become knowledge: `watch` records property KEY NAMES and not values, so
+# the observation says "marginBottom and marginTop were set on nameInput",
+# which is true, uninteresting, and will be true of a different component
+# tomorrow. An unattended pass over nine such observations returned an empty
+# operations list, correctly, and consumed all nine to do it.
+#
+# They are still RECORDED rather than dropped, for one reason:
+# `store.annotate_standing` derives a subject's `subject_changed_at` from its
+# newest `edit` observation, and that is what marks an entry unverified when
+# the thing it describes moves. Dropping these would make a heavily restyled
+# page look untouched. What changes is only how many of them a curation batch
+# will look at.
+#
+# Style and theme DEFINITIONS are deliberately absent from this set.
+# `create_style`, `update_style`, `delete_style_rule`, `patch_theme_variables`
+# and the theme verbs change what the app's design system IS, which is exactly
+# the kind of claim lore wants.
+_COSMETIC_TOOLS: frozenset[str] = frozenset({
+    "patch_component_styles",
+    "bulk_patch_component_styles",
+    "remove_component_styles",
+    "set_styles",
+})
+
+
+def is_cosmetic(tool_name: str) -> bool:
+    """Is this call styling a component, rather than changing substance?"""
+    return tool_name in _COSMETIC_TOOLS
 
 
 def action_on_subject(tool_name: str, tool_action: str) -> str:
@@ -291,4 +326,5 @@ def classify(
         action=action_on_subject(tool_name, action),
         subject=subject,
         detail=detail,
+        cosmetic=is_cosmetic(tool_name),
     )

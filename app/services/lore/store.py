@@ -79,7 +79,17 @@ async def record_observation(
            ON DUPLICATE KEY UPDATE
                SEEN_COUNT = SEEN_COUNT + 1,
                LAST_SEEN_AT = CURRENT_TIMESTAMP,
-               CURATED_AT = NULL""",
+               CURATED_AT = NULL,
+               -- META is refreshed, unlike BODY, which is the dedupe key and
+               -- so is identical by definition. META carries CLASSIFICATION
+               -- rather than content — which tool, whether the change was
+               -- cosmetic — and that is a property of how we read the call,
+               -- not of this particular sighting. Leaving it frozen means a
+               -- classifier improvement can never reach an observation that
+               -- already exists, which is exactly what happened when the
+               -- cosmetic flag was added: every style patch on an existing
+               -- fingerprint kept a null flag no matter how often it recurred.
+               META = VALUES(META)""",
         (client_code, app_code, kind, source[:160], subject, body,
          _json_or_none(meta), fp, observed_by),
     )
