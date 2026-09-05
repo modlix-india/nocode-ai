@@ -90,6 +90,11 @@ async def big_picture(session: Any, *, budget: int | None = None) -> str:
     """
     if not _enabled():
         return ""
+    # Off by default: the briefing competed with the tool catalogue for prompt
+    # space and lost, rendering a ranked fraction of what the app knew. The
+    # model reaches all of it through `lore_index` instead.
+    if not getattr(settings, "LORE_PUSH_BRIEF", False):
+        return ""
     ident = _identity(session)
     if not ident:
         return ""
@@ -159,6 +164,8 @@ async def small_picture(
 ) -> str:
     """What is known about one object, for a turn reminder. "" when nothing."""
     if not _enabled():
+        return ""
+    if not getattr(settings, "LORE_PUSH_SUBJECT", True):
         return ""
     ident = _identity(session)
     if not ident:

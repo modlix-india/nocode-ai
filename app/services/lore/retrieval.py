@@ -200,6 +200,73 @@ async def brief(
     }
 
 
+def render_entry(entry: Entry) -> str:
+    """One entry in full, the way a briefing renders it.
+
+    Shared by the briefing and by lore_get so an entry reads identically
+    whichever way the model reached it.
+    """
+    where = "" if entry.subject == "app" else f" · {entry.subject}"
+    return (
+        f"#{entry.id} [{entry.kind}{where}] {entry.title}{_mark(entry)}\n"
+        f"{entry.body.strip()}"
+    )
+
+
+async def index(
+    scope: Any, *, subject: str | None = None, include_unverified: bool = True,
+) -> dict[str, Any]:
+    """One line per entry: everything this app knows, as a table of contents.
+
+    This exists because a briefing cannot carry an app's knowledge and the
+    prompt budget at the same time. Measured on a 21-entry app: the full bodies
+    are 8,274 characters and a 3,800-character briefing rendered 5 of them, so
+    16 entries were invisible to the model unless it thought to ask. The same
+    21 entries as index lines are 1,561 characters — under a fifth of the
+    bodies, and small enough that nothing has to be dropped.
+
+    That inversion is the point. A briefing makes the ranking decide what the
+    model sees; an index makes the MODEL decide, because it can see that every
+    entry exists and fetch the ones its task actually needs. It also removes
+    the search-phrasing problem: picking a real title beats guessing terms
+    against a fulltext index that answers "how are phone numbers stored" with
+    an entry about partner onboarding.
+
+    Entries are never truncated away here. An index that silently omits things
+    is worse than no index, because the model cannot tell the difference
+    between "this app does not know that" and "that did not fit".
+    """
+    subject = normalise_subject(subject) if subject else None
+    entries = await store.list_entries(
+        scope.read_chain, scope.app_code, subject=subject, status="active", limit=400,
+    )
+    entries = await store.annotate_standing(entries)
+    if not include_unverified:
+        entries = [e for e in entries if e.effective_confidence >= UNVERIFIED_BELOW]
+    entries.sort(key=_rank)
+
+    by_kind: dict[str, list[Entry]] = {}
+    for entry in entries:
+        by_kind.setdefault(entry.kind, []).append(entry)
+
+    lines: list[str] = []
+    for kind in BRIEF_ORDER:
+        group = by_kind.get(kind)
+        if not group:
+            continue
+        lines.append(f"\n{_KIND_HEADINGS.get(kind, kind)}")
+        for entry in group:
+            where = "" if entry.subject == "app" else f" [{entry.subject}]"
+            lines.append(f"  #{entry.id}{where} {entry.title}{_mark(entry)}")
+
+    return {
+        "markdown": "\n".join(lines).strip(),
+        "entry_count": len(entries),
+        "subject": subject or "app",
+        "scope": scope.to_dict() if hasattr(scope, "to_dict") else None,
+    }
+
+
 async def search(
     scope: Any,
     query: str,

@@ -1048,7 +1048,18 @@ class _FakeSession:
 
 @pytest.mark.asyncio
 async def test_big_picture_is_pushed_into_the_system_prompt(monkeypatch):
+    """Only when LORE_PUSH_BRIEF is on, which it is not by default.
+
+    The push is off because it delivered a ranked fraction: measured on two
+    seeded apps a 3,800-character briefing rendered 5 of 21 entries and 7 of
+    21. The model reaches all of it through `lore_index` instead. The push is
+    kept behind a flag rather than deleted, so this asserts the rendering still
+    works when it is switched on.
+    """
+    from app.config import settings as _settings
     from app.services.lore import context as lore_context
+
+    monkeypatch.setattr(_settings, "LORE_PUSH_BRIEF", True)
 
     async def _resolve(auth, app_code, **kw):
         return _scope(client="CLIENTA", chain=CHAIN)
@@ -1147,3 +1158,15 @@ async def test_small_picture_says_nothing_for_the_app_subject(monkeypatch):
     """The big picture already covers app level; repeating it is waste."""
     from app.services.lore import context as lore_context
     assert await lore_context.small_picture(_FakeSession(), "app") == ""
+
+
+@pytest.mark.asyncio
+async def test_nothing_is_pushed_by_default(monkeypatch):
+    """The default is silence: an app's knowledge is pulled, not pushed."""
+    from app.services.lore import context as lore_context
+
+    async def _boom(*a, **kw):  # must not even be reached
+        raise AssertionError("big_picture resolved scope while the push was off")
+
+    monkeypatch.setattr(lore_context.access, "resolve_scope", _boom)
+    assert await lore_context.big_picture(_FakeSession()) == ""

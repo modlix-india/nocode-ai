@@ -165,6 +165,73 @@ async def _search(params: dict[str, Any], context: dict[str, Any]) -> ToolResult
     )
 
 
+async def _index(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    scope, refusal = await _scope(context, for_write=False)
+    if refusal:
+        return refusal
+
+    subject = params.get("subject")
+    result = await retrieval.index(scope, subject=subject or None)
+    if not result["entry_count"]:
+        return ToolResult(
+            success=True,
+            summary=(
+                f"Nothing is recorded about `{scope.app_code}` yet. If you learn "
+                "something durable while working on it, write it down with lore_add."
+            ),
+        )
+    return ToolResult(
+        success=True,
+        data=result,
+        summary=(
+            f"{result['entry_count']} things are recorded about `{scope.app_code}`. "
+            f"Fetch the ones your task needs with lore_get.\n\n{result['markdown']}"
+        ),
+    )
+
+
+async def _get(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    scope, refusal = await _scope(context, for_write=False)
+    if refusal:
+        return refusal
+
+    raw = params.get("entry_ids") or []
+    if isinstance(raw, (str, int)):
+        raw = [raw]
+    ids: list[int] = []
+    for value in raw:
+        try:
+            ids.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return ToolResult(
+            success=False,
+            error="entry_ids must be one or more numeric ids, as shown by lore_index.",
+        )
+
+    entries = await store.entries_by_id(scope.read_chain, scope.app_code, ids[:20])
+    if not entries:
+        return ToolResult(
+            success=False,
+            error=(
+                f"None of {ids[:20]} are entries of `{scope.app_code}`. Ids come from "
+                "lore_index; they are not stable across apps."
+            ),
+        )
+    entries = await store.annotate_standing(entries)
+    found = {e.id for e in entries}
+    missing = [i for i in ids[:20] if i not in found]
+
+    parts = [retrieval.render_entry(e) for e in entries]
+    tail = f"\n\n(not found in this app: {missing})" if missing else ""
+    return ToolResult(
+        success=True,
+        data={"entries": [e.to_dict() for e in entries], "missing": missing},
+        summary="\n\n".join(parts) + tail,
+    )
+
+
 async def _about(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     scope, refusal = await _scope(context, for_write=False)
     if refusal:
@@ -359,11 +426,12 @@ LORE_BRIEF = ToolDefinition(
     name="lore_brief",
     display_name="App knowledge briefing",
     description=(
-        "Read what is already known about this application before you change it: its "
-        "purpose, the rules that must hold, the conventions it follows, past decisions "
-        "and why, known traps, and what is in flight. Call this ONCE at the start of a "
-        "task on an app you have not worked on in this session. Pass `subject` to "
-        "narrow it to one object (e.g. 'page:jobsToday')."
+        "The same knowledge as lore_index, rendered as prose instead of a list. "
+        "DO NOT call this after lore_index — it is the same entries in a longer form, "
+        "and it truncates: a 21-entry app renders about 13 of them at the default "
+        "budget, so it can silently show you less than the index already did. "
+        "Use it only when you want a readable summary to quote to a person, or when "
+        "you have not called lore_index and want one call rather than two."
     ),
     parameters=[
         ToolParameter(
@@ -382,10 +450,13 @@ LORE_SEARCH = ToolDefinition(
     name="lore_search",
     display_name="Search app knowledge",
     description=(
-        "Search this app's accumulated knowledge for a specific question: has a decision "
-        "already been made about this, is there a convention for it, has someone hit this "
-        "problem before. Use before deciding anything that feels like it might already "
-        "have been decided."
+        "LAST RESORT. Full-text search over this app's knowledge, for when lore_index "
+        "did not name what you need and you are guessing at words. "
+        "Prefer lore_index then lore_get: those cannot mis-match. This can, and on a "
+        "small corpus it fails in the worst way — it answers 'how are phone numbers "
+        "stored' with an entry about partner onboarding rather than with nothing. "
+        "Treat a result as a candidate to verify, not as an answer, and never search "
+        "for something the index already gave you an id for."
     ),
     parameters=[
         ToolParameter(name="query", type="string", description="What you want to know about.", required=True),
@@ -399,13 +470,57 @@ LORE_SEARCH = ToolDefinition(
     execute=_search,
 )
 
+LORE_INDEX = ToolDefinition(
+    name="lore_index",
+    display_name="What this app knows",
+    description=(
+        "One line per thing this app has recorded: rules, conventions, terms, traps, "
+        "decisions and who owns what. START HERE on any task against an app you did "
+        "not just create, before reading definitions or changing anything. It is the "
+        "only way to find out what has already been decided, and it is cheap: an "
+        "app's whole index is a page of titles. Then fetch what your task needs with "
+        "lore_get. Nothing about this app is pushed into your context automatically, "
+        "so if you do not call this you are working without it."
+    ),
+    parameters=[
+        ToolParameter(
+            name="subject", type="string", required=False,
+            description=(
+                "Optional. Narrow to one object, '<type>:<name>' e.g. 'page:dealProfile'. "
+                "Omit for the whole app, which is the usual case."
+            ),
+        ),
+    ],
+    execute=_index,
+)
+
+LORE_GET = ToolDefinition(
+    name="lore_get",
+    display_name="Read these entries",
+    description=(
+        "The full text of entries whose ids you got from lore_index. This is the SECOND "
+        "and usually LAST step: lore_index, then this, then get on with the task. "
+        "Ask for every id that looks relevant in ONE call — asking for four ids costs "
+        "the same as asking for one. Once you have called this you have the knowledge; "
+        "do not then call lore_brief or lore_search for the same ground."
+    ),
+    parameters=[
+        ToolParameter(
+            name="entry_ids", type="array", required=True,
+            description="Entry ids from lore_index, e.g. [59, 65, 71]. Up to 20.",
+        ),
+    ],
+    execute=_get,
+)
+
 LORE_ABOUT = ToolDefinition(
     name="lore_about",
     display_name="What is known about this object",
     description=(
-        "Everything recorded about one page, storage, function or other object, plus "
-        "entries elsewhere in the app that mention it. Use before editing an object you "
-        "did not create."
+        "Everything recorded about one object, INCLUDING entries filed elsewhere that "
+        "merely mention it — which is what makes it different from "
+        "lore_index(subject=...), and the reason to use it before editing an object "
+        "you did not create. Full text, so no lore_get is needed afterwards."
     ),
     parameters=[
         ToolParameter(
@@ -507,7 +622,9 @@ LORE_CORRECT = ToolDefinition(
 )
 
 # Read-only set — safe to hand to any agent.
-LORE_READ_TOOLS: list[ToolDefinition] = [LORE_BRIEF, LORE_SEARCH, LORE_ABOUT]
+LORE_READ_TOOLS: list[ToolDefinition] = [
+    LORE_INDEX, LORE_GET, LORE_BRIEF, LORE_SEARCH, LORE_ABOUT,
+]
 
 # Everything, for agents that are building the app and should contribute back.
 LORE_TOOLS: list[ToolDefinition] = LORE_READ_TOOLS + [LORE_ADD, LORE_NOTE, LORE_CORRECT]
