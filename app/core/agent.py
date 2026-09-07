@@ -1751,7 +1751,8 @@ class BaseAgent:
                 detail=fact.detail,
                 actor=self.name,
                 user_id=int(getattr(auth, "user_id", 0) or 0),
-                meta={"tool": tool_name, "session_id": session.session_id},
+                meta={"tool": tool_name, "session_id": session.session_id,
+                      "cosmetic": fact.cosmetic},
             )
         except Exception:  # noqa: BLE001 — lore must never break a tool call
             logger.debug("lore: edit observation skipped", exc_info=True)

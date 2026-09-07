@@ -256,3 +256,228 @@ entries:
       times, so adopting SubPage for the shared chrome comes first. The ranked
       list of what to change lives in `GAP_ANALYSIS.md`; the ordering
       constraint here is the part worth remembering.
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Per-page lore. Added 2026-09-05, from INDEX.md's page inventory and the
+  # per-area docs. Page names checked against the live `ui` definitions.
+  #
+  # Sitezump's inventory is unusually candid about what is half-built, and
+  # that candour is the most useful thing in it: three pages ship with no
+  # page permission at all and one of them injects arbitrary HTML. Those are
+  # recorded as constraints rather than as trivia.
+  # ══════════════════════════════════════════════════════════════════════
+
+  # ── pages with no permission on them ──────────────────────────────────
+
+  - key: page-analytics-no-permission-injects-html
+    kind: constraint
+    subject: page:analytics
+    confidence: 85
+    pinned: true
+    title: analytics injects arbitrary HTML and carries no page permission
+    tags: [security, unguarded]
+    body: |
+      The page edits `properties.codeParts`, which is arbitrary HTML injected
+      into the served site, and it has no page permission of its own. Those
+      two facts together are the problem: anyone who reaches the URL can write
+      script into a customer's site. Do not add a feature here without adding
+      the guard, and treat any report of unexpected markup on a published site
+      as pointing at this page first.
+
+  - key: page-icons-no-permission
+    kind: constraint
+    subject: page:icons
+    confidence: 80
+    title: icons has no page permission, and its pack catalogue is a literal
+    tags: [security, unguarded]
+    body: |
+      Editing `properties.iconPacks` is unguarded by a page permission. The
+      nine-pack catalogue it offers is also a literal list inside an event
+      function rather than a fetch, so adding a pack means editing that
+      function and not a configuration record.
+
+  - key: page-formdata-no-permission
+    kind: constraint
+    subject: page:formData
+    confidence: 85
+    pinned: true
+    title: formData shows submitted form rows and has no page permission
+    tags: [security, unguarded, privacy]
+    body: |
+      The rows a public form captured, which is customer-submitted personal
+      data, rendered on a page with no permission of its own. It is also the
+      app's only use of `TableDynamicColumn`, so it is the one place that
+      component's behaviour matters. The missing guard is the more urgent of
+      the two.
+
+  # ── pages that lie about which app they are ───────────────────────────
+
+  - key: page-loginpage-wrong-appcode
+    kind: gotcha
+    subject: page:loginPage
+    confidence: 85
+    title: loginPage passes marketingai as the app code to SocialLogin
+    tags: [auth, trap, cross-app]
+    body: |
+      The full-page sign-in hands `appCode = "marketingai"` to `SocialLogin`,
+      so social auth from here authenticates against the wrong application.
+      This is the kind of fault that looks like an identity-provider problem
+      and is not. `signIn` is the variant that behaves correctly.
+
+  - key: page-forgetpassword-borrowed-assets
+    kind: gotcha
+    subject: page:forgetPassword
+    confidence: 75
+    title: forgetPassword serves MarketingAI's avatar images
+    tags: [assets, cross-app]
+    body: |
+      The OTP reset flow renders avatar SVGs belonging to MarketingAI rather
+      than to this app. Harmless to the flow and confusing to look at, and it
+      is a second sign that this page and `loginPage` were copied across from
+      that app without being re-pointed.
+
+  # ── pages that report success they did not have ───────────────────────
+
+  - key: page-schedulecall-false-success
+    kind: gotcha
+    subject: page:scheduleCall
+    confidence: 85
+    pinned: true
+    title: scheduleCall tells the visitor it worked even when the write failed
+    tags: [trap, data-loss]
+    body: |
+      The booking wizard shows its success state without checking that the
+      record was actually written, so a failed submission looks identical to a
+      successful one to the person who made it. Bookings that "vanish" are
+      usually this. Any change here should make the confirmation conditional
+      on the write, which is also the general rule in this app: guard on
+      `output.status = 200`, because the failure path fires an output event too.
+
+  - key: page-helpandsupport-no-failure-branch
+    kind: gotcha
+    subject: page:helpAndSupport
+    confidence: 75
+    title: helpAndSupport has no failure branch and refreshes three seconds after submit
+    tags: [trap]
+    body: |
+      The support form handles only the success path, then calls `Refresh()`
+      on a three-second delay. A failed submission is therefore both unreported
+      and wiped off the screen before anyone could act on it.
+
+  # ── forks and orphans ─────────────────────────────────────────────────
+
+  - key: page-home-is-the-old-landing
+    kind: gotcha
+    subject: page:home
+    confidence: 80
+    title: home is the previous landing page, still routed, and holds the only SEO title
+    tags: [fork, seo]
+    body: |
+      `newHome` is the current landing page; `home` is its predecessor and is
+      still reachable. The awkward part is that `home` carries the app's only
+      SEO `title`, so retiring it costs that and adding the title to `newHome`
+      has to happen first. Until then, marketing changes made on one of the two
+      are invisible on the other.
+
+  - key: page-buytokens-orphaned
+    kind: status
+    subject: page:buyTokens
+    confidence: 75
+    title: buyTokens was superseded and orphaned, and is still reachable by URL
+    tags: [orphan, billing]
+    body: |
+      Nothing links to it any more, but it was not removed, so it still
+      answers on its URL and still looks like the way to buy tokens. Work on
+      billing belongs on the pages that replaced it; a bug reported here is
+      probably a bug reported against a page nobody is meant to be on.
+
+  - key: page-compare-two-chromes
+    kind: gotcha
+    subject: page:compare
+    confidence: 75
+    title: compare renders both the old and the new chrome at once
+    tags: [fork, chrome]
+    body: |
+      The competitor comparison page carries two generations of page chrome
+      simultaneously. A styling change applied to one of them leaves the other
+      visibly different on the same screen, which is the usual explanation for
+      "the header looks wrong only on this page".
+
+  # ── stubs ─────────────────────────────────────────────────────────────
+
+  - key: page-login-empty-stub
+    kind: status
+    subject: page:login
+    confidence: 80
+    title: login is an empty stub, one Grid and nothing else
+    tags: [scaffold]
+    body: |
+      Not a login page despite the name. The working sign-in surfaces are
+      `signIn` and `loginPage`, and `loginPage` has the wrong app code on its
+      social path. Deleting this one would remove a name that misleads every
+      time someone searches for the login flow.
+
+  - key: page-forbidden-no-way-out
+    kind: gotcha
+    subject: page:forbidden
+    confidence: 75
+    title: the 403 page offers no way out except the browser back button
+    tags: [scaffold, ux]
+    body: |
+      Four components and no buttons, so someone who lands on it is stuck
+      unless they know to go back. `notFound` does have an exit. Worth fixing
+      whenever this page is touched for any other reason.
+
+  - key: page-designstudiopricing-literal-prices
+    kind: gotcha
+    subject: page:designStudioPricing
+    confidence: 80
+    title: designStudioPricing has zero bindings; every price is a literal Text
+    tags: [scaffold, pricing]
+    body: |
+      The prices shown are hardcoded Text components with nothing behind them.
+      Changing a price means editing the page, and the page will silently
+      disagree with whatever the billing system actually charges.
+
+  - key: page-resources-stub
+    kind: status
+    subject: page:resources
+    confidence: 70
+    title: resources is a stub with an event still named New_Function
+    tags: [scaffold]
+    body: |
+      Unfinished, and the leftover `New_Function` name is the tell. Nothing
+      depends on it.
+
+  - key: page-usermanagement-literal-tiles
+    kind: status
+    subject: page:userManagement
+    confidence: 70
+    title: userManagement is a launcher whose two tiles are a literal
+    tags: [scaffold]
+    body: |
+      A two-tile menu with the tiles written in rather than derived. Real user
+      administration is `users`, `userInvite` and `profiles`.
+
+  - key: page-createtemplate-no-progress
+    kind: gotcha
+    subject: page:createTemplate
+    confidence: 75
+    title: createTemplate runs 27 steps of transport logic behind three components
+    tags: [scaffold, transport]
+    body: |
+      Almost no UI and a long chain of transport work, with no progress state
+      of any kind. To the person who pressed the button it looks frozen, and
+      there is nothing to tell them whether it is working or has failed.
+
+  - key: page-userrequestapp-placeholders
+    kind: status
+    subject: page:userRequestApp
+    confidence: 70
+    title: userRequestApp still has two New_Function placeholders
+    tags: [scaffold]
+    body: |
+      The access-request flow reads `properties.requestProductPage` and is
+      partly wired, with two handlers left as unnamed placeholders. It also
+      builds a display name by concatenating first and last name directly,
+      which is the usual source of a stray space for single-name users.

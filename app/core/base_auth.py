@@ -80,9 +80,25 @@ async def _authenticate(
         user_id=(ctx_auth.user.id if ctx_auth.user else 0) or 0,
         app_code=access_app_code,
         access_app_code=access_app_code,
+        client_level_type=(ctx_auth.clientLevelType or ""),
+        user_name=_display_name(ctx_auth),
         forwarded_host=forwarded_host,
         forwarded_port=forwarded_port,
     )
+
+
+def _display_name(ctx_auth) -> str:
+    """The caller's name for anything that reports who acted.
+
+    Falls back through userName then emailId: a notification saying "someone"
+    is worse than one saying an email address.
+    """
+    user = getattr(ctx_auth, "user", None)
+    if user is None:
+        return ""
+    parts = [(user.firstName or "").strip(), (user.lastName or "").strip()]
+    full = " ".join(p for p in parts if p)
+    return full or (user.userName or "") or (user.emailId or "")
 
 
 async def require_auth_context(request: Request) -> AuthContext:
