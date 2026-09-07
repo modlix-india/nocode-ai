@@ -96,6 +96,74 @@ def _confirm_task_complete(code: str, args: dict[str, Any]) -> str:
     return f"Mark task {code} as {'completed' if done else 'reopened'}."
 
 
+# ── CRM configuration ──
+# Each of these changes how the CRM behaves for records that already exist, so
+# the prompt says whose work it affects, not just what field moves.
+
+
+def _confirm_product_create(code: str, args: dict[str, Any]) -> str:
+    return (
+        f"Create product '{args.get('name')}' on template {args.get('product_template_id')}"
+        + (", visible to channel partners" if args.get("for_partner") else "")
+        + "."
+    )
+
+
+def _confirm_product_update(code: str, args: dict[str, Any]) -> str:
+    fields = ", ".join(sorted(k for k in args if k not in ("code", "confirmed")))
+    tail = (
+        " Changing the template changes the pipeline for every deal on this product."
+        if args.get("product_template_id")
+        else ""
+    )
+    return f"Update product {code}: change {fields or 'nothing'}.{tail}"
+
+
+def _confirm_stage_create(code: str, args: dict[str, Any]) -> str:
+    what = "status under stage " + str(args["parent_stage_id"]) if args.get("parent_stage_id") else "stage"
+    return (
+        f"Add {what} '{args.get('name')}' to product template "
+        f"{args.get('product_template_id')}. This changes the pipeline for every "
+        f"deal already on that template, not only new ones."
+    )
+
+
+def _confirm_source_add(code: str, args: dict[str, Any]) -> str:
+    where = f" under '{args['parent_source']}'" if args.get("parent_source") else " as a top-level source"
+    return (
+        f"Add lead source '{args.get('name')}'{where}. The existing taxonomy is read "
+        f"and re-sent intact, so nothing already configured is removed."
+    )
+
+
+def _confirm_task_type_create(code: str, args: dict[str, Any]) -> str:
+    return (
+        f"Create task type '{args.get('name')}', attached to "
+        f"{args.get('attaches_to') or 'TICKET'}."
+    )
+
+
+# ── team and org ──
+# These decide who can do what, or whether someone can sign in at all. The
+# arguments are bare numeric ids, so the prompt spells out the consequence
+# rather than echoing "user 4405" and hoping the approver knows.
+
+
+def _confirm_user_state(verb: str, consequence: str):
+    def build(code: str, args: dict[str, Any]) -> str:
+        return f"{verb} user {args.get('user_id')}. {consequence}"
+
+    return build
+
+
+def _confirm_assign_profile(code: str, args: dict[str, Any]) -> str:
+    return (
+        f"Give profile {args.get('profile_id')} to user {args.get('user_id')}. "
+        f"A profile is a bundle of roles, so this changes what they can do across "
+        f"the whole app."
+    )
+
+
 _CONFIRMATIONS = {
     "deal_move_stage": _confirm_move_stage,
     "lead_update": _confirm_update("lead"),
@@ -105,6 +173,28 @@ _CONFIRMATIONS = {
     "deal_create": _confirm_create,
     "deal_tag": _confirm_tag,
     "task_complete": _confirm_task_complete,
+    # CRM configuration
+    "product_create": _confirm_product_create,
+    "product_update": _confirm_product_update,
+    "stage_create": _confirm_stage_create,
+    "source_add": _confirm_source_add,
+    "task_type_create": _confirm_task_type_create,
+    # Team and org
+    "make_user_active": _confirm_user_state(
+        "Reactivate", "They will be able to sign in to LeadZump again."
+    ),
+    "make_user_inactive": _confirm_user_state(
+        "Deactivate", "They will no longer be able to sign in. Their deals stay assigned to them."
+    ),
+    "unblock_user": _confirm_user_state(
+        "Unblock", "They were locked out by failed sign-in attempts; this clears that."
+    ),
+    "assign_profile": _confirm_assign_profile,
+    "remove_profile": lambda code, args: (
+        f"Take profile {args.get('profile_id')} away from user {args.get('user_id')}. "
+        f"This narrows what they can do, and if it is their only profile they will "
+        f"no longer be able to use LeadZump at all."
+    ),
 }
 
 

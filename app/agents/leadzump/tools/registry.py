@@ -1,20 +1,34 @@
 """LeadZump tool registry.
 
-Twenty-one tools over the CRM's own records: thirteen read, eight write.
-Two of the reads exist purely so the others can be given real values rather
-than guessed ones: `assignee_list` for user ids and
-`source_list` for the source taxonomy, which is matched exactly.
+Forty-one tools in four bands, because "help me with my CRM" turned out to
+mean four different jobs:
+
+* **The pipeline** (`leads`, `deals`, `catalog`, `content`, `history`) — the
+  records a relationship manager works all day. Written here, over
+  entity-processor.
+* **CRM configuration** (`config`) — products, pipeline stages, sources, task
+  types. Also entity-processor, and nothing else in the codebase covers it.
+* **Team and org** (`org`) — users, profiles, roles, departments. NOT written
+  here: reused from the AppBuilder agent, which already wraps the security
+  service. See `org.py` for which thirteen of its thirty were taken and why.
+* **App authoring** — pages, themes, styles. Deliberately absent. AppBuilder
+  does that well and it is a different product from a CRM assistant; the
+  decision is recorded rather than assumed.
 
 Everything routes through the gateway with the caller's own token, so the
-entity-processor applies both tenancy and the caller's row-level visibility on
-every call. No tool takes a client code.
+backend applies whatever it enforces on each surface. No tool takes a client
+code. Note the surfaces differ sharply in how much that is: the security
+service checks authorities on essentially every route, entity-processor checks
+them almost nowhere — `org.py` has the numbers.
 """
 
 from app.agents.leadzump.tools.catalog import CATALOG_TOOLS
+from app.agents.leadzump.tools.config import CONFIG_MUTATING, CONFIG_TOOLS
 from app.agents.leadzump.tools.content import CONTENT_TOOLS
 from app.agents.leadzump.tools.deals import DEAL_TOOLS
 from app.agents.leadzump.tools.history import HISTORY_TOOLS
 from app.agents.leadzump.tools.leads import LEAD_TOOLS
+from app.agents.leadzump.tools.org import ORG_MUTATING, ORG_TOOLS
 
 ALL_TOOLS = [
     *LEAD_TOOLS,
@@ -22,17 +36,19 @@ ALL_TOOLS = [
     *CATALOG_TOOLS,
     *CONTENT_TOOLS,
     *HISTORY_TOOLS,
+    *CONFIG_TOOLS,
+    *ORG_TOOLS,
 ]
 
-# Every tool that changes stored state. `BaseAgent` pauses each of these for an
-# explicit user approval through the SSE `confirmation_request` / `/confirm`
-# round trip, and lints that each is declared `kind='elicitation'`.
+# Every tool that changes stored state. `BaseAgent` pauses each for an explicit
+# user approval through the SSE `confirmation_request` / `/confirm` round trip,
+# and lints that each declares `kind='elicitation'`.
 #
-# adzump2 ships this set empty with a TODO; this agent does not, because every
-# one of these reaches a real customer record, and two of them reach the
-# customer: a stage move queues the stage's messaging rules, and a create
-# notifies the assignee.
-MUTATING_TOOLS = {
+# adzump2 ships this set empty with a TODO; this agent does not. Each of these
+# reaches a real record, and several reach a real person: a stage move queues
+# the stage's messaging rules, a deal create notifies the assignee, and
+# `make_user_inactive` stops someone signing in.
+_PIPELINE_MUTATING = {
     "lead_update",
     "deal_create",
     "deal_update",
@@ -42,3 +58,5 @@ MUTATING_TOOLS = {
     "task_complete",
     "note_add",
 }
+
+MUTATING_TOOLS = _PIPELINE_MUTATING | CONFIG_MUTATING | ORG_MUTATING

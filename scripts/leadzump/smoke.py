@@ -209,6 +209,20 @@ async def run(args: argparse.Namespace) -> int:
         else:
             print("  [skip] note_list: deal_get returned no id")
 
+    print("\n== configuration and team (org band) ==")
+    check("product_template_list", await TOOLS["product_template_list"].execute({}, context))
+    check("task_type_list", await TOOLS["task_type_list"].execute({}, context))
+    check("list_users", await TOOLS["list_users"].execute({"size": 5}, context))
+    # Pinned: needs a numeric app id, resolved from the caller's app code.
+    profiles = check("list_profiles", await TOOLS["list_profiles"].execute({}, context))
+    if profiles.success and not context["session_context"].get("app_id"):
+        failures.append("list_profiles.app_id")
+        print("  [FAIL] list_profiles did not cache the resolved app id")
+    check("list_departments", await TOOLS["list_departments"].execute({}, context))
+    check("list_designations", await TOOLS["list_designations"].execute({}, context))
+    if auth.user_id:
+        check("get_user", await TOOLS["get_user"].execute({"user_id": str(auth.user_id)}, context))
+
     notifications = await TOOLS["notification_list"].execute({"size": 5}, context)
     if not notifications.success and "503" in (notifications.error or ""):
         # The notification service is optional in a local stack; a 503 here says

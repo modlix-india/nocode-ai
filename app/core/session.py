@@ -77,6 +77,13 @@ async def _resolve_app_user_id(
 # lore) has to agree about that. An agent that never sets it is unaffected.
 FOCUS_APP_KEY = "focus_app_code"
 SEEN_APPS_KEY = "written_app_codes"
+# The page a write most recently landed on, for the same reason the app is
+# tracked: a client reopening this conversation needs to know what it was about,
+# and the only durable record of that is the session. Without it the browser was
+# the only thing that remembered, so resuming the same session anywhere else --
+# another browser, another machine -- came back with no context at all.
+# Cleared whenever the focus app moves: a page name means nothing on its own.
+FOCUS_PAGE_KEY = "focus_page_name"
 
 
 def session_app_code(session: "BaseSession") -> str:

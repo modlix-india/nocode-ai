@@ -16,11 +16,26 @@ real-estate company that owns the data, `CUSTOMER` is the external channel
 partner working a slice of it through the `bp*` portal. This assistant is for
 the owner side only, matching where billing goes.
 
-The data itself is safe either way — the entity-processor derives its access
-context from the caller's own token and resolves a partner through
-`getEffectiveClientCode()`, so a partner could never read the owner's pipeline
-even if they reached the endpoint. The gate is a product decision, made here so
-it is one line to revisit rather than thirteen tools to audit.
+**This gate is load-bearing. Do not relax it as cosmetic.** It was written as a
+product decision on the belief that the data was scoped either way. Measured on
+local, that belief was half right:
+
+* **Deals are scoped.** A partner user in `VIVOB` sees 25 of its owner org
+  `PALLA7`'s 169 tickets — `ProcessorAccess.isOutsideUser()` makes
+  `getUserField` return `createdBy`, so they get the deals they raised.
+* **Leads are not.** The same user reads **all 164 of PALLA7's owners**, names
+  and phone numbers included, and `lead_get` cheerfully returns
+  `clientCode: PALLA7` to them. `OwnerDAO` declares no `userAccessField`, so
+  `processorAccessCondition` applies no user filter at all — and a partner's
+  `getEffectiveClientCode()` resolves to the *managed* client, which is the
+  owner org. Products, sources and task types behave the same way.
+
+The partner portal never asks for this: no `bp*` page calls `owners/*` at all.
+It is an API-level exposure that only a tool like `lead_search` makes reachable,
+which is precisely why this gate is the thing standing in front of it. Fixing it
+properly means a user-access field on `Owner`, or `@PreAuthorize` in
+entity-processor — a `nocode-saas` change affecting every existing LeadZump
+page, and not this agent's to make.
 """
 
 from __future__ import annotations

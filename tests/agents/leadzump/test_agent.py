@@ -206,6 +206,26 @@ class GateTests(unittest.TestCase):
             asyncio.run(require_leadzump_auth_context(_auth(level="")))
         self.assertEqual(caught.exception.status_code, 403)
 
+    def test_the_customer_gate_is_security_relevant_not_cosmetic(self):
+        """Measured on local: a partner reads the OWNER ORG's whole lead list.
+
+        `OwnerDAO` declares no `userAccessField`, so `processorAccessCondition`
+        applies no user filter, and a partner's `getEffectiveClientCode()`
+        resolves to the managed client. A user in `VIVOB` therefore sees all 164
+        of `PALLA7`'s leads, and `lead_get` returns `clientCode: PALLA7` to
+        them. Deals ARE scoped (25 of 169) because `Ticket` has
+        `ASSIGNED_USER_ID`; leads are not.
+
+        No `bp*` page calls `owners/*`, so only a tool like `lead_search` makes
+        this reachable — which makes this gate the control, not a preference.
+        Anyone tempted to widen `OWNER_LEVEL_TYPES` should read the router
+        docstring first.
+        """
+        self.assertNotIn("CUSTOMER", OWNER_LEVEL_TYPES)
+        with self.assertRaises(HTTPException) as caught:
+            asyncio.run(require_leadzump_auth_context(_auth(level="CUSTOMER")))
+        self.assertEqual(caught.exception.status_code, 403)
+
     def test_appbuilder_gate_is_untouched(self):
         """`ALLOWED_AI_APPS` is the AppBuilder agent's gate and stays as it is.
 
@@ -838,6 +858,256 @@ class ConfirmationMessageTests(unittest.TestCase):
                 message.startswith("Confirm: "),
                 f"{name} falls back to the generic framework prompt",
             )
+
+
+# ── reused org tools, and the config band ──────────────────────────────────
+class OrgReuseTests(unittest.TestCase):
+    """Tools borrowed from AppBuilder, adapted without disturbing AppBuilder."""
+
+    def test_appbuilder_originals_are_not_mutated(self):
+        """These are the same objects AppBuilder's registry holds.
+
+        Setting `kind` or editing `parameters` in place would silently change
+        AppBuilder's own behaviour — start confirming its user admin, or drop a
+        parameter its developers rely on.
+        """
+        from app.agents.appbuilder.tools.modlix.security import (
+            assign_role_tool,
+            list_roles_tool,
+            list_users_tool,
+        )
+
+        self.assertEqual(assign_role_tool.kind, "tool")
+        self.assertIn("client_code", [p.name for p in list_users_tool.parameters])
+        self.assertIn("app_code", [p.name for p in list_roles_tool.parameters])
+
+    def test_org_writes_are_confirmable_copies(self):
+        from app.agents.leadzump.tools.org import ORG_MUTATING, ORG_TOOLS
+
+        by_name = {t.name: t for t in ORG_TOOLS}
+        for name in ORG_MUTATING:
+            self.assertIn(name, by_name)
+            self.assertEqual(by_name[name].kind, "elicitation", name)
+            self.assertEqual(by_name[name].elicit_mode, "blocking", name)
+
+    def test_privilege_authoring_tools_are_not_imported(self):
+        """Granting an existing profile is team admin; inventing one is not."""
+        names = {t.name for t in ALL_TOOLS}
+        for excluded in (
+            "create_role", "create_profile", "build_authority", "list_clients",
+            "grant_app_access", "apply_transport_by_code", "export_security_app",
+            "configure_app_for_customer_signup", "set_app_property", "verify_token",
+            "get_client_by_code",
+        ):
+            self.assertNotIn(excluded, names, f"{excluded} should not be in this agent")
+
+    def test_no_app_authoring_tools_leaked_in(self):
+        """A CRM assistant must not be able to rewrite the app it runs inside."""
+        names = {t.name for t in ALL_TOOLS}
+        for excluded in (
+            "create_page", "add_component", "delete_page", "create_theme",
+            "delete_app", "create_storage", "delete_storage", "replace_page_definition",
+        ):
+            self.assertNotIn(excluded, names)
+
+    def test_list_profiles_is_pinned_to_the_callers_app(self):
+        """`list_profiles` needs a numeric app id no CRM user could know.
+
+        It differs per environment (270 on local), so it is resolved from the
+        app code the caller is signed in to rather than asked of the model.
+        """
+        from app.agents.leadzump.tools.org import ORG_TOOLS
+
+        tool = next(t for t in ORG_TOOLS if t.name == "list_profiles")
+        self.assertNotIn("app_id", [p.name for p in tool.parameters])
+
+        fake = FakeSaasRequests(
+            {("GET", "/api/security/applications"): _page([{"id": 270, "appCode": "leadzump"}]),
+             ("GET", "/api/security/app/270/profiles"): _page([{"id": 9, "name": "Sales Member"}])}
+        )
+        ctx = _context()
+        ctx["auth"] = _auth()
+        with mock.patch.object(SaasClient, "_request", fake):
+            result = asyncio.run(tool.execute({}, ctx))
+        self.assertTrue(result.success, result.error)
+        self.assertEqual(
+            fake.call("GET", "/api/security/applications")["params"].get("appCode"), "leadzump"
+        )
+        fake.call("GET", "/api/security/app/270/profiles")
+        self.assertEqual(ctx["session_context"]["app_id"], 270, "app id must be cached")
+
+    def test_user_profiles_answers_what_get_user_cannot(self):
+        """The gap a live conversation found: no assignment on the user DTO.
+
+        The read exists at `users/{id}/app/{appId}/assignedProfiles`, and
+        without it `assign_profile` is a write nothing can verify.
+        """
+        fake = FakeSaasRequests(
+            {("GET", "/api/security/applications"): _page([{"id": 270}]),
+             ("GET", "/api/security/users/110/app/270/assignedProfiles"): [
+                 {"id": 22, "name": "LeadZump Admin", "description": "d",
+                  "arrangement": {"x": {"roleId": 1, "subArrangements": {"y": {"roleId": 64}}}}}
+             ]}
+        )
+        ctx = _context()
+        ctx["auth"] = _auth()
+        with mock.patch.object(SaasClient, "_request", fake):
+            result = asyncio.run(_tool("user_profiles").execute({"user_id": "110"}, ctx))
+        self.assertTrue(result.success, result.error)
+        seen = result.to_tool_result_content()
+        self.assertIn("LeadZump Admin", seen)
+        self.assertNotIn(
+            "arrangement", seen, "the nested role tree must be slimmed away, not forwarded"
+        )
+        self.assertNotIn("roleId", seen)
+
+    def test_no_profiles_is_reported_as_no_access(self):
+        fake = FakeSaasRequests(
+            {("GET", "/api/security/applications"): _page([{"id": 270}]),
+             ("GET", "/api/security/users/8/app/270/assignedProfiles"): []}
+        )
+        ctx = _context()
+        ctx["auth"] = _auth()
+        with mock.patch.object(SaasClient, "_request", fake):
+            result = asyncio.run(_tool("user_profiles").execute({"user_id": "8"}, ctx))
+        self.assertTrue(result.success, result.error)
+        self.assertIn("no access", result.summary)
+
+    def test_remove_profile_is_a_mutating_get(self):
+        """The platform exposes it as GET, so nothing may assume GETs are safe."""
+        fake = FakeSaasRequests({("GET", "/api/security/users/110/removeProfile/22"): True})
+        result = _run("remove_profile", {"user_id": "110", "profile_id": "22"}, fake)
+        self.assertTrue(result.success, result.error)
+        fake.call("GET", "/api/security/users/110/removeProfile/22")
+        self.assertIn("remove_profile", MUTATING_TOOLS)
+
+    def test_role_tools_are_excluded_because_the_api_refuses_them(self):
+        """A LeadZump admin holds Profile_READ but NOT Role_READ.
+
+        `/api/security/rolev2` answers 403 for the people who would use this
+        panel, so three tools that always fail were removed rather than left to
+        spend prompt budget. Profiles are what LeadZump assigns.
+        """
+        names = {t.name for t in ALL_TOOLS}
+        for excluded in ("list_roles", "assign_role", "remove_role"):
+            self.assertNotIn(excluded, names)
+        self.assertIn("assign_profile", names)
+        self.assertIn("list_profiles", names)
+
+
+class ConfigBandTests(unittest.TestCase):
+    def test_source_add_reads_the_tree_before_replacing_it(self):
+        """`POST sources` deletes every source absent from the payload.
+
+        `SourceService.upsertTree` ends in
+        `deleteByAppAndClientExcludingIds(...)`. Posting only the new source
+        would leave the tenant with one source and orphan every existing deal's
+        source value, and answer 200 doing it.
+        """
+        existing = [
+            {"id": 1, "name": "Meta", "active": True, "children": [{"id": 2, "name": "Instagram"}]},
+            {"id": 3, "name": "Walk-in", "active": True, "children": []},
+        ]
+        fake = FakeSaasRequests(
+            {("GET", "/sources"): existing, ("POST", "/sources"): existing}
+        )
+        result = _run("source_add", {"name": "Property Expo"}, fake)
+        self.assertTrue(result.success, result.error)
+
+        self.assertEqual(fake.calls[0]["method"], "GET", "must read the tree first")
+        posted = fake.call("POST", "/sources")["json"]
+        names = [s.get("name") for s in posted]
+        self.assertIn("Property Expo", names)
+        self.assertIn("Meta", names)
+        self.assertIn("Walk-in", names)
+        self.assertEqual(len(posted), 3)
+
+    def test_source_add_nests_under_a_parent(self):
+        existing = [{"id": 1, "name": "Meta", "active": True, "children": []}]
+        fake = FakeSaasRequests({("GET", "/sources"): existing, ("POST", "/sources"): existing})
+        _run("source_add", {"name": "WhatsApp", "parent_source": "meta"}, fake)
+        posted = fake.call("POST", "/sources")["json"]
+        self.assertEqual([c["name"] for c in posted[0]["children"]], ["WhatsApp"])
+
+    def test_source_add_refuses_rather_than_wiping_when_the_read_fails(self):
+        """If the tree cannot be read, posting would delete the lot."""
+        fake = FakeSaasRequests(
+            {("GET", "/sources"): ToolResult(success=False, error="HTTP 503")}
+        )
+        result = _run("source_add", {"name": "Property Expo"}, fake)
+        self.assertFalse(result.success)
+        self.assertIn("NOT", result.error)
+        self.assertEqual(
+            [c for c in fake.calls if c["method"] == "POST"], [], "must not post blind"
+        )
+
+    def test_source_add_rejects_a_duplicate(self):
+        existing = [{"id": 1, "name": "Meta", "active": True, "children": []}]
+        fake = FakeSaasRequests({("GET", "/sources"): existing})
+        result = _run("source_add", {"name": "meta"}, fake)
+        self.assertFalse(result.success)
+        self.assertIn("already exists", result.error)
+
+    def test_source_add_names_the_options_for_an_unknown_parent(self):
+        existing = [{"id": 1, "name": "Meta", "active": True, "children": []}]
+        fake = FakeSaasRequests({("GET", "/sources"): existing})
+        result = _run("source_add", {"name": "X", "parent_source": "Facebook"}, fake)
+        self.assertFalse(result.success)
+        self.assertIn("Meta", result.error)
+
+    def test_product_update_is_read_modify_write(self):
+        """`ProductService.updatableEntity` re-assigns the whitelist unconditionally."""
+        stored = {
+            "id": 12, "code": "p" * 22, "name": "Skyline", "productTemplateId": 4,
+            "forPartner": True, "whatsappSessionCode": "wa-1",
+            "logoFileDetail": {"name": "logo.png"}, "active": True, "version": 3,
+        }
+        fake = FakeSaasRequests(
+            {("GET", f"/products/code/{'p' * 22}"): stored,
+             ("PUT", f"/products/code/{'p' * 22}"): stored}
+        )
+        result = _run("product_update", {"code": "p" * 22, "name": "Skyline Towers"}, fake)
+        self.assertTrue(result.success, result.error)
+        self.assertEqual(fake.calls[0]["method"], "GET")
+        body = fake.call("PUT", f"/products/code/{'p' * 22}")["json"]
+        self.assertEqual(body["name"], "Skyline Towers")
+        for field in ("whatsappSessionCode", "logoFileDetail", "forPartner", "productTemplateId"):
+            self.assertEqual(body[field], stored[field], f"{field} would be blanked")
+
+    def test_product_create_demands_a_template(self):
+        """Without one the product has no pipeline and its deals cannot move."""
+        fake = FakeSaasRequests()
+        result = _run("product_create", {"name": "Skyline"}, fake)
+        self.assertFalse(result.success)
+        self.assertIn("pipeline", result.error)
+        self.assertEqual(fake.calls, [])
+
+    def test_stage_create_sends_parent_as_a_status(self):
+        fake = FakeSaasRequests({("POST", "/stages/req"): {"id": 99}})
+        result = _run(
+            "stage_create",
+            {"name": "Visit Done", "product_template_id": 4, "parent_stage_id": 3168},
+            fake,
+        )
+        self.assertTrue(result.success, result.error)
+        body = fake.call("POST", "/stages/req")["json"]
+        self.assertEqual(body["parentId"], 3168)
+        self.assertEqual(body["platform"], "PRE_QUALIFICATION")
+        self.assertIn("status", result.summary)
+
+    def test_stage_create_needs_a_template(self):
+        fake = FakeSaasRequests()
+        result = _run("stage_create", {"name": "Visit"}, fake)
+        self.assertFalse(result.success)
+        self.assertEqual(fake.calls, [])
+
+    def test_task_type_create_defaults_to_the_deal_series(self):
+        fake = FakeSaasRequests({("POST", "/tasks/types"): {"id": 7, "name": "Call"}})
+        result = _run("task_type_create", {"name": "Call"}, fake)
+        self.assertTrue(result.success, result.error)
+        self.assertEqual(
+            fake.call("POST", "/tasks/types")["json"]["contentEntitySeries"], "TICKET"
+        )
 
 
 # ── the turn reminder ──────────────────────────────────────────────────────
