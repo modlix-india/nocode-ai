@@ -77,6 +77,13 @@ async def _resolve_app_user_id(
 # lore) has to agree about that. An agent that never sets it is unaffected.
 FOCUS_APP_KEY = "focus_app_code"
 SEEN_APPS_KEY = "written_app_codes"
+# The page a write most recently landed on, for the same reason the app is
+# tracked: a client reopening this conversation needs to know what it was about,
+# and the only durable record of that is the session. Without it the browser was
+# the only thing that remembered, so resuming the same session anywhere else --
+# another browser, another machine -- came back with no context at all.
+# Cleared whenever the focus app moves: a page name means nothing on its own.
+FOCUS_PAGE_KEY = "focus_page_name"
 
 
 def session_app_code(session: "BaseSession") -> str:
@@ -107,6 +114,15 @@ class AuthContext:
     user_id: int
     app_code: str
     access_app_code: str = "appbuilder"
+    # The caller's own client level relative to the app: CLIENT (the owner org),
+    # CUSTOMER (a business partner), CONSUMER, OWNER. Read straight off the
+    # security context — LeadZump ships two products in one app split on exactly
+    # this, so an agent that serves only the owner side needs it at the router.
+    client_level_type: str = ""
+    # The caller's display name. LeadZump's `…AndSN` server functions take a
+    # notification payload naming who acted, and the security context is the
+    # only place it is available without a second lookup.
+    user_name: str = ""
     forwarded_host: str = "localhost"
     forwarded_port: str = "80"
     path_prefix: str = ""  # Standalone mode: URL prefix e.g. /appbuilder/SYSTEM/page

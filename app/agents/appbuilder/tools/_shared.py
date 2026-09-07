@@ -15,7 +15,7 @@ _NAME_RE = re.compile(r"^[a-zA-Z]+$")
 # Re-exported so tool modules import their app-scope keys from one place. The
 # definitions live in core because the session, the run loop and per-app
 # services (KB, lore) all key off them too — see `app.core.session`.
-from app.core.session import FOCUS_APP_KEY, SEEN_APPS_KEY  # noqa: E402
+from app.core.session import FOCUS_APP_KEY, FOCUS_PAGE_KEY, SEEN_APPS_KEY  # noqa: E402
 
 
 def resolve_app_code(params: dict, context: dict) -> str:

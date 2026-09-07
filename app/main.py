@@ -146,6 +146,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing SaasClient: {e}")
 
+    try:
+        from app.agents.leadzump.tools._client import close_leadzump_client
+        await close_leadzump_client()
+    except Exception as e:
+        logger.error(f"Error closing LeadZump SaasClient: {e}")
+
     # Close persistent Playwright sessions. The idle reaper only runs inside a
     # tool call, so a worker that stops taking calls (redeploy, restart, OOM)
     # would otherwise orphan its Chromium children indefinitely.
@@ -232,6 +238,10 @@ app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"]
 # Adzump2 agent router (CampaignPlan builder)
 from app.agents.adzump2.router import router as adzump2_router
 app.include_router(adzump2_router, prefix=f"{API_PREFIX}/adzump2", tags=["Adzump2"])
+
+# LeadZump CRM assistant router (leads, deals, pipeline)
+from app.agents.leadzump.router import router as leadzump_router
+app.include_router(leadzump_router, prefix=f"{API_PREFIX}/leadzump", tags=["LeadZump"])
 
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router

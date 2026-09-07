@@ -74,6 +74,14 @@ BATCH_KIND_QUOTA: dict[str, int] = {
     "chat": 8,
 }
 
+# Component styling, within the edit quota. Measured at 35 of 81 edit
+# observations — the largest single category — and it cannot become knowledge,
+# because what gets recorded is style KEY NAMES and not values. A few are worth
+# showing the model: enough for "this page is being restyled" to be visible,
+# not enough for six margin patches to fill a window that had real evidence
+# waiting behind them. `watch.is_cosmetic` decides which.
+BATCH_COSMETIC_QUOTA = 3
+
 
 SYSTEM_PROMPT = f"""You curate a knowledge base about ONE software application.
 
@@ -238,6 +246,7 @@ def select_batch(
     existing backlog of narration harmless without deleting anything.
     """
     taken: dict[str, int] = {}
+    cosmetic = 0
     out: list[Observation] = []
     for obs in observations:
         if len(out) >= batch_size:
@@ -249,6 +258,14 @@ def select_batch(
         # write it, and that is the whole basis of its standing.
         if obs.kind == "chat" and not looks_durable(obs.body):
             continue
+        # Styling churn is rationed rather than excluded. The flag is set at
+        # ingest by `watch.is_cosmetic`; an observation written before that
+        # existed has no flag and is treated as substantive, which is the safe
+        # direction to be wrong in.
+        if obs.kind == "edit" and (obs.meta or {}).get("cosmetic"):
+            if cosmetic >= BATCH_COSMETIC_QUOTA:
+                continue
+            cosmetic += 1
         out.append(obs)
         taken[obs.kind] = taken.get(obs.kind, 0) + 1
     return out

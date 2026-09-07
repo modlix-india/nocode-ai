@@ -308,3 +308,404 @@ entries:
       `CXIntegeration`, with the misspelling. It is the real name and code has
       to use it; correcting the spelling would be a data migration, not a
       rename. Do not "fix" it in passing.
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Per-page lore.
+  #
+  # Added 2026-09-05, after measuring that 19 of leadzump's 21 entries were
+  # app-level and 99 of its 101 pages had none. App-level lore answers "what
+  # is this app"; it cannot answer "what should I know before opening THIS
+  # page", which is the question someone actually has. These surface through
+  # `lore_index(subject=...)` and through the reminder pushed when the agent
+  # first touches the object.
+  #
+  # Page names checked against the live `ui` definitions on 2026-09-05.
+  # Still not recorded: page ids, component counts, step counts.
+  # ══════════════════════════════════════════════════════════════════════
+
+  # ── pages that are not what they look like ────────────────────────────
+  # The single highest-value group here. Each of these renders a convincing
+  # screen and does not persist anything, so the way you find out is by
+  # building on it. The app's own INDEX.md marks them ⚪ scaffold; that flag
+  # is the fact worth carrying.
+
+  - key: page-dealsettings-scaffold
+    kind: status
+    subject: page:dealSettings
+    confidence: 80
+    title: dealSettings is a scaffold, its preview runs on dummy data
+    tags: [scaffold, unwired]
+    body: |
+      A deal-form field configurator with a live preview, and the preview is
+      fed by hardcoded sample data rather than by the form it appears to be
+      configuring. Nothing it does is persisted. Treat any behaviour you see
+      here as a mock-up of an intention, not as the deal form's real
+      configuration.
+
+  - key: page-dealduplication-not-wired
+    kind: status
+    subject: page:dealDuplication
+    confidence: 80
+    title: dealDuplication renders its policy radios but the save is not wired
+    tags: [scaffold, unwired]
+    body: |
+      The duplicate-detection policy screen (the Phone/Email combination
+      radios) is UI only: the save path was never connected, so choosing a
+      policy here changes nothing about how duplicates are actually detected.
+      Real dedupe behaviour lives on the intake path and in `leads`, not here.
+
+  - key: page-dealassignment-empty-function
+    kind: gotcha
+    subject: page:dealAssignment
+    confidence: 80
+    title: dealAssignment is a shell around an empty New_Function
+    tags: [scaffold, unwired]
+    body: |
+      The assignment-rules screen is a scaffold whose handler is a
+      still-named-`New_Function` stub with no body. It is worth knowing
+      because the page looks finished: rules can be entered and nothing
+      receives them. Assignment that really happens is configured per product
+      in `addProduct`, under the assignment and round-up rules.
+
+  - key: page-kanbanboard-hardcoded
+    kind: gotcha
+    subject: page:kanbanBoard
+    confidence: 80
+    title: kanbanBoard is a standalone demo with hardcoded opportunities
+    tags: [scaffold, unwired]
+    body: |
+      A drag-and-drop pipeline board holding its cards in page state, seeded
+      from hardcoded opportunities. It reads no ticket and writes none. The
+      Kanban people actually use is a view mode inside `deals`; this page is
+      easy to mistake for it and is not connected to anything.
+
+  - key: page-callreport-hardcoded
+    kind: status
+    subject: page:callReport
+    confidence: 75
+    title: callReport shows hardcoded per-agent call stats
+    tags: [scaffold, unwired]
+    body: |
+      Per-agent call statistics and a chart, both fed by fixed values rather
+      than by Exotel call logs. The real call data is on `dealProfile`'s Calls
+      tab and behind the `connections` records that `callDetails` and
+      `callSettings` manage.
+
+  - key: page-conversationpage-dummy
+    kind: status
+    subject: page:conversationPage
+    confidence: 75
+    title: conversationPage is a chat mock-up with dummy leads
+    tags: [scaffold, unwired]
+    body: |
+      A WhatsApp-styled conversation UI populated with invented leads and
+      messages. Working WhatsApp lives on `dealProfile`'s WhatsApp tab, wired
+      through `message/whatsapp/*` and the per-client connection that
+      `whatsappIntegration` sets up.
+
+  - key: page-tasksettings-no-persistence
+    kind: status
+    subject: page:taskSettings
+    confidence: 75
+    title: taskSettings has no persistence behind it
+    tags: [scaffold, unwired]
+    body: |
+      Task-type configuration renders and discards. `tasks` itself is real and
+      backed by `tasks/eager/query`, so the list works while its configuration
+      screen does not.
+
+  - key: page-statussettings-not-wired
+    kind: status
+    subject: page:statusSettings
+    confidence: 75
+    title: statusSettings does not save, and is not where statuses come from
+    tags: [scaffold, unwired]
+    body: |
+      The status and sub-status configuration screen has no working save. It is
+      also the wrong mental model: pipeline stages and their child statuses are
+      defined on the product template and instantiated into a product, so
+      `addProductTemplate` and `addProduct` are where they really change.
+
+  - key: page-payments-placeholder
+    kind: status
+    subject: page:payments
+    confidence: 75
+    title: payments is an empty placeholder
+    tags: [scaffold, unwired]
+    body: |
+      Reserved name with nothing behind it. Money in this app is the booking
+      and cost-sheet flow on `inventoryScreen` and the Sales tab of
+      `dealProfile`, not here.
+
+  - key: page-assetmanagement-stub
+    kind: status
+    subject: page:assetManagement
+    confidence: 75
+    title: assetManagement is an inert stub; assets live in addProduct
+    tags: [scaffold, unwired]
+    body: |
+      Real asset handling for a product happens inside `addProduct`. This page
+      exists as a stub and does nothing, so changes made for asset behaviour
+      belong in the product wizard.
+
+  - key: page-contactusbp-hardcoded
+    kind: status
+    subject: page:contactUsBp
+    confidence: 70
+    title: contactUsBp shows hardcoded contact cards
+    tags: [scaffold, unwired, partner]
+    body: |
+      Static contact details in the partner portal, not read from
+      `BpConfiguration` or from the owner's record. Changing the owner's
+      contact information will not change what a partner sees here.
+
+  - key: page-reports-one-tile-wired
+    kind: gotcha
+    subject: page:reports
+    confidence: 80
+    title: reports is a launcher where only the deal-bucket tile works
+    tags: [partial]
+    body: |
+      The reports hub shows a grid of tiles suggesting a family of reports.
+      One of them is connected: "Deal bucket report", which opens
+      `dealReport`. The others navigate nowhere. Adding a report means wiring
+      a tile here and building its page, not filling in something half-built.
+
+  - key: page-logintwo-hardcoded-appcode
+    kind: gotcha
+    subject: page:loginTwo
+    confidence: 75
+    title: loginTwo is a fallback login with a hardcoded appbuilder app code
+    tags: [partial, auth]
+    body: |
+      A minimal `UIEngine.Login` variant kept as a fallback. It carries
+      `appbuilder` as a literal app code, so it authenticates against the
+      wrong application if used as-is in this app. Real sign-in is `signIn`,
+      with `login` as the Authzump SSO variant.
+
+  # ── the CRM core, where most work happens ─────────────────────────────
+
+  - key: page-deals-two-views-one-page
+    kind: convention
+    subject: page:deals
+    confidence: 85
+    title: deals renders the same query as a table or a Kanban, with one filter tree
+    tags: [pipeline, filters]
+    body: |
+      One page carries both pipeline views over a single `tickets/eager/query`
+      and one filter tree of up to fifteen condition slots. A change to
+      filtering, bulk transfer, restage or reassign has to hold for both
+      renderings, because they are not separate screens. Anything added to one
+      view and not the other will look like an intermittent bug.
+
+  - key: page-dealsoptimized-is-a-fork
+    kind: gotcha
+    subject: page:dealsOptimized
+    confidence: 85
+    title: dealsOptimized is a fork of deals that shares component UUIDs
+    tags: [pipeline, fork, trap]
+    body: |
+      It is `deals` with the bulk-transfer and inline-assignee overlays pruned
+      for weight, and it kept the original component keys. Two consequences:
+      a fix made in one does not reach the other, and a component key found in
+      a definition may belong to either page. Check which page you are in
+      before concluding that an edit did not take effect, and expect to make
+      pipeline fixes twice.
+
+  - key: page-dealprofile-tabs-load-lazily
+    kind: convention
+    subject: page:dealProfile
+    confidence: 85
+    title: dealProfile loads the deal on open and each tab on first visit
+    tags: [performance, tabs]
+    body: |
+      Opening the page fetches the deal, its pipeline and the people who can
+      be assigned to it. The seven tabs (Overview, Activity, Notes, Tasks,
+      Sales, WhatsApp, Calls) each fetch on first open rather than up front,
+      which is why the page appears quickly and a tab does not. Adding data to
+      a tab means adding it to that tab's own load, not to the page's; putting
+      it in the page load makes every deal slower to open for a tab most
+      people never click.
+
+  - key: page-dealprofile-two-layouts
+    kind: gotcha
+    subject: page:dealProfile
+    confidence: 80
+    title: dealProfile carries a parallel mobile layout that must be changed too
+    tags: [mobile, trap]
+    body: |
+      Desktop and mobile are built as separate component trees on the same
+      page rather than as one responsive tree. A change made to the desktop
+      workspace is invisible on a phone until the same change is made in the
+      mobile branch. This is the most common way a fix here ships half-done.
+
+  - key: page-leads-owner-not-ticket
+    kind: convention
+    subject: page:leads
+    confidence: 85
+    title: leads operates on Owner records, not on deals
+    tags: [domain, dedupe]
+    body: |
+      The list, its search, its source and sub-source filters and its create
+      flow all run against `owners/eager/query`. Its dedupe check is on the
+      person, not the opportunity, so two genuine enquiries from one person
+      are one Owner with two Tickets. Filtering that looks like it belongs on
+      a deal (stage, status, product) belongs on `deals` instead.
+
+  - key: page-leadprofile-shows-child-deals
+    kind: convention
+    subject: page:leadProfile
+    confidence: 80
+    title: leadProfile edits the Owner inline and lists its child deals
+    tags: [domain]
+    body: |
+      Overview, Notes and Deals tabs over one Owner. Field edits go straight
+      through as `PUT owners/code/{code}` rather than through a form submit,
+      so validation belongs on the field. The Deals tab is Tickets filtered by
+      `ownerId`, and deleting from there deletes the deal, not the lead.
+
+  - key: page-inventoryscreen-external-projects
+    kind: integration
+    subject: page:inventoryScreen
+    confidence: 80
+    title: inventoryScreen is the heaviest page and its projects come from rim
+    tags: [performance, integration, booking]
+    body: |
+      Cost sheets and unit booking, and by a wide margin the largest page in
+      the app. The projects and units it shows are not leadzump records: they
+      come from the separate `rim` inventory app through the connection that
+      `cxIntegration` maps. Two practical consequences: it is the page where
+      an extra fetch is most expensive, and an empty screen here is usually a
+      broken mapping rather than a bug on the page.
+
+  - key: page-addproduct-owns-the-rules
+    kind: convention
+    subject: page:addProduct
+    confidence: 85
+    title: addProduct is where a product's pipeline and its rules really live
+    tags: [product, rules]
+    body: |
+      The product wizard carries the capture form, the walk-in URL, and the
+      assignment, round-up, duplicate and expiry rules. Several other screens
+      look like they configure these things and do not (`dealAssignment`,
+      `dealDuplication`, `statusSettings`). When a rule needs changing, this
+      page or `addProductTemplate` is almost always the right place.
+
+  - key: page-addproducttemplate-is-the-blueprint
+    kind: convention
+    subject: page:addProductTemplate
+    confidence: 80
+    title: addProductTemplate defines stages and statuses; products instantiate them
+    tags: [product, pipeline]
+    body: |
+      A template is the reusable blueprint of ordered stages, their child
+      statuses and the rule set. Creating a product instantiates a copy. So
+      editing a template does not retrofit products already made from it, and
+      a pipeline that is wrong on one product is fixed on the product.
+
+  - key: page-shell-gates-the-whole-nav
+    kind: constraint
+    subject: page:shell
+    confidence: 85
+    pinned: true
+    title: shell decides what a signed-in person can see at all
+    tags: [auth, navigation]
+    body: |
+      The authenticated frame gates its left navigation on both role and
+      `levelType`, which is what makes the owner app and the partner portal
+      look like different products to different people. It also runs the
+      notification feed over SSE with a polling fallback. A page added without
+      a nav entry here is reachable only by URL, and a nav entry added without
+      its authority check is visible to people who cannot use it.
+
+  - key: page-signin-splits-by-leveltype
+    kind: constraint
+    subject: page:signIn
+    confidence: 85
+    title: signIn routes CLIENT and CUSTOMER to different destinations
+    tags: [auth, tenancy]
+    body: |
+      Password, OTP and social SSO all land here, and the page then splits on
+      `levelType`: an owner-organisation user goes into the CRM, a business
+      partner goes into the partner portal. Changing the post-login
+      destination without preserving that split sends partners into a
+      workspace they have no authority for and will see mostly empty.
+
+  - key: page-walkinform-unauthenticated
+    kind: constraint
+    subject: page:walkInForm
+    confidence: 85
+    pinned: true
+    title: walkInForm creates real records with no session behind it
+    tags: [security, intake]
+    body: |
+      The public product capture form runs `open/forms/{id}` with an OTP step
+      as its only barrier, and a submission creates a lead and a deal. It is
+      one of the few places in the app where an anonymous caller writes to the
+      database, so validation, rate limiting and duplicate handling have to
+      hold server-side. Anything enforced only in the page here is not
+      enforced.
+
+  - key: page-businesspartners-owner-side
+    kind: gotcha
+    subject: page:businessPartners
+    confidence: 80
+    title: businessPartners is the owner's screen, not the partner's
+    tags: [partner, naming]
+    body: |
+      Despite the name it belongs to the owner organisation: it lists partners
+      and invites them, registering a client and then a partner record. The
+      partner's own screens are the `bp*` family. Several pages pair like this
+      across the two portals, and picking the wrong one of a pair is the usual
+      cause of an authority error that looks inexplicable.
+
+  - key: page-users-delete-is-guarded
+    kind: constraint
+    subject: page:users
+    confidence: 80
+    title: a user with assigned deals or partners cannot simply be deleted
+    tags: [security, data-integrity]
+    body: |
+      User management guards deletion against tickets and partners still
+      assigned to that person, so the delete path can legitimately refuse.
+      That guard is the reason reassignment exists on `deals` and on
+      `businessPartnerProfile`; removing someone means moving their work
+      first, not forcing the delete.
+
+  - key: page-whatsappintegration-per-client
+    kind: integration
+    subject: page:whatsappIntegration
+    confidence: 80
+    title: whatsappIntegration connects one client's WhatsApp Business account
+    tags: [whatsapp, integration]
+    body: |
+      Connect, sync and webhook setup written into `connections` and driven
+      through `message/whatsapp/*`. The connection is per client, so a working
+      setup for one tenant says nothing about another, and a partner client
+      does not inherit the owner's. Messaging that fails only for some tenants
+      is almost always a missing connection rather than a code fault.
+
+  - key: page-dashboard-cp-tab-gated
+    kind: convention
+    subject: page:dashboard
+    confidence: 75
+    title: the dashboard's channel-partner tab is authority-gated
+    tags: [analytics, auth]
+    body: |
+      Stage counts, sources and per-user breakdowns for the owner
+      organisation, with a channel-partner tab that appears only for people
+      holding the partner role. Someone reporting that a dashboard tab is
+      "missing" is usually describing an authority difference rather than a
+      rendering bug.
+
+  - key: page-notifications-deeplink
+    kind: convention
+    subject: page:notifications
+    confidence: 75
+    title: notifications deep-link into the deal they are about
+    tags: [notifications]
+    body: |
+      The feed reads `/api/notification/notifications` and each entry links to
+      `dealProfile` for the deal code it concerns. A notification added
+      without that code produces a row that cannot be acted on, which is worse
+      than no notification.
