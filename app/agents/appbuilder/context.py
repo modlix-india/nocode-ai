@@ -706,12 +706,15 @@ HOT_TOOLS: frozenset[str] = frozenset({
     "platform_doc_list", "platform_doc_read", "pattern_search", "pattern_read",
     "kb_app_list_sections", "which_environment", "create_role", "assign_role",
     "build_authority", "list_users", "remove_component_styles",
-    # Lore — `lore_brief` is documented as the once-per-task opener and
-    # `lore_search` as the "before you decide" verb, so both were paying a
-    # first-call schema bounce in every session. The other four lore verbs stay
+    # Lore — `lore_index` is now the opener and `lore_get` the follow-up, and
+    # they matter more than they used to: nothing about an app is pushed into
+    # the prompt any more, so these two ARE the only route to what the app
+    # knows. A schema bounce on the first call would be paid in every session.
+    # `lore_brief` and `lore_search` stay hot as the narrative and last-resort
+    # forms. The other four lore verbs stay
     # cold: they are called by a minority of sessions and the full hot set
     # already costs a measured 15,031 tokens per turn.
-    "lore_brief", "lore_search",
+    "lore_index", "lore_get", "lore_brief", "lore_search",
 })
 
 
@@ -1239,6 +1242,21 @@ An app briefing is already folded into your system prompt; these tools are for w
 briefing did not fit.
 
 Read:
+**Two calls, in this order, and then stop.**
+
+1. `lore_index(subject=None)` — one line per thing this app has recorded, with ids.
+   Nothing about the app is pushed into your context, so this is the only way to
+   find out what has already been decided. A whole app is a page of titles.
+2. `lore_get(entry_ids=[...])` — the full text of the ones your task needs, all in
+   ONE call. Four ids cost the same as one.
+
+That is the whole read path. After `lore_get` you have the knowledge; going on to
+call `lore_brief` or `lore_search` over the same ground costs a round trip and
+returns nothing new. `lore_brief` is the same entries as prose AND it truncates,
+so after `lore_index` it can show you strictly less. `lore_search` is a guess
+against a full-text index: on a small corpus it answers a question it does not
+have an entry for with a plausible wrong one, so reach for it only when the index
+did not name what you need.
 - `lore_brief(subject=None, budget=6000)` — the briefing. Once per task, not per turn;
   you have already been given the app-level one. Pass `subject` for one object.
 - `lore_search(query, kinds=[...])` — before you decide something. If lore already
@@ -1603,7 +1621,7 @@ _MAX_DETAIL_GROUPS = 2
 # than the old object_type peek (which only fired for the retired router).
 _TOOL_NAME_TO_GROUP: dict[str, str] = {
     **dict.fromkeys((
-        "lore_brief", "lore_search", "lore_about",
+        "lore_index", "lore_get", "lore_brief", "lore_search", "lore_about",
         "lore_add", "lore_note", "lore_correct",
     ), "lore"),
     # page authoring

@@ -256,3 +256,134 @@ entries:
       feature to be Meta-only if it depends on instant lead forms. Finally
       check the shell's connection-based navigation gating, or the new surface
       will be unreachable for users who connected only one platform.
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Per-page lore. Added 2026-09-05 from INDEX.md's page inventory.
+  # Page names checked against the live `ui` definitions.
+  #
+  # This app's distinguishing feature is that seven developer sandboxes were
+  # left in it, one of them the largest page in the app, and that one page
+  # named like a test is the real implementation. Both directions of that
+  # confusion cost time, so both are recorded.
+  # ══════════════════════════════════════════════════════════════════════
+
+  - key: page-testpage-is-a-dev-sandbox
+    kind: gotcha
+    subject: page:testPage
+    confidence: 85
+    pinned: true
+    title: testPage is a dev sandbox and the largest page in the app
+    tags: [dev, trap]
+    body: |
+      A superset of the ad builder and the lead-form builder, kept as a
+      scratch surface and not routed in production. Being the biggest page in
+      the app, it dominates any component search, so a key found there is
+      probably not the one running in the product. Six more sandboxes sit
+      beside it: `googleTestPage`, `CampaignSetuptest`, `configTestPage`,
+      `testChat`, `NavinTestPage` and `sachin`. Read them for how something
+      was tried; do not build on them and do not treat them as the reference.
+
+  - key: page-testpagetargetinglocations-is-real
+    kind: gotcha
+    subject: page:testPageTargetingLocations
+    confidence: 85
+    pinned: true
+    title: testPageTargetingLocations is real despite its name
+    tags: [dev, trap, targeting]
+    body: |
+      The geo-location and interest targeting builder is functional and in
+      use, and it is named as though it were one of the sandboxes. It is the
+      one page in this app where the naming convention actively misleads in
+      the dangerous direction: deleting it as dead test code would remove
+      working targeting.
+
+  - key: page-metaconversionapi-empty
+    kind: status
+    subject: page:metaConversionAPI
+    confidence: 80
+    title: metaConversionAPI is an empty placeholder
+    tags: [scaffold, meta]
+    body: |
+      A reserved name with nothing behind it. Conversion work that does exist
+      runs through the campaign attribution path, not here, so this page name
+      turning up in a search is a dead end rather than a lead.
+
+  - key: page-assetcreation-stub
+    kind: status
+    subject: page:assetCreation
+    confidence: 75
+    title: assetCreation is a single landscape-image upload stub
+    tags: [scaffold, creatives]
+    body: |
+      One upload control and no creative pipeline behind it. Real creative
+      handling belongs with the ads and creatives surfaces, not here.
+
+  - key: page-selectplatform-static
+    kind: status
+    subject: page:selectPlatform
+    confidence: 75
+    title: selectPlatform is a static picker with nothing behind the choice
+    tags: [scaffold]
+    body: |
+      Google Ads and Meta rendered as a choice that is not wired to anything
+      downstream. Platform actually gets decided by which campaign-creation
+      page you are on.
+
+  - key: page-userrequestapp-is-a-notice
+    kind: status
+    subject: page:userRequestApp
+    confidence: 75
+    title: userRequestApp is a notice, not a request flow
+    tags: [scaffold, auth]
+    body: |
+      It renders "no access to AdZump, contact admin" and offers no way to
+      actually request access. Anyone expecting a working request path from
+      the name will not find one here.
+
+  - key: page-passwordforget-duplicate
+    kind: gotcha
+    subject: page:passwordForget
+    confidence: 75
+    title: passwordForget is a parallel duplicate of the reset flow
+    tags: [auth, fork]
+    body: |
+      An older reset flow kept alongside the current one. Two live paths to
+      the same outcome means a fix applied to one leaves the other wrong, and
+      which one a person hits depends on where they started.
+
+  - key: page-campaign-creation-split-by-type
+    kind: convention
+    subject: page:searchCampaignCreation
+    confidence: 80
+    title: Search and Display campaigns are created on separate pages
+    tags: [google, campaigns]
+    body: |
+      `searchCampaignCreation` and `displayCampaignCreation` each build their
+      own budget, campaign, ad-group and ad payloads for their campaign type.
+      They are siblings, not a shared flow with a switch, so a change to how
+      campaigns are created has to be made in both or it applies to only one
+      campaign type.
+
+  - key: page-mapcampaign-mcc-to-product
+    kind: integration
+    subject: page:mapCampaign
+    confidence: 75
+    title: mapCampaign ties a Google campaign under an MCC to a product
+    tags: [google, mapping]
+    body: |
+      The link between an external Google campaign, reached through its
+      manager account and customer id, and a product in this app. Attribution
+      and reporting depend on that mapping existing, so a product with no
+      numbers is worth checking here before anything else.
+
+  - key: page-adpilot-agent-surface
+    kind: convention
+    subject: page:AdPilot
+    confidence: 70
+    title: AdPilot is the AI agent surface, built on the shared Prompt component
+    tags: [ai, agent]
+    body: |
+      The conversational surface is the platform's own Prompt component rather
+      than a bespoke chat. Behaviour changes usually belong to the component
+      or to the agent behind it, not to this page. `chatPage` is a separate
+      chat with text-to-speech and speech-to-text and is not the same surface.

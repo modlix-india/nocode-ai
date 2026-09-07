@@ -184,10 +184,31 @@ class Settings(BaseSettings):
     # Put constraints/gotchas for a subject in front of the model in the SAME
     # turn as the first write to it, rather than on the next turn.
     LORE_ADVISE_BEFORE_EDITS: bool = True
-    # Budget for the app briefing folded into the system prompt. Raised from
-    # the old hardcoded 2600 because a seeded app has ~60 app-level entries and
-    # 2600 chars renders only 10-12 of them.
+    # Fold an app briefing into the system prompt on every request.
+    #
+    # OFF. Measured on two seeded apps, a 3,800-character briefing rendered 5
+    # of 21 entries and 7 of 21: the ranking, not the task, decided what the
+    # model saw, and two thirds of the knowledge was invisible. The same
+    # entries as an index are under 1,600 characters, so the model can instead
+    # see that everything exists and fetch what its task needs — `lore_index`
+    # then `lore_get`. Nothing is pushed; the tool descriptions carry the
+    # instruction to ask.
+    #
+    # The cost of this choice is real and worth naming: an agent that never
+    # calls `lore_index` works with no lore at all. That is why `lore_index` is
+    # a hot tool and why its description says to start there.
+    LORE_PUSH_BRIEF: bool = False
+    # Budget for that briefing when it is switched back on.
     LORE_BIG_PICTURE_BUDGET: int = 3800
+    # Push what is known about ONE object when the agent first touches it.
+    #
+    # ON, and deliberately not covered by the decision above. The app briefing
+    # was a blanket push: it arrived on every request whatever the task, and
+    # the ranking chose what the model saw. This one is triggered by the
+    # agent's own act of opening an object, carries at most 1,200 characters
+    # about that object, and fires once per subject per session. It is closer
+    # to an answer than to a broadcast, which is why it survives.
+    LORE_PUSH_SUBJECT: bool = True
 
     # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
     # nocode-kirun live for code-reading tools. Per-instance mounted volume
@@ -297,6 +318,9 @@ class Settings(BaseSettings):
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
+    LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
+    # balanced tier as AppBuilder, so the two agents share one model and one set of
+    # provider quirks to reason about rather than two.
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     # Where nocode-ui's generated catalog lives, for a dev box. Accepts the
     # client dir, its dist/ dir, or the JSON file. Empty auto-resolves to a

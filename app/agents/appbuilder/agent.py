@@ -26,6 +26,7 @@ from app.core.tools.draft_registry import (
 from app.agents.appbuilder.tools.modlix._draft_surface import draft_mode
 from app.agents.appbuilder.tools._shared import (
     FOCUS_APP_KEY,
+    FOCUS_PAGE_KEY,
     SEEN_APPS_KEY,
     app_scope_hint,
 )
@@ -296,8 +297,21 @@ class AppBuilderAgent(BaseAgent):
         if isinstance(written, list) and app not in written:
             written.append(app)
 
+        # Which page, when the call named one. Recorded BEFORE the unchanged-app
+        # return below, because most of a session's page writes land in the app
+        # that is already in focus -- gated on the return, only the very first
+        # one would ever be stored.
+        page = tool_input.get("page_name") or tool_input.get("name")
+        page = page.strip() if isinstance(page, str) else ""
+        if page and ("page" in tool_name or "component" in tool_name):
+            session.context[FOCUS_PAGE_KEY] = page
+
         if session.context.get(FOCUS_APP_KEY) == app:
             return
+        # A page name is meaningless once the work moves to another app, and a
+        # stale one would point a preview at a page that does not exist there.
+        if session.context.get(FOCUS_PAGE_KEY) and not page:
+            session.context.pop(FOCUS_PAGE_KEY, None)
         session.context[FOCUS_APP_KEY] = app
         # The grounding block names an app and lists its pages, so it is stale
         # once it describes an app we are no longer in. Drop it here so the next
