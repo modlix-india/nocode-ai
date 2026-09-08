@@ -91,10 +91,15 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
             self.assertTrue(result.success)
             fetch.assert_awaited()
         with self.subTest("consented but no competitors prescribes analysis"):
-            result, fetch = _run(_ctx(competitors=[]))
+            # Live 2026-09-08: a parallel analyze+fetch raced; this refusal must
+            # never mark the offer resolved or the owed fetch evaporates.
+            ctx = _ctx(competitors=[])
+            result, fetch = _run(ctx)
             self.assertFalse(result.success)
             self.assertIn("analyze_competitors", result.error)
             fetch.assert_not_awaited()
+            self.assertNotIn("_competitor_creatives_fetched",
+                             ctx["session_context"])
         with self.subTest("completed fetch sets the marker even with zero creatives"):
             ctx = _ctx()
             result, _ = _run(ctx)

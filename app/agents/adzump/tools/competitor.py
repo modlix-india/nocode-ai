@@ -480,6 +480,7 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             parent_tool_use_id=tool_use_id,
             auth=auth,
             parent_session_context=session_ctx,
+            enforce_verified_competitors=True,
             user_message=(
                 f"Run competitor research for: {product_name}\n\n"
                 f"Product profile:\n{product_summary[:1500]}\n\n"

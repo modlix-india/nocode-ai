@@ -118,6 +118,62 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
     return result
 
 
+_UNVERIFIED_BOUNCE_MSG = (
+    "REJECTED - your competitor list is NOT verified. Every competitor must "
+    "cite fetch_candidates evidence. Do it now: (1) call extract_candidates(), "
+    "(2) judge every row with a one-line PICK/SKIP verdict, (3) call "
+    "fetch_candidates with your picks, (4) re-emit the FULL final JSON citing "
+    "each entry's ID in competitor_id with url null. If nothing verifies, "
+    "emit competitors: [] with a note explaining why. Do not skip the tools "
+    "again - unverified entries will be stripped."
+)
+
+
+def _discovery_violations(payload: dict | None, research_state: dict) -> list[str]:
+    """The full-discovery output contract, checked in code: a non-empty
+    competitor list must cite fetch_candidates evidence per entry (a verified
+    ``competitor_id``, or at least no model-typed URL), and an EMPTY list only
+    counts when extract_candidates actually ran (candidate_pool exists) -
+    otherwise 'found nobody' just means 'never looked'."""
+    competitive = (payload or {}).get("competitive") or {}
+    competitors = [c for c in competitive.get("competitors") or []
+                   if isinstance(c, dict)]
+    if not competitors:
+        if research_state.get("candidate_pool") is None:
+            return ["empty competitor list without ever calling extract_candidates"]
+        return []
+    verified_ids = {c.get("cid")
+                    for c in research_state.get("verified_competitors") or []}
+    violations = []
+    for comp in competitors:
+        name = comp.get("name") or "?"
+        cited = comp.get("competitor_id")
+        if cited in verified_ids:
+            continue
+        if comp.get("url"):
+            violations.append(f"{name}: unverified entry with a model-typed url")
+        elif cited:
+            violations.append(f"{name}: cites unknown evidence id {cited!r}")
+    return violations
+
+
+def _scrub_unverified(competitive: dict, research_state: dict) -> list[str]:
+    """Last resort after the bounce: unverified entries keep their (usually
+    fine) names but lose the model-typed url and the unresolvable citation -
+    the URL ladder/judge settle their links from real evidence instead."""
+    verified_ids = {c.get("cid")
+                    for c in research_state.get("verified_competitors") or []}
+    scrubbed: list[str] = []
+    for comp in competitive.get("competitors") or []:
+        if not isinstance(comp, dict) or comp.get("competitor_id") in verified_ids:
+            continue
+        if comp.get("url") or comp.get("competitor_id"):
+            comp["url"] = None
+            comp.pop("competitor_id", None)
+            scrubbed.append(comp.get("name") or "?")
+    return scrubbed
+
+
 class _PassthroughEventStream(AgentEventStream):
     """Event stream wrapper used by the sub-agent.
 
@@ -270,6 +326,21 @@ class ProductAgent(BaseAgent):
             ctx["auth"] = session.auth
         return ctx
 
+    @staticmethod
+    def _last_assistant_text(sub_session: BaseSession) -> str:
+        """The last assistant message's text - the analyst's JSON output."""
+        for msg in reversed(sub_session.get_messages()):
+            if msg.get("role") != "assistant":
+                continue
+            content = msg.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts = [c.get("text", "") for c in content if c.get("type") == "text"]
+                if any(parts):
+                    return "\n".join(p for p in parts if p)
+        return ""
+
     def _parse_result(
         self, final_text: str, sub_session: BaseSession, primary_url: str,
     ) -> AnalysisOutput:
@@ -303,12 +374,24 @@ class ProductAgent(BaseAgent):
         auth: AuthContext,
         parent_session_context: dict | None = None,
         user_message: str | None = None,
+        enforce_verified_competitors: bool = False,
     ) -> AnalysisOutput:
         """Run one analysis and return structured output.
 
         The caller controls scope via ``user_message``:
         - Profile only: "Scrape and profile this business. Do NOT search for competitors."
         - Full research: "Run competitor research for this business using web_search and web_fetch."
+
+        ``enforce_verified_competitors`` (full-discovery mode only): the
+        pipeline hard rule gets teeth. Server-side web_search returns results
+        inline, so the model can SEE plausible competitors after two searches
+        and writes the final JSON from memory, skipping extract_candidates /
+        fetch_candidates entirely (live 2026-09-08: one turn, four searches,
+        hand-typed URLs). An unverified output is bounced back ONCE with the
+        correction; if it still refuses, unverified entries are scrubbed of
+        their model-typed URLs, and an empty list produced without ever
+        opening the pipeline is treated as a failed analysis (never stored -
+        a fake 'found nobody' would silently settle the creatives offer).
         """
         sub_session = BaseSession(agent_name="product_analyst")
         await sub_session.get_or_create(None, auth)
@@ -340,23 +423,40 @@ class ProductAgent(BaseAgent):
             event_stream=wrapped_stream,
             model_override=ANALYST_MODEL_OVERRIDE,
         )
+        final_text = self._last_assistant_text(sub_session)
 
-        # Find the last assistant message's text - that's the JSON output.
-        final_text = ""
-        for msg in reversed(sub_session.get_messages()):
-            if msg.get("role") != "assistant":
-                continue
-            content = msg.get("content")
-            if isinstance(content, str):
-                final_text = content
-                break
-            if isinstance(content, list):
-                parts = [c.get("text", "") for c in content if c.get("type") == "text"]
-                if any(parts):
-                    final_text = "\n".join(p for p in parts if p)
-                    break
+        violations: list[str] = []
+        if enforce_verified_competitors:
+            research_state = sub_session.context.get("_research_state") or {}
+            violations = _discovery_violations(extract_json(final_text),
+                                               research_state)
+            if violations:
+                logger.warning("analyst_unverified_output: bouncing once - %s",
+                               violations)
+                await self.run(
+                    user_message=_UNVERIFIED_BOUNCE_MSG,
+                    session=sub_session,
+                    event_stream=wrapped_stream,
+                    model_override=ANALYST_MODEL_OVERRIDE,
+                )
+                final_text = self._last_assistant_text(sub_session)
+                violations = _discovery_violations(extract_json(final_text),
+                                                   research_state)
 
-        return self._parse_result(final_text, sub_session, url)
+        output = self._parse_result(final_text, sub_session, url)
+        if violations and output.competitive is not None:
+            research_state = sub_session.context.get("_research_state") or {}
+            if not (output.competitive.get("competitors") or []):
+                # Empty without ever opening the pipeline = a failed analysis,
+                # not a finding - storing it would settle offers as 'moot'.
+                logger.error("analyst_unverified_output_final: empty list "
+                             "without the pipeline - discarding the analysis")
+                output.competitive = None
+            else:
+                scrubbed = _scrub_unverified(output.competitive, research_state)
+                logger.error("analyst_unverified_output_final: scrubbed "
+                             "model-typed urls for %s", scrubbed)
+        return output
 
 
 def get_product_agent() -> ProductAgent:
