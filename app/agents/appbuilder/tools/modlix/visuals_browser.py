@@ -53,7 +53,7 @@ _SESSION_IDLE_TTL_SECONDS = 600
 
 
 # Param description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_PAGE_NAME = "Page name to render (e.g. 'homeTwo')"
 
@@ -107,6 +107,30 @@ async def _reap_idle_sessions() -> list[str]:
     return stale
 
 
+async def close_all_browser_sessions() -> int:
+    """Close every live persistent session. Returns how many were closed.
+
+    Called from the FastAPI lifespan shutdown. Without it, a worker that exits
+    (redeploy, restart, OOM kill) leaves its Chromium children orphaned: the
+    reaper below only runs lazily inside a tool call, so nothing reaps a session
+    once the process stops taking calls. Observed locally as Chromium processes
+    surviving three sequential bench runs, one of them spinning 31% CPU and
+    holding the parent's stdout pipe open.
+
+    Best-effort and never raises: shutdown must not be blocked by a browser that
+    is already gone.
+    """
+    if not _sessions:
+        return 0
+    count = len(_sessions)
+    for sid in list(_sessions):
+        sess = _sessions.pop(sid, None)
+        if sess is not None:
+            await _close_session(sess)
+    logger.info("Closed %d browser session(s) on shutdown", count)
+    return count
+
+
 # ── Identity ─────────────────────────────────────────────────────────────
 
 
@@ -134,6 +158,54 @@ async def _login_one_shot(gateway: str, username: str, password: str) -> tuple[s
     return token, int(expiry), None
 
 
+def _jwt_expiry(token: str) -> int | None:
+    """The token's own `exp` claim in Unix seconds, or None if unreadable.
+
+    Payload only, no signature check: we are deciding whether it is worth
+    handing this token to a browser, not trusting its contents. The gateway
+    re-validates server-side either way.
+    """
+    parts = (token or "").split(".")
+    if len(parts) < 2:
+        return None
+    padded = parts[1] + "=" * (-len(parts[1]) % 4)
+    try:
+        claims = _json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        # binascii.Error and JSONDecodeError are both ValueError subclasses.
+        return None
+    exp = claims.get("exp") if isinstance(claims, dict) else None
+    try:
+        return int(exp) if exp is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _usable(token: str) -> tuple[str, int] | None:
+    """A token plus its REAL expiry, or None if it has already expired.
+
+    Two things this guards, both learned from a page that rendered logged-out
+    with no explanation (modlix-mcp, 2026-08-26):
+
+      - The expiry handed to the browser used to be a flat now+1h regardless of
+        the token, which tells nocode-ui's session that a dead token is fresh.
+      - An already-expired token used to be injected anyway, so the page came
+        back anonymous and the only evidence was 401s on its own API calls,
+        visible only if you asked for the network log.
+
+    A token with no readable `exp` is passed through with a one-hour stamp: we
+    cannot judge it, and refusing it outright would be worse than trying it.
+    """
+    if not token:
+        return None
+    exp = _jwt_expiry(token)
+    if exp is None:
+        return (token, int(_time.time()) + 3600)
+    if exp <= int(_time.time()):
+        return None
+    return (token, exp)
+
+
 async def _resolve_identity(
     params: dict[str, Any], context: dict[str, Any],
 ) -> tuple[tuple[str, int] | None, str | None]:
@@ -144,6 +216,12 @@ async def _resolve_identity(
       2. params.username + params.password → one-shot login
       3. session.get_app_user_token() (via context callable) → cached app-user
       4. anonymous fallback (no dev-token fallback — see module docstring)
+
+    An app-user token that has already expired is an ERROR, not a silent drop
+    to anonymous. There is only one authenticated slot here, so falling through
+    would render the page logged-out and call it a success — which is exactly
+    the failure this guard exists to stop. A caller who genuinely wants the
+    logged-out view asks for it with anonymous=True.
     """
     if bool(params.get("anonymous")):
         return None, None
@@ -155,28 +233,79 @@ async def _resolve_identity(
         tok, exp, err = await _login_one_shot(gateway, username, password)
         if err:
             return None, err
-        return (tok, exp or int(_time.time()) + 3600), None
+        usable = _usable(tok)
+        if usable is None:
+            return None, "The login succeeded but returned an already-expired token."
+        token, token_exp = usable
+        if _jwt_expiry(token) is None and exp:
+            # No readable `exp` in the JWT: the server's own answer beats the
+            # one-hour guess `_usable` falls back to.
+            token_exp = int(exp)
+        return (token, token_exp), None
     get_app_user_token = context.get("get_app_user_token")
     if callable(get_app_user_token):
         try:
             tok = await get_app_user_token()
-            return (tok, int(_time.time()) + 3600), None
         except RuntimeError:
             # No app-user creds configured — fall through to anonymous.
-            pass
+            return None, None
+        usable = _usable(tok)
+        if usable is None:
+            return None, (
+                "The app_user token has expired. Pass fresh app_user credentials "
+                "(username + password) on the chat request, or anonymous=true to "
+                "capture the logged-out view deliberately."
+            )
+        return usable, None
     return None, None
 
 
 def _build_url(app_code: str, client_code: str, page_name: str,
-               path_segments: list[str] | None, query: str | None) -> str:
+               path_segments: list[str] | None, query: str | None,
+               host_override: str | None = None) -> str:
     from app.config import settings
-    gateway = settings.GATEWAY_URL.rstrip("/")
+    gateway = (host_override or settings.GATEWAY_URL).rstrip("/")
     url = f"{gateway}/{app_code}/{client_code}{_PAGE_PATH_SEGMENT}{page_name}"
     if path_segments:
         url += "/" + "/".join(str(s).strip("/") for s in path_segments if s)
     if query:
         url += "?" + str(query).lstrip("?")
     return url
+
+
+async def _draft_host_headers(
+    context: dict[str, Any], app_code: str, draft: bool,
+) -> tuple[dict[str, str] | None, str | None]:
+    """Extra request headers that make the gateway serve the DRAFT surface.
+
+    The surface is chosen by hostname, and the gateway derives that hostname from
+    `X-Forwarded-Host` when present. Sending the header rather than navigating to
+    the draft host means this works without the draft name resolving in DNS,
+    which it does not on a developer machine (/etc/hosts cannot wildcard).
+
+    Returns (headers, error). (None, None) means "not drafting, carry on".
+    """
+    if not draft:
+        return None, None
+
+    from . import _draft_surface as ds
+    from app.core.tools.http_client import SaasClient
+    from app.config import settings
+
+    client = context.get("saas_client") or SaasClient(settings.GATEWAY_URL)
+    headers = context.get("headers", {}) or {}
+    if not await ds.supported(client, headers, app_code):
+        return None, (
+            f"This deployment has no draft surface, so there is no draft of "
+            f"'{app_code}' to render. Screenshot the live page instead."
+        )
+    url, err = await ds.ensure_draft_url(client, headers, app_code)
+    if err or not url:
+        return None, err or f"No draft link for '{app_code}'."
+
+    host = url.split("://", 1)[-1].rstrip("/")
+    return {"X-Forwarded-Host": host, "X-Forwarded-Proto": "https",
+            "X-Forwarded-Port": "443"}, None
 
 
 # ── Capture wiring ───────────────────────────────────────────────────────
@@ -254,10 +383,14 @@ async def _new_session(
 
 
 async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    # Reap here too, not just in drive_page: a conversation that only
+    # screenshots would otherwise hold an idle session for the whole run.
+    await _reap_idle_sessions()
     page_name = (params.get("page_name") or "").strip()
     if not page_name:
         return ToolResult(success=False, error="`page_name` is required")
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     cc = params.get("client_code") or context.get("client_code", "") or ""
     if not ac:
         return ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
@@ -265,6 +398,12 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     identity, idl_err = await _resolve_identity(params, context)
     if idl_err:
         return ToolResult(success=False, error=idl_err)
+
+    draft_headers, draft_err = await _draft_host_headers(
+        context, ac, bool(params.get("draft")),
+    )
+    if draft_err:
+        return ToolResult(success=False, error=draft_err)
 
     url = _build_url(ac, cc, page_name, params.get("path_segments"), params.get("query"))
 
@@ -289,6 +428,8 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
             ctx = await browser.new_context(viewport={"width": width, "height": height}, ignore_https_errors=True)
+            if draft_headers:
+                await ctx.set_extra_http_headers(draft_headers)
             if identity is not None:
                 tok, exp = identity
                 script = (
@@ -367,11 +508,11 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     description_text: str | None = None
     try:
         from app.config import settings as _settings
-        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
-        vision_capable = provider in {"anthropic", "openai", "minimax"}
+        from app.services.llm_provider import appbuilder_vision_capable
+        vision_capable = appbuilder_vision_capable()
         if not vision_capable:
-            # Text-only providers (DeepSeek) need the Gemini-described version;
-            # vision-capable providers see the PNG natively via image_base64.
+            # Text-only models need the Gemini-described version;
+            # vision-capable models see the PNG natively via image_base64.
             from app.agents.appbuilder.tools.modlix.visuals import (
                 _MIME_PNG, _DESCRIBE_BASE_PROMPT, _DESCRIBE_DEFAULT_MODEL,
                 _describe_via_gemini,
@@ -427,6 +568,7 @@ screenshot_page_tool = ToolDefinition(
         ToolParameter(name="page_name", type="string", description=_DESC_PAGE_NAME),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
+        ToolParameter(name="draft", type="boolean", required=False, default=False, description="Render the app's DRAFT surface. Set this to look at unpublished changes, including your own: the live page will not show them."),
         ToolParameter(name="username", type="string", required=False, description="One-shot end-user login (with password)"),
         ToolParameter(name="password", type="string", required=False, description="Password for the username login"),
         ToolParameter(name="anonymous", type="boolean", required=False, default=False, description="Skip auth — public/login page capture"),
@@ -617,7 +759,8 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
         return ToolResult(success=False, error="`page_name` is required")
     if not isinstance(actions, list) or not actions:
         return ToolResult(success=False, error="`actions` (non-empty list) is required")
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     cc = params.get("client_code") or context.get("client_code", "") or ""
     if not ac:
         return ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
@@ -630,6 +773,10 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
     capture_console = bool(params.get("capture_console", False))
     capture_network = bool(params.get("capture_network", False))
     final_screenshot_mode = (params.get("final_screenshot") or "viewport").strip()  # 'viewport'|'full'|'none'
+    try:
+        initial_wait_ms = max(0, min(int(params.get("initial_wait_ms", 1500)), 60000))
+    except (TypeError, ValueError):
+        initial_wait_ms = 1500
 
     identity, idl_err = await _resolve_identity(params, context)
     if idl_err:
@@ -668,6 +815,13 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
             await page.goto(url, wait_until="networkidle", timeout=20000)
         except Exception:  # noqa: BLE001
             pass
+        # Settle wait after the initial load. networkidle is not enough on a
+        # Modlix page: long-polling sockets mean it may never fire (the goto
+        # above then just times out), and the page's own onLoad FetchData
+        # round-trips land after it does. Without this pause the first action
+        # can fire against a half-rendered tree and miss its selector.
+        if initial_wait_ms:
+            await page.wait_for_timeout(initial_wait_ms)
         sess.current_page_name = page_name
 
     # Run actions
@@ -756,6 +910,7 @@ drive_page_tool = ToolDefinition(
         ToolParameter(name="height", type="integer", required=False, default=900, description="Viewport height"),
         ToolParameter(name="path_segments", type="array", required=False, description="Path parts after /page/<name>/", items={"type": "string"}),
         ToolParameter(name="query", type="string", required=False, description="URL query string (no leading '?')"),
+        ToolParameter(name="initial_wait_ms", type="integer", required=False, default=1500, description="Wait this long (ms, max 60000) after the initial page load before running actions, so async data fetches settle. Raise it when the first action reports a missing selector on a page that renders from a slow FetchData; 0 disables the wait."),
         ToolParameter(name="capture_console", type="boolean", required=False, default=False, description="Capture browser console + page errors"),
         ToolParameter(name="capture_network", type="boolean", required=False, default=False, description="Capture XHR/fetch requests"),
         ToolParameter(name="final_screenshot", type="string", required=False, default="viewport", description="'viewport' | 'full' | 'none' — final snap after actions"),
@@ -865,14 +1020,14 @@ async def _execute_screenshot_external_url(params: dict[str, Any], context: dict
     except ImportError:
         return ToolResult(success=False, error="playwright not installed; pip install playwright && python -m playwright install chromium")
 
-    # Vision-routing rule (same as screenshot_page): vision-capable providers
-    # see the PNG natively via image_base64; only fall back to Gemini-describe
-    # for text-only providers (DeepSeek). Saves real cost when running on
-    # Anthropic/OpenAI for what would otherwise be a free vision read.
+    # Vision-routing rule (same as screenshot_page): a vision-capable model
+    # sees the PNG natively via image_base64; only fall back to Gemini-describe
+    # for text-only models. Saves real cost on a vision-capable model for what
+    # would otherwise be a free vision read.
     try:
         from app.config import settings as _settings
-        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
-        vision_capable = provider in {"anthropic", "openai", "minimax"}
+        from app.services.llm_provider import appbuilder_vision_capable
+        vision_capable = appbuilder_vision_capable()
         gemini_key = "" if vision_capable else (getattr(_settings, "GOOGLE_API_KEY", "") or "")
     except Exception:  # noqa: BLE001
         vision_capable = False

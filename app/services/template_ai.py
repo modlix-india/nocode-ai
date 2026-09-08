@@ -19,24 +19,51 @@ from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """You are an expert template designer for the Modlix platform. You produce a single \
+# The Modlix template editor represents content as a flat, ordered list of BLOCKS (defined in the
+# nocode-ui block model). Generated HTML must be built from these block patterns so it maps cleanly
+# back into editable blocks (via the editor's HTML->blocks import), not a single opaque Raw HTML blob.
+_BLOCK_CATALOG = """Modlix template blocks — build the content from these so it stays editable in the \
+visual builder (each maps to one block):
+- Heading  -> <h1>..<h4> with inline font-size / color / text-align. Section titles.
+- Text     -> <p> paragraph; may contain inline <a>, <strong>/<b>, <em>, <br> and ${merge fields}.
+- List     -> <ul> or <ol> with <li> items.
+- Button   -> an <a> styled as a button (inline-block; background-color; padding; border-radius; \
+color). Primary calls to action; href may be a ${url}.
+- Link     -> a plain text <a> (color, optional underline) for inline/standalone links.
+- Image    -> <img> with src / alt / width; wrap in <a href> for a clickable image.
+- Divider  -> <hr> / a thin horizontal rule.
+- Spacer   -> vertical whitespace between sections.
+- Raw HTML -> anything that does not fit the above (kept verbatim, but NOT visually editable).
+
+Layout rules that keep the output block-mappable:
+- Lay content out as a SINGLE vertical column of the blocks above, in reading order.
+- Prefer the semantic elements above (h1..h4, p, ul/ol, img, hr, styled <a>) over generic <div>/<span> \
+wrappers.
+- AVOID multi-column layouts, nested layout tables and CSS grid/flex — they cannot be represented as \
+blocks and collapse into one Raw HTML block. A single outer wrapper table for the email frame is fine; \
+just keep the inner content a linear column.
+"""
+
+_SYSTEM_PROMPT = f"""You are an expert template designer for the Modlix platform. You produce a single \
 self-contained template that renders reliably in email clients and, when the type is pdf, in \
 OpenHTMLtoPDF.
 
+{_BLOCK_CATALOG}
+
 Hard rules:
-- INLINE styles only. No external stylesheets, no <script>, no remote CSS/JS. Table-based layout for \
-email; simple block layout for pdf. Images may reference absolute https URLs.
-- Use FreeMarker merge fields for dynamic values, e.g. ${name}, ${email}, ${actionUrl}. PRESERVE any \
-${...} already present in the current content unless the user asks to change it. Do NOT invent a \
+- INLINE styles only. No external stylesheets, no <script>, no remote CSS/JS. Images may reference \
+absolute https URLs.
+- Use FreeMarker merge fields for dynamic values, e.g. ${{name}}, ${{email}}, ${{actionUrl}}. PRESERVE \
+any ${{...}} already present in the current content unless the user asks to change it. Do NOT invent a \
 templating syntax other than FreeMarker.
 - Return a COMPLETE, valid HTML document starting with <!DOCTYPE html> (for email and pdf). For pdf \
-you may include <style>@page { size: A4; margin: 20mm; }</style> in the head.
+you may include <style>@page {{ size: A4; margin: 20mm; }}</style> in the head.
 - For whatsapp / sms, "html" is plain message text (short), and subject is "".
 - Keep copy concise and professional unless the user asks otherwise.
 
 Output format — return ONLY a single JSON object, no prose and no code fences:
-{"subject": "<email subject, or empty string for non-email>", "html": "<the template html or text>", \
-"message": "<one short sentence describing what you did>"}
+{{"subject": "<email subject, or empty string for non-email>", "html": "<the template html or text>", \
+"message": "<one short sentence describing what you did>"}}
 """
 
 

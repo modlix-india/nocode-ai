@@ -29,7 +29,8 @@ def _get_client_and_headers(context: dict[str, Any]) -> tuple[SaasClient, dict[s
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
-    app_code = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code(params, context)
     if not app_code:
         return "", ToolResult(
             success=False,
@@ -147,7 +148,7 @@ async def page_read(params: dict[str, Any], context: dict[str, Any]) -> ToolResu
     """
     client, headers = _get_client_and_headers(context)
     page_name = params.get("name", "")
-    app_code = params.get("app_code") or context.get("app_code", "")
+    app_code = _resolve_app_code(params, context)[0]
 
     if not page_name:
         return ToolResult(success=False, error="'name' (page name) is required to read a page.")
@@ -333,7 +334,7 @@ async def page_update(params: dict[str, Any], context: dict[str, Any]) -> ToolRe
     """
     client, headers = _get_client_and_headers(context)
     page_name = params.get("page_name", "")
-    app_code = params.get("app_code") or context.get("app_code", "")
+    app_code = _resolve_app_code(params, context)[0]
 
     if not page_name:
         return ToolResult(success=False, error="'page_name' is required for page update.")

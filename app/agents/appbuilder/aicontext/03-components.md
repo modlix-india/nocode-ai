@@ -123,7 +123,23 @@
 - `validationCheck`, `onSubmit`
 
 ### Table
-- `data`, `columns`, `pagination`, `sortable`, `selectable`
+Table is a family, not a single component: `Table` + `TableColumns` /
+`TableColumn` / `TableGrid` / `TablePreviewGrid` / `TableRow` / `TableEmptyGrid`,
+driven by **seven** binding paths. Do not guess its props.
+
+- `bindingPath` data array (REQUIRED), `bindingPath2` selection,
+  `bindingPath3` page number, `bindingPath4` rows per page, `bindingPath5` mode,
+  `bindingPath6` sort, `bindingPath7` personalization
+- `tableDesign` (`_design0`.. `_design9`), `colorScheme`, `tableLayout`,
+  `displayMode`, `previewMode`, `offlineData`, `selectionType`, `multiSelect`,
+  `uniqueKey` (REQUIRED for selection / tree / personalization), `defaultSize`,
+  `perPageNumbers`, `totalPages`, `treeMode`, `childrenKey`
+- Cells vary per row ONLY via `Parent.<field>`. A literal `text.value` renders
+  the same string on every row, and that is the single most common Table bug.
+- Events: `onSelect`, `onPagination`, `onSort`, `onExpandEvent`
+
+Full model and recipes: `pattern_read('handle-tables')`.
+Failure modes: `platform_doc_read('table_gotchas')`.
 
 ### Carousel
 - `autoPlay`, `interval`, `showDots`, `showArrows`
@@ -154,3 +170,17 @@ For form components (TextBox, Dropdown, etc.):
 ## Common Properties (most components)
 
 `visibility`, `readOnly`, `onClick`, `linkPath`, `designType`, `colorScheme`
+
+## Keyboard Shortcuts
+
+Button and TextBox take `shortcutKey` (e.g. `Mod+S`, where `Mod` is Cmd on Mac and
+Ctrl elsewhere), plus `shortcutScope` (PAGE/GLOBAL/LOCAL), `shortcutPriority` and
+`shortcutGroup`. TextBox also takes `shortcutAction` (FOCUS/FOCUS_SELECT/EVENT)
+and `onShortcut`. For a key with no control on screen, use the non-visual
+`Shortcut` component with `shortcutKey` + `onShortcut`.
+
+Never put a shortcut on a component inside a Table or ArrayRepeater row: it is
+silently refused, because one key cannot say which row it meant.
+
+Full rules, reserved keys and how to display the key on screen:
+`platform_doc_read("keyboard_shortcuts")`.

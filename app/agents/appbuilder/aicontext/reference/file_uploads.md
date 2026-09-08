@@ -77,7 +77,7 @@ Body:
   --boundary--
 ```
 
-Key shape facts (confirmed 2026-05-18 with Kiran):
+Key shape facts (confirmed 2026-05-18):
 - The path segment after `/api/files/static/` is the **folder**, not the
   full file path. So POSTing to `.../api/files/static/bookingsPage` puts the
   file at `bookingsPage/<multipart-filename>`. To upload to the app root,

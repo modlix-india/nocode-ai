@@ -53,6 +53,6 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
 
     image_blocks = build_image_blocks(body.attachments) if body.attachments else None
 
-    return stream_agent_response(
+    return await stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )

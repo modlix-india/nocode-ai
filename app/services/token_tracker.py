@@ -183,9 +183,13 @@ class TokenTracker:
         session_id = usages[0].session_id
         user_id = usages[0].user_id
 
-        # Calculate context tokens (input + cache read is what's used for context)
-        # This is a rough estimate; actual context depends on conversation history
-        context_tokens = total_input + total_cache_read
+        # Context tokens = the conversation size on the LAST call in this batch,
+        # not the batch sum. Every call re-sends the whole conversation, so
+        # summing measures cumulative spend rather than how full the window is.
+        # The column is SET (not incremented) by update_session_totals, so the
+        # latest call is the right value to write.
+        last = usages[-1]
+        context_tokens = last.input_tokens + last.cache_read_tokens
 
         session_manager = get_session_manager()
         await session_manager.update_session_totals(

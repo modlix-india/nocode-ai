@@ -205,12 +205,15 @@ async def test_execute_surfaces_gemini_error(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_execute_missing_api_key_fails_fast(monkeypatch) -> None:
-    """No GOOGLE_API_KEY → fail-fast with a clear error before any HTTP call."""
-    monkeypatch.setattr(
-        "app.agents.appbuilder.tools.modlix.visuals.settings",
-        type("S", (), {"GOOGLE_API_KEY": ""})(),
-        raising=False,
-    )
+    """No GOOGLE_API_KEY → fail-fast with a clear error before any HTTP call.
+
+    The tool does `from app.config import settings` INSIDE its execute, so the
+    patch must land on the settings singleton itself — patching a
+    `visuals.settings` module attribute never reaches the tool (that was this
+    test's original bug: with a real key in .env the stub always fired).
+    """
+    from app.config import settings as _settings
+    monkeypatch.setattr(_settings, "GOOGLE_API_KEY", "")
 
     # Patch the Gemini call too — if the fail-fast logic regresses, this
     # would otherwise reach out to the real API.
@@ -240,12 +243,30 @@ def test_describe_image_is_in_visuals_tools_export() -> None:
     assert "describe_image" in names, f"describe_image missing from visuals.TOOLS: {names}"
 
 
-def test_describe_image_is_in_global_all_tools() -> None:
-    """The global ALL_TOOLS registry must surface describe_image so it
-    appears in the deferred-schema tool index and search_tools results."""
+def test_describe_image_registration_follows_vision_capability() -> None:
+    """describe_image is registered only for a text-only AppBuilder model.
+
+    It exists to give a model that cannot see PNGs a Gemini-written
+    description of one. On a vision-capable model the registry drops it
+    (`_filter_visual_tools`) because the screenshot tools attach the image
+    itself — keeping it would invite a redundant paid call. Which branch
+    applies depends on settings, so assert the relationship, not a fixed
+    answer.
+    """
     from app.agents.appbuilder.tools.registry import ALL_TOOLS
-    names = [t.name for t in ALL_TOOLS]
-    assert "describe_image" in names, "describe_image not registered in ALL_TOOLS"
+    from app.services.llm_provider import appbuilder_vision_capable
+
+    registered = "describe_image" in [t.name for t in ALL_TOOLS]
+    if appbuilder_vision_capable():
+        assert not registered, (
+            "describe_image should be filtered out when the AppBuilder model "
+            "has native vision"
+        )
+    else:
+        assert registered, (
+            "describe_image must be registered when the AppBuilder model is "
+            "text-only — it is that model's only route to image content"
+        )
 
 
 def test_describe_image_tool_schema_advertises_both_inputs() -> None:

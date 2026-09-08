@@ -1,5 +1,10 @@
 # Styles and Themes
 
+This file is the **JSON shape**: where styleProperties live, the key format,
+breakpoints, pseudo-states. For *which* of these to reach for, read
+`platform_doc_read("design_system")` — the theme-vs-inline decision, the
+per-component enum catalog, `Text` roles, and the traps.
+
 ## Component StyleProperties
 
 Structure: each component has `styleProperties` with unique style keys.
@@ -105,6 +110,18 @@ Themes provide design tokens accessible via `Theme.` prefix.
 
 ### Theme Structure
 
+Two kinds of variable live here, and they behave differently:
+
+1. **Names the components already read** — `colorOne`, `fontColorOne`,
+   `backgroundColorOne`, `primaryFont`, and the sprayed per-variant names like
+   `buttonPaddingDefaultPrimary`. Setting these styles the components
+   automatically, with no page change at all. The name has to match the pattern
+   the component declares or it does nothing. See `design_system`.
+2. **Arbitrary names of your own** — reachable only through a `Theme.` expression
+   (below). Useful, but they style nothing by themselves.
+
+The example here is the second kind.
+
 ```json
 {
   "name": "appTheme",
@@ -131,6 +148,11 @@ Themes provide design tokens accessible via `Theme.` prefix.
 
 In styles: `{"location": {"type": "EXPRESSION", "expression": "Theme.primaryColor"}}`
 In properties: `{"location": {"type": "EXPRESSION", "expression": "Theme.fontFamily"}}`
+
+This works in a page style leaf and is the right way to stay on-palette when you
+genuinely must style one instance. The `<varName>` syntax does NOT work in a page
+leaf — that substitution runs on theme values only. `Theme.` returns the variable's
+raw value, so one whose value is itself `<anotherVar>` comes back unexpanded.
 
 ### Linking Theme to Application
 

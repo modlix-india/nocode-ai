@@ -719,6 +719,20 @@ set_campaign_spec = ToolDefinition(
             required=False,
         ),
         ToolParameter(
+            name="ig_page_declined",
+            type="string",
+            description="Meta only - set \"true\" when the user opts to run Facebook-only (no or skipped Instagram account). Do not send ig_page together with this.",
+            required=False,
+            enum=["true"],
+        ),
+        ToolParameter(
+            name="competitive_analysis_declined",
+            type="string",
+            description="Set \"true\" when the user declines the competitive analysis step so next_action stops offering it.",
+            required=False,
+            enum=["true"],
+        ),
+        ToolParameter(
             name="ig_page",
             type="string",
             description="Meta only - Instagram Business account id linked to the fb_page.",

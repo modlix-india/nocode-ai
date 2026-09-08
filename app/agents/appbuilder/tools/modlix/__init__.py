@@ -1,11 +1,11 @@
 """Modlix tool suite — ported from modlix-mcp into the CFA's appbuilder agent.
 
-This package holds the ~195 tools that used to live in modlix-mcp's FastMCP
-server (`/Users/kirangrandhi/kiran/fincity/modlix-mcp/modlix_mcp/tools/`).
-modlix-mcp was the iteration ground (because writing a Python tool + restarting
-the MCP and letting Claude Code use it gives the fastest feedback loop in the
-ecosystem). Now mature, they move here so the customer-facing agent at
-`POST /api/ai/appbuilder/chat` can expose the full surface.
+This package holds the ~195 tools that used to live in the modlix-mcp FastMCP
+server (`modlix_mcp/tools/`), which was the iteration ground: writing a Python
+tool, restarting the MCP and driving it from an interactive agent gave the
+fastest feedback loop available. Now mature, they live here so the
+customer-facing agent at `POST /api/ai/appbuilder/chat` exposes the full
+surface. modlix-mcp itself is being archived; new tool work happens here.
 
 Subdivisions match the categories in the rewrite plan:
   - pages.py        page CRUD + composition (composition + composition_v2 merged)
