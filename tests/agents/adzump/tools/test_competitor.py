@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 from app.agents.adzump.tools import competitor
@@ -222,6 +223,84 @@ class RefreshEntryTests(unittest.TestCase):
         _refresh_entry(same_host, {"name": "N", "url": "https://site.example/page"})
         self.assertIn("creatives", same_host)
         self.assertEqual(same_host["url"], "https://site.example/page")
+
+
+class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
+    """Live 2026-09-08: 'find more competitors' fired several analyze calls
+    (two in parallel), each force-run wiped the list and painted another
+    'Competitors' panel group. One analyst at a time; re-discovery merges."""
+
+    def _context(self, competitors=None):
+        session_ctx = {
+            "product_data": {"product_name": "Valmark CityVille",
+                             "summary": "Luxury villaments"},
+            "product_profile": {"summary": "Luxury villaments",
+                                "url": "https://cityville.in"},
+        }
+        if competitors is not None:
+            session_ctx["competitor_analysis"] = {"competitors": competitors}
+        return {"session_context": session_ctx, "auth": object(),
+                "event_stream": None, "tool_use_id": "t1"}
+
+    def test_second_concurrent_call_refuses(self):
+        from app.agents.adzump.tools.competitor import _analyze_competitors
+        context = self._context()
+        started = asyncio.Event()
+
+        async def slow_impl(params, ctx):
+            started.set()
+            await asyncio.sleep(0.05)
+            return competitor.ToolResult(success=True, summary="done")
+
+        async def race():
+            with mock.patch.object(competitor, "_analyze_competitors_impl",
+                                   new=slow_impl):
+                first = asyncio.create_task(_analyze_competitors({}, context))
+                await started.wait()
+                second = await _analyze_competitors({}, context)
+                return await first, second
+
+        first, second = asyncio.run(race())
+        self.assertTrue(first.success)
+        self.assertFalse(second.success)
+        self.assertIn("ALREADY running", second.error)
+        # The lock releases - a later call is welcome again.
+        self.assertNotIn("_competitor_analysis_running",
+                         context["session_context"])
+
+    def test_force_rediscovery_merges_never_replaces(self):
+        from app.agents.adzump.tools.competitor import _analyze_competitors
+        pinned = {"name": "Nambiar Villas", "url": "https://pinned.example",
+                  "url_source": "user", "creatives": [{"creativeId": "a"}]}
+        context = self._context(competitors=[pinned])
+        fresh = {"competitors": [
+            {"name": "Nambiar Bannerghatta Villas",
+             "url": "https://clone.example"},   # same project -> refresh, pin wins
+            {"name": "Sobha Magnus", "url": "https://sobha.com/sobha-magnus"},
+        ]}
+        analyst = mock.Mock()
+        analyst.analyze = mock.AsyncMock(return_value=SimpleNamespace(
+            competitive=fresh, product=None, notes=[]))
+        with mock.patch(
+            "app.agents.adzump.agents.product.agent.get_product_agent",
+            return_value=analyst,
+        ), mock.patch.object(
+            competitor, "_resolve_final_entry_urls", new=mock.AsyncMock(),
+        ), mock.patch.object(
+            competitor, "_filter_self_references",
+        ), mock.patch(
+            "app.core.streaming.pre_emit_agent_started", new=mock.AsyncMock(),
+        ):
+            result = asyncio.run(
+                _analyze_competitors({"force": "true"}, context))
+        self.assertTrue(result.success)
+        names = [c["name"] for c in
+                 context["session_context"]["competitor_analysis"]["competitors"]]
+        self.assertEqual(names, ["Nambiar Villas", "Sobha Magnus"])
+        self.assertEqual(pinned["url"], "https://pinned.example")  # pin survived
+        self.assertEqual(pinned["creatives"], [{"creativeId": "a"}])
+        self.assertIn("1 new", result.summary)
+        self.assertIn("1 already known", result.summary)
 
 
 class FinalEntryUrlModeTests(unittest.TestCase):

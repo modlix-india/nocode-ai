@@ -386,6 +386,29 @@ from app.agents.adzump.tools.craft import (
 
 
 async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
+    """Re-entrancy shield: the model batches several analyze_competitors calls
+    in one turn (live 2026-09-08: two IN PARALLEL) - concurrent analysts race
+    the shared research state and each paints its own panel group. One at a
+    time; the duplicate call gets a calm refusal, not a second analyst."""
+    session_ctx = context.get("session_context", {}) or {}
+    if session_ctx.get("_competitor_analysis_running"):
+        return ToolResult(
+            success=False,
+            error=(
+                "analyze_competitors is ALREADY running - never call it more "
+                "than once per turn (one call handles every name; pass names "
+                "comma-separated in `query`). Use the running call's result."
+            ),
+            display_error="Competitor research is already in progress…",
+        )
+    session_ctx["_competitor_analysis_running"] = True
+    try:
+        return await _analyze_competitors_impl(params, context)
+    finally:
+        session_ctx.pop("_competitor_analysis_running", None)
+
+
+async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
     """Spawn the Product Analyst agent to do competitor research.
 
     Thin bridge: business check → cache check → spawn agent → clean → persist → render craft.
@@ -492,8 +515,11 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
                 str(e)[:200],
             )
     else:
-        # Clear stale results so the pipeline runs fresh.
-        session_ctx.pop("competitor_analysis", None)
+        # force = re-run the research fresh (clear the pipeline scratch), but
+        # NEVER throw away the existing entries - their creatives and user
+        # pins survive, and fresh results MERGE in below (live 2026-09-08:
+        # force-discovery wiped the list and every re-run painted another
+        # 'Competitors' group onto the panel).
         session_ctx.get("_research_state", {}).clear()
 
     if auth is None:
@@ -560,26 +586,66 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             competitive.get("competitors") or [], session_ctx
         )
 
+        # Merge into the existing list, never replace it: a re-discovery
+        # ("find more competitors") refreshes known entries in place (pins and
+        # creatives survive) and appends only the genuinely new ones - ONE
+        # competitor group on the panel, however many times research runs.
+        fresh_competitors = competitive.get("competitors") or []
+        existing_analysis = session_ctx.get("competitor_analysis") or {}
+        had_existing = bool(existing_analysis.get("competitors"))
+        appended: list[dict] = fresh_competitors
+        refreshed_count = 0
+        if had_existing:
+            _normalize_entries(existing_analysis)
+            existing_list: list[dict] = existing_analysis["competitors"]
+            appended = []
+            for fresh in fresh_competitors:
+                match = next(
+                    (c for c in existing_list if isinstance(c, dict)
+                     and _same_project(c.get("name") or "",
+                                       fresh.get("name") or "")),
+                    None,
+                )
+                if match is None:
+                    existing_list.append(fresh)
+                    appended.append(fresh)
+                else:
+                    _refresh_entry(match, fresh)
+                    refreshed_count += 1
+            competitive = existing_analysis
+
         session_ctx["competitor_analysis"] = competitive
         # F26 - fresh analysis ran (even if 0 found): a prior decline is void.
         if clear_competitor_decline(session_ctx):
             logger.info("competitor_decline_cleared: analyze_competitors ran")
 
-        # Append competitor blocks to the existing craft panel. This is the
-        # first batch, so show the "Competitors" heading.
         craft_id = session_ctx.get("craft_id", "")
         if stream and craft_id:
-            await _append_competitor_craft(
-                stream,
-                craft_id,
-                business,
-                competitive.get("competitors") or [],
-                include_headers=True,
-            )
+            if had_existing:
+                # Entries may have changed in place - repaint the whole panel
+                # (appending again would paint a second 'Competitors' group).
+                await _emit_final_craft(
+                    stream,
+                    craft_id,
+                    url,
+                    business,
+                    competitive,
+                    screenshot_url=primary_screenshot_url(business),
+                    baked_summary=product_summary,
+                )
+            else:
+                # First batch - append with the "Competitors" heading.
+                await _append_competitor_craft(
+                    stream,
+                    craft_id,
+                    business,
+                    appended,
+                    include_headers=True,
+                )
 
         competitors = competitive.get("competitors") or []
         comp_count = len(competitors)
-        names = [c.get("name", "?") for c in competitors[:5]]
+        names = [c.get("name", "?") for c in (appended or competitors)[:5]]
 
         duration_ms = int((_time.monotonic() - _run_start) * 1000)
         if stream:
@@ -593,7 +659,14 @@ async def _analyze_competitors(params: dict, context: dict) -> ToolResult:
             except Exception:
                 pass
 
-        summary = f"Found {comp_count} competitors: {', '.join(names)}"
+        if had_existing:
+            summary = (
+                f"Research complete: {len(appended)} new "
+                f"({', '.join(names) or 'none'}), {refreshed_count} already "
+                f"known and refreshed - {comp_count} competitors total."
+            )
+        else:
+            summary = f"Found {comp_count} competitors: {', '.join(names)}"
         return ToolResult(
             success=True,
             data={"competitive": competitive},
