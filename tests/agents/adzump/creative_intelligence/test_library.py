@@ -296,6 +296,39 @@ class LibraryTests(unittest.TestCase):
             # (swallowed by _enrich_essence) - both succeeding proves overlap.
             self.assertEqual(len(gated.calls), 2)
 
+    def test_hung_enrich_times_out_and_ships_without_essence(self):
+        # Live 2026-09-08: one vision call never returned and the whole batch
+        # gather - tool, turn, spinner - sat open 12+ minutes. A hang must
+        # degrade to essence-less creatives within the deadline.
+        class HungEnrich:
+            async def __call__(self, images):
+                await asyncio.sleep(3600)
+
+        with mock.patch.object(library, "_ENRICH_TIMEOUT_SECONDS", 0.05):
+            record = self._run(stored=None,
+                               source=FakeSource(creatives=[_ad("a1")]),
+                               enrich=HungEnrich())
+        self.assertEqual(record.creatives[0].creative_id, "a1")
+        self.assertIsNone(record.creatives[0].essence)  # shipped, essence-less
+
+    def test_hung_processing_drops_one_competitor_not_the_batch(self):
+        class HungEnrich:
+            async def __call__(self, images):
+                await asyncio.sleep(3600)
+
+        profiles = [
+            CompetitorProfile(name="Nike", url="https://nike.com"),
+            CompetitorProfile(name="Adidas", url="https://adidas.com"),
+        ]
+        with mock.patch.object(library, "_ENRICH_TIMEOUT_SECONDS", 3600), \
+             mock.patch.object(library, "_PROCESS_TIMEOUT_SECONDS", 0.05), \
+             mock.patch.object(library.store, "get_competitor",
+                               new=mock.AsyncMock(return_value=None)):
+            results = asyncio.run(library.creatives_for_all(
+                profiles, {}, source=FakeSource(creatives=[_ad("a1")]),
+                enrich=HungEnrich()))
+        self.assertEqual(results, {})  # both wedged and DROPPED - gather returned
+
 
 if __name__ == "__main__":
     unittest.main()

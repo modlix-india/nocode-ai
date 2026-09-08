@@ -151,6 +151,19 @@ class LadderTests(unittest.TestCase):
         self.assertEqual(result, url)
         self.assertEqual(self.gbp_calls, 0)
 
+    def test_dead_project_specific_url_never_short_circuits(self):
+        # D-9 + live 2026-09-08: a DEAD lookalike domain (rainbowmayfaire.com)
+        # short-circuited the ladder forever; the correct GBP site (rung 2)
+        # was never consulted. Dead current_url must ride the full ladder.
+        result = self._resolve(
+            "Rainbow Mayfair", "https://rainbowmayfaire.com/",
+            listing={"name": "Rainbow Mayfair",
+                     "website": "https://rainbowmayfair.com/"},
+            alive=False)
+        # Everything is dead in this fixture, so the search URL is kept -
+        # the point is the ladder RAN (GBP consulted, no short-circuit).
+        self.assertEqual(self.gbp_calls, 1)
+
     def test_rung2_live_gbp_project_site_accepted(self):
         result = self._resolve(
             "Purva Sparkling Springs",

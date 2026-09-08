@@ -57,6 +57,13 @@ MAX_VIDEOS_PER_COMPETITOR = 6
 # ad neither active nor seen within this window is stale inspiration and stays
 # essence=None (stored + rendered all the same).
 ESSENCE_RECENCY_DAYS = 30
+# Hang deadlines (live 2026-09-08: one hung vision call wedged the batch
+# gather - the fetch tool, its turn, and the user's spinner sat open 12+
+# minutes). Enrich covers the essence LLM calls (a full per-creative fallback
+# round is ~1 min per 12 creatives); process is the backstop over one
+# competitor's whole unmetered half.
+_ENRICH_TIMEOUT_SECONDS = 240
+_PROCESS_TIMEOUT_SECONDS = 480
 
 _SOURCES = {"scrapecreators": ScrapeCreatorsSource, "adlibrary": AdLibrarySource}
 _default_source_instance: object | None = None
@@ -212,8 +219,20 @@ async def creatives_for_all(
     async def _process_and_deliver(key: str, name: str, fetched: SourceFetch,
                                    prior: Competitor | None) -> None:
         try:
-            record = await _process_stage(key=key, name=name, ctx=ctx,
-                                          fetched=fetched, prior=prior, enrich=enrich)
+            # Backstop deadline over the whole unmetered half (rehost + dedup
+            # + essence + store): one wedged competitor must never hold the
+            # batch's gather - and with it the tool, the turn, and the user's
+            # spinner - open forever.
+            record = await asyncio.wait_for(
+                _process_stage(key=key, name=name, ctx=ctx,
+                               fetched=fetched, prior=prior, enrich=enrich),
+                timeout=_PROCESS_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error("creative_intelligence: competitor timed out after "
+                         "%ds key=%s - dropped from this batch",
+                         _PROCESS_TIMEOUT_SECONDS, key)
+            return
         except Exception as e:
             # One competitor must never abort the batch (e.g. an upsert
             # refusal) - the rest still resolve.
@@ -373,7 +392,18 @@ async def _enrich_essence(
     if not pending:
         return
     try:
-        essences = await enrich(pending)
+        # Hard deadline: a hung vision call (live 2026-09-08: a gpt-4o-mini
+        # essence run never returned; the whole fetch card ticked past 12
+        # minutes) must degrade to essence-less creatives, never wedge the
+        # batch - the next real ingest re-attempts.
+        essences = await asyncio.wait_for(enrich(pending),
+                                          timeout=_ENRICH_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        logger.warning("creative_intelligence: enrich timed out after %ds "
+                       "key=%s n=%d - shipping without essence",
+                       _ENRICH_TIMEOUT_SECONDS, competitor.competitor_key,
+                       len(pending))
+        return
     except Exception as e:
         logger.warning("creative_intelligence: enrich failed key=%s: %s",
                        competitor.competitor_key, str(e)[:200])

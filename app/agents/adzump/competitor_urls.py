@@ -69,7 +69,12 @@ async def resolve_project_url(
         # Aggregator pages and broker-style domains can never be the entry's
         # official URL - honestly link-less beats a clone.
         current_url = None
-    if current_url and _is_project_specific(current_url, name, session_ctx):
+    if current_url and _is_project_specific(current_url, name, session_ctx) \
+            and await is_alive(current_url):
+        # D-9: a dead current_url can never settle - without the liveness
+        # check here, a dead lookalike domain (rainbowmayfaire.com, live
+        # 2026-09-08) short-circuited the ladder forever and the correct
+        # GBP-listed site was never even consulted.
         logger.info("project_url_kept: %r already project-specific (%s)",
                     name, current_url)
         return current_url
