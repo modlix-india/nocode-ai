@@ -36,7 +36,7 @@ from app.agents.adzump.competitor_urls import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "cp5v2-1"
+PROMPT_VERSION = "cp5v2-2"  # v2: sibling-project rule (live wrong-at-high 2026-09-08)
 _GBP_EVIDENCE_LIMIT = 3
 _JUDGE_MAX_TOKENS = 3000
 
@@ -88,8 +88,10 @@ What counts as the official project page:
 
 Name equivalence is YOUR job: "Nambiar Villas" and a listing named "Nambiar Bannerghatta Villas" are the same project; "Lodha Azur" and "Lodha Bellezza" are not.
 
+SIBLING PROJECTS ARE THE TRAP: a developer runs many projects, and the brand token appears in ALL of them. "Nambiar Club Bellezea" is NOT "Nambiar Villas" - the brand matches, the PROJECT name does not, and picking a sibling poisons the shared store exactly like picking a stranger. The entry's own project words (not the brand word) must appear in, or clearly correspond to, the evidence's listing name or URL. A developer's OTHER project at any confidence is worse than null - when every candidate is a sibling or a stranger, the correct answer is null (common for pre-launch projects that have no page yet).
+
 Confidence is behavioral - answer honestly what the system should DO:
-- high: you would key a shared, org-wide creative store on this URL. The evidence ties it to THIS exact project (e.g. a matching Google Business listing pointing at a project-named site, or a page extracted from the developer's own domain).
+- high: you would key a shared, org-wide creative store on this URL. The evidence ties it to THIS exact project - the PROJECT-specific name matches, never just the developer brand (e.g. a Google Business listing whose project name matches pointing at a project-named site, or this project's page extracted from the developer's own domain).
 - medium: probably right but single-source or a partial name match. The system still links it.
 - low: conflicting, thin, or guesswork. The system keeps the entry link-less. A wrong URL poisons a shared store; a missing one only loses a link - prefer low/null over a stretch.
 
